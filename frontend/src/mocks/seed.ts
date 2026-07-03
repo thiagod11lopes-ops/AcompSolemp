@@ -171,6 +171,7 @@ export function loadAppData(): AppData {
         data.pedidos = (data.pedidos ?? []).map((p) => ({
           ...p,
           paciente: p.paciente ?? null,
+          dadosClinica: p.dadosClinica ?? null,
         }))
         data.notificacoes = (data.notificacoes ?? []).map((n) => ({
           ...n,

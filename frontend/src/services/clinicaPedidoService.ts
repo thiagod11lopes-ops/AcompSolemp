@@ -1,4 +1,4 @@
-import type { PacientePedido, PedidoComDetalhes } from '@/types'
+import type { DadosClinicaLancamento, PacientePedido, PedidoComDetalhes } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
 import {
   advancePedidoEtapa,
@@ -12,34 +12,51 @@ import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 
 export interface CreatePedidoInput {
   paciente: PacientePedido
+  dadosClinica: DadosClinicaLancamento
 }
 
-function ensurePlaceholderEmpresa(data: ReturnType<typeof loadAppData>): string {
-  const id = 'empresa-placeholder'
-  if (!data.empresas.some((e) => e.id === id)) {
-    data.empresas.push({
-      id,
-      razaoSocial: 'A definir',
-      nomeFantasia: 'A definir',
-      cnpj: '',
-      contato: '',
-      telefone: '',
-      email: '',
-    })
-  }
+function ensureEmpresaByNome(
+  data: ReturnType<typeof loadAppData>,
+  nome: string,
+): string {
+  const trimmed = nome.trim()
+  const existing = data.empresas.find(
+    (e) =>
+      e.nomeFantasia.localeCompare(trimmed, 'pt-BR', { sensitivity: 'accent' }) === 0 ||
+      e.razaoSocial.localeCompare(trimmed, 'pt-BR', { sensitivity: 'accent' }) === 0,
+  )
+  if (existing) return existing.id
+
+  const id = `empresa-${Date.now()}`
+  data.empresas.push({
+    id,
+    razaoSocial: trimmed,
+    nomeFantasia: trimmed,
+    cnpj: '',
+    contato: '',
+    telefone: '',
+    email: '',
+  })
   return id
 }
 
-function ensurePlaceholderMaterial(data: ReturnType<typeof loadAppData>): string {
-  const id = 'material-placeholder'
-  if (!data.materiais.some((m) => m.id === id)) {
-    data.materiais.push({
-      id,
-      descricao: 'A definir',
-      fabricante: '',
-      unidade: '',
-    })
-  }
+function ensureMaterialByDescricao(
+  data: ReturnType<typeof loadAppData>,
+  descricaoInput: string,
+): string {
+  const trimmed = descricaoInput.trim()
+  const existing = data.materiais.find(
+    (m) => m.descricao.localeCompare(trimmed, 'pt-BR', { sensitivity: 'accent' }) === 0,
+  )
+  if (existing) return existing.id
+
+  const id = `material-${Date.now()}`
+  data.materiais.push({
+    id,
+    descricao: trimmed,
+    fabricante: '',
+    unidade: 'UN',
+  })
   return id
 }
 
@@ -105,8 +122,8 @@ export const clinicaPedidoService = {
     const numero = `PED-${String(data.pedidos.length + 1).padStart(5, '0')}`
     const agora = new Date().toISOString()
 
-    const empresaId = ensurePlaceholderEmpresa(data)
-    const materialId = ensurePlaceholderMaterial(data)
+    const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
+    const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
     const observacaoInicial = `Lançamento do paciente ${input.paciente.nome}.`
 
     const pedido = {
@@ -115,10 +132,11 @@ export const clinicaPedidoService = {
       clinicaId,
       empresaId,
       materialId,
-      quantidade: 1,
-      valor: 0,
+      quantidade: input.dadosClinica.quantidade,
+      valor: input.dadosClinica.valorTotal,
       observacoes: observacaoInicial,
       paciente: input.paciente,
+      dadosClinica: input.dadosClinica,
       dataSolicitacao: agora,
       dataEntrega: null,
       etapaAtualId: segunda.id,

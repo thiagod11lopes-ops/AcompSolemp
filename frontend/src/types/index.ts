@@ -152,6 +152,19 @@ export interface PacientePedido {
   tipoUsuario: TipoUsuarioPaciente
 }
 
+export interface DadosClinicaLancamento {
+  nomeClinica: string
+  medico: string
+  procedimento: string
+  dataCirurgia: string
+  empresaConsignada: string
+  pregao: string
+  materialUtilizado: string
+  quantidade: number
+  valorUnitario: number
+  valorTotal: number
+}
+
 export interface Pedido {
   id: string
   numero: string
@@ -162,6 +175,7 @@ export interface Pedido {
   valor: number
   observacoes: string
   paciente: PacientePedido | null
+  dadosClinica: DadosClinicaLancamento | null
   dataSolicitacao: string
   dataEntrega: string | null
   etapaAtualId: string

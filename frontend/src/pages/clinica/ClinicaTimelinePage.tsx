@@ -78,6 +78,9 @@ export default function ClinicaTimelinePage() {
                         {pedido.paciente
                           ? `${pedido.paciente.nome} · NIP ${pedido.paciente.nip}`
                           : `${pedido.material.descricao} · ${pedido.empresa.nomeFantasia}`}
+                        {pedido.dadosClinica
+                          ? ` · ${pedido.dadosClinica.procedimento}`
+                          : ''}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
                         <strong>Etapa:</strong> {pedido.etapaAtual.nome}

@@ -28,7 +28,7 @@ import {
 } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
 import { clinicaPedidoService } from '@/services/clinicaPedidoService'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
 
 export default function ClinicaTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -137,8 +137,11 @@ export default function ClinicaTimelineDetailPage() {
             <Box sx={{ display: 'grid', gap: 1 }}>
               {pedido.paciente && (
                 <>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 0.5 }}>
+                    Paciente
+                  </Typography>
                   <Typography variant="body2">
-                    <strong>Paciente:</strong> {pedido.paciente.nome}
+                    <strong>Nome:</strong> {pedido.paciente.nome}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Vínculo:</strong>{' '}
@@ -166,7 +169,49 @@ export default function ClinicaTimelineDetailPage() {
                   </Typography>
                 </>
               )}
-              <Typography variant="body2">
+              {pedido.dadosClinica && (
+                <>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1.5 }}>
+                    Clínica
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Nome da Clínica:</strong> {pedido.dadosClinica.nomeClinica}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Médico:</strong> {pedido.dadosClinica.medico}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Procedimento:</strong> {pedido.dadosClinica.procedimento}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Data da Cirurgia:</strong>{' '}
+                    {formatDate(pedido.dadosClinica.dataCirurgia)}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Empresa consignada:</strong>{' '}
+                    {pedido.dadosClinica.empresaConsignada}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Pregão:</strong> {pedido.dadosClinica.pregao}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Material Utilizado:</strong>{' '}
+                    {pedido.dadosClinica.materialUtilizado}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Quantidade:</strong> {pedido.dadosClinica.quantidade}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Valor Unitário:</strong>{' '}
+                    {formatCurrency(pedido.dadosClinica.valorUnitario)}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Valor Total:</strong>{' '}
+                    {formatCurrency(pedido.dadosClinica.valorTotal)}
+                  </Typography>
+                </>
+              )}
+              <Typography variant="body2" sx={{ mt: 1 }}>
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
               <Chip
