@@ -13,23 +13,42 @@ import {
   useTheme,
 } from '@mui/material'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import InventoryIcon from '@mui/icons-material/Inventory'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   useCreateClinicaUser,
   useCreateOrdenadorUser,
   useCreateFinanceiroUser,
 } from '@/hooks/useUsuarioCadastro'
+import { cadastroService } from '@/services/cadastroService'
 
 export function UsuariosTab() {
   const theme = useTheme()
+  const queryClient = useQueryClient()
   const [subTab, setSubTab] = useState(0)
   const createClinica = useCreateClinicaUser()
   const createOrdenador = useCreateOrdenadorUser()
   const createFinanceiro = useCreateFinanceiroUser()
+  const createMaterial = useMutation({
+    mutationFn: (input: { descricao: string; fabricante: string; unidade: string }) =>
+      cadastroService.saveMaterial({
+        id: `material-${Date.now()}`,
+        descricao: input.descricao.trim(),
+        fabricante: input.fabricante.trim(),
+        unidade: input.unidade.trim() || 'UN',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['materiais'] })
+    },
+  })
 
   const [nomeClinica, setNomeClinica] = useState('')
   const [senhaClinica, setSenhaClinica] = useState('')
+  const [descricaoMaterial, setDescricaoMaterial] = useState('')
+  const [fabricanteMaterial, setFabricanteMaterial] = useState('')
+  const [unidadeMaterial, setUnidadeMaterial] = useState('UN')
   const [nomeOrdenador, setNomeOrdenador] = useState('')
   const [senhaOrdenador, setSenhaOrdenador] = useState('')
   const [nomeFinanceiro, setNomeFinanceiro] = useState('')
@@ -50,6 +69,27 @@ export function UsuariosTab() {
       )
       setNomeClinica('')
       setSenhaClinica('')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
+    }
+  }
+
+  const handleCreateMaterial = async () => {
+    setErro('')
+    setSucesso('')
+    try {
+      if (descricaoMaterial.trim().length < 2) {
+        throw new Error('Informe a descrição do material')
+      }
+      const material = await createMaterial.mutateAsync({
+        descricao: descricaoMaterial,
+        fabricante: fabricanteMaterial,
+        unidade: unidadeMaterial,
+      })
+      setSucesso(`Material cadastrado: ${material.descricao}.`)
+      setDescricaoMaterial('')
+      setFabricanteMaterial('')
+      setUnidadeMaterial('UN')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
     }
@@ -95,6 +135,7 @@ export function UsuariosTab() {
     <Box>
       <Tabs value={subTab} onChange={(_, v) => { setSubTab(v); setErro(''); setSucesso('') }} sx={{ mb: 3 }}>
         <Tab icon={<LocalHospitalIcon />} iconPosition="start" label="Cadastrar Clínica" />
+        <Tab icon={<InventoryIcon />} iconPosition="start" label="Material" />
         <Tab icon={<GavelIcon />} iconPosition="start" label="Ordenador de Despesa" />
         <Tab icon={<AccountBalanceIcon />} iconPosition="start" label="Financeiro" />
       </Tabs>
@@ -157,6 +198,64 @@ export function UsuariosTab() {
             p: 3,
             maxWidth: 520,
             borderRadius: 3,
+            background: `linear-gradient(145deg, ${alpha(theme.palette.info.main, 0.08)} 0%, ${theme.palette.background.paper} 50%)`,
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Material
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Cadastre o material consignado para uso nos lançamentos das clínicas.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Descrição"
+                value={descricaoMaterial}
+                onChange={(e) => setDescricaoMaterial(e.target.value)}
+                placeholder="Ex.: Placa bloqueada 4,5mm"
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Fabricante"
+                value={fabricanteMaterial}
+                onChange={(e) => setFabricanteMaterial(e.target.value)}
+                placeholder="Ex.: OrthoMed"
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Unidade"
+                value={unidadeMaterial}
+                onChange={(e) => setUnidadeMaterial(e.target.value)}
+                placeholder="Ex.: UN"
+                helperText="Ex.: UN, CX, KIT"
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <Button
+                variant="contained"
+                color="info"
+                onClick={handleCreateMaterial}
+                disabled={createMaterial.isPending}
+              >
+                {createMaterial.isPending ? 'Cadastrando...' : 'Cadastrar material'}
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {subTab === 2 && (
+        <Paper
+          sx={{
+            p: 3,
+            maxWidth: 520,
+            borderRadius: 3,
             background: `linear-gradient(145deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${theme.palette.background.paper} 50%)`,
           }}
         >
@@ -201,7 +300,7 @@ export function UsuariosTab() {
         </Paper>
       )}
 
-      {subTab === 2 && (
+      {subTab === 3 && (
         <Paper
           sx={{
             p: 3,
