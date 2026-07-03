@@ -33,11 +33,31 @@ import type { PacienteVinculo, TipoUsuarioPaciente } from '@/types'
 const TIPO_USUARIO_OPTIONS: { value: TipoUsuarioPaciente; label: string }[] = [
   { value: 'MILITAR', label: 'Militar' },
   { value: 'MILITAR_DA_RESERVA', label: 'Militar da Reserva' },
-  { value: 'MILITAR_RESERVADO', label: 'Militar Reservado' },
+  { value: 'MILITAR_RESERVADO', label: 'Militar Reformado' },
   { value: 'DEPENDENTE_DIRETO', label: 'Dependente Direto' },
   { value: 'DEPENDENTE_INDIRETO', label: 'Dependente Indireto' },
   { value: 'PENSIONISTA', label: 'Pensionista' },
 ]
+
+const TIPOS_MILITARES: TipoUsuarioPaciente[] = [
+  'MILITAR',
+  'MILITAR_DA_RESERVA',
+  'MILITAR_RESERVADO',
+]
+
+const TIPOS_DEPENDENTES: TipoUsuarioPaciente[] = [
+  'DEPENDENTE_DIRETO',
+  'DEPENDENTE_INDIRETO',
+  'PENSIONISTA',
+]
+
+function isTipoUsuarioBloqueado(
+  tipo: TipoUsuarioPaciente,
+  vinculo: PacienteVinculo,
+): boolean {
+  if (vinculo === 'DEPENDENTE') return TIPOS_MILITARES.includes(tipo)
+  return TIPOS_DEPENDENTES.includes(tipo)
+}
 
 const schema = z
   .object({
@@ -88,6 +108,13 @@ const schema = z
           path: ['nomeTitular'],
         })
       }
+    }
+    if (isTipoUsuarioBloqueado(data.tipoUsuario, data.vinculo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Tipo de usuário incompatível com o vínculo selecionado',
+        path: ['tipoUsuario'],
+      })
     }
   })
 
@@ -171,6 +198,7 @@ export default function ClinicaNovoPedidoPage() {
   })
 
   const vinculo = useWatch({ control, name: 'vinculo' })
+  const tipoUsuarioAtual = useWatch({ control, name: 'tipoUsuario' })
   const quantidade = useWatch({ control, name: 'quantidade' })
   const valorUnitario = useWatch({ control, name: 'valorUnitario' })
   const isTitular = vinculo === 'TITULAR'
@@ -189,6 +217,16 @@ export default function ClinicaNovoPedidoPage() {
   }, [isTitular, setValue])
 
   useEffect(() => {
+    if (isTipoUsuarioBloqueado(tipoUsuarioAtual, vinculo)) {
+      setValue(
+        'tipoUsuario',
+        vinculo === 'TITULAR' ? 'MILITAR' : 'DEPENDENTE_DIRETO',
+        { shouldValidate: true },
+      )
+    }
+  }, [vinculo, tipoUsuarioAtual, setValue])
+
+  useEffect(() => {
     const qtd = Number(quantidade) || 0
     const unitario = Number(valorUnitario) || 0
     const total = Math.round(qtd * unitario * 100) / 100
@@ -199,6 +237,11 @@ export default function ClinicaNovoPedidoPage() {
     setValue('vinculo', value, { shouldValidate: true })
     setValue('nipTitular', '')
     setValue('nomeTitular', '')
+    setValue(
+      'tipoUsuario',
+      value === 'TITULAR' ? 'MILITAR' : 'DEPENDENTE_DIRETO',
+      { shouldValidate: true },
+    )
   }
 
   const onSubmit = async (data: FormData) => {
@@ -352,11 +395,25 @@ export default function ClinicaNovoPedidoPage() {
                           value={field.value}
                           onChange={field.onChange}
                         >
-                          {TIPO_USUARIO_OPTIONS.map((opt) => (
-                            <MenuItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </MenuItem>
-                          ))}
+                          {TIPO_USUARIO_OPTIONS.map((opt) => {
+                            const bloqueado = isTipoUsuarioBloqueado(opt.value, vinculo)
+                            return (
+                              <MenuItem
+                                key={opt.value}
+                                value={opt.value}
+                                disabled={bloqueado}
+                                sx={{
+                                  '&.Mui-disabled': {
+                                    color: 'error.main',
+                                    opacity: '1 !important',
+                                    fontWeight: 600,
+                                  },
+                                }}
+                              >
+                                {opt.label}
+                              </MenuItem>
+                            )
+                          })}
                         </Select>
                         {errors.tipoUsuario && (
                           <FormHelperText>{errors.tipoUsuario.message}</FormHelperText>
