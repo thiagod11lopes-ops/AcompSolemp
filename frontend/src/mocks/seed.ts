@@ -108,6 +108,11 @@ export const MOCK_CREDENTIALS: Record<string, { senha: string; userId: string }>
   gestor: { senha: 'gestor123', userId: 'user-gestor' },
 }
 
+function normalizeTextoCampo(value: unknown): string {
+  if (Array.isArray(value)) return value.join(', ')
+  return typeof value === 'string' ? value : ''
+}
+
 function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
   return { data, changed: false }
 }
@@ -174,10 +179,10 @@ export function loadAppData(): AppData {
           dadosClinica: p.dadosClinica
             ? {
                 ...p.dadosClinica,
-                folhaSala: p.dadosClinica.folhaSala ?? [],
-                descricaoCirurgica: p.dadosClinica.descricaoCirurgica ?? [],
-                etiquetas: p.dadosClinica.etiquetas ?? [],
-                fotos: p.dadosClinica.fotos ?? [],
+                folhaSala: normalizeTextoCampo(p.dadosClinica.folhaSala),
+                descricaoCirurgica: normalizeTextoCampo(p.dadosClinica.descricaoCirurgica),
+                etiquetas: normalizeTextoCampo(p.dadosClinica.etiquetas),
+                fotos: Array.isArray(p.dadosClinica.fotos) ? p.dadosClinica.fotos : [],
               }
             : null,
         }))

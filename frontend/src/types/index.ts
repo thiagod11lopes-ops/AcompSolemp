@@ -163,9 +163,9 @@ export interface DadosClinicaLancamento {
   quantidade: number
   valorUnitario: number
   valorTotal: number
-  folhaSala: string[]
-  descricaoCirurgica: string[]
-  etiquetas: string[]
+  folhaSala: string
+  descricaoCirurgica: string
+  etiquetas: string
   fotos: string[]
 }
 

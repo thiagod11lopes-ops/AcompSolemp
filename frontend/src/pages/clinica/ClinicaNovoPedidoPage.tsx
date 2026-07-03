@@ -97,9 +97,9 @@ const schema = z
       .number({ message: 'Informe o valor unitário' })
       .min(0.01, 'Informe o valor unitário'),
     valorTotal: z.number({ message: 'Informe o valor total' }).min(0.01, 'Informe o valor total'),
-    folhaSala: z.array(z.string()),
-    descricaoCirurgica: z.array(z.string()),
-    etiquetas: z.array(z.string()),
+    folhaSala: z.string(),
+    descricaoCirurgica: z.string(),
+    etiquetas: z.string(),
     fotos: z.array(z.string()),
   })
   .superRefine((data, ctx) => {
@@ -273,9 +273,9 @@ export default function ClinicaNovoPedidoPage() {
       quantidade: 1,
       valorUnitario: 0,
       valorTotal: 0,
-      folhaSala: [],
-      descricaoCirurgica: [],
-      etiquetas: [],
+      folhaSala: '',
+      descricaoCirurgica: '',
+      etiquetas: '',
       fotos: [],
     },
   })
@@ -349,9 +349,9 @@ export default function ClinicaNovoPedidoPage() {
           quantidade: data.quantidade,
           valorUnitario: data.valorUnitario,
           valorTotal: data.valorTotal,
-          folhaSala: data.folhaSala,
-          descricaoCirurgica: data.descricaoCirurgica,
-          etiquetas: data.etiquetas,
+          folhaSala: data.folhaSala.trim(),
+          descricaoCirurgica: data.descricaoCirurgica.trim(),
+          etiquetas: data.etiquetas.trim(),
           fotos: data.fotos,
         },
       })
@@ -644,45 +644,32 @@ export default function ClinicaNovoPedidoPage() {
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name="folhaSala"
-                    control={control}
-                    render={({ field }) => (
-                      <CampoAnexo
-                        label="Folha da Sala"
-                        accept=".pdf,.doc,.docx,image/*"
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
+                  <TextField
+                    fullWidth
+                    label="Folha da Sala"
+                    {...register('folhaSala')}
+                    error={Boolean(errors.folhaSala)}
+                    helperText={errors.folhaSala?.message}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Descrição da Cirurgia"
+                    {...register('descricaoCirurgica')}
+                    error={Boolean(errors.descricaoCirurgica)}
+                    helperText={errors.descricaoCirurgica?.message}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name="descricaoCirurgica"
-                    control={control}
-                    render={({ field }) => (
-                      <CampoAnexo
-                        label="Descrição Cirúrgica"
-                        accept=".pdf,.doc,.docx,image/*"
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Controller
-                    name="etiquetas"
-                    control={control}
-                    render={({ field }) => (
-                      <CampoAnexo
-                        label="Etiquetas"
-                        accept=".pdf,image/*"
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
+                  <TextField
+                    fullWidth
+                    label="Etiquetas"
+                    {...register('etiquetas')}
+                    error={Boolean(errors.etiquetas)}
+                    helperText={errors.etiquetas?.message}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>

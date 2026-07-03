@@ -211,21 +211,15 @@ export default function ClinicaTimelineDetailPage() {
                   </Typography>
                   <Typography variant="body2">
                     <strong>Folha da Sala:</strong>{' '}
-                    {(pedido.dadosClinica.folhaSala ?? []).length > 0
-                      ? pedido.dadosClinica.folhaSala.join(', ')
-                      : '—'}
+                    {pedido.dadosClinica.folhaSala || '—'}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Descrição Cirúrgica:</strong>{' '}
-                    {(pedido.dadosClinica.descricaoCirurgica ?? []).length > 0
-                      ? pedido.dadosClinica.descricaoCirurgica.join(', ')
-                      : '—'}
+                    <strong>Descrição da Cirurgia:</strong>{' '}
+                    {pedido.dadosClinica.descricaoCirurgica || '—'}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Etiquetas:</strong>{' '}
-                    {(pedido.dadosClinica.etiquetas ?? []).length > 0
-                      ? pedido.dadosClinica.etiquetas.join(', ')
-                      : '—'}
+                    {pedido.dadosClinica.etiquetas || '—'}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Fotos:</strong>{' '}
