@@ -5,9 +5,10 @@ interface PageHeaderProps {
   title: string
   subtitle?: string
   action?: ReactNode
+  titleAdornment?: ReactNode
 }
 
-export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, action, titleAdornment }: PageHeaderProps) {
   return (
     <Box
       sx={{
@@ -20,9 +21,12 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
       }}
     >
       <Box>
-        <Typography variant="h4" gutterBottom>
-          {title}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: subtitle ? 0.5 : 0 }}>
+          <Typography variant="h4" component="h1">
+            {title}
+          </Typography>
+          {titleAdornment}
+        </Box>
         {subtitle && (
           <Typography variant="body1" color="text.secondary">
             {subtitle}

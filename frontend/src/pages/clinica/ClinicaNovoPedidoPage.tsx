@@ -10,17 +10,20 @@ import {
   FormHelperText,
   FormLabel,
   Grid,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   TextField,
   Alert,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PersonIcon from '@mui/icons-material/Person'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -268,6 +271,7 @@ export default function ClinicaNovoPedidoPage() {
     control,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -342,6 +346,32 @@ export default function ClinicaNovoPedidoPage() {
     )
   }
 
+  const preencherExemplo = () => {
+    const hoje = new Date().toISOString().slice(0, 10)
+    reset({
+      nome: 'João da Silva Santos',
+      vinculo: 'TITULAR',
+      nip: '12.3456.78',
+      nipTitular: '',
+      nomeTitular: '',
+      tipoUsuario: 'MILITAR',
+      nomeClinica: clinicaLogada?.nome ?? 'Clínica de Ortopedia',
+      medico: 'CMG Dr. Carlos Mendes',
+      procedimento: 'Artroscopia de joelho direito',
+      dataCirurgia: hoje,
+      empresaConsignada: 'Ortomed Distribuidora',
+      pregao: 'PE 001/2026',
+      materialUtilizado: 'Placa bloqueada 4,5mm',
+      quantidade: 2,
+      valorUnitario: 1500,
+      valorTotal: 3000,
+      folhaSala: 'Folha 12/2026',
+      descricaoCirurgica: 'Procedimento realizado sem intercorrências.',
+      etiquetas: 'ETQ-001, ETQ-002',
+      fotos: ['foto-campo-cirurgico.jpg'],
+    })
+  }
+
   const onSubmit = async (data: FormData) => {
     try {
       const pedido = await createPedido.mutateAsync({
@@ -389,6 +419,18 @@ export default function ClinicaNovoPedidoPage() {
       <PageHeader
         title="Novo Lançamento"
         subtitle="Informe os dados do paciente e da clínica para iniciar a timeline"
+        titleAdornment={
+          <Tooltip title="Preencher com dados de exemplo">
+            <IconButton
+              color="primary"
+              onClick={preencherExemplo}
+              aria-label="Preencher com dados de exemplo"
+              size="small"
+            >
+              <AutoAwesomeIcon />
+            </IconButton>
+          </Tooltip>
+        }
       />
 
       {createPedido.isError && (
