@@ -204,13 +204,12 @@ function CampoNaoSeAplica({
       >
         {label}
       </Typography>
-      <Box sx={{ position: 'relative' }}>
+      <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: 1 }}>
         <Box
           sx={{
             pointerEvents: active ? 'none' : 'auto',
-            '& .MuiOutlinedInput-root': active
-              ? { bgcolor: 'action.hover' }
-              : undefined,
+            opacity: active ? 0.45 : 1,
+            transition: 'opacity 0.2s',
           }}
         >
           {children}
@@ -223,16 +222,26 @@ function CampoNaoSeAplica({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              borderRadius: 1,
-              opacity: 1,
               pointerEvents: 'none',
               zIndex: 1,
+              overflow: 'hidden',
             }}
           >
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
-              Não se Aplica
+            <Typography
+              sx={{
+                color: 'primary.main',
+                opacity: 1,
+                fontWeight: 800,
+                fontSize: '1.05rem',
+                letterSpacing: 0.6,
+                whiteSpace: 'nowrap',
+                textTransform: 'none',
+                transform: 'rotate(-28deg)',
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              Não se aplica
             </Typography>
           </Box>
         )}
