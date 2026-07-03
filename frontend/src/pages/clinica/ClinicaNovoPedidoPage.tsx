@@ -192,8 +192,7 @@ function CampoNaoSeAplica({
     <Box
       sx={{
         position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 1,
+        overflow: 'visible',
         pointerEvents: active ? 'none' : 'auto',
         '& .MuiOutlinedInput-root': {
           opacity: active ? 0.45 : 1,
@@ -204,7 +203,7 @@ function CampoNaoSeAplica({
           color: active ? 'text.secondary' : undefined,
           bgcolor: 'background.paper',
           px: 0.5,
-          zIndex: 2,
+          zIndex: 3,
         },
         '& .MuiFormHelperText-root': {
           opacity: active ? 0 : 1,
@@ -216,13 +215,18 @@ function CampoNaoSeAplica({
         <Box
           sx={{
             position: 'absolute',
-            inset: 0,
+            // Cobre só a área do input, sem cortar o rótulo flutuante
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 56,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             pointerEvents: 'none',
             zIndex: 1,
             overflow: 'hidden',
+            borderRadius: 1,
           }}
         >
           <Typography
