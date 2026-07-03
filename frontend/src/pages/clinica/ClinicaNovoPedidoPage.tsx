@@ -21,7 +21,7 @@ import PersonIcon from '@mui/icons-material/Person'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
@@ -69,6 +69,58 @@ const schema = z
 
 type FormData = z.infer<typeof schema>
 
+function CampoNaoSeAplica({
+  active,
+  children,
+}: {
+  active: boolean
+  children: ReactNode
+}) {
+  return (
+    <Box sx={{ position: 'relative' }}>
+      <Box
+        sx={{
+          opacity: active ? 0.35 : 1,
+          pointerEvents: active ? 'none' : 'auto',
+          transition: 'opacity 0.2s',
+        }}
+      >
+        {children}
+      </Box>
+      {active && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              px: 2,
+              py: 0.75,
+              borderRadius: 1,
+              boxShadow: 2,
+              width: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
+              Não se Aplica
+            </Typography>
+          </Box>
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
   const createPedido = useCreateClinicaPedido()
@@ -92,26 +144,19 @@ export default function ClinicaNovoPedidoPage() {
   })
 
   const vinculo = useWatch({ control, name: 'vinculo' })
-  const nome = useWatch({ control, name: 'nome' })
-  const nip = useWatch({ control, name: 'nip' })
   const isTitular = vinculo === 'TITULAR'
 
   useEffect(() => {
     if (isTitular) {
-      setValue('nipTitular', nip)
-      setValue('nomeTitular', nome)
-    }
-  }, [isTitular, nome, nip, setValue])
-
-  const setVinculo = (value: PacienteVinculo) => {
-    setValue('vinculo', value, { shouldValidate: true })
-    if (value === 'TITULAR') {
-      setValue('nipTitular', nip)
-      setValue('nomeTitular', nome)
-    } else {
       setValue('nipTitular', '')
       setValue('nomeTitular', '')
     }
+  }, [isTitular, setValue])
+
+  const setVinculo = (value: PacienteVinculo) => {
+    setValue('vinculo', value, { shouldValidate: true })
+    setValue('nipTitular', '')
+    setValue('nomeTitular', '')
   }
 
   const onSubmit = async (data: FormData) => {
@@ -214,31 +259,29 @@ export default function ClinicaNovoPedidoPage() {
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label="NIP do titular"
-                  {...register('nipTitular')}
-                  disabled={isTitular}
-                  error={Boolean(errors.nipTitular)}
-                  helperText={
-                    errors.nipTitular?.message ??
-                    (isTitular ? 'Preenchido automaticamente para titular' : undefined)
-                  }
-                />
+                <CampoNaoSeAplica active={isTitular}>
+                  <TextField
+                    fullWidth
+                    label="NIP do titular"
+                    {...register('nipTitular')}
+                    disabled={isTitular}
+                    error={Boolean(errors.nipTitular)}
+                    helperText={errors.nipTitular?.message}
+                  />
+                </CampoNaoSeAplica>
               </Grid>
 
               <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
-                  label="Nome do titular"
-                  {...register('nomeTitular')}
-                  disabled={isTitular}
-                  error={Boolean(errors.nomeTitular)}
-                  helperText={
-                    errors.nomeTitular?.message ??
-                    (isTitular ? 'Preenchido automaticamente para titular' : undefined)
-                  }
-                />
+                <CampoNaoSeAplica active={isTitular}>
+                  <TextField
+                    fullWidth
+                    label="Nome do titular"
+                    {...register('nomeTitular')}
+                    disabled={isTitular}
+                    error={Boolean(errors.nomeTitular)}
+                    helperText={errors.nomeTitular?.message}
+                  />
+                </CampoNaoSeAplica>
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
