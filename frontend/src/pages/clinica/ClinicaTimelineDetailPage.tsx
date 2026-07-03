@@ -161,7 +161,7 @@ export default function ClinicaTimelineDetailPage() {
                     {{
                       MILITAR: 'Militar',
                       MILITAR_DA_RESERVA: 'Militar da Reserva',
-                      MILITAR_RESERVADO: 'Militar Reformado',
+                      MILITAR_RESERVADO: 'Militar da Reserva',
                       DEPENDENTE_DIRETO: 'Dependente Direto',
                       DEPENDENTE_INDIRETO: 'Dependente Indireto',
                       PENSIONISTA: 'Pensionista',

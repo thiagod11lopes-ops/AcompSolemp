@@ -33,7 +33,6 @@ import type { PacienteVinculo, TipoUsuarioPaciente } from '@/types'
 const TIPO_USUARIO_OPTIONS: { value: TipoUsuarioPaciente; label: string }[] = [
   { value: 'MILITAR', label: 'Militar' },
   { value: 'MILITAR_DA_RESERVA', label: 'Militar da Reserva' },
-  { value: 'MILITAR_RESERVADO', label: 'Militar Reformado' },
   { value: 'DEPENDENTE_DIRETO', label: 'Dependente Direto' },
   { value: 'DEPENDENTE_INDIRETO', label: 'Dependente Indireto' },
   { value: 'PENSIONISTA', label: 'Pensionista' },
@@ -72,7 +71,6 @@ const schema = z
       [
         'MILITAR',
         'MILITAR_DA_RESERVA',
-        'MILITAR_RESERVADO',
         'DEPENDENTE_DIRETO',
         'DEPENDENTE_INDIRETO',
         'PENSIONISTA',
