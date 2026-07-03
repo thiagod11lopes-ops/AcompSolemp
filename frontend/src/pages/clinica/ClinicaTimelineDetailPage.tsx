@@ -28,7 +28,7 @@ import {
 } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
 import { clinicaPedidoService } from '@/services/clinicaPedidoService'
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
+import { formatDate, formatDateTime } from '@/utils/format'
 
 export default function ClinicaTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -108,7 +108,11 @@ export default function ClinicaTimelineDetailPage() {
 
       <PageHeader
         title={`Timeline — ${pedido.numero}`}
-        subtitle={`${pedido.empresa.nomeFantasia} · ${pedido.material.descricao}`}
+        subtitle={
+          pedido.paciente
+            ? `${pedido.paciente.nome} · NIP ${pedido.paciente.nip}`
+            : `${pedido.empresa.nomeFantasia} · ${pedido.material.descricao}`
+        }
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
       />
 
@@ -128,18 +132,38 @@ export default function ClinicaTimelineDetailPage() {
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Dados do Pedido
+              Dados do Lançamento
             </Typography>
             <Box sx={{ display: 'grid', gap: 1 }}>
-              <Typography variant="body2">
-                <strong>Material:</strong> {pedido.material.descricao}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Quantidade:</strong> {pedido.quantidade} {pedido.material.unidade}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Valor:</strong> {formatCurrency(pedido.valor)}
-              </Typography>
+              {pedido.paciente && (
+                <>
+                  <Typography variant="body2">
+                    <strong>Paciente:</strong> {pedido.paciente.nome}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Vínculo:</strong>{' '}
+                    {pedido.paciente.vinculo === 'TITULAR' ? 'Titular' : 'Dependente'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>NIP:</strong> {pedido.paciente.nip}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>NIP do titular:</strong> {pedido.paciente.nipTitular}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Nome do titular:</strong> {pedido.paciente.nomeTitular}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Tipo de usuário:</strong>{' '}
+                    {{
+                      MILITAR: 'Militar',
+                      DEPENDENTE_DIRETO: 'Dependente Direto',
+                      DEPENDENTE_INDIRETO: 'Dependente Indireto',
+                      PENSIONISTA: 'Pensionista',
+                    }[pedido.paciente.tipoUsuario]}
+                  </Typography>
+                </>
+              )}
               <Typography variant="body2">
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>

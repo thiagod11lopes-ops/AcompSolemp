@@ -1,4 +1,4 @@
-import type { PedidoComDetalhes } from '@/types'
+import type { PacientePedido, PedidoComDetalhes } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
 import {
   advancePedidoEtapa,
@@ -11,11 +11,36 @@ import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 
 export interface CreatePedidoInput {
-  empresaId: string
-  materialId: string
-  quantidade: number
-  valor: number
-  observacoes: string
+  paciente: PacientePedido
+}
+
+function ensurePlaceholderEmpresa(data: ReturnType<typeof loadAppData>): string {
+  const id = 'empresa-placeholder'
+  if (!data.empresas.some((e) => e.id === id)) {
+    data.empresas.push({
+      id,
+      razaoSocial: 'A definir',
+      nomeFantasia: 'A definir',
+      cnpj: '',
+      contato: '',
+      telefone: '',
+      email: '',
+    })
+  }
+  return id
+}
+
+function ensurePlaceholderMaterial(data: ReturnType<typeof loadAppData>): string {
+  const id = 'material-placeholder'
+  if (!data.materiais.some((m) => m.id === id)) {
+    data.materiais.push({
+      id,
+      descricao: 'A definir',
+      fabricante: '',
+      unidade: '',
+    })
+  }
+  return id
 }
 
 export interface ExecutarAcaoInput {
@@ -80,15 +105,20 @@ export const clinicaPedidoService = {
     const numero = `PED-${String(data.pedidos.length + 1).padStart(5, '0')}`
     const agora = new Date().toISOString()
 
+    const empresaId = ensurePlaceholderEmpresa(data)
+    const materialId = ensurePlaceholderMaterial(data)
+    const observacaoInicial = `Lançamento do paciente ${input.paciente.nome}.`
+
     const pedido = {
       id: `pedido-${Date.now()}`,
       numero,
       clinicaId,
-      empresaId: input.empresaId,
-      materialId: input.materialId,
-      quantidade: input.quantidade,
-      valor: input.valor,
-      observacoes: input.observacoes,
+      empresaId,
+      materialId,
+      quantidade: 1,
+      valor: 0,
+      observacoes: observacaoInicial,
+      paciente: input.paciente,
       dataSolicitacao: agora,
       dataEntrega: null,
       etapaAtualId: segunda.id,
@@ -102,7 +132,7 @@ export const clinicaPedidoService = {
           responsavelNome: usuario.nome,
           dataInicio: agora,
           dataConclusao: agora,
-          observacao: input.observacoes || 'Material solicitado pela clínica.',
+          observacao: observacaoInicial,
           arquivos: [],
         },
         {

@@ -12,7 +12,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 
 export default function ClinicaPedidosPage() {
   const navigate = useNavigate()
@@ -25,12 +25,25 @@ export default function ClinicaPedidosPage() {
   const columns = useMemo<ColumnDef<PedidoComDetalhes>[]>(
     () => [
       { accessorKey: 'numero', header: 'Número' },
-      { accessorKey: 'empresa.nomeFantasia', header: 'Empresa' },
-      { accessorKey: 'material.descricao', header: 'Material' },
       {
-        accessorKey: 'valor',
-        header: 'Valor',
-        cell: ({ getValue }) => formatCurrency(getValue<number>()),
+        id: 'paciente',
+        header: 'Paciente',
+        cell: ({ row }) => row.original.paciente?.nome ?? '—',
+      },
+      {
+        id: 'nip',
+        header: 'NIP',
+        cell: ({ row }) => row.original.paciente?.nip ?? '—',
+      },
+      {
+        id: 'vinculo',
+        header: 'Vínculo',
+        cell: ({ row }) => {
+          const vinculo = row.original.paciente?.vinculo
+          if (vinculo === 'TITULAR') return 'Titular'
+          if (vinculo === 'DEPENDENTE') return 'Dependente'
+          return '—'
+        },
       },
       { accessorKey: 'etapaAtual.nome', header: 'Etapa Atual' },
       { accessorKey: 'diasNaEtapa', header: 'Dias na Etapa' },
@@ -77,14 +90,14 @@ export default function ClinicaPedidosPage() {
             startIcon={<AddIcon />}
             onClick={() => navigate('/clinica/pedidos/novo')}
           >
-            Novo Pedido
+            Novo Lançamento
           </Button>
         }
       />
       <DataTable
         data={pedidos}
         columns={columns}
-        emptyMessage="Nenhum pedido cadastrado. Clique em Novo Pedido para solicitar material."
+        emptyMessage="Nenhum lançamento cadastrado. Clique em Novo Lançamento para iniciar."
       />
     </>
   )

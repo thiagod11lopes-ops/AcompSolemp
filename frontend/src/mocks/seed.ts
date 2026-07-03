@@ -168,6 +168,10 @@ export function loadAppData(): AppData {
         const { data, changed } = normalizeClinicas(raw as AppData)
         if (!data.reversoes) data.reversoes = []
         if (!data.credenciais) data.credenciais = {}
+        data.pedidos = (data.pedidos ?? []).map((p) => ({
+          ...p,
+          paciente: p.paciente ?? null,
+        }))
         data.notificacoes = (data.notificacoes ?? []).map((n) => ({
           ...n,
           reversaoId: n.reversaoId ?? null,

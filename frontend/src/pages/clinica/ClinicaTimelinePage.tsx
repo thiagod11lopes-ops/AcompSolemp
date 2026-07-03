@@ -16,7 +16,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { calcularProgressoTimeline } from '@/utils/portal'
-import { formatCurrency, formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 
 export default function ClinicaTimelinePage() {
   const navigate = useNavigate()
@@ -75,17 +75,14 @@ export default function ClinicaTimelinePage() {
                         />
                       </Box>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
-                        {pedido.material.descricao} · {pedido.empresa.nomeFantasia}
+                        {pedido.paciente
+                          ? `${pedido.paciente.nome} · NIP ${pedido.paciente.nip}`
+                          : `${pedido.material.descricao} · ${pedido.empresa.nomeFantasia}`}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 1 }}>
                         <strong>Etapa:</strong> {pedido.etapaAtual.nome}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                        <Chip
-                          label={formatCurrency(pedido.valor)}
-                          size="small"
-                          variant="outlined"
-                        />
                         <Chip
                           label={`Início: ${formatDate(pedido.dataSolicitacao)}`}
                           size="small"

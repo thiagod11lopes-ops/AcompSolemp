@@ -133,6 +133,23 @@ export interface PedidoEtapaHistorico {
   arquivos: string[]
 }
 
+export type PacienteVinculo = 'TITULAR' | 'DEPENDENTE'
+
+export type TipoUsuarioPaciente =
+  | 'MILITAR'
+  | 'DEPENDENTE_DIRETO'
+  | 'DEPENDENTE_INDIRETO'
+  | 'PENSIONISTA'
+
+export interface PacientePedido {
+  nome: string
+  vinculo: PacienteVinculo
+  nip: string
+  nipTitular: string
+  nomeTitular: string
+  tipoUsuario: TipoUsuarioPaciente
+}
+
 export interface Pedido {
   id: string
   numero: string
@@ -142,6 +159,7 @@ export interface Pedido {
   quantidade: number
   valor: number
   observacoes: string
+  paciente: PacientePedido | null
   dataSolicitacao: string
   dataEntrega: string | null
   etapaAtualId: string
