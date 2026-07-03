@@ -14,6 +14,8 @@ import {
 } from '@mui/material'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import InventoryIcon from '@mui/icons-material/Inventory'
+import FactCheckIcon from '@mui/icons-material/FactCheck'
+import CalculateIcon from '@mui/icons-material/Calculate'
 import GavelIcon from '@mui/icons-material/Gavel'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -22,6 +24,8 @@ import {
   useCreateClinicaUser,
   useCreateOrdenadorUser,
   useCreateFinanceiroUser,
+  useCreateAuditoriaUser,
+  useCreateContabilidadeImhUser,
 } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useMateriais, useUsuarios } from '@/hooks/useCadastros'
 import { cadastroService } from '@/services/cadastroService'
@@ -32,9 +36,13 @@ export function UsuariosTab() {
   const theme = useTheme()
   const queryClient = useQueryClient()
   const [subTab, setSubTab] = useState(0)
+  /** Dentro de Material: 0 = item, 1 = Auditoria, 2 = Contabilidade/IMH */
+  const [materialOpcao, setMaterialOpcao] = useState(0)
   const createClinica = useCreateClinicaUser()
   const createOrdenador = useCreateOrdenadorUser()
   const createFinanceiro = useCreateFinanceiroUser()
+  const createAuditoria = useCreateAuditoriaUser()
+  const createContabilidade = useCreateContabilidadeImhUser()
   const createMaterial = useMutation({
     mutationFn: (input: { descricao: string; fabricante: string; unidade: string }) =>
       cadastroService.saveMaterial({
@@ -64,6 +72,14 @@ export function UsuariosTab() {
     () => usuarios.filter((u) => u.perfil === 'FINANCEIRO'),
     [usuarios],
   )
+  const usuariosAuditoria = useMemo(
+    () => usuarios.filter((u) => u.perfil === 'AUDITORIA'),
+    [usuarios],
+  )
+  const usuariosContabilidade = useMemo(
+    () => usuarios.filter((u) => u.perfil === 'CONTABILIDADE_IMH'),
+    [usuarios],
+  )
 
   const clinicasComLogin = useMemo(() => {
     return clinicas.map((c) => {
@@ -87,6 +103,10 @@ export function UsuariosTab() {
   const [senhaOrdenador, setSenhaOrdenador] = useState('')
   const [nomeFinanceiro, setNomeFinanceiro] = useState('')
   const [senhaFinanceiro, setSenhaFinanceiro] = useState('')
+  const [nomeAuditoria, setNomeAuditoria] = useState('')
+  const [senhaAuditoria, setSenhaAuditoria] = useState('')
+  const [nomeContabilidade, setNomeContabilidade] = useState('')
+  const [senhaContabilidade, setSenhaContabilidade] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
 
@@ -200,6 +220,42 @@ export function UsuariosTab() {
     }
   }
 
+  const handleCreateAuditoria = async () => {
+    setErro('')
+    setSucesso('')
+    try {
+      const result = await createAuditoria.mutateAsync({
+        nome: nomeAuditoria,
+        senha: senhaAuditoria,
+      })
+      setSucesso(
+        `Auditoria cadastrada! Login de acesso: ${result.login} — responsável pela etapa Auditoria na Div. de Material.`,
+      )
+      setNomeAuditoria('')
+      setSenhaAuditoria('')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
+    }
+  }
+
+  const handleCreateContabilidade = async () => {
+    setErro('')
+    setSucesso('')
+    try {
+      const result = await createContabilidade.mutateAsync({
+        nome: nomeContabilidade,
+        senha: senhaContabilidade,
+      })
+      setSucesso(
+        `Contabilidade/IMH cadastrada! Login de acesso: ${result.login} — responsável pela etapa Contabilidade/IMH na Div. de Material.`,
+      )
+      setNomeContabilidade('')
+      setSenhaContabilidade('')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
+    }
+  }
+
   const formPaperSx = (color: string) => ({
     p: 3,
     borderRadius: 3,
@@ -218,6 +274,24 @@ export function UsuariosTab() {
       )
     }
     if (subTab === 1) {
+      if (materialOpcao === 1) {
+        return (
+          <DataTable
+            data={usuariosAuditoria}
+            columns={colunasUsuario}
+            emptyMessage="Nenhum usuário de Auditoria cadastrado ainda."
+          />
+        )
+      }
+      if (materialOpcao === 2) {
+        return (
+          <DataTable
+            data={usuariosContabilidade}
+            columns={colunasUsuario}
+            emptyMessage="Nenhum usuário de Contabilidade/IMH cadastrado ainda."
+          />
+        )
+      }
       return (
         <DataTable
           data={materiais}
@@ -248,7 +322,11 @@ export function UsuariosTab() {
     subTab === 0
       ? 'Clínicas cadastradas'
       : subTab === 1
-        ? 'Materiais cadastrados'
+        ? materialOpcao === 1
+          ? 'Auditoria cadastrada'
+          : materialOpcao === 2
+            ? 'Contabilidade/IMH cadastrada'
+            : 'Materiais cadastrados'
         : subTab === 2
           ? 'Ordenadores cadastrados'
           : 'Financeiros cadastrados'
@@ -259,6 +337,7 @@ export function UsuariosTab() {
         value={subTab}
         onChange={(_, v) => {
           setSubTab(v)
+          setMaterialOpcao(0)
           setErro('')
           setSucesso('')
         }}
@@ -272,6 +351,24 @@ export function UsuariosTab() {
         <Tab icon={<AccountBalanceIcon />} iconPosition="start" label="Financeiro" />
       </Tabs>
 
+      {subTab === 1 && (
+        <Tabs
+          value={materialOpcao}
+          onChange={(_, v) => {
+            setMaterialOpcao(v)
+            setErro('')
+            setSucesso('')
+          }}
+          sx={{ mb: 3 }}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab icon={<InventoryIcon />} iconPosition="start" label="Item de Material" />
+          <Tab icon={<FactCheckIcon />} iconPosition="start" label="Auditoria" />
+          <Tab icon={<CalculateIcon />} iconPosition="start" label="Contabilidade/IMH" />
+        </Tabs>
+      )}
+
       {erro && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {erro}
@@ -283,7 +380,7 @@ export function UsuariosTab() {
         </Alert>
       )}
 
-      <Grid container spacing={3} alignItems="stretch">
+      <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
         <Grid size={{ xs: 12, md: 5 }}>
           {subTab === 0 && (
             <Paper sx={formPaperSx(theme.palette.primary.main)}>
@@ -327,10 +424,10 @@ export function UsuariosTab() {
             </Paper>
           )}
 
-          {subTab === 1 && (
+          {subTab === 1 && materialOpcao === 0 && (
             <Paper sx={formPaperSx(theme.palette.info.main)}>
               <Typography variant="h6" gutterBottom>
-                Material
+                Item de Material
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Cadastre o material consignado para uso nos lançamentos das clínicas.
@@ -372,6 +469,92 @@ export function UsuariosTab() {
                     disabled={createMaterial.isPending}
                   >
                     {createMaterial.isPending ? 'Cadastrando...' : 'Cadastrar material'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
+          {subTab === 1 && materialOpcao === 1 && (
+            <Paper sx={formPaperSx(theme.palette.secondary.main)}>
+              <Typography variant="h6" gutterBottom>
+                Auditoria
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Cadastre o responsável pela etapa Auditoria na Div. de Material (Divisão 1).
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    label="Nome"
+                    value={nomeAuditoria}
+                    onChange={(e) => setNomeAuditoria(e.target.value)}
+                    placeholder="Ex.: Cap. Ana Paula"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Senha de acesso"
+                    value={senhaAuditoria}
+                    onChange={(e) => setSenhaAuditoria(e.target.value)}
+                    helperText="Mínimo 6 caracteres"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleCreateAuditoria}
+                    disabled={createAuditoria.isPending}
+                  >
+                    {createAuditoria.isPending ? 'Cadastrando...' : 'Cadastrar Auditoria'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
+          {subTab === 1 && materialOpcao === 2 && (
+            <Paper sx={formPaperSx(theme.palette.warning.dark)}>
+              <Typography variant="h6" gutterBottom>
+                Contabilidade/IMH
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Cadastre o responsável pela etapa Contabilidade/IMH na Div. de Material (Divisão 1).
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    label="Nome"
+                    value={nomeContabilidade}
+                    onChange={(e) => setNomeContabilidade(e.target.value)}
+                    placeholder="Ex.: Ten. Roberto Lima"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    fullWidth
+                    type="password"
+                    label="Senha de acesso"
+                    value={senhaContabilidade}
+                    onChange={(e) => setSenhaContabilidade(e.target.value)}
+                    helperText="Mínimo 6 caracteres"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    onClick={handleCreateContabilidade}
+                    disabled={createContabilidade.isPending}
+                  >
+                    {createContabilidade.isPending
+                      ? 'Cadastrando...'
+                      : 'Cadastrar Contabilidade/IMH'}
                   </Button>
                 </Grid>
               </Grid>

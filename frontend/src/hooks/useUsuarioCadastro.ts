@@ -4,6 +4,7 @@ import {
   type CreateClinicaUserInput,
   type CreateOrdenadorUserInput,
   type CreateFinanceiroUserInput,
+  type CreateDivMaterialUserInput,
 } from '@/services/usuarioCadastroService'
 
 export function useCreateClinicaUser() {
@@ -32,6 +33,28 @@ export function useCreateFinanceiroUser() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateFinanceiroUserInput) => usuarioCadastroService.createFinanceiroUser(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+  })
+}
+
+export function useCreateAuditoriaUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateDivMaterialUserInput) =>
+      usuarioCadastroService.createAuditoriaUser(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+  })
+}
+
+export function useCreateContabilidadeImhUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateDivMaterialUserInput) =>
+      usuarioCadastroService.createContabilidadeImhUser(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
     },

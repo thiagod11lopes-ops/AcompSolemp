@@ -17,6 +17,11 @@ export interface CreateFinanceiroUserInput {
   senha: string
 }
 
+export interface CreateDivMaterialUserInput {
+  nome: string
+  senha: string
+}
+
 export interface CreateUserResult {
   user: User
   login: string
@@ -126,6 +131,68 @@ export const usuarioCadastroService = {
       graduacao: 'Financeiro',
       login,
       perfil: 'FINANCEIRO',
+      clinicaId: null,
+      ativo: true,
+    }
+
+    data.usuarios.push(user)
+    if (!data.credenciais) data.credenciais = {}
+    data.credenciais[login] = { senha: input.senha, userId: user.id }
+    saveAppData(data)
+
+    return { user, login }
+  },
+
+  async createAuditoriaUser(input: CreateDivMaterialUserInput): Promise<CreateUserResult> {
+    await delay(null, 400)
+
+    const nome = input.nome.trim()
+    if (nome.length < 3) throw new Error('Informe o nome do usuário de Auditoria')
+    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
+
+    const data = loadAppData()
+    const logins = getExistingLogins(data)
+    const login = ensureUniqueLogin(slugLogin(nome), logins)
+
+    const user: User = {
+      id: `user-auditoria-${Date.now()}`,
+      nome,
+      posto: '',
+      graduacao: 'Auditoria',
+      login,
+      perfil: 'AUDITORIA',
+      clinicaId: null,
+      ativo: true,
+    }
+
+    data.usuarios.push(user)
+    if (!data.credenciais) data.credenciais = {}
+    data.credenciais[login] = { senha: input.senha, userId: user.id }
+    saveAppData(data)
+
+    return { user, login }
+  },
+
+  async createContabilidadeImhUser(
+    input: CreateDivMaterialUserInput,
+  ): Promise<CreateUserResult> {
+    await delay(null, 400)
+
+    const nome = input.nome.trim()
+    if (nome.length < 3) throw new Error('Informe o nome do usuário de Contabilidade/IMH')
+    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
+
+    const data = loadAppData()
+    const logins = getExistingLogins(data)
+    const login = ensureUniqueLogin(slugLogin(nome), logins)
+
+    const user: User = {
+      id: `user-contabilidade-${Date.now()}`,
+      nome,
+      posto: '',
+      graduacao: 'Contabilidade/IMH',
+      login,
+      perfil: 'CONTABILIDADE_IMH',
       clinicaId: null,
       ativo: true,
     }

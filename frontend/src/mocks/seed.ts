@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v8'
+const SEED_VERSION = 'v9'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -43,7 +43,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Auditoria',
     ordem: 2,
     prazoDias: 3,
-    perfilResponsavel: 'GESTOR',
+    perfilResponsavel: 'AUDITORIA',
     ativo: true,
   },
   {
@@ -51,7 +51,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Contabilidade/IMH',
     ordem: 3,
     prazoDias: 3,
-    perfilResponsavel: 'GESTOR',
+    perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
   // Div. de Material — Divisão 2
@@ -223,6 +223,8 @@ export function getRoleLabel(role: UserRole): string {
     CLINICA: 'Clínica',
     ASSINANTE: 'Ordenador de Despesa',
     FINANCEIRO: 'Financeiro',
+    AUDITORIA: 'Auditoria',
+    CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONSULTA: 'Consulta',
   }
   return labels[role]

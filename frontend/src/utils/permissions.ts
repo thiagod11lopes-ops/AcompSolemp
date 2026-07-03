@@ -49,6 +49,18 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'historico:read',
     'notificacoes:read',
   ],
+  AUDITORIA: [
+    'processos:read',
+    'processos:advance',
+    'historico:read',
+    'notificacoes:read',
+  ],
+  CONTABILIDADE_IMH: [
+    'processos:read',
+    'processos:advance',
+    'historico:read',
+    'notificacoes:read',
+  ],
   CONSULTA: [],
 }
 

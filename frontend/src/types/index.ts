@@ -4,6 +4,8 @@ export type UserRole =
   | 'CLINICA'
   | 'ASSINANTE'
   | 'FINANCEIRO'
+  | 'AUDITORIA'
+  | 'CONTABILIDADE_IMH'
   | 'CONSULTA'
 
 export type PrazoStatus = 'NO_PRAZO' | 'PROXIMO_VENCIMENTO' | 'ATRASADO'
