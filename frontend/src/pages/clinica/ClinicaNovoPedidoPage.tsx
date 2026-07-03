@@ -234,13 +234,16 @@ function CampoNaoSeAplica({
               color: 'primary.main',
               opacity: 1,
               fontWeight: 800,
-              fontSize: '1.05rem',
+              fontSize: '1.1rem',
               letterSpacing: 0.6,
               whiteSpace: 'nowrap',
               textTransform: 'none',
-              transform: 'rotate(-28deg)',
+              transform: 'translateY(-10px) rotate(-28deg)',
               userSelect: 'none',
-              lineHeight: 1,
+              lineHeight: 1.2,
+              bgcolor: 'background.paper',
+              px: 0.75,
+              borderRadius: 0.5,
             }}
           >
             Não se aplica
