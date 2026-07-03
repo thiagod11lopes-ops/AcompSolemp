@@ -34,6 +34,8 @@ interface ClinicaInteractiveTimelineProps {
   podeReverter?: boolean
   avancando?: boolean
   revertendo?: boolean
+  /** Clínica só visualiza após envio para Div. de Material */
+  somenteLeitura?: boolean
 }
 
 export function ClinicaInteractiveTimeline({
@@ -44,11 +46,13 @@ export function ClinicaInteractiveTimeline({
   podeReverter = false,
   avancando = false,
   revertendo = false,
+  somenteLeitura = false,
 }: ClinicaInteractiveTimelineProps) {
   const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
   const etapaAtualIndex = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
   const acaoAtual = CLINICA_ETAPA_ACOES[pedido.etapaAtual.chave]
   const aguardandoSetor = ETAPAS_AGUARDANDO_SETOR[pedido.etapaAtual.chave]
+  const podeEditar = !somenteLeitura && Boolean(onAvancar)
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -56,10 +60,12 @@ export function ClinicaInteractiveTimeline({
         Timeline do Processo
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.
+        {somenteLeitura
+          ? 'Acompanhe o andamento de cada etapa. A clínica possui apenas visualização.'
+          : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 
-      {acaoAtual && !pedido.concluido && (
+      {acaoAtual && !pedido.concluido && podeEditar && (
         <Alert
           severity="info"
           icon={<TouchAppIcon />}
@@ -82,6 +88,12 @@ export function ClinicaInteractiveTimeline({
         </Alert>
       )}
 
+      {acaoAtual && !pedido.concluido && somenteLeitura && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <strong>Etapa atual:</strong> {pedido.etapaAtual.nome}
+        </Alert>
+      )}
+
       {aguardandoSetor && !pedido.concluido && (
         <Alert severity="warning" icon={<HourglassEmptyIcon />} sx={{ mb: 2 }}>
           {aguardandoSetor}
@@ -99,7 +111,7 @@ export function ClinicaInteractiveTimeline({
           const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
           const concluida = index < etapaAtualIndex || pedido.concluido
           const atual = index === etapaAtualIndex && !pedido.concluido
-          const podeClicar = atual && clinicaPodeAvancar(etapa.chave)
+          const podeClicar = podeEditar && atual && clinicaPodeAvancar(etapa.chave)
 
           let dias = 0
           let prazoStatus: 'success' | 'warning' | 'error' | 'default' = 'default'
@@ -149,7 +161,12 @@ export function ClinicaInteractiveTimeline({
                     notaFiscalNumero={pedido.notaFiscal?.numero}
                   />
                   {atual && (
-                    <Chip label="Você está aqui" size="small" color="primary" variant="outlined" />
+                    <Chip
+                      label={somenteLeitura ? 'Etapa atual' : 'Você está aqui'}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
                   )}
                   {concluida && <Chip label="Concluída" size="small" color="success" />}
                 </Box>
@@ -225,7 +242,7 @@ export function ClinicaInteractiveTimeline({
         Timeline iniciada em {formatDate(pedido.dataSolicitacao)} · Pedido {pedido.numero}
       </Typography>
 
-      {podeReverter && onReverter && !pedido.concluido && (
+      {!somenteLeitura && podeReverter && onReverter && !pedido.concluido && (
         <Button
           variant="outlined"
           color="warning"
