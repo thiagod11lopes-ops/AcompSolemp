@@ -231,9 +231,9 @@ function CampoNaoSeAplica({
           <Typography
             component="span"
             sx={(theme) => ({
-              color: theme.palette.warning.contrastText,
-              bgcolor: theme.palette.warning.main,
-              opacity: 1,
+              color: theme.palette.warning.light,
+              bgcolor: 'transparent',
+              opacity: 0.28,
               fontWeight: 800,
               fontSize: { xs: '0.85rem', sm: '0.95rem' },
               letterSpacing: 0.4,
@@ -246,8 +246,6 @@ function CampoNaoSeAplica({
               px: 1.25,
               py: 0.35,
               borderRadius: 0.5,
-              isolation: 'isolate',
-              mixBlendMode: 'normal',
             })}
           >
             Não se aplica
