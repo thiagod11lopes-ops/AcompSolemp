@@ -19,6 +19,20 @@ npm run dev
 
 Documentação completa em [frontend/README.md](./frontend/README.md).
 
+## Publicar no GitHub
+
+O código está versionado com Git. Para enviar ao GitHub e habilitar atualizações automáticas:
+
+```bash
+# 1. Autenticar (uma vez)
+gh auth login
+
+# 2. Criar repositório e enviar (na pasta raiz do projeto)
+gh repo create AcompSolemp --private --source=. --remote=origin --push
+```
+
+Após o push na branch `main`, o GitHub Actions publica o frontend em **GitHub Pages** (Settings → Pages → Source: GitHub Actions).
+
 ## Login de demonstração
 
 - **gestor** / gestor123 — acesso ao dashboard completo
