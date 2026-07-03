@@ -1,0 +1,243 @@
+import type { PedidoComDetalhes } from '@/types'
+import { enrichPedido } from '@/utils/workflow'
+import {
+  advancePedidoEtapa,
+  createNotaFiscalForPedido,
+  createSolempForPedido,
+  revertPedidoEtapa,
+} from '@/utils/workflowAdvance'
+import { CLINICA_ETAPA_ACOES } from '@/utils/portal'
+import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
+import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+
+export interface CreatePedidoInput {
+  empresaId: string
+  materialId: string
+  quantidade: number
+  valor: number
+  observacoes: string
+}
+
+export interface ExecutarAcaoInput {
+  pedidoId: string
+  usuarioId: string
+  clinicaId: string
+  solempNumero?: string
+  notaFiscalNumero?: string
+}
+
+function getContext(data: ReturnType<typeof loadAppData>) {
+  return {
+    clinicas: data.clinicas,
+    empresas: data.empresas,
+    materiais: data.materiais,
+    etapas: data.workflowEtapas,
+    usuarios: data.usuarios,
+    solemp: data.solemp,
+    notasFiscais: data.notasFiscais,
+  }
+}
+
+export const clinicaPedidoService = {
+  async listByClinica(clinicaId: string): Promise<PedidoComDetalhes[]> {
+    await delay(null)
+    const data = loadAppData()
+    return data.pedidos
+      .filter((p) => p.clinicaId === clinicaId)
+      .map((p) => enrichPedido(p, getContext(data)))
+      .filter((p): p is PedidoComDetalhes => p !== null)
+      .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
+  },
+
+  async getById(id: string, clinicaId: string): Promise<PedidoComDetalhes | null> {
+    await delay(null)
+    const data = loadAppData()
+    const pedido = data.pedidos.find((p) => p.id === id && p.clinicaId === clinicaId)
+    if (!pedido) return null
+    return enrichPedido(pedido, getContext(data))
+  },
+
+  getSolempDefaults(clinicaId: string): SolempNumeroParts {
+    const data = loadAppData()
+    return getSolempDefaults(data, clinicaId)
+  },
+
+  async create(
+    input: CreatePedidoInput,
+    usuarioId: string,
+    clinicaId: string,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 500)
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    if (!usuario) throw new Error('Usuário não encontrado')
+
+    const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    const primeira = etapas[0]
+    const segunda = etapas[1]
+    if (!primeira || !segunda) throw new Error('Workflow não configurado')
+
+    const numero = `PED-${String(data.pedidos.length + 1).padStart(5, '0')}`
+    const agora = new Date().toISOString()
+
+    const pedido = {
+      id: `pedido-${Date.now()}`,
+      numero,
+      clinicaId,
+      empresaId: input.empresaId,
+      materialId: input.materialId,
+      quantidade: input.quantidade,
+      valor: input.valor,
+      observacoes: input.observacoes,
+      dataSolicitacao: agora,
+      dataEntrega: null,
+      etapaAtualId: segunda.id,
+      responsavelAtualId: usuario.id,
+      concluido: false,
+      etapasHistorico: [
+        {
+          etapaId: primeira.id,
+          etapaNome: primeira.nome,
+          responsavelId: usuario.id,
+          responsavelNome: usuario.nome,
+          dataInicio: agora,
+          dataConclusao: agora,
+          observacao: input.observacoes || 'Material solicitado pela clínica.',
+          arquivos: [],
+        },
+        {
+          etapaId: segunda.id,
+          etapaNome: segunda.nome,
+          responsavelId: usuario.id,
+          responsavelNome: usuario.nome,
+          dataInicio: agora,
+          dataConclusao: null,
+          observacao: 'Aguardando confirmação de recebimento do material.',
+          arquivos: [],
+        },
+      ],
+    }
+
+    data.pedidos.push(pedido)
+    data.historico.push({
+      id: `hist-${Date.now()}`,
+      pedidoId: pedido.id,
+      etapaId: primeira.id,
+      etapaNome: primeira.nome,
+      usuarioId: usuario.id,
+      usuarioNome: usuario.nome,
+      data: agora,
+      observacao: `Timeline iniciada — pedido ${numero} solicitado.`,
+    })
+
+    saveAppData(data)
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao criar pedido')
+    return enriched
+  },
+
+  async executarAcao(input: ExecutarAcaoInput): Promise<PedidoComDetalhes> {
+    await delay(null, 500)
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === input.usuarioId)
+    const pedido = data.pedidos.find(
+      (p) => p.id === input.pedidoId && p.clinicaId === input.clinicaId,
+    )
+    if (!usuario || !pedido) throw new Error('Pedido não encontrado')
+
+    const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
+    if (!etapa) throw new Error('Etapa não encontrada')
+
+    const acao = CLINICA_ETAPA_ACOES[etapa.chave]
+    if (!acao) throw new Error('Ação não disponível nesta etapa')
+
+    if (etapa.chave === 'SOLEMP_CRIADA') {
+      if (!input.solempNumero) throw new Error('Informe o número da SOLEMP')
+      data = createSolempForPedido(data, input.pedidoId, input.solempNumero)
+    }
+    if (etapa.chave === 'SOLEMP_ASSINADA' || etapa.chave === 'NF_ANEXADA') {
+      if (!input.notaFiscalNumero?.trim()) {
+        throw new Error('Informe o número da nota fiscal')
+      }
+      data = createNotaFiscalForPedido(data, input.pedidoId, input.notaFiscalNumero.trim())
+    }
+
+    data = advancePedidoEtapa(data, input.pedidoId, usuario, acao.proximaObservacao)
+
+    if (etapa.chave === 'SOLEMP_ASSINADA') {
+      const pedidoIntermediario = data.pedidos.find((p) => p.id === input.pedidoId)!
+      const etapaIntermediaria = data.workflowEtapas.find(
+        (e) => e.id === pedidoIntermediario.etapaAtualId,
+      )
+      if (etapaIntermediaria?.chave === 'NF_ANEXADA') {
+        data = advancePedidoEtapa(
+          data,
+          input.pedidoId,
+          usuario,
+          'Nota fiscal anexada e processo enviado ao financeiro pela clínica.',
+        )
+      }
+    }
+
+    const pedidoAtualizado = data.pedidos.find((p) => p.id === input.pedidoId)!
+
+    if (etapa.chave === 'SOLEMP_CRIADA') {
+      data.notificacoes.push({
+        id: `notif-${Date.now()}`,
+        tipo: 'SOLEMP_CRIADA',
+        titulo: `SOLEMP criada — ${pedido.numero}`,
+        mensagem: `SOLEMP ${input.solempNumero} confeccionada.`,
+        pedidoId: input.pedidoId,
+        reversaoId: null,
+        lida: false,
+        data: new Date().toISOString(),
+      })
+    }
+
+    saveAppData(data)
+
+    const atualizado = pedidoAtualizado
+    const enriched = enrichPedido(atualizado, getContext(data))
+    if (!enriched) throw new Error('Erro ao atualizar pedido')
+    return enriched
+  },
+
+  async reverterEtapa(
+    pedidoId: string,
+    usuarioId: string,
+    clinicaId: string,
+    motivo: string,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 500)
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    const pedido = data.pedidos.find((p) => p.id === pedidoId && p.clinicaId === clinicaId)
+    const clinica = data.clinicas.find((c) => c.id === clinicaId)
+    if (!usuario || !pedido || !clinica) throw new Error('Pedido não encontrado')
+
+    data = revertPedidoEtapa(data, pedidoId, usuario, motivo, clinica.nome)
+    saveAppData(data)
+
+    const atualizado = data.pedidos.find((p) => p.id === pedidoId)!
+    const enriched = enrichPedido(atualizado, getContext(data))
+    if (!enriched) throw new Error('Erro ao reverter etapa')
+    return enriched
+  },
+
+  getAcaoDisponivel(etapaChave: string): (typeof CLINICA_ETAPA_ACOES)[string] | null {
+    return CLINICA_ETAPA_ACOES[etapaChave] ?? null
+  },
+
+  podeReverter(pedido: PedidoComDetalhes, etapas: { id: string; ordem: number }[]): boolean {
+    if (pedido.concluido) return false
+    const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
+    const index = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
+    return index > 0
+  },
+
+  getEtapaAnteriorNome(pedido: PedidoComDetalhes, etapas: { id: string; nome: string; ordem: number }[]): string {
+    const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
+    const index = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
+    return ordenadas[index - 1]?.nome ?? ''
+  },
+}
