@@ -717,7 +717,7 @@ export default function ClinicaNovoPedidoPage() {
           sx={{ mt: 3 }}
           disabled={createPedido.isPending}
         >
-          {createPedido.isPending ? 'Enviando...' : 'Enviar Para Material'}
+          {createPedido.isPending ? 'Enviando...' : 'Enviar para Div. de Material'}
         </Button>
       </Box>
     </>
