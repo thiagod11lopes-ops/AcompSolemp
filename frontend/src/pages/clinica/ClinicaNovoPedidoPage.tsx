@@ -104,9 +104,8 @@ function CampoNaoSeAplica({
     <Box sx={{ position: 'relative' }}>
       <Box
         sx={{
-          opacity: active ? 0.35 : 1,
+          visibility: active ? 'hidden' : 'visible',
           pointerEvents: active ? 'none' : 'auto',
-          transition: 'opacity 0.2s',
         }}
       >
         {children}
@@ -119,26 +118,17 @@ function CampoNaoSeAplica({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            borderRadius: 1,
+            opacity: 1,
             pointerEvents: 'none',
             zIndex: 1,
           }}
         >
-          <Box
-            sx={{
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              px: 2,
-              py: 0.75,
-              borderRadius: 1,
-              boxShadow: 2,
-              width: '100%',
-              textAlign: 'center',
-            }}
-          >
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
-              Não se Aplica
-            </Typography>
-          </Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
+            Não se Aplica
+          </Typography>
         </Box>
       )}
     </Box>
