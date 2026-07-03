@@ -43,8 +43,10 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 }
 
 export function AppRoutes() {
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
 
