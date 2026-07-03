@@ -95,11 +95,8 @@ export function FinanceiroInteractiveTimeline({
                     numero={pedido.solemp?.numero}
                     notaFiscalNumero={pedido.notaFiscal?.numero}
                   />
-                  {atual && etapa.chave === 'ENVIADO_FINANCEIRO' && (
+                  {atual && etapa.chave === 'DIV_MAT_FINANCAS' && (
                     <Chip label="Pagamento pendente" size="small" color="info" variant="outlined" />
-                  )}
-                  {atual && etapa.chave === 'PAGAMENTO_REALIZADO' && (
-                    <Chip label="Aguardando encerramento" size="small" color="success" variant="outlined" />
                   )}
                   {concluida && <Chip label="Concluída" size="small" color="success" />}
                 </Box>

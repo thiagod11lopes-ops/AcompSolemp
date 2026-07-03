@@ -130,12 +130,8 @@ export default function FinanceiroPagamentoDetailPage() {
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
               <Chip
-                label={
-                  pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO'
-                    ? 'Aguardando encerramento'
-                    : 'Pagamento pendente'
-                }
-                color={pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO' ? 'success' : 'info'}
+                label="Finanças — pagamento pendente"
+                color="info"
                 size="small"
                 sx={{ width: 'fit-content', mt: 1 }}
               />
@@ -147,8 +143,8 @@ export default function FinanceiroPagamentoDetailPage() {
               Confirmar pagamento
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Selecione a SOLEMP no sistema e clique em pagamento realizado para encerrar o
-              processo.
+              Selecione a SOLEMP e confirme o pagamento na etapa Finanças (Div. de Material —
+              Divisão 2) para encerrar o processo.
             </Typography>
 
             <TextField
@@ -181,24 +177,11 @@ export default function FinanceiroPagamentoDetailPage() {
               onClick={handlePagamento}
               disabled={registrar.isPending}
             >
-              {registrar.isPending ? 'Registrando...' : (
-                pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO'
-                  ? 'Finalizar processo'
-                  : 'Pagamento realizado'
-              )}
+              {registrar.isPending ? 'Registrando...' : 'Pagamento realizado'}
             </Button>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              {pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO' ? (
-                <>
-                  O estágio <strong>Processo encerrado</strong> será concluído automaticamente.
-                </>
-              ) : (
-                <>
-                  Os estágios <strong>Pagamento realizado</strong> e <strong>Processo encerrado</strong>{' '}
-                  serão concluídos automaticamente.
-                </>
-              )}
+              A etapa <strong>Finanças</strong> será concluída e o processo será encerrado.
             </Typography>
           </Paper>
         </Grid>

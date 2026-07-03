@@ -55,19 +55,15 @@ export function pushPagamentoPendenteNotification(data: AppData, pedidoId: strin
   if (!pedido || pedido.concluido) return
 
   const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa || !['ENVIADO_FINANCEIRO', 'PAGAMENTO_REALIZADO'].includes(etapa.chave)) return
+  if (!etapa || etapa.chave !== 'DIV_MAT_FINANCAS') return
 
   const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-  const msgExtra =
-    etapa.chave === 'PAGAMENTO_REALIZADO'
-      ? ' Aguardando confirmação final pelo financeiro.'
-      : ''
 
   data.notificacoes.push({
     id: `notif-${Date.now()}-${pedidoId}`,
     tipo: 'PAGAMENTO_PENDENTE',
     titulo: `Pagamento pendente — ${pedido.numero}`,
-    mensagem: `NF enviada ao financeiro. SOLEMP ${solemp?.numero ?? '—'} aguardando pagamento.${msgExtra}`,
+    mensagem: `Processo na etapa Finanças (Div. de Material). SOLEMP ${solemp?.numero ?? '—'} aguardando pagamento.`,
     pedidoId,
     reversaoId: null,
     lida: false,
@@ -79,7 +75,7 @@ export function syncPagamentoPendenteNotifications(data: AppData): AppData {
   data.pedidos.forEach((pedido) => {
     if (pedido.concluido) return
     const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-    if (etapa && ['ENVIADO_FINANCEIRO', 'PAGAMENTO_REALIZADO'].includes(etapa.chave)) {
+    if (etapa && etapa.chave === 'DIV_MAT_FINANCAS') {
       pushPagamentoPendenteNotification(data, pedido.id)
     }
   })
@@ -102,26 +98,29 @@ export function advancePedidoEtapa(
   if (pedido.concluido) throw new Error('Processo já encerrado')
 
   const proxima = getProximaEtapa(etapaAtual, etapas)
-  if (!proxima) throw new Error('Não há próxima etapa')
-
   let etapasHistorico = completeEtapaAtual(pedido, observacao)
-  const responsavelProx = getResponsavelParaEtapa(proxima, data.usuarios, pedido.clinicaId)
 
-  etapasHistorico = [
-    ...etapasHistorico,
-    startNovaEtapa(proxima, responsavelProx, ''),
-  ]
-
-  const atualizado: Pedido = {
-    ...pedido,
-    etapaAtualId: proxima.id,
-    responsavelAtualId: responsavelProx?.id ?? null,
-    concluido: proxima.chave === 'ENCERRADO',
-    etapasHistorico,
-  }
-
-  if (etapaAtual.chave === 'MATERIAL_ENTREGUE') {
-    atualizado.dataEntrega = nowIso()
+  let atualizado: Pedido
+  if (!proxima) {
+    atualizado = {
+      ...pedido,
+      responsavelAtualId: null,
+      concluido: true,
+      etapasHistorico,
+    }
+  } else {
+    const responsavelProx = getResponsavelParaEtapa(proxima, data.usuarios, pedido.clinicaId)
+    etapasHistorico = [
+      ...etapasHistorico,
+      startNovaEtapa(proxima, responsavelProx, ''),
+    ]
+    atualizado = {
+      ...pedido,
+      etapaAtualId: proxima.id,
+      responsavelAtualId: responsavelProx?.id ?? null,
+      concluido: false,
+      etapasHistorico,
+    }
   }
 
   data.pedidos[pedidoIndex] = atualizado
@@ -138,7 +137,7 @@ export function advancePedidoEtapa(
   }
   data.historico.push(evento)
 
-  if (proxima.chave === 'ENVIADO_FINANCEIRO') {
+  if (proxima?.chave === 'DIV_MAT_FINANCAS') {
     pushPagamentoPendenteNotification(data, pedidoId)
   }
 
@@ -195,11 +194,8 @@ export function createNotaFiscalForPedido(
 }
 
 function cleanupAoSairEtapa(data: AppData, pedidoId: string, chaveEtapa: string): void {
-  if (chaveEtapa === 'AGUARDANDO_ASSINATURA') {
+  if (chaveEtapa === 'DIV_MAT_ASSINATURA_1' || chaveEtapa === 'DIV_MAT_ASSINATURA_2') {
     data.solemp = data.solemp.filter((s) => s.pedidoId !== pedidoId)
-  }
-  if (chaveEtapa === 'ENVIADO_FINANCEIRO') {
-    data.notasFiscais = data.notasFiscais.filter((n) => n.pedidoId !== pedidoId)
   }
 }
 
@@ -303,64 +299,70 @@ export function assinarSolempForPedido(
   const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
   if (!etapa) throw new Error('Etapa não encontrada')
 
-  if (etapa.chave === 'SOLEMP_CRIADA') {
-    const solempExistente = data.solemp.find((s) => s.pedidoId === pedidoId)
-    if (!solempExistente) throw new Error('SOLEMP não encontrada para este pedido')
+  if (etapa.chave === 'DIV_MAT_ASSINATURA_1') {
+    let solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+    if (!solemp) {
+      solemp = {
+        id: `solemp-${Date.now()}`,
+        pedidoId,
+        numero: `SLP-${pedido.numero.replace('PED-', '')}`,
+        data: nowIso(),
+        assinada: false,
+        arquivoPDF: null,
+      }
+      data.solemp.push(solemp)
+    }
+
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      'SOLEMP encaminhada para assinatura do ordenador de despesa.',
+      `Assinatura 1 Solemp registrada — SOLEMP ${solemp.numero}.`,
     )
+
+    data.notificacoes.push({
+      id: `notif-${Date.now()}`,
+      tipo: 'ASSINATURA_REALIZADA',
+      titulo: `Assinatura 1 Solemp — ${pedido.numero}`,
+      mensagem: `${usuario.nome} registrou a Assinatura 1 da SOLEMP ${solemp.numero}.`,
+      pedidoId,
+      reversaoId: null,
+      lida: false,
+      data: nowIso(),
+    })
+
+    return data
   }
 
-  const etapaAtualizada = data.workflowEtapas.find((e) => e.id === data.pedidos.find((p) => p.id === pedidoId)!.etapaAtualId)
-  if (!etapaAtualizada || etapaAtualizada.chave !== 'AGUARDANDO_ASSINATURA') {
-    throw new Error('Este processo não está aguardando assinatura da SOLEMP')
+  if (etapa.chave === 'DIV_MAT_ASSINATURA_2') {
+    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+    if (!solemp) throw new Error('SOLEMP não encontrada para este pedido')
+
+    solemp.assinada = true
+    solemp.data = nowIso()
+
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Assinatura 2 Solemp registrada — SOLEMP ${solemp.numero} assinada.`,
+    )
+
+    data.notificacoes.push({
+      id: `notif-${Date.now()}`,
+      tipo: 'ASSINATURA_REALIZADA',
+      titulo: `Assinatura 2 Solemp — ${pedido.numero}`,
+      mensagem: `${usuario.nome} registrou a Assinatura 2 da SOLEMP ${solemp.numero}.`,
+      pedidoId,
+      reversaoId: null,
+      lida: false,
+      data: nowIso(),
+    })
+
+    return data
   }
 
-  const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-  if (!solemp) throw new Error('SOLEMP não encontrada para este pedido')
-
-  solemp.assinada = true
-  solemp.data = nowIso()
-
-  data = advancePedidoEtapa(
-    data,
-    pedidoId,
-    usuario,
-    `SOLEMP ${solemp.numero} assinada pelo ordenador de despesa.`,
-  )
-  data = advancePedidoEtapa(
-    data,
-    pedidoId,
-    usuario,
-    'Etapa SOLEMP assinada concluída — aguardando nota fiscal da clínica.',
-  )
-
-  data.notificacoes.push({
-    id: `notif-${Date.now()}`,
-    tipo: 'ASSINATURA_REALIZADA',
-    titulo: `SOLEMP assinada — ${pedido.numero}`,
-    mensagem: `${usuario.nome} assinou a SOLEMP ${solemp.numero}.`,
-    pedidoId,
-    reversaoId: null,
-    lida: false,
-    data: nowIso(),
-  })
-
-  data.historico.push({
-    id: `hist-${Date.now()}-assinatura`,
-    pedidoId,
-    etapaId: etapaAtualizada.id,
-    etapaNome: etapaAtualizada.nome,
-    usuarioId: usuario.id,
-    usuarioNome: usuario.nome,
-    data: nowIso(),
-    observacao: `Assinatura da SOLEMP ${solemp.numero} registrada.`,
-  })
-
-  return data
+  throw new Error('Este processo não está aguardando assinatura da SOLEMP')
 }
 
 export function registrarPagamentoForPedido(
@@ -373,41 +375,19 @@ export function registrarPagamentoForPedido(
   if (!pedido) throw new Error('Pedido não encontrado')
 
   const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa || !['ENVIADO_FINANCEIRO', 'PAGAMENTO_REALIZADO'].includes(etapa.chave)) {
-    throw new Error('Este processo não está com pagamento pendente')
+  if (!etapa || etapa.chave !== 'DIV_MAT_FINANCAS') {
+    throw new Error('Este processo não está na etapa Finanças')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
   if (!solemp) throw new Error('SOLEMP não encontrada ou não corresponde a este pedido')
 
-  if (etapa.chave === 'PAGAMENTO_REALIZADO') {
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Processo encerrado após confirmação de pagamento — SOLEMP ${solemp.numero}.`,
-    )
-  } else {
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Pagamento da NF registrado pelo financeiro — SOLEMP ${solemp.numero}.`,
-    )
-
-    const pedidoIntermediario = data.pedidos.find((p) => p.id === pedidoId)!
-    const etapaPagamento = data.workflowEtapas.find((e) => e.id === pedidoIntermediario.etapaAtualId)
-    if (!etapaPagamento || etapaPagamento.chave !== 'PAGAMENTO_REALIZADO') {
-      throw new Error('Erro ao avançar para pagamento realizado')
-    }
-
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      'Processo encerrado após confirmação de pagamento.',
-    )
-  }
+  data = advancePedidoEtapa(
+    data,
+    pedidoId,
+    usuario,
+    `Pagamento registrado em Finanças — SOLEMP ${solemp.numero}. Processo encerrado.`,
+  )
 
   data.notificacoes.push({
     id: `notif-${Date.now()}`,
@@ -428,7 +408,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado pelo financeiro.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças.`,
   })
 
   return data

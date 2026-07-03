@@ -51,44 +51,19 @@ export function getLoginRoute(portal: Portal): string {
   return '/login'
 }
 
-/** Ações que a clínica executa clicando na timeline */
+/** Ações que a clínica executa — após envio, apenas visualização */
 export const CLINICA_ETAPA_ACOES: Record<
   string,
   { label: string; descricao: string; proximaObservacao: string }
-> = {
-  MATERIAL_ENTREGUE: {
-    label: 'Confirmar recebimento do material',
-    descricao: 'A empresa entregou o material. Clique para registrar o recebimento.',
-    proximaObservacao: 'Material recebido e conferido pela clínica.',
-  },
-  SOLEMP_CRIADA: {
-    label: 'Confeccionar SOLEMP',
-    descricao: 'Clique para registrar a confecção da SOLEMP.',
-    proximaObservacao: 'SOLEMP confeccionada pela clínica.',
-  },
-  SOLEMP_ASSINADA: {
-    label: 'Anexar Nota Fiscal e enviar ao Financeiro',
-    descricao: 'Clique para registrar o anexo da nota fiscal e encaminhar ao financeiro.',
-    proximaObservacao: 'Nota fiscal anexada e processo enviado ao financeiro pela clínica.',
-  },
-  NF_ANEXADA: {
-    label: 'Anexar Nota Fiscal e enviar ao Financeiro',
-    descricao: 'Clique para registrar o anexo da nota fiscal e encaminhar ao financeiro.',
-    proximaObservacao: 'Nota fiscal anexada e processo enviado ao financeiro pela clínica.',
-  },
-}
+> = {}
 
 export const FINANCEIRO_ETAPA_ACOES: Record<
   string,
   { label: string; descricao: string }
 > = {
-  ENVIADO_FINANCEIRO: {
-    label: 'Pagamento realizado',
-    descricao: 'Selecione a SOLEMP e confirme o pagamento da nota fiscal.',
-  },
-  PAGAMENTO_REALIZADO: {
-    label: 'Finalizar processo',
-    descricao: 'Pagamento registrado. Confirme para encerrar o processo.',
+  DIV_MAT_FINANCAS: {
+    label: 'Registrar pagamento',
+    descricao: 'Confirme o pagamento na etapa Finanças da Div. de Material.',
   },
 }
 
@@ -96,22 +71,24 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   string,
   { label: string; descricao: string }
 > = {
-  SOLEMP_CRIADA: {
-    label: 'Assinar SOLEMP',
-    descricao: 'SOLEMP confeccionada. Clique para assinar e concluir as etapas de assinatura.',
+  DIV_MAT_ASSINATURA_1: {
+    label: 'Registrar Assinatura 1 Solemp',
+    descricao: 'Clique para registrar a primeira assinatura da SOLEMP.',
   },
-  AGUARDANDO_ASSINATURA: {
-    label: 'Assinar SOLEMP',
-    descricao: 'Clique para assinar a SOLEMP e registrar as etapas de assinatura.',
+  DIV_MAT_ASSINATURA_2: {
+    label: 'Registrar Assinatura 2 Solemp',
+    descricao: 'Clique para registrar a segunda assinatura da SOLEMP.',
   },
 }
 
 /** Etapas aguardando outro setor — sem ação da clínica */
 export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
-  AGUARDANDO_ASSINATURA: 'Aguardando assinatura da SOLEMP pelo ordenador de despesa.',
-  SOLEMP_ASSINADA: 'SOLEMP assinada. Aguardando anexo da nota fiscal.',
-  ENVIADO_FINANCEIRO: 'Pagamento pendente — aguardando confirmação pelo financeiro.',
-  PAGAMENTO_REALIZADO: 'Pagamento registrado — aguardando encerramento pelo financeiro.',
+  DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material (Divisão 1).',
+  DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material (Divisão 1).',
+  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na Div. de Material (Divisão 2).',
+  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na Div. de Material (Divisão 2).',
+  DIV_MAT_SDA: 'Aguardando SDA na Div. de Material (Divisão 2).',
+  DIV_MAT_FINANCAS: 'Aguardando Finanças na Div. de Material (Divisão 2).',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

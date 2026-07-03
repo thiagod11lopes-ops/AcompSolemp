@@ -6,8 +6,11 @@ interface SolempEtapaBadgeProps {
   notaFiscalNumero?: string | null
 }
 
-export function SolempEtapaBadge({ etapaChave, numero, notaFiscalNumero }: SolempEtapaBadgeProps) {
-  if (etapaChave === 'SOLEMP_CRIADA' && numero) {
+export function SolempEtapaBadge({ etapaChave, numero }: SolempEtapaBadgeProps) {
+  if (
+    (etapaChave === 'DIV_MAT_ASSINATURA_1' || etapaChave === 'DIV_MAT_ASSINATURA_2') &&
+    numero
+  ) {
     return (
       <Chip
         label={numero}
@@ -15,18 +18,6 @@ export function SolempEtapaBadge({ etapaChave, numero, notaFiscalNumero }: Solem
         color="primary"
         variant="outlined"
         sx={{ fontWeight: 700, letterSpacing: 0.5 }}
-      />
-    )
-  }
-
-  if (etapaChave === 'NF_ANEXADA' && notaFiscalNumero) {
-    return (
-      <Chip
-        label={notaFiscalNumero}
-        size="small"
-        color="success"
-        variant="outlined"
-        sx={{ fontWeight: 700, letterSpacing: 0.3 }}
       />
     )
   }

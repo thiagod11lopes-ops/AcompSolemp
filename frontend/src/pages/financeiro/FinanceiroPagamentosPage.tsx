@@ -53,12 +53,8 @@ export default function FinanceiroPagamentosPage() {
                       {pedido.clinica.nome} · {pedido.material.descricao}
                     </Typography>
                     <Chip
-                      label={
-                        pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO'
-                          ? 'Aguardando encerramento'
-                          : 'Pagamento pendente'
-                      }
-                      color={pedido.etapaAtual.chave === 'PAGAMENTO_REALIZADO' ? 'success' : 'info'}
+                      label="Finanças — pagamento pendente"
+                      color="info"
                       size="small"
                       sx={{ mb: 1 }}
                     />

@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v6'
+const SEED_VERSION = 'v7'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -37,68 +37,54 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
+  // Div. de Material — Divisão 1
   {
-    chave: 'MATERIAL_ENTREGUE',
-    nome: 'Material entregue pela empresa',
+    chave: 'DIV_MAT_AUDITORIA',
+    nome: 'Auditoria',
     ordem: 2,
     prazoDias: 3,
-    perfilResponsavel: 'CLINICA',
+    perfilResponsavel: 'GESTOR',
     ativo: true,
   },
   {
-    chave: 'SOLEMP_CRIADA',
-    nome: 'SOLEMP criada',
+    chave: 'DIV_MAT_CONTABILIDADE_IMH',
+    nome: 'Contabilidade/IMH',
     ordem: 3,
     prazoDias: 3,
-    perfilResponsavel: 'CLINICA',
+    perfilResponsavel: 'GESTOR',
     ativo: true,
   },
+  // Div. de Material — Divisão 2
   {
-    chave: 'AGUARDANDO_ASSINATURA',
-    nome: 'Aguardando assinatura',
+    chave: 'DIV_MAT_ASSINATURA_1',
+    nome: 'Assinatura 1 Solemp',
     ordem: 4,
     prazoDias: 5,
     perfilResponsavel: 'ASSINANTE',
     ativo: true,
   },
   {
-    chave: 'SOLEMP_ASSINADA',
-    nome: 'SOLEMP assinada',
+    chave: 'DIV_MAT_ASSINATURA_2',
+    nome: 'Assinatura 2 Solemp',
     ordem: 5,
-    prazoDias: 2,
-    perfilResponsavel: 'CLINICA',
+    prazoDias: 5,
+    perfilResponsavel: 'ASSINANTE',
     ativo: true,
   },
   {
-    chave: 'NF_ANEXADA',
-    nome: 'Nota Fiscal anexada',
+    chave: 'DIV_MAT_SDA',
+    nome: 'SDA',
     ordem: 6,
-    prazoDias: 2,
-    perfilResponsavel: 'CLINICA',
+    prazoDias: 3,
+    perfilResponsavel: 'GESTOR',
     ativo: true,
   },
   {
-    chave: 'ENVIADO_FINANCEIRO',
-    nome: 'Enviado ao Financeiro',
+    chave: 'DIV_MAT_FINANCAS',
+    nome: 'Finanças',
     ordem: 7,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
-    ativo: true,
-  },
-  {
-    chave: 'PAGAMENTO_REALIZADO',
-    nome: 'Pagamento realizado',
-    ordem: 8,
-    prazoDias: 3,
-    perfilResponsavel: 'FINANCEIRO',
-    ativo: true,
-  },
-  {
-    chave: 'ENCERRADO',
-    nome: 'Processo encerrado',
-    ordem: 9,
-    prazoDias: 0,
-    perfilResponsavel: 'GESTOR',
     ativo: true,
   },
 ]

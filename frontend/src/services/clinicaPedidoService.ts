@@ -160,7 +160,7 @@ export const clinicaPedidoService = {
           responsavelNome: usuario.nome,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Aguardando confirmação de recebimento do material.',
+          observacao: 'Enviado para a Div. de Material.',
           arquivos: [],
         },
       ],
@@ -175,7 +175,7 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: `Timeline iniciada — pedido ${numero} solicitado.`,
+      observacao: `Timeline iniciada — pedido ${numero} enviado para a Div. de Material.`,
     })
 
     saveAppData(data)

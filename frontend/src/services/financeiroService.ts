@@ -15,7 +15,7 @@ function getContext(data: ReturnType<typeof loadAppData>) {
   }
 }
 
-const ETAPAS_FINANCEIRO = ['ENVIADO_FINANCEIRO', 'PAGAMENTO_REALIZADO'] as const
+const ETAPAS_FINANCEIRO = ['DIV_MAT_FINANCAS'] as const
 
 function isPedidoPagamentoPendente(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],

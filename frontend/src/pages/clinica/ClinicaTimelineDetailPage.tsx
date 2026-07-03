@@ -195,7 +195,7 @@ export default function ClinicaTimelineDetailPage() {
                 <strong>Número:</strong> {pedido.solemp.numero}
               </Typography>
               <Typography variant="body2">
-                <strong>Data:</strong> {formatDate(pedido.solemp.dataCriacao)}
+                <strong>Data:</strong> {formatDate(pedido.solemp.data)}
               </Typography>
             </Paper>
           )}

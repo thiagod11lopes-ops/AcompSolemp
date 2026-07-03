@@ -3,7 +3,7 @@ import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
 import { assinarSolempForPedido } from '@/utils/workflowAdvance'
 
-const ETAPAS_ORDENADOR = ['AGUARDANDO_ASSINATURA', 'SOLEMP_CRIADA'] as const
+const ETAPAS_ORDENADOR = ['DIV_MAT_ASSINATURA_1', 'DIV_MAT_ASSINATURA_2'] as const
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -22,6 +22,7 @@ function isPedidoAguardandoAssinatura(pedido: ReturnType<typeof loadAppData>['pe
   if (!etapa || !ETAPAS_ORDENADOR.includes(etapa.chave as (typeof ETAPAS_ORDENADOR)[number])) {
     return false
   }
+  if (etapa.chave === 'DIV_MAT_ASSINATURA_1') return true
   const solemp = data.solemp.find((s) => s.pedidoId === pedido.id)
   return Boolean(solemp && !solemp.assinada)
 }
