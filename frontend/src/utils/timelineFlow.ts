@@ -3,20 +3,32 @@ import type { WorkflowEtapa } from '@/types'
 /** Metadados de agrupamento visual da timeline */
 export const TIMELINE_ETAPA_META: Record<
   string,
-  { grupo: string | null; divisao: string | null }
+  { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
-  SOLICITACAO: { grupo: null, divisao: null },
-  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material' },
-  DIV_MAT_CONTABILIDADE_IMH: { grupo: 'Div. de Material', divisao: 'Material' },
-  DIV_MAT_ASSINATURA_1: { grupo: 'Div. de Material', divisao: 'Finanças' },
-  DIV_MAT_ASSINATURA_2: { grupo: 'Div. de Material', divisao: 'Finanças' },
-  DIV_MAT_SDA: { grupo: 'Div. de Material', divisao: 'Finanças' },
-  DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Finanças' },
+  SOLICITACAO: { grupo: null, divisao: null, trilha: null },
+  // Trilha esquerda — Auditoria / Contabilidade
+  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'auditoria' },
+  DIV_MAT_CONTABILIDADE_IMH: {
+    grupo: 'Div. de Material',
+    divisao: 'Material',
+    trilha: 'auditoria',
+  },
+  // Trilha direita — Solemp / Material
+  DIV_MAT_CONFECCAO_SOLEMP: {
+    grupo: 'Div. de Material',
+    divisao: 'Material',
+    trilha: 'solemp',
+  },
+  DIV_MAT_ASSINATURA_1: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
+  DIV_MAT_ASSINATURA_2: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
+  DIV_MAT_SDA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
+  DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
 }
 
 /** Fluxos paralelos dentro da Div. de Material */
 export const DIVISAO_1_CHAVES = ['DIV_MAT_AUDITORIA', 'DIV_MAT_CONTABILIDADE_IMH'] as const
 export const DIVISAO_2_CHAVES = [
+  'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_ASSINATURA_1',
   'DIV_MAT_ASSINATURA_2',
   'DIV_MAT_SDA',
@@ -48,6 +60,7 @@ export type TimelineBloco =
       nome: string
       divisoes: {
         nome: string
+        trilha: string
         etapas: { etapa: WorkflowEtapa; index: number }[]
       }[]
     }
@@ -56,14 +69,18 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
   const ordenadas = [...etapas].filter((e) => e.ativo).sort((a, b) => a.ordem - b.ordem)
   const blocos: TimelineBloco[] = []
   let grupoAtual: Extract<TimelineBloco, { tipo: 'grupo' }> | null = null
-  let divisaoAtual: string | null = null
+  let trilhaAtual: string | null = null
 
   ordenadas.forEach((etapa, index) => {
-    const meta = TIMELINE_ETAPA_META[etapa.chave] ?? { grupo: null, divisao: null }
+    const meta = TIMELINE_ETAPA_META[etapa.chave] ?? {
+      grupo: null,
+      divisao: null,
+      trilha: null,
+    }
 
     if (!meta.grupo) {
       grupoAtual = null
-      divisaoAtual = null
+      trilhaAtual = null
       blocos.push({ tipo: 'etapa', etapa, index })
       return
     }
@@ -71,13 +88,15 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
     if (!grupoAtual || grupoAtual.nome !== meta.grupo) {
       grupoAtual = { tipo: 'grupo', nome: meta.grupo, divisoes: [] }
       blocos.push(grupoAtual)
-      divisaoAtual = null
+      trilhaAtual = null
     }
 
+    const trilhaKey = meta.trilha ?? meta.divisao ?? 'geral'
     const divisaoNome = meta.divisao ?? 'Geral'
-    if (divisaoAtual !== divisaoNome) {
-      grupoAtual.divisoes.push({ nome: divisaoNome, etapas: [] })
-      divisaoAtual = divisaoNome
+
+    if (trilhaAtual !== trilhaKey) {
+      grupoAtual.divisoes.push({ nome: divisaoNome, trilha: trilhaKey, etapas: [] })
+      trilhaAtual = trilhaKey
     }
 
     const ultimaDivisao = grupoAtual.divisoes[grupoAtual.divisoes.length - 1]

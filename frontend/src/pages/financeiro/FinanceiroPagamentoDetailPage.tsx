@@ -143,8 +143,8 @@ export default function FinanceiroPagamentoDetailPage() {
               Confirmar pagamento
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Selecione a SOLEMP e confirme o pagamento na etapa Finanças (Div. de Material —
-              Finanças) para encerrar o processo.
+              Selecione a SOLEMP e confirme o pagamento na etapa Finanças (Div. de Material)
+              para encerrar o processo.
             </Typography>
 
             <TextField

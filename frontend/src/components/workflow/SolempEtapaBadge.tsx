@@ -8,7 +8,9 @@ interface SolempEtapaBadgeProps {
 
 export function SolempEtapaBadge({ etapaChave, numero }: SolempEtapaBadgeProps) {
   if (
-    (etapaChave === 'DIV_MAT_ASSINATURA_1' || etapaChave === 'DIV_MAT_ASSINATURA_2') &&
+    (etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+      etapaChave === 'DIV_MAT_ASSINATURA_1' ||
+      etapaChave === 'DIV_MAT_ASSINATURA_2') &&
     numero
   ) {
     return (

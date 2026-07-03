@@ -117,8 +117,8 @@ export const clinicaPedidoService = {
     const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
     const solicitacao = etapas.find((e) => e.chave === 'SOLICITACAO')
     const auditoria = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
-    const assinatura1 = etapas.find((e) => e.chave === 'DIV_MAT_ASSINATURA_1')
-    if (!solicitacao || !auditoria || !assinatura1) {
+    const confeccao = etapas.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
+    if (!solicitacao || !auditoria || !confeccao) {
       throw new Error('Workflow não configurado')
     }
 
@@ -143,7 +143,7 @@ export const clinicaPedidoService = {
       dataSolicitacao: agora,
       dataEntrega: null,
       etapaAtualId: auditoria.id,
-      etapasAtivasIds: [auditoria.id, assinatura1.id],
+      etapasAtivasIds: [auditoria.id, confeccao.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
@@ -168,13 +168,13 @@ export const clinicaPedidoService = {
           arquivos: [],
         },
         {
-          etapaId: assinatura1.id,
-          etapaNome: assinatura1.nome,
+          etapaId: confeccao.id,
+          etapaNome: confeccao.nome,
           responsavelId: null,
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Fluxo paralelo — Finanças (Assinatura 1 Solemp).',
+          observacao: 'Fluxo paralelo — Material (Confecção de Solemp).',
           arquivos: [],
         },
       ],

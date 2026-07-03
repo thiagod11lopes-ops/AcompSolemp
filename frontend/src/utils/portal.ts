@@ -71,6 +71,10 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   string,
   { label: string; descricao: string }
 > = {
+  DIV_MAT_CONFECCAO_SOLEMP: {
+    label: 'Confeccionar Solemp',
+    descricao: 'Clique para registrar a confecção da SOLEMP.',
+  },
   DIV_MAT_ASSINATURA_1: {
     label: 'Registrar Assinatura 1 Solemp',
     descricao: 'Clique para registrar a primeira assinatura da SOLEMP.',
@@ -83,12 +87,13 @@ export const ORDENADOR_ETAPA_ACOES: Record<
 
 /** Etapas aguardando outro setor — sem ação da clínica */
 export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
-  DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material (Material).',
-  DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material (Material).',
-  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na Div. de Material (Finanças).',
-  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na Div. de Material (Finanças).',
-  DIV_MAT_SDA: 'Aguardando SDA na Div. de Material (Finanças).',
-  DIV_MAT_FINANCAS: 'Aguardando Finanças na Div. de Material (Finanças).',
+  DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
+  DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
+  DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
+  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na Div. de Material.',
+  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na Div. de Material.',
+  DIV_MAT_SDA: 'Aguardando SDA na Div. de Material.',
+  DIV_MAT_FINANCAS: 'Aguardando Finanças na Div. de Material.',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

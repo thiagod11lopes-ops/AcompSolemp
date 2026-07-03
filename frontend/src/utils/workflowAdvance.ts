@@ -255,7 +255,11 @@ export function createNotaFiscalForPedido(
 }
 
 function cleanupAoSairEtapa(data: AppData, pedidoId: string, chaveEtapa: string): void {
-  if (chaveEtapa === 'DIV_MAT_ASSINATURA_1' || chaveEtapa === 'DIV_MAT_ASSINATURA_2') {
+  if (
+    chaveEtapa === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+    chaveEtapa === 'DIV_MAT_ASSINATURA_1' ||
+    chaveEtapa === 'DIV_MAT_ASSINATURA_2'
+  ) {
     data.solemp = data.solemp.filter((s) => s.pedidoId !== pedidoId)
   }
 }
@@ -370,12 +374,13 @@ export function assinarSolempForPedido(
   if (!pedido) throw new Error('Pedido não encontrado')
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [
+    'DIV_MAT_CONFECCAO_SOLEMP',
     'DIV_MAT_ASSINATURA_1',
     'DIV_MAT_ASSINATURA_2',
   ])
-  if (!etapa) throw new Error('Este processo não está aguardando assinatura da SOLEMP')
+  if (!etapa) throw new Error('Este processo não está aguardando confecção ou assinatura da SOLEMP')
 
-  if (etapa.chave === 'DIV_MAT_ASSINATURA_1') {
+  if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP') {
     let solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
     if (!solemp) {
       solemp = {
@@ -384,10 +389,36 @@ export function assinarSolempForPedido(
         numero: `SLP-${pedido.numero.replace('PED-', '')}`,
         data: nowIso(),
         assinada: false,
-        arquivoPDF: null,
+        arquivoPDF: `solemp-${pedido.numero}.pdf`,
       }
       data.solemp.push(solemp)
     }
+
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero}.`,
+      etapa.id,
+    )
+
+    data.notificacoes.push({
+      id: `notif-${Date.now()}`,
+      tipo: 'SOLEMP_CRIADA',
+      titulo: `SOLEMP confeccionada — ${pedido.numero}`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero}.`,
+      pedidoId,
+      reversaoId: null,
+      lida: false,
+      data: nowIso(),
+    })
+
+    return data
+  }
+
+  if (etapa.chave === 'DIV_MAT_ASSINATURA_1') {
+    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+    if (!solemp) throw new Error('SOLEMP não encontrada. Conclua a Confecção de Solemp primeiro.')
 
     data = advancePedidoEtapa(
       data,

@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v9'
+const SEED_VERSION = 'v10'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -37,7 +37,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
-  // Div. de Material — Material
+  // Div. de Material — trilha Auditoria/Contabilidade
   {
     chave: 'DIV_MAT_AUDITORIA',
     nome: 'Auditoria',
@@ -54,11 +54,19 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
-  // Div. de Material — Finanças
+  // Div. de Material — trilha Material (Solemp)
+  {
+    chave: 'DIV_MAT_CONFECCAO_SOLEMP',
+    nome: 'Confecção de Solemp',
+    ordem: 4,
+    prazoDias: 3,
+    perfilResponsavel: 'ASSINANTE',
+    ativo: true,
+  },
   {
     chave: 'DIV_MAT_ASSINATURA_1',
     nome: 'Assinatura 1 Solemp',
-    ordem: 4,
+    ordem: 5,
     prazoDias: 5,
     perfilResponsavel: 'ASSINANTE',
     ativo: true,
@@ -66,7 +74,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   {
     chave: 'DIV_MAT_ASSINATURA_2',
     nome: 'Assinatura 2 Solemp',
-    ordem: 5,
+    ordem: 6,
     prazoDias: 5,
     perfilResponsavel: 'ASSINANTE',
     ativo: true,
@@ -74,7 +82,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   {
     chave: 'DIV_MAT_SDA',
     nome: 'SDA',
-    ordem: 6,
+    ordem: 7,
     prazoDias: 3,
     perfilResponsavel: 'GESTOR',
     ativo: true,
@@ -82,7 +90,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   {
     chave: 'DIV_MAT_FINANCAS',
     nome: 'Finanças',
-    ordem: 7,
+    ordem: 8,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
     ativo: true,
