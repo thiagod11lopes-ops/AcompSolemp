@@ -183,69 +183,66 @@ function CampoAnexo({
 
 function CampoNaoSeAplica({
   active,
-  label,
   children,
 }: {
   active: boolean
-  label: string
   children: ReactNode
 }) {
   return (
-    <Box>
-      <Typography
-        variant="body2"
-        component="label"
-        sx={{
-          display: 'block',
-          mb: 0.75,
-          fontWeight: 500,
-          color: 'text.primary',
-        }}
-      >
-        {label}
-      </Typography>
-      <Box sx={{ position: 'relative', overflow: 'hidden', borderRadius: 1 }}>
+    <Box
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 1,
+        pointerEvents: active ? 'none' : 'auto',
+        '& .MuiOutlinedInput-root': {
+          opacity: active ? 0.45 : 1,
+          transition: 'opacity 0.2s',
+        },
+        '& .MuiInputLabel-root': {
+          opacity: '1 !important',
+          color: active ? 'text.secondary' : undefined,
+          bgcolor: 'background.paper',
+          px: 0.5,
+          zIndex: 2,
+        },
+        '& .MuiFormHelperText-root': {
+          opacity: active ? 0 : 1,
+        },
+      }}
+    >
+      {children}
+      {active && (
         <Box
           sx={{
-            pointerEvents: active ? 'none' : 'auto',
-            opacity: active ? 0.45 : 1,
-            transition: 'opacity 0.2s',
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            zIndex: 1,
+            overflow: 'hidden',
           }}
         >
-          {children}
-        </Box>
-        {active && (
-          <Box
+          <Typography
             sx={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'none',
-              zIndex: 1,
-              overflow: 'hidden',
+              color: 'primary.main',
+              opacity: 1,
+              fontWeight: 800,
+              fontSize: '1.05rem',
+              letterSpacing: 0.6,
+              whiteSpace: 'nowrap',
+              textTransform: 'none',
+              transform: 'rotate(-28deg)',
+              userSelect: 'none',
+              lineHeight: 1,
             }}
           >
-            <Typography
-              sx={{
-                color: 'primary.main',
-                opacity: 1,
-                fontWeight: 800,
-                fontSize: '1.05rem',
-                letterSpacing: 0.6,
-                whiteSpace: 'nowrap',
-                textTransform: 'none',
-                transform: 'rotate(-28deg)',
-                userSelect: 'none',
-                lineHeight: 1,
-              }}
-            >
-              Não se aplica
-            </Typography>
-          </Box>
-        )}
-      </Box>
+            Não se aplica
+          </Typography>
+        </Box>
+      )}
     </Box>
   )
 }
@@ -463,23 +460,27 @@ export default function ClinicaNovoPedidoPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <CampoNaoSeAplica active={isTitular} label="NIP do titular">
+                  <CampoNaoSeAplica active={isTitular}>
                     <Controller
                       name="nipTitular"
                       control={control}
                       render={({ field }) => (
                         <TextField
                           fullWidth
+                          label="NIP do titular"
                           placeholder="00.0000.00"
                           value={field.value}
                           onChange={(e) => field.onChange(maskNip(e.target.value))}
                           onBlur={field.onBlur}
                           disabled={isTitular}
-                          slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
+                          slotProps={{
+                            inputLabel: { shrink: true },
+                            htmlInput: { inputMode: 'numeric', maxLength: 10 },
+                          }}
                           error={Boolean(errors.nipTitular)}
                           helperText={
                             isTitular
-                              ? undefined
+                              ? ' '
                               : (errors.nipTitular?.message ?? 'Formato: 00.0000.00')
                           }
                         />
@@ -489,13 +490,15 @@ export default function ClinicaNovoPedidoPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>
-                  <CampoNaoSeAplica active={isTitular} label="Nome do titular">
+                  <CampoNaoSeAplica active={isTitular}>
                     <TextField
                       fullWidth
+                      label="Nome do titular"
                       {...register('nomeTitular')}
                       disabled={isTitular}
+                      slotProps={{ inputLabel: { shrink: true } }}
                       error={Boolean(errors.nomeTitular)}
-                      helperText={isTitular ? undefined : errors.nomeTitular?.message}
+                      helperText={isTitular ? ' ' : errors.nomeTitular?.message}
                     />
                   </CampoNaoSeAplica>
                 </Grid>
