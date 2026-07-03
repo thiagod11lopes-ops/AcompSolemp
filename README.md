@@ -31,9 +31,17 @@ gh auth login
 gh repo create AcompSolemp --private --source=. --remote=origin --push
 ```
 
-Após o push na branch `main`, o GitHub Actions valida o build automaticamente (aba **Actions**).
+Após o push na branch `main`, o GitHub Actions publica o frontend em **GitHub Pages**.
 
-> **GitHub Pages:** contas gratuitas não publicam sites em repositórios **privados**. Para hospedar o app na web, torne o repositório público ou use Vercel/Netlify conectado ao GitHub.
+**URL do sistema:** https://thiagod11lopes-ops.github.io/AcompSolemp/
+
+### Habilitar Pages (uma vez)
+
+1. O repositório precisa ser **público** (Settings → Danger zone → Change visibility).
+2. Em **Settings → Pages → Build and deployment**, escolha **Source: GitHub Actions**.
+3. Faça um push na `main` ou rode o workflow **Deploy GitHub Pages** manualmente em Actions.
+
+> Repositórios **privados** no plano gratuito não suportam GitHub Pages.
 
 ## Login de demonstração
 
