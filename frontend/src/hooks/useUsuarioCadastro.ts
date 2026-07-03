@@ -10,9 +10,10 @@ export function useCreateClinicaUser() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateClinicaUserInput) => usuarioCadastroService.createClinicaUser(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+      await queryClient.refetchQueries({ queryKey: ['clinicas'] })
     },
   })
 }

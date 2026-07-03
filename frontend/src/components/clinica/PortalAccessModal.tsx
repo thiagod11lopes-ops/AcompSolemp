@@ -36,7 +36,7 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
   const theme = useTheme()
   const navigate = useNavigate()
   const { loginClinicaByClinica, loginOrdenadorByNome, loginFinanceiroByNome } = useAuth()
-  const { data: clinicas = [] } = useClinicas()
+  const { data: clinicas = [], refetch: refetchClinicas } = useClinicas()
 
   const [step, setStep] = useState<AccessStep>('escolha')
   const [clinicaId, setClinicaId] = useState('')
@@ -60,8 +60,9 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
       setSenhaFinanceiro('')
       setErro('')
       setShowPassword(false)
+      void refetchClinicas()
     }
-  }, [open])
+  }, [open, refetchClinicas])
 
   const handleClinicaLogin = async () => {
     if (!clinicaId) {
@@ -187,7 +188,14 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
                 '&:hover': { borderColor: 'primary.main', boxShadow: 4 },
               }}
             >
-              <CardActionArea onClick={() => { setStep('clinica'); setErro('') }} sx={{ p: 2.5 }}>
+              <CardActionArea
+                onClick={() => {
+                  setStep('clinica')
+                  setErro('')
+                  void refetchClinicas()
+                }}
+                sx={{ p: 2.5 }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <LocalHospitalIcon color="primary" sx={{ fontSize: 40 }} />
                   <Box>
@@ -264,6 +272,11 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
               value={clinicaId}
               onChange={(e) => { setClinicaId(e.target.value); setErro('') }}
               sx={{ mb: 2 }}
+              helperText={
+                clinicas.length === 0
+                  ? 'Nenhuma clínica cadastrada. Cadastre em Gestor → Cadastros → Usuários.'
+                  : undefined
+              }
             >
               {clinicas.map((c) => (
                 <MenuItem key={c.id} value={c.id}>

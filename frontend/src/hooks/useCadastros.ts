@@ -7,7 +7,12 @@ import {
 } from '@/services/cadastroService'
 
 export function useClinicas() {
-  return useQuery({ queryKey: ['clinicas'], queryFn: cadastroService.listClinicas })
+  return useQuery({
+    queryKey: ['clinicas'],
+    queryFn: cadastroService.listClinicas,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
 }
 
 export function useEmpresas() {
