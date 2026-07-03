@@ -28,7 +28,7 @@ import {
 } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
 import { clinicaPedidoService } from '@/services/clinicaPedidoService'
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
+import { formatCurrency, formatDate, formatDateTime, formatNip } from '@/utils/format'
 
 export default function ClinicaTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -110,7 +110,7 @@ export default function ClinicaTimelineDetailPage() {
         title={`Timeline — ${pedido.numero}`}
         subtitle={
           pedido.paciente
-            ? `${pedido.paciente.nome} · NIP ${pedido.paciente.nip}`
+            ? `${pedido.paciente.nome} · NIP ${formatNip(pedido.paciente.nip)}`
             : `${pedido.empresa.nomeFantasia} · ${pedido.material.descricao}`
         }
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
@@ -148,10 +148,10 @@ export default function ClinicaTimelineDetailPage() {
                     {pedido.paciente.vinculo === 'TITULAR' ? 'Titular' : 'Dependente'}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>NIP:</strong> {pedido.paciente.nip}
+                    <strong>NIP:</strong> {formatNip(pedido.paciente.nip)}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>NIP do titular:</strong> {pedido.paciente.nipTitular}
+                    <strong>NIP do titular:</strong> {formatNip(pedido.paciente.nipTitular)}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Nome do titular:</strong> {pedido.paciente.nomeTitular}

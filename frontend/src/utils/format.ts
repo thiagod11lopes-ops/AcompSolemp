@@ -34,3 +34,19 @@ export function formatPhone(phone: string): string {
   }
   return digits.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3')
 }
+
+/** Formato NIP: 00.0000.00 (8 dígitos) */
+export const NIP_REGEX = /^\d{2}\.\d{4}\.\d{2}$/
+
+export function maskNip(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 6) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  return `${digits.slice(0, 2)}.${digits.slice(2, 6)}.${digits.slice(6)}`
+}
+
+export function formatNip(value: string): string {
+  if (!value) return value
+  if (NIP_REGEX.test(value)) return value
+  return maskNip(value)
+}

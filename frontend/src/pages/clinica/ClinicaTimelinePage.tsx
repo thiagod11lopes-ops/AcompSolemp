@@ -16,7 +16,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { calcularProgressoTimeline } from '@/utils/portal'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatNip } from '@/utils/format'
 
 export default function ClinicaTimelinePage() {
   const navigate = useNavigate()
@@ -76,7 +76,7 @@ export default function ClinicaTimelinePage() {
                       </Box>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         {pedido.paciente
-                          ? `${pedido.paciente.nome} · NIP ${pedido.paciente.nip}`
+                          ? `${pedido.paciente.nome} · NIP ${formatNip(pedido.paciente.nip)}`
                           : `${pedido.material.descricao} · ${pedido.empresa.nomeFantasia}`}
                         {pedido.dadosClinica
                           ? ` · ${pedido.dadosClinica.procedimento}`

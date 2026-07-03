@@ -12,7 +12,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatNip } from '@/utils/format'
 
 export default function ClinicaPedidosPage() {
   const navigate = useNavigate()
@@ -33,7 +33,8 @@ export default function ClinicaPedidosPage() {
       {
         id: 'nip',
         header: 'NIP',
-        cell: ({ row }) => row.original.paciente?.nip ?? '—',
+        cell: ({ row }) =>
+          row.original.paciente?.nip ? formatNip(row.original.paciente.nip) : '—',
       },
       {
         id: 'vinculo',

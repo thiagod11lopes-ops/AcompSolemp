@@ -31,6 +31,7 @@ import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import type { PacienteVinculo, TipoUsuarioPaciente } from '@/types'
+import { formatNip, maskNip, NIP_REGEX } from '@/utils/format'
 
 const TIPO_USUARIO_OPTIONS: { value: TipoUsuarioPaciente; label: string }[] = [
   { value: 'MILITAR', label: 'Militar' },
@@ -67,7 +68,10 @@ const schema = z
     vinculo: z.enum(['TITULAR', 'DEPENDENTE'], {
       message: 'Informe se é Titular ou Dependente',
     }),
-    nip: z.string().min(1, 'Informe o NIP'),
+    nip: z
+      .string()
+      .min(1, 'Informe o NIP')
+      .regex(NIP_REGEX, 'NIP deve estar no formato 00.0000.00'),
     nipTitular: z.string(),
     nomeTitular: z.string(),
     tipoUsuario: z.enum(
@@ -104,6 +108,12 @@ const schema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Informe o NIP do titular',
+          path: ['nipTitular'],
+        })
+      } else if (!NIP_REGEX.test(data.nipTitular)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'NIP do titular deve estar no formato 00.0000.00',
           path: ['nipTitular'],
         })
       }
@@ -305,8 +315,8 @@ export default function ClinicaNovoPedidoPage() {
         paciente: {
           nome: data.nome.trim(),
           vinculo: data.vinculo,
-          nip: data.nip.trim(),
-          nipTitular: isTitular ? data.nip.trim() : data.nipTitular.trim(),
+          nip: formatNip(data.nip.trim()),
+          nipTitular: formatNip(isTitular ? data.nip.trim() : data.nipTitular.trim()),
           nomeTitular: isTitular ? data.nome.trim() : data.nomeTitular.trim(),
           tipoUsuario: data.tipoUsuario,
         },
@@ -406,24 +416,47 @@ export default function ClinicaNovoPedidoPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="NIP"
-                    {...register('nip')}
-                    error={Boolean(errors.nip)}
-                    helperText={errors.nip?.message}
+                  <Controller
+                    name="nip"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        fullWidth
+                        label="NIP"
+                        placeholder="00.0000.00"
+                        value={field.value}
+                        onChange={(e) => field.onChange(maskNip(e.target.value))}
+                        onBlur={field.onBlur}
+                        slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
+                        error={Boolean(errors.nip)}
+                        helperText={errors.nip?.message ?? 'Formato: 00.0000.00'}
+                      />
+                    )}
                   />
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <CampoNaoSeAplica active={isTitular}>
-                    <TextField
-                      fullWidth
-                      label="NIP do titular"
-                      {...register('nipTitular')}
-                      disabled={isTitular}
-                      error={Boolean(errors.nipTitular)}
-                      helperText={errors.nipTitular?.message}
+                    <Controller
+                      name="nipTitular"
+                      control={control}
+                      render={({ field }) => (
+                        <TextField
+                          fullWidth
+                          label="NIP do titular"
+                          placeholder="00.0000.00"
+                          value={field.value}
+                          onChange={(e) => field.onChange(maskNip(e.target.value))}
+                          onBlur={field.onBlur}
+                          disabled={isTitular}
+                          slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
+                          error={Boolean(errors.nipTitular)}
+                          helperText={
+                            errors.nipTitular?.message ??
+                            (!isTitular ? 'Formato: 00.0000.00' : undefined)
+                          }
+                        />
+                      )}
                     />
                   </CampoNaoSeAplica>
                 </Grid>
