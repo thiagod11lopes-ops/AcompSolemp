@@ -157,6 +157,8 @@ export default function ClinicaTimelineDetailPage() {
                     <strong>Tipo de usuário:</strong>{' '}
                     {{
                       MILITAR: 'Militar',
+                      MILITAR_DA_RESERVA: 'Militar da Reserva',
+                      MILITAR_RESERVADO: 'Militar Reservado',
                       DEPENDENTE_DIRETO: 'Dependente Direto',
                       DEPENDENTE_INDIRETO: 'Dependente Indireto',
                       PENSIONISTA: 'Pensionista',

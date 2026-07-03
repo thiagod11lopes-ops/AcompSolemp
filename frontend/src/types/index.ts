@@ -137,6 +137,8 @@ export type PacienteVinculo = 'TITULAR' | 'DEPENDENTE'
 
 export type TipoUsuarioPaciente =
   | 'MILITAR'
+  | 'MILITAR_DA_RESERVA'
+  | 'MILITAR_RESERVADO'
   | 'DEPENDENTE_DIRETO'
   | 'DEPENDENTE_INDIRETO'
   | 'PENSIONISTA'
