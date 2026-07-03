@@ -198,7 +198,7 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Divisão 1 e Divisão 2 ao mesmo tempo.'
+          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Material e Finanças ao mesmo tempo.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 

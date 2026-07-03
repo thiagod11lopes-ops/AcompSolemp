@@ -37,7 +37,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
-  // Div. de Material — Divisão 1
+  // Div. de Material — Material
   {
     chave: 'DIV_MAT_AUDITORIA',
     nome: 'Auditoria',
@@ -54,7 +54,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
-  // Div. de Material — Divisão 2
+  // Div. de Material — Finanças
   {
     chave: 'DIV_MAT_ASSINATURA_1',
     nome: 'Assinatura 1 Solemp',

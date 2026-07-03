@@ -481,7 +481,7 @@ export function UsuariosTab() {
                 Auditoria
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Cadastre o responsável pela etapa Auditoria na Div. de Material (Divisão 1).
+                Cadastre o responsável pela etapa Auditoria na Div. de Material (Material).
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>
@@ -523,7 +523,7 @@ export function UsuariosTab() {
                 Contabilidade/IMH
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Cadastre o responsável pela etapa Contabilidade/IMH na Div. de Material (Divisão 1).
+                Cadastre o responsável pela etapa Contabilidade/IMH na Div. de Material (Material).
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>

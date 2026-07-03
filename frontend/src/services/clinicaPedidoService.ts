@@ -164,7 +164,7 @@ export const clinicaPedidoService = {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Fluxo paralelo — Divisão 1 (Auditoria).',
+          observacao: 'Fluxo paralelo — Material (Auditoria).',
           arquivos: [],
         },
         {
@@ -174,7 +174,7 @@ export const clinicaPedidoService = {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Fluxo paralelo — Divisão 2 (Assinatura 1 Solemp).',
+          observacao: 'Fluxo paralelo — Finanças (Assinatura 1 Solemp).',
           arquivos: [],
         },
       ],

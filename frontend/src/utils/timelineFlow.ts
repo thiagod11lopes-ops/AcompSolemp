@@ -6,12 +6,12 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null },
-  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Divisão 1' },
-  DIV_MAT_CONTABILIDADE_IMH: { grupo: 'Div. de Material', divisao: 'Divisão 1' },
-  DIV_MAT_ASSINATURA_1: { grupo: 'Div. de Material', divisao: 'Divisão 2' },
-  DIV_MAT_ASSINATURA_2: { grupo: 'Div. de Material', divisao: 'Divisão 2' },
-  DIV_MAT_SDA: { grupo: 'Div. de Material', divisao: 'Divisão 2' },
-  DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Divisão 2' },
+  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material' },
+  DIV_MAT_CONTABILIDADE_IMH: { grupo: 'Div. de Material', divisao: 'Material' },
+  DIV_MAT_ASSINATURA_1: { grupo: 'Div. de Material', divisao: 'Finanças' },
+  DIV_MAT_ASSINATURA_2: { grupo: 'Div. de Material', divisao: 'Finanças' },
+  DIV_MAT_SDA: { grupo: 'Div. de Material', divisao: 'Finanças' },
+  DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Finanças' },
 }
 
 /** Fluxos paralelos dentro da Div. de Material */
