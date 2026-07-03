@@ -183,42 +183,60 @@ function CampoAnexo({
 
 function CampoNaoSeAplica({
   active,
+  label,
   children,
 }: {
   active: boolean
+  label: string
   children: ReactNode
 }) {
   return (
-    <Box sx={{ position: 'relative' }}>
-      <Box
+    <Box>
+      <Typography
+        variant="body2"
+        component="label"
         sx={{
-          visibility: active ? 'hidden' : 'visible',
-          pointerEvents: active ? 'none' : 'auto',
+          display: 'block',
+          mb: 0.75,
+          fontWeight: 500,
+          color: 'text.primary',
         }}
       >
-        {children}
-      </Box>
-      {active && (
+        {label}
+      </Typography>
+      <Box sx={{ position: 'relative' }}>
         <Box
           sx={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
-            borderRadius: 1,
-            opacity: 1,
-            pointerEvents: 'none',
-            zIndex: 1,
+            pointerEvents: active ? 'none' : 'auto',
+            '& .MuiOutlinedInput-root': active
+              ? { bgcolor: 'action.hover' }
+              : undefined,
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
-            Não se Aplica
-          </Typography>
+          {children}
         </Box>
-      )}
+        {active && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              borderRadius: 1,
+              opacity: 1,
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
+              Não se Aplica
+            </Typography>
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }
@@ -436,14 +454,13 @@ export default function ClinicaNovoPedidoPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <CampoNaoSeAplica active={isTitular}>
+                  <CampoNaoSeAplica active={isTitular} label="NIP do titular">
                     <Controller
                       name="nipTitular"
                       control={control}
                       render={({ field }) => (
                         <TextField
                           fullWidth
-                          label="NIP do titular"
                           placeholder="00.0000.00"
                           value={field.value}
                           onChange={(e) => field.onChange(maskNip(e.target.value))}
@@ -452,8 +469,9 @@ export default function ClinicaNovoPedidoPage() {
                           slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 10 } }}
                           error={Boolean(errors.nipTitular)}
                           helperText={
-                            errors.nipTitular?.message ??
-                            (!isTitular ? 'Formato: 00.0000.00' : undefined)
+                            isTitular
+                              ? undefined
+                              : (errors.nipTitular?.message ?? 'Formato: 00.0000.00')
                           }
                         />
                       )}
@@ -462,14 +480,13 @@ export default function ClinicaNovoPedidoPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>
-                  <CampoNaoSeAplica active={isTitular}>
+                  <CampoNaoSeAplica active={isTitular} label="Nome do titular">
                     <TextField
                       fullWidth
-                      label="Nome do titular"
                       {...register('nomeTitular')}
                       disabled={isTitular}
                       error={Boolean(errors.nomeTitular)}
-                      helperText={errors.nomeTitular?.message}
+                      helperText={isTitular ? undefined : errors.nomeTitular?.message}
                     />
                   </CampoNaoSeAplica>
                 </Grid>
