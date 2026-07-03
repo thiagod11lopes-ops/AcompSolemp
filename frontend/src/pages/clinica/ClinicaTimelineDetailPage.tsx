@@ -209,6 +209,30 @@ export default function ClinicaTimelineDetailPage() {
                     <strong>Valor Total:</strong>{' '}
                     {formatCurrency(pedido.dadosClinica.valorTotal)}
                   </Typography>
+                  <Typography variant="body2">
+                    <strong>Folha da Sala:</strong>{' '}
+                    {(pedido.dadosClinica.folhaSala ?? []).length > 0
+                      ? pedido.dadosClinica.folhaSala.join(', ')
+                      : '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Descrição Cirúrgica:</strong>{' '}
+                    {(pedido.dadosClinica.descricaoCirurgica ?? []).length > 0
+                      ? pedido.dadosClinica.descricaoCirurgica.join(', ')
+                      : '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Etiquetas:</strong>{' '}
+                    {(pedido.dadosClinica.etiquetas ?? []).length > 0
+                      ? pedido.dadosClinica.etiquetas.join(', ')
+                      : '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Fotos:</strong>{' '}
+                    {(pedido.dadosClinica.fotos ?? []).length > 0
+                      ? pedido.dadosClinica.fotos.join(', ')
+                      : '—'}
+                  </Typography>
                 </>
               )}
               <Typography variant="body2" sx={{ mt: 1 }}>

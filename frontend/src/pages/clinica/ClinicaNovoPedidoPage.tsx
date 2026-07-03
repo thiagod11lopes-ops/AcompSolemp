@@ -4,6 +4,7 @@ import {
   Card,
   CardContent,
   Checkbox,
+  Chip,
   FormControl,
   FormControlLabel,
   FormHelperText,
@@ -19,6 +20,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PersonIcon from '@mui/icons-material/Person'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -89,6 +91,10 @@ const schema = z
       .number({ message: 'Informe o valor unitário' })
       .min(0.01, 'Informe o valor unitário'),
     valorTotal: z.number({ message: 'Informe o valor total' }).min(0.01, 'Informe o valor total'),
+    folhaSala: z.array(z.string()),
+    descricaoCirurgica: z.array(z.string()),
+    etiquetas: z.array(z.string()),
+    fotos: z.array(z.string()),
   })
   .superRefine((data, ctx) => {
     if (data.vinculo === 'DEPENDENTE') {
@@ -117,6 +123,51 @@ const schema = z
   })
 
 type FormData = z.infer<typeof schema>
+
+function CampoAnexo({
+  label,
+  accept,
+  multiple = true,
+  value,
+  onChange,
+}: {
+  label: string
+  accept: string
+  multiple?: boolean
+  value: string[]
+  onChange: (names: string[]) => void
+}) {
+  return (
+    <Box>
+      <Button
+        variant="outlined"
+        component="label"
+        fullWidth
+        startIcon={<AttachFileIcon />}
+        sx={{ justifyContent: 'flex-start', py: 1.5, textTransform: 'none' }}
+      >
+        {label}
+        <input
+          type="file"
+          hidden
+          accept={accept}
+          multiple={multiple}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? [])
+            onChange(files.map((f) => f.name))
+          }}
+        />
+      </Button>
+      {value.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+          {value.map((nome) => (
+            <Chip key={nome} label={nome} size="small" variant="outlined" />
+          ))}
+        </Box>
+      )}
+    </Box>
+  )
+}
 
 function CampoNaoSeAplica({
   active,
@@ -192,6 +243,10 @@ export default function ClinicaNovoPedidoPage() {
       quantidade: 1,
       valorUnitario: 0,
       valorTotal: 0,
+      folhaSala: [],
+      descricaoCirurgica: [],
+      etiquetas: [],
+      fotos: [],
     },
   })
 
@@ -264,6 +319,10 @@ export default function ClinicaNovoPedidoPage() {
           quantidade: data.quantidade,
           valorUnitario: data.valorUnitario,
           valorTotal: data.valorTotal,
+          folhaSala: data.folhaSala,
+          descricaoCirurgica: data.descricaoCirurgica,
+          etiquetas: data.etiquetas,
+          fotos: data.fotos,
         },
       })
       navigate(`/clinica/timeline/${pedido.id}`)
@@ -532,6 +591,62 @@ export default function ClinicaNovoPedidoPage() {
                     slotProps={{ htmlInput: { min: 0, step: '0.01', readOnly: true } }}
                   />
                 </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="folhaSala"
+                    control={control}
+                    render={({ field }) => (
+                      <CampoAnexo
+                        label="Folha da Sala"
+                        accept=".pdf,.doc,.docx,image/*"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="descricaoCirurgica"
+                    control={control}
+                    render={({ field }) => (
+                      <CampoAnexo
+                        label="Descrição Cirúrgica"
+                        accept=".pdf,.doc,.docx,image/*"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="etiquetas"
+                    control={control}
+                    render={({ field }) => (
+                      <CampoAnexo
+                        label="Etiquetas"
+                        accept=".pdf,image/*"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Controller
+                    name="fotos"
+                    control={control}
+                    render={({ field }) => (
+                      <CampoAnexo
+                        label="Fotos"
+                        accept="image/*"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
             </CardContent>
           </Card>
@@ -544,7 +659,7 @@ export default function ClinicaNovoPedidoPage() {
           sx={{ mt: 3 }}
           disabled={createPedido.isPending}
         >
-          {createPedido.isPending ? 'Salvando...' : 'Criar Lançamento'}
+          {createPedido.isPending ? 'Enviando...' : 'Enviar Para Material'}
         </Button>
       </Box>
     </>

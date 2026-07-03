@@ -163,6 +163,10 @@ export interface DadosClinicaLancamento {
   quantidade: number
   valorUnitario: number
   valorTotal: number
+  folhaSala: string[]
+  descricaoCirurgica: string[]
+  etiquetas: string[]
+  fotos: string[]
 }
 
 export interface Pedido {
