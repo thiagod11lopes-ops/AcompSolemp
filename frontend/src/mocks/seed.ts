@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v7'
+const SEED_VERSION = 'v8'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -162,6 +162,8 @@ export function loadAppData(): AppData {
         data.pedidos = (data.pedidos ?? []).map((p) => ({
           ...p,
           paciente: p.paciente ?? null,
+          etapasAtivasIds:
+            p.etapasAtivasIds ?? (p.etapaAtualId ? [p.etapaAtualId] : []),
           dadosClinica: p.dadosClinica
             ? {
                 ...p.dadosClinica,

@@ -115,9 +115,12 @@ export const clinicaPedidoService = {
     if (!usuario) throw new Error('Usuário não encontrado')
 
     const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
-    const primeira = etapas[0]
-    const segunda = etapas[1]
-    if (!primeira || !segunda) throw new Error('Workflow não configurado')
+    const solicitacao = etapas.find((e) => e.chave === 'SOLICITACAO')
+    const auditoria = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
+    const assinatura1 = etapas.find((e) => e.chave === 'DIV_MAT_ASSINATURA_1')
+    if (!solicitacao || !auditoria || !assinatura1) {
+      throw new Error('Workflow não configurado')
+    }
 
     const numero = `PED-${String(data.pedidos.length + 1).padStart(5, '0')}`
     const agora = new Date().toISOString()
@@ -139,13 +142,14 @@ export const clinicaPedidoService = {
       dadosClinica: input.dadosClinica,
       dataSolicitacao: agora,
       dataEntrega: null,
-      etapaAtualId: segunda.id,
+      etapaAtualId: auditoria.id,
+      etapasAtivasIds: [auditoria.id, assinatura1.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
         {
-          etapaId: primeira.id,
-          etapaNome: primeira.nome,
+          etapaId: solicitacao.id,
+          etapaNome: solicitacao.nome,
           responsavelId: usuario.id,
           responsavelNome: usuario.nome,
           dataInicio: agora,
@@ -154,13 +158,23 @@ export const clinicaPedidoService = {
           arquivos: [],
         },
         {
-          etapaId: segunda.id,
-          etapaNome: segunda.nome,
-          responsavelId: usuario.id,
-          responsavelNome: usuario.nome,
+          etapaId: auditoria.id,
+          etapaNome: auditoria.nome,
+          responsavelId: null,
+          responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Enviado para a Div. de Material.',
+          observacao: 'Fluxo paralelo — Divisão 1 (Auditoria).',
+          arquivos: [],
+        },
+        {
+          etapaId: assinatura1.id,
+          etapaNome: assinatura1.nome,
+          responsavelId: null,
+          responsavelNome: null,
+          dataInicio: agora,
+          dataConclusao: null,
+          observacao: 'Fluxo paralelo — Divisão 2 (Assinatura 1 Solemp).',
           arquivos: [],
         },
       ],
@@ -170,12 +184,12 @@ export const clinicaPedidoService = {
     data.historico.push({
       id: `hist-${Date.now()}`,
       pedidoId: pedido.id,
-      etapaId: primeira.id,
-      etapaNome: primeira.nome,
+      etapaId: solicitacao.id,
+      etapaNome: solicitacao.nome,
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: `Timeline iniciada — pedido ${numero} enviado para a Div. de Material.`,
+      observacao: `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
     })
 
     saveAppData(data)

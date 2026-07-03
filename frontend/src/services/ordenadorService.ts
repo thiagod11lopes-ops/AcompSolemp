@@ -18,10 +18,15 @@ function getContext(data: ReturnType<typeof loadAppData>) {
 }
 
 function isPedidoAguardandoAssinatura(pedido: ReturnType<typeof loadAppData>['pedidos'][0], data: ReturnType<typeof loadAppData>): boolean {
-  const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa || !ETAPAS_ORDENADOR.includes(etapa.chave as (typeof ETAPAS_ORDENADOR)[number])) {
-    return false
-  }
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
+  const etapa = data.workflowEtapas.find(
+    (e) =>
+      ativas.includes(e.id) &&
+      ETAPAS_ORDENADOR.includes(e.chave as (typeof ETAPAS_ORDENADOR)[number]),
+  )
+  if (!etapa) return false
   if (etapa.chave === 'DIV_MAT_ASSINATURA_1') return true
   const solemp = data.solemp.find((s) => s.pedidoId === pedido.id)
   return Boolean(solemp && !solemp.assinada)

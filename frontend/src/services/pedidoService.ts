@@ -136,13 +136,24 @@ export const pedidoService = {
       .reduce((acc, p) => acc + p.valor, 0)
 
     const valorAguardandoAssinatura = emAndamento
-      .filter((p) =>
-        ['DIV_MAT_ASSINATURA_1', 'DIV_MAT_ASSINATURA_2'].includes(p.etapaAtual.chave),
-      )
+      .filter((p) => {
+        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
+        return p.etapasHistorico.some(
+          (h) =>
+            ids.includes(h.etapaId) &&
+            !h.dataConclusao &&
+            h.etapaNome.includes('Assinatura'),
+        )
+      })
       .reduce((acc, p) => acc + p.valor, 0)
 
     const valorAguardandoFinanceiro = emAndamento
-      .filter((p) => p.etapaAtual.chave === 'DIV_MAT_FINANCAS')
+      .filter((p) => {
+        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
+        return p.etapasHistorico.some(
+          (h) => ids.includes(h.etapaId) && !h.dataConclusao && h.etapaNome === 'Finanças',
+        )
+      })
       .reduce((acc, p) => acc + p.valor, 0)
 
     const clinicaRanking = new Map<string, { total: number; valor: number }>()

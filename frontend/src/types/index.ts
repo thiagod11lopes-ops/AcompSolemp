@@ -182,7 +182,10 @@ export interface Pedido {
   dadosClinica: DadosClinicaLancamento | null
   dataSolicitacao: string
   dataEntrega: string | null
+  /** Etapa principal (compatibilidade / listagens) */
   etapaAtualId: string
+  /** Etapas ativas em paralelo (ex.: Auditoria e Assinatura 1 Solemp) */
+  etapasAtivasIds: string[]
   responsavelAtualId: string | null
   concluido: boolean
   etapasHistorico: PedidoEtapaHistorico[]

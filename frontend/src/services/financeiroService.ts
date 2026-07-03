@@ -21,11 +21,14 @@ function isPedidoPagamentoPendente(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
 ): boolean {
-  const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  return Boolean(
-    etapa &&
-      ETAPAS_FINANCEIRO.includes(etapa.chave as (typeof ETAPAS_FINANCEIRO)[number]) &&
-      !pedido.concluido,
+  if (pedido.concluido) return false
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
+  return data.workflowEtapas.some(
+    (e) =>
+      ativas.includes(e.id) &&
+      ETAPAS_FINANCEIRO.includes(e.chave as (typeof ETAPAS_FINANCEIRO)[number]),
   )
 }
 

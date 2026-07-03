@@ -14,6 +14,33 @@ export const TIMELINE_ETAPA_META: Record<
   DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Divisão 2' },
 }
 
+/** Fluxos paralelos dentro da Div. de Material */
+export const DIVISAO_1_CHAVES = ['DIV_MAT_AUDITORIA', 'DIV_MAT_CONTABILIDADE_IMH'] as const
+export const DIVISAO_2_CHAVES = [
+  'DIV_MAT_ASSINATURA_1',
+  'DIV_MAT_ASSINATURA_2',
+  'DIV_MAT_SDA',
+  'DIV_MAT_FINANCAS',
+] as const
+
+export const DIV_MATERIAL_CHAVES = [...DIVISAO_1_CHAVES, ...DIVISAO_2_CHAVES] as const
+
+export function getProximaChaveNaDivisao(chaveAtual: string): string | null {
+  const trilhas = [DIVISAO_1_CHAVES, DIVISAO_2_CHAVES]
+  for (const trilha of trilhas) {
+    const index = (trilha as readonly string[]).indexOf(chaveAtual)
+    if (index >= 0) return trilha[index + 1] ?? null
+  }
+  return null
+}
+
+export function getEtapaByChave(
+  etapas: WorkflowEtapa[],
+  chave: string,
+): WorkflowEtapa | undefined {
+  return etapas.find((e) => e.chave === chave)
+}
+
 export type TimelineBloco =
   | { tipo: 'etapa'; etapa: WorkflowEtapa; index: number }
   | {

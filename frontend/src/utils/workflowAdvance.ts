@@ -8,20 +8,38 @@ import type {
   User,
   WorkflowEtapa,
 } from '@/types'
-import { getProximaEtapa, getResponsavelParaEtapa } from '@/utils/workflow'
+import { getResponsavelParaEtapa } from '@/utils/workflow'
+import {
+  DIV_MATERIAL_CHAVES,
+  getEtapaByChave,
+  getProximaChaveNaDivisao,
+} from '@/utils/timelineFlow'
 
 function nowIso(): string {
   return new Date().toISOString()
 }
 
-function completeEtapaAtual(pedido: Pedido, observacao: string): PedidoEtapaHistorico[] {
-  const historico = [...pedido.etapasHistorico]
-  const atual = historico.find((h) => h.dataConclusao === null)
+function completeEtapaById(
+  pedido: Pedido,
+  etapaId: string,
+  observacao: string,
+): PedidoEtapaHistorico[] {
+  const historico = pedido.etapasHistorico.map((h) => ({ ...h }))
+  const atual = historico.find((h) => h.etapaId === etapaId && h.dataConclusao === null)
   if (atual) {
     atual.dataConclusao = nowIso()
     if (observacao) atual.observacao = observacao
   }
   return historico
+}
+
+function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
+  return DIV_MATERIAL_CHAVES.every((chave) => {
+    const etapa = etapas.find((e) => e.chave === chave)
+    if (!etapa) return false
+    const hist = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
+    return Boolean(hist?.dataConclusao)
+  })
 }
 
 function startNovaEtapa(
@@ -54,8 +72,13 @@ export function pushPagamentoPendenteNotification(data: AppData, pedidoId: strin
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido || pedido.concluido) return
 
-  const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa || etapa.chave !== 'DIV_MAT_FINANCAS') return
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
+  const etapa = data.workflowEtapas.find(
+    (e) => ativas.includes(e.id) && e.chave === 'DIV_MAT_FINANCAS',
+  )
+  if (!etapa) return
 
   const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
 
@@ -74,8 +97,13 @@ export function pushPagamentoPendenteNotification(data: AppData, pedidoId: strin
 export function syncPagamentoPendenteNotifications(data: AppData): AppData {
   data.pedidos.forEach((pedido) => {
     if (pedido.concluido) return
-    const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-    if (etapa && etapa.chave === 'DIV_MAT_FINANCAS') {
+    const ativas = pedido.etapasAtivasIds?.length
+      ? pedido.etapasAtivasIds
+      : [pedido.etapaAtualId]
+    const naFinancas = data.workflowEtapas.some(
+      (e) => ativas.includes(e.id) && e.chave === 'DIV_MAT_FINANCAS',
+    )
+    if (naFinancas) {
       pushPagamentoPendenteNotification(data, pedido.id)
     }
   })
@@ -87,40 +115,73 @@ export function advancePedidoEtapa(
   pedidoId: string,
   usuario: User,
   observacao: string,
+  etapaIdAvancar?: string,
 ): AppData {
   const pedidoIndex = data.pedidos.findIndex((p) => p.id === pedidoId)
   if (pedidoIndex < 0) throw new Error('Pedido não encontrado')
 
-  const pedido = { ...data.pedidos[pedidoIndex] }
+  const pedido = {
+    ...data.pedidos[pedidoIndex],
+    etapasAtivasIds: [...(data.pedidos[pedidoIndex].etapasAtivasIds ?? [])],
+    etapasHistorico: data.pedidos[pedidoIndex].etapasHistorico.map((h) => ({ ...h })),
+  }
   const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
-  const etapaAtual = etapas.find((e) => e.id === pedido.etapaAtualId)
+  const etapaId = etapaIdAvancar ?? pedido.etapaAtualId
+  const etapaAtual = etapas.find((e) => e.id === etapaId)
   if (!etapaAtual) throw new Error('Etapa atual não encontrada')
   if (pedido.concluido) throw new Error('Processo já encerrado')
 
-  const proxima = getProximaEtapa(etapaAtual, etapas)
-  let etapasHistorico = completeEtapaAtual(pedido, observacao)
+  const ativas = pedido.etapasAtivasIds.length > 0
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
 
-  let atualizado: Pedido
-  if (!proxima) {
-    atualizado = {
-      ...pedido,
-      responsavelAtualId: null,
-      concluido: true,
-      etapasHistorico,
-    }
-  } else {
+  if (!ativas.includes(etapaAtual.id) && etapaAtual.chave !== 'SOLICITACAO') {
+    throw new Error('Esta etapa não está ativa no fluxo paralelo')
+  }
+
+  let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao)
+  let etapasAtivasIds = ativas.filter((id) => id !== etapaAtual.id)
+
+  const proximaChave = getProximaChaveNaDivisao(etapaAtual.chave)
+  const proxima = proximaChave ? getEtapaByChave(etapas, proximaChave) : null
+
+  if (proxima) {
     const responsavelProx = getResponsavelParaEtapa(proxima, data.usuarios, pedido.clinicaId)
-    etapasHistorico = [
-      ...etapasHistorico,
-      startNovaEtapa(proxima, responsavelProx, ''),
-    ]
-    atualizado = {
-      ...pedido,
-      etapaAtualId: proxima.id,
-      responsavelAtualId: responsavelProx?.id ?? null,
-      concluido: false,
-      etapasHistorico,
+    const jaIniciada = etapasHistorico.some((h) => h.etapaId === proxima.id)
+    if (!jaIniciada) {
+      etapasHistorico = [
+        ...etapasHistorico,
+        startNovaEtapa(proxima, responsavelProx, ''),
+      ]
     }
+    if (!etapasAtivasIds.includes(proxima.id)) {
+      etapasAtivasIds.push(proxima.id)
+    }
+  }
+
+  const pedidoParcial: Pedido = {
+    ...pedido,
+    etapasHistorico,
+    etapasAtivasIds,
+  }
+  const concluido = isDivMaterialConcluida(pedidoParcial, etapas)
+  const etapaPrincipalId = etapasAtivasIds[0] ?? etapaAtual.id
+  const responsavelAtual =
+    etapasAtivasIds.length > 0
+      ? getResponsavelParaEtapa(
+          etapas.find((e) => e.id === etapaPrincipalId)!,
+          data.usuarios,
+          pedido.clinicaId,
+        )
+      : null
+
+  const atualizado: Pedido = {
+    ...pedido,
+    etapaAtualId: etapaPrincipalId,
+    etapasAtivasIds,
+    responsavelAtualId: responsavelAtual?.id ?? null,
+    concluido,
+    etapasHistorico,
   }
 
   data.pedidos[pedidoIndex] = atualizado
@@ -137,7 +198,7 @@ export function advancePedidoEtapa(
   }
   data.historico.push(evento)
 
-  if (proxima?.chave === 'DIV_MAT_FINANCAS') {
+  if (proxima?.chave === 'DIV_MAT_FINANCAS' || etapaAtual.chave === 'DIV_MAT_FINANCAS') {
     pushPagamentoPendenteNotification(data, pedidoId)
   }
 
@@ -236,6 +297,7 @@ export function revertPedidoEtapa(
   data.pedidos[pedidoIndex] = {
     ...pedido,
     etapaAtualId: etapaAnterior.id,
+    etapasAtivasIds: [etapaAnterior.id],
     responsavelAtualId: responsavel?.id ?? usuario.id,
     concluido: false,
     etapasHistorico,
@@ -288,6 +350,17 @@ export function revertPedidoEtapa(
   return data
 }
 
+function getEtapaAtivaPorChaves(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  chaves: string[],
+): WorkflowEtapa | undefined {
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
+  return etapas.find((e) => ativas.includes(e.id) && chaves.includes(e.chave))
+}
+
 export function assinarSolempForPedido(
   data: AppData,
   pedidoId: string,
@@ -296,8 +369,11 @@ export function assinarSolempForPedido(
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
 
-  const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa) throw new Error('Etapa não encontrada')
+  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [
+    'DIV_MAT_ASSINATURA_1',
+    'DIV_MAT_ASSINATURA_2',
+  ])
+  if (!etapa) throw new Error('Este processo não está aguardando assinatura da SOLEMP')
 
   if (etapa.chave === 'DIV_MAT_ASSINATURA_1') {
     let solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
@@ -318,6 +394,7 @@ export function assinarSolempForPedido(
       pedidoId,
       usuario,
       `Assinatura 1 Solemp registrada — SOLEMP ${solemp.numero}.`,
+      etapa.id,
     )
 
     data.notificacoes.push({
@@ -346,6 +423,7 @@ export function assinarSolempForPedido(
       pedidoId,
       usuario,
       `Assinatura 2 Solemp registrada — SOLEMP ${solemp.numero} assinada.`,
+      etapa.id,
     )
 
     data.notificacoes.push({
@@ -374,8 +452,8 @@ export function registrarPagamentoForPedido(
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
 
-  const etapa = data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
-  if (!etapa || etapa.chave !== 'DIV_MAT_FINANCAS') {
+  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
+  if (!etapa) {
     throw new Error('Este processo não está na etapa Finanças')
   }
 
@@ -387,6 +465,7 @@ export function registrarPagamentoForPedido(
     pedidoId,
     usuario,
     `Pagamento registrado em Finanças — SOLEMP ${solemp.numero}. Processo encerrado.`,
+    etapa.id,
   )
 
   data.notificacoes.push({

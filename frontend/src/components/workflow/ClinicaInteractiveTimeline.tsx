@@ -1,5 +1,6 @@
 import {
   Box,
+  Grid,
   Step,
   StepContent,
   StepLabel,
@@ -49,17 +50,18 @@ export function ClinicaInteractiveTimeline({
   revertendo = false,
   somenteLeitura = false,
 }: ClinicaInteractiveTimelineProps) {
-  const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
-  const etapaAtualIndex = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
-  const acaoAtual = CLINICA_ETAPA_ACOES[pedido.etapaAtual.chave]
-  const aguardandoSetor = ETAPAS_AGUARDANDO_SETOR[pedido.etapaAtual.chave]
+  const etapasAtivasIds =
+    pedido.etapasAtivasIds?.length > 0
+      ? pedido.etapasAtivasIds
+      : [pedido.etapaAtualId]
+  const etapasAtivas = etapas.filter((e) => etapasAtivasIds.includes(e.id))
   const podeEditar = !somenteLeitura && Boolean(onAvancar)
   const blocos = buildTimelineBlocos(etapas)
 
-  const renderEtapa = (etapa: WorkflowEtapa, index: number, indent = false) => {
+  const renderEtapa = (etapa: WorkflowEtapa, indent = false) => {
     const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
-    const concluida = index < etapaAtualIndex || pedido.concluido
-    const atual = index === etapaAtualIndex && !pedido.concluido
+    const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
+    const atual = etapasAtivasIds.includes(etapa.id) && !pedido.concluido && !historico?.dataConclusao
     const podeClicar = podeEditar && atual && clinicaPodeAvancar(etapa.chave)
 
     let dias = 0
@@ -196,42 +198,20 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Acompanhe o andamento: Solicitação da Clínica e Div. de Material (Divisões 1 e 2).'
+          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Divisão 1 e Divisão 2 ao mesmo tempo.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 
-      {acaoAtual && !pedido.concluido && podeEditar && (
+      {etapasAtivas.length > 0 && !pedido.concluido && (
         <Alert
           severity="info"
-          icon={<TouchAppIcon />}
+          icon={somenteLeitura ? <HourglassEmptyIcon /> : <TouchAppIcon />}
           sx={{ mb: 2 }}
-          action={
-            onAvancar && (
-              <Button
-                color="inherit"
-                size="small"
-                variant="outlined"
-                onClick={onAvancar}
-                disabled={avancando}
-              >
-                {avancando ? 'Registrando...' : acaoAtual.label}
-              </Button>
-            )
-          }
         >
-          <strong>Etapa atual:</strong> {acaoAtual.descricao}
-        </Alert>
-      )}
-
-      {acaoAtual && !pedido.concluido && somenteLeitura && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <strong>Etapa atual:</strong> {pedido.etapaAtual.nome}
-        </Alert>
-      )}
-
-      {!acaoAtual && aguardandoSetor && !pedido.concluido && (
-        <Alert severity="warning" icon={<HourglassEmptyIcon />} sx={{ mb: 2 }}>
-          {aguardandoSetor}
+          <strong>
+            {etapasAtivas.length > 1 ? 'Etapas ativas em paralelo:' : 'Etapa atual:'}
+          </strong>{' '}
+          {etapasAtivas.map((e) => e.nome).join(' · ')}
         </Alert>
       )}
 
@@ -244,13 +224,8 @@ export function ClinicaInteractiveTimeline({
       {blocos.map((bloco) => {
         if (bloco.tipo === 'etapa') {
           return (
-            <Stepper
-              key={bloco.etapa.id}
-              activeStep={bloco.index === etapaAtualIndex ? 0 : bloco.index < etapaAtualIndex ? 1 : -1}
-              orientation="vertical"
-              nonLinear
-            >
-              {renderEtapa(bloco.etapa, bloco.index)}
+            <Stepper key={bloco.etapa.id} orientation="vertical" nonLinear activeStep={-1}>
+              {renderEtapa(bloco.etapa)}
             </Stepper>
           )
         }
@@ -263,34 +238,41 @@ export function ClinicaInteractiveTimeline({
                 fontWeight: 800,
                 color: 'primary.main',
                 mt: 1,
-                mb: 1,
+                mb: 1.5,
                 px: 1,
               }}
             >
               {bloco.nome}
             </Typography>
-            {bloco.divisoes.map((divisao) => (
-              <Box
-                key={`${bloco.nome}-${divisao.nome}`}
-                sx={{
-                  ml: 1,
-                  mb: 2,
-                  pl: 1.5,
-                  borderLeft: 3,
-                  borderColor: 'divider',
-                }}
-              >
-                <Typography
-                  variant="subtitle2"
-                  sx={{ fontWeight: 700, color: 'text.secondary', mb: 1 }}
-                >
-                  {divisao.nome}
-                </Typography>
-                <Stepper orientation="vertical" nonLinear activeStep={-1}>
-                  {divisao.etapas.map(({ etapa, index }) => renderEtapa(etapa, index, true))}
-                </Stepper>
-              </Box>
-            ))}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, mb: 2 }}>
+              Fluxo duplo em paralelo — as duas divisões avançam ao mesmo tempo após o envio da clínica.
+            </Typography>
+            <Grid container spacing={2}>
+              {bloco.divisoes.map((divisao) => (
+                <Grid key={`${bloco.nome}-${divisao.nome}`} size={{ xs: 12, md: 6 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: 1,
+                      borderColor: 'divider',
+                      bgcolor: 'action.hover',
+                      height: '100%',
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}
+                    >
+                      {divisao.nome}
+                    </Typography>
+                    <Stepper orientation="vertical" nonLinear activeStep={-1}>
+                      {divisao.etapas.map(({ etapa }) => renderEtapa(etapa, true))}
+                    </Stepper>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
           </Box>
         )
       })}

@@ -62,7 +62,8 @@ export default function ClinicaTimelineDetailPage() {
       />
 
       <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
-        Após o envio para a Div. de Material, a clínica possui apenas visualização da linha do tempo.
+        Após o envio para a Div. de Material, a clínica possui apenas visualização. O processo
+        segue em fluxo duplo: Divisão 1 (Auditoria) e Divisão 2 (Assinatura 1 Solemp) ao mesmo tempo.
       </Alert>
 
       <Grid container spacing={3}>
@@ -177,12 +178,18 @@ export default function ClinicaTimelineDetailPage() {
               <Typography variant="body2" sx={{ mt: 1 }}>
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
-              <Chip
-                label={pedido.etapaAtual.nome}
-                color="primary"
-                size="small"
-                sx={{ width: 'fit-content', mt: 1 }}
-              />
+              {(pedido.etapasAtivasIds?.length
+                ? etapas.filter((e) => pedido.etapasAtivasIds.includes(e.id))
+                : [pedido.etapaAtual]
+              ).map((etapa) => (
+                <Chip
+                  key={etapa.id}
+                  label={etapa.nome}
+                  color="primary"
+                  size="small"
+                  sx={{ width: 'fit-content', mt: 1, mr: 1 }}
+                />
+              ))}
             </Box>
           </Paper>
 
