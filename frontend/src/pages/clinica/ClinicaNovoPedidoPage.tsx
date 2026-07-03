@@ -231,7 +231,8 @@ function CampoNaoSeAplica({
           <Typography
             component="span"
             sx={(theme) => ({
-              color: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+              bgcolor: theme.palette.primary.main,
               opacity: 1,
               fontWeight: 800,
               fontSize: { xs: '0.85rem', sm: '0.95rem' },
@@ -242,12 +243,11 @@ function CampoNaoSeAplica({
               transformOrigin: 'center center',
               userSelect: 'none',
               lineHeight: 1.3,
-              bgcolor: theme.palette.background.paper,
-              px: 1,
-              py: 0.25,
+              px: 1.25,
+              py: 0.35,
               borderRadius: 0.5,
-              border: `2px solid ${theme.palette.background.paper}`,
-              boxShadow: `0 0 0 1px ${theme.palette.background.paper}`,
+              isolation: 'isolate',
+              mixBlendMode: 'normal',
             })}
           >
             Não se aplica
