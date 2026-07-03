@@ -195,7 +195,7 @@ function CampoNaoSeAplica({
         overflow: 'visible',
         pointerEvents: active ? 'none' : 'auto',
         '& .MuiOutlinedInput-root': {
-          opacity: active ? 0.45 : 1,
+          opacity: active ? 0.35 : 1,
           transition: 'opacity 0.2s',
         },
         '& .MuiInputLabel-root': {
@@ -215,36 +215,40 @@ function CampoNaoSeAplica({
         <Box
           sx={{
             position: 'absolute',
-            // Cobre só a área do input, sem cortar o rótulo flutuante
-            top: 0,
+            top: 2,
             left: 0,
             right: 0,
-            height: 56,
+            height: 52,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
+            pt: 0.75,
             pointerEvents: 'none',
-            zIndex: 1,
-            overflow: 'hidden',
-            borderRadius: 1,
+            zIndex: 2,
+            overflow: 'visible',
           }}
         >
           <Typography
-            sx={{
-              color: 'primary.main',
+            component="span"
+            sx={(theme) => ({
+              color: theme.palette.primary.main,
               opacity: 1,
               fontWeight: 800,
-              fontSize: '1.1rem',
-              letterSpacing: 0.6,
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
+              letterSpacing: 0.4,
               whiteSpace: 'nowrap',
               textTransform: 'none',
-              transform: 'translateY(-10px) rotate(-28deg)',
+              transform: 'rotate(-18deg)',
+              transformOrigin: 'center center',
               userSelect: 'none',
-              lineHeight: 1.2,
-              bgcolor: 'background.paper',
-              px: 0.75,
+              lineHeight: 1.3,
+              bgcolor: theme.palette.background.paper,
+              px: 1,
+              py: 0.25,
               borderRadius: 0.5,
-            }}
+              border: `2px solid ${theme.palette.background.paper}`,
+              boxShadow: `0 0 0 1px ${theme.palette.background.paper}`,
+            })}
           >
             Não se aplica
           </Typography>
