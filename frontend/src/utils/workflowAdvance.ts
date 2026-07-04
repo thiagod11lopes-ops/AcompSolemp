@@ -365,6 +365,13 @@ function getEtapaAtivaPorChaves(
   return etapas.find((e) => ativas.includes(e.id) && chaves.includes(e.chave))
 }
 
+const PERFIL_PARA_ETAPA_SOLEMP: Partial<Record<User['perfil'], string>> = {
+  CONFECCAO_SOLEMP: 'DIV_MAT_CONFECCAO_SOLEMP',
+  ASSINATURA_1_SOLEMP: 'DIV_MAT_ASSINATURA_1',
+  ASSINATURA_2_SOLEMP: 'DIV_MAT_ASSINATURA_2',
+  ASSINANTE: 'DIV_MAT_ASSINATURA_1',
+}
+
 export function assinarSolempForPedido(
   data: AppData,
   pedidoId: string,
@@ -373,12 +380,17 @@ export function assinarSolempForPedido(
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
 
-  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [
-    'DIV_MAT_CONFECCAO_SOLEMP',
-    'DIV_MAT_ASSINATURA_1',
-    'DIV_MAT_ASSINATURA_2',
-  ])
-  if (!etapa) throw new Error('Este processo não está aguardando confecção ou assinatura da SOLEMP')
+  const chavePerfil = PERFIL_PARA_ETAPA_SOLEMP[usuario.perfil]
+  const etapa = chavePerfil
+    ? getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [chavePerfil])
+    : getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [
+        'DIV_MAT_CONFECCAO_SOLEMP',
+        'DIV_MAT_ASSINATURA_1',
+        'DIV_MAT_ASSINATURA_2',
+      ])
+  if (!etapa) {
+    throw new Error('Nenhuma etapa ativa correspondente ao seu perfil neste processo')
+  }
 
   if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP') {
     let solemp = data.solemp.find((s) => s.pedidoId === pedidoId)

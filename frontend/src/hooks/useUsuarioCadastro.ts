@@ -1,62 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   usuarioCadastroService,
-  type CreateClinicaUserInput,
-  type CreateOrdenadorUserInput,
-  type CreateFinanceiroUserInput,
-  type CreateDivMaterialUserInput,
+  type CreatePortalUserInput,
 } from '@/services/usuarioCadastroService'
 
-export function useCreateClinicaUser() {
+export function useCreatePortalUser() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateClinicaUserInput) => usuarioCadastroService.createClinicaUser(input),
-    onSuccess: async () => {
+    mutationFn: (input: CreatePortalUserInput) =>
+      usuarioCadastroService.createPortalUser(input),
+    onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
-      await queryClient.refetchQueries({ queryKey: ['clinicas'] })
-    },
-  })
-}
-
-export function useCreateOrdenadorUser() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateOrdenadorUserInput) => usuarioCadastroService.createOrdenadorUser(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-    },
-  })
-}
-
-export function useCreateFinanceiroUser() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateFinanceiroUserInput) => usuarioCadastroService.createFinanceiroUser(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-    },
-  })
-}
-
-export function useCreateAuditoriaUser() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateDivMaterialUserInput) =>
-      usuarioCadastroService.createAuditoriaUser(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-    },
-  })
-}
-
-export function useCreateContabilidadeImhUser() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (input: CreateDivMaterialUserInput) =>
-      usuarioCadastroService.createContabilidadeImhUser(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      if (variables.opcao.isClinica) {
+        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+        await queryClient.refetchQueries({ queryKey: ['clinicas'] })
+      }
     },
   })
 }

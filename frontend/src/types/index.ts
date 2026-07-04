@@ -6,6 +6,10 @@ export type UserRole =
   | 'FINANCEIRO'
   | 'AUDITORIA'
   | 'CONTABILIDADE_IMH'
+  | 'CONFECCAO_SOLEMP'
+  | 'ASSINATURA_1_SOLEMP'
+  | 'ASSINATURA_2_SOLEMP'
+  | 'SDA'
   | 'CONSULTA'
 
 export type PrazoStatus = 'NO_PRAZO' | 'PROXIMO_VENCIMENTO' | 'ATRASADO'

@@ -1,25 +1,12 @@
-import type { User } from '@/types'
+import type { User, UserRole } from '@/types'
 import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
+import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 
-export interface CreateClinicaUserInput {
-  nomeClinica: string
-  senha: string
-}
-
-export interface CreateOrdenadorUserInput {
+export interface CreatePortalUserInput {
   nome: string
   senha: string
-}
-
-export interface CreateFinanceiroUserInput {
-  nome: string
-  senha: string
-}
-
-export interface CreateDivMaterialUserInput {
-  nome: string
-  senha: string
+  opcao: CadastroPerfilOpcao
 }
 
 export interface CreateUserResult {
@@ -52,148 +39,32 @@ function findOrCreateClinica(nomeClinica: string, data: ReturnType<typeof loadAp
 }
 
 export const usuarioCadastroService = {
-  async createClinicaUser(input: CreateClinicaUserInput): Promise<CreateUserResult> {
+  async createPortalUser(input: CreatePortalUserInput): Promise<CreateUserResult> {
     await delay(null, 400)
 
-    const nomeClinica = input.nomeClinica.trim()
-    if (nomeClinica.length < 3) throw new Error('Informe o nome da clínica')
+    const nome = input.nome.trim()
+    if (nome.length < 3) {
+      throw new Error(
+        input.opcao.isClinica ? 'Informe o nome da clínica' : 'Informe o nome',
+      )
+    }
     if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
 
     const data = loadAppData()
-    const clinicaId = findOrCreateClinica(nomeClinica, data)
     const logins = getExistingLogins(data)
-    const login = ensureUniqueLogin(slugLogin(nomeClinica), logins)
+    const login = ensureUniqueLogin(slugLogin(nome), logins)
+    const perfil: UserRole = input.opcao.perfil
+
+    const clinicaId = input.opcao.isClinica ? findOrCreateClinica(nome, data) : null
 
     const user: User = {
-      id: `user-clinica-${Date.now()}`,
-      nome: nomeClinica,
+      id: `user-${input.opcao.id}-${Date.now()}`,
+      nome,
       posto: '',
-      graduacao: 'Clínica',
+      graduacao: input.opcao.graduacao,
       login,
-      perfil: 'CLINICA',
+      perfil,
       clinicaId,
-      ativo: true,
-    }
-
-    data.usuarios.push(user)
-    if (!data.credenciais) data.credenciais = {}
-    data.credenciais[login] = { senha: input.senha, userId: user.id }
-    saveAppData(data)
-
-    return { user, login }
-  },
-
-  async createOrdenadorUser(input: CreateOrdenadorUserInput): Promise<CreateUserResult> {
-    await delay(null, 400)
-
-    const nome = input.nome.trim()
-    if (nome.length < 3) throw new Error('Informe o nome do ordenador de despesa')
-    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
-
-    const data = loadAppData()
-    const logins = getExistingLogins(data)
-    const login = ensureUniqueLogin(slugLogin(nome), logins)
-
-    const user: User = {
-      id: `user-ordenador-${Date.now()}`,
-      nome,
-      posto: '',
-      graduacao: 'Ordenador de Despesa',
-      login,
-      perfil: 'ASSINANTE',
-      clinicaId: null,
-      ativo: true,
-    }
-
-    data.usuarios.push(user)
-    if (!data.credenciais) data.credenciais = {}
-    data.credenciais[login] = { senha: input.senha, userId: user.id }
-    saveAppData(data)
-
-    return { user, login }
-  },
-
-  async createFinanceiroUser(input: CreateFinanceiroUserInput): Promise<CreateUserResult> {
-    await delay(null, 400)
-
-    const nome = input.nome.trim()
-    if (nome.length < 3) throw new Error('Informe o nome do usuário financeiro')
-    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
-
-    const data = loadAppData()
-    const logins = getExistingLogins(data)
-    const login = ensureUniqueLogin(slugLogin(nome), logins)
-
-    const user: User = {
-      id: `user-financeiro-${Date.now()}`,
-      nome,
-      posto: '',
-      graduacao: 'Financeiro',
-      login,
-      perfil: 'FINANCEIRO',
-      clinicaId: null,
-      ativo: true,
-    }
-
-    data.usuarios.push(user)
-    if (!data.credenciais) data.credenciais = {}
-    data.credenciais[login] = { senha: input.senha, userId: user.id }
-    saveAppData(data)
-
-    return { user, login }
-  },
-
-  async createAuditoriaUser(input: CreateDivMaterialUserInput): Promise<CreateUserResult> {
-    await delay(null, 400)
-
-    const nome = input.nome.trim()
-    if (nome.length < 3) throw new Error('Informe o nome do usuário de Auditoria')
-    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
-
-    const data = loadAppData()
-    const logins = getExistingLogins(data)
-    const login = ensureUniqueLogin(slugLogin(nome), logins)
-
-    const user: User = {
-      id: `user-auditoria-${Date.now()}`,
-      nome,
-      posto: '',
-      graduacao: 'Auditoria',
-      login,
-      perfil: 'AUDITORIA',
-      clinicaId: null,
-      ativo: true,
-    }
-
-    data.usuarios.push(user)
-    if (!data.credenciais) data.credenciais = {}
-    data.credenciais[login] = { senha: input.senha, userId: user.id }
-    saveAppData(data)
-
-    return { user, login }
-  },
-
-  async createContabilidadeImhUser(
-    input: CreateDivMaterialUserInput,
-  ): Promise<CreateUserResult> {
-    await delay(null, 400)
-
-    const nome = input.nome.trim()
-    if (nome.length < 3) throw new Error('Informe o nome do usuário de Contabilidade/IMH')
-    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
-
-    const data = loadAppData()
-    const logins = getExistingLogins(data)
-    const login = ensureUniqueLogin(slugLogin(nome), logins)
-
-    const user: User = {
-      id: `user-contabilidade-${Date.now()}`,
-      nome,
-      posto: '',
-      graduacao: 'Contabilidade/IMH',
-      login,
-      perfil: 'CONTABILIDADE_IMH',
-      clinicaId: null,
       ativo: true,
     }
 

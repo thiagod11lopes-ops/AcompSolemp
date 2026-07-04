@@ -27,6 +27,13 @@ const ALL_GESTOR_PERMISSIONS: Permission[] = [
   'notificacoes:read',
 ]
 
+const PROCESSO_PERMISSIONS: Permission[] = [
+  'processos:read',
+  'processos:advance',
+  'historico:read',
+  'notificacoes:read',
+]
+
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ADMINISTRADOR: ALL_GESTOR_PERMISSIONS,
   GESTOR: ALL_GESTOR_PERMISSIONS,
@@ -37,30 +44,14 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'historico:read',
     'notificacoes:read',
   ],
-  ASSINANTE: [
-    'processos:read',
-    'processos:advance',
-    'historico:read',
-    'notificacoes:read',
-  ],
-  FINANCEIRO: [
-    'processos:read',
-    'processos:advance',
-    'historico:read',
-    'notificacoes:read',
-  ],
-  AUDITORIA: [
-    'processos:read',
-    'processos:advance',
-    'historico:read',
-    'notificacoes:read',
-  ],
-  CONTABILIDADE_IMH: [
-    'processos:read',
-    'processos:advance',
-    'historico:read',
-    'notificacoes:read',
-  ],
+  ASSINANTE: PROCESSO_PERMISSIONS,
+  FINANCEIRO: PROCESSO_PERMISSIONS,
+  AUDITORIA: PROCESSO_PERMISSIONS,
+  CONTABILIDADE_IMH: PROCESSO_PERMISSIONS,
+  CONFECCAO_SOLEMP: PROCESSO_PERMISSIONS,
+  ASSINATURA_1_SOLEMP: PROCESSO_PERMISSIONS,
+  ASSINATURA_2_SOLEMP: PROCESSO_PERMISSIONS,
+  SDA: PROCESSO_PERMISSIONS,
   CONSULTA: [],
 }
 
@@ -73,7 +64,12 @@ export function canAccessGestorRoute(role: UserRole): boolean {
 }
 
 export function canAccessOrdenadorRoute(role: UserRole): boolean {
-  return role === 'ASSINANTE'
+  return (
+    role === 'ASSINANTE' ||
+    role === 'CONFECCAO_SOLEMP' ||
+    role === 'ASSINATURA_1_SOLEMP' ||
+    role === 'ASSINATURA_2_SOLEMP'
+  )
 }
 
 export function canAccessClinicaRoute(role: UserRole): boolean {

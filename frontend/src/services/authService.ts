@@ -176,15 +176,21 @@ export const authService = {
     const nomeNorm = nome.trim().toLowerCase()
     const loginSlugValue = slugLogin(nome)
 
+    const perfisSolemp = [
+      'ASSINANTE',
+      'CONFECCAO_SOLEMP',
+      'ASSINATURA_1_SOLEMP',
+      'ASSINATURA_2_SOLEMP',
+    ]
     const user = data.usuarios.find(
       (u) =>
-        u.perfil === 'ASSINANTE' &&
+        perfisSolemp.includes(u.perfil) &&
         u.ativo &&
         (u.nome.trim().toLowerCase() === nomeNorm || u.login === loginSlugValue),
     )
 
     if (!user) {
-      throw new Error('Ordenador de despesa não encontrado')
+      throw new Error('Usuário de confecção/assinatura não encontrado')
     }
 
     return this.login({ login: user.login, senha }, 'ordenador')

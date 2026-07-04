@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v10'
+const SEED_VERSION = 'v11'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -60,7 +60,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Confecção de Solemp',
     ordem: 4,
     prazoDias: 3,
-    perfilResponsavel: 'ASSINANTE',
+    perfilResponsavel: 'CONFECCAO_SOLEMP',
     ativo: true,
   },
   {
@@ -68,7 +68,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Assinatura 1 Solemp',
     ordem: 5,
     prazoDias: 5,
-    perfilResponsavel: 'ASSINANTE',
+    perfilResponsavel: 'ASSINATURA_1_SOLEMP',
     ativo: true,
   },
   {
@@ -76,7 +76,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Assinatura 2 Solemp',
     ordem: 6,
     prazoDias: 5,
-    perfilResponsavel: 'ASSINANTE',
+    perfilResponsavel: 'ASSINATURA_2_SOLEMP',
     ativo: true,
   },
   {
@@ -84,7 +84,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'SDA',
     ordem: 7,
     prazoDias: 3,
-    perfilResponsavel: 'GESTOR',
+    perfilResponsavel: 'SDA',
     ativo: true,
   },
   {
@@ -230,9 +230,13 @@ export function getRoleLabel(role: UserRole): string {
     GESTOR: 'Gestor',
     CLINICA: 'Clínica',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Financeiro',
+    FINANCEIRO: 'Finanças',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
+    CONFECCAO_SOLEMP: 'Confecção de Solemp',
+    ASSINATURA_1_SOLEMP: 'Assinatura 1 Solemp',
+    ASSINATURA_2_SOLEMP: 'Assinatura 2 Solemp',
+    SDA: 'SDA',
     CONSULTA: 'Consulta',
   }
   return labels[role]

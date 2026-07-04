@@ -62,7 +62,15 @@ export const ordenadorService = {
   async assinarSolemp(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.perfil === 'ASSINANTE')
+    const perfisSolemp = [
+      'ASSINANTE',
+      'CONFECCAO_SOLEMP',
+      'ASSINATURA_1_SOLEMP',
+      'ASSINATURA_2_SOLEMP',
+    ]
+    const usuario = data.usuarios.find(
+      (u) => u.id === usuarioId && perfisSolemp.includes(u.perfil),
+    )
     if (!usuario) throw new Error('Usuário não autorizado')
 
     data = assinarSolempForPedido(data, pedidoId, usuario)
