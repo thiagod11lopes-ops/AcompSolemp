@@ -28,6 +28,8 @@ const WorkflowPage = lazy(() => import('@/pages/WorkflowPage'))
 const HistoricoPage = lazy(() => import('@/pages/HistoricoPage'))
 const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
+const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
+const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetailPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
@@ -103,6 +105,8 @@ export function AppRoutes() {
           <Route path="/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
           <Route path="/gestor/configuracao" element={<LazyPage><ConfiguracaoPage /></LazyPage>} />
           <Route path="/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
+          <Route path="/gestor/timeline" element={<LazyPage><GestorTimelinesPage /></LazyPage>} />
+          <Route path="/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
         </Route>
 
         {/* Portal da Clínica — somente pedidos próprios */}

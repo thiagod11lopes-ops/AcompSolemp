@@ -18,6 +18,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import HistoryIcon from '@mui/icons-material/History'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import UndoIcon from '@mui/icons-material/Undo'
+import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { getRoleLabel } from '@/mocks/seed'
@@ -32,6 +33,7 @@ const menuItems = [
   { path: '/gestor/historico', label: 'Histórico', icon: <HistoryIcon /> },
   { path: '/gestor/relatorios', label: 'Relatórios', icon: <AssessmentIcon /> },
   { path: '/gestor/reversoes', label: 'Reversões', icon: <UndoIcon /> },
+  { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
 ]
 
 interface SidebarProps {
