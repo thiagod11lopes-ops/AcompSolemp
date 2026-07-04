@@ -5,6 +5,7 @@ import {
   Typography,
   Button,
   IconButton,
+  TextField,
   alpha,
   useTheme,
   Chip,
@@ -14,6 +15,8 @@ import CloseIcon from '@mui/icons-material/Close'
 import CalculateIcon from '@mui/icons-material/Calculate'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
+import NotesIcon from '@mui/icons-material/Notes'
+import { useEffect, useState } from 'react'
 import type { PedidoComDetalhes } from '@/types'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
 
@@ -29,7 +32,7 @@ const TIPO_USUARIO_LABEL: Record<string, string> = {
 interface ContabilidadeConfirmacaoModalProps {
   open: boolean
   onClose: () => void
-  onConfirmar: () => void
+  onConfirmar: (anotacoes: string) => void
   loading?: boolean
   pedido: PedidoComDetalhes
 }
@@ -55,12 +58,16 @@ export function ContabilidadeConfirmacaoModal({
   pedido,
 }: ContabilidadeConfirmacaoModalProps) {
   const theme = useTheme()
+  const [anotacoes, setAnotacoes] = useState('')
   const paciente = pedido.paciente
   const dados = pedido.dadosClinica
-  const material =
-    dados?.materialUtilizado || pedido.material.descricao
+  const material = dados?.materialUtilizado || pedido.material.descricao
   const valor = dados?.valorTotal ?? pedido.valor
   const dataRef = dados?.dataCirurgia || pedido.dataSolicitacao
+
+  useEffect(() => {
+    if (open) setAnotacoes('')
+  }, [open])
 
   return (
     <Dialog
@@ -119,10 +126,10 @@ export function ContabilidadeConfirmacaoModal({
           </Box>
           <Box>
             <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
-              Contabilidade/IMH
+              Conclusão de Contabilidade/IMH
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Conferência dos lançamentos
+              Finalizar Contabilidade/IMH
             </Typography>
             <Chip
               label={pedido.numero}
@@ -139,15 +146,11 @@ export function ContabilidadeConfirmacaoModal({
       </Box>
 
       <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Confira se todos os itens abaixo foram lançados corretamente antes de finalizar a etapa.
-        </Typography>
-
         <Box
           sx={{
             p: 2.5,
             borderRadius: 3,
-            mb: 2,
+            mb: 2.5,
             bgcolor: alpha(theme.palette.warning.main, 0.06),
             border: `1px solid ${alpha(theme.palette.warning.main, 0.18)}`,
             display: 'grid',
@@ -187,7 +190,7 @@ export function ContabilidadeConfirmacaoModal({
           <Divider />
 
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'warning.dark' }}>
-            Material e valores
+            Material, valor e data
           </Typography>
           <Box
             sx={{
@@ -202,10 +205,6 @@ export function ContabilidadeConfirmacaoModal({
             )}
             <Dado label="Valor" value={formatCurrency(valor)} />
             <Dado label="Data" value={formatDate(dataRef)} />
-            {dados?.procedimento && (
-              <Dado label="Procedimento" value={dados.procedimento} />
-            )}
-            {dados?.medico && <Dado label="Médico" value={dados.medico} />}
           </Box>
         </Box>
 
@@ -213,15 +212,45 @@ export function ContabilidadeConfirmacaoModal({
           sx={{
             p: 2,
             borderRadius: 3,
-            mb: 3,
+            mb: 1.5,
             bgcolor: alpha(theme.palette.info.main, 0.08),
             border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
           }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 800, textAlign: 'center' }}>
-            Todos esses itens foram lançados corretamente?
+            Verifique se todos os itens foram cadastrados corretamente.
           </Typography>
         </Box>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Anotações são opcionais. Se quiser, registre observações ao concluir a Contabilidade/IMH.
+        </Typography>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <NotesIcon fontSize="small" color="action" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            Anotações
+          </Typography>
+          <Chip label="Opcional" size="small" variant="outlined" sx={{ height: 22 }} />
+        </Box>
+
+        <TextField
+          fullWidth
+          multiline
+          minRows={4}
+          maxRows={8}
+          value={anotacoes}
+          onChange={(e) => setAnotacoes(e.target.value)}
+          placeholder="Escreva anotações da Contabilidade/IMH, se necessário…"
+          disabled={loading}
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.background.default, 0.65),
+            },
+          }}
+        />
 
         <Box
           sx={{
@@ -245,7 +274,7 @@ export function ContabilidadeConfirmacaoModal({
             fullWidth
             variant="contained"
             color="success"
-            onClick={onConfirmar}
+            onClick={() => onConfirmar(anotacoes.trim())}
             disabled={loading}
             startIcon={<CheckCircleIcon />}
             sx={{

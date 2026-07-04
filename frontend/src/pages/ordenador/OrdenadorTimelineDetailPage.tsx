@@ -95,8 +95,11 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
-  const handleConfirmarContabilidade = () => {
-    assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+  const handleConfirmarContabilidade = (anotacoes: string) => {
+    assinar.mutate(
+      { pedidoId: pedido.id, anotacoes },
+      { onSuccess: concluirComSucesso },
+    )
   }
 
   const handleEnviarConfeccao = ({ numero, valor }: { numero: string; valor: number }) => {
