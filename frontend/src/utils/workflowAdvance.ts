@@ -433,6 +433,7 @@ const PERFIL_PARA_ETAPA_SOLEMP: Partial<Record<User['perfil'], string>> = {
 export interface AssinarSolempOptions {
   numero?: string
   valor?: number
+  assinanteNome?: string
 }
 
 export function assinarSolempForPedido(
@@ -497,11 +498,31 @@ export function assinarSolempForPedido(
     const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
     if (!solemp) throw new Error('SOLEMP não encontrada. Conclua a Confecção de Solemp primeiro.')
 
+    const numero = options?.numero?.trim()
+    const valor = options?.valor
+    const assinanteNome = options?.assinanteNome?.trim()
+    if (!numero) throw new Error('Informe o número da SOLEMP')
+    const numeroErro = validateSolempNumero(numero)
+    if (numeroErro) throw new Error(numeroErro)
+    if (valor == null || Number.isNaN(valor) || valor <= 0) {
+      throw new Error('Informe o valor da SOLEMP')
+    }
+    if (!assinanteNome || assinanteNome.length < 2) {
+      throw new Error('Informe o nome de quem assinou')
+    }
+
+    solemp.numero = numero
+    solemp.valor = valor
+    solemp.assinatura1Nome = assinanteNome
+    solemp.arquivoPDF = `solemp-${numero.replace(/\//g, '-')}.pdf`
+
+    const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      `Assinatura 1 Solemp registrada — SOLEMP ${solemp.numero}.`,
+      `Assinatura 1 Solemp registrada — SOLEMP ${solemp.numero} (${valorFmt}), assinada por ${assinanteNome}. Enviado para Assinatura 2 Solemp.`,
       etapa.id,
     )
 
@@ -509,7 +530,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'ASSINATURA_REALIZADA',
       titulo: `Assinatura 1 Solemp — ${pedido.numero}`,
-      mensagem: `${usuario.nome} registrou a Assinatura 1 da SOLEMP ${solemp.numero}.`,
+      mensagem: `${usuario.nome} registrou a Assinatura 1 da SOLEMP ${solemp.numero} (assinante: ${assinanteNome}) e enviou para Assinatura 2 Solemp.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,

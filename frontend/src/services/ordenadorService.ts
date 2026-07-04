@@ -69,6 +69,7 @@ export const ordenadorService = {
       anotacoes?: string
       solempNumero?: string
       solempValor?: number
+      assinanteNome?: string
     },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
@@ -84,6 +85,7 @@ export const ordenadorService = {
       data = assinarSolempForPedido(data, pedidoId, usuario, {
         numero: options?.solempNumero,
         valor: options?.solempValor,
+        assinanteNome: options?.assinanteNome,
       })
     } else {
       const chave = PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]

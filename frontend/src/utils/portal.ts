@@ -85,7 +85,8 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_ASSINATURA_1: {
     label: 'Registrar Assinatura 1 Solemp',
-    descricao: 'Clique para registrar a primeira assinatura da SOLEMP.',
+    descricao:
+      'Informe número, valor e nome do assinante e envie para Assinatura 2 Solemp.',
   },
   DIV_MAT_ASSINATURA_2: {
     label: 'Registrar Assinatura 2 Solemp',

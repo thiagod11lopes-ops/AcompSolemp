@@ -30,16 +30,19 @@ export function useAssinarSolemp() {
       anotacoes,
       solempNumero,
       solempValor,
+      assinanteNome,
     }: {
       pedidoId: string
       anotacoes?: string
       solempNumero?: string
       solempValor?: number
+      assinanteNome?: string
     }) =>
       ordenadorService.executarAcao(pedidoId, user!.id, {
         anotacoes,
         solempNumero,
         solempValor,
+        assinanteNome,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })

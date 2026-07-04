@@ -119,6 +119,8 @@ export interface Solemp {
   arquivoPDF: string | null
   /** Valor da SOLEMP informado na confecção */
   valor?: number
+  /** Nome de quem registrou a Assinatura 1 */
+  assinatura1Nome?: string
 }
 
 export interface NotaFiscal {

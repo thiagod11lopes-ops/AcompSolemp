@@ -10,13 +10,14 @@ import {
   type SetorConclusaoVariante,
 } from '@/components/ordenador/SetorConclusaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
+import { Assinatura1SolempModal } from '@/components/ordenador/Assinatura1SolempModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
-import { getSolempDefaults } from '@/utils/solemp'
+import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 
 function varianteParaChave(chave: string | null | undefined): SetorConclusaoVariante | null {
   if (chave === 'DIV_MAT_AUDITORIA') return 'auditoria'
@@ -33,15 +34,21 @@ export default function OrdenadorTimelineDetailPage() {
   const assinar = useAssinarSolemp()
   const [modalVariante, setModalVariante] = useState<SetorConclusaoVariante | null>(null)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
+  const [assinatura1Open, setAssinatura1Open] = useState(false)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
   const varianteModal = varianteParaChave(chavePerfil)
   const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
+  const isAssinatura1 = chavePerfil === 'DIV_MAT_ASSINATURA_1'
 
   const solempDefaults = useMemo(() => {
     if (!pedido) {
       return { prefix: '65720', sequencial: '', ano: String(new Date().getFullYear()) }
+    }
+    if (pedido.solemp?.numero) {
+      const parsed = parseSolempNumero(pedido.solemp.numero)
+      if (parsed) return parsed
     }
     return getSolempDefaults(loadAppData(), pedido.clinicaId)
   }, [pedido])
@@ -62,6 +69,7 @@ export default function OrdenadorTimelineDetailPage() {
   const concluirComSucesso = () => {
     setModalVariante(null)
     setConfeccaoOpen(false)
+    setAssinatura1Open(false)
     navigate('/ordenador/timelines')
   }
 
@@ -72,6 +80,10 @@ export default function OrdenadorTimelineDetailPage() {
     }
     if (isConfeccao) {
       setConfeccaoOpen(true)
+      return
+    }
+    if (isAssinatura1) {
+      setAssinatura1Open(true)
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
@@ -91,7 +103,27 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
-  const modalAberto = Boolean(modalVariante) || confeccaoOpen
+  const handleEnviarAssinatura1 = ({
+    numero,
+    valor,
+    assinanteNome,
+  }: {
+    numero: string
+    valor: number
+    assinanteNome: string
+  }) => {
+    assinar.mutate(
+      {
+        pedidoId: pedido.id,
+        solempNumero: numero,
+        solempValor: valor,
+        assinanteNome,
+      },
+      { onSuccess: concluirComSucesso },
+    )
+  }
+
+  const modalAberto = Boolean(modalVariante) || confeccaoOpen || assinatura1Open
 
   return (
     <>
@@ -158,6 +190,11 @@ export default function OrdenadorTimelineDetailPage() {
                   {formatCurrency(pedido.solemp.valor)}
                 </Typography>
               )}
+              {pedido.solemp.assinatura1Nome && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Assinatura 1:</strong> {pedido.solemp.assinatura1Nome}
+                </Typography>
+              )}
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Conclua a etapa <strong>{etapaPerfil?.nome ?? perfilLabel}</strong> para avançar o
                 processo.
@@ -186,6 +223,17 @@ export default function OrdenadorTimelineDetailPage() {
         pedidoNumero={pedido.numero}
         defaults={solempDefaults}
         valorSugerido={pedido.valor}
+      />
+
+      <Assinatura1SolempModal
+        open={assinatura1Open}
+        onClose={() => setAssinatura1Open(false)}
+        onEnviar={handleEnviarAssinatura1}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+        defaults={solempDefaults}
+        valorSugerido={pedido.solemp?.valor ?? pedido.valor}
+        assinanteSugerido={user?.nome ?? ''}
       />
     </>
   )
