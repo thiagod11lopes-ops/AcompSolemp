@@ -30,7 +30,7 @@ export const PERFIS_SETOR: UserRole[] = [
 ]
 
 export function getHomeRouteForPerfil(perfil: UserRole): string {
-  if (perfil === 'CLINICA') return '/clinica/timeline'
+  if (perfil === 'CLINICA') return '/clinica/timelines'
   if (perfil === 'FINANCEIRO') return '/financeiro/pagamentos'
   if (PERFIS_SETOR.includes(perfil)) return '/ordenador/timelines'
   return '/login'

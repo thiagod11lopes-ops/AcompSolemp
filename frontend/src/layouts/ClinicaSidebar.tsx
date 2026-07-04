@@ -24,7 +24,7 @@ const DRAWER_WIDTH = 240
 const menuItems = [
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon />, end: true },
   { path: '/clinica/pedidos/novo', label: 'Novo Lançamento', icon: <AddIcon />, end: false },
-  { path: '/clinica/timeline', label: 'Timeline', icon: <TimelineIcon />, end: true },
+  { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon />, end: true },
 ]
 
 interface ClinicaSidebarProps {

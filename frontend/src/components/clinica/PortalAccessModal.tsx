@@ -45,10 +45,9 @@ const PERFIL_ICONS: Record<string, ReactElement> = {
 
 interface PortalAccessModalProps {
   open: boolean
-  onClinicaSuccess?: () => void
 }
 
-export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalProps) {
+export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const theme = useTheme()
   const navigate = useNavigate()
   const { loginClinicaByClinica, loginByPerfilNome } = useAuth()
@@ -83,7 +82,7 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
     setErro('')
     try {
       await loginClinicaByClinica(clinicaId, senha)
-      onClinicaSuccess?.()
+      navigate('/clinica/timelines', { replace: true })
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao entrar')
     } finally {

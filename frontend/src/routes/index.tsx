@@ -14,7 +14,7 @@ function HomeRedirect() {
   if (gestorUser) return <Navigate to="/gestor/dashboard" replace />
   if (financeiroUser) return <Navigate to="/financeiro/pagamentos" replace />
   if (ordenadorUser) return <Navigate to="/ordenador/timelines" replace />
-  if (clinicaUser) return <Navigate to="/clinica/timeline" replace />
+  if (clinicaUser) return <Navigate to="/clinica/timelines" replace />
   return <Navigate to="/login" replace />
 }
 
@@ -33,6 +33,7 @@ const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetail
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
+const ClinicaTimelinePage = lazy(() => import('@/pages/clinica/ClinicaTimelinePage'))
 const ClinicaTimelineDetailPage = lazy(() => import('@/pages/clinica/ClinicaTimelineDetailPage'))
 const ClinicaPedidoDetailPage = lazy(() => import('@/pages/clinica/ClinicaPedidoDetailPage'))
 const OrdenadorTimelinesPage = lazy(() => import('@/pages/ordenador/OrdenadorTimelinesPage'))
@@ -77,9 +78,17 @@ export function AppRoutes() {
           />
         </Route>
 
-        {/* Entrada pública — modal Clínica / Ordenador / Financeiro */}
+        {/* Entrada pública — sempre abre o modal de perfil + senha */}
         <Route
           path="/clinica/timeline"
+          element={
+            <LazyPage>
+              <TimelineEntryPage />
+            </LazyPage>
+          }
+        />
+        <Route
+          path="/clinica/timeline/"
           element={
             <LazyPage>
               <TimelineEntryPage />
@@ -117,7 +126,8 @@ export function AppRoutes() {
             </ClinicaProtectedRoute>
           }
         >
-          <Route path="/clinica" element={<Navigate to="/clinica/pedidos" replace />} />
+          <Route path="/clinica" element={<Navigate to="/clinica/timelines" replace />} />
+          <Route path="/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
           <Route path="/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
           <Route path="/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
           <Route path="/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />

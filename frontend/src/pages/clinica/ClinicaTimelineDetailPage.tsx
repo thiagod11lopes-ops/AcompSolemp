@@ -34,7 +34,7 @@ export default function ClinicaTimelineDetailPage() {
     return (
       <Box>
         <Typography>Timeline não encontrada.</Typography>
-        <Button onClick={() => navigate('/clinica/timeline')} sx={{ mt: 2 }}>
+        <Button onClick={() => navigate('/clinica/timelines')} sx={{ mt: 2 }}>
           Voltar
         </Button>
       </Box>
@@ -45,7 +45,7 @@ export default function ClinicaTimelineDetailPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/clinica/timeline')}
+        onClick={() => navigate('/clinica/timelines')}
         sx={{ mb: 2 }}
       >
         Voltar às timelines

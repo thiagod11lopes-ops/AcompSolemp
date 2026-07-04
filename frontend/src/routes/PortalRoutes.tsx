@@ -73,7 +73,7 @@ export function GuestRoute({
   }
 
   if (portal === 'clinica' && clinicaUser && clinicaUser.perfil === 'CLINICA') {
-    return <Navigate to="/clinica/timeline" replace />
+    return <Navigate to="/clinica/timelines" replace />
   }
 
   if (portal === 'ordenador' && ordenadorUser && canAccessOrdenadorRoute(ordenadorUser.perfil)) {

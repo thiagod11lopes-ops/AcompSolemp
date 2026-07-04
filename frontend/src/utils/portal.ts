@@ -30,7 +30,7 @@ export function getPortalForRole(role: UserRole): Portal | null {
 
 export function getHomeRoute(user: { perfil: UserRole }): string {
   const portal = getPortalForRole(user.perfil)
-  if (portal === 'clinica') return '/clinica/pedidos'
+  if (portal === 'clinica') return '/clinica/timelines'
   if (portal === 'ordenador') return '/ordenador/timelines'
   if (portal === 'financeiro') return '/financeiro/pagamentos'
   if (portal === 'gestor') return '/gestor/dashboard'
@@ -38,7 +38,7 @@ export function getHomeRoute(user: { perfil: UserRole }): string {
 }
 
 export function getHomeRouteForPortal(portal: Portal): string {
-  if (portal === 'clinica') return '/clinica/pedidos'
+  if (portal === 'clinica') return '/clinica/timelines'
   if (portal === 'ordenador') return '/ordenador/timelines'
   if (portal === 'financeiro') return '/financeiro/pagamentos'
   return '/gestor/dashboard'
