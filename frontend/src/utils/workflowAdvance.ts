@@ -59,53 +59,102 @@ function startNovaEtapa(
   }
 }
 
-function hasPagamentoPendenteNotification(data: AppData, pedidoId: string): boolean {
+function hasEtapaPendenteNotification(
+  data: AppData,
+  pedidoId: string,
+  etapaChave: string,
+  perfilDestino: string,
+): boolean {
   return data.notificacoes.some(
-    (n) => n.pedidoId === pedidoId && n.tipo === 'PAGAMENTO_PENDENTE',
+    (n) =>
+      n.pedidoId === pedidoId &&
+      !n.lida &&
+      n.tipo === 'ETAPA_PENDENTE' &&
+      n.etapaChave === etapaChave &&
+      n.perfilDestino === perfilDestino,
   )
 }
 
-/** Garante notificação ao financeiro quando o processo aguarda pagamento */
-export function pushPagamentoPendenteNotification(data: AppData, pedidoId: string): void {
-  if (hasPagamentoPendenteNotification(data, pedidoId)) return
+function markEtapaNotificationsRead(
+  data: AppData,
+  pedidoId: string,
+  etapaChave: string,
+): void {
+  data.notificacoes.forEach((n) => {
+    if (
+      n.pedidoId === pedidoId &&
+      n.tipo === 'ETAPA_PENDENTE' &&
+      n.etapaChave === etapaChave &&
+      !n.lida
+    ) {
+      n.lida = true
+    }
+  })
+}
 
+/**
+ * Notifica setores cadastrados quando há etapa ativa aguardando providência.
+ */
+export function notifySetoresEtapasAtivas(data: AppData, pedidoId: string): void {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido || pedido.concluido) return
 
   const ativas = pedido.etapasAtivasIds?.length
     ? pedido.etapasAtivasIds
     : [pedido.etapaAtualId]
-  const etapa = data.workflowEtapas.find(
-    (e) => ativas.includes(e.id) && e.chave === 'DIV_MAT_FINANCAS',
-  )
-  if (!etapa) return
 
-  const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+  ativas.forEach((etapaId, index) => {
+    const etapa = data.workflowEtapas.find((e) => e.id === etapaId)
+    if (!etapa) return
+    if (
+      etapa.perfilResponsavel === 'CLINICA' ||
+      etapa.perfilResponsavel === 'GESTOR' ||
+      etapa.perfilResponsavel === 'ADMINISTRADOR' ||
+      etapa.perfilResponsavel === 'CONSULTA'
+    ) {
+      return
+    }
 
-  data.notificacoes.push({
-    id: `notif-${Date.now()}-${pedidoId}`,
-    tipo: 'PAGAMENTO_PENDENTE',
-    titulo: `Pagamento pendente — ${pedido.numero}`,
-    mensagem: `Processo na etapa Finanças Pagamento. SOLEMP ${solemp?.numero ?? '—'} aguardando pagamento.`,
-    pedidoId,
-    reversaoId: null,
-    lida: false,
-    data: nowIso(),
+    const temUsuarios = data.usuarios.some(
+      (u) => u.ativo && u.perfil === etapa.perfilResponsavel,
+    )
+    if (!temUsuarios) return
+
+    if (
+      hasEtapaPendenteNotification(
+        data,
+        pedidoId,
+        etapa.chave,
+        etapa.perfilResponsavel,
+      )
+    ) {
+      return
+    }
+
+    data.notificacoes.push({
+      id: `notif-etapa-${pedidoId}-${etapa.chave}-${Date.now()}-${index}`,
+      tipo: 'ETAPA_PENDENTE',
+      titulo: `${etapa.nome} — ${pedido.numero}`,
+      mensagem: `O processo ${pedido.numero} aguarda providência na etapa ${etapa.nome}. Acesse a timeline para atuar.`,
+      pedidoId,
+      reversaoId: null,
+      perfilDestino: etapa.perfilResponsavel,
+      etapaChave: etapa.chave,
+      lida: false,
+      data: nowIso(),
+    })
   })
+}
+
+/** Garante notificação ao financeiro quando o processo aguarda pagamento */
+export function pushPagamentoPendenteNotification(data: AppData, pedidoId: string): void {
+  notifySetoresEtapasAtivas(data, pedidoId)
 }
 
 export function syncPagamentoPendenteNotifications(data: AppData): AppData {
   data.pedidos.forEach((pedido) => {
     if (pedido.concluido) return
-    const ativas = pedido.etapasAtivasIds?.length
-      ? pedido.etapasAtivasIds
-      : [pedido.etapaAtualId]
-    const naFinancas = data.workflowEtapas.some(
-      (e) => ativas.includes(e.id) && e.chave === 'DIV_MAT_FINANCAS',
-    )
-    if (naFinancas) {
-      pushPagamentoPendenteNotification(data, pedido.id)
-    }
+    notifySetoresEtapasAtivas(data, pedido.id)
   })
   return data
 }
@@ -138,6 +187,8 @@ export function advancePedidoEtapa(
   if (!ativas.includes(etapaAtual.id) && etapaAtual.chave !== 'SOLICITACAO') {
     throw new Error('Esta etapa não está ativa no fluxo paralelo')
   }
+
+  markEtapaNotificationsRead(data, pedidoId, etapaAtual.chave)
 
   let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao)
   let etapasAtivasIds = ativas.filter((id) => id !== etapaAtual.id)
@@ -198,8 +249,8 @@ export function advancePedidoEtapa(
   }
   data.historico.push(evento)
 
-  if (proxima?.chave === 'DIV_MAT_FINANCAS' || etapaAtual.chave === 'DIV_MAT_FINANCAS') {
-    pushPagamentoPendenteNotification(data, pedidoId)
+  if (!atualizado.concluido) {
+    notifySetoresEtapasAtivas(data, pedidoId)
   }
 
   return data
@@ -347,9 +398,13 @@ export function revertPedidoEtapa(
     mensagem: `${clinicaNome}: ${motivo}`,
     pedidoId,
     reversaoId,
+    perfilDestino: null,
+    etapaChave: null,
     lida: false,
     data: nowIso(),
   })
+
+  notifySetoresEtapasAtivas(data, pedidoId)
 
   return data
 }
@@ -421,6 +476,8 @@ export function assinarSolempForPedido(
       mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero}.`,
       pedidoId,
       reversaoId: null,
+      perfilDestino: null,
+      etapaChave: etapa.chave,
       lida: false,
       data: nowIso(),
     })
@@ -447,6 +504,8 @@ export function assinarSolempForPedido(
       mensagem: `${usuario.nome} registrou a Assinatura 1 da SOLEMP ${solemp.numero}.`,
       pedidoId,
       reversaoId: null,
+      perfilDestino: null,
+      etapaChave: etapa.chave,
       lida: false,
       data: nowIso(),
     })
@@ -476,6 +535,8 @@ export function assinarSolempForPedido(
       mensagem: `${usuario.nome} registrou a Assinatura 2 da SOLEMP ${solemp.numero}.`,
       pedidoId,
       reversaoId: null,
+      perfilDestino: null,
+      etapaChave: etapa.chave,
       lida: false,
       data: nowIso(),
     })
@@ -518,6 +579,8 @@ export function registrarPagamentoForPedido(
     mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero}.`,
     pedidoId,
     reversaoId: null,
+    perfilDestino: null,
+    etapaChave: etapa.chave,
     lida: false,
     data: nowIso(),
   })

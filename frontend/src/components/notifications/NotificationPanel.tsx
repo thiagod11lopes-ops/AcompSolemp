@@ -16,26 +16,44 @@ import { useMarkNotificationRead } from '@/hooks/usePedidos'
 import { formatRelative } from '@/utils/format'
 import { notificationService } from '@/services/cadastroService'
 import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/contexts/AuthContext'
+import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import type { Notification } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
   if (n.tipo === 'REVERSAO_TIMELINE') return '/gestor/reversoes'
   if (n.tipo === 'RESPOSTA_GESTOR' && n.pedidoId) return `/clinica/timeline/${n.pedidoId}`
-  if (n.tipo === 'PAGAMENTO_PENDENTE' && n.pedidoId) return `/financeiro/pagamentos/${n.pedidoId}`
+  if (n.tipo === 'ETAPA_PENDENTE' || n.tipo === 'PAGAMENTO_PENDENTE') {
+    if (n.perfilDestino === 'FINANCEIRO') {
+      return n.pedidoId
+        ? `/financeiro/pagamentos/${n.pedidoId}`
+        : '/financeiro/pagamentos'
+    }
+    if (n.perfilDestino && n.perfilDestino !== 'CLINICA') {
+      return n.pedidoId
+        ? `/ordenador/timelines/${n.pedidoId}`
+        : '/ordenador/timelines'
+    }
+  }
+  if (n.pedidoId && n.perfilDestino) {
+    return getHomeRouteForPerfil(n.perfilDestino)
+  }
   return null
 }
 
 export function NotificationPanel() {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const { data: notifications = [] } = useNotifications()
+  const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
+  const user = gestorUser ?? ordenadorUser ?? financeiroUser ?? clinicaUser
+  const { data: notifications = [] } = useNotifications(user?.perfil ?? null)
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 
   const unread = notifications.filter((n) => !n.lida).length
 
   const handleMarkAll = async () => {
-    await notificationService.markAllAsRead()
+    await notificationService.markAllAsRead(user?.perfil ?? null)
     queryClient.invalidateQueries({ queryKey: ['notifications'] })
   }
 
@@ -84,7 +102,7 @@ export function NotificationPanel() {
                 <Typography variant="caption" color="text.secondary">
                   {n.mensagem}
                 </Typography>
-                <Typography variant="caption" sx={{ display: 'block' }} color="text.secondary">
+                <Typography variant="caption" color="text.disabled" sx={{ display: 'block' }}>
                   {formatRelative(n.data)}
                 </Typography>
               </Box>

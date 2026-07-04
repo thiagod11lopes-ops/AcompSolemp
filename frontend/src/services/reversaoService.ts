@@ -33,6 +33,8 @@ export const reversaoService = {
       mensagem: `O gestor ${gestorNome} registrou ciência da reversão de etapa.`,
       pedidoId: rev.pedidoId,
       reversaoId: rev.id,
+      perfilDestino: 'CLINICA',
+      etapaChave: null,
       lida: false,
       data: new Date().toISOString(),
     })
@@ -63,6 +65,8 @@ export const reversaoService = {
       mensagem: resposta,
       pedidoId: rev.pedidoId,
       reversaoId: rev.id,
+      perfilDestino: 'CLINICA',
+      etapaChave: null,
       lida: false,
       data: new Date().toISOString(),
     })

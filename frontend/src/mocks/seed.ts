@@ -186,6 +186,8 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   data.notificacoes = (data.notificacoes ?? []).map((n) => ({
     ...n,
     reversaoId: n.reversaoId ?? null,
+    perfilDestino: n.perfilDestino ?? null,
+    etapaChave: n.etapaChave ?? null,
   }))
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)

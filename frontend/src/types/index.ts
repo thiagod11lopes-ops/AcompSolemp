@@ -24,6 +24,7 @@ export type NotificationType =
   | 'PAGAMENTO_REALIZADO'
   | 'REVERSAO_TIMELINE'
   | 'RESPOSTA_GESTOR'
+  | 'ETAPA_PENDENTE'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 
@@ -204,6 +205,9 @@ export interface Notification {
   mensagem: string
   pedidoId: string | null
   reversaoId: string | null
+  /** Perfil que deve receber a notificação (null = geral/gestor/clínica) */
+  perfilDestino: UserRole | null
+  etapaChave: string | null
   lida: boolean
   data: string
 }

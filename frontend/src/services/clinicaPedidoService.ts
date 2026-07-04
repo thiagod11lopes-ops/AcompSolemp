@@ -9,6 +9,7 @@ import {
 import { CLINICA_ETAPA_ACOES } from '@/utils/portal'
 import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
   paciente: PacientePedido
@@ -192,6 +193,7 @@ export const clinicaPedidoService = {
       observacao: `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
     })
 
+    notifySetoresEtapasAtivas(data, pedido.id)
     saveAppData(data)
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao criar pedido')
@@ -256,6 +258,8 @@ export const clinicaPedidoService = {
         mensagem: `SOLEMP ${input.solempNumero} confeccionada.`,
         pedidoId: input.pedidoId,
         reversaoId: null,
+        perfilDestino: null,
+        etapaChave: etapa.chave,
         lida: false,
         data: new Date().toISOString(),
       })

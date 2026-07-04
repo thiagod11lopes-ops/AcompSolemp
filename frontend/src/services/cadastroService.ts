@@ -145,10 +145,20 @@ export const historicoService = {
 }
 
 export const notificationService = {
-  async list(): Promise<Notification[]> {
+  async list(perfil?: Notification['perfilDestino']): Promise<Notification[]> {
     await delay(null, 300)
-    return loadAppData().notificacoes.sort(
+    const all = loadAppData().notificacoes.sort(
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
+    )
+
+    if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
+      return all
+    }
+
+    return all.filter(
+      (n) =>
+        n.perfilDestino === perfil ||
+        (n.perfilDestino == null && perfil === 'CLINICA' && n.tipo === 'RESPOSTA_GESTOR'),
     )
   },
 
@@ -160,11 +170,20 @@ export const notificationService = {
     saveAppData(data)
   },
 
-  async markAllAsRead(): Promise<void> {
+  async markAllAsRead(perfil?: Notification['perfilDestino']): Promise<void> {
     await delay(null, 200)
     const data = loadAppData()
     data.notificacoes.forEach((n) => {
-      n.lida = true
+      if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
+        n.lida = true
+        return
+      }
+      if (
+        n.perfilDestino === perfil ||
+        (n.perfilDestino == null && perfil === 'CLINICA' && n.tipo === 'RESPOSTA_GESTOR')
+      ) {
+        n.lida = true
+      }
     })
     saveAppData(data)
   },

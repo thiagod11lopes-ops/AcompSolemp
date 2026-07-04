@@ -38,10 +38,10 @@ export function useHistorico(pedidoId?: string) {
   })
 }
 
-export function useNotifications() {
+export function useNotifications(perfil?: Parameters<typeof notificationService.list>[0]) {
   return useQuery({
-    queryKey: ['notifications'],
-    queryFn: notificationService.list,
+    queryKey: ['notifications', perfil ?? 'all'],
+    queryFn: () => notificationService.list(perfil),
     refetchInterval: 30000,
   })
 }
