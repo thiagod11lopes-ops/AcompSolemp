@@ -86,7 +86,7 @@ export function pushPagamentoPendenteNotification(data: AppData, pedidoId: strin
     id: `notif-${Date.now()}-${pedidoId}`,
     tipo: 'PAGAMENTO_PENDENTE',
     titulo: `Pagamento pendente — ${pedido.numero}`,
-    mensagem: `Processo na etapa Finanças (Div. de Material). SOLEMP ${solemp?.numero ?? '—'} aguardando pagamento.`,
+    mensagem: `Processo na etapa Finanças Pagamento. SOLEMP ${solemp?.numero ?? '—'} aguardando pagamento.`,
     pedidoId,
     reversaoId: null,
     lida: false,
@@ -497,7 +497,7 @@ export function registrarPagamentoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Finanças')
+    throw new Error('Este processo não está na etapa Finanças Pagamento')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
@@ -507,7 +507,7 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Pagamento registrado em Finanças — SOLEMP ${solemp.numero}. Processo encerrado.`,
+    `Pagamento registrado em Finanças Pagamento — SOLEMP ${solemp.numero}. Processo encerrado.`,
     etapa.id,
   )
 
@@ -530,7 +530,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças Pagamento.`,
   })
 
   return data

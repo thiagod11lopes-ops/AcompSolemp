@@ -6,27 +6,34 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Trilha esquerda — Auditoria / Contabilidade
+  // Div. de Material — trilha Auditoria/Contabilidade
   DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'auditoria' },
   DIV_MAT_CONTABILIDADE_IMH: {
     grupo: 'Div. de Material',
     divisao: 'Material',
     trilha: 'auditoria',
   },
-  // Trilha direita — Solemp / Material
+  // Div. de Material — Confecção de Solemp
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'solemp',
+    trilha: 'confeccao',
   },
-  DIV_MAT_ASSINATURA_1: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
-  DIV_MAT_ASSINATURA_2: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
-  DIV_MAT_SDA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
-  DIV_MAT_FINANCAS: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'solemp' },
+  // Timeline Finanças (separada do Material)
+  DIV_MAT_ASSINATURA_1: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
+  DIV_MAT_ASSINATURA_2: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
+  DIV_MAT_SDA: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
+  // Card próprio
+  DIV_MAT_FINANCAS: {
+    grupo: 'Finanças Pagamento',
+    divisao: 'Finanças Pagamento',
+    trilha: 'pagamento',
+  },
 }
 
-/** Fluxos paralelos dentro da Div. de Material */
+/** Fluxos paralelos / sequenciais */
 export const DIVISAO_1_CHAVES = ['DIV_MAT_AUDITORIA', 'DIV_MAT_CONTABILIDADE_IMH'] as const
+/** Confecção (Material) → Assinaturas/SDA (Finanças) → Pagamento */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_ASSINATURA_1',
@@ -103,9 +110,9 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
     ultimaDivisao.etapas.push({ etapa, index })
   })
 
-  // Inverte as colunas: Material (Solemp) à esquerda, Auditoria/Contabilidade à direita
+  // Em Div. de Material: Confecção à esquerda, Auditoria/Contabilidade à direita
   blocos.forEach((bloco) => {
-    if (bloco.tipo === 'grupo') {
+    if (bloco.tipo === 'grupo' && bloco.nome === 'Div. de Material') {
       bloco.divisoes.reverse()
     }
   })

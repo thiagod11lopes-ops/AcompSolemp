@@ -63,7 +63,7 @@ export default function ClinicaTimelineDetailPage() {
 
       <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
         Após o envio para a Div. de Material, a clínica possui apenas visualização. O processo
-        segue em fluxo duplo: Material (Confecção de Solemp) e Material (Auditoria) ao mesmo tempo.
+        segue em fluxo duplo na Div. de Material; depois Finanças (Assinaturas e SDA) e Finanças Pagamento.
       </Alert>
 
       <Grid container spacing={3}>

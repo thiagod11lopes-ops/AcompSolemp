@@ -198,7 +198,7 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Confecção de Solemp e Auditoria ao mesmo tempo.'
+          ? 'Após o envio, a Div. de Material segue em fluxo duplo. Em seguida vêm as timelines Finanças e Finanças Pagamento.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 
@@ -244,12 +244,17 @@ export function ClinicaInteractiveTimeline({
             >
               {bloco.nome}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, mb: 2 }}>
-              Fluxo duplo em paralelo — as duas divisões avançam ao mesmo tempo após o envio da clínica.
-            </Typography>
+            {bloco.nome === 'Div. de Material' && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, mb: 2 }}>
+                Fluxo duplo em paralelo — Confecção de Solemp e Auditoria ao mesmo tempo.
+              </Typography>
+            )}
             <Grid container spacing={2}>
               {bloco.divisoes.map((divisao) => (
-                <Grid key={`${bloco.nome}-${divisao.trilha}`} size={{ xs: 12, md: 6 }}>
+                <Grid
+                  key={`${bloco.nome}-${divisao.trilha}`}
+                  size={{ xs: 12, md: bloco.divisoes.length > 1 ? 6 : 12 }}
+                >
                   <Box
                     sx={{
                       p: 1.5,

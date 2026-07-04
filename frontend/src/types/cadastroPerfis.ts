@@ -80,11 +80,11 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Finanças',
+    label: 'Finanças Pagamento',
     perfil: 'FINANCEIRO',
-    graduacao: 'Finanças',
+    graduacao: 'Finanças Pagamento',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao: 'Responsável pela etapa Finanças na Div. de Material.',
+    descricao: 'Responsável pela etapa Finanças Pagamento.',
   },
 ]

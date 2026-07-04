@@ -53,7 +53,7 @@ export default function FinanceiroPagamentosPage() {
                       {pedido.clinica.nome} · {pedido.material.descricao}
                     </Typography>
                     <Chip
-                      label="Finanças — pagamento pendente"
+                      label="Finanças Pagamento — pendente"
                       color="info"
                       size="small"
                       sx={{ mb: 1 }}

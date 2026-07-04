@@ -63,7 +63,7 @@ export const FINANCEIRO_ETAPA_ACOES: Record<
 > = {
   DIV_MAT_FINANCAS: {
     label: 'Registrar pagamento',
-    descricao: 'Confirme o pagamento na etapa Finanças da Div. de Material.',
+    descricao: 'Confirme o pagamento na etapa Finanças Pagamento.',
   },
 }
 
@@ -90,10 +90,10 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
-  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na Div. de Material.',
-  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na Div. de Material.',
-  DIV_MAT_SDA: 'Aguardando SDA na Div. de Material.',
-  DIV_MAT_FINANCAS: 'Aguardando Finanças na Div. de Material.',
+  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na timeline Finanças.',
+  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na timeline Finanças.',
+  DIV_MAT_SDA: 'Aguardando SDA na timeline Finanças.',
+  DIV_MAT_FINANCAS: 'Aguardando Finanças Pagamento.',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

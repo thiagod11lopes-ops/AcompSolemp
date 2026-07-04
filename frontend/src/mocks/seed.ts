@@ -7,7 +7,7 @@ import type {
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 
 const STORAGE_KEY = 'acomp_solemp_data'
-const SEED_VERSION = 'v11'
+const SEED_VERSION = 'v12'
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -89,7 +89,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Finanças',
+    nome: 'Finanças Pagamento',
     ordem: 8,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
@@ -230,7 +230,7 @@ export function getRoleLabel(role: UserRole): string {
     GESTOR: 'Gestor',
     CLINICA: 'Clínica',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Finanças',
+    FINANCEIRO: 'Finanças Pagamento',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',

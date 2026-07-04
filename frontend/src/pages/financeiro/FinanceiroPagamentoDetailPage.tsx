@@ -130,7 +130,7 @@ export default function FinanceiroPagamentoDetailPage() {
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
               <Chip
-                label="Finanças — pagamento pendente"
+                label="Finanças Pagamento — pendente"
                 color="info"
                 size="small"
                 sx={{ width: 'fit-content', mt: 1 }}
@@ -143,7 +143,7 @@ export default function FinanceiroPagamentoDetailPage() {
               Confirmar pagamento
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Selecione a SOLEMP e confirme o pagamento na etapa Finanças (Div. de Material)
+              Selecione a SOLEMP e confirme o pagamento na etapa Finanças Pagamento
               para encerrar o processo.
             </Typography>
 
@@ -181,7 +181,7 @@ export default function FinanceiroPagamentoDetailPage() {
             </Button>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              A etapa <strong>Finanças</strong> será concluída e o processo será encerrado.
+              A etapa <strong>Finanças Pagamento</strong> será concluída e o processo será encerrado.
             </Typography>
           </Paper>
         </Grid>

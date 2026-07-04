@@ -151,7 +151,10 @@ export const pedidoService = {
       .filter((p) => {
         const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
         return p.etapasHistorico.some(
-          (h) => ids.includes(h.etapaId) && !h.dataConclusao && h.etapaNome === 'Finanças',
+          (h) =>
+            ids.includes(h.etapaId) &&
+            !h.dataConclusao &&
+            h.etapaNome === 'Finanças Pagamento',
         )
       })
       .reduce((acc, p) => acc + p.valor, 0)
