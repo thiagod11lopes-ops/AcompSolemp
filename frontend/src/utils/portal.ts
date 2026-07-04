@@ -93,8 +93,8 @@ export const ORDENADOR_ETAPA_ACOES: Record<
     descricao: 'Informe número, valor e nome do assinante e envie para SDA.',
   },
   DIV_MAT_SDA: {
-    label: 'Concluir SDA',
-    descricao: 'Clique para concluir a etapa SDA.',
+    label: 'Assinatura Realizada',
+    descricao: 'Confirme a assinatura da SOLEMP e envie para Finanças Pagamento.',
   },
 }
 

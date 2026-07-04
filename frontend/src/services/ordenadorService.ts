@@ -110,6 +110,10 @@ export const ordenadorService = {
         observacao = notas
           ? `Contabilidade/IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Anotações: ${notas}`
           : `Contabilidade/IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Etapa finalizada.`
+      } else if (chave === 'DIV_MAT_SDA') {
+        const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+        const numeroSolemp = solemp?.numero ?? '—'
+        observacao = `Assinatura realizada confirmada por ${usuario.nome} para a SOLEMP ${numeroSolemp}. Enviado para Finanças Pagamento.`
       } else {
         observacao = notas
           ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`

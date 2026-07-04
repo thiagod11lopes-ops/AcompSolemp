@@ -9,6 +9,7 @@ import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
 import { AssinaturaSolempModal } from '@/components/ordenador/Assinatura1SolempModal'
+import { SdaConfirmacaoModal } from '@/components/ordenador/SdaConfirmacaoModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -29,6 +30,7 @@ export default function OrdenadorTimelineDetailPage() {
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const [assinatura1Open, setAssinatura1Open] = useState(false)
   const [assinatura2Open, setAssinatura2Open] = useState(false)
+  const [sdaOpen, setSdaOpen] = useState(false)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
@@ -37,6 +39,7 @@ export default function OrdenadorTimelineDetailPage() {
   const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isAssinatura1 = chavePerfil === 'DIV_MAT_ASSINATURA_1'
   const isAssinatura2 = chavePerfil === 'DIV_MAT_ASSINATURA_2'
+  const isSda = chavePerfil === 'DIV_MAT_SDA'
 
   const solempDefaults = useMemo(() => {
     if (!pedido) {
@@ -68,6 +71,7 @@ export default function OrdenadorTimelineDetailPage() {
     setConfeccaoOpen(false)
     setAssinatura1Open(false)
     setAssinatura2Open(false)
+    setSdaOpen(false)
     navigate('/ordenador/timelines')
   }
 
@@ -90,6 +94,10 @@ export default function OrdenadorTimelineDetailPage() {
     }
     if (isAssinatura2) {
       setAssinatura2Open(true)
+      return
+    }
+    if (isSda) {
+      setSdaOpen(true)
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
@@ -136,12 +144,17 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
+  const handleConfirmarSda = () => {
+    assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+  }
+
   const modalAberto =
     auditoriaOpen ||
     contabilidadeOpen ||
     confeccaoOpen ||
     assinatura1Open ||
-    assinatura2Open
+    assinatura2Open ||
+    sdaOpen
 
   return (
     <>
@@ -276,6 +289,15 @@ export default function OrdenadorTimelineDetailPage() {
         defaults={solempDefaults}
         valorSugerido={pedido.solemp?.valor ?? pedido.valor}
         assinanteSugerido={user?.nome ?? ''}
+      />
+
+      <SdaConfirmacaoModal
+        open={sdaOpen}
+        onClose={() => setSdaOpen(false)}
+        onConfirmar={handleConfirmarSda}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+        solempNumero={pedido.solemp?.numero ?? 'Não informada'}
       />
     </>
   )
