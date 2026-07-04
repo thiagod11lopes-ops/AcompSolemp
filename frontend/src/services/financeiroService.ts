@@ -57,13 +57,14 @@ export const financeiroService = {
     pedidoId: string,
     solempId: string,
     usuarioId: string,
+    options?: { notaFiscalNumero: string; empresaNome: string },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.perfil === 'FINANCEIRO')
     if (!usuario) throw new Error('Usuário não autorizado')
 
-    data = registrarPagamentoForPedido(data, pedidoId, solempId, usuario)
+    data = registrarPagamentoForPedido(data, pedidoId, solempId, usuario, options)
     saveAppData(data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)!

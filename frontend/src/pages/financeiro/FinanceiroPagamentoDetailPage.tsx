@@ -1,24 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Grid,
-  Paper,
-  Typography,
-  Chip,
-  MenuItem,
-  TextField,
-  Alert,
-} from '@mui/material'
+import { Box, Button, Grid, Paper, Typography, Chip, Alert } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import PaymentsIcon from '@mui/icons-material/Payments'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { FinanceiroInteractiveTimeline } from '@/components/workflow/FinanceiroInteractiveTimeline'
+import { FinanceiroPagamentoModal } from '@/components/financeiro/FinanceiroPagamentoModal'
 import {
   useFinanceiroPedido,
-  useFinanceiroPedidos,
   useRegistrarPagamento,
 } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
@@ -28,24 +17,10 @@ export default function FinanceiroPagamentoDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { data: pedido, isLoading } = useFinanceiroPedido(id)
-  const { data: todosPendentes = [] } = useFinanceiroPedidos()
   const { data: etapas = [] } = useWorkflowEtapas()
   const registrar = useRegistrarPagamento()
-  const [solempId, setSolempId] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
   const [erro, setErro] = useState('')
-
-  useEffect(() => {
-    if (pedido?.solemp?.id) setSolempId(pedido.solemp.id)
-  }, [pedido?.solemp?.id])
-
-  const solempOptions = todosPendentes
-    .filter((p) => p.solemp)
-    .map((p) => ({
-      id: p.solemp!.id,
-      numero: p.solemp!.numero,
-      pedidoId: p.id,
-      pedidoNumero: p.numero,
-    }))
 
   if (isLoading) return <LoadingSpinner />
 
@@ -60,21 +35,39 @@ export default function FinanceiroPagamentoDetailPage() {
     )
   }
 
-  const handlePagamento = () => {
+  const abrirModal = () => {
     setErro('')
-    if (!solempId) {
-      setErro('Selecione a SOLEMP para confirmar o pagamento')
+    if (!pedido.solemp?.id) {
+      setErro('SOLEMP não encontrada para este processo')
       return
     }
-    if (pedido.solemp && solempId !== pedido.solemp.id) {
-      setErro('A SOLEMP selecionada não corresponde a este processo')
+    setModalOpen(true)
+  }
+
+  const handleRegistrar = ({
+    notaFiscalNumero,
+    empresaNome,
+  }: {
+    notaFiscalNumero: string
+    empresaNome: string
+  }) => {
+    if (!pedido.solemp?.id) {
+      setErro('SOLEMP não encontrada para este processo')
       return
     }
 
     registrar.mutate(
-      { pedidoId: pedido.id, solempId },
       {
-        onSuccess: () => navigate('/financeiro/pagamentos'),
+        pedidoId: pedido.id,
+        solempId: pedido.solemp.id,
+        notaFiscalNumero,
+        empresaNome,
+      },
+      {
+        onSuccess: () => {
+          setModalOpen(false)
+          navigate('/financeiro/pagamentos')
+        },
         onError: (e) => setErro(e instanceof Error ? e.message : 'Erro ao registrar pagamento'),
       },
     )
@@ -96,7 +89,7 @@ export default function FinanceiroPagamentoDetailPage() {
       />
 
       {erro && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErro('')}>
           {erro}
         </Alert>
       )}
@@ -106,8 +99,8 @@ export default function FinanceiroPagamentoDetailPage() {
           <FinanceiroInteractiveTimeline
             pedido={pedido}
             etapas={etapas}
-            onPagamento={handlePagamento}
-            registrando={registrar.isPending}
+            onPagamento={abrirModal}
+            registrando={registrar.isPending && !modalOpen}
           />
         </Grid>
 
@@ -138,54 +131,37 @@ export default function FinanceiroPagamentoDetailPage() {
             </Box>
           </Paper>
 
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Confirmar pagamento
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Selecione a SOLEMP e confirme o pagamento na etapa Finanças Pagamento
-              para encerrar o processo.
-            </Typography>
-
-            <TextField
-              select
-              fullWidth
-              label="SOLEMP"
-              value={solempId || pedido.solemp?.id || ''}
-              onChange={(e) => setSolempId(e.target.value)}
-              sx={{ mb: 2 }}
-            >
-              {solempOptions.map((opt) => (
-                <MenuItem key={opt.id} value={opt.id}>
-                  {opt.numero} — Pedido {opt.pedidoNumero}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            {pedido.solemp && (
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                SOLEMP deste processo: <strong>{pedido.solemp.numero}</strong>
+          {pedido.solemp && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                SOLEMP
               </Typography>
-            )}
-
-            <Button
-              fullWidth
-              variant="contained"
-              color="success"
-              size="large"
-              startIcon={<PaymentsIcon />}
-              onClick={handlePagamento}
-              disabled={registrar.isPending}
-            >
-              {registrar.isPending ? 'Registrando...' : 'Pagamento realizado'}
-            </Button>
-
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              A etapa <strong>Finanças Pagamento</strong> será concluída e o processo será encerrado.
-            </Typography>
-          </Paper>
+              <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
+                {pedido.solemp.numero}
+              </Typography>
+              {pedido.solemp.valor != null && (
+                <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>
+                  {formatCurrency(pedido.solemp.valor)}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Clique em <strong>Registrar pagamento</strong> para informar a nota fiscal e a
+                empresa e finalizar a timeline.
+              </Typography>
+            </Paper>
+          )}
         </Grid>
       </Grid>
+
+      <FinanceiroPagamentoModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onRegistrar={handleRegistrar}
+        loading={registrar.isPending}
+        pedidoNumero={pedido.numero}
+        solempNumero={pedido.solemp?.numero ?? 'Não informada'}
+        empresaSugerida={pedido.empresa.nomeFantasia}
+      />
     </>
   )
 }

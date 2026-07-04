@@ -133,6 +133,8 @@ export interface NotaFiscal {
   valor: number
   arquivo: string | null
   dataEmissao: string
+  /** Nome da empresa informado no pagamento */
+  empresaNome?: string
 }
 
 export interface PedidoEtapaHistorico {

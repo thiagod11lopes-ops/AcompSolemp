@@ -22,8 +22,21 @@ export function useRegistrarPagamento() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ pedidoId, solempId }: { pedidoId: string; solempId: string }) =>
-      financeiroService.registrarPagamento(pedidoId, solempId, user!.id),
+    mutationFn: ({
+      pedidoId,
+      solempId,
+      notaFiscalNumero,
+      empresaNome,
+    }: {
+      pedidoId: string
+      solempId: string
+      notaFiscalNumero: string
+      empresaNome: string
+    }) =>
+      financeiroService.registrarPagamento(pedidoId, solempId, user!.id, {
+        notaFiscalNumero,
+        empresaNome,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido'] })

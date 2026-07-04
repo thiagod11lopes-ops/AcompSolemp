@@ -288,6 +288,7 @@ export function createNotaFiscalForPedido(
   data: AppData,
   pedidoId: string,
   numero: string,
+  options?: { empresaNome?: string; valor?: number },
 ): AppData {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
@@ -298,9 +299,10 @@ export function createNotaFiscalForPedido(
     pedidoId,
     numero,
     serie: '1',
-    valor: pedido.valor,
+    valor: options?.valor ?? pedido.valor,
     arquivo: `nf-${pedido.numero}.pdf`,
     dataEmissao: nowIso(),
+    empresaNome: options?.empresaNome?.trim() || undefined,
   }
 
   if (existente >= 0) data.notasFiscais[existente] = nf
@@ -599,6 +601,7 @@ export function registrarPagamentoForPedido(
   pedidoId: string,
   solempId: string,
   usuario: User,
+  options?: { notaFiscalNumero?: string; empresaNome?: string },
 ): AppData {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
@@ -611,11 +614,21 @@ export function registrarPagamentoForPedido(
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
   if (!solemp) throw new Error('SOLEMP não encontrada ou não corresponde a este pedido')
 
+  const notaFiscalNumero = options?.notaFiscalNumero?.trim()
+  const empresaNome = options?.empresaNome?.trim()
+  if (!notaFiscalNumero) throw new Error('Informe o número da nota fiscal')
+  if (!empresaNome || empresaNome.length < 2) throw new Error('Informe o nome da empresa')
+
+  data = createNotaFiscalForPedido(data, pedidoId, notaFiscalNumero, {
+    empresaNome,
+    valor: solemp.valor ?? pedido.valor,
+  })
+
   data = advancePedidoEtapa(
     data,
     pedidoId,
     usuario,
-    `Pagamento registrado em Finanças Pagamento — SOLEMP ${solemp.numero}. Processo encerrado.`,
+    `Pagamento registrado em Finanças Pagamento — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Processo encerrado.`,
     etapa.id,
   )
 
@@ -623,7 +636,7 @@ export function registrarPagamentoForPedido(
     id: `notif-${Date.now()}`,
     tipo: 'PAGAMENTO_REALIZADO',
     titulo: `Pagamento realizado — ${pedido.numero}`,
-    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero}.`,
+    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}).`,
     pedidoId,
     reversaoId: null,
     perfilDestino: null,
@@ -640,7 +653,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças Pagamento.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças Pagamento. NF ${notaFiscalNumero} — ${empresaNome}.`,
   })
 
   return data
