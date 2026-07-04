@@ -142,8 +142,8 @@ export const clinicaPedidoService = {
       dadosClinica: input.dadosClinica,
       dataSolicitacao: agora,
       dataEntrega: null,
-      etapaAtualId: auditoria.id,
-      etapasAtivasIds: [auditoria.id, confeccao.id],
+      etapaAtualId: confeccao.id,
+      etapasAtivasIds: [confeccao.id, auditoria.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [

@@ -103,5 +103,12 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
     ultimaDivisao.etapas.push({ etapa, index })
   })
 
+  // Inverte as colunas: Material (Solemp) à esquerda, Auditoria/Contabilidade à direita
+  blocos.forEach((bloco) => {
+    if (bloco.tipo === 'grupo') {
+      bloco.divisoes.reverse()
+    }
+  })
+
   return blocos
 }

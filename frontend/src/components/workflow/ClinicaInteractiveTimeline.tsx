@@ -198,7 +198,7 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Auditoria e Confecção de Solemp ao mesmo tempo.'
+          ? 'Após o envio, a Div. de Material segue em fluxo duplo: Confecção de Solemp e Auditoria ao mesmo tempo.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 
