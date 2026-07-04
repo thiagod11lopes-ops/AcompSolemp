@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AuthUser } from '@/types'
+import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
 
 export const api = axios.create({
   baseURL: '/api',
@@ -7,7 +8,8 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const stored = localStorage.getItem('acomp_solemp_auth')
+  const stored =
+    storageGet(STORAGE_KEYS.AUTH_GESTOR) ?? storageGet(STORAGE_KEYS.AUTH_LEGACY)
   if (stored) {
     const user = JSON.parse(stored) as AuthUser
     config.headers.Authorization = `Bearer ${user.token}`

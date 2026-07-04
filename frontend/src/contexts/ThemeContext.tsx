@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { ThemeProvider as MuiThemeProvider, CssBaseline } from '@mui/material'
 import { darkTheme, lightTheme } from '@/theme/theme'
+import { STORAGE_KEYS, storageGet, storageSet } from '@/storage/indexedDb'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -18,18 +19,18 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = 'acomp_solemp_theme'
+function readInitialMode(): ThemeMode {
+  const stored = storageGet(STORAGE_KEYS.THEME)
+  return stored === 'dark' ? 'dark' : 'light'
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored === 'dark' ? 'dark' : 'light'
-  })
+  const [mode, setMode] = useState<ThemeMode>(readInitialMode)
 
   const toggleTheme = useCallback(() => {
     setMode((prev) => {
       const next = prev === 'light' ? 'dark' : 'light'
-      localStorage.setItem(STORAGE_KEY, next)
+      storageSet(STORAGE_KEYS.THEME, next)
       return next
     })
   }, [])

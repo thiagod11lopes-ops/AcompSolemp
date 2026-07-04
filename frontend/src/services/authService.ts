@@ -7,20 +7,16 @@ import {
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
 } from '@/utils/permissions'
+import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 
-const LEGACY_AUTH_KEY = 'acomp_solemp_auth'
-const GESTOR_AUTH_KEY = 'acomp_solemp_auth_gestor'
-const CLINICA_AUTH_KEY = 'acomp_solemp_auth_clinica'
-const ORDENADOR_AUTH_KEY = 'acomp_solemp_auth_ordenador'
-const FINANCEIRO_AUTH_KEY = 'acomp_solemp_auth_financeiro'
-
-/** Sessões voláteis — expiram ao atualizar a página */
-let clinicaSession: AuthUser | null = null
-let ordenadorSession: AuthUser | null = null
-let financeiroSession: AuthUser | null = null
+const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
+const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
+const CLINICA_AUTH_KEY = STORAGE_KEYS.AUTH_CLINICA
+const ORDENADOR_AUTH_KEY = STORAGE_KEYS.AUTH_ORDENADOR
+const FINANCEIRO_AUTH_KEY = STORAGE_KEYS.AUTH_FINANCEIRO
 
 function readStoredUser(key: string): AuthUser | null {
-  const stored = localStorage.getItem(key)
+  const stored = storageGet(key)
   if (!stored) return null
   try {
     return JSON.parse(stored) as AuthUser
@@ -29,30 +25,26 @@ function readStoredUser(key: string): AuthUser | null {
   }
 }
 
-function purgeVolatilePortalStorage(): void {
-  localStorage.removeItem(CLINICA_AUTH_KEY)
-  localStorage.removeItem(ORDENADOR_AUTH_KEY)
-  localStorage.removeItem(FINANCEIRO_AUTH_KEY)
-  localStorage.removeItem(LEGACY_AUTH_KEY)
+function writeStoredUser(key: string, authUser: AuthUser | null): void {
+  if (authUser) storageSet(key, JSON.stringify(authUser))
+  else storageRemove(key)
 }
 
 function migrateLegacyAuth(): void {
-  const legacy = localStorage.getItem(LEGACY_AUTH_KEY)
+  const legacy = storageGet(LEGACY_AUTH_KEY)
   if (!legacy) return
 
   try {
     const user = JSON.parse(legacy) as AuthUser
-    if (canAccessGestorRoute(user.perfil) && !localStorage.getItem(GESTOR_AUTH_KEY)) {
-      localStorage.setItem(GESTOR_AUTH_KEY, legacy)
+    if (canAccessGestorRoute(user.perfil) && !storageGet(GESTOR_AUTH_KEY)) {
+      storageSet(GESTOR_AUTH_KEY, legacy)
     }
   } catch {
     // ignora JSON inválido
   }
 
-  localStorage.removeItem(LEGACY_AUTH_KEY)
+  storageRemove(LEGACY_AUTH_KEY)
 }
-
-purgeVolatilePortalStorage()
 
 function resolveCredential(login: string, senha: string): CredencialUsuario | null {
   const data = loadAppData()
@@ -70,20 +62,23 @@ function validatePortalAccess(portal: Portal, perfil: AuthUser['perfil']): boole
   return false
 }
 
+function sessionKey(portal: Portal): string {
+  if (portal === 'gestor') return GESTOR_AUTH_KEY
+  if (portal === 'clinica') return CLINICA_AUTH_KEY
+  if (portal === 'ordenador') return ORDENADOR_AUTH_KEY
+  return FINANCEIRO_AUTH_KEY
+}
+
 function setSession(portal: Portal, authUser: AuthUser | null): void {
-  if (portal === 'gestor') {
-    if (authUser) localStorage.setItem(GESTOR_AUTH_KEY, JSON.stringify(authUser))
-    else localStorage.removeItem(GESTOR_AUTH_KEY)
-  } else if (portal === 'clinica') {
-    clinicaSession = authUser
-  } else if (portal === 'ordenador') {
-    ordenadorSession = authUser
-  } else {
-    financeiroSession = authUser
-  }
+  writeStoredUser(sessionKey(portal), authUser)
 }
 
 export const authService = {
+  /** Deve ser chamado após initStorage() */
+  bootstrap(): void {
+    migrateLegacyAuth()
+  },
+
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
     await delay(null, 600)
 
@@ -117,36 +112,30 @@ export const authService = {
     setSession(portal, null)
   },
 
-  clearClinicaOrdenadorSessions(): void {
-    clinicaSession = null
-    ordenadorSession = null
-    financeiroSession = null
-    purgeVolatilePortalStorage()
-  },
-
-  getCurrentUser(portal: Portal): AuthUser | null {
-    migrateLegacyAuth()
-    if (portal === 'gestor') return readStoredUser(GESTOR_AUTH_KEY)
-    if (portal === 'clinica') return clinicaSession
-    if (portal === 'ordenador') return ordenadorSession
-    if (portal === 'financeiro') return financeiroSession
-    return null
-  },
-
   getGestorUser(): AuthUser | null {
-    return this.getCurrentUser('gestor')
+    return readStoredUser(GESTOR_AUTH_KEY)
   },
 
   getClinicaUser(): AuthUser | null {
-    return this.getCurrentUser('clinica')
+    return readStoredUser(CLINICA_AUTH_KEY)
   },
 
   getOrdenadorUser(): AuthUser | null {
-    return this.getCurrentUser('ordenador')
+    return readStoredUser(ORDENADOR_AUTH_KEY)
   },
 
   getFinanceiroUser(): AuthUser | null {
-    return this.getCurrentUser('financeiro')
+    return readStoredUser(FINANCEIRO_AUTH_KEY)
+  },
+
+  getCurrentUser(portal: Portal): AuthUser | null {
+    return readStoredUser(sessionKey(portal))
+  },
+
+  clearClinicaOrdenadorSessions(): void {
+    storageRemove(CLINICA_AUTH_KEY)
+    storageRemove(ORDENADOR_AUTH_KEY)
+    storageRemove(FINANCEIRO_AUTH_KEY)
   },
 
   async loginClinicaByClinicaId(clinicaId: string, senha: string): Promise<AuthUser> {

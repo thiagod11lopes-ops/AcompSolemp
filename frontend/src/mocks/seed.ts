@@ -5,9 +5,17 @@ import type {
   WorkflowEtapa,
 } from '@/types'
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
+import {
+  STORAGE_KEYS,
+  storageGet,
+  storageRemove,
+  storageSet,
+} from '@/storage/indexedDb'
 
-const STORAGE_KEY = 'acomp_solemp_data'
+const STORAGE_KEY = STORAGE_KEYS.APP_DATA
 const SEED_VERSION = 'v12'
+
+let appDataCache: AppData | null = null
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -157,40 +165,50 @@ export function generateSeedData(): AppData {
   }
 }
 
-export function loadAppData(): AppData {
-  const stored = localStorage.getItem(STORAGE_KEY)
+function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
+  const { data, changed } = normalizeClinicas(raw)
+  if (!data.reversoes) data.reversoes = []
+  if (!data.credenciais) data.credenciais = {}
+  data.pedidos = (data.pedidos ?? []).map((p) => ({
+    ...p,
+    paciente: p.paciente ?? null,
+    etapasAtivasIds: p.etapasAtivasIds ?? (p.etapaAtualId ? [p.etapaAtualId] : []),
+    dadosClinica: p.dadosClinica
+      ? {
+          ...p.dadosClinica,
+          folhaSala: normalizeTextoCampo(p.dadosClinica.folhaSala),
+          descricaoCirurgica: normalizeTextoCampo(p.dadosClinica.descricaoCirurgica),
+          etiquetas: normalizeTextoCampo(p.dadosClinica.etiquetas),
+          fotos: Array.isArray(p.dadosClinica.fotos) ? p.dadosClinica.fotos : [],
+        }
+      : null,
+  }))
+  data.notificacoes = (data.notificacoes ?? []).map((n) => ({
+    ...n,
+    reversaoId: n.reversaoId ?? null,
+  }))
+  const beforeNotifCount = data.notificacoes.length
+  syncPagamentoPendenteNotifications(data)
+  const notifChanged = data.notificacoes.length > beforeNotifCount
+  return { data, changed: changed || notifChanged }
+}
+
+function cloneData(data: AppData): AppData {
+  return JSON.parse(JSON.stringify(data)) as AppData
+}
+
+/** Carrega dados do IndexedDB (cache em memória) — chamar após initStorage() */
+export function initAppData(): AppData {
+  const stored = storageGet(STORAGE_KEY)
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as AppData & { _version?: string }
       if (parsed._version === SEED_VERSION) {
         const { _version: _, ...raw } = parsed
-        const { data, changed } = normalizeClinicas(raw as AppData)
-        if (!data.reversoes) data.reversoes = []
-        if (!data.credenciais) data.credenciais = {}
-        data.pedidos = (data.pedidos ?? []).map((p) => ({
-          ...p,
-          paciente: p.paciente ?? null,
-          etapasAtivasIds:
-            p.etapasAtivasIds ?? (p.etapaAtualId ? [p.etapaAtualId] : []),
-          dadosClinica: p.dadosClinica
-            ? {
-                ...p.dadosClinica,
-                folhaSala: normalizeTextoCampo(p.dadosClinica.folhaSala),
-                descricaoCirurgica: normalizeTextoCampo(p.dadosClinica.descricaoCirurgica),
-                etiquetas: normalizeTextoCampo(p.dadosClinica.etiquetas),
-                fotos: Array.isArray(p.dadosClinica.fotos) ? p.dadosClinica.fotos : [],
-              }
-            : null,
-        }))
-        data.notificacoes = (data.notificacoes ?? []).map((n) => ({
-          ...n,
-          reversaoId: n.reversaoId ?? null,
-        }))
-        const beforeNotifCount = data.notificacoes.length
-        syncPagamentoPendenteNotifications(data)
-        const notifChanged = data.notificacoes.length > beforeNotifCount
-        if (changed || notifChanged) saveAppData(data)
-        return data
+        const { data, changed } = normalizeAppData(raw as AppData)
+        appDataCache = data
+        if (changed) persistAppData(data)
+        return cloneData(data)
       }
     } catch {
       // regenera dados vazios
@@ -198,26 +216,38 @@ export function loadAppData(): AppData {
   }
 
   const data = generateSeedData()
-  saveAppData(data)
-  return data
+  appDataCache = data
+  persistAppData(data)
+  return cloneData(data)
+}
+
+export function loadAppData(): AppData {
+  if (!appDataCache) {
+    return initAppData()
+  }
+  return cloneData(appDataCache)
+}
+
+function persistAppData(data: AppData): void {
+  storageSet(STORAGE_KEY, JSON.stringify({ ...data, _version: SEED_VERSION }))
 }
 
 export function saveAppData(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, _version: SEED_VERSION }))
+  appDataCache = cloneData(data)
+  persistAppData(appDataCache)
 }
 
 export function resetAppData(): AppData {
-  localStorage.removeItem(STORAGE_KEY)
-  return loadAppData()
+  storageRemove(STORAGE_KEY)
+  appDataCache = null
+  return initAppData()
 }
 
-/** Remove todos os dados persistidos e sessões dos portais clínica/ordenador */
+/** Remove todos os dados persistidos e sessões */
 export function clearAllSystemData(): AppData {
-  localStorage.removeItem(STORAGE_KEY)
-  localStorage.removeItem('acomp_solemp_auth')
-  localStorage.removeItem('acomp_solemp_auth_clinica')
-  localStorage.removeItem('acomp_solemp_auth_ordenador')
-  return loadAppData()
+  Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
+  appDataCache = null
+  return initAppData()
 }
 
 export function delay<T>(value: T, ms = 400): Promise<T> {
