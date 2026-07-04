@@ -15,6 +15,7 @@ import {
   getProximaChaveNaDivisao,
 } from '@/utils/timelineFlow'
 import { validateSolempNumero } from '@/utils/solemp'
+import { validateNomeProprio } from '@/utils/format'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -507,9 +508,8 @@ export function assinarSolempForPedido(
     if (valor == null || Number.isNaN(valor) || valor <= 0) {
       throw new Error('Informe o valor da SOLEMP')
     }
-    if (!assinanteNome || assinanteNome.length < 2) {
-      throw new Error('Informe o nome de quem assinou')
-    }
+    const nomeErro = validateNomeProprio(assinanteNome ?? '')
+    if (nomeErro) throw new Error(nomeErro)
 
     solemp.numero = numero
     solemp.valor = valor

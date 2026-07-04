@@ -24,7 +24,7 @@ import {
   validateSolempNumero,
   type SolempNumeroParts,
 } from '@/utils/solemp'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, maskNomeProprio, validateNomeProprio } from '@/utils/format'
 
 function maskCurrencyDigits(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 14)
@@ -79,7 +79,7 @@ export function Assinatura1SolempModal({
       setSequencial(defaults.sequencial)
       setAno(defaults.ano)
       setValorDisplay(valorToDisplay(valorSugerido))
-      setAssinanteNome(assinanteSugerido)
+      setAssinanteNome(maskNomeProprio(assinanteSugerido))
       setErro('')
     }
   }, [open, defaults, valorSugerido, assinanteSugerido])
@@ -99,8 +99,9 @@ export function Assinatura1SolempModal({
       setErro('Informe o valor da SOLEMP')
       return
     }
-    if (assinanteNome.trim().length < 2) {
-      setErro('Informe o nome de quem assinou')
+    const nomeErro = validateNomeProprio(assinanteNome)
+    if (nomeErro) {
+      setErro(nomeErro)
       return
     }
     onEnviar({ numero, valor, assinanteNome: assinanteNome.trim() })
@@ -312,13 +313,13 @@ export function Assinatura1SolempModal({
           label="Nome de quem assinou"
           value={assinanteNome}
           onChange={(e) => {
-            setAssinanteNome(e.target.value)
+            setAssinanteNome(maskNomeProprio(e.target.value))
             setErro('')
           }}
           placeholder="Nome completo do assinante"
           disabled={loading}
           error={Boolean(erro)}
-          helperText={erro || 'Obrigatório'}
+          helperText={erro || 'Apenas letras — sem números'}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
@@ -326,6 +327,7 @@ export function Assinatura1SolempModal({
             },
           }}
           slotProps={{
+            htmlInput: { inputMode: 'text', autoComplete: 'name' },
             input: {
               startAdornment: (
                 <InputAdornment position="start">

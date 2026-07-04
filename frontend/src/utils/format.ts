@@ -50,3 +50,24 @@ export function formatNip(value: string): string {
   if (NIP_REGEX.test(value)) return value
   return maskNip(value)
 }
+
+/** Nome próprio: letras (com acento), espaços, hífen e apóstrofo — sem números */
+export const NOME_PROPRIO_REGEX = /^[A-Za-zÀ-ÿ]+(?:[ '\-][A-Za-zÀ-ÿ]+)*$/
+
+export function maskNomeProprio(value: string): string {
+  return value
+    .replace(/\d/g, '')
+    .replace(/[^A-Za-zÀ-ÿ '\-]/g, '')
+    .replace(/[ '\-]{2,}/g, (m) => m[0])
+    .replace(/^\s+/, '')
+}
+
+export function validateNomeProprio(value: string): string | null {
+  const nome = value.trim()
+  if (nome.length < 2) return 'Informe o nome de quem assinou'
+  if (/\d/.test(nome)) return 'O nome não pode conter números'
+  if (!NOME_PROPRIO_REGEX.test(nome)) {
+    return 'Informe um nome próprio válido (apenas letras)'
+  }
+  return null
+}
