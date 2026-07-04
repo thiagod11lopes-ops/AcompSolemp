@@ -19,7 +19,7 @@ import {
   alpha,
   useTheme,
 } from '@mui/material'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
@@ -92,7 +92,7 @@ export function UsuariosTab() {
               aria-label={`Excluir ${row.original.nome}`}
               onClick={() => setRegistroExcluir(row.original)}
             >
-              <DeleteOutlineIcon fontSize="small" />
+              <DeleteOutlinedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         ),
