@@ -18,3 +18,18 @@ export function useCreatePortalUser() {
     },
   })
 }
+
+export function useDeleteCadastro() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { isClinica: boolean; id: string }) =>
+      usuarioCadastroService.deleteCadastro(input),
+    onSuccess: async (_result, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      if (variables.isClinica) {
+        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+        await queryClient.refetchQueries({ queryKey: ['clinicas'] })
+      }
+    },
+  })
+}

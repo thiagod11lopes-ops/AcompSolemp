@@ -75,4 +75,42 @@ export const usuarioCadastroService = {
 
     return { user, login }
   },
+
+  async deleteCadastro(input: {
+    isClinica: boolean
+    id: string
+  }): Promise<void> {
+    await delay(null, 300)
+    const data = loadAppData()
+
+    if (input.isClinica) {
+      const clinica = data.clinicas.find((c) => c.id === input.id)
+      if (!clinica) throw new Error('Clínica não encontrada')
+
+      const usersToRemove = data.usuarios.filter((u) => u.clinicaId === input.id)
+      const logins = usersToRemove.map((u) => u.login)
+
+      data.clinicas = data.clinicas.filter((c) => c.id !== input.id)
+      data.usuarios = data.usuarios.filter((u) => u.clinicaId !== input.id)
+
+      if (data.credenciais) {
+        logins.forEach((login) => {
+          delete data.credenciais[login]
+        })
+      }
+    } else {
+      const user = data.usuarios.find((u) => u.id === input.id)
+      if (!user) throw new Error('Usuário não encontrado')
+      if (user.perfil === 'ADMINISTRADOR' || user.perfil === 'GESTOR') {
+        throw new Error('Este usuário não pode ser excluído')
+      }
+
+      if (data.credenciais) {
+        delete data.credenciais[user.login]
+      }
+      data.usuarios = data.usuarios.filter((u) => u.id !== input.id)
+    }
+
+    saveAppData(data)
+  },
 }

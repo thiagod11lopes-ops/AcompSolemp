@@ -3,25 +3,41 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
+  IconButton,
   Paper,
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
   alpha,
   useTheme,
 } from '@mui/material'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useCreatePortalUser } from '@/hooks/useUsuarioCadastro'
+import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
+
+interface RegistroCadastro {
+  id: string
+  nome: string
+  login: string
+  ativo: boolean
+}
 
 export function UsuariosTab() {
   const theme = useTheme()
   const [subTab, setSubTab] = useState(0)
   const createUser = useCreatePortalUser()
+  const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
 
@@ -31,8 +47,9 @@ export function UsuariosTab() {
   const [senha, setSenha] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
+  const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
-  const registros = useMemo(() => {
+  const registros = useMemo<RegistroCadastro[]>(() => {
     if (opcao.isClinica) {
       const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
       return clinicas.map((c) => {
@@ -55,7 +72,7 @@ export function UsuariosTab() {
       }))
   }, [opcao, clinicas, usuarios])
 
-  const colunas = useMemo<ColumnDef<(typeof registros)[0]>[]>(
+  const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
       { accessorKey: 'nome', header: 'Nome' },
       { accessorKey: 'login', header: 'Login' },
@@ -63,6 +80,22 @@ export function UsuariosTab() {
         accessorKey: 'ativo',
         header: 'Status',
         cell: ({ getValue }) => (getValue<boolean>() ? 'Ativo' : '—'),
+      },
+      {
+        id: 'acoes',
+        header: 'Ações',
+        cell: ({ row }) => (
+          <Tooltip title="Excluir cadastro">
+            <IconButton
+              size="small"
+              color="error"
+              aria-label={`Excluir ${row.original.nome}`}
+              onClick={() => setRegistroExcluir(row.original)}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ),
       },
     ],
     [],
@@ -87,6 +120,23 @@ export function UsuariosTab() {
     }
   }
 
+  const handleConfirmDelete = async () => {
+    if (!registroExcluir) return
+    setErro('')
+    setSucesso('')
+    try {
+      await deleteCadastro.mutateAsync({
+        isClinica: Boolean(opcao.isClinica),
+        id: registroExcluir.id,
+      })
+      setSucesso(`${opcao.label} "${registroExcluir.nome}" excluído(a) com sucesso.`)
+      setRegistroExcluir(null)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao excluir')
+      setRegistroExcluir(null)
+    }
+  }
+
   return (
     <Box>
       <Tabs
@@ -97,6 +147,7 @@ export function UsuariosTab() {
           setSucesso('')
           setNome('')
           setSenha('')
+          setRegistroExcluir(null)
         }}
         sx={{ mb: 3 }}
         variant="scrollable"
@@ -182,6 +233,39 @@ export function UsuariosTab() {
           </Paper>
         </Grid>
       </Grid>
+
+      <Dialog
+        open={Boolean(registroExcluir)}
+        onClose={() => !deleteCadastro.isPending && setRegistroExcluir(null)}
+      >
+        <DialogTitle>Confirmar exclusão</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Deseja realmente excluir o cadastro de{' '}
+            <strong>{opcao.label}</strong> <strong>{registroExcluir?.nome}</strong>
+            {registroExcluir?.login && registroExcluir.login !== '—'
+              ? ` (login: ${registroExcluir.login})`
+              : ''}
+            ? Esta ação não pode ser desfeita.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setRegistroExcluir(null)}
+            disabled={deleteCadastro.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+            disabled={deleteCadastro.isPending}
+          >
+            {deleteCadastro.isPending ? 'Excluindo...' : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
