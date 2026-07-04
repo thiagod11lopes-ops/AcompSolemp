@@ -17,6 +17,7 @@ import SendIcon from '@mui/icons-material/Send'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import PersonIcon from '@mui/icons-material/Person'
+import DescriptionIcon from '@mui/icons-material/Description'
 import { useEffect, useState } from 'react'
 import {
   formatSolempNumero,
@@ -71,7 +72,9 @@ export function Assinatura1SolempModal({
   const [ano, setAno] = useState(defaults.ano)
   const [valorDisplay, setValorDisplay] = useState('')
   const [assinanteNome, setAssinanteNome] = useState('')
-  const [erro, setErro] = useState('')
+  const [erroNumero, setErroNumero] = useState('')
+  const [erroValor, setErroValor] = useState('')
+  const [erroNome, setErroNome] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -80,28 +83,41 @@ export function Assinatura1SolempModal({
       setAno(defaults.ano)
       setValorDisplay(valorToDisplay(valorSugerido))
       setAssinanteNome(assinanteSugerido)
-      setErro('')
+      setErroNumero('')
+      setErroValor('')
+      setErroNome('')
     }
   }, [open, defaults, valorSugerido, assinanteSugerido])
 
   const parts = { prefix, sequencial, ano }
   const numeroPreview = formatSolempPreview(parts)
   const valor = parseCurrencyDigits(valorDisplay)
+  const numeroCompleto =
+    sequencial.length === 4 && prefix.length === 5 && ano.length === 4
+      ? formatSolempNumero(parts)
+      : ''
+
+  const limparErros = () => {
+    setErroNumero('')
+    setErroValor('')
+    setErroNome('')
+  }
 
   const handleEnviar = () => {
+    limparErros()
     const numero = formatSolempNumero(parts)
     const numeroErro = validateSolempNumero(numero)
     if (numeroErro) {
-      setErro(numeroErro)
+      setErroNumero(numeroErro)
       return
     }
     if (valor <= 0) {
-      setErro('Informe o valor da SOLEMP')
+      setErroValor('Informe o valor da SOLEMP')
       return
     }
     const nomeErro = validateNomeAssinante(assinanteNome)
     if (nomeErro) {
-      setErro(nomeErro)
+      setErroNome(nomeErro)
       return
     }
     onEnviar({ numero, valor, assinanteNome: assinanteNome.trim() })
@@ -230,20 +246,24 @@ export function Assinatura1SolempModal({
           )}
         </Box>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Confirme o número e o valor da SOLEMP e informe o nome de quem assinou.
+        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+          Número da SOLEMP
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Formato oficial: 65720-2636/2025
         </Typography>
 
-        <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
           <TextField
             label="Prefixo"
             value={prefix}
             onChange={(e) => {
               setPrefix(e.target.value.replace(/\D/g, '').slice(0, 5))
-              setErro('')
+              setErroNumero('')
             }}
             size="small"
             disabled={loading}
+            error={Boolean(erroNumero)}
             sx={{ width: 100 }}
             slotProps={{ htmlInput: { maxLength: 5 } }}
           />
@@ -255,11 +275,12 @@ export function Assinatura1SolempModal({
             value={sequencial}
             onChange={(e) => {
               setSequencial(e.target.value.replace(/\D/g, '').slice(0, 4))
-              setErro('')
+              setErroNumero('')
             }}
             placeholder="0000"
             size="small"
             disabled={loading}
+            error={Boolean(erroNumero)}
             sx={{ width: 120 }}
             slotProps={{ htmlInput: { maxLength: 4 } }}
           />
@@ -271,10 +292,11 @@ export function Assinatura1SolempModal({
             value={ano}
             onChange={(e) => {
               setAno(e.target.value.replace(/\D/g, '').slice(0, 4))
-              setErro('')
+              setErroNumero('')
             }}
             size="small"
             disabled={loading}
+            error={Boolean(erroNumero)}
             sx={{ width: 100 }}
             slotProps={{ htmlInput: { maxLength: 4 } }}
           />
@@ -282,16 +304,54 @@ export function Assinatura1SolempModal({
 
         <TextField
           fullWidth
+          label="Número completo da SOLEMP"
+          value={numeroCompleto}
+          placeholder="65720-2636/2025"
+          onChange={(e) => {
+            const val = e.target.value
+            const m = val.match(/^(\d{0,5})-?(\d{0,4})\/?(\d{0,4})?/)
+            if (m) {
+              if (m[1] !== undefined) setPrefix(m[1])
+              if (m[2] !== undefined) setSequencial(m[2])
+              if (m[3] !== undefined) setAno(m[3])
+            }
+            setErroNumero('')
+          }}
+          error={Boolean(erroNumero)}
+          helperText={erroNumero || 'Somente o número da SOLEMP usa este formato'}
+          disabled={loading}
+          sx={{
+            mb: 2.5,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.background.default, 0.65),
+            },
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <DescriptionIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+
+        <TextField
+          fullWidth
           label="Valor da SOLEMP"
           value={valorDisplay}
           onChange={(e) => {
             setValorDisplay(maskCurrencyDigits(e.target.value))
-            setErro('')
+            setErroValor('')
           }}
           placeholder="0,00"
           disabled={loading}
+          error={Boolean(erroValor)}
+          helperText={erroValor || 'Valor em reais (R$)'}
           sx={{
-            mb: 2,
+            mb: 2.5,
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
               bgcolor: alpha(theme.palette.background.default, 0.65),
@@ -308,18 +368,25 @@ export function Assinatura1SolempModal({
           }}
         />
 
+        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+          Nome de quem assinou
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Texto livre — nome da pessoa (não é o número da SOLEMP).
+        </Typography>
+
         <TextField
           fullWidth
           label="Nome de quem assinou"
           value={assinanteNome}
           onChange={(e) => {
             setAssinanteNome(e.target.value)
-            setErro('')
+            setErroNome('')
           }}
-          placeholder="Nome completo de quem assinou"
+          placeholder="Ex.: João da Silva"
           disabled={loading}
-          error={Boolean(erro)}
-          helperText={erro || 'Texto livre — não use o número da SOLEMP'}
+          error={Boolean(erroNome)}
+          helperText={erroNome || 'Formato livre'}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
@@ -327,7 +394,12 @@ export function Assinatura1SolempModal({
             },
           }}
           slotProps={{
-            htmlInput: { inputMode: 'text', autoComplete: 'name' },
+            htmlInput: {
+              inputMode: 'text',
+              autoComplete: 'name',
+              autoCorrect: 'off',
+              spellCheck: true,
+            },
             input: {
               startAdornment: (
                 <InputAdornment position="start">
