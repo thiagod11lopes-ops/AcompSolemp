@@ -77,7 +77,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_CONTABILIDADE_IMH: {
     label: 'Concluir Contabilidade/IMH',
-    descricao: 'Clique para concluir a etapa Contabilidade/IMH.',
+    descricao: 'Conclua a Contabilidade/IMH e registre anotações, se necessário.',
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',

@@ -5,13 +5,22 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
-import { AuditoriaConclusaoModal } from '@/components/ordenador/AuditoriaConclusaoModal'
+import {
+  SetorConclusaoModal,
+  type SetorConclusaoVariante,
+} from '@/components/ordenador/SetorConclusaoModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+
+function varianteParaChave(chave: string | null | undefined): SetorConclusaoVariante | null {
+  if (chave === 'DIV_MAT_AUDITORIA') return 'auditoria'
+  if (chave === 'DIV_MAT_CONTABILIDADE_IMH') return 'contabilidade'
+  return null
+}
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -20,11 +29,11 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
-  const [auditoriaModalOpen, setAuditoriaModalOpen] = useState(false)
+  const [modalVariante, setModalVariante] = useState<SetorConclusaoVariante | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
-  const isAuditoria = chavePerfil === 'DIV_MAT_AUDITORIA'
+  const varianteModal = varianteParaChave(chavePerfil)
 
   if (isLoading) return <LoadingSpinner />
 
@@ -40,19 +49,19 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const concluirComSucesso = () => {
-    setAuditoriaModalOpen(false)
+    setModalVariante(null)
     navigate('/ordenador/timelines')
   }
 
   const handleAssinar = () => {
-    if (isAuditoria) {
-      setAuditoriaModalOpen(true)
+    if (varianteModal) {
+      setModalVariante(varianteModal)
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
 
-  const handleEnviarAuditoria = (anotacoes: string) => {
+  const handleEnviarComAnotacoes = (anotacoes: string) => {
     assinar.mutate(
       { pedidoId: pedido.id, anotacoes },
       { onSuccess: concluirComSucesso },
@@ -80,7 +89,7 @@ export default function OrdenadorTimelineDetailPage() {
             pedido={pedido}
             etapas={etapas}
             onAssinar={handleAssinar}
-            assinando={assinar.isPending && !auditoriaModalOpen}
+            assinando={assinar.isPending && !modalVariante}
           />
         </Grid>
 
@@ -128,13 +137,16 @@ export default function OrdenadorTimelineDetailPage() {
         </Grid>
       </Grid>
 
-      <AuditoriaConclusaoModal
-        open={auditoriaModalOpen}
-        onClose={() => setAuditoriaModalOpen(false)}
-        onEnviar={handleEnviarAuditoria}
-        loading={assinar.isPending}
-        pedidoNumero={pedido.numero}
-      />
+      {modalVariante && (
+        <SetorConclusaoModal
+          open
+          variante={modalVariante}
+          onClose={() => setModalVariante(null)}
+          onEnviar={handleEnviarComAnotacoes}
+          loading={assinar.isPending}
+          pedidoNumero={pedido.numero}
+        />
+      )}
     </>
   )
 }

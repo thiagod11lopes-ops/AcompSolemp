@@ -90,14 +90,20 @@ export const ordenadorService = {
       if (!etapa) throw new Error('Nenhuma etapa ativa para o seu perfil')
 
       const notas = anotacoes?.trim()
-      const observacao =
-        chave === 'DIV_MAT_AUDITORIA'
-          ? notas
-            ? `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH. Anotações: ${notas}`
-            : `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH.`
-          : notas
-            ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`
-            : `${etapa.nome} concluída por ${usuario.nome}.`
+      let observacao: string
+      if (chave === 'DIV_MAT_AUDITORIA') {
+        observacao = notas
+          ? `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH. Anotações: ${notas}`
+          : `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH.`
+      } else if (chave === 'DIV_MAT_CONTABILIDADE_IMH') {
+        observacao = notas
+          ? `Contabilidade/IMH concluída por ${usuario.nome}. Anotações: ${notas}`
+          : `Contabilidade/IMH concluída por ${usuario.nome}.`
+      } else {
+        observacao = notas
+          ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`
+          : `${etapa.nome} concluída por ${usuario.nome}.`
+      }
 
       data = advancePedidoEtapa(data, pedidoId, usuario, observacao, etapa.id)
     }
