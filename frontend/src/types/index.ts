@@ -121,6 +121,8 @@ export interface Solemp {
   valor?: number
   /** Nome de quem registrou a Assinatura 1 */
   assinatura1Nome?: string
+  /** Nome de quem registrou a Assinatura 2 */
+  assinatura2Nome?: string
 }
 
 export interface NotaFiscal {

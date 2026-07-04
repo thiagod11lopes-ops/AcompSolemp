@@ -546,14 +546,32 @@ export function assinarSolempForPedido(
     const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
     if (!solemp) throw new Error('SOLEMP não encontrada para este pedido')
 
+    const numero = options?.numero?.trim()
+    const valor = options?.valor
+    const assinanteNome = options?.assinanteNome?.trim()
+    if (!numero) throw new Error('Informe o número da SOLEMP')
+    const numeroErro = validateSolempNumero(numero)
+    if (numeroErro) throw new Error(numeroErro)
+    if (valor == null || Number.isNaN(valor) || valor <= 0) {
+      throw new Error('Informe o valor da SOLEMP')
+    }
+    const nomeErro = validateNomeAssinante(assinanteNome ?? '')
+    if (nomeErro) throw new Error(nomeErro)
+
+    solemp.numero = numero
+    solemp.valor = valor
+    solemp.assinatura2Nome = assinanteNome
     solemp.assinada = true
     solemp.data = nowIso()
+    solemp.arquivoPDF = `solemp-${numero.replace(/\//g, '-')}.pdf`
+
+    const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      `Assinatura 2 Solemp registrada — SOLEMP ${solemp.numero} assinada.`,
+      `Assinatura 2 Solemp registrada — SOLEMP ${solemp.numero} (${valorFmt}), assinada por ${assinanteNome}. Enviado para SDA.`,
       etapa.id,
     )
 
@@ -561,7 +579,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'ASSINATURA_REALIZADA',
       titulo: `Assinatura 2 Solemp — ${pedido.numero}`,
-      mensagem: `${usuario.nome} registrou a Assinatura 2 da SOLEMP ${solemp.numero}.`,
+      mensagem: `${usuario.nome} registrou a Assinatura 2 da SOLEMP ${solemp.numero} (assinante: ${assinanteNome}) e enviou para SDA.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,

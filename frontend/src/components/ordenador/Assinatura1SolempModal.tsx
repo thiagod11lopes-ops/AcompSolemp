@@ -45,8 +45,37 @@ function valorToDisplay(valor: number): string {
   return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-interface Assinatura1SolempModalProps {
+export type AssinaturaSolempVariante = 'assinatura1' | 'assinatura2'
+
+const VARIANTES: Record<
+  AssinaturaSolempVariante,
+  {
+    overline: string
+    title: string
+    etapaDe: string
+    etapaPara: string
+    submitLabel: string
+  }
+> = {
+  assinatura1: {
+    overline: 'Assinatura 1 Solemp',
+    title: 'Enviar para Assinatura 2 Solemp',
+    etapaDe: 'Assinatura 1 Solemp',
+    etapaPara: 'Assinatura 2 Solemp',
+    submitLabel: 'Enviar para Assinatura 2 Solemp',
+  },
+  assinatura2: {
+    overline: 'Assinatura 2 Solemp',
+    title: 'Enviar para SDA',
+    etapaDe: 'Assinatura 2 Solemp',
+    etapaPara: 'SDA',
+    submitLabel: 'Enviar para SDA',
+  },
+}
+
+interface AssinaturaSolempModalProps {
   open: boolean
+  variante?: AssinaturaSolempVariante
   onClose: () => void
   onEnviar: (dados: { numero: string; valor: number; assinanteNome: string }) => void
   loading?: boolean
@@ -56,8 +85,10 @@ interface Assinatura1SolempModalProps {
   assinanteSugerido?: string
 }
 
-export function Assinatura1SolempModal({
+/** Modal compartilhado de Assinatura 1 (→ Assinatura 2) e Assinatura 2 (→ SDA). */
+export function AssinaturaSolempModal({
   open,
+  variante = 'assinatura1',
   onClose,
   onEnviar,
   loading = false,
@@ -65,8 +96,9 @@ export function Assinatura1SolempModal({
   defaults,
   valorSugerido = 0,
   assinanteSugerido = '',
-}: Assinatura1SolempModalProps) {
+}: AssinaturaSolempModalProps) {
   const theme = useTheme()
+  const config = VARIANTES[variante]
   const [prefix, setPrefix] = useState(defaults.prefix)
   const [sequencial, setSequencial] = useState(defaults.sequencial)
   const [ano, setAno] = useState(defaults.ano)
@@ -180,10 +212,10 @@ export function Assinatura1SolempModal({
           </Box>
           <Box>
             <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
-              Assinatura 1 Solemp
+              {config.overline}
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Enviar para Assinatura 2 Solemp
+              {config.title}
             </Typography>
             {pedidoNumero && (
               <Chip
@@ -215,9 +247,9 @@ export function Assinatura1SolempModal({
             flexWrap: 'wrap',
           }}
         >
-          <Chip label="Assinatura 1 Solemp" size="small" color="warning" />
+          <Chip label={config.etapaDe} size="small" color="warning" />
           <ArrowForwardIcon fontSize="small" color="action" />
-          <Chip label="Assinatura 2 Solemp" size="small" color="primary" />
+          <Chip label={config.etapaPara} size="small" color="primary" />
         </Box>
 
         <Box
@@ -446,10 +478,15 @@ export function Assinatura1SolempModal({
               },
             }}
           >
-            {loading ? 'Enviando...' : 'Enviar para Assinatura 2 Solemp'}
+            {loading ? 'Enviando...' : config.submitLabel}
           </Button>
         </Box>
       </DialogContent>
     </Dialog>
   )
+}
+
+/** @deprecated use AssinaturaSolempModal com variante="assinatura1" */
+export function Assinatura1SolempModal(props: Omit<AssinaturaSolempModalProps, 'variante'>) {
+  return <AssinaturaSolempModal variante="assinatura1" {...props} />
 }
