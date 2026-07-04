@@ -62,7 +62,11 @@ export const ordenadorService = {
     return enrichPedido(pedido, getContext(data))
   },
 
-  async executarAcao(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes> {
+  async executarAcao(
+    pedidoId: string,
+    usuarioId: string,
+    anotacoes?: string,
+  ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
     const usuario = data.usuarios.find(
@@ -85,13 +89,17 @@ export const ordenadorService = {
       const etapa = data.workflowEtapas.find((e) => ativas.includes(e.id) && e.chave === chave)
       if (!etapa) throw new Error('Nenhuma etapa ativa para o seu perfil')
 
-      data = advancePedidoEtapa(
-        data,
-        pedidoId,
-        usuario,
-        `${etapa.nome} concluída por ${usuario.nome}.`,
-        etapa.id,
-      )
+      const notas = anotacoes?.trim()
+      const observacao =
+        chave === 'DIV_MAT_AUDITORIA'
+          ? notas
+            ? `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH. Anotações: ${notas}`
+            : `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH.`
+          : notas
+            ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`
+            : `${etapa.nome} concluída por ${usuario.nome}.`
+
+      data = advancePedidoEtapa(data, pedidoId, usuario, observacao, etapa.id)
     }
 
     saveAppData(data)

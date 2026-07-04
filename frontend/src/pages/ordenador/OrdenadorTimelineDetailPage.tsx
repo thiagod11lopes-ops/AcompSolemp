@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
+import { AuditoriaConclusaoModal } from '@/components/ordenador/AuditoriaConclusaoModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -18,9 +20,11 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
+  const [auditoriaModalOpen, setAuditoriaModalOpen] = useState(false)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
+  const isAuditoria = chavePerfil === 'DIV_MAT_AUDITORIA'
 
   if (isLoading) return <LoadingSpinner />
 
@@ -35,10 +39,24 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
+  const concluirComSucesso = () => {
+    setAuditoriaModalOpen(false)
+    navigate('/ordenador/timelines')
+  }
+
   const handleAssinar = () => {
-    assinar.mutate(pedido.id, {
-      onSuccess: () => navigate('/ordenador/timelines'),
-    })
+    if (isAuditoria) {
+      setAuditoriaModalOpen(true)
+      return
+    }
+    assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+  }
+
+  const handleEnviarAuditoria = (anotacoes: string) => {
+    assinar.mutate(
+      { pedidoId: pedido.id, anotacoes },
+      { onSuccess: concluirComSucesso },
+    )
   }
 
   return (
@@ -62,7 +80,7 @@ export default function OrdenadorTimelineDetailPage() {
             pedido={pedido}
             etapas={etapas}
             onAssinar={handleAssinar}
-            assinando={assinar.isPending}
+            assinando={assinar.isPending && !auditoriaModalOpen}
           />
         </Grid>
 
@@ -109,6 +127,14 @@ export default function OrdenadorTimelineDetailPage() {
           )}
         </Grid>
       </Grid>
+
+      <AuditoriaConclusaoModal
+        open={auditoriaModalOpen}
+        onClose={() => setAuditoriaModalOpen(false)}
+        onEnviar={handleEnviarAuditoria}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+      />
     </>
   )
 }

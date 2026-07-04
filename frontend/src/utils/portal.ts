@@ -73,7 +73,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
 > = {
   DIV_MAT_AUDITORIA: {
     label: 'Concluir Auditoria',
-    descricao: 'Clique para concluir a etapa Auditoria.',
+    descricao: 'Conclua a auditoria e envie o processo para Contabilidade/IMH.',
   },
   DIV_MAT_CONTABILIDADE_IMH: {
     label: 'Concluir Contabilidade/IMH',

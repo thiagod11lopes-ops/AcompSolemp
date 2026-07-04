@@ -25,11 +25,19 @@ export function useAssinarSolemp() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (pedidoId: string) => ordenadorService.executarAcao(pedidoId, user!.id),
+    mutationFn: ({
+      pedidoId,
+      anotacoes,
+    }: {
+      pedidoId: string
+      anotacoes?: string
+    }) => ordenadorService.executarAcao(pedidoId, user!.id, anotacoes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['pedido'] })
     },
   })
 }
