@@ -28,10 +28,19 @@ export function useAssinarSolemp() {
     mutationFn: ({
       pedidoId,
       anotacoes,
+      solempNumero,
+      solempValor,
     }: {
       pedidoId: string
       anotacoes?: string
-    }) => ordenadorService.executarAcao(pedidoId, user!.id, anotacoes),
+      solempNumero?: string
+      solempValor?: number
+    }) =>
+      ordenadorService.executarAcao(pedidoId, user!.id, {
+        anotacoes,
+        solempNumero,
+        solempValor,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })

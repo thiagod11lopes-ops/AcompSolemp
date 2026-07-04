@@ -65,7 +65,11 @@ export const ordenadorService = {
   async executarAcao(
     pedidoId: string,
     usuarioId: string,
-    anotacoes?: string,
+    options?: {
+      anotacoes?: string
+      solempNumero?: string
+      solempValor?: number
+    },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
@@ -74,8 +78,13 @@ export const ordenadorService = {
     )
     if (!usuario) throw new Error('Usuário não autorizado')
 
+    const anotacoes = options?.anotacoes
+
     if (PERFIS_SOLEMP.includes(usuario.perfil)) {
-      data = assinarSolempForPedido(data, pedidoId, usuario)
+      data = assinarSolempForPedido(data, pedidoId, usuario, {
+        numero: options?.solempNumero,
+        valor: options?.solempValor,
+      })
     } else {
       const chave = PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
       if (!chave) throw new Error('Perfil sem etapa associada')

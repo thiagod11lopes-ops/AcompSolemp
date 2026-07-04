@@ -14,6 +14,7 @@ import {
   getEtapaByChave,
   getProximaChaveNaDivisao,
 } from '@/utils/timelineFlow'
+import { validateSolempNumero } from '@/utils/solemp'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -260,18 +261,20 @@ export function createSolempForPedido(
   data: AppData,
   pedidoId: string,
   numero: string,
+  valor?: number,
 ): AppData {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
 
   const existente = data.solemp.findIndex((s) => s.pedidoId === pedidoId)
   const solemp: Solemp = {
-    id: `solemp-${Date.now()}`,
+    id: existente >= 0 ? data.solemp[existente].id : `solemp-${Date.now()}`,
     numero,
     pedidoId,
     data: nowIso(),
     assinada: false,
     arquivoPDF: `solemp-${numero.replace(/\//g, '-')}.pdf`,
+    valor: valor ?? pedido.valor,
   }
 
   if (existente >= 0) data.solemp[existente] = solemp
@@ -427,10 +430,16 @@ const PERFIL_PARA_ETAPA_SOLEMP: Partial<Record<User['perfil'], string>> = {
   ASSINANTE: 'DIV_MAT_ASSINATURA_1',
 }
 
+export interface AssinarSolempOptions {
+  numero?: string
+  valor?: number
+}
+
 export function assinarSolempForPedido(
   data: AppData,
   pedidoId: string,
   usuario: User,
+  options?: AssinarSolempOptions,
 ): AppData {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
@@ -448,24 +457,23 @@ export function assinarSolempForPedido(
   }
 
   if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP') {
-    let solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-    if (!solemp) {
-      solemp = {
-        id: `solemp-${Date.now()}`,
-        pedidoId,
-        numero: `SLP-${pedido.numero.replace('PED-', '')}`,
-        data: nowIso(),
-        assinada: false,
-        arquivoPDF: `solemp-${pedido.numero}.pdf`,
-      }
-      data.solemp.push(solemp)
+    const numero = options?.numero?.trim()
+    const valor = options?.valor
+    if (!numero) throw new Error('Informe o número da SOLEMP')
+    const numeroErro = validateSolempNumero(numero)
+    if (numeroErro) throw new Error(numeroErro)
+    if (valor == null || Number.isNaN(valor) || valor <= 0) {
+      throw new Error('Informe o valor da SOLEMP')
     }
+
+    data = createSolempForPedido(data, pedidoId, numero, valor)
+    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)!
 
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero}.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Assinatura 1 Solemp.`,
       etapa.id,
     )
 
@@ -473,7 +481,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
       titulo: `SOLEMP confeccionada — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero}.`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Assinatura 1 Solemp.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,

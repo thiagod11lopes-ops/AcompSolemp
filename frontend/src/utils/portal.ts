@@ -81,7 +81,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',
-    descricao: 'Clique para registrar a confecção da SOLEMP.',
+    descricao: 'Informe o número e o valor da SOLEMP e envie para Assinatura 1 Solemp.',
   },
   DIV_MAT_ASSINATURA_1: {
     label: 'Registrar Assinatura 1 Solemp',

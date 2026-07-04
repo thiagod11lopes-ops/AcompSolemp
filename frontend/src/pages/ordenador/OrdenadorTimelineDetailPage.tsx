@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -9,12 +9,14 @@ import {
   SetorConclusaoModal,
   type SetorConclusaoVariante,
 } from '@/components/ordenador/SetorConclusaoModal'
+import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
-import { getRoleLabel } from '@/mocks/seed'
+import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import { getSolempDefaults } from '@/utils/solemp'
 
 function varianteParaChave(chave: string | null | undefined): SetorConclusaoVariante | null {
   if (chave === 'DIV_MAT_AUDITORIA') return 'auditoria'
@@ -30,10 +32,19 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
   const [modalVariante, setModalVariante] = useState<SetorConclusaoVariante | null>(null)
+  const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
   const varianteModal = varianteParaChave(chavePerfil)
+  const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
+
+  const solempDefaults = useMemo(() => {
+    if (!pedido) {
+      return { prefix: '65720', sequencial: '', ano: String(new Date().getFullYear()) }
+    }
+    return getSolempDefaults(loadAppData(), pedido.clinicaId)
+  }, [pedido])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -50,12 +61,17 @@ export default function OrdenadorTimelineDetailPage() {
 
   const concluirComSucesso = () => {
     setModalVariante(null)
+    setConfeccaoOpen(false)
     navigate('/ordenador/timelines')
   }
 
   const handleAssinar = () => {
     if (varianteModal) {
       setModalVariante(varianteModal)
+      return
+    }
+    if (isConfeccao) {
+      setConfeccaoOpen(true)
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
@@ -67,6 +83,15 @@ export default function OrdenadorTimelineDetailPage() {
       { onSuccess: concluirComSucesso },
     )
   }
+
+  const handleEnviarConfeccao = ({ numero, valor }: { numero: string; valor: number }) => {
+    assinar.mutate(
+      { pedidoId: pedido.id, solempNumero: numero, solempValor: valor },
+      { onSuccess: concluirComSucesso },
+    )
+  }
+
+  const modalAberto = Boolean(modalVariante) || confeccaoOpen
 
   return (
     <>
@@ -89,7 +114,7 @@ export default function OrdenadorTimelineDetailPage() {
             pedido={pedido}
             etapas={etapas}
             onAssinar={handleAssinar}
-            assinando={assinar.isPending && !modalVariante}
+            assinando={assinar.isPending && !modalAberto}
           />
         </Grid>
 
@@ -128,6 +153,11 @@ export default function OrdenadorTimelineDetailPage() {
               <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
                 {pedido.solemp.numero}
               </Typography>
+              {pedido.solemp.valor != null && (
+                <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>
+                  {formatCurrency(pedido.solemp.valor)}
+                </Typography>
+              )}
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Conclua a etapa <strong>{etapaPerfil?.nome ?? perfilLabel}</strong> para avançar o
                 processo.
@@ -147,6 +177,16 @@ export default function OrdenadorTimelineDetailPage() {
           pedidoNumero={pedido.numero}
         />
       )}
+
+      <ConfeccaoSolempModal
+        open={confeccaoOpen}
+        onClose={() => setConfeccaoOpen(false)}
+        onEnviar={handleEnviarConfeccao}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+        defaults={solempDefaults}
+        valorSugerido={pedido.valor}
+      />
     </>
   )
 }
