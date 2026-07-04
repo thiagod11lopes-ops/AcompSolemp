@@ -171,32 +171,27 @@ export const authService = {
   },
 
   async loginOrdenadorByNome(nome: string, senha: string): Promise<AuthUser> {
-    await delay(null, 300)
-    const data = loadAppData()
-    const nomeNorm = nome.trim().toLowerCase()
-    const loginSlugValue = slugLogin(nome)
-
-    const perfisSolemp = [
+    return this.loginByPerfilNome(nome, senha, [
       'ASSINANTE',
       'CONFECCAO_SOLEMP',
       'ASSINATURA_1_SOLEMP',
       'ASSINATURA_2_SOLEMP',
-    ]
-    const user = data.usuarios.find(
-      (u) =>
-        perfisSolemp.includes(u.perfil) &&
-        u.ativo &&
-        (u.nome.trim().toLowerCase() === nomeNorm || u.login === loginSlugValue),
-    )
-
-    if (!user) {
-      throw new Error('Usuário de confecção/assinatura não encontrado')
-    }
-
-    return this.login({ login: user.login, senha }, 'ordenador')
+      'AUDITORIA',
+      'CONTABILIDADE_IMH',
+      'SDA',
+    ], 'ordenador')
   },
 
   async loginFinanceiroByNome(nome: string, senha: string): Promise<AuthUser> {
+    return this.loginByPerfilNome(nome, senha, ['FINANCEIRO'], 'financeiro')
+  },
+
+  async loginByPerfilNome(
+    nome: string,
+    senha: string,
+    perfis: AuthUser['perfil'][],
+    portal: Portal,
+  ): Promise<AuthUser> {
     await delay(null, 300)
     const data = loadAppData()
     const nomeNorm = nome.trim().toLowerCase()
@@ -204,15 +199,15 @@ export const authService = {
 
     const user = data.usuarios.find(
       (u) =>
-        u.perfil === 'FINANCEIRO' &&
+        perfis.includes(u.perfil) &&
         u.ativo &&
         (u.nome.trim().toLowerCase() === nomeNorm || u.login === loginSlugValue),
     )
 
     if (!user) {
-      throw new Error('Usuário financeiro não encontrado')
+      throw new Error('Usuário não encontrado para este perfil')
     }
 
-    return this.login({ login: user.login, senha }, 'financeiro')
+    return this.login({ login: user.login, senha }, portal)
   },
 }

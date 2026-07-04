@@ -15,8 +15,10 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import DrawIcon from '@mui/icons-material/Draw'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate, formatDateTime } from '@/utils/format'
-import { ORDENADOR_ETAPA_ACOES, ordenadorPodeAssinar } from '@/utils/portal'
+import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
+import { useOrdenadorAuth } from '@/contexts/AuthContext'
+import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -31,10 +33,20 @@ export function OrdenadorInteractiveTimeline({
   onAssinar,
   assinando = false,
 }: OrdenadorInteractiveTimelineProps) {
+  const { user } = useOrdenadorAuth()
   const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
-  const etapaAtualIndex = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
-  const acaoAtual = ORDENADOR_ETAPA_ACOES[pedido.etapaAtual.chave]
-  const podeAssinar = ordenadorPodeAssinar(pedido.etapaAtual.chave)
+  const etapasAtivasIds =
+    pedido.etapasAtivasIds?.length > 0
+      ? pedido.etapasAtivasIds
+      : [pedido.etapaAtualId]
+
+  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const etapaDoPerfil = ordenadas.find(
+    (e) => etapasAtivasIds.includes(e.id) && e.chave === chavePerfil,
+  )
+  const acaoAtual = etapaDoPerfil
+    ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave]
+    : undefined
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -42,7 +54,7 @@ export function OrdenadorInteractiveTimeline({
         Timeline do Processo
       </Typography>
 
-      {acaoAtual && podeAssinar && (
+      {acaoAtual && etapaDoPerfil && (
         <Alert
           severity="warning"
           icon={<DrawIcon />}
@@ -56,7 +68,7 @@ export function OrdenadorInteractiveTimeline({
                 onClick={onAssinar}
                 disabled={assinando}
               >
-                {assinando ? 'Assinando...' : acaoAtual.label}
+                {assinando ? 'Processando...' : acaoAtual.label}
               </Button>
             )
           }
@@ -70,14 +82,18 @@ export function OrdenadorInteractiveTimeline({
         </Alert>
       )}
 
-      <Stepper activeStep={etapaAtualIndex} orientation="vertical">
-        {ordenadas.map((etapa, index) => {
+      <Stepper orientation="vertical" nonLinear activeStep={-1}>
+        {ordenadas.map((etapa) => {
           const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
-          const concluida = index < etapaAtualIndex || pedido.concluido
-          const atual = index === etapaAtualIndex && !pedido.concluido
+          const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
+          const atual =
+            etapasAtivasIds.includes(etapa.id) &&
+            !pedido.concluido &&
+            !historico?.dataConclusao
+          const minhaEtapa = etapaDoPerfil?.id === etapa.id
 
           return (
-            <Step key={etapa.id} completed={concluida} active={atual}>
+            <Step key={etapa.id} completed={concluida} active={atual} expanded>
               <StepLabel
                 slots={{
                   stepIcon: () =>
@@ -96,7 +112,12 @@ export function OrdenadorInteractiveTimeline({
                     notaFiscalNumero={pedido.notaFiscal?.numero}
                   />
                   {atual && (
-                    <Chip label="Aguardando assinatura" size="small" color="warning" variant="outlined" />
+                    <Chip
+                      label={minhaEtapa ? 'Sua etapa' : 'Etapa ativa'}
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                    />
                   )}
                   {concluida && <Chip label="Concluída" size="small" color="success" />}
                 </Box>
@@ -117,7 +138,7 @@ export function OrdenadorInteractiveTimeline({
                         {historico.observacao}
                       </Typography>
                     )}
-                    {atual && podeAssinar && onAssinar && (
+                    {minhaEtapa && onAssinar && (
                       <Button
                         variant="contained"
                         color="warning"
@@ -127,7 +148,7 @@ export function OrdenadorInteractiveTimeline({
                         disabled={assinando}
                         startIcon={<DrawIcon />}
                       >
-                        {assinando ? 'Assinando...' : acaoAtual?.label ?? 'Assinar SOLEMP'}
+                        {assinando ? 'Processando...' : acaoAtual?.label ?? 'Concluir etapa'}
                       </Button>
                     )}
                   </Box>

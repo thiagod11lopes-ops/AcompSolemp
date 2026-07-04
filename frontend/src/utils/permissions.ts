@@ -68,7 +68,10 @@ export function canAccessOrdenadorRoute(role: UserRole): boolean {
     role === 'ASSINANTE' ||
     role === 'CONFECCAO_SOLEMP' ||
     role === 'ASSINATURA_1_SOLEMP' ||
-    role === 'ASSINATURA_2_SOLEMP'
+    role === 'ASSINATURA_2_SOLEMP' ||
+    role === 'AUDITORIA' ||
+    role === 'CONTABILIDADE_IMH' ||
+    role === 'SDA'
   )
 }
 

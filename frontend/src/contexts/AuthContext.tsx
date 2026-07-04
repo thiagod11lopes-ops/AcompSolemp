@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { AuthUser, LoginCredentials } from '@/types'
+import type { AuthUser, LoginCredentials, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { authService } from '@/services/authService'
 
@@ -22,6 +22,11 @@ interface AuthContextValue {
   loginClinicaByClinica: (clinicaId: string, senha: string) => Promise<AuthUser>
   loginOrdenadorByNome: (nome: string, senha: string) => Promise<AuthUser>
   loginFinanceiroByNome: (nome: string, senha: string) => Promise<AuthUser>
+  loginByPerfilNome: (
+    nome: string,
+    senha: string,
+    perfil: UserRole,
+  ) => Promise<AuthUser>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -76,6 +81,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
+  const loginByPerfilNome = useCallback(
+    async (nome: string, senha: string, perfil: UserRole) => {
+      if (perfil === 'FINANCEIRO') {
+        const authUser = await authService.loginByPerfilNome(
+          nome,
+          senha,
+          ['FINANCEIRO'],
+          'financeiro',
+        )
+        setFinanceiroUser(authUser)
+        return authUser
+      }
+
+      const authUser = await authService.loginByPerfilNome(nome, senha, [perfil], 'ordenador')
+      setOrdenadorUser(authUser)
+      return authUser
+    },
+    [],
+  )
+
   const value = useMemo(
     () => ({
       gestorUser,
@@ -88,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginClinicaByClinica,
       loginOrdenadorByNome,
       loginFinanceiroByNome,
+      loginByPerfilNome,
     }),
     [
       gestorUser,
@@ -100,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginClinicaByClinica,
       loginOrdenadorByNome,
       loginFinanceiroByNome,
+      loginByPerfilNome,
     ],
   )
 

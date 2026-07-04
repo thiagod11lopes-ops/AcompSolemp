@@ -3,17 +3,20 @@ import { ordenadorService } from '@/services/ordenadorService'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 
 export function useOrdenadorPedidos() {
+  const { user } = useOrdenadorAuth()
   return useQuery({
-    queryKey: ['ordenador-pedidos'],
-    queryFn: () => ordenadorService.listPendentesAssinatura(),
+    queryKey: ['ordenador-pedidos', user?.id],
+    queryFn: () => ordenadorService.listPendentesAssinatura(user!.id),
+    enabled: Boolean(user?.id),
   })
 }
 
 export function useOrdenadorPedido(id: string) {
+  const { user } = useOrdenadorAuth()
   return useQuery({
-    queryKey: ['ordenador-pedido', id],
-    queryFn: () => ordenadorService.getById(id),
-    enabled: Boolean(id),
+    queryKey: ['ordenador-pedido', id, user?.id],
+    queryFn: () => ordenadorService.getById(id, user!.id),
+    enabled: Boolean(id && user?.id),
   })
 }
 
@@ -22,7 +25,7 @@ export function useAssinarSolemp() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (pedidoId: string) => ordenadorService.assinarSolemp(pedidoId, user!.id),
+    mutationFn: (pedidoId: string) => ordenadorService.executarAcao(pedidoId, user!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })

@@ -71,6 +71,14 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   string,
   { label: string; descricao: string }
 > = {
+  DIV_MAT_AUDITORIA: {
+    label: 'Concluir Auditoria',
+    descricao: 'Clique para concluir a etapa Auditoria.',
+  },
+  DIV_MAT_CONTABILIDADE_IMH: {
+    label: 'Concluir Contabilidade/IMH',
+    descricao: 'Clique para concluir a etapa Contabilidade/IMH.',
+  },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',
     descricao: 'Clique para registrar a confecção da SOLEMP.',
@@ -82,6 +90,10 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   DIV_MAT_ASSINATURA_2: {
     label: 'Registrar Assinatura 2 Solemp',
     descricao: 'Clique para registrar a segunda assinatura da SOLEMP.',
+  },
+  DIV_MAT_SDA: {
+    label: 'Concluir SDA',
+    descricao: 'Clique para concluir a etapa SDA.',
   },
 }
 
@@ -101,6 +113,10 @@ export function clinicaPodeAvancar(etapaChave: string): boolean {
 }
 
 export function ordenadorPodeAssinar(etapaChave: string): boolean {
+  return etapaChave in ORDENADOR_ETAPA_ACOES
+}
+
+export function setorPodeAgir(etapaChave: string): boolean {
   return etapaChave in ORDENADOR_ETAPA_ACOES
 }
 

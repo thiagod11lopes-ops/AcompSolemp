@@ -1,13 +1,12 @@
-import type { PedidoComDetalhes } from '@/types'
+import type { PedidoComDetalhes, UserRole } from '@/types'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
-import { assinarSolempForPedido } from '@/utils/workflowAdvance'
-
-const ETAPAS_ORDENADOR = [
-  'DIV_MAT_CONFECCAO_SOLEMP',
-  'DIV_MAT_ASSINATURA_1',
-  'DIV_MAT_ASSINATURA_2',
-] as const
+import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
+import {
+  PERFIS_SETOR,
+  PERFIS_SOLEMP,
+  PERFIL_PARA_CHAVE_ETAPA,
+} from '@/utils/perfilEtapa'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -21,64 +20,90 @@ function getContext(data: ReturnType<typeof loadAppData>) {
   }
 }
 
-function isPedidoAguardandoAssinatura(pedido: ReturnType<typeof loadAppData>['pedidos'][0], data: ReturnType<typeof loadAppData>): boolean {
+function pedidoPendenteParaPerfil(
+  pedido: ReturnType<typeof loadAppData>['pedidos'][0],
+  data: ReturnType<typeof loadAppData>,
+  perfil: UserRole,
+): boolean {
+  if (pedido.concluido) return false
+  const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
+  if (!chave) return false
+
   const ativas = pedido.etapasAtivasIds?.length
     ? pedido.etapasAtivasIds
     : [pedido.etapaAtualId]
-  const etapa = data.workflowEtapas.find(
-    (e) =>
-      ativas.includes(e.id) &&
-      ETAPAS_ORDENADOR.includes(e.chave as (typeof ETAPAS_ORDENADOR)[number]),
-  )
-  if (!etapa) return false
-  if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' || etapa.chave === 'DIV_MAT_ASSINATURA_1') {
-    return true
-  }
-  const solemp = data.solemp.find((s) => s.pedidoId === pedido.id)
-  return Boolean(solemp && !solemp.assinada)
+
+  return data.workflowEtapas.some((e) => ativas.includes(e.id) && e.chave === chave)
 }
 
 export const ordenadorService = {
-  async listPendentesAssinatura(): Promise<PedidoComDetalhes[]> {
+  async listPendentesAssinatura(usuarioId: string): Promise<PedidoComDetalhes[]> {
     await delay(null)
     const data = loadAppData()
-    const ctx = getContext(data)
+    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
+    if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) return []
 
+    const ctx = getContext(data)
     return data.pedidos
-      .filter((p) => !p.concluido && isPedidoAguardandoAssinatura(p, data))
+      .filter((p) => pedidoPendenteParaPerfil(p, data, usuario.perfil))
       .map((p) => enrichPedido(p, ctx))
       .filter((p): p is PedidoComDetalhes => p !== null)
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
   },
 
-  async getById(pedidoId: string): Promise<PedidoComDetalhes | null> {
+  async getById(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
     const data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
+    if (!usuario) return null
+
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || !isPedidoAguardandoAssinatura(pedido, data)) return null
+    if (!pedido || !pedidoPendenteParaPerfil(pedido, data, usuario.perfil)) return null
     return enrichPedido(pedido, getContext(data))
   },
 
-  async assinarSolemp(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes> {
+  async executarAcao(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
-    const perfisSolemp = [
-      'ASSINANTE',
-      'CONFECCAO_SOLEMP',
-      'ASSINATURA_1_SOLEMP',
-      'ASSINATURA_2_SOLEMP',
-    ]
     const usuario = data.usuarios.find(
-      (u) => u.id === usuarioId && perfisSolemp.includes(u.perfil),
+      (u) => u.id === usuarioId && PERFIS_SETOR.includes(u.perfil),
     )
     if (!usuario) throw new Error('Usuário não autorizado')
 
-    data = assinarSolempForPedido(data, pedidoId, usuario)
+    if (PERFIS_SOLEMP.includes(usuario.perfil)) {
+      data = assinarSolempForPedido(data, pedidoId, usuario)
+    } else {
+      const chave = PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
+      if (!chave) throw new Error('Perfil sem etapa associada')
+
+      const pedido = data.pedidos.find((p) => p.id === pedidoId)
+      if (!pedido) throw new Error('Pedido não encontrado')
+
+      const ativas = pedido.etapasAtivasIds?.length
+        ? pedido.etapasAtivasIds
+        : [pedido.etapaAtualId]
+      const etapa = data.workflowEtapas.find((e) => ativas.includes(e.id) && e.chave === chave)
+      if (!etapa) throw new Error('Nenhuma etapa ativa para o seu perfil')
+
+      data = advancePedidoEtapa(
+        data,
+        pedidoId,
+        usuario,
+        `${etapa.nome} concluída por ${usuario.nome}.`,
+        etapa.id,
+      )
+    }
+
     saveAppData(data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)!
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao atualizar pedido')
     return enriched
+  },
+
+  /** @deprecated use executarAcao */
+  async assinarSolemp(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes> {
+    return this.executarAcao(pedidoId, usuarioId)
   },
 }

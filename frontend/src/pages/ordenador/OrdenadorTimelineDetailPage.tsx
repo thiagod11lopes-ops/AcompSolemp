@@ -6,21 +6,28 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
+import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { getRoleLabel } from '@/mocks/seed'
+import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useOrdenadorAuth()
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
+  const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
+  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
 
   if (isLoading) return <LoadingSpinner />
 
   if (!pedido) {
     return (
       <Box>
-        <Typography>Processo não encontrado ou já assinado.</Typography>
+        <Typography>Processo não encontrado ou sem pendência para o seu perfil.</Typography>
         <Button onClick={() => navigate('/ordenador/timelines')} sx={{ mt: 2 }}>
           Voltar
         </Button>
@@ -45,7 +52,7 @@ export default function OrdenadorTimelineDetailPage() {
       </Button>
 
       <PageHeader
-        title={`Assinar SOLEMP — ${pedido.numero}`}
+        title={`${perfilLabel} — ${pedido.numero}`}
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
       />
 
@@ -78,7 +85,7 @@ export default function OrdenadorTimelineDetailPage() {
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
               <Chip
-                label={pedido.etapaAtual.nome}
+                label={etapaPerfil?.nome ?? pedido.etapaAtual.nome}
                 color="warning"
                 size="small"
                 sx={{ width: 'fit-content', mt: 1 }}
@@ -89,14 +96,14 @@ export default function OrdenadorTimelineDetailPage() {
           {pedido.solemp && (
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                SOLEMP a assinar
+                SOLEMP
               </Typography>
               <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
                 {pedido.solemp.numero}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Ao assinar, os estágios <strong>Aguardando assinatura</strong> e{' '}
-                <strong>SOLEMP assinada</strong> serão concluídos automaticamente.
+                Conclua a etapa <strong>{etapaPerfil?.nome ?? perfilLabel}</strong> para avançar o
+                processo.
               </Typography>
             </Paper>
           )}
