@@ -51,23 +51,19 @@ export function formatNip(value: string): string {
   return maskNip(value)
 }
 
-/** Nome próprio: letras (com acento), espaços, hífen e apóstrofo — sem números */
-export const NOME_PROPRIO_REGEX = /^[A-Za-zÀ-ÿ]+(?:[ '\-][A-Za-zÀ-ÿ]+)*$/
+/** Formato de número SOLEMP — não deve ser usado como nome do assinante */
+const SOLEMP_NUMERO_COMO_NOME = /^\d{5}-\d{4}\/\d{4}$/
 
-export function maskNomeProprio(value: string): string {
-  return value
-    .replace(/\d/g, '')
-    .replace(/[^A-Za-zÀ-ÿ '\-]/g, '')
-    .replace(/[ '\-]{2,}/g, (m) => m[0])
-    .replace(/^\s+/, '')
-}
-
-export function validateNomeProprio(value: string): string | null {
+/** Nome do assinante em formato livre (texto), sem ser o número da SOLEMP */
+export function validateNomeAssinante(value: string): string | null {
   const nome = value.trim()
   if (nome.length < 2) return 'Informe o nome de quem assinou'
-  if (/\d/.test(nome)) return 'O nome não pode conter números'
-  if (!NOME_PROPRIO_REGEX.test(nome)) {
-    return 'Informe um nome próprio válido (apenas letras)'
+  if (SOLEMP_NUMERO_COMO_NOME.test(nome)) {
+    return 'Informe o nome da pessoa, não o número da SOLEMP (ex.: 65720-2636/2025)'
+  }
+  // Evita colar só o padrão numérico da SOLEMP com espaços extras
+  if (/^\d{5}\s*-\s*\d{4}\s*\/\s*\d{4}$/.test(nome)) {
+    return 'Informe o nome da pessoa, não o número da SOLEMP'
   }
   return null
 }
