@@ -33,14 +33,14 @@ import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfi
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 
 const PERFIL_ICONS: Record<string, ReactElement> = {
-  clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 36 }} />,
-  auditoria: <FactCheckIcon color="secondary" sx={{ fontSize: 36 }} />,
-  contabilidade: <CalculateIcon color="warning" sx={{ fontSize: 36 }} />,
-  confeccao: <EditNoteIcon color="info" sx={{ fontSize: 36 }} />,
-  assinatura1: <DrawIcon color="warning" sx={{ fontSize: 36 }} />,
-  assinatura2: <AssignmentTurnedInIcon color="warning" sx={{ fontSize: 36 }} />,
-  sda: <AccountTreeIcon color="action" sx={{ fontSize: 36 }} />,
-  financas: <PaymentsIcon color="success" sx={{ fontSize: 36 }} />,
+  clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 32 }} />,
+  auditoria: <FactCheckIcon color="secondary" sx={{ fontSize: 32 }} />,
+  contabilidade: <CalculateIcon color="warning" sx={{ fontSize: 32 }} />,
+  confeccao: <EditNoteIcon color="info" sx={{ fontSize: 32 }} />,
+  assinatura1: <DrawIcon color="warning" sx={{ fontSize: 32 }} />,
+  assinatura2: <AssignmentTurnedInIcon color="warning" sx={{ fontSize: 32 }} />,
+  sda: <AccountTreeIcon color="action" sx={{ fontSize: 32 }} />,
+  financas: <PaymentsIcon color="success" sx={{ fontSize: 32 }} />,
 }
 
 interface PortalAccessModalProps {
@@ -121,7 +121,7 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
     <Dialog
       open={open}
       onClose={() => {}}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       slotProps={{
         backdrop: { sx: { backdropFilter: 'blur(6px)' } },
@@ -180,7 +180,13 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
 
       <DialogContent sx={{ pt: 3 }}>
         {!opcao && (
-          <Box sx={{ display: 'grid', gap: 1.5 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gap: 1.5,
+            }}
+          >
             {CADASTRO_PERFIS.map((perfil) => (
               <Card
                 key={perfil.id}
@@ -189,6 +195,7 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
                   borderRadius: 3,
                   borderColor: alpha(theme.palette.primary.main, 0.25),
                   transition: 'all 0.2s',
+                  height: '100%',
                   '&:hover': { borderColor: 'primary.main', boxShadow: 3 },
                 }}
               >
@@ -198,15 +205,26 @@ export function PortalAccessModal({ open, onClinicaSuccess }: PortalAccessModalP
                     setErro('')
                     if (perfil.isClinica) void refetchClinicas()
                   }}
-                  sx={{ p: 2 }}
+                  sx={{ p: 1.75, height: '100%', alignItems: 'stretch' }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {PERFIL_ICONS[perfil.id] ?? <TimelineIcon sx={{ fontSize: 36 }} />}
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                    <Box sx={{ flexShrink: 0, mt: 0.25 }}>
+                      {PERFIL_ICONS[perfil.id] ?? <TimelineIcon sx={{ fontSize: 32 }} />}
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
                         {perfil.label}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
                         {perfil.descricao}
                       </Typography>
                     </Box>
