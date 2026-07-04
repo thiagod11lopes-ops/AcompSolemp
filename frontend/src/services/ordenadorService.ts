@@ -107,9 +107,7 @@ export const ordenadorService = {
           ? `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH. Anotações: ${notas}`
           : `Auditoria concluída por ${usuario.nome}. Enviado para Contabilidade/IMH.`
       } else if (chave === 'DIV_MAT_CONTABILIDADE_IMH') {
-        observacao = notas
-          ? `Contabilidade/IMH concluída por ${usuario.nome}. Anotações: ${notas}`
-          : `Contabilidade/IMH concluída por ${usuario.nome}.`
+        observacao = `Contabilidade/IMH concluída por ${usuario.nome}. Dados do paciente, material, valor e data conferidos e confirmados como corretos. Etapa finalizada.`
       } else {
         observacao = notas
           ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`

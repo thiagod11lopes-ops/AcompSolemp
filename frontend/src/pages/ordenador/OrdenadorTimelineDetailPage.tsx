@@ -5,10 +5,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
-import {
-  SetorConclusaoModal,
-  type SetorConclusaoVariante,
-} from '@/components/ordenador/SetorConclusaoModal'
+import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
+import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
 import { Assinatura1SolempModal } from '@/components/ordenador/Assinatura1SolempModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
@@ -19,12 +17,6 @@ import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 
-function varianteParaChave(chave: string | null | undefined): SetorConclusaoVariante | null {
-  if (chave === 'DIV_MAT_AUDITORIA') return 'auditoria'
-  if (chave === 'DIV_MAT_CONTABILIDADE_IMH') return 'contabilidade'
-  return null
-}
-
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -32,13 +24,15 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
-  const [modalVariante, setModalVariante] = useState<SetorConclusaoVariante | null>(null)
+  const [auditoriaOpen, setAuditoriaOpen] = useState(false)
+  const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const [assinatura1Open, setAssinatura1Open] = useState(false)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
-  const varianteModal = varianteParaChave(chavePerfil)
+  const isAuditoria = chavePerfil === 'DIV_MAT_AUDITORIA'
+  const isContabilidade = chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isAssinatura1 = chavePerfil === 'DIV_MAT_ASSINATURA_1'
 
@@ -67,15 +61,20 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const concluirComSucesso = () => {
-    setModalVariante(null)
+    setAuditoriaOpen(false)
+    setContabilidadeOpen(false)
     setConfeccaoOpen(false)
     setAssinatura1Open(false)
     navigate('/ordenador/timelines')
   }
 
   const handleAssinar = () => {
-    if (varianteModal) {
-      setModalVariante(varianteModal)
+    if (isAuditoria) {
+      setAuditoriaOpen(true)
+      return
+    }
+    if (isContabilidade) {
+      setContabilidadeOpen(true)
       return
     }
     if (isConfeccao) {
@@ -89,11 +88,15 @@ export default function OrdenadorTimelineDetailPage() {
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
 
-  const handleEnviarComAnotacoes = (anotacoes: string) => {
+  const handleEnviarAuditoria = (anotacoes: string) => {
     assinar.mutate(
       { pedidoId: pedido.id, anotacoes },
       { onSuccess: concluirComSucesso },
     )
+  }
+
+  const handleConfirmarContabilidade = () => {
+    assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
 
   const handleEnviarConfeccao = ({ numero, valor }: { numero: string; valor: number }) => {
@@ -123,7 +126,8 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
-  const modalAberto = Boolean(modalVariante) || confeccaoOpen || assinatura1Open
+  const modalAberto =
+    auditoriaOpen || contabilidadeOpen || confeccaoOpen || assinatura1Open
 
   return (
     <>
@@ -204,16 +208,22 @@ export default function OrdenadorTimelineDetailPage() {
         </Grid>
       </Grid>
 
-      {modalVariante && (
-        <SetorConclusaoModal
-          open
-          variante={modalVariante}
-          onClose={() => setModalVariante(null)}
-          onEnviar={handleEnviarComAnotacoes}
-          loading={assinar.isPending}
-          pedidoNumero={pedido.numero}
-        />
-      )}
+      <SetorConclusaoModal
+        open={auditoriaOpen}
+        variante="auditoria"
+        onClose={() => setAuditoriaOpen(false)}
+        onEnviar={handleEnviarAuditoria}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+      />
+
+      <ContabilidadeConfirmacaoModal
+        open={contabilidadeOpen}
+        onClose={() => setContabilidadeOpen(false)}
+        onConfirmar={handleConfirmarContabilidade}
+        loading={assinar.isPending}
+        pedido={pedido}
+      />
 
       <ConfeccaoSolempModal
         open={confeccaoOpen}
