@@ -106,6 +106,7 @@ export function PlanilhaEnvioModalShell({
 
   const handleContextMenu = (event: React.MouseEvent, linhaId: string) => {
     event.preventDefault()
+    event.stopPropagation()
     if (disabled) return
     setAddRowTargetId(linhaId)
   }
@@ -117,6 +118,7 @@ export function PlanilhaEnvioModalShell({
   }
 
   return (
+    <>
     <Dialog
       fullScreen
       open={open}
@@ -277,12 +279,7 @@ export function PlanilhaEnvioModalShell({
           </TableHead>
           <TableBody>
             {linhas.map((linha) => (
-              <TableRow
-                key={linha.id}
-                hover
-                onContextMenu={(e) => handleContextMenu(e, linha.id)}
-                sx={{ cursor: 'context-menu' }}
-              >
+              <TableRow key={linha.id} hover sx={{ cursor: 'context-menu' }}>
                 {IMH_COLUNAS.map((col) => {
                   const isPacienteCol = COLUNAS_PACIENTE.includes(col.key)
                   const readOnly = isPacienteCol && !linha.isLinhaPaciente
@@ -290,6 +287,7 @@ export function PlanilhaEnvioModalShell({
                   return (
                     <TableCell
                       key={col.key}
+                      onContextMenu={(e) => handleContextMenu(e, linha.id)}
                       sx={{
                         p: 0,
                         minWidth: col.width,
@@ -312,10 +310,11 @@ export function PlanilhaEnvioModalShell({
                             onLinhaChange(linha.id, col.key as ImhColunaKey, e.target.value)
                           }
                           disabled={disabled}
-                          onContextMenu={(e) => e.stopPropagation()}
                           slotProps={{
                             input: {
                               disableUnderline: true,
+                              onContextMenu: (e: React.MouseEvent) =>
+                                handleContextMenu(e, linha.id),
                               sx: {
                                 fontSize: '0.8rem',
                                 px: 1,
@@ -331,6 +330,7 @@ export function PlanilhaEnvioModalShell({
                 })}
                 <TableCell
                   align="center"
+                  onContextMenu={(e) => handleContextMenu(e, linha.id)}
                   sx={{
                     p: 0.5,
                     width: ACOES_COL_WIDTH,
@@ -390,7 +390,23 @@ export function PlanilhaEnvioModalShell({
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>{footerActions}</Box>
       </Box>
 
-      <Dialog open={addRowTargetId !== null} onClose={() => setAddRowTargetId(null)} maxWidth="xs" fullWidth>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
+    </Dialog>
+
+      <Dialog
+        open={addRowTargetId !== null}
+        onClose={() => setAddRowTargetId(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          root: {
+            sx: { zIndex: (theme) => theme.zIndex.modal + 2 },
+          },
+        }}
+      >
         <DialogTitle>Adicionar linha</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">
@@ -409,11 +425,6 @@ export function PlanilhaEnvioModalShell({
           </Button>
         </DialogActions>
       </Dialog>
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .spin { animation: spin 1s linear infinite; }
-      `}</style>
-    </Dialog>
+    </>
   )
 }
