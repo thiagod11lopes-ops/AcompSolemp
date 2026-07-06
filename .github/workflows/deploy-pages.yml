@@ -12,7 +12,6 @@ permissions:
 
 concurrency:
   group: pages
-  # Evita cancelar um deploy em andamento (causa falhas intermitentes no Pages)
   cancel-in-progress: false
 
 jobs:
@@ -23,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -45,26 +44,51 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry_1.outputs.page_url || steps.deployment_retry_2.outputs.page_url || steps.deployment_retry_3.outputs.page_url }}
     steps:
-      # Pequena espera reduz falhas quando o Pages ainda processa o deploy anterior
       - name: Wait for Pages to settle
-        run: sleep 20
+        run: sleep 30
 
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
         continue-on-error: true
 
-      - name: Wait before retry
+      - name: Wait before retry 1
         if: steps.deployment.outcome == 'failure'
-        run: sleep 30
+        run: sleep 45
 
-      - id: deployment_retry
+      - name: Deploy retry 1
+        id: deployment_retry_1
         if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
+        continue-on-error: true
 
-      - name: Fail if deploy did not succeed
-        if: steps.deployment.outcome == 'failure' && steps.deployment_retry.outcome == 'failure'
+      - name: Wait before retry 2
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry_1.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy retry 2
+        id: deployment_retry_2
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry_1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry 3
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry_1.outcome == 'failure' && steps.deployment_retry_2.outcome == 'failure'
+        run: sleep 90
+
+      - name: Deploy retry 3
+        id: deployment_retry_3
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry_1.outcome == 'failure' && steps.deployment_retry_2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+
+      - name: Verify deployment succeeded
+        if: always()
         run: |
-          echo "GitHub Pages deployment failed after retry."
+          if [ "${{ steps.deployment.outcome }}" = "success" ]; then exit 0; fi
+          if [ "${{ steps.deployment_retry_1.outcome }}" = "success" ]; then exit 0; fi
+          if [ "${{ steps.deployment_retry_2.outcome }}" = "success" ]; then exit 0; fi
+          if [ "${{ steps.deployment_retry_3.outcome }}" = "success" ]; then exit 0; fi
+          echo "GitHub Pages deployment failed after 4 attempts."
           exit 1
