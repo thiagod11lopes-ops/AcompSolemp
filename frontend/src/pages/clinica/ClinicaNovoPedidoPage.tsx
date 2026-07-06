@@ -17,6 +17,7 @@ import type { RowSelectionState } from '@tanstack/react-table'
 import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
+import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
 import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
@@ -98,6 +99,8 @@ export default function ClinicaNovoPedidoPage() {
   const [mesSelecionado, setMesSelecionado] = useState<MesConsumoModelo>(getMesAtualModelo)
   const [addPlanilhaError, setAddPlanilhaError] = useState<string | null>(null)
   const [isAdicionandoPlanilha, setIsAdicionandoPlanilha] = useState(false)
+  const [imhModalOpen, setImhModalOpen] = useState(false)
+  const [imhConsumoRows, setImhConsumoRows] = useState<ConsumoMaterialRow[]>([])
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
@@ -206,25 +209,27 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtiva(2)
   }
 
-  const handleEnviarSelecionados = async () => {
+  const handleAbrirImhModal = () => {
+    const selectedRows = planilhaRows.filter(
+      (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
+    )
+    if (selectedRows.length === 0) {
+      setBatchError('Selecione lançamentos preenchidos para enviar.')
+      return
+    }
+    setBatchError(null)
+    setImhConsumoRows(selectedRows)
+    setImhModalOpen(true)
+  }
+
+  const handleConfirmarEnvioImh = async () => {
     const clinicaNome = clinicaLogada?.nome ?? ''
     if (!clinicaNome) {
       setBatchError('Clínica não identificada. Faça login novamente.')
       return
     }
 
-    const selectedRows = planilhaRows.filter(
-      (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
-    )
-    const novos = selectedRows.filter((r) => rowPodeSerEnviada(r, rowIdsComPedido))
-    if (novos.length === 0) {
-      setBatchError(
-        selectedRows.length > 0
-          ? 'Os lançamentos selecionados já estão no sistema.'
-          : 'Selecione lançamentos preenchidos para enviar.',
-      )
-      return
-    }
+    const novos = imhConsumoRows.filter((r) => rowPodeSerEnviada(r, rowIdsComPedido))
 
     setBatchError(null)
     setIsBatchSending(true)
@@ -238,11 +243,15 @@ export default function ClinicaNovoPedidoPage() {
         ultimoId = pedido.id
         enviadosIds.add(row.id)
       }
-      setExtraRows((prev) => prev.filter((r) => !enviadosIds.has(r.id)))
+      if (enviadosIds.size > 0) {
+        setExtraRows((prev) => prev.filter((r) => !enviadosIds.has(r.id)))
+      }
+      setImhModalOpen(false)
       setRowSelection({})
+      setImhConsumoRows([])
       if (novos.length === 1 && ultimoId) {
         navigate(`/clinica/timeline/${ultimoId}`)
-      } else {
+      } else if (novos.length > 0) {
         navigate('/clinica/pedidos')
       }
     } catch {
@@ -320,7 +329,7 @@ export default function ClinicaNovoPedidoPage() {
         <Box sx={{ display: 'grid', gap: 3 }}>
           <PlanilhaToolbar
             onClear={limparPlanilha}
-            onSend={handleEnviarSelecionados}
+            onSend={handleAbrirImhModal}
             selectedCount={selectedCount}
             isSending={isBatchSending}
             clearLabel="Limpar rascunhos"
@@ -343,6 +352,20 @@ export default function ClinicaNovoPedidoPage() {
           />
         </Box>
       )}
+
+      <ImhEnvioModal
+        open={imhModalOpen}
+        consumoRows={imhConsumoRows}
+        mesReferencia={mesSelecionado}
+        isSubmitting={isBatchSending}
+        onClose={() => {
+          if (!isBatchSending) {
+            setImhModalOpen(false)
+            setImhConsumoRows([])
+          }
+        }}
+        onConfirm={handleConfirmarEnvioImh}
+      />
     </>
   )
 }
