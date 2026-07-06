@@ -32,6 +32,7 @@ import {
   getRowIdsComPedido,
   pedidoIdFromRowId,
   CONSUMO_PLANILHA_NOME_PADRAO,
+  rowPodeSerEnviada,
   getMesAtualModelo,
   getMesModeloFromParts,
   dataPertenceAoMes,
@@ -211,12 +212,8 @@ export default function ClinicaNovoPedidoPage() {
       return
     }
 
-    const pedidoIds = new Set(pedidos.map((p) => p.id))
     const selectedRows = planilhaRows.filter(
-      (r) =>
-        rowSelection[r.id] &&
-        isLinhaPreenchida(r) &&
-        !pedidoIds.has(pedidoIdFromRowId(r.id)),
+      (r) => rowSelection[r.id] && rowPodeSerEnviada(r, rowIdsComPedido),
     )
     if (selectedRows.length === 0) {
       setBatchError('Selecione lançamentos novos que ainda não estão no sistema.')
@@ -249,11 +246,8 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const selectedCount = planilhaRows.filter(
-    (r) =>
-      rowSelection[r.id] &&
-      isLinhaPreenchida(r) &&
-      !rowIdsComPedido.has(r.id),
+  const selectedCount = planilhaRows.filter((r) =>
+    rowSelection[r.id] && rowPodeSerEnviada(r, rowIdsComPedido),
   ).length
 
   const totalPreenchidos = planilhaRows.filter(isLinhaPreenchida).length

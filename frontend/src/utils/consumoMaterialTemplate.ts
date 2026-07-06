@@ -184,7 +184,14 @@ export function isLinhaPreenchida(row: ConsumoMaterialRow): boolean {
 }
 
 export function isLinhaPlaceholder(row: ConsumoMaterialRow): boolean {
-  return row.id.startsWith('slot-')
+  return row.id.startsWith('slot-') && !isLinhaPreenchida(row)
+}
+
+export function rowPodeSerEnviada(
+  row: ConsumoMaterialRow,
+  rowIdsComPedido: Set<string>,
+): boolean {
+  return isLinhaPreenchida(row) && !rowIdsComPedido.has(row.id)
 }
 
 export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow {

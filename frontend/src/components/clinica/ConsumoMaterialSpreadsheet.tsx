@@ -32,13 +32,13 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   CONSUMO_MATERIAL_HEADERS,
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPlaceholder } from '@/utils/consumoMaterialTemplate'
+import { isLinhaPlaceholder, rowPodeSerEnviada } from '@/utils/consumoMaterialTemplate'
 import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
 import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
 
@@ -110,6 +110,11 @@ export function ConsumoMaterialSpreadsheet({
     onAddPlanilhaErrorClear?.()
     setAdicionarOpen(true)
   }
+
+  const podeSelecionar = useCallback(
+    (row: ConsumoMaterialRow) => rowPodeSerEnviada(row, rowIdsComPedido ?? new Set()),
+    [rowIdsComPedido],
+  )
 
   const columns = useMemo<ColumnDef<ConsumoMaterialRow>[]>(() => {
     const dataColumns: ColumnDef<ConsumoMaterialRow>[] = CONSUMO_MATERIAL_HEADERS.map(
@@ -195,13 +200,12 @@ export function ConsumoMaterialSpreadsheet({
           />
         ),
         cell: ({ row }) => {
-          const placeholder = isLinhaPlaceholder(row.original)
-          const jaNoSistema = rowIdsComPedido?.has(row.original.id) ?? false
+          const selecionavel = podeSelecionar(row.original)
           return (
             <Checkbox
               size="small"
               checked={row.getIsSelected()}
-              disabled={placeholder || jaNoSistema}
+              disabled={!selecionavel}
               onChange={row.getToggleSelectedHandler()}
             />
           )
@@ -209,7 +213,7 @@ export function ConsumoMaterialSpreadsheet({
       },
       ...dataColumns,
     ]
-  }, [])
+  }, [rowIdsComPedido, podeSelecionar])
 
   const table = useReactTable({
     data: rows,
@@ -221,9 +225,7 @@ export function ConsumoMaterialSpreadsheet({
       const next = typeof updater === 'function' ? updater(rowSelection) : updater
       onRowSelectionChange(next)
     },
-    enableRowSelection: (row) =>
-      !isLinhaPlaceholder(row.original) &&
-      !(rowIdsComPedido?.has(row.original.id) ?? false),
+    enableRowSelection: (row) => podeSelecionar(row.original),
     getRowId: (row) => row.id,
     globalFilterFn: (row, _columnId, filterValue) => {
       const q = String(filterValue).toLowerCase()
@@ -247,7 +249,9 @@ export function ConsumoMaterialSpreadsheet({
     initialState: { pagination: { pageSize: 50 } },
   })
 
-  const selectedCount = Object.keys(rowSelection).length
+  const selectedCount = table
+    .getSelectedRowModel()
+    .rows.filter((r) => podeSelecionar(r.original)).length
   const filteredRows = table.getFilteredRowModel().rows
   const totalValorFiltrado = filteredRows.reduce(
     (sum, r) => sum + (isLinhaPlaceholder(r.original) ? 0 : r.original.valorNumerico),
@@ -453,8 +457,18 @@ export function ConsumoMaterialSpreadsheet({
                   position: 'sticky',
                   left: 0,
                   zIndex: 4,
+                  verticalAlign: 'middle',
+                  textAlign: 'center',
                 }}
-              />
+              >
+                {table.getHeaderGroups()[0]?.headers
+                  .filter((h) => h.id === 'select')
+                  .map((header) => (
+                    <Box key={header.id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </Box>
+                  ))}
+              </TableCell>
               {groupSpans.map((g) => (
                 <TableCell
                   key={g.group}
@@ -550,6 +564,11 @@ export function ConsumoMaterialSpreadsheet({
                   {row.getVisibleCells().map((cell, cellIndex) => (
                     <TableCell
                       key={cell.id}
+                      onClick={
+                        cellIndex === 0 && podeSelecionar(row.original)
+                          ? row.getToggleSelectedHandler()
+                          : undefined
+                      }
                       sx={{
                         py: 0.75,
                         ...(cellIndex === 0
@@ -560,6 +579,7 @@ export function ConsumoMaterialSpreadsheet({
                               bgcolor: 'inherit',
                               borderRight: 1,
                               borderColor: 'divider',
+                              cursor: podeSelecionar(row.original) ? 'pointer' : 'default',
                             }
                           : {}),
                       }}
