@@ -14,6 +14,8 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Tab,
+  Tabs,
   TextField,
   Alert,
   Tooltip,
@@ -24,17 +26,29 @@ import PersonIcon from '@mui/icons-material/Person'
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import TableChartIcon from '@mui/icons-material/TableChart'
+import EditNoteIcon from '@mui/icons-material/EditNote'
+import SendIcon from '@mui/icons-material/Send'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import type { RowSelectionState } from '@tanstack/react-table'
 import { PageHeader } from '@/components/common/PageHeader'
+import { ConsumoMaterialSpreadsheet } from '@/components/clinica/ConsumoMaterialSpreadsheet'
+import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
 import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import type { PacienteVinculo, TipoUsuarioPaciente } from '@/types'
 import { formatNip, maskNip, NIP_REGEX } from '@/utils/format'
+import {
+  consumoRowToPedidoInput,
+  parseConsumoMaterialOds,
+  type ConsumoMaterialRow,
+} from '@/utils/consumoMaterialOds'
 
 const TIPO_USUARIO_OPTIONS: { value: TipoUsuarioPaciente; label: string }[] = [
   { value: 'MILITAR', label: 'Militar' },
@@ -266,6 +280,15 @@ export default function ClinicaNovoPedidoPage() {
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
+  const [abaAtiva, setAbaAtiva] = useState(0)
+  const [planilhaRows, setPlanilhaRows] = useState<ConsumoMaterialRow[]>([])
+  const [planilhaNome, setPlanilhaNome] = useState('')
+  const [parseError, setParseError] = useState<string | null>(null)
+  const [isParsing, setIsParsing] = useState(false)
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [batchError, setBatchError] = useState<string | null>(null)
+  const [isBatchSending, setIsBatchSending] = useState(false)
+
   const {
     register,
     control,
@@ -372,6 +395,71 @@ export default function ClinicaNovoPedidoPage() {
     })
   }
 
+  const handleOdsFile = useCallback(async (file: File) => {
+    setParseError(null)
+    setIsParsing(true)
+    setRowSelection({})
+    try {
+      const rows = await parseConsumoMaterialOds(file)
+      setPlanilhaRows(rows)
+      setPlanilhaNome(file.name)
+      const initialSelection: RowSelectionState = {}
+      rows.slice(0, Math.min(rows.length, 50)).forEach((r) => {
+        initialSelection[r.id] = true
+      })
+      setRowSelection(initialSelection)
+    } catch (err) {
+      setPlanilhaRows([])
+      setPlanilhaNome('')
+      setParseError(err instanceof Error ? err.message : 'Erro ao ler o arquivo ODS')
+    } finally {
+      setIsParsing(false)
+    }
+  }, [])
+
+  const limparPlanilha = () => {
+    setPlanilhaRows([])
+    setPlanilhaNome('')
+    setRowSelection({})
+    setParseError(null)
+    setBatchError(null)
+  }
+
+  const handleEnviarSelecionados = async () => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome) {
+      setBatchError('Clínica não identificada. Faça login novamente.')
+      return
+    }
+
+    const selectedRows = planilhaRows.filter((r) => rowSelection[r.id])
+    if (selectedRows.length === 0) {
+      setBatchError('Selecione ao menos um lançamento na planilha.')
+      return
+    }
+
+    setBatchError(null)
+    setIsBatchSending(true)
+    try {
+      let ultimoId: string | null = null
+      for (const row of selectedRows) {
+        const pedido = await createPedido.mutateAsync(
+          consumoRowToPedidoInput(row, clinicaNome),
+        )
+        ultimoId = pedido.id
+      }
+      if (selectedRows.length === 1 && ultimoId) {
+        navigate(`/clinica/timeline/${ultimoId}`)
+      } else {
+        navigate('/clinica/pedidos')
+      }
+    } catch {
+      setBatchError('Erro ao enviar lançamentos. Tente novamente.')
+    } finally {
+      setIsBatchSending(false)
+    }
+  }
+
   const onSubmit = async (data: FormData) => {
     try {
       const pedido = await createPedido.mutateAsync({
@@ -418,27 +506,84 @@ export default function ClinicaNovoPedidoPage() {
 
       <PageHeader
         title="Novo Lançamento"
-        subtitle="Informe os dados do paciente e da clínica para iniciar a timeline"
+        subtitle="Importe a planilha de consumo (.ods) ou preencha manualmente os dados do paciente"
         titleAdornment={
-          <Tooltip title="Preencher com dados de exemplo">
-            <IconButton
-              color="primary"
-              onClick={preencherExemplo}
-              aria-label="Preencher com dados de exemplo"
-              size="small"
-            >
-              <AutoAwesomeIcon />
-            </IconButton>
-          </Tooltip>
+          abaAtiva === 1 ? (
+            <Tooltip title="Preencher com dados de exemplo">
+              <IconButton
+                color="primary"
+                onClick={preencherExemplo}
+                aria-label="Preencher com dados de exemplo"
+                size="small"
+              >
+                <AutoAwesomeIcon />
+              </IconButton>
+            </Tooltip>
+          ) : undefined
         }
       />
 
-      {createPedido.isError && (
+      <Tabs
+        value={abaAtiva}
+        onChange={(_: SyntheticEvent, v: number) => setAbaAtiva(v)}
+        sx={{ mb: 3 }}
+      >
+        <Tab icon={<TableChartIcon />} iconPosition="start" label="Importar planilha (.ods)" />
+        <Tab icon={<EditNoteIcon />} iconPosition="start" label="Lançamento manual" />
+      </Tabs>
+
+      {createPedido.isError && abaAtiva === 1 && (
         <Alert severity="error" sx={{ mb: 2 }}>
           Erro ao criar lançamento. Tente novamente.
         </Alert>
       )}
 
+      {abaAtiva === 0 && (
+        <Box sx={{ display: 'grid', gap: 3 }}>
+          {planilhaRows.length === 0 ? (
+            <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
+          ) : (
+            <>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={limparPlanilha}
+                  disabled={isBatchSending}
+                >
+                  Substituir arquivo
+                </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<SendIcon />}
+                  onClick={handleEnviarSelecionados}
+                  disabled={isBatchSending || Object.keys(rowSelection).length === 0}
+                >
+                  {isBatchSending
+                    ? 'Enviando...'
+                    : `Enviar selecionados (${Object.keys(rowSelection).length})`}
+                </Button>
+              </Box>
+
+              {batchError && (
+                <Alert severity="error" onClose={() => setBatchError(null)}>
+                  {batchError}
+                </Alert>
+              )}
+
+              <ConsumoMaterialSpreadsheet
+                rows={planilhaRows}
+                fileName={planilhaNome}
+                rowSelection={rowSelection}
+                onRowSelectionChange={setRowSelection}
+              />
+            </>
+          )}
+        </Box>
+      )}
+
+      {abaAtiva === 1 && (
       <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
         <Box sx={{ display: 'grid', gap: 3, maxWidth: 800 }}>
           <Card variant="outlined" sx={{ borderRadius: 3 }}>
@@ -764,6 +909,7 @@ export default function ClinicaNovoPedidoPage() {
           {createPedido.isPending ? 'Enviando...' : 'Enviar para Div. de Material'}
         </Button>
       </Box>
+      )}
     </>
   )
 }
