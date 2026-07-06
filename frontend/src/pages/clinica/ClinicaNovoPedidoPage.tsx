@@ -18,7 +18,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
-import { useCreateClinicaPedido, useClinicaPedidos } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
@@ -32,6 +32,10 @@ import {
   getRowIdsComPedido,
   pedidoIdFromRowId,
   CONSUMO_PLANILHA_NOME_PADRAO,
+  getMesAtualModelo,
+  getMesModeloFromParts,
+  dataPertenceAoMes,
+  type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 
 function PlanilhaToolbar({
@@ -75,6 +79,7 @@ function PlanilhaToolbar({
 export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
   const createPedido = useCreateClinicaPedido()
+  const deleteAllPedidos = useDeleteAllClinicaPedidos()
   const { user } = useClinicaAuth()
   const { data: pedidos = [] } = useClinicaPedidos()
   const { data: clinicas = [] } = useClinicas()
@@ -88,6 +93,9 @@ export default function ClinicaNovoPedidoPage() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [batchError, setBatchError] = useState<string | null>(null)
   const [isBatchSending, setIsBatchSending] = useState(false)
+  const [mesSelecionado, setMesSelecionado] = useState<MesConsumoModelo>(getMesAtualModelo)
+  const [addPlanilhaError, setAddPlanilhaError] = useState<string | null>(null)
+  const [isAdicionandoPlanilha, setIsAdicionandoPlanilha] = useState(false)
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
@@ -132,6 +140,61 @@ export default function ClinicaNovoPedidoPage() {
     setRowSelection({})
     setParseError(null)
     setBatchError(null)
+  }
+
+  const handleExcluirTudo = async () => {
+    setBatchError(null)
+    try {
+      await deleteAllPedidos.mutateAsync()
+      limparPlanilha()
+    } catch {
+      setBatchError('Erro ao excluir os lançamentos. Tente novamente.')
+      throw new Error('delete failed')
+    }
+  }
+
+  const handleAdicionarPlanilha = async (mes: number, ano: number, file: File) => {
+    setAddPlanilhaError(null)
+    setIsAdicionandoPlanilha(true)
+    try {
+      const rows = await parseConsumoMaterialOds(file)
+      const mesModelo = getMesModeloFromParts(mes, ano)
+      const pedidoIds = new Set(pedidos.map((p) => p.id))
+      const novos = rows.filter(
+        (r) =>
+          dataPertenceAoMes(r.data, mesModelo) &&
+          !pedidoIds.has(pedidoIdFromRowId(r.id)),
+      )
+      if (novos.length === 0) {
+        setAddPlanilhaError(
+          `Nenhum lançamento encontrado para ${mesModelo.label} no arquivo selecionado.`,
+        )
+        throw new Error('no rows')
+      }
+      setExtraRows((prev) => {
+        const semMes = prev.filter((r) => !dataPertenceAoMes(r.data, mesModelo))
+        const ids = new Set(semMes.map((r) => r.id))
+        const merged = [...semMes]
+        for (const row of novos) {
+          if (!ids.has(row.id)) merged.push(row)
+        }
+        return merged
+      })
+      setPlanilhaNome(file.name)
+      setMesSelecionado(mesModelo)
+      const initialSelection: RowSelectionState = {}
+      novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
+        initialSelection[r.id] = true
+      })
+      setRowSelection(initialSelection)
+    } catch (err) {
+      if (err instanceof Error && err.message !== 'no rows') {
+        setAddPlanilhaError(err.message || 'Erro ao ler o arquivo ODS')
+      }
+      throw err
+    } finally {
+      setIsAdicionandoPlanilha(false)
+    }
   }
 
   const handleAddManualRow = (row: ConsumoMaterialRow) => {
@@ -269,6 +332,14 @@ export default function ClinicaNovoPedidoPage() {
             onRowSelectionChange={setRowSelection}
             rowIdsComPedido={rowIdsComPedido}
             totalPedidos={pedidos.length}
+            mesSelecionado={mesSelecionado}
+            onMesSelecionadoChange={setMesSelecionado}
+            onExcluirTudo={handleExcluirTudo}
+            onAdicionarPlanilha={handleAdicionarPlanilha}
+            isExcluindo={deleteAllPedidos.isPending}
+            isAdicionando={isAdicionandoPlanilha}
+            addPlanilhaError={addPlanilhaError}
+            onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
           />
         </Box>
       )}

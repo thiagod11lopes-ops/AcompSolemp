@@ -39,6 +39,14 @@ interface ConsumoMaterialConsignadoViewProps {
   onRowSelectionChange: (selection: RowSelectionState) => void
   rowIdsComPedido?: Set<string>
   totalPedidos?: number
+  mesSelecionado?: MesConsumoModelo
+  onMesSelecionadoChange?: (mes: MesConsumoModelo) => void
+  onExcluirTudo?: () => Promise<void>
+  onAdicionarPlanilha?: (mes: number, ano: number, file: File) => Promise<void>
+  isExcluindo?: boolean
+  isAdicionando?: boolean
+  addPlanilhaError?: string | null
+  onAddPlanilhaErrorClear?: () => void
 }
 
 export function ConsumoMaterialConsignadoView({
@@ -48,8 +56,18 @@ export function ConsumoMaterialConsignadoView({
   onRowSelectionChange,
   rowIdsComPedido,
   totalPedidos,
+  mesSelecionado: mesControlado,
+  onMesSelecionadoChange,
+  onExcluirTudo,
+  onAdicionarPlanilha,
+  isExcluindo,
+  isAdicionando,
+  addPlanilhaError,
+  onAddPlanilhaErrorClear,
 }: ConsumoMaterialConsignadoViewProps) {
-  const [mesSelecionado, setMesSelecionado] = useState<MesConsumoModelo>(getMesAtualModelo)
+  const [mesInterno, setMesInterno] = useState<MesConsumoModelo>(getMesAtualModelo)
+  const mesSelecionado = mesControlado ?? mesInterno
+  const setMesSelecionado = onMesSelecionadoChange ?? setMesInterno
 
   const linhasExibidas = useMemo(
     () => montarLinhasPlanilhaFixa(lancamentos, mesSelecionado),
@@ -177,6 +195,13 @@ export function ConsumoMaterialConsignadoView({
         mesReferencia={mesSelecionado.label}
         lancamentosPreenchidos={preenchidasNoMes}
         rowIdsComPedido={rowIdsComPedido}
+        totalLancamentos={totalNoSistema}
+        onExcluirTudo={onExcluirTudo}
+        onAdicionarPlanilha={onAdicionarPlanilha}
+        isExcluindo={isExcluindo}
+        isAdicionando={isAdicionando}
+        addPlanilhaError={addPlanilhaError}
+        onAddPlanilhaErrorClear={onAddPlanilhaErrorClear}
       />
     </Box>
   )

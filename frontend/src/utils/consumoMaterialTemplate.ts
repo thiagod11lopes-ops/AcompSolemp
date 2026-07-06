@@ -150,6 +150,26 @@ export function getMesAtualModelo(): MesConsumoModelo {
   return found ?? CONSUMO_MESES_MODELO[0]
 }
 
+const MESES_NOMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+]
+
+export const ANOS_PLANILHA_DISPONIVEIS = [2025, 2026, 2027]
+
+export function getMesModeloFromParts(mes: number, ano: number): MesConsumoModelo {
+  const found = CONSUMO_MESES_MODELO.find((m) => m.mes === mes && m.ano === ano)
+  if (found) return found
+  const anoCurto = String(ano).slice(-2)
+  return {
+    id: `${String(mes).padStart(2, '0')}-${anoCurto}`,
+    label: `${MESES_NOMES[mes - 1]}/${ano}`,
+    mes,
+    ano,
+    arquivo: '',
+  }
+}
+
 export function dataPertenceAoMes(data: string, mesModelo: MesConsumoModelo): boolean {
   const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
   if (!match) return false

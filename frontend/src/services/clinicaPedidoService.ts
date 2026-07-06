@@ -316,4 +316,29 @@ export const clinicaPedidoService = {
     const index = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
     return ordenadas[index - 1]?.nome ?? ''
   },
+
+  async deleteAllByClinica(clinicaId: string): Promise<number> {
+    await delay(null, 400)
+    const data = loadAppData()
+    const pedidoIds = new Set(
+      data.pedidos.filter((p) => p.clinicaId === clinicaId).map((p) => p.id),
+    )
+    if (pedidoIds.size === 0) {
+      saveAppData(data)
+      return 0
+    }
+
+    data.pedidos = data.pedidos.filter((p) => p.clinicaId !== clinicaId)
+    data.historico = data.historico.filter((h) => !pedidoIds.has(h.pedidoId))
+    data.notificacoes = data.notificacoes.filter(
+      (n) => !n.pedidoId || !pedidoIds.has(n.pedidoId),
+    )
+    data.solemp = data.solemp.filter((s) => !pedidoIds.has(s.pedidoId))
+    data.notasFiscais = data.notasFiscais.filter((n) => !pedidoIds.has(n.pedidoId))
+    if (data.reversoes) {
+      data.reversoes = data.reversoes.filter((r) => !pedidoIds.has(r.pedidoId))
+    }
+    saveAppData(data)
+    return pedidoIds.size
+  },
 }

@@ -35,6 +35,20 @@ export function useSolempDefaults() {
   })
 }
 
+export function useDeleteAllClinicaPedidos() {
+  const { user } = useClinicaAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => clinicaPedidoService.deleteAllByClinica(user!.clinicaId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['solemp-defaults'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}
+
 export function useCreateClinicaPedido() {
   const { user } = useClinicaAuth()
   const queryClient = useQueryClient()

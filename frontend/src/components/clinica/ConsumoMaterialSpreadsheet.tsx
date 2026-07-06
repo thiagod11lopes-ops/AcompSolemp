@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Checkbox,
   Chip,
   InputAdornment,
@@ -18,6 +19,8 @@ import {
   alpha,
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
+import PostAddIcon from '@mui/icons-material/PostAdd'
 import {
   flexRender,
   getCoreRowModel,
@@ -36,6 +39,8 @@ import {
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
 import { isLinhaPlaceholder } from '@/utils/consumoMaterialTemplate'
+import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
+import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
 
 const GROUP_LABELS: Record<string, string> = {
   paciente: 'Paciente',
@@ -57,6 +62,13 @@ interface ConsumoMaterialSpreadsheetProps {
   mesReferencia?: string
   lancamentosPreenchidos?: number
   rowIdsComPedido?: Set<string>
+  totalLancamentos?: number
+  onExcluirTudo?: () => Promise<void>
+  onAdicionarPlanilha?: (mes: number, ano: number, file: File) => Promise<void>
+  isExcluindo?: boolean
+  isAdicionando?: boolean
+  addPlanilhaError?: string | null
+  onAddPlanilhaErrorClear?: () => void
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -67,9 +79,37 @@ export function ConsumoMaterialSpreadsheet({
   mesReferencia,
   lancamentosPreenchidos,
   rowIdsComPedido,
+  totalLancamentos = 0,
+  onExcluirTudo,
+  onAdicionarPlanilha,
+  isExcluindo = false,
+  isAdicionando = false,
+  addPlanilhaError = null,
+  onAddPlanilhaErrorClear,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
+  const [excluirOpen, setExcluirOpen] = useState(false)
+  const [adicionarOpen, setAdicionarOpen] = useState(false)
+
+  const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
+
+  const handleExcluirConfirm = async () => {
+    if (!onExcluirTudo) return
+    await onExcluirTudo()
+    setExcluirOpen(false)
+  }
+
+  const handleAdicionarFile = async (mes: number, ano: number, file: File) => {
+    if (!onAdicionarPlanilha) return
+    await onAdicionarPlanilha(mes, ano, file)
+    setAdicionarOpen(false)
+  }
+
+  const openAdicionarModal = () => {
+    onAddPlanilhaErrorClear?.()
+    setAdicionarOpen(true)
+  }
 
   const columns = useMemo<ColumnDef<ConsumoMaterialRow>[]>(() => {
     const dataColumns: ColumnDef<ConsumoMaterialRow>[] = CONSUMO_MATERIAL_HEADERS.map(
@@ -235,6 +275,7 @@ export function ConsumoMaterialSpreadsheet({
   }, [])
 
   return (
+    <>
     <Paper
       elevation={0}
       sx={(theme) => ({
@@ -290,12 +331,55 @@ export function ConsumoMaterialSpreadsheet({
                 />
               )}
               {lancamentosPreenchidos !== undefined && (
-                <Chip
-                  label={`${rows.filter((r) => isLinhaPlaceholder(r)).length} linhas livres`}
-                  size="small"
-                  variant="outlined"
-                  sx={{ color: 'white', borderColor: alpha('#fff', 0.35) }}
-                />
+                <>
+                  <Chip
+                    label={`${rows.filter((r) => isLinhaPlaceholder(r)).length} linhas livres`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ color: 'white', borderColor: alpha('#fff', 0.35) }}
+                  />
+                  {showPlanilhaActions && (
+                    <>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<DeleteSweepIcon />}
+                        onClick={() => setExcluirOpen(true)}
+                        disabled={isExcluindo || isAdicionando}
+                        sx={{
+                          color: 'white',
+                          borderColor: alpha('#fff', 0.4),
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: 'white',
+                            bgcolor: alpha('#fff', 0.1),
+                          },
+                        }}
+                      >
+                        Excluir tudo
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        startIcon={<PostAddIcon />}
+                        onClick={openAdicionarModal}
+                        disabled={isExcluindo || isAdicionando}
+                        sx={{
+                          fontWeight: 700,
+                          bgcolor: alpha('#fff', 0.2),
+                          color: 'white',
+                          boxShadow: 'none',
+                          '&:hover': {
+                            bgcolor: alpha('#fff', 0.3),
+                            boxShadow: 'none',
+                          },
+                        }}
+                      >
+                        Adicionar planilha
+                      </Button>
+                    </>
+                  )}
+                </>
               )}
               {selectedCount > 0 && (
                 <Chip
@@ -502,5 +586,25 @@ export function ConsumoMaterialSpreadsheet({
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
       />
     </Paper>
+
+    {showPlanilhaActions && (
+      <>
+        <ExcluirPlanilhaDialog
+          open={excluirOpen}
+          totalLancamentos={totalLancamentos}
+          isDeleting={isExcluindo}
+          onClose={() => setExcluirOpen(false)}
+          onConfirm={handleExcluirConfirm}
+        />
+        <AdicionarPlanilhaModal
+          open={adicionarOpen}
+          isLoading={isAdicionando}
+          error={addPlanilhaError}
+          onClose={() => setAdicionarOpen(false)}
+          onFileSelected={handleAdicionarFile}
+        />
+      </>
+    )}
+    </>
   )
 }
