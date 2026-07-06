@@ -35,10 +35,10 @@ import {
   type ImhLinha,
 } from '@/utils/imhPlanilhaTemplate'
 import {
-  buildImhPlanilhaExport,
-  downloadImhOds,
-  getImhExportFileName,
-} from '@/utils/imhOdsExport'
+  buildImhXlsxLinhas,
+  getImhXlsxFileName,
+} from '@/utils/imhXlsxLinha'
+import { downloadImhXlsx } from '@/utils/imhXlsxExport'
 
 interface ImhEnvioModalProps {
   open: boolean
@@ -76,15 +76,15 @@ export function ImhEnvioModal({
     fornecedor: '',
   })
   const [linhas, setLinhas] = useState<ImhLinha[]>([])
-  const [isGeneratingOds, setIsGeneratingOds] = useState(false)
-  const [odsError, setOdsError] = useState<string | null>(null)
+  const [isGeneratingXlsx, setIsGeneratingXlsx] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || consumoRows.length === 0) return
     const planilha = buildImhPlanilhaFromConsumo(consumoRows, mesReferencia)
     setCabecalho(planilha.cabecalho)
     setLinhas(planilha.linhas)
-    setOdsError(null)
+    setExportError(null)
   }, [open, consumoRows, mesReferencia])
 
   const totalGeral = useMemo(() => calcularTotalImh(linhas), [linhas])
@@ -118,23 +118,23 @@ export function ImhEnvioModal({
     return ids
   }, [linhas])
 
-  const handleGerarPlanilhaOds = async () => {
-    setOdsError(null)
-    setIsGeneratingOds(true)
+  const handleGerarPlanilhaXlsx = async () => {
+    setExportError(null)
+    setIsGeneratingXlsx(true)
     try {
-      const planilha = buildImhPlanilhaExport(cabecalho, linhas)
-      await downloadImhOds(planilha, getImhExportFileName(cabecalho))
+      const linhasXlsx = buildImhXlsxLinhas(consumoRows, linhas)
+      await downloadImhXlsx(linhasXlsx, cabecalho, getImhXlsxFileName(cabecalho))
     } catch (err) {
-      setOdsError(err instanceof Error ? err.message : 'Erro ao gerar planilha ODS')
+      setExportError(err instanceof Error ? err.message : 'Erro ao gerar planilha Excel')
     } finally {
-      setIsGeneratingOds(false)
+      setIsGeneratingXlsx(false)
     }
   }
 
   return (
     <Dialog
       open={open}
-      onClose={isSubmitting || isGeneratingOds ? undefined : onClose}
+      onClose={isSubmitting || isGeneratingXlsx ? undefined : onClose}
       maxWidth={false}
       fullWidth
       slotProps={{
@@ -336,15 +336,15 @@ export function ImhEnvioModal({
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
-            onClick={handleGerarPlanilhaOds}
-            disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
+            onClick={handleGerarPlanilhaXlsx}
+            disabled={isSubmitting || isGeneratingXlsx || consumoRows.length === 0}
           >
-            {isGeneratingOds ? 'Gerando planilha...' : 'Gerar planilha .ods'}
+            {isGeneratingXlsx ? 'Gerando planilha...' : 'Gerar planilha .xlsx'}
           </Button>
         </Box>
-        {odsError && (
+        {exportError && (
           <Typography variant="body2" color="error">
-            {odsError}
+            {exportError}
           </Typography>
         )}
 
@@ -389,24 +389,24 @@ export function ImhEnvioModal({
           bgcolor: 'background.paper',
         }}
       >
-        <Button onClick={onClose} disabled={isSubmitting || isGeneratingOds} color="inherit">
+        <Button onClick={onClose} disabled={isSubmitting || isGeneratingXlsx} color="inherit">
           Cancelar
         </Button>
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
-          onClick={handleGerarPlanilhaOds}
-          disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
+          onClick={handleGerarPlanilhaXlsx}
+          disabled={isSubmitting || isGeneratingXlsx || consumoRows.length === 0}
           sx={{ fontWeight: 600 }}
         >
-          {isGeneratingOds ? 'Gerando...' : 'Gerar planilha .ods'}
+          {isGeneratingXlsx ? 'Gerando...' : 'Gerar planilha .xlsx'}
         </Button>
         <Button
           variant="contained"
           size="large"
           startIcon={<SendIcon />}
           onClick={onConfirm}
-          disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
+          disabled={isSubmitting || isGeneratingXlsx || linhas.length === 0}
           sx={{ fontWeight: 700, px: 3 }}
         >
           {isSubmitting ? 'Enviando para IMH...' : 'Confirmar envio para IMH'}
