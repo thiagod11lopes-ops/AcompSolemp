@@ -4,10 +4,12 @@ import {
   Tab,
   Tabs,
   Alert,
+  Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import EditNoteIcon from '@mui/icons-material/EditNote'
+import GridOnIcon from '@mui/icons-material/GridOn'
 import SendIcon from '@mui/icons-material/Send'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { useCallback, useState, type SyntheticEvent } from 'react'
@@ -91,6 +93,7 @@ export default function ClinicaNovoPedidoPage() {
         initialSelection[r.id] = true
       })
       setRowSelection(initialSelection)
+      setAbaAtiva(2)
     } catch (err) {
       setPlanilhaRows([])
       setPlanilhaNome('')
@@ -113,6 +116,7 @@ export default function ClinicaNovoPedidoPage() {
     if (!planilhaNome) setPlanilhaNome('Lançamento manual')
     setRowSelection((prev) => ({ ...prev, [row.id]: true }))
     setBatchError(null)
+    setAbaAtiva(2)
   }
 
   const handleEnviarSelecionados = async () => {
@@ -165,7 +169,7 @@ export default function ClinicaNovoPedidoPage() {
 
       <PageHeader
         title="Novo Lançamento"
-        subtitle="Importe a planilha (.ods) ou preencha manualmente todos os campos da tabela de consumo"
+        subtitle="Importe a planilha (.ods), adicione lançamentos manuais ou revise na aba Consumo Material Consignado"
       />
 
       <Tabs
@@ -175,6 +179,11 @@ export default function ClinicaNovoPedidoPage() {
       >
         <Tab icon={<TableChartIcon />} iconPosition="start" label="Importar planilha (.ods)" />
         <Tab icon={<EditNoteIcon />} iconPosition="start" label="Lançamento manual" />
+        <Tab
+          icon={<GridOnIcon />}
+          iconPosition="start"
+          label="Consumo Material Consignado"
+        />
       </Tabs>
 
       {batchError && (
@@ -185,36 +194,47 @@ export default function ClinicaNovoPedidoPage() {
 
       {abaAtiva === 0 && (
         <Box sx={{ display: 'grid', gap: 3 }}>
-          {!exibirPlanilha ? (
-            <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
-          ) : (
-            <>
-              <PlanilhaToolbar
-                onClear={limparPlanilha}
-                onSend={handleEnviarSelecionados}
-                selectedCount={selectedCount}
-                isSending={isBatchSending}
-                clearLabel="Substituir arquivo"
-              />
-              <ConsumoMaterialSpreadsheet
-                rows={planilhaRows}
-                fileName={planilhaNome}
-                rowSelection={rowSelection}
-                onRowSelectionChange={setRowSelection}
-              />
-            </>
+          <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
+          {exibirPlanilha && (
+            <Alert severity="info">
+              Planilha carregada com <strong>{planilhaRows.length}</strong> lançamento(s). Acesse a
+              aba <strong>Consumo Material Consignado</strong> para revisar e enviar.
+            </Alert>
           )}
         </Box>
       )}
 
       {abaAtiva === 1 && (
-        <Box sx={{ display: 'grid', gap: 3 }}>
-          <ConsumoMaterialManualForm
-            nextNumero={String(planilhaRows.length + 1)}
-            onAddRow={handleAddManualRow}
-          />
+        <ConsumoMaterialManualForm
+          nextNumero={String(planilhaRows.length + 1)}
+          onAddRow={handleAddManualRow}
+        />
+      )}
 
-          {exibirPlanilha && (
+      {abaAtiva === 2 && (
+        <Box sx={{ display: 'grid', gap: 3 }}>
+          {!exibirPlanilha ? (
+            <Box
+              sx={{
+                py: 8,
+                px: 3,
+                textAlign: 'center',
+                borderRadius: 3,
+                border: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+              }}
+            >
+              <GridOnIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                Nenhum lançamento na planilha
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
+                Importe um arquivo .ods ou adicione lançamentos manuais para visualizar a planilha
+                de Consumo Material Consignado.
+              </Typography>
+            </Box>
+          ) : (
             <>
               <PlanilhaToolbar
                 onClear={limparPlanilha}
@@ -225,7 +245,7 @@ export default function ClinicaNovoPedidoPage() {
               />
               <ConsumoMaterialSpreadsheet
                 rows={planilhaRows}
-                fileName={planilhaNome || 'Lançamento manual'}
+                fileName={planilhaNome || 'Consumo Material Consignado'}
                 rowSelection={rowSelection}
                 onRowSelectionChange={setRowSelection}
               />
