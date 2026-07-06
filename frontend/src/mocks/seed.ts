@@ -116,7 +116,85 @@ function normalizeTextoCampo(value: unknown): string {
 }
 
 function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
-  return { data, changed: false }
+  let changed = false
+
+  for (const user of data.usuarios) {
+    if (user.perfil !== 'CLINICA' || !user.clinicaId) continue
+    if (data.clinicas.some((c) => c.id === user.clinicaId)) continue
+
+    data.clinicas.push({
+      id: user.clinicaId,
+      nome: user.nome,
+      responsavel: user.nome,
+      telefone: '',
+    })
+    changed = true
+  }
+
+  const etapaIds = new Set(data.workflowEtapas.map((e) => e.id))
+
+  for (const pedido of data.pedidos) {
+    if (!data.clinicas.some((c) => c.id === pedido.clinicaId)) {
+      const nome =
+        pedido.dadosClinica?.nomeClinica?.trim() ||
+        data.usuarios.find((u) => u.clinicaId === pedido.clinicaId)?.nome ||
+        `Clínica ${pedido.clinicaId}`
+      data.clinicas.push({
+        id: pedido.clinicaId,
+        nome,
+        responsavel: nome,
+        telefone: '',
+      })
+      changed = true
+    }
+
+    if (!data.empresas.some((e) => e.id === pedido.empresaId)) {
+      const nome = pedido.dadosClinica?.empresaConsignada?.trim() || 'Empresa não informada'
+      if (!pedido.empresaId) pedido.empresaId = `empresa-${pedido.id}`
+      data.empresas.push({
+        id: pedido.empresaId,
+        razaoSocial: nome,
+        nomeFantasia: nome,
+        cnpj: '',
+        contato: '',
+        telefone: '',
+        email: '',
+      })
+      changed = true
+    }
+
+    if (!data.materiais.some((m) => m.id === pedido.materialId)) {
+      const descricao = pedido.dadosClinica?.materialUtilizado?.trim() || 'Material não informado'
+      if (!pedido.materialId) pedido.materialId = `material-${pedido.id}`
+      data.materiais.push({
+        id: pedido.materialId,
+        descricao,
+        fabricante: '',
+        unidade: 'UN',
+      })
+      changed = true
+    }
+
+    if (!etapaIds.has(pedido.etapaAtualId)) {
+      const ativaValida = (pedido.etapasAtivasIds ?? []).find((id) => etapaIds.has(id))
+      const historicoAberto = pedido.etapasHistorico.find((h) => h.dataConclusao === null)
+      const historicoValido =
+        historicoAberto && etapaIds.has(historicoAberto.etapaId)
+          ? historicoAberto.etapaId
+          : null
+      const solicitacao = data.workflowEtapas.find((e) => e.chave === 'SOLICITACAO')?.id
+      const novoId = ativaValida ?? historicoValido ?? solicitacao
+      if (novoId) {
+        pedido.etapaAtualId = novoId
+        if (!pedido.etapasAtivasIds?.length) {
+          pedido.etapasAtivasIds = [novoId]
+        }
+        changed = true
+      }
+    }
+  }
+
+  return { data, changed }
 }
 
 export function generateSeedData(): AppData {

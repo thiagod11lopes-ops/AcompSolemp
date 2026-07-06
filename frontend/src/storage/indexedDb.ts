@@ -96,12 +96,38 @@ async function hydrateMemory(): Promise<void> {
   }
 }
 
+const INIT_TIMEOUT_MS = 8_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms)
+    promise
+      .then((value) => {
+        clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((error) => {
+        clearTimeout(timer)
+        reject(error)
+      })
+  })
+}
+
 /** Inicializa IndexedDB, migra localStorage e hidrata o cache em memória */
 export async function initStorage(): Promise<void> {
   if (initialized) return
-  await openDatabase()
-  await migrateFromLocalStorage()
-  await hydrateMemory()
+  try {
+    await withTimeout(openDatabase(), INIT_TIMEOUT_MS, 'Tempo esgotado ao abrir o armazenamento local')
+    await migrateFromLocalStorage()
+    await hydrateMemory()
+  } catch (error) {
+    console.warn('IndexedDB indisponível; usando cache em memória.', error)
+    memory.clear()
+    for (const key of ALL_KEYS) {
+      const legacy = localStorage.getItem(key)
+      if (legacy !== null) memory.set(key, legacy)
+    }
+  }
   initialized = true
 }
 

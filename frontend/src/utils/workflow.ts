@@ -16,7 +16,74 @@ export function getEtapaAtual(
   pedido: Pedido,
   etapas: WorkflowEtapa[],
 ): WorkflowEtapa | undefined {
-  return etapas.find((e) => e.id === pedido.etapaAtualId)
+  const porId = etapas.find((e) => e.id === pedido.etapaAtualId)
+  if (porId) return porId
+
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : pedido.etapaAtualId
+      ? [pedido.etapaAtualId]
+      : []
+
+  for (const id of ativas) {
+    const etapa = etapas.find((e) => e.id === id)
+    if (etapa) return etapa
+  }
+
+  const historicoAberto = pedido.etapasHistorico.find((h) => h.dataConclusao === null)
+  if (historicoAberto) {
+    return etapas.find((e) => e.id === historicoAberto.etapaId)
+  }
+
+  return undefined
+}
+
+function resolveClinica(pedido: Pedido, clinicas: Clinica[]): Clinica | undefined {
+  const found = clinicas.find((c) => c.id === pedido.clinicaId)
+  if (found) return found
+
+  const nome = pedido.dadosClinica?.nomeClinica?.trim()
+  if (!nome || !pedido.clinicaId) return undefined
+
+  return {
+    id: pedido.clinicaId,
+    nome,
+    responsavel: nome,
+    telefone: '',
+  }
+}
+
+function resolveEmpresa(pedido: Pedido, empresas: Empresa[]): Empresa | undefined {
+  const found = empresas.find((e) => e.id === pedido.empresaId)
+  if (found) return found
+
+  const nome = pedido.dadosClinica?.empresaConsignada?.trim()
+  if (!nome) return undefined
+
+  return {
+    id: pedido.empresaId || `empresa-${pedido.id}`,
+    razaoSocial: nome,
+    nomeFantasia: nome,
+    cnpj: '',
+    contato: '',
+    telefone: '',
+    email: '',
+  }
+}
+
+function resolveMaterial(pedido: Pedido, materiais: Material[]): Material | undefined {
+  const found = materiais.find((m) => m.id === pedido.materialId)
+  if (found) return found
+
+  const descricao = pedido.dadosClinica?.materialUtilizado?.trim()
+  if (!descricao) return undefined
+
+  return {
+    id: pedido.materialId || `material-${pedido.id}`,
+    descricao,
+    fabricante: '',
+    unidade: 'UN',
+  }
 }
 
 export function getEtapaHistoricoAtual(pedido: Pedido) {
@@ -55,9 +122,9 @@ export function enrichPedido(
     notasFiscais: NotaFiscal[]
   },
 ): PedidoComDetalhes | null {
-  const clinica = context.clinicas.find((c) => c.id === pedido.clinicaId)
-  const empresa = context.empresas.find((e) => e.id === pedido.empresaId)
-  const material = context.materiais.find((m) => m.id === pedido.materialId)
+  const clinica = resolveClinica(pedido, context.clinicas)
+  const empresa = resolveEmpresa(pedido, context.empresas)
+  const material = resolveMaterial(pedido, context.materiais)
   const etapaAtual = getEtapaAtual(pedido, context.etapas)
 
   if (!clinica || !empresa || !material || !etapaAtual) return null
