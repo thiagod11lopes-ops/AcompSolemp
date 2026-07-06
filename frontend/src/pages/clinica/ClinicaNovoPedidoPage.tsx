@@ -33,6 +33,7 @@ import {
   pedidoIdFromRowId,
   CONSUMO_PLANILHA_NOME_PADRAO,
   rowPodeSerEnviada,
+  rowPodeSerSelecionada,
   getMesAtualModelo,
   getMesModeloFromParts,
   dataPertenceAoMes,
@@ -213,10 +214,15 @@ export default function ClinicaNovoPedidoPage() {
     }
 
     const selectedRows = planilhaRows.filter(
-      (r) => rowSelection[r.id] && rowPodeSerEnviada(r, rowIdsComPedido),
+      (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
     )
-    if (selectedRows.length === 0) {
-      setBatchError('Selecione lançamentos novos que ainda não estão no sistema.')
+    const novos = selectedRows.filter((r) => rowPodeSerEnviada(r, rowIdsComPedido))
+    if (novos.length === 0) {
+      setBatchError(
+        selectedRows.length > 0
+          ? 'Os lançamentos selecionados já estão no sistema.'
+          : 'Selecione lançamentos preenchidos para enviar.',
+      )
       return
     }
 
@@ -225,7 +231,7 @@ export default function ClinicaNovoPedidoPage() {
     try {
       let ultimoId: string | null = null
       const enviadosIds = new Set<string>()
-      for (const row of selectedRows) {
+      for (const row of novos) {
         const pedido = await createPedido.mutateAsync(
           consumoRowToPedidoInput(row, clinicaNome),
         )
@@ -234,7 +240,7 @@ export default function ClinicaNovoPedidoPage() {
       }
       setExtraRows((prev) => prev.filter((r) => !enviadosIds.has(r.id)))
       setRowSelection({})
-      if (selectedRows.length === 1 && ultimoId) {
+      if (novos.length === 1 && ultimoId) {
         navigate(`/clinica/timeline/${ultimoId}`)
       } else {
         navigate('/clinica/pedidos')
@@ -246,8 +252,8 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const selectedCount = planilhaRows.filter((r) =>
-    rowSelection[r.id] && rowPodeSerEnviada(r, rowIdsComPedido),
+  const selectedCount = planilhaRows.filter(
+    (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
   ).length
 
   const totalPreenchidos = planilhaRows.filter(isLinhaPreenchida).length
