@@ -17,6 +17,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close'
 import AddIcon from '@mui/icons-material/Add'
 import SendIcon from '@mui/icons-material/Send'
+import DownloadIcon from '@mui/icons-material/Download'
 import DescriptionIcon from '@mui/icons-material/Description'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
@@ -33,6 +34,11 @@ import {
   type ImhColunaKey,
   type ImhLinha,
 } from '@/utils/imhPlanilhaTemplate'
+import {
+  buildImhPlanilhaExport,
+  downloadImhOds,
+  getImhExportFileName,
+} from '@/utils/imhOdsExport'
 
 interface ImhEnvioModalProps {
   open: boolean
@@ -70,12 +76,15 @@ export function ImhEnvioModal({
     fornecedor: '',
   })
   const [linhas, setLinhas] = useState<ImhLinha[]>([])
+  const [isGeneratingOds, setIsGeneratingOds] = useState(false)
+  const [odsError, setOdsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || consumoRows.length === 0) return
     const planilha = buildImhPlanilhaFromConsumo(consumoRows, mesReferencia)
     setCabecalho(planilha.cabecalho)
     setLinhas(planilha.linhas)
+    setOdsError(null)
   }, [open, consumoRows, mesReferencia])
 
   const totalGeral = useMemo(() => calcularTotalImh(linhas), [linhas])
@@ -109,10 +118,23 @@ export function ImhEnvioModal({
     return ids
   }, [linhas])
 
+  const handleGerarPlanilhaOds = async () => {
+    setOdsError(null)
+    setIsGeneratingOds(true)
+    try {
+      const planilha = buildImhPlanilhaExport(cabecalho, linhas)
+      await downloadImhOds(planilha, getImhExportFileName(cabecalho))
+    } catch (err) {
+      setOdsError(err instanceof Error ? err.message : 'Erro ao gerar planilha ODS')
+    } finally {
+      setIsGeneratingOds(false)
+    }
+  }
+
   return (
     <Dialog
       open={open}
-      onClose={isSubmitting ? undefined : onClose}
+      onClose={isSubmitting || isGeneratingOds ? undefined : onClose}
       maxWidth={false}
       fullWidth
       slotProps={{
@@ -307,11 +329,24 @@ export function ImhEnvioModal({
           </Table>
         </TableContainer>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Total geral: {formatValorBrasileiro(totalGeral)}
           </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleGerarPlanilhaOds}
+            disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
+          >
+            {isGeneratingOds ? 'Gerando planilha...' : 'Gerar planilha .ods'}
+          </Button>
         </Box>
+        {odsError && (
+          <Typography variant="body2" color="error">
+            {odsError}
+          </Typography>
+        )}
 
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default' }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
@@ -354,15 +389,24 @@ export function ImhEnvioModal({
           bgcolor: 'background.paper',
         }}
       >
-        <Button onClick={onClose} disabled={isSubmitting} color="inherit">
+        <Button onClick={onClose} disabled={isSubmitting || isGeneratingOds} color="inherit">
           Cancelar
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleGerarPlanilhaOds}
+          disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
+          sx={{ fontWeight: 600 }}
+        >
+          {isGeneratingOds ? 'Gerando...' : 'Gerar planilha .ods'}
         </Button>
         <Button
           variant="contained"
           size="large"
           startIcon={<SendIcon />}
           onClick={onConfirm}
-          disabled={isSubmitting || linhas.length === 0}
+          disabled={isSubmitting || isGeneratingOds || linhas.length === 0}
           sx={{ fontWeight: 700, px: 3 }}
         >
           {isSubmitting ? 'Enviando para IMH...' : 'Confirmar envio para IMH'}
