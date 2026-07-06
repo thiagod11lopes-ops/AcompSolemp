@@ -4,7 +4,6 @@ import {
   Tab,
   Tabs,
   Alert,
-  Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import TableChartIcon from '@mui/icons-material/TableChart'
@@ -16,7 +15,7 @@ import { useCallback, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { PageHeader } from '@/components/common/PageHeader'
-import { ConsumoMaterialSpreadsheet } from '@/components/clinica/ConsumoMaterialSpreadsheet'
+import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
 import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
@@ -27,6 +26,7 @@ import {
   parseConsumoMaterialOds,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
+import { isLinhaPreenchida } from '@/utils/consumoMaterialTemplate'
 
 function PlanilhaToolbar({
   onClear,
@@ -34,12 +34,14 @@ function PlanilhaToolbar({
   selectedCount,
   isSending,
   clearLabel,
+  disabled = false,
 }: {
   onClear: () => void
   onSend: () => void
   selectedCount: number
   isSending: boolean
   clearLabel: string
+  disabled?: boolean
 }) {
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
@@ -47,7 +49,7 @@ function PlanilhaToolbar({
         variant="outlined"
         startIcon={<RefreshIcon />}
         onClick={onClear}
-        disabled={isSending}
+        disabled={isSending || disabled}
       >
         {clearLabel}
       </Button>
@@ -126,7 +128,9 @@ export default function ClinicaNovoPedidoPage() {
       return
     }
 
-    const selectedRows = planilhaRows.filter((r) => rowSelection[r.id])
+    const selectedRows = planilhaRows.filter(
+      (r) => rowSelection[r.id] && isLinhaPreenchida(r),
+    )
     if (selectedRows.length === 0) {
       setBatchError('Selecione ao menos um lançamento na planilha.')
       return
@@ -154,8 +158,10 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const selectedCount = Object.keys(rowSelection).length
-  const exibirPlanilha = planilhaRows.length > 0
+  const selectedCount = planilhaRows.filter(
+    (r) => rowSelection[r.id] && isLinhaPreenchida(r),
+  ).length
+  const exibirPlanilha = planilhaRows.some(isLinhaPreenchida)
 
   return (
     <>
@@ -197,8 +203,9 @@ export default function ClinicaNovoPedidoPage() {
           <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
           {exibirPlanilha && (
             <Alert severity="info">
-              Planilha carregada com <strong>{planilhaRows.length}</strong> lançamento(s). Acesse a
-              aba <strong>Consumo Material Consignado</strong> para revisar e enviar.
+              Planilha carregada com{' '}
+              <strong>{planilhaRows.filter(isLinhaPreenchida).length}</strong> lançamento(s).
+              Acesse a aba <strong>Consumo Material Consignado</strong> para revisar e enviar.
             </Alert>
           )}
         </Box>
@@ -213,44 +220,20 @@ export default function ClinicaNovoPedidoPage() {
 
       {abaAtiva === 2 && (
         <Box sx={{ display: 'grid', gap: 3 }}>
-          {!exibirPlanilha ? (
-            <Box
-              sx={{
-                py: 8,
-                px: 3,
-                textAlign: 'center',
-                borderRadius: 3,
-                border: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.paper',
-              }}
-            >
-              <GridOnIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                Nenhum lançamento na planilha
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-                Importe um arquivo .ods ou adicione lançamentos manuais para visualizar a planilha
-                de Consumo Material Consignado.
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <PlanilhaToolbar
-                onClear={limparPlanilha}
-                onSend={handleEnviarSelecionados}
-                selectedCount={selectedCount}
-                isSending={isBatchSending}
-                clearLabel="Limpar planilha"
-              />
-              <ConsumoMaterialSpreadsheet
-                rows={planilhaRows}
-                fileName={planilhaNome || 'Consumo Material Consignado'}
-                rowSelection={rowSelection}
-                onRowSelectionChange={setRowSelection}
-              />
-            </>
-          )}
+          <PlanilhaToolbar
+            onClear={limparPlanilha}
+            onSend={handleEnviarSelecionados}
+            selectedCount={selectedCount}
+            isSending={isBatchSending}
+            clearLabel="Limpar lançamentos"
+            disabled={!exibirPlanilha}
+          />
+          <ConsumoMaterialConsignadoView
+            lancamentos={planilhaRows}
+            fileName={planilhaNome || 'Consumo Material Consignado'}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+          />
         </Box>
       )}
     </>

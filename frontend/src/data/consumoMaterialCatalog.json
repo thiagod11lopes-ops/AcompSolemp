@@ -1,0 +1,188 @@
+[
+  {
+    "diagnostico": "SINDROME DO TUNEL DO CARPO A ESQ",
+    "cid": "G56.0",
+    "procedimento": "NEUROLISE DO N MEDIANO A ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "COXARTROSE QUADRIL ESQ",
+    "cid": "M16",
+    "procedimento": "ARTROPLASTIA TOTAL DO QUADRIL ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "GONARTROSE JOELHO DIR",
+    "cid": "M17",
+    "procedimento": "ARTROPLASTIA TOTAL DO JOELHO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "DEDOS EM GARRA PE ESQ",
+    "cid": "M20.1",
+    "procedimento": "TENOTOMIA FLEXOR LONGO DO HALUX + FLEXOR DOS DEDOS + RMS",
+    "material": ""
+  },
+  {
+    "diagnostico": "LESÃO DO MENISCO LATERAL JOELHO DIR",
+    "cid": "M23.2",
+    "procedimento": "ARTROSCOPIA JOELHO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "INSTABILIDADE GLENO UMERAL DO OMBRO DIR",
+    "cid": "M24.4",
+    "procedimento": "REPARO ARTROSCOPICO DE BANKART DO OMBRO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "GATILHO 3 QUIRODACTILO DIR",
+    "cid": "M65.3",
+    "procedimento": "TENOLISE D3",
+    "material": ""
+  },
+  {
+    "diagnostico": "TENOSINOVITE DEQUERVITE A DIR",
+    "cid": "M65.4",
+    "procedimento": "TENOLISE DO PRIMEIRO COMPARTIMENTO EXTENSOR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA COMPLEXA DE UMERO PROXIMAL A DIR",
+    "cid": "M75",
+    "procedimento": "ARTROPLASTIA REVERSA DO OMBRO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "LESÃO DE MANGUITO ROTADOR DIR",
+    "cid": "M75.1",
+    "procedimento": "REPARO ARTROSCOPICO DE MANGUITO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "LUXAÇÃO DE PROTESE DO QUADRIL ESQ + INFECÇÃO PERIPROTETICA",
+    "cid": "M86.9",
+    "procedimento": "RETIRADA DE PROTESE + ESPAÇADOR NÃO ARTICULADO QUADRIL ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "PÉ EM EQUINO A DIR",
+    "cid": "Q66",
+    "procedimento": "ARTRODESE DE RETROPE A DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DIAFISARIA BAIXA DO UMERO DIR",
+    "cid": "S42.2",
+    "procedimento": "OSTEOSSINTESE DO UMERO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DIAFISARIA DO UMERO ESQ",
+    "cid": "S42.3",
+    "procedimento": "OSTEOSSINTESE DO UMERO ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "LUXAÇÃO ACRÔMIO CLAVICULAR A ESQ",
+    "cid": "S43.0",
+    "procedimento": "REDUÇÃO CIRURGICA DA LUXAÇÃO ACRÔMIO CLAVICULAR A ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA EXPOSTA DE OLECRANO ESQ",
+    "cid": "S52.0",
+    "procedimento": "OSTEOSSINTESE DE OLECRANO ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DO TERÇO DISTAL DE RADIO DIR",
+    "cid": "S52.5",
+    "procedimento": "RETIRADA DE MATERIAL DE SINTESE DO RADIO A DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FX ESCAFOIDE ESQ",
+    "cid": "S62.0",
+    "procedimento": "OSTEOSSINTESE DE ESCAFOIDE",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA EXPOSTA DE 3 E 4 MTC MÃO DIR",
+    "cid": "S62.1",
+    "procedimento": "LMC + OSTEOSSINTESE DO 3 E 4 MTC DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DA FALANGE PROXIMAL DO 5 DEDO MAO ESQ",
+    "cid": "S62.3",
+    "procedimento": "OSTEOSSINTESE DE FALANGE PROXIMAL DO 5 DEDO ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA EXPOSTA DA BASE DA FALANGE DISTAL DO 2QDE",
+    "cid": "S62.6",
+    "procedimento": "LMC + OSTEOSSINTESE DO 2QDE",
+    "material": ""
+  },
+  {
+    "diagnostico": "LUXAÇÃO CRONICA TRAPEZIO METACARPO DO POLEGAR A ESQ",
+    "cid": "S63",
+    "procedimento": "REDUÇÃO CRUENTA E FIXAÇÃO INTERNA COM FIO DE K , LUXAÇÃO CARPO-METACARPO DO POLEGAR A ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DO COLO DO FEMUR DIR",
+    "cid": "S72",
+    "procedimento": "ARTROPLASTIA TOTAL DO QUADRIL DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA TRANSTROCANTERIANA DO FEMUR DIR",
+    "cid": "S72.1",
+    "procedimento": "OSTEOSSINTESE FEMUR DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA PLANALTO TIBIAL DIR",
+    "cid": "S72.3",
+    "procedimento": "OSTEOSSINTESE PLANALTO TIBIAL DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DE PLATO TIBIAL ESQ",
+    "cid": "S82.1",
+    "procedimento": "CONTROLE DE DANOS COM FIXADOR EXT TRANS-ARTICULAR A ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DIAFISARIA DE TIBIA E FIBULA A ESQ",
+    "cid": "S82.2",
+    "procedimento": "OSTEOSSINTESE DE TIBIA E FIBULA ESQ",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DO TORNOZELO ESQ",
+    "cid": "S82.5",
+    "procedimento": "OSTEOSSINTESE DO TORNOZELO",
+    "material": ""
+  },
+  {
+    "diagnostico": "FRATURA DO TORNOZELO DIR",
+    "cid": "S82.6",
+    "procedimento": "OSTEOSSINTESE DO TORNOZELO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "LESÃO DO MENISCO MEDIAL JOELHO DIR",
+    "cid": "S83.2",
+    "procedimento": "ARTROSCOPIA JOELHO DIR",
+    "material": ""
+  },
+  {
+    "diagnostico": "LESÃO LCA JOELHO ESQ",
+    "cid": "S83.5",
+    "procedimento": "LIGAMENTOPLASTIA LCA ESQ",
+    "material": "01 LAMINA DE SHAVER, 01 ENDOBOTTON, 01 PARAFUSO , 01 EQUIPO BOMBA, 03 FIOS GUIA"
+  }
+]

@@ -35,6 +35,7 @@ import {
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
+import { isLinhaPlaceholder } from '@/utils/consumoMaterialTemplate'
 
 const GROUP_LABELS: Record<string, string> = {
   paciente: 'Paciente',
@@ -53,6 +54,8 @@ interface ConsumoMaterialSpreadsheetProps {
   fileName: string
   rowSelection: RowSelectionState
   onRowSelectionChange: (selection: RowSelectionState) => void
+  mesReferencia?: string
+  lancamentosPreenchidos?: number
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -60,6 +63,8 @@ export function ConsumoMaterialSpreadsheet({
   fileName,
   rowSelection,
   onRowSelectionChange,
+  mesReferencia,
+  lancamentosPreenchidos,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -73,8 +78,20 @@ export function ConsumoMaterialSpreadsheet({
         size: col.width,
         cell: ({ getValue, row }) => {
           const value = String(getValue() ?? '')
+          const placeholder = isLinhaPlaceholder(row.original)
           if (col.key === 'valor') {
             const num = row.original.valorNumerico
+            if (placeholder && !num) {
+              return (
+                <Box
+                  sx={{
+                    minHeight: 20,
+                    borderBottom: '1px dashed',
+                    borderColor: 'divider',
+                  }}
+                />
+              )
+            }
             return (
               <Typography
                 component="span"
@@ -88,6 +105,17 @@ export function ConsumoMaterialSpreadsheet({
               >
                 {num > 0 ? formatValorBrasileiro(num) : value || '—'}
               </Typography>
+            )
+          }
+          if (placeholder && !value) {
+            return (
+              <Box
+                sx={{
+                  minHeight: 20,
+                  borderBottom: '1px dashed',
+                  borderColor: 'divider',
+                }}
+              />
             )
           }
           return (
@@ -124,13 +152,17 @@ export function ConsumoMaterialSpreadsheet({
             sx={{ color: 'white', '&.Mui-checked': { color: 'white' } }}
           />
         ),
-        cell: ({ row }) => (
-          <Checkbox
-            size="small"
-            checked={row.getIsSelected()}
-            onChange={row.getToggleSelectedHandler()}
-          />
-        ),
+        cell: ({ row }) => {
+          const placeholder = isLinhaPlaceholder(row.original)
+          return (
+            <Checkbox
+              size="small"
+              checked={row.getIsSelected()}
+              disabled={placeholder}
+              onChange={row.getToggleSelectedHandler()}
+            />
+          )
+        },
       },
       ...dataColumns,
     ]
@@ -146,7 +178,7 @@ export function ConsumoMaterialSpreadsheet({
       const next = typeof updater === 'function' ? updater(rowSelection) : updater
       onRowSelectionChange(next)
     },
-    enableRowSelection: true,
+    enableRowSelection: (row) => !isLinhaPlaceholder(row.original),
     getRowId: (row) => row.id,
     globalFilterFn: (row, _columnId, filterValue) => {
       const q = String(filterValue).toLowerCase()
@@ -173,7 +205,7 @@ export function ConsumoMaterialSpreadsheet({
   const selectedCount = Object.keys(rowSelection).length
   const filteredRows = table.getFilteredRowModel().rows
   const totalValorFiltrado = filteredRows.reduce(
-    (sum, r) => sum + r.original.valorNumerico,
+    (sum, r) => sum + (isLinhaPlaceholder(r.original) ? 0 : r.original.valorNumerico),
     0,
   )
   const selectedValor = table
@@ -241,10 +273,25 @@ export function ConsumoMaterialSpreadsheet({
                 }}
               />
               <Chip
-                label={`${rows.length} lançamentos`}
+                label={`${rows.filter((r) => !isLinhaPlaceholder(r)).length} lançamentos`}
                 size="small"
                 sx={{ bgcolor: alpha('#fff', 0.12), color: 'white' }}
               />
+              {mesReferencia && (
+                <Chip
+                  label={mesReferencia}
+                  size="small"
+                  sx={{ bgcolor: alpha('#fff', 0.1), color: 'white' }}
+                />
+              )}
+              {lancamentosPreenchidos !== undefined && (
+                <Chip
+                  label={`${rows.filter((r) => isLinhaPlaceholder(r)).length} linhas livres`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ color: 'white', borderColor: alpha('#fff', 0.35) }}
+                />
+              )}
               {selectedCount > 0 && (
                 <Chip
                   label={`${selectedCount} selecionado(s)`}
@@ -388,21 +435,26 @@ export function ConsumoMaterialSpreadsheet({
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row, index) => (
+              table.getRowModel().rows.map((row, index) => {
+                const placeholder = isLinhaPlaceholder(row.original)
+                return (
                 <TableRow
                   key={row.id}
-                  hover
+                  hover={!placeholder}
                   selected={row.getIsSelected()}
                   sx={(theme) => ({
-                    bgcolor:
-                      index % 2 === 0
+                    bgcolor: placeholder
+                      ? alpha(theme.palette.action.disabled, 0.06)
+                      : index % 2 === 0
                         ? 'background.paper'
                         : alpha(theme.palette.primary.main, 0.03),
                     '&.Mui-selected': {
                       bgcolor: alpha(theme.palette.primary.main, 0.1),
                     },
                     '&:hover': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.06),
+                      bgcolor: placeholder
+                        ? alpha(theme.palette.action.disabled, 0.08)
+                        : alpha(theme.palette.primary.main, 0.06),
                     },
                   })}
                 >
@@ -427,7 +479,7 @@ export function ConsumoMaterialSpreadsheet({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>
