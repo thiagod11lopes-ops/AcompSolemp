@@ -12,9 +12,14 @@ import {
   storageRemove,
   storageSet,
 } from '@/storage/indexedDb'
+import {
+  buildPedidosConsumoMaterialSeed,
+  USUARIO_CLINICA_OPME_ID,
+} from '@/mocks/consumoMaterialPedidosSeed'
+import { CLINICA_CONSUMO_OPME_NOME } from '@/utils/consumoMaterialTemplate'
 
 const STORAGE_KEY = STORAGE_KEYS.APP_DATA
-const SEED_VERSION = 'v12'
+const SEED_VERSION = 'v13'
 
 let appDataCache: AppData | null = null
 
@@ -109,6 +114,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
 export const MOCK_CREDENTIALS: Record<string, { senha: string; userId: string }> = {
   admin: { senha: 'admin123', userId: 'user-admin' },
   gestor: { senha: 'gestor123', userId: 'user-gestor' },
+  opme: { senha: 'opme123', userId: USUARIO_CLINICA_OPME_ID },
 }
 
 function normalizeTextoCampo(value: unknown): string {
@@ -204,6 +210,8 @@ export function generateSeedData(): AppData {
     id: `etapa-${etapa.chave.toLowerCase()}`,
   }))
 
+  const consumoSeed = buildPedidosConsumoMaterialSeed(workflowEtapas)
+
   const usuarios: User[] = [
     {
       id: 'user-admin',
@@ -225,15 +233,25 @@ export function generateSeedData(): AppData {
       clinicaId: null,
       ativo: true,
     },
+    {
+      id: USUARIO_CLINICA_OPME_ID,
+      nome: CLINICA_CONSUMO_OPME_NOME,
+      posto: 'HN',
+      graduacao: 'Clínica OPME',
+      login: 'opme',
+      perfil: 'CLINICA',
+      clinicaId: consumoSeed.clinica.id,
+      ativo: true,
+    },
   ]
 
   return {
     usuarios,
-    clinicas: [],
-    empresas: [],
-    materiais: [],
+    clinicas: [consumoSeed.clinica],
+    empresas: consumoSeed.empresas,
+    materiais: consumoSeed.materiais,
     workflowEtapas,
-    pedidos: [],
+    pedidos: consumoSeed.pedidos,
     solemp: [],
     notasFiscais: [],
     historico: [],

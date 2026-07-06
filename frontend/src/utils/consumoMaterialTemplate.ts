@@ -32,6 +32,11 @@ export const CONSUMO_MATERIAL_SEED: ConsumoMaterialRow[] = seedData as ConsumoMa
 
 export const CONSUMO_PLANILHA_NOME_PADRAO = 'Modelos OPME TRO — Jan-Jun/2026'
 
+export const CLINICA_CONSUMO_OPME_ID = 'clinica-opme-tro'
+export const CLINICA_CONSUMO_OPME_NOME = 'OPME TRO'
+
+export const TOTAL_LANCAMENTOS_MODELO = CONSUMO_MATERIAL_SEED.length
+
 export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
   return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
 }

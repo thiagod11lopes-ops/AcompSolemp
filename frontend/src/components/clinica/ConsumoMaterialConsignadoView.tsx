@@ -25,6 +25,7 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   CATALOGO_REFERENCIA,
   CONSUMO_MESES_MODELO,
+  TOTAL_LANCAMENTOS_MODELO,
   getMesAtualModelo,
   isLinhaPreenchida,
   montarLinhasPlanilhaFixa,
@@ -72,8 +73,8 @@ export function ConsumoMaterialConsignadoView({
             Planilha mensal — modelo OPME TRO
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Estrutura fixa conforme modelos definitivos (Jan–Jun/2026), com linhas reservadas para
-            novos lançamentos.
+            Estrutura fixa conforme modelos definitivos (Jan–Jun/2026).{' '}
+            <strong>{TOTAL_LANCAMENTOS_MODELO} lançamentos</strong> carregados no sistema.
           </Typography>
         </Box>
         <FormControl size="small" sx={{ minWidth: 220 }}>

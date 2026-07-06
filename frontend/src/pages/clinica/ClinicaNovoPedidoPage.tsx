@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
+import { loadAppData } from '@/mocks/seed'
 import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -125,11 +126,17 @@ export default function ClinicaNovoPedidoPage() {
       return
     }
 
+    const pedidosExistentes = new Set(loadAppData().pedidos.map((p) => p.id))
     const selectedRows = planilhaRows.filter(
-      (r) => rowSelection[r.id] && isLinhaPreenchida(r),
+      (r) =>
+        rowSelection[r.id] &&
+        isLinhaPreenchida(r) &&
+        !pedidosExistentes.has(`pedido-${r.id}`),
     )
     if (selectedRows.length === 0) {
-      setBatchError('Selecione ao menos um lançamento na planilha.')
+      setBatchError(
+        'Nenhum lançamento novo selecionado. Os 691 registros das planilhas já estão no sistema.',
+      )
       return
     }
 
