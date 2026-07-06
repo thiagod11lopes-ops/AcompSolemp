@@ -1,25 +1,49 @@
-import { format, formatDistanceToNow, parseISO } from 'date-fns'
+import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export function formatCurrency(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value)
+  }).format(safe)
 }
 
-export function formatDate(date: string | Date): string {
+function parseDateSafe(date: string | Date | null | undefined): Date | null {
+  if (date == null || date === '') return null
   const parsed = typeof date === 'string' ? parseISO(date) : date
+  return isValid(parsed) ? parsed : null
+}
+
+export function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+export function formatDate(date: string | Date | null | undefined): string {
+  const parsed = parseDateSafe(date)
+  if (!parsed) return '—'
   return format(parsed, 'dd/MM/yyyy', { locale: ptBR })
 }
 
-export function formatDateTime(date: string | Date): string {
-  const parsed = typeof date === 'string' ? parseISO(date) : date
+export function formatDateTime(date: string | Date | null | undefined): string {
+  const parsed = parseDateSafe(date)
+  if (!parsed) return '—'
   return format(parsed, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
 }
 
 export function formatRelative(date: string): string {
-  return formatDistanceToNow(parseISO(date), { addSuffix: true, locale: ptBR })
+  const parsed = parseDateSafe(date)
+  if (!parsed) return '—'
+  return formatDistanceToNow(parsed, { addSuffix: true, locale: ptBR })
 }
 
 export function formatCnpj(cnpj: string): string {

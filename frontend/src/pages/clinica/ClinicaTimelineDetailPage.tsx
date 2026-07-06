@@ -20,7 +20,13 @@ import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
 import { useClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
-import { formatCurrency, formatDate, formatDateTime, formatNip } from '@/utils/format'
+import {
+  asStringArray,
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  formatNip,
+} from '@/utils/format'
 
 export default function ClinicaTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -40,6 +46,8 @@ export default function ClinicaTimelineDetailPage() {
       </Box>
     )
   }
+
+  const fotos = asStringArray(pedido.dadosClinica?.fotos)
 
   return (
     <>
@@ -169,9 +177,7 @@ export default function ClinicaTimelineDetailPage() {
                   </Typography>
                   <Typography variant="body2">
                     <strong>Fotos:</strong>{' '}
-                    {(pedido.dadosClinica.fotos ?? []).length > 0
-                      ? pedido.dadosClinica.fotos.join(', ')
-                      : '—'}
+                    {fotos.length > 0 ? fotos.join(', ') : '—'}
                   </Typography>
                 </>
               )}

@@ -25,7 +25,7 @@ import {
   clinicaPodeAvancar,
 } from '@/utils/portal'
 import { buildTimelineBlocos } from '@/utils/timelineFlow'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
 
 interface ClinicaInteractiveTimelineProps {
@@ -69,10 +69,11 @@ export function ClinicaInteractiveTimeline({
 
     if (historico) {
       if (historico.dataConclusao) {
-        dias = differenceInCalendarDays(
-          parseISO(historico.dataConclusao),
-          parseISO(historico.dataInicio),
-        )
+        const fim = parseISO(historico.dataConclusao)
+        const inicio = parseISO(historico.dataInicio)
+        if (isValid(fim) && isValid(inicio)) {
+          dias = differenceInCalendarDays(fim, inicio)
+        }
       } else if (atual) {
         dias = calcularDiasNaEtapa(pedido)
         prazoStatus = getPrazoStatusColor(pedido.prazoStatus)

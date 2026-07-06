@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
 import type {
   Pedido,
   PedidoComDetalhes,
@@ -92,8 +92,10 @@ export function getEtapaHistoricoAtual(pedido: Pedido) {
 
 export function calcularDiasNaEtapa(pedido: Pedido): number {
   const atual = getEtapaHistoricoAtual(pedido)
-  if (!atual) return 0
-  return Math.max(0, differenceInCalendarDays(new Date(), parseISO(atual.dataInicio)))
+  if (!atual?.dataInicio) return 0
+  const inicio = parseISO(atual.dataInicio)
+  if (!isValid(inicio)) return 0
+  return Math.max(0, differenceInCalendarDays(new Date(), inicio))
 }
 
 export function calcularPrazoStatus(

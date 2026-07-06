@@ -5,6 +5,7 @@ import type {
   WorkflowEtapa,
 } from '@/types'
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
+import { asStringArray } from '@/utils/format'
 import {
   STORAGE_KEYS,
   storageGet,
@@ -257,7 +258,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
           folhaSala: normalizeTextoCampo(p.dadosClinica.folhaSala),
           descricaoCirurgica: normalizeTextoCampo(p.dadosClinica.descricaoCirurgica),
           etiquetas: normalizeTextoCampo(p.dadosClinica.etiquetas),
-          fotos: Array.isArray(p.dadosClinica.fotos) ? p.dadosClinica.fotos : [],
+          fotos: asStringArray(p.dadosClinica.fotos as unknown),
         }
       : null,
   }))

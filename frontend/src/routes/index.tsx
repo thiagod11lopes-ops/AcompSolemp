@@ -7,6 +7,7 @@ import { GestorProtectedRoute, ClinicaProtectedRoute, OrdenadorProtectedRoute, F
 import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
 import { useAuth } from '@/contexts/AuthContext'
 
 function HomeRedirect() {
@@ -42,7 +43,11 @@ const FinanceiroPagamentosPage = lazy(() => import('@/pages/financeiro/Financeir
 const FinanceiroPagamentoDetailPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentoDetailPage'))
 
 function LazyPage({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
+    </RouteErrorBoundary>
+  )
 }
 
 export function AppRoutes() {
