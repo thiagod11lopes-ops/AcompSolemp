@@ -56,6 +56,7 @@ interface ConsumoMaterialSpreadsheetProps {
   onRowSelectionChange: (selection: RowSelectionState) => void
   mesReferencia?: string
   lancamentosPreenchidos?: number
+  rowIdsComPedido?: Set<string>
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -65,6 +66,7 @@ export function ConsumoMaterialSpreadsheet({
   onRowSelectionChange,
   mesReferencia,
   lancamentosPreenchidos,
+  rowIdsComPedido,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -154,11 +156,12 @@ export function ConsumoMaterialSpreadsheet({
         ),
         cell: ({ row }) => {
           const placeholder = isLinhaPlaceholder(row.original)
+          const jaNoSistema = rowIdsComPedido?.has(row.original.id) ?? false
           return (
             <Checkbox
               size="small"
               checked={row.getIsSelected()}
-              disabled={placeholder}
+              disabled={placeholder || jaNoSistema}
               onChange={row.getToggleSelectedHandler()}
             />
           )
@@ -178,7 +181,9 @@ export function ConsumoMaterialSpreadsheet({
       const next = typeof updater === 'function' ? updater(rowSelection) : updater
       onRowSelectionChange(next)
     },
-    enableRowSelection: (row) => !isLinhaPlaceholder(row.original),
+    enableRowSelection: (row) =>
+      !isLinhaPlaceholder(row.original) &&
+      !(rowIdsComPedido?.has(row.original.id) ?? false),
     getRowId: (row) => row.id,
     globalFilterFn: (row, _columnId, filterValue) => {
       const q = String(filterValue).toLowerCase()

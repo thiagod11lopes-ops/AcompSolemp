@@ -25,7 +25,6 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   CATALOGO_REFERENCIA,
   CONSUMO_MESES_MODELO,
-  TOTAL_LANCAMENTOS_MODELO,
   getMesAtualModelo,
   isLinhaPreenchida,
   montarLinhasPlanilhaFixa,
@@ -38,6 +37,8 @@ interface ConsumoMaterialConsignadoViewProps {
   fileName: string
   rowSelection: RowSelectionState
   onRowSelectionChange: (selection: RowSelectionState) => void
+  rowIdsComPedido?: Set<string>
+  totalPedidos?: number
 }
 
 export function ConsumoMaterialConsignadoView({
@@ -45,6 +46,8 @@ export function ConsumoMaterialConsignadoView({
   fileName,
   rowSelection,
   onRowSelectionChange,
+  rowIdsComPedido,
+  totalPedidos,
 }: ConsumoMaterialConsignadoViewProps) {
   const [mesSelecionado, setMesSelecionado] = useState<MesConsumoModelo>(getMesAtualModelo)
 
@@ -56,6 +59,8 @@ export function ConsumoMaterialConsignadoView({
   const preenchidasNoMes = lancamentos.filter(
     (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesSelecionado),
   ).length
+
+  const totalNoSistema = totalPedidos ?? lancamentos.filter(isLinhaPreenchida).length
 
   return (
     <Box sx={{ display: 'grid', gap: 3 }}>
@@ -74,7 +79,7 @@ export function ConsumoMaterialConsignadoView({
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Estrutura fixa conforme modelos definitivos (Jan–Jun/2026).{' '}
-            <strong>{TOTAL_LANCAMENTOS_MODELO} lançamentos</strong> carregados no sistema.
+            <strong>{totalNoSistema} pedido(s)</strong> na planilha.
           </Typography>
         </Box>
         <FormControl size="small" sx={{ minWidth: 220 }}>
@@ -171,6 +176,7 @@ export function ConsumoMaterialConsignadoView({
         onRowSelectionChange={onRowSelectionChange}
         mesReferencia={mesSelecionado.label}
         lancamentosPreenchidos={preenchidasNoMes}
+        rowIdsComPedido={rowIdsComPedido}
       />
     </Box>
   )

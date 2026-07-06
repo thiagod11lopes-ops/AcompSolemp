@@ -1,6 +1,10 @@
 import catalogData from '@/data/consumoMaterialCatalog.json'
 import seedData from '@/data/consumoMaterialSeed.json'
-import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
+import type { Pedido } from '@/types'
+import {
+  formatValorBrasileiro,
+  type ConsumoMaterialRow,
+} from '@/utils/consumoMaterialOds'
 
 export interface CatalogoReferenciaRow {
   diagnostico: string
@@ -39,6 +43,100 @@ export const TOTAL_LANCAMENTOS_MODELO = CONSUMO_MATERIAL_SEED.length
 
 export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
   return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
+}
+
+export function rowIdFromPedidoId(pedidoId: string): string {
+  return pedidoId.startsWith('pedido-') ? pedidoId.slice('pedido-'.length) : pedidoId
+}
+
+export function pedidoIdFromRowId(rowId: string): string {
+  return `pedido-${rowId}`
+}
+
+function formatDataIsoParaPlanilha(iso: string): string {
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return ''
+  const [, year, month, day] = match
+  return `${day}/${month}/${year.slice(-2)}`
+}
+
+function parseDescricaoCirurgica(descricao: string): { diagnostico: string; cid: string } {
+  const match = descricao.match(/ — CID (.+)$/)
+  if (match) {
+    return {
+      diagnostico: descricao.replace(/ — CID .+$/, '').trim(),
+      cid: match[1].trim(),
+    }
+  }
+  return { diagnostico: descricao.trim(), cid: '' }
+}
+
+function buildRowFromPedido(pedido: Pedido): ConsumoMaterialRow {
+  const paciente = pedido.paciente
+  const dados = pedido.dadosClinica
+  const { diagnostico, cid } = parseDescricaoCirurgica(dados?.descricaoCirurgica ?? '')
+  const folhaParts = (dados?.folhaSala ?? '').split(' / ')
+  const mapaSala = folhaParts[0]?.trim() ?? ''
+  const mapa = folhaParts.slice(1).join(' / ').trim()
+  const etiquetaParts = (dados?.etiquetas ?? '').split(' | ').map((p) => p.trim())
+  const valorNumerico = dados?.valorTotal ?? pedido.valor ?? 0
+  const numeroMatch = pedido.numero.match(/(\d+)\s*$/)
+
+  return {
+    id: rowIdFromPedidoId(pedido.id),
+    numero: numeroMatch ? String(parseInt(numeroMatch[1], 10)) : '',
+    postoGrad: '',
+    nip: paciente?.nip ?? '',
+    nome: paciente?.nome ?? '',
+    iniciais: '',
+    data: dados?.dataCirurgia ? formatDataIsoParaPlanilha(dados.dataCirurgia) : '',
+    idade: '',
+    diagnostico,
+    cid,
+    procedimento: dados?.procedimento ?? '',
+    materiais: dados?.materialUtilizado ?? '',
+    et: etiquetaParts[0] ?? '',
+    fornecedor: dados?.empresaConsignada ?? '',
+    cirurgiao: dados?.medico ?? '',
+    mapaSala,
+    mapa,
+    ref: dados?.pregao?.split(' ')[0] ?? '',
+    safin: dados?.pregao?.includes(' ') ? dados.pregao.split(' ').slice(1).join(' ') : '',
+    empenho: etiquetaParts[2] ?? '',
+    danfe: etiquetaParts[1] ?? '',
+    valor: valorNumerico > 0 ? formatValorBrasileiro(valorNumerico) : '',
+    valorNumerico,
+    ata: etiquetaParts[3] ?? '',
+  }
+}
+
+export function pedidoToConsumoRow(pedido: Pedido): ConsumoMaterialRow {
+  if (pedido.id.startsWith('pedido-')) {
+    const rowId = rowIdFromPedidoId(pedido.id)
+    const seed = CONSUMO_MATERIAL_SEED.find((r) => r.id === rowId)
+    if (seed) return { ...seed }
+  }
+  return buildRowFromPedido(pedido)
+}
+
+/** Monta a planilha a partir dos pedidos do sistema + rascunhos ainda não enviados */
+export function buildPlanilhaLancamentos(
+  pedidos: Pedido[],
+  extraRows: ConsumoMaterialRow[] = [],
+): ConsumoMaterialRow[] {
+  const fromPedidos = pedidos.map(pedidoToConsumoRow)
+  const pedidoIds = new Set(pedidos.map((p) => p.id))
+
+  const extras = extraRows.filter((row) => {
+    if (!isLinhaPreenchida(row)) return false
+    return !pedidoIds.has(pedidoIdFromRowId(row.id))
+  })
+
+  return [...fromPedidos, ...extras]
+}
+
+export function getRowIdsComPedido(pedidos: Pedido[]): Set<string> {
+  return new Set(pedidos.map((p) => rowIdFromPedidoId(p.id)))
 }
 
 /** Linhas vazias fixas ao final da planilha para novos lançamentos */

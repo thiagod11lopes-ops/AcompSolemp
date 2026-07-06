@@ -11,15 +11,14 @@ import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
 import SendIcon from '@mui/icons-material/Send'
 import RefreshIcon from '@mui/icons-material/Refresh'
-import { useCallback, useState, type SyntheticEvent } from 'react'
+import { useCallback, useMemo, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
-import { loadAppData } from '@/mocks/seed'
-import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
@@ -27,7 +26,13 @@ import {
   parseConsumoMaterialOds,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPreenchida, getConsumoMaterialInicial, CONSUMO_PLANILHA_NOME_PADRAO } from '@/utils/consumoMaterialTemplate'
+import {
+  isLinhaPreenchida,
+  buildPlanilhaLancamentos,
+  getRowIdsComPedido,
+  pedidoIdFromRowId,
+  CONSUMO_PLANILHA_NOME_PADRAO,
+} from '@/utils/consumoMaterialTemplate'
 
 function PlanilhaToolbar({
   onClear,
@@ -71,11 +76,12 @@ export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
   const createPedido = useCreateClinicaPedido()
   const { user } = useClinicaAuth()
+  const { data: pedidos = [] } = useClinicaPedidos()
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
   const [abaAtiva, setAbaAtiva] = useState(0)
-  const [planilhaRows, setPlanilhaRows] = useState<ConsumoMaterialRow[]>(getConsumoMaterialInicial)
+  const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
   const [planilhaNome, setPlanilhaNome] = useState(CONSUMO_PLANILHA_NOME_PADRAO)
   const [parseError, setParseError] = useState<string | null>(null)
   const [isParsing, setIsParsing] = useState(false)
@@ -83,16 +89,32 @@ export default function ClinicaNovoPedidoPage() {
   const [batchError, setBatchError] = useState<string | null>(null)
   const [isBatchSending, setIsBatchSending] = useState(false)
 
+  const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
+
+  const planilhaRows = useMemo(
+    () => buildPlanilhaLancamentos(pedidos, extraRows),
+    [pedidos, extraRows],
+  )
+
   const handleOdsFile = useCallback(async (file: File) => {
     setParseError(null)
     setIsParsing(true)
     setRowSelection({})
     try {
       const rows = await parseConsumoMaterialOds(file)
-      setPlanilhaRows(rows)
+      const pedidoIds = new Set(pedidos.map((p) => p.id))
+      const novos = rows.filter((r) => !pedidoIds.has(pedidoIdFromRowId(r.id)))
+      setExtraRows((prev) => {
+        const ids = new Set(prev.map((r) => r.id))
+        const merged = [...prev]
+        for (const row of novos) {
+          if (!ids.has(row.id)) merged.push(row)
+        }
+        return merged
+      })
       setPlanilhaNome(file.name)
       const initialSelection: RowSelectionState = {}
-      rows.slice(0, Math.min(rows.length, 50)).forEach((r) => {
+      novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
         initialSelection[r.id] = true
       })
       setRowSelection(initialSelection)
@@ -102,10 +124,10 @@ export default function ClinicaNovoPedidoPage() {
     } finally {
       setIsParsing(false)
     }
-  }, [])
+  }, [pedidos])
 
   const limparPlanilha = () => {
-    setPlanilhaRows(getConsumoMaterialInicial())
+    setExtraRows([])
     setPlanilhaNome(CONSUMO_PLANILHA_NOME_PADRAO)
     setRowSelection({})
     setParseError(null)
@@ -113,7 +135,7 @@ export default function ClinicaNovoPedidoPage() {
   }
 
   const handleAddManualRow = (row: ConsumoMaterialRow) => {
-    setPlanilhaRows((prev) => [...prev, row])
+    setExtraRows((prev) => [...prev, row])
     setRowSelection((prev) => ({ ...prev, [row.id]: true }))
     setBatchError(null)
     setAbaAtiva(2)
@@ -126,17 +148,15 @@ export default function ClinicaNovoPedidoPage() {
       return
     }
 
-    const pedidosExistentes = new Set(loadAppData().pedidos.map((p) => p.id))
+    const pedidoIds = new Set(pedidos.map((p) => p.id))
     const selectedRows = planilhaRows.filter(
       (r) =>
         rowSelection[r.id] &&
         isLinhaPreenchida(r) &&
-        !pedidosExistentes.has(`pedido-${r.id}`),
+        !pedidoIds.has(pedidoIdFromRowId(r.id)),
     )
     if (selectedRows.length === 0) {
-      setBatchError(
-        'Nenhum lançamento novo selecionado. Os 691 registros das planilhas já estão no sistema.',
-      )
+      setBatchError('Selecione lançamentos novos que ainda não estão no sistema.')
       return
     }
 
@@ -144,12 +164,16 @@ export default function ClinicaNovoPedidoPage() {
     setIsBatchSending(true)
     try {
       let ultimoId: string | null = null
+      const enviadosIds = new Set<string>()
       for (const row of selectedRows) {
         const pedido = await createPedido.mutateAsync(
           consumoRowToPedidoInput(row, clinicaNome),
         )
         ultimoId = pedido.id
+        enviadosIds.add(row.id)
       }
+      setExtraRows((prev) => prev.filter((r) => !enviadosIds.has(r.id)))
+      setRowSelection({})
       if (selectedRows.length === 1 && ultimoId) {
         navigate(`/clinica/timeline/${ultimoId}`)
       } else {
@@ -163,9 +187,13 @@ export default function ClinicaNovoPedidoPage() {
   }
 
   const selectedCount = planilhaRows.filter(
-    (r) => rowSelection[r.id] && isLinhaPreenchida(r),
+    (r) =>
+      rowSelection[r.id] &&
+      isLinhaPreenchida(r) &&
+      !rowIdsComPedido.has(r.id),
   ).length
-  const exibirPlanilha = true
+
+  const totalPreenchidos = planilhaRows.filter(isLinhaPreenchida).length
 
   return (
     <>
@@ -205,19 +233,22 @@ export default function ClinicaNovoPedidoPage() {
       {abaAtiva === 0 && (
         <Box sx={{ display: 'grid', gap: 3 }}>
           <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
-          {exibirPlanilha && (
-            <Alert severity="info">
-              Planilha carregada com{' '}
-              <strong>{planilhaRows.filter(isLinhaPreenchida).length}</strong> lançamento(s).
-              Acesse a aba <strong>Consumo Material Consignado</strong> para revisar e enviar.
-            </Alert>
-          )}
+          <Alert severity="info">
+            A planilha exibe <strong>{pedidos.length} pedido(s)</strong> do sistema
+            {extraRows.length > 0 && (
+              <>
+                {' '}
+                e <strong>{extraRows.length}</strong> rascunho(s) pendente(s)
+              </>
+            )}
+            . Acesse a aba <strong>Consumo Material Consignado</strong> para revisar.
+          </Alert>
         </Box>
       )}
 
       {abaAtiva === 1 && (
         <ConsumoMaterialManualForm
-          nextNumero={String(planilhaRows.length + 1)}
+          nextNumero={String(totalPreenchidos + 1)}
           onAddRow={handleAddManualRow}
         />
       )}
@@ -229,14 +260,15 @@ export default function ClinicaNovoPedidoPage() {
             onSend={handleEnviarSelecionados}
             selectedCount={selectedCount}
             isSending={isBatchSending}
-                clearLabel="Restaurar modelos"
-                disabled={false}
+            clearLabel="Limpar rascunhos"
           />
           <ConsumoMaterialConsignadoView
             lancamentos={planilhaRows}
             fileName={planilhaNome || 'Consumo Material Consignado'}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
+            rowIdsComPedido={rowIdsComPedido}
+            totalPedidos={pedidos.length}
           />
         </Box>
       )}
