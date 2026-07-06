@@ -71,7 +71,7 @@ function PlanilhaToolbar({
         onClick={onSend}
         disabled={isSending || selectedCount === 0}
       >
-        {isSending ? 'Enviando...' : `Enviar selecionados (${selectedCount})`}
+        {isSending ? 'Enviando para IMH...' : `Enviar para IMH (${selectedCount})`}
       </Button>
     </Box>
   )
