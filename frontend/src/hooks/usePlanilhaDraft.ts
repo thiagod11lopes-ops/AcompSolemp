@@ -4,6 +4,7 @@ import type { MesConsumoModelo } from '@/utils/consumoMaterialTemplate'
 import {
   buildImhPlanilhaFromConsumo,
   createImhLinhaMaterial,
+  createImhLinhaPaciente,
   type ImhCabecalho,
   type ImhColunaKey,
   type ImhLinha,
@@ -24,6 +25,8 @@ const EMPTY_CABECALHO: ImhCabecalho = {
   processo: '',
   fornecedor: '',
 }
+
+export type InserirLinhaPosicao = 'above' | 'below'
 
 export function usePlanilhaDraft(
   type: PlanilhaDraftType,
@@ -90,33 +93,60 @@ export function usePlanilhaDraft(
     )
   }, [])
 
-  const adicionarMaterial = useCallback((pacienteGrupoId: string) => {
+  const inserirLinha = useCallback((relativeLinhaId: string, position: InserirLinhaPosicao) => {
     setLinhas((prev) => {
-      const doGrupo = prev.filter((l) => l.pacienteGrupoId === pacienteGrupoId)
-      const ultimoIndex = prev.findLastIndex((l) => l.pacienteGrupoId === pacienteGrupoId)
-      const nova = createImhLinhaMaterial(pacienteGrupoId, doGrupo.length)
+      const refIndex = prev.findIndex((l) => l.id === relativeLinhaId)
+      if (refIndex === -1) return prev
+
+      const ref = prev[refIndex]
+      const insertIndex = position === 'above' ? refIndex : refIndex + 1
+      const isFirstInGroup =
+        prev.findIndex((l) => l.pacienteGrupoId === ref.pacienteGrupoId) === refIndex
+
+      let nova: ImhLinha
+      if (position === 'above' && ref.isLinhaPaciente && isFirstInGroup) {
+        nova = createImhLinhaPaciente()
+      } else {
+        const count = prev.filter((l) => l.pacienteGrupoId === ref.pacienteGrupoId).length
+        nova = createImhLinhaMaterial(ref.pacienteGrupoId, count)
+      }
+
       const next = [...prev]
-      next.splice(ultimoIndex + 1, 0, nova)
+      next.splice(insertIndex, 0, nova)
       return next
     })
   }, [])
 
-  const grupos = useMemo(() => {
-    const ids: string[] = []
-    for (const linha of linhas) {
-      if (!ids.includes(linha.pacienteGrupoId)) ids.push(linha.pacienteGrupoId)
-    }
-    return ids
-  }, [linhas])
+  const excluirLinha = useCallback((linhaId: string) => {
+    setLinhas((prev) => {
+      if (prev.length <= 1) return prev
+      const index = prev.findIndex((l) => l.id === linhaId)
+      if (index === -1) return prev
+
+      const removed = prev[index]
+      const next = prev.filter((l) => l.id !== linhaId)
+
+      if (removed.isLinhaPaciente) {
+        const successor = next.find((l) => l.pacienteGrupoId === removed.pacienteGrupoId)
+        if (successor) {
+          return next.map((l) =>
+            l.id === successor.id ? { ...l, isLinhaPaciente: true } : l,
+          )
+        }
+      }
+
+      return next
+    })
+  }, [])
 
   return {
     cabecalho,
     linhas,
-    grupos,
     savedAt,
     isSaving,
     updateCabecalho,
     updateLinha,
-    adicionarMaterial,
+    inserirLinha,
+    excluirLinha,
   }
 }

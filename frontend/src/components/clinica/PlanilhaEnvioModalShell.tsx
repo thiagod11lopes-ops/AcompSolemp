@@ -3,6 +3,9 @@ import {
   Box,
   Button,
   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -16,10 +19,10 @@ import {
   alpha,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import AddIcon from '@mui/icons-material/Add'
 import CloudDoneIcon from '@mui/icons-material/CloudDone'
 import SyncIcon from '@mui/icons-material/Sync'
-import { Fragment, type ReactNode } from 'react'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { useState, type ReactNode } from 'react'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import {
   IMH_COLUNAS,
@@ -28,6 +31,7 @@ import {
   type ImhColunaKey,
   type ImhLinha,
 } from '@/utils/imhPlanilhaTemplate'
+import type { InserirLinhaPosicao } from '@/hooks/usePlanilhaDraft'
 
 const COLUNAS_PACIENTE: ImhColunaKey[] = [
   'numero',
@@ -39,14 +43,16 @@ const COLUNAS_PACIENTE: ImhColunaKey[] = [
   'danfe',
 ]
 
-const CABECALHO_CAMPOS: { key: keyof ImhCabecalho; label: string; width: number }[] = [
-  { key: 'numeroRelacao', label: 'Nº', width: 72 },
-  { key: 'pregaoTad', label: 'PREGÃO/TAD', width: 140 },
-  { key: 'data', label: 'DATA', width: 100 },
-  { key: 'vigencia', label: 'VIGÊNCIA', width: 100 },
-  { key: 'processo', label: 'PROCESSO', width: 140 },
-  { key: 'fornecedor', label: 'FORNECEDOR', width: 160 },
+const CABECALHO_CAMPOS: { key: keyof ImhCabecalho; label: string }[] = [
+  { key: 'numeroRelacao', label: 'Nº' },
+  { key: 'pregaoTad', label: 'PREGÃO/TAD' },
+  { key: 'data', label: 'DATA' },
+  { key: 'vigencia', label: 'VIGÊNCIA' },
+  { key: 'processo', label: 'PROCESSO' },
+  { key: 'fornecedor', label: 'FORNECEDOR' },
 ]
+
+const ACOES_COL_WIDTH = 52
 
 function formatSavedAt(iso: string): string {
   try {
@@ -64,7 +70,6 @@ export interface PlanilhaEnvioModalShellProps {
   appBarColor?: 'primary' | 'secondary'
   cabecalho: ImhCabecalho
   linhas: ImhLinha[]
-  grupos: string[]
   savedAt: string | null
   isSaving: boolean
   disabled?: boolean
@@ -72,7 +77,8 @@ export interface PlanilhaEnvioModalShellProps {
   onClose: () => void
   onCabecalhoChange: (field: keyof ImhCabecalho, value: string) => void
   onLinhaChange: (id: string, field: ImhColunaKey, value: string) => void
-  onAdicionarMaterial: (pacienteGrupoId: string) => void
+  onInserirLinha: (linhaId: string, position: InserirLinhaPosicao) => void
+  onExcluirLinha: (linhaId: string) => void
   footerActions: ReactNode
 }
 
@@ -84,7 +90,6 @@ export function PlanilhaEnvioModalShell({
   appBarColor = 'primary',
   cabecalho,
   linhas,
-  grupos,
   savedAt,
   isSaving,
   disabled = false,
@@ -92,10 +97,24 @@ export function PlanilhaEnvioModalShell({
   onClose,
   onCabecalhoChange,
   onLinhaChange,
-  onAdicionarMaterial,
+  onInserirLinha,
+  onExcluirLinha,
   footerActions,
 }: PlanilhaEnvioModalShellProps) {
   const totalGeral = calcularTotalImh(linhas)
+  const [addRowTargetId, setAddRowTargetId] = useState<string | null>(null)
+
+  const handleContextMenu = (event: React.MouseEvent, linhaId: string) => {
+    event.preventDefault()
+    if (disabled) return
+    setAddRowTargetId(linhaId)
+  }
+
+  const handleInserir = (position: InserirLinhaPosicao) => {
+    if (!addRowTargetId) return
+    onInserirLinha(addRowTargetId, position)
+    setAddRowTargetId(null)
+  }
 
   return (
     <Dialog
@@ -109,11 +128,11 @@ export function PlanilhaEnvioModalShell({
       }}
     >
       <AppBar position="static" color={appBarColor} elevation={1} sx={{ flexShrink: 0 }}>
-        <Toolbar variant="dense" sx={{ gap: 1, minHeight: 48, px: { xs: 1, sm: 2 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+        <Toolbar variant="dense" sx={{ gap: 1, minHeight: 44, px: { xs: 1, sm: 2 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             {icon}
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                 {title}
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.85 }}>
@@ -122,35 +141,7 @@ export function PlanilhaEnvioModalShell({
             </Box>
           </Box>
 
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              flex: 1,
-              overflow: 'auto',
-              px: 1,
-              '&::-webkit-scrollbar': { height: 4 },
-            }}
-          >
-            {CABECALHO_CAMPOS.map(({ key, label, width }) => (
-              <TextField
-                key={key}
-                size="small"
-                label={label}
-                value={cabecalho[key]}
-                onChange={(e) => onCabecalhoChange(key, e.target.value)}
-                disabled={disabled}
-                sx={{
-                  minWidth: width,
-                  flexShrink: 0,
-                  '& .MuiInputBase-root': { bgcolor: alpha('#fff', 0.12), borderRadius: 1 },
-                  '& .MuiInputLabel-root': { color: alpha('#fff', 0.75) },
-                  '& .MuiInputBase-input': { color: '#fff', fontSize: '0.8rem', py: 0.75 },
-                }}
-              />
-            ))}
-          </Box>
+          <Box sx={{ flex: 1 }} />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, opacity: 0.9 }}>
@@ -159,11 +150,11 @@ export function PlanilhaEnvioModalShell({
               ) : (
                 <CloudDoneIcon sx={{ fontSize: 16 }} />
               )}
-              <Typography variant="caption" sx={{ display: { xs: 'none', md: 'block' }, whiteSpace: 'nowrap' }}>
+              <Typography variant="caption" sx={{ whiteSpace: 'nowrap' }}>
                 {isSaving ? 'Salvando...' : savedAt ? `Salvo ${formatSavedAt(savedAt)}` : 'Rascunho local'}
               </Typography>
             </Box>
-            <Typography variant="body2" sx={{ fontWeight: 700, display: { xs: 'none', lg: 'block' } }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
               Total: {formatValorBrasileiro(totalGeral)}
             </Typography>
             <IconButton edge="end" onClick={onClose} disabled={disabled} color="inherit" aria-label="Fechar">
@@ -173,8 +164,41 @@ export function PlanilhaEnvioModalShell({
         </Toolbar>
       </AppBar>
 
+      <Box
+        sx={(theme) => ({
+          flexShrink: 0,
+          px: 2,
+          py: 1.25,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: appBarColor === 'secondary' ? alpha(theme.palette.secondary.main, 0.08) : alpha(theme.palette.primary.main, 0.06),
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'repeat(2, 1fr)',
+            sm: 'repeat(3, 1fr)',
+            md: 'repeat(6, 1fr)',
+          },
+          gap: 1,
+        })}
+      >
+        {CABECALHO_CAMPOS.map(({ key, label }) => (
+          <TextField
+            key={key}
+            size="small"
+            fullWidth
+            label={label}
+            value={cabecalho[key]}
+            onChange={(e) => onCabecalhoChange(key, e.target.value)}
+            disabled={disabled}
+            slotProps={{
+              input: { sx: { fontSize: '0.85rem', bgcolor: 'background.paper' } },
+            }}
+          />
+        ))}
+      </Box>
+
       <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-        <Table stickyHeader size="small" sx={{ minWidth: 1600 }}>
+        <Table stickyHeader size="small" sx={{ minWidth: 1600 + ACOES_COL_WIDTH }}>
           <TableHead>
             <TableRow>
               <TableCell
@@ -209,6 +233,25 @@ export function PlanilhaEnvioModalShell({
               >
                 DADOS DO MATERIAL
               </TableCell>
+              <TableCell
+                rowSpan={2}
+                align="center"
+                sx={{
+                  bgcolor: alpha('#000', 0.7),
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.68rem',
+                  minWidth: ACOES_COL_WIDTH,
+                  width: ACOES_COL_WIDTH,
+                  py: 0.75,
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 4,
+                  verticalAlign: 'middle',
+                }}
+              >
+                AÇÕES
+              </TableCell>
             </TableRow>
             <TableRow>
               {IMH_COLUNAS.map((col) => (
@@ -233,78 +276,85 @@ export function PlanilhaEnvioModalShell({
             </TableRow>
           </TableHead>
           <TableBody>
-            {grupos.map((grupoId) => {
-              const linhasGrupo = linhas.filter((l) => l.pacienteGrupoId === grupoId)
-              return (
-                <Fragment key={grupoId}>
-                  {linhasGrupo.map((linha) => (
-                    <TableRow key={linha.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                      {IMH_COLUNAS.map((col) => {
-                        const isPacienteCol = COLUNAS_PACIENTE.includes(col.key)
-                        const readOnly = isPacienteCol && !linha.isLinhaPaciente
+            {linhas.map((linha) => (
+              <TableRow
+                key={linha.id}
+                hover
+                onContextMenu={(e) => handleContextMenu(e, linha.id)}
+                sx={{ cursor: 'context-menu' }}
+              >
+                {IMH_COLUNAS.map((col) => {
+                  const isPacienteCol = COLUNAS_PACIENTE.includes(col.key)
+                  const readOnly = isPacienteCol && !linha.isLinhaPaciente
 
-                        return (
-                          <TableCell
-                            key={col.key}
-                            sx={{
-                              p: 0,
-                              minWidth: col.width,
-                              verticalAlign: 'middle',
-                              borderRight: 1,
-                              borderColor: 'divider',
-                            }}
-                          >
-                            {readOnly ? (
-                              <Box sx={{ minHeight: 36, bgcolor: alpha('#000', 0.02) }} />
-                            ) : (
-                              <TextField
-                                size="small"
-                                fullWidth
-                                variant="standard"
-                                multiline={col.key === 'procedimento' || col.key === 'descricaoMaterial'}
-                                maxRows={4}
-                                value={linha[col.key as ImhColunaKey]}
-                                onChange={(e) =>
-                                  onLinhaChange(linha.id, col.key as ImhColunaKey, e.target.value)
-                                }
-                                disabled={disabled}
-                                slotProps={{
-                                  input: {
-                                    disableUnderline: true,
-                                    sx: {
-                                      fontSize: '0.8rem',
-                                      px: 1,
-                                      py: 0.75,
-                                      minHeight: 36,
-                                    },
-                                  },
-                                }}
-                              />
-                            )}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-                  ))}
-                  <TableRow>
+                  return (
                     <TableCell
-                      colSpan={IMH_COLUNAS.length}
-                      sx={{ py: 0.25, bgcolor: alpha('#0B3D91', 0.04), borderBottom: 2, borderColor: 'divider' }}
+                      key={col.key}
+                      sx={{
+                        p: 0,
+                        minWidth: col.width,
+                        verticalAlign: 'middle',
+                        borderRight: 1,
+                        borderColor: 'divider',
+                      }}
                     >
-                      <Button
-                        size="small"
-                        startIcon={<AddIcon />}
-                        onClick={() => onAdicionarMaterial(grupoId)}
-                        disabled={disabled}
-                        sx={{ fontSize: '0.75rem' }}
-                      >
-                        + material
-                      </Button>
+                      {readOnly ? (
+                        <Box sx={{ minHeight: 36, bgcolor: alpha('#000', 0.02) }} />
+                      ) : (
+                        <TextField
+                          size="small"
+                          fullWidth
+                          variant="standard"
+                          multiline={col.key === 'procedimento' || col.key === 'descricaoMaterial'}
+                          maxRows={4}
+                          value={linha[col.key as ImhColunaKey]}
+                          onChange={(e) =>
+                            onLinhaChange(linha.id, col.key as ImhColunaKey, e.target.value)
+                          }
+                          disabled={disabled}
+                          onContextMenu={(e) => e.stopPropagation()}
+                          slotProps={{
+                            input: {
+                              disableUnderline: true,
+                              sx: {
+                                fontSize: '0.8rem',
+                                px: 1,
+                                py: 0.75,
+                                minHeight: 36,
+                              },
+                            },
+                          }}
+                        />
+                      )}
                     </TableCell>
-                  </TableRow>
-                </Fragment>
-              )
-            })}
+                  )
+                })}
+                <TableCell
+                  align="center"
+                  sx={{
+                    p: 0.5,
+                    width: ACOES_COL_WIDTH,
+                    minWidth: ACOES_COL_WIDTH,
+                    position: 'sticky',
+                    right: 0,
+                    bgcolor: 'background.paper',
+                    borderLeft: 1,
+                    borderColor: 'divider',
+                    zIndex: 2,
+                  }}
+                >
+                  <IconButton
+                    size="small"
+                    color="error"
+                    disabled={disabled || linhas.length <= 1}
+                    onClick={() => onExcluirLinha(linha.id)}
+                    aria-label="Excluir linha"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
@@ -328,6 +378,9 @@ export function PlanilhaEnvioModalShell({
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             Total: {formatValorBrasileiro(totalGeral)}
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Clique com o botão direito em uma linha para adicionar acima ou abaixo
+          </Typography>
           {exportError && (
             <Typography variant="body2" color="error">
               {exportError}
@@ -336,6 +389,26 @@ export function PlanilhaEnvioModalShell({
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>{footerActions}</Box>
       </Box>
+
+      <Dialog open={addRowTargetId !== null} onClose={() => setAddRowTargetId(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Adicionar linha</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Escolha onde inserir a nova linha em relação à linha selecionada.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, flexDirection: 'column', gap: 1, alignItems: 'stretch' }}>
+          <Button variant="contained" onClick={() => handleInserir('above')} disabled={disabled}>
+            Adicionar linha acima
+          </Button>
+          <Button variant="contained" onClick={() => handleInserir('below')} disabled={disabled}>
+            Adicionar linha abaixo
+          </Button>
+          <Button onClick={() => setAddRowTargetId(null)} color="inherit">
+            Cancelar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

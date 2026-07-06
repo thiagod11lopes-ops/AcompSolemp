@@ -121,12 +121,35 @@ export function buildImhPlanilhaFromConsumo(
   return { cabecalho, linhas }
 }
 
+export function createImhLinhaPaciente(pacienteGrupoId?: string): ImhLinha {
+  const grupoId = pacienteGrupoId ?? `paciente-${Date.now()}`
+  return {
+    id: `imh-${grupoId}-pac-${Date.now()}`,
+    pacienteGrupoId: grupoId,
+    isLinhaPaciente: true,
+    numero: '',
+    nip: '',
+    iniciais: '',
+    data: '',
+    procedimento: '',
+    mapaSala: '',
+    danfe: '',
+    item: '',
+    nebPi: '',
+    descricaoMaterial: '',
+    qt: '1',
+    valorUnit: '',
+    valorTotal: '',
+    subtotalPaciente: '',
+  }
+}
+
 export function createImhLinhaMaterial(
   pacienteGrupoId: string,
   suffix: number,
 ): ImhLinha {
   return {
-    id: `imh-${pacienteGrupoId}-mat-${suffix}`,
+    id: `imh-${pacienteGrupoId}-mat-${suffix}-${Date.now()}`,
     pacienteGrupoId,
     isLinhaPaciente: false,
     numero: '',

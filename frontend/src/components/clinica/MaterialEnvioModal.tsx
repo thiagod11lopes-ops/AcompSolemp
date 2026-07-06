@@ -27,12 +27,12 @@ export function MaterialEnvioModal({
   const {
     cabecalho,
     linhas,
-    grupos,
     savedAt,
     isSaving,
     updateCabecalho,
     updateLinha,
-    adicionarMaterial,
+    inserirLinha,
+    excluirLinha,
   } = usePlanilhaDraft('material', open, consumoRows, mesReferencia)
 
   const handleGerarPlanilha = async () => {
@@ -56,7 +56,6 @@ export function MaterialEnvioModal({
       appBarColor="secondary"
       cabecalho={cabecalho}
       linhas={linhas}
-      grupos={grupos}
       savedAt={savedAt}
       isSaving={isSaving}
       disabled={isGenerating}
@@ -64,7 +63,8 @@ export function MaterialEnvioModal({
       onClose={onClose}
       onCabecalhoChange={updateCabecalho}
       onLinhaChange={updateLinha}
-      onAdicionarMaterial={adicionarMaterial}
+      onInserirLinha={inserirLinha}
+      onExcluirLinha={excluirLinha}
       footerActions={
         <>
           <Button onClick={onClose} disabled={isGenerating} color="inherit" size="small">

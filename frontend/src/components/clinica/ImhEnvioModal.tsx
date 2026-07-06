@@ -33,12 +33,12 @@ export function ImhEnvioModal({
   const {
     cabecalho,
     linhas,
-    grupos,
     savedAt,
     isSaving,
     updateCabecalho,
     updateLinha,
-    adicionarMaterial,
+    inserirLinha,
+    excluirLinha,
   } = usePlanilhaDraft('imh', open, consumoRows, mesReferencia)
 
   const busy = isSubmitting || isGeneratingXlsx
@@ -65,7 +65,6 @@ export function ImhEnvioModal({
       appBarColor="primary"
       cabecalho={cabecalho}
       linhas={linhas}
-      grupos={grupos}
       savedAt={savedAt}
       isSaving={isSaving}
       disabled={busy}
@@ -73,7 +72,8 @@ export function ImhEnvioModal({
       onClose={onClose}
       onCabecalhoChange={updateCabecalho}
       onLinhaChange={updateLinha}
-      onAdicionarMaterial={adicionarMaterial}
+      onInserirLinha={inserirLinha}
+      onExcluirLinha={excluirLinha}
       footerActions={
         <>
           <Button onClick={onClose} disabled={busy} color="inherit" size="small">
