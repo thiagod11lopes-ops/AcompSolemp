@@ -98,7 +98,7 @@ export function ConsumoMaterialConsignadoView({
       </Box>
 
       <Accordion
-        defaultExpanded
+        defaultExpanded={false}
         elevation={0}
         sx={(theme) => ({
           border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
