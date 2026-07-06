@@ -311,3 +311,113 @@ export function consumoRowToPedidoInput(
 export function formatValorBrasileiro(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
+export type ManualRowFormData = {
+  numero: string
+  postoGrad: string
+  nip: string
+  nome: string
+  iniciais: string
+  data: string
+  idade: string
+  diagnostico: string
+  cid: string
+  procedimento: string
+  materiais: string
+  et: string
+  fornecedor: string
+  cirurgiao: string
+  mapaSala: string
+  mapa: string
+  ref: string
+  safin: string
+  empenho: string
+  danfe: string
+  valor: string
+  ata: string
+}
+
+export const EMPTY_MANUAL_ROW: ManualRowFormData = {
+  numero: '',
+  postoGrad: '',
+  nip: '',
+  nome: '',
+  iniciais: '',
+  data: '',
+  idade: '',
+  diagnostico: '',
+  cid: '',
+  procedimento: '',
+  materiais: '',
+  et: '',
+  fornecedor: '',
+  cirurgiao: '',
+  mapaSala: '',
+  mapa: '',
+  ref: '',
+  safin: '',
+  empenho: '',
+  danfe: '',
+  valor: '',
+  ata: '',
+}
+
+export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): ConsumoMaterialRow {
+  const valorNumerico = parseValorBrasileiro(data.valor)
+  const valorFormatado =
+    data.valor.trim().startsWith('R$') || !valorNumerico
+      ? data.valor.trim()
+      : formatValorBrasileiro(valorNumerico)
+
+  return {
+    id,
+    numero: data.numero.trim(),
+    postoGrad: data.postoGrad.trim(),
+    nip: formatNip(data.nip.trim()),
+    nome: data.nome.trim(),
+    iniciais: data.iniciais.trim(),
+    data: data.data.trim(),
+    idade: data.idade.trim(),
+    diagnostico: data.diagnostico.trim(),
+    cid: data.cid.trim(),
+    procedimento: data.procedimento.trim(),
+    materiais: data.materiais.trim(),
+    et: data.et.trim(),
+    fornecedor: data.fornecedor.trim(),
+    cirurgiao: data.cirurgiao.trim(),
+    mapaSala: data.mapaSala.trim(),
+    mapa: data.mapa.trim(),
+    ref: data.ref.trim(),
+    safin: data.safin.trim(),
+    empenho: data.empenho.trim(),
+    danfe: data.danfe.trim(),
+    valor: valorFormatado || data.valor.trim(),
+    valorNumerico,
+    ata: data.ata.trim(),
+  }
+}
+
+export const MANUAL_ROW_EXAMPLE: ManualRowFormData = {
+  numero: '1',
+  postoGrad: 'MN',
+  nip: '24.1118.21',
+  nome: 'LUIZ PHILIPE SANTANA SILVA',
+  iniciais: 'LPSS',
+  data: '03/01/25',
+  idade: '19 ANOS',
+  diagnostico: 'FRATURA DO MALEOLO POSTERIOR ESQUERDO',
+  cid: 'S82.5',
+  procedimento: 'OSTEOSSINTESE DO TORNOZELO ESQUERDO',
+  materiais: '02 PARAFUSOS HCS',
+  et: 'T',
+  fornecedor: 'RPM',
+  cirurgiao: 'FRANKEN',
+  mapaSala: '156',
+  mapa: 'M-36/25',
+  ref: 'PE 79/24 COMRJ',
+  safin: '65720-1943/2025',
+  empenho: '2025NE4451',
+  danfe: '211419/ 211417/ 211424/ 211457',
+  valor: 'R$ 5.171,00',
+  ata: '15/25',
+}
