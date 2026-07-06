@@ -26,7 +26,7 @@ import {
   parseConsumoMaterialOds,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPreenchida } from '@/utils/consumoMaterialTemplate'
+import { isLinhaPreenchida, getConsumoMaterialInicial, CONSUMO_PLANILHA_NOME_PADRAO } from '@/utils/consumoMaterialTemplate'
 
 function PlanilhaToolbar({
   onClear,
@@ -74,8 +74,8 @@ export default function ClinicaNovoPedidoPage() {
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
   const [abaAtiva, setAbaAtiva] = useState(0)
-  const [planilhaRows, setPlanilhaRows] = useState<ConsumoMaterialRow[]>([])
-  const [planilhaNome, setPlanilhaNome] = useState('')
+  const [planilhaRows, setPlanilhaRows] = useState<ConsumoMaterialRow[]>(getConsumoMaterialInicial)
+  const [planilhaNome, setPlanilhaNome] = useState(CONSUMO_PLANILHA_NOME_PADRAO)
   const [parseError, setParseError] = useState<string | null>(null)
   const [isParsing, setIsParsing] = useState(false)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -97,8 +97,6 @@ export default function ClinicaNovoPedidoPage() {
       setRowSelection(initialSelection)
       setAbaAtiva(2)
     } catch (err) {
-      setPlanilhaRows([])
-      setPlanilhaNome('')
       setParseError(err instanceof Error ? err.message : 'Erro ao ler o arquivo ODS')
     } finally {
       setIsParsing(false)
@@ -106,8 +104,8 @@ export default function ClinicaNovoPedidoPage() {
   }, [])
 
   const limparPlanilha = () => {
-    setPlanilhaRows([])
-    setPlanilhaNome('')
+    setPlanilhaRows(getConsumoMaterialInicial())
+    setPlanilhaNome(CONSUMO_PLANILHA_NOME_PADRAO)
     setRowSelection({})
     setParseError(null)
     setBatchError(null)
@@ -115,7 +113,6 @@ export default function ClinicaNovoPedidoPage() {
 
   const handleAddManualRow = (row: ConsumoMaterialRow) => {
     setPlanilhaRows((prev) => [...prev, row])
-    if (!planilhaNome) setPlanilhaNome('Lançamento manual')
     setRowSelection((prev) => ({ ...prev, [row.id]: true }))
     setBatchError(null)
     setAbaAtiva(2)
@@ -161,7 +158,7 @@ export default function ClinicaNovoPedidoPage() {
   const selectedCount = planilhaRows.filter(
     (r) => rowSelection[r.id] && isLinhaPreenchida(r),
   ).length
-  const exibirPlanilha = planilhaRows.some(isLinhaPreenchida)
+  const exibirPlanilha = true
 
   return (
     <>
@@ -225,8 +222,8 @@ export default function ClinicaNovoPedidoPage() {
             onSend={handleEnviarSelecionados}
             selectedCount={selectedCount}
             isSending={isBatchSending}
-            clearLabel="Limpar lançamentos"
-            disabled={!exibirPlanilha}
+                clearLabel="Restaurar modelos"
+                disabled={false}
           />
           <ConsumoMaterialConsignadoView
             lancamentos={planilhaRows}

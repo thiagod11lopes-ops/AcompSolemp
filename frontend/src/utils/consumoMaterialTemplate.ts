@@ -1,4 +1,5 @@
 import catalogData from '@/data/consumoMaterialCatalog.json'
+import seedData from '@/data/consumoMaterialSeed.json'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 
 export interface CatalogoReferenciaRow {
@@ -26,6 +27,14 @@ export const CONSUMO_MESES_MODELO: MesConsumoModelo[] = [
 ]
 
 export const CATALOGO_REFERENCIA: CatalogoReferenciaRow[] = catalogData
+
+export const CONSUMO_MATERIAL_SEED: ConsumoMaterialRow[] = seedData as ConsumoMaterialRow[]
+
+export const CONSUMO_PLANILHA_NOME_PADRAO = 'Modelos OPME TRO — Jan-Jun/2026'
+
+export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
+  return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
+}
 
 /** Linhas vazias fixas ao final da planilha para novos lançamentos */
 export const SLOTS_NOVOS_LANCAMENTOS = 15
@@ -88,11 +97,9 @@ export function montarLinhasPlanilhaFixa(
   lancamentos: ConsumoMaterialRow[],
   mesModelo: MesConsumoModelo,
 ): ConsumoMaterialRow[] {
-  const doMes = lancamentos.filter(
+  const preenchidas = lancamentos.filter(
     (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesModelo),
   )
-  const semData = lancamentos.filter((r) => isLinhaPreenchida(r) && !r.data.trim())
-  const preenchidas = [...doMes, ...semData]
   const slots = Array.from({ length: SLOTS_NOVOS_LANCAMENTOS }, (_, i) =>
     createLinhaVazia(`slot-${mesModelo.id}-${i}`, String(preenchidas.length + i + 1)),
   )

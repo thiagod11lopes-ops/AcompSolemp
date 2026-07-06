@@ -53,9 +53,7 @@ export function ConsumoMaterialConsignadoView({
   )
 
   const preenchidasNoMes = lancamentos.filter(
-    (r) =>
-      isLinhaPreenchida(r) &&
-      (dataPertenceAoMes(r.data, mesSelecionado) || !r.data.trim()),
+    (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesSelecionado),
   ).length
 
   return (
