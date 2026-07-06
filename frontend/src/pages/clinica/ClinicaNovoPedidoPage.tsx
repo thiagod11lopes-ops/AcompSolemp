@@ -10,6 +10,7 @@ import TableChartIcon from '@mui/icons-material/TableChart'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
 import SendIcon from '@mui/icons-material/Send'
+import InventoryIcon from '@mui/icons-material/Inventory'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { useCallback, useMemo, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -18,6 +19,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
+import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
 import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
 import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
@@ -43,14 +45,16 @@ import {
 
 function PlanilhaToolbar({
   onClear,
-  onSend,
+  onSendImh,
+  onSendMaterial,
   selectedCount,
   isSending,
   clearLabel,
   disabled = false,
 }: {
   onClear: () => void
-  onSend: () => void
+  onSendImh: () => void
+  onSendMaterial: () => void
   selectedCount: number
   isSending: boolean
   clearLabel: string
@@ -70,10 +74,20 @@ function PlanilhaToolbar({
         variant="contained"
         size="large"
         startIcon={<SendIcon />}
-        onClick={onSend}
+        onClick={onSendImh}
         disabled={isSending || selectedCount === 0}
       >
         {isSending ? 'Enviando para IMH...' : `Enviar para IMH (${selectedCount})`}
+      </Button>
+      <Button
+        variant="contained"
+        size="large"
+        color="secondary"
+        startIcon={<InventoryIcon />}
+        onClick={onSendMaterial}
+        disabled={isSending || selectedCount === 0}
+      >
+        Enviar para o Material ({selectedCount})
       </Button>
     </Box>
   )
@@ -101,6 +115,8 @@ export default function ClinicaNovoPedidoPage() {
   const [isAdicionandoPlanilha, setIsAdicionandoPlanilha] = useState(false)
   const [imhModalOpen, setImhModalOpen] = useState(false)
   const [imhConsumoRows, setImhConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [materialModalOpen, setMaterialModalOpen] = useState(false)
+  const [materialConsumoRows, setMaterialConsumoRows] = useState<ConsumoMaterialRow[]>([])
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
@@ -209,10 +225,11 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtiva(2)
   }
 
+  const getSelectedRows = () =>
+    planilhaRows.filter((r) => rowSelection[r.id] && rowPodeSerSelecionada(r))
+
   const handleAbrirImhModal = () => {
-    const selectedRows = planilhaRows.filter(
-      (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
-    )
+    const selectedRows = getSelectedRows()
     if (selectedRows.length === 0) {
       setBatchError('Selecione lançamentos preenchidos para enviar.')
       return
@@ -220,6 +237,17 @@ export default function ClinicaNovoPedidoPage() {
     setBatchError(null)
     setImhConsumoRows(selectedRows)
     setImhModalOpen(true)
+  }
+
+  const handleAbrirMaterialModal = () => {
+    const selectedRows = getSelectedRows()
+    if (selectedRows.length === 0) {
+      setBatchError('Selecione lançamentos preenchidos para enviar.')
+      return
+    }
+    setBatchError(null)
+    setMaterialConsumoRows(selectedRows)
+    setMaterialModalOpen(true)
   }
 
   const handleConfirmarEnvioImh = async () => {
@@ -329,7 +357,8 @@ export default function ClinicaNovoPedidoPage() {
         <Box sx={{ display: 'grid', gap: 3 }}>
           <PlanilhaToolbar
             onClear={limparPlanilha}
-            onSend={handleAbrirImhModal}
+            onSendImh={handleAbrirImhModal}
+            onSendMaterial={handleAbrirMaterialModal}
             selectedCount={selectedCount}
             isSending={isBatchSending}
             clearLabel="Limpar rascunhos"
@@ -365,6 +394,16 @@ export default function ClinicaNovoPedidoPage() {
           }
         }}
         onConfirm={handleConfirmarEnvioImh}
+      />
+
+      <MaterialEnvioModal
+        open={materialModalOpen}
+        consumoRows={materialConsumoRows}
+        mesReferencia={mesSelecionado}
+        onClose={() => {
+          setMaterialModalOpen(false)
+          setMaterialConsumoRows([])
+        }}
       />
     </>
   )
