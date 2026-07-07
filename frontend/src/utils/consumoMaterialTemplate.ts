@@ -1,17 +1,9 @@
-import catalogData from '@/data/consumoMaterialCatalog.json'
 import seedData from '@/data/consumoMaterialSeed.json'
 import type { Pedido } from '@/types'
 import {
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-
-export interface CatalogoReferenciaRow {
-  diagnostico: string
-  cid: string
-  procedimento: string
-  material: string
-}
 
 export interface MesConsumoModelo {
   id: string
@@ -29,8 +21,6 @@ export const CONSUMO_MESES_MODELO: MesConsumoModelo[] = [
   { id: '05-26', label: 'Maio/2026', mes: 5, ano: 2026, arquivo: '05-26 - MAIO - DEFINITIVA.ods' },
   { id: '06-26', label: 'Junho/2026', mes: 6, ano: 2026, arquivo: '06-26 - JUNHO - DEFINITIVA.ods' },
 ]
-
-export const CATALOGO_REFERENCIA: CatalogoReferenciaRow[] = catalogData
 
 export const CONSUMO_MATERIAL_SEED: ConsumoMaterialRow[] = seedData as ConsumoMaterialRow[]
 
