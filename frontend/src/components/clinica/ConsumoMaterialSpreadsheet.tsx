@@ -295,6 +295,10 @@ export function ConsumoMaterialSpreadsheet({
     .getSelectedRowModel()
     .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0)
 
+  const linhasPreenchidas = rows.filter((r) => !isLinhaPlaceholder(r)).length
+  const linhasEmBranco = rows.filter((r) => isLinhaPlaceholder(r)).length
+  const totalLinhas = rows.length
+
   const groupSpans = useMemo(() => {
     const groups: { group: string; span: number }[] = []
     let current: string = CONSUMO_MATERIAL_HEADERS[0]?.group ?? 'paciente'
@@ -357,7 +361,7 @@ export function ConsumoMaterialSpreadsheet({
                 }}
               />
               <Chip
-                label={`${rows.filter((r) => !isLinhaPlaceholder(r)).length} lançamentos`}
+                label={`${totalLinhas} linhas · ${linhasPreenchidas} preenchidas · ${linhasEmBranco} em branco`}
                 size="small"
                 sx={{ bgcolor: alpha('#fff', 0.12), color: 'white' }}
               />
@@ -370,12 +374,6 @@ export function ConsumoMaterialSpreadsheet({
               )}
               {lancamentosPreenchidos !== undefined && (
                 <>
-                  <Chip
-                    label={`${rows.filter((r) => isLinhaPlaceholder(r)).length} linhas livres`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ color: 'white', borderColor: alpha('#fff', 0.35) }}
-                  />
                   {showPlanilhaActions && (
                     <Box
                       sx={{
