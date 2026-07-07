@@ -63,11 +63,29 @@ const GROUP_COLORS: Record<string, string> = {
   financeiro: '#2E7D32',
 }
 
-const MULTILINE_FIELDS = new Set<ConsumoMaterialColunaKey>([
-  'diagnostico',
-  'procedimento',
-  'materiais',
-])
+const MAX_CELL_LINES = 3
+
+function clampLinhasCelula(value: string, maxLines: number): string {
+  const lines = value.split('\n')
+  if (lines.length <= maxLines) return value
+  return lines.slice(0, maxLines).join('\n')
+}
+
+const editableCellInputSx = {
+  fontSize: '0.78rem',
+  px: 0.75,
+  py: 0.5,
+  minHeight: 28,
+  alignItems: 'flex-start',
+  overflow: 'hidden',
+  '& textarea': {
+    overflow: 'hidden !important',
+    resize: 'none',
+    lineHeight: 1.4,
+    scrollbarWidth: 'none',
+    '&::-webkit-scrollbar': { display: 'none' },
+  },
+} as const
 
 interface ContextMenuState {
   mouseX: number
@@ -220,26 +238,28 @@ export function ConsumoMaterialSpreadsheet({
                 size="small"
                 fullWidth
                 variant="standard"
-                multiline={MULTILINE_FIELDS.has(field)}
-                maxRows={4}
+                multiline
+                minRows={1}
+                maxRows={MAX_CELL_LINES}
                 value={value}
-                onChange={(e) => onCellChange(rowId, field, e.target.value)}
+                onChange={(e) =>
+                  onCellChange(rowId, field, clampLinhasCelula(e.target.value, MAX_CELL_LINES))
+                }
                 slotProps={{
                   input: {
                     disableUnderline: true,
                     onContextMenu: (e: MouseEvent) => handleContextMenu(e, rowId),
                     sx: {
-                      fontSize: '0.78rem',
-                      px: 0.75,
-                      py: 0.5,
-                      minHeight: 28,
+                      ...editableCellInputSx,
                       fontFamily:
                         field === 'valor'
                           ? '"JetBrains Mono", "Roboto Mono", monospace'
                           : undefined,
+                      whiteSpace: 'pre-wrap',
                     },
                   },
                 }}
+                sx={{ '& .MuiInputBase-root': { overflow: 'hidden' } }}
               />
             )
           }
@@ -711,6 +731,7 @@ export function ConsumoMaterialSpreadsheet({
                   onContextMenu={(e) => handleContextMenu(e, row.id)}
                   sx={(theme) => ({
                     cursor: editable ? 'context-menu' : undefined,
+                    height: editable ? 'auto' : undefined,
                     bgcolor: vazia
                       ? alpha(theme.palette.action.disabled, 0.06)
                       : index % 2 === 0
@@ -731,7 +752,9 @@ export function ConsumoMaterialSpreadsheet({
                       key={cell.id}
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
                       sx={{
-                        py: editable ? 0.25 : 0.75,
+                        py: editable ? 0.5 : 0.75,
+                        verticalAlign: 'top',
+                        overflow: 'visible',
                         ...(cellIndex === 0
                           ? {
                               position: 'sticky',
