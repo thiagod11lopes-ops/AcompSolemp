@@ -8,6 +8,8 @@ function readDataSource(): DataSource {
 export const env = {
   dataSource: readDataSource(),
   isFirebase: readDataSource() === 'firebase',
+  /** E-mail Google do gestor/admin — aplicado automaticamente no bootstrap */
+  gestorGoogleEmail: (import.meta.env.VITE_GESTOR_GOOGLE_EMAIL ?? '').trim().toLowerCase(),
   firebase: {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? '',
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? '',

@@ -24,6 +24,7 @@ import {
   archiveActivePedidosAsFinalized,
   removePedidosFromAppData,
 } from '@/utils/pedidoCleanup'
+import { env } from '@/config/env'
 
 const STORAGE_KEY = STORAGE_KEYS.APP_DATA
 const SEED_VERSION = 'v14'
@@ -367,6 +368,24 @@ function ensureDefaultConfeccaoUser(data: AppData): boolean {
   return true
 }
 
+function ensureBootstrapGoogleEmails(data: AppData): boolean {
+  const email = env.gestorGoogleEmail
+  if (!email) return false
+
+  let changed = false
+  for (const user of data.usuarios) {
+    if (
+      user.ativo &&
+      (user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') &&
+      user.email?.trim().toLowerCase() !== email
+    ) {
+      user.email = email
+      changed = true
+    }
+  }
+  return changed
+}
+
 function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const { data, changed } = normalizeClinicas(raw)
   if (!data.reversoes) data.reversoes = []
@@ -374,6 +393,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
   if (!data.processosArquivados) data.processosArquivados = []
   const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
+  const bootstrapEmailChanged = ensureBootstrapGoogleEmails(data)
   data.pedidos = (data.pedidos ?? []).map((p) => ({
     ...p,
     paciente: p.paciente ?? null,
@@ -401,7 +421,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
-  return { data, changed: changed || notifChanged || confeccaoUserChanged }
+  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged }
 }
 
 function migrateRemoveActiveTimelines(data: AppData): AppData {

@@ -7,6 +7,7 @@ import {
   InputAdornment,
   IconButton,
   Link,
+  Divider,
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
@@ -19,6 +20,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 const loginSchema = z.object({
   login: z.string().min(1, 'Informe o login'),
@@ -28,7 +30,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginGestorPage() {
-  const { login, logout } = useGestorAuth()
+  const { login, loginWithGoogle, logout, requiresGoogleAuth } = useGestorAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo =
@@ -36,6 +38,7 @@ export default function LoginGestorPage() {
     '/gestor/dashboard'
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   const {
     register,
@@ -43,22 +46,41 @@ export default function LoginGestorPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { login: 'gestor', senha: 'gestor123' },
+    defaultValues: requiresGoogleAuth
+      ? { login: '', senha: '' }
+      : { login: 'gestor', senha: 'gestor123' },
   })
+
+  const finishLogin = async () => {
+    const authUser = authService.getGestorUser()
+    if (!authUser || !canAccessGestorRoute(authUser.perfil)) {
+      await logout()
+      setError('Este login é exclusivo do Portal do Gestor. Use o Portal da Clínica.')
+      return
+    }
+    navigate(redirectTo)
+  }
 
   const onSubmit = async (data: LoginForm) => {
     try {
       setError('')
       await login(data)
-      const authUser = authService.getGestorUser()
-      if (!authUser || !canAccessGestorRoute(authUser.perfil)) {
-        await logout()
-        setError('Este login é exclusivo do Portal do Gestor. Use o Portal da Clínica.')
-        return
-      }
-      navigate(redirectTo)
+      await finishLogin()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao autenticar')
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    try {
+      setError('')
+      setGoogleLoading(true)
+      await loginWithGoogle()
+      await finishLogin()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao autenticar com Google')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -80,57 +102,74 @@ export default function LoginGestorPage() {
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <TextField
-          fullWidth
-          label="Login"
-          margin="normal"
-          {...register('login')}
-          error={Boolean(errors.login)}
-          helperText={errors.login?.message}
-        />
-        <TextField
-          fullWidth
-          label="Senha"
-          type={showPassword ? 'text' : 'password'}
-          margin="normal"
-          {...register('senha')}
-          error={Boolean(errors.senha)}
-          helperText={errors.senha?.message}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
-        <Button
-          fullWidth
-          type="submit"
-          variant="contained"
-          size="large"
-          sx={{ mt: 3 }}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Entrando...' : 'Entrar como Gestor'}
-        </Button>
-      </form>
+      {requiresGoogleAuth ? (
+        <Box>
+          <GoogleSignInButton
+            onClick={handleGoogleLogin}
+            loading={googleLoading}
+            label="Entrar com Google"
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+            Use a conta Google cadastrada em Gestor → Cadastros → Usuários.
+          </Typography>
+        </Box>
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <TextField
+            fullWidth
+            label="Login"
+            margin="normal"
+            {...register('login')}
+            error={Boolean(errors.login)}
+            helperText={errors.login?.message}
+          />
+          <TextField
+            fullWidth
+            label="Senha"
+            type={showPassword ? 'text' : 'password'}
+            margin="normal"
+            {...register('senha')}
+            error={Boolean(errors.senha)}
+            helperText={errors.senha?.message}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Button
+            fullWidth
+            type="submit"
+            variant="contained"
+            size="large"
+            sx={{ mt: 3 }}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Entrando...' : 'Entrar como Gestor'}
+          </Button>
+        </form>
+      )}
 
-      <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="body2" sx={{ textAlign: 'center' }}>
         É da clínica?{' '}
         <Link component={RouterLink} to="/clinica/timeline">
           Acessar Timeline (Clínica / Ordenador)
         </Link>
       </Typography>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-        Demo: gestor / gestor123 ou admin / admin123
-      </Typography>
+      {!requiresGoogleAuth && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+          Demo: gestor / gestor123 ou admin / admin123
+        </Typography>
+      )}
     </Box>
   )
 }

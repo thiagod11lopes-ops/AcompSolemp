@@ -1,6 +1,9 @@
-import type { AuthUser, LoginCredentials, CredencialUsuario } from '@/types'
+import type { AuthUser, LoginCredentials, CredencialUsuario, User, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { delay, loadAppData, MOCK_CREDENTIALS, reloadAppDataFromStorage } from '@/mocks/seed'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { firebaseAuthAdapter } from '@/firebase/authAdapter'
+import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
+import { delay, loadAppData, MOCK_CREDENTIALS, reloadAppDataFromStorage, applyRemoteAppData } from '@/mocks/seed'
 import { slugLogin } from '@/utils/loginSlug'
 import {
   canAccessGestorRoute,
@@ -46,6 +49,10 @@ function migrateLegacyAuth(): void {
   storageRemove(LEGACY_AUTH_KEY)
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
+}
+
 function resolveCredential(login: string, senha: string): CredencialUsuario | null {
   const data = loadAppData()
   const dynamic = data.credenciais?.[login]
@@ -73,13 +80,145 @@ function setSession(portal: Portal, authUser: AuthUser | null): void {
   writeStoredUser(sessionKey(portal), authUser)
 }
 
+function findUserByEmail(
+  email: string,
+  filter?: { perfil?: UserRole; perfis?: UserRole[]; clinicaId?: string },
+): User | null {
+  const normalized = normalizeEmail(email)
+  const data = loadAppData()
+
+  return (
+    data.usuarios.find((user) => {
+      if (!user.ativo || !user.email) return false
+      if (normalizeEmail(user.email) !== normalized) return false
+      if (filter?.perfil && user.perfil !== filter.perfil) return false
+      if (filter?.perfis && !filter.perfis.includes(user.perfil)) return false
+      if (filter?.clinicaId && user.clinicaId !== filter.clinicaId) return false
+      return true
+    }) ?? null
+  )
+}
+
+async function syncAppDataAfterFirebaseAuth(): Promise<void> {
+  if (!useFirebaseDataSource()) return
+  await hydrateLocalCacheFromFirebase(applyRemoteAppData)
+  reloadAppDataFromStorage()
+}
+
+async function completeFirebasePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
+  if (!validatePortalAccess(portal, user.perfil)) {
+    await firebaseAuthAdapter.signOut()
+    throw new Error('Este usuário não tem acesso a este portal')
+  }
+
+  const authUser: AuthUser = {
+    ...user,
+    token: `firebase-${user.id}`,
+  }
+
+  setSession(portal, authUser)
+
+  if (portal === 'ordenador' || portal === 'financeiro') {
+    reloadAppDataFromStorage()
+  }
+
+  return authUser
+}
+
 export const authService = {
   /** Deve ser chamado após initStorage() */
   bootstrap(): void {
     migrateLegacyAuth()
   },
 
+  requiresGoogleAuth(): boolean {
+    return useFirebaseDataSource()
+  },
+
+  async syncRemoteDataIfAuthenticated(): Promise<void> {
+    if (!useFirebaseDataSource()) return
+    const session = firebaseAuthAdapter.getCurrentSession()
+    if (!session?.email) return
+    await syncAppDataAfterFirebaseAuth()
+  },
+
+  async loginWithGoogle(portal: Portal): Promise<AuthUser> {
+    if (!useFirebaseDataSource()) {
+      throw new Error('Login com Google disponível apenas com Firebase configurado')
+    }
+
+    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
+    if (!firebaseSession.email) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error('Conta Google sem e-mail. Use outra conta.')
+    }
+
+    await syncAppDataAfterFirebaseAuth()
+
+    const user = findUserByEmail(firebaseSession.email)
+    if (!user) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error(
+        'E-mail não autorizado. Cadastre seu e-mail Google em Gestor → Cadastros → Usuários.',
+      )
+    }
+
+    return completeFirebasePortalLogin(portal, user)
+  },
+
+  async loginClinicaWithGoogle(clinicaId: string): Promise<AuthUser> {
+    if (!useFirebaseDataSource()) {
+      throw new Error('Login com Google disponível apenas com Firebase configurado')
+    }
+
+    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
+    if (!firebaseSession.email) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error('Conta Google sem e-mail. Use outra conta.')
+    }
+
+    await syncAppDataAfterFirebaseAuth()
+
+    const user = findUserByEmail(firebaseSession.email, {
+      perfil: 'CLINICA',
+      clinicaId,
+    })
+
+    if (!user) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error('E-mail não autorizado para esta clínica.')
+    }
+
+    return completeFirebasePortalLogin('clinica', user)
+  },
+
+  async loginByPerfilWithGoogle(perfil: UserRole, portal: Portal): Promise<AuthUser> {
+    if (!useFirebaseDataSource()) {
+      throw new Error('Login com Google disponível apenas com Firebase configurado')
+    }
+
+    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
+    if (!firebaseSession.email) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error('Conta Google sem e-mail. Use outra conta.')
+    }
+
+    await syncAppDataAfterFirebaseAuth()
+
+    const user = findUserByEmail(firebaseSession.email, { perfil })
+    if (!user) {
+      await firebaseAuthAdapter.signOut()
+      throw new Error(`E-mail não autorizado para ${perfil.replace(/_/g, ' ').toLowerCase()}.`)
+    }
+
+    return completeFirebasePortalLogin(portal, user)
+  },
+
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
+    if (useFirebaseDataSource()) {
+      throw new Error('Use o login com Google para acessar o sistema em produção.')
+    }
+
     await delay(null, 600)
 
     const cred = resolveCredential(credentials.login, credentials.senha)
@@ -115,6 +254,9 @@ export const authService = {
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
     setSession(portal, null)
+    if (useFirebaseDataSource()) {
+      await firebaseAuthAdapter.signOut()
+    }
   },
 
   getGestorUser(): AuthUser | null {
@@ -144,6 +286,10 @@ export const authService = {
   },
 
   async loginClinicaByClinicaId(clinicaId: string, senha: string): Promise<AuthUser> {
+    if (useFirebaseDataSource()) {
+      return this.loginClinicaWithGoogle(clinicaId)
+    }
+
     await delay(null, 300)
     const data = loadAppData()
     const users = data.usuarios.filter(
@@ -186,6 +332,13 @@ export const authService = {
     perfis: AuthUser['perfil'][],
     portal: Portal,
   ): Promise<AuthUser> {
+    if (useFirebaseDataSource()) {
+      if (perfis.length !== 1) {
+        throw new Error('Selecione um perfil para entrar com Google.')
+      }
+      return this.loginByPerfilWithGoogle(perfis[0], portal)
+    }
+
     await delay(null, 300)
     const data = loadAppData()
     const nomeNorm = nome.trim().toLowerCase()

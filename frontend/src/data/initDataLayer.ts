@@ -1,4 +1,6 @@
 import { useFirebaseDataSource } from '@/config/dataSource'
+import { firebaseAuthAdapter } from '@/firebase/authAdapter'
+import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
@@ -10,12 +12,14 @@ export async function initDataLayer(): Promise<void> {
     return
   }
 
-  const hydrated = await hydrateLocalCacheFromFirebase((data: AppData) => {
-    applyRemoteAppData(data)
-  })
+  initFirebase()
+  initAppData()
 
-  if (!hydrated) {
-    initAppData()
+  await firebaseAuthAdapter.waitForAuthReady()
+  if (getFirebaseAuth().currentUser) {
+    await hydrateLocalCacheFromFirebase((data: AppData) => {
+      applyRemoteAppData(data)
+    })
   }
 
   if (import.meta.env.DEV) {

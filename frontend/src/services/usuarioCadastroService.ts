@@ -1,5 +1,6 @@
 import type { User, UserRole } from '@/types'
 import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
+import { useFirebaseDataSource } from '@/config/dataSource'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 
@@ -20,6 +21,7 @@ export function getCredenciaisPorLogin(): Record<string, string> {
 export interface CreatePortalUserInput {
   nome: string
   senha: string
+  email?: string
   opcao: CadastroPerfilOpcao
 }
 
@@ -64,6 +66,13 @@ export const usuarioCadastroService = {
     }
     if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
 
+    const email = input.email?.trim() ?? ''
+    if (useFirebaseDataSource()) {
+      if (!email || !email.includes('@')) {
+        throw new Error('Informe o e-mail Google do usuário para acesso em produção')
+      }
+    }
+
     const data = loadAppData()
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
@@ -77,6 +86,7 @@ export const usuarioCadastroService = {
       posto: '',
       graduacao: input.opcao.graduacao,
       login,
+      email: email || null,
       perfil,
       clinicaId,
       ativo: true,
@@ -88,6 +98,27 @@ export const usuarioCadastroService = {
     saveAppData(data)
 
     return { user, login }
+  },
+
+  async updateUsuarioEmail(userId: string, email: string): Promise<User> {
+    await delay(null, 200)
+    const normalized = email.trim().toLowerCase()
+    if (!normalized || !normalized.includes('@')) {
+      throw new Error('Informe um e-mail válido')
+    }
+
+    const data = loadAppData()
+    const user = data.usuarios.find((u) => u.id === userId)
+    if (!user) throw new Error('Usuário não encontrado')
+
+    const duplicate = data.usuarios.find(
+      (u) => u.id !== userId && u.email?.trim().toLowerCase() === normalized,
+    )
+    if (duplicate) throw new Error('Este e-mail já está em uso por outro usuário')
+
+    user.email = normalized
+    saveAppData(data)
+    return user
   },
 
   async deleteCadastro(input: {

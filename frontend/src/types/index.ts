@@ -51,6 +51,8 @@ export interface User {
   posto: string
   graduacao: string
   login: string
+  /** E-mail Google autorizado (obrigatório em produção com Firebase Auth) */
+  email?: string | null
   perfil: UserRole
   clinicaId: string | null
   ativo: boolean

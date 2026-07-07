@@ -31,6 +31,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
+import { authService } from '@/services/authService'
 
 const PERFIL_ICONS: Record<string, ReactElement> = {
   clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 32 }} />,
@@ -50,7 +52,8 @@ interface PortalAccessModalProps {
 export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const theme = useTheme()
   const navigate = useNavigate()
-  const { loginClinicaByClinica, loginByPerfilNome } = useAuth()
+  const { loginClinicaByClinica, loginClinicaWithGoogle, loginByPerfilNome, loginByPerfilWithGoogle } =
+    useAuth()
   const { data: clinicas = [], refetch: refetchClinicas } = useClinicas()
 
   const [opcao, setOpcao] = useState<CadastroPerfilOpcao | null>(null)
@@ -59,7 +62,8 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [erro, setErro] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const requiresGoogle = authService.requiresGoogleAuth()
 
   useEffect(() => {
     if (open) {
@@ -72,6 +76,39 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       void refetchClinicas()
     }
   }, [open, refetchClinicas])
+
+  const [loading, setLoading] = useState(false)
+
+  const handleClinicaGoogleLogin = async () => {
+    if (!clinicaId) {
+      setErro('Selecione uma clínica')
+      return
+    }
+    setGoogleLoading(true)
+    setErro('')
+    try {
+      await loginClinicaWithGoogle(clinicaId)
+      navigate('/clinica/timelines', { replace: true })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  const handlePerfilGoogleLogin = async () => {
+    if (!opcao) return
+    setGoogleLoading(true)
+    setErro('')
+    try {
+      const user = await loginByPerfilWithGoogle(opcao.perfil)
+      navigate(getHomeRouteForPerfil(user.perfil), { replace: true })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
 
   const handleClinicaLogin = async () => {
     if (!clinicaId) {
@@ -237,7 +274,9 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
         {opcao?.isClinica && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Selecione a clínica e informe a senha cadastrada pelo gestor.
+              {requiresGoogle
+                ? 'Selecione a clínica e entre com a conta Google cadastrada.'
+                : 'Selecione a clínica e informe a senha cadastrada pelo gestor.'}
             </Typography>
             <TextField
               select
@@ -261,97 +300,125 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              fullWidth
-              type={showPassword ? 'text' : 'password'}
-              label="Senha"
-              value={senha}
-              onChange={(e) => {
-                setSenha(e.target.value)
-                setErro('')
-              }}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
+            {!requiresGoogle && (
+              <TextField
+                fullWidth
+                type={showPassword ? 'text' : 'password'}
+                label="Senha"
+                value={senha}
+                onChange={(e) => {
+                  setSenha(e.target.value)
+                  setErro('')
+                }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            )}
             {erro && (
               <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                 {erro}
               </Typography>
             )}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              sx={{ mt: 3 }}
-              onClick={handleClinicaLogin}
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : 'Entrar como Clínica'}
-            </Button>
+            {requiresGoogle ? (
+              <Box sx={{ mt: 3 }}>
+                <GoogleSignInButton
+                  onClick={handleClinicaGoogleLogin}
+                  loading={googleLoading}
+                  label="Entrar com Google"
+                />
+              </Box>
+            ) : (
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{ mt: 3 }}
+                onClick={handleClinicaLogin}
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Entrar como Clínica'}
+              </Button>
+            )}
           </Box>
         )}
 
         {opcao && !opcao.isClinica && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Informe o nome e a senha cadastrados pelo gestor para {opcao.label}.
+              {requiresGoogle
+                ? `Entre com a conta Google cadastrada para ${opcao.label}.`
+                : `Informe o nome e a senha cadastrados pelo gestor para ${opcao.label}.`}
             </Typography>
-            <TextField
-              fullWidth
-              label={opcao.campoNomeLabel}
-              value={nome}
-              onChange={(e) => {
-                setNome(e.target.value)
-                setErro('')
-              }}
-              placeholder={opcao.campoNomePlaceholder}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              type={showPassword ? 'text' : 'password'}
-              label="Senha"
-              value={senha}
-              onChange={(e) => {
-                setSenha(e.target.value)
-                setErro('')
-              }}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
+            {!requiresGoogle && (
+              <>
+                <TextField
+                  fullWidth
+                  label={opcao.campoNomeLabel}
+                  value={nome}
+                  onChange={(e) => {
+                    setNome(e.target.value)
+                    setErro('')
+                  }}
+                  placeholder={opcao.campoNomePlaceholder}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  type={showPassword ? 'text' : 'password'}
+                  label="Senha"
+                  value={senha}
+                  onChange={(e) => {
+                    setSenha(e.target.value)
+                    setErro('')
+                  }}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </>
+            )}
             {erro && (
               <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                 {erro}
               </Typography>
             )}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              sx={{ mt: 3 }}
-              onClick={handlePerfilLogin}
-              disabled={loading}
-            >
-              {loading ? 'Entrando...' : `Entrar como ${opcao.label}`}
-            </Button>
+            {requiresGoogle ? (
+              <Box sx={{ mt: 3 }}>
+                <GoogleSignInButton
+                  onClick={handlePerfilGoogleLogin}
+                  loading={googleLoading}
+                  label="Entrar com Google"
+                />
+              </Box>
+            ) : (
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                sx={{ mt: 3 }}
+                onClick={handlePerfilLogin}
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : `Entrar como ${opcao.label}`}
+              </Button>
+            )}
           </Box>
         )}
       </DialogContent>
