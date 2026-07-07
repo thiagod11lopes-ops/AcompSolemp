@@ -44,6 +44,49 @@ function isInvalidCredential(error: unknown): boolean {
   )
 }
 
+function isPopupDismissed(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    ((error as { code: string }).code === 'auth/popup-closed-by-user' ||
+      (error as { code: string }).code === 'auth/cancelled-popup-request')
+  )
+}
+
+async function signInGoogleForTenant(auth: ReturnType<typeof getFirebaseAuth>, expectedTenantId: string): Promise<FirebaseAuthSession> {
+  const provider = new GoogleAuthProvider()
+
+  provider.setCustomParameters({ prompt: 'none' })
+  try {
+    const credential = await signInWithPopup(auth, provider)
+    if (credential.user.uid !== expectedTenantId) {
+      await signOut(auth)
+      throw new Error('Use a mesma conta Google com a qual criou esta organização.')
+    }
+    return toSession(credential.user)
+  } catch (error) {
+    if (!isPopupDismissed(error)) {
+      // prompt none falha quando não há sessão Google ativa — tenta popup interativo
+    }
+  }
+
+  provider.setCustomParameters({ prompt: 'select_account' })
+  try {
+    const credential = await signInWithPopup(auth, provider)
+    if (credential.user.uid !== expectedTenantId) {
+      await signOut(auth)
+      throw new Error('Use a mesma conta Google com a qual criou esta organização.')
+    }
+    return toSession(credential.user)
+  } catch (error) {
+    if (isPopupDismissed(error)) {
+      throw new Error('É necessário entrar com Google para gerenciar cadastros.')
+    }
+    throw error
+  }
+}
+
 /** Adapter Firebase Auth — substitui credenciais mock quando VITE_DATA_SOURCE=firebase */
 export const firebaseAuthAdapter = {
   isEnabled(): boolean {
@@ -73,10 +116,33 @@ export const firebaseAuthAdapter = {
       return toSession(auth.currentUser)
     }
 
+    if (auth.currentUser) {
+      await signOut(auth)
+    }
+
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: 'select_account' })
     const credential = await signInWithPopup(auth, provider)
     return toSession(credential.user)
+  },
+
+  /** Garante sessão Google do gestor (necessário após login da timeline no mesmo navegador) */
+  async ensureGestorFirebaseAuth(expectedTenantId: string): Promise<void> {
+    if (!useFirebaseDataSource()) return
+    initFirebase()
+    const auth = getFirebaseAuth()
+    await auth.authStateReady()
+
+    const current = auth.currentUser
+    if (current && !isPortalAuthEmail(current.email) && current.uid === expectedTenantId) {
+      return
+    }
+
+    if (current) {
+      await signOut(auth)
+    }
+
+    await signInGoogleForTenant(auth, expectedTenantId)
   },
 
   /** Login da timeline — e-mail/senha internos (sem Google) */

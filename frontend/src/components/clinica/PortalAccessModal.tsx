@@ -25,17 +25,17 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import TimelineIcon from '@mui/icons-material/Timeline'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { useClinicas } from '@/hooks/useCadastros'
+import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { initFirebase } from '@/firebase/app'
 import { resolveOrgCodePublicData } from '@/data/persistence/tenantPersistence'
 import { getStoredOrgCode, setStoredOrgCode, setTenantId } from '@/services/tenantService'
-import type { OrgCodePublicClinica } from '@/data/persistence/tenantPersistence'
+import type { OrgCodePublicClinica, OrgCodePublicUsuario } from '@/data/persistence/tenantPersistence'
 
 const PERFIL_ICONS: Record<string, ReactElement> = {
   clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 32 }} />,
@@ -57,6 +57,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const navigate = useNavigate()
   const { loginClinicaByClinica, loginByPerfilNome } = useAuth()
   const { data: clinicas = [], refetch: refetchClinicas } = useClinicas()
+  const { data: usuarios = [], refetch: refetchUsuarios } = useUsuarios()
   const isFirebase = useFirebaseDataSource()
 
   const [opcao, setOpcao] = useState<CadastroPerfilOpcao | null>(null)
@@ -68,6 +69,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const [publicClinicas, setPublicClinicas] = useState<OrgCodePublicClinica[]>([])
+  const [publicUsuarios, setPublicUsuarios] = useState<OrgCodePublicUsuario[]>([])
 
   useEffect(() => {
     if (open) {
@@ -80,19 +82,22 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       setErro('')
       setShowPassword(false)
       setPublicClinicas([])
+      setPublicUsuarios([])
 
       if (isFirebase && storedCode.trim()) {
         void loadOrgPublicData(storedCode)
       } else {
         void refetchClinicas()
+        void refetchUsuarios()
       }
     }
-  }, [open, isFirebase, refetchClinicas])
+  }, [open, isFirebase, refetchClinicas, refetchUsuarios])
 
   const loadOrgPublicData = async (code: string): Promise<boolean> => {
     const normalized = code.trim()
     if (!normalized) {
       setPublicClinicas([])
+      setPublicUsuarios([])
       return false
     }
 
@@ -101,12 +106,14 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
     if (!orgData) {
       setErro('Código da organização inválido')
       setPublicClinicas([])
+      setPublicUsuarios([])
       return false
     }
 
     setTenantId(orgData.tenantId)
     setStoredOrgCode(normalized)
     setPublicClinicas(orgData.clinicas)
+    setPublicUsuarios(orgData.usuarios)
     setErro('')
     return true
   }
@@ -127,6 +134,22 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   }
 
   const clinicasDisponiveis = isFirebase ? publicClinicas : clinicas
+
+  const nomesDisponiveis = useMemo(() => {
+    if (!opcao || opcao.isClinica) return []
+
+    if (isFirebase) {
+      return publicUsuarios
+        .filter((user) => user.perfil === opcao.perfil)
+        .map((user) => user.nome)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    }
+
+    return usuarios
+      .filter((user) => user.perfil === opcao.perfil && user.ativo)
+      .map((user) => user.nome)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [opcao, isFirebase, publicUsuarios, usuarios])
 
   const orgCodeField = (
     <TextField
@@ -201,7 +224,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const handlePerfilLogin = async () => {
     if (!opcao) return
     if (!nome.trim()) {
-      setErro('Informe o nome cadastrado')
+      setErro('Selecione o nome cadastrado')
       return
     }
     if (isFirebase && !orgCode.trim()) {
@@ -211,6 +234,10 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
     setLoading(true)
     setErro('')
     try {
+      if (isFirebase) {
+        const ok = await ensureTenantDataLoaded()
+        if (!ok) return
+      }
       const user = await loginByPerfilNome(nome, senha, opcao.perfil, orgCode.trim() || undefined)
       navigate(getHomeRouteForPerfil(user.perfil), { replace: true })
     } catch (e) {
@@ -326,6 +353,9 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
                     if (perfil.isClinica) {
                       if (isFirebase) void ensureTenantDataLoaded()
                       else void refetchClinicas()
+                    } else {
+                      if (isFirebase) void ensureTenantDataLoaded()
+                      else void refetchUsuarios()
                     }
                   }}
                   sx={{ p: 1.75, height: '100%', alignItems: 'stretch' }}
@@ -415,6 +445,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
             </Typography>
             {isFirebase && orgCodeField}
             <TextField
+              select
               fullWidth
               label={opcao.campoNomeLabel}
               value={nome}
@@ -422,9 +453,23 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
                 setNome(e.target.value)
                 setErro('')
               }}
-              placeholder={opcao.campoNomePlaceholder}
               sx={{ mb: 2 }}
-            />
+              helperText={
+                nomesDisponiveis.length === 0
+                  ? isFirebase
+                    ? orgCode.trim()
+                      ? `Nenhum cadastro encontrado para ${opcao.label}. Peça ao gestor para abrir Cadastros.`
+                      : 'Informe o código da organização para carregar os nomes.'
+                    : `Nenhum cadastro encontrado para ${opcao.label}.`
+                  : undefined
+              }
+            >
+              {nomesDisponiveis.map((nomeOpcao) => (
+                <MenuItem key={nomeOpcao} value={nomeOpcao}>
+                  {nomeOpcao}
+                </MenuItem>
+              ))}
+            </TextField>
             {passwordField}
             {erro && (
               <Typography variant="body2" color="error" sx={{ mt: 1 }}>

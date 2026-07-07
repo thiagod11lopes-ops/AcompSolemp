@@ -24,9 +24,12 @@ export function OrgCodeCard() {
 
   useEffect(() => {
     if (!isFirebase || !orgCode) return
-    void syncOrgCodePublicIndex(loadAppData()).catch((error) => {
-      console.error('[Firebase] Falha ao publicar clínicas no código da organização:', error)
-    })
+    void authService
+      .ensureGestorFirebaseSession()
+      .then(() => syncOrgCodePublicIndex(loadAppData()))
+      .catch((error) => {
+        console.error('[Firebase] Falha ao publicar cadastros no código da organização:', error)
+      })
   }, [isFirebase, orgCode])
 
   if (!isFirebase || !orgCode) return null

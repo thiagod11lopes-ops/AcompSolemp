@@ -25,6 +25,12 @@ export function ownerUserId(tenantId: string): string {
   return `user-owner-${tenantId}`
 }
 
+export function resolveGestorTenantIdFromOwnerUserId(ownerUserRecordId: string): string | null {
+  const prefix = 'user-owner-'
+  if (!ownerUserRecordId.startsWith(prefix)) return null
+  return ownerUserRecordId.slice(prefix.length) || null
+}
+
 const ORG_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 export function generateOrgCode(length = 6): string {

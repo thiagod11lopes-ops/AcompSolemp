@@ -23,6 +23,7 @@ import {
   getStoredOrgCode,
   getTenantId,
   ownerUserId,
+  resolveGestorTenantIdFromOwnerUserId,
   setStoredOrgCode,
   setTenantId,
 } from '@/services/tenantService'
@@ -181,6 +182,31 @@ export const authService = {
   getOrgCode(): string | null {
     const data = loadAppData()
     return data.tenantMeta?.orgCode ?? getStoredOrgCode()
+  },
+
+  resolveGestorTenantId(): string | null {
+    const data = loadAppData()
+    if (data.tenantMeta?.ownerUid) return data.tenantMeta.ownerUid
+
+    const gestor = this.getGestorUser()
+    if (!gestor) return getTenantId()
+
+    return resolveGestorTenantIdFromOwnerUserId(gestor.id) ?? getTenantId()
+  },
+
+  async ensureGestorFirebaseSession(): Promise<void> {
+    if (!useFirebaseDataSource()) return
+
+    const gestor = this.getGestorUser()
+    if (!gestor) return
+
+    const tenantId = this.resolveGestorTenantId()
+    if (!tenantId) {
+      throw new Error('Organização do gestor não encontrada. Faça login novamente.')
+    }
+
+    setTenantId(tenantId)
+    await firebaseAuthAdapter.ensureGestorFirebaseAuth(tenantId)
   },
 
   async syncRemoteDataIfAuthenticated(): Promise<void> {

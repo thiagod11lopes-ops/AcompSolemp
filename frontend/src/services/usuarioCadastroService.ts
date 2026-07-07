@@ -7,6 +7,24 @@ import { getTenantId } from '@/services/tenantService'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { syncOrgCodePublicIndex } from '@/data/persistence/tenantPersistence'
 
+function isPermissionDenied(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'permission-denied'
+  )
+}
+
+function wrapFirebasePermissionError(error: unknown): Error {
+  if (isPermissionDenied(error)) {
+    return new Error(
+      'Sem permissão no Firebase. Entre novamente com Google no Portal do Gestor (se usou a Timeline neste navegador, saia dela antes).',
+    )
+  }
+  return error instanceof Error ? error : new Error('Erro ao salvar cadastro')
+}
+
 export function getCredenciaisPorLogin(): Record<string, string> {
   const data = loadAppData()
   const map: Record<string, string> = {}
@@ -89,14 +107,28 @@ export const usuarioCadastroService = {
     data.usuarios.push(user)
     if (!data.credenciais) data.credenciais = {}
     data.credenciais[login] = { senha: input.senha, userId: user.id }
+
+    if (useFirebaseDataSource()) {
+      try {
+        const { authService } = await import('@/services/authService')
+        await authService.ensureGestorFirebaseSession()
+      } catch (error) {
+        throw wrapFirebasePermissionError(error)
+      }
+    }
+
     saveAppData(data)
 
     if (useFirebaseDataSource()) {
-      const tenantId = getTenantId()
-      if (tenantId) {
-        await firebaseAuthAdapter.createPortalUser(tenantId, login, input.senha)
+      try {
+        const tenantId = getTenantId()
+        if (tenantId) {
+          await firebaseAuthAdapter.createPortalUser(tenantId, login, input.senha)
+        }
+        await syncOrgCodePublicIndex(data)
+      } catch (error) {
+        throw wrapFirebasePermissionError(error)
       }
-      await syncOrgCodePublicIndex(data)
     }
 
     return { user, login }
