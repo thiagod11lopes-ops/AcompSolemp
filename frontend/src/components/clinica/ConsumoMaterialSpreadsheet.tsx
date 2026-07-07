@@ -4,6 +4,8 @@ import {
   Checkbox,
   Chip,
   InputAdornment,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -35,13 +37,17 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, type MouseEvent } from 'react'
 import {
   CONSUMO_MATERIAL_HEADERS,
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPlaceholder, rowPodeSerSelecionada } from '@/utils/consumoMaterialTemplate'
+import { isLinhaPreenchida, rowPodeSerSelecionada } from '@/utils/consumoMaterialTemplate'
+import type {
+  ConsumoMaterialColunaKey,
+  InserirLinhaConsumoPosicao,
+} from '@/utils/consumoMaterialTemplate'
 import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
 import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
 
@@ -55,6 +61,18 @@ const GROUP_COLORS: Record<string, string> = {
   paciente: '#0B3D91',
   clinico: '#1565C0',
   financeiro: '#2E7D32',
+}
+
+const MULTILINE_FIELDS = new Set<ConsumoMaterialColunaKey>([
+  'diagnostico',
+  'procedimento',
+  'materiais',
+])
+
+interface ContextMenuState {
+  mouseX: number
+  mouseY: number
+  rowId: string
 }
 
 interface ConsumoMaterialSpreadsheetProps {
@@ -76,6 +94,10 @@ interface ConsumoMaterialSpreadsheetProps {
   onEnviarImh?: () => void
   onEnviarMaterial?: () => void
   isEnviando?: boolean
+  editable?: boolean
+  onCellChange?: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
+  onInserirLinha?: (rowId: string, position: InserirLinhaConsumoPosicao) => void
+  onExcluirLinha?: (rowId: string) => void
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -97,11 +119,16 @@ export function ConsumoMaterialSpreadsheet({
   onEnviarImh,
   onEnviarMaterial,
   isEnviando = false,
+  editable = false,
+  onCellChange,
+  onInserirLinha,
+  onExcluirLinha,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
   const [excluirOpen, setExcluirOpen] = useState(false)
   const [adicionarOpen, setAdicionarOpen] = useState(false)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
 
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
 
@@ -143,6 +170,31 @@ export function ConsumoMaterialSpreadsheet({
     setAdicionarOpen(true)
   }
 
+  const handleContextMenu = useCallback((event: MouseEvent, rowId: string) => {
+    if (!editable || !onInserirLinha || !onExcluirLinha) return
+    event.preventDefault()
+    event.stopPropagation()
+    setContextMenu({
+      mouseX: event.clientX,
+      mouseY: event.clientY,
+      rowId,
+    })
+  }, [editable, onInserirLinha, onExcluirLinha])
+
+  const closeContextMenu = () => setContextMenu(null)
+
+  const handleInserirFromMenu = (position: InserirLinhaConsumoPosicao) => {
+    if (!contextMenu || !onInserirLinha) return
+    onInserirLinha(contextMenu.rowId, position)
+    closeContextMenu()
+  }
+
+  const handleExcluirFromMenu = () => {
+    if (!contextMenu || !onExcluirLinha) return
+    onExcluirLinha(contextMenu.rowId)
+    closeContextMenu()
+  }
+
   const podeSelecionar = useCallback(
     (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row),
     [],
@@ -156,11 +208,43 @@ export function ConsumoMaterialSpreadsheet({
         header: col.label,
         size: col.width,
         cell: ({ getValue, row }) => {
+          const field = col.key as ConsumoMaterialColunaKey
           const value = String(getValue() ?? '')
-          const placeholder = isLinhaPlaceholder(row.original)
+          const rowId = row.original.id
+
+          if (editable && onCellChange) {
+            return (
+              <TextField
+                size="small"
+                fullWidth
+                variant="standard"
+                multiline={MULTILINE_FIELDS.has(field)}
+                maxRows={4}
+                value={value}
+                onChange={(e) => onCellChange(rowId, field, e.target.value)}
+                slotProps={{
+                  input: {
+                    disableUnderline: true,
+                    onContextMenu: (e: MouseEvent) => handleContextMenu(e, rowId),
+                    sx: {
+                      fontSize: '0.78rem',
+                      px: 0.75,
+                      py: 0.5,
+                      minHeight: 28,
+                      fontFamily:
+                        field === 'valor'
+                          ? '"JetBrains Mono", "Roboto Mono", monospace'
+                          : undefined,
+                    },
+                  },
+                }}
+              />
+            )
+          }
+
           if (col.key === 'valor') {
             const num = row.original.valorNumerico
-            if (placeholder && !num) {
+            if (!isLinhaPreenchida(row.original) && !num) {
               return (
                 <Box
                   sx={{
@@ -186,7 +270,7 @@ export function ConsumoMaterialSpreadsheet({
               </Typography>
             )
           }
-          if (placeholder && !value) {
+          if (!isLinhaPreenchida(row.original) && !value) {
             return (
               <Box
                 sx={{
@@ -247,7 +331,7 @@ export function ConsumoMaterialSpreadsheet({
       },
       ...dataColumns,
     ]
-  }, [podeSelecionar])
+  }, [editable, onCellChange, handleContextMenu, podeSelecionar])
 
   const table = useReactTable({
     data: rows,
@@ -288,14 +372,14 @@ export function ConsumoMaterialSpreadsheet({
     .rows.filter((r) => podeSelecionar(r.original)).length
   const filteredRows = table.getFilteredRowModel().rows
   const totalValorFiltrado = filteredRows.reduce(
-    (sum, r) => sum + (isLinhaPlaceholder(r.original) ? 0 : r.original.valorNumerico),
+    (sum, r) => sum + (!isLinhaPreenchida(r.original) ? 0 : r.original.valorNumerico),
     0,
   )
   const selectedValor = table
     .getSelectedRowModel()
     .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0)
 
-  const linhasPreenchidas = rows.filter((r) => !isLinhaPlaceholder(r)).length
+  const linhasPreenchidas = rows.filter((r) => isLinhaPreenchida(r)).length
 
   const groupSpans = useMemo(() => {
     const groups: { group: string; span: number }[] = []
@@ -503,6 +587,11 @@ export function ConsumoMaterialSpreadsheet({
             <strong>{formatValorBrasileiro(selectedValor)}</strong>
           </Typography>
         )}
+        {editable && (
+          <Typography variant="caption" color="text.secondary">
+            Clique com o botão direito em uma linha para adicionar ou excluir
+          </Typography>
+        )}
       </Stack>
 
       <TableContainer sx={{ maxHeight: 'min(70vh, 720px)' }}>
@@ -600,14 +689,16 @@ export function ConsumoMaterialSpreadsheet({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row, index) => {
-                const placeholder = isLinhaPlaceholder(row.original)
+                const vazia = !isLinhaPreenchida(row.original)
                 return (
                 <TableRow
                   key={row.id}
-                  hover={!placeholder}
+                  hover
                   selected={row.getIsSelected()}
+                  onContextMenu={(e) => handleContextMenu(e, row.id)}
                   sx={(theme) => ({
-                    bgcolor: placeholder
+                    cursor: editable ? 'context-menu' : undefined,
+                    bgcolor: vazia
                       ? alpha(theme.palette.action.disabled, 0.06)
                       : index % 2 === 0
                         ? 'background.paper'
@@ -616,7 +707,7 @@ export function ConsumoMaterialSpreadsheet({
                       bgcolor: alpha(theme.palette.primary.main, 0.1),
                     },
                     '&:hover': {
-                      bgcolor: placeholder
+                      bgcolor: vazia
                         ? alpha(theme.palette.action.disabled, 0.08)
                         : alpha(theme.palette.primary.main, 0.06),
                     },
@@ -625,8 +716,9 @@ export function ConsumoMaterialSpreadsheet({
                   {row.getVisibleCells().map((cell, cellIndex) => (
                     <TableCell
                       key={cell.id}
+                      onContextMenu={(e) => handleContextMenu(e, row.id)}
                       sx={{
-                        py: 0.75,
+                        py: editable ? 0.25 : 0.75,
                         ...(cellIndex === 0
                           ? {
                               position: 'sticky',
@@ -661,6 +753,27 @@ export function ConsumoMaterialSpreadsheet({
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
       />
     </Paper>
+
+    <Menu
+      open={contextMenu !== null}
+      onClose={closeContextMenu}
+      anchorReference="anchorPosition"
+      anchorPosition={
+        contextMenu
+          ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+          : undefined
+      }
+    >
+      <MenuItem onClick={() => handleInserirFromMenu('above')}>
+        Adicionar linha acima
+      </MenuItem>
+      <MenuItem onClick={() => handleInserirFromMenu('below')}>
+        Adicionar linha abaixo
+      </MenuItem>
+      <MenuItem onClick={handleExcluirFromMenu} disabled={rows.length <= 1}>
+        Excluir linha
+      </MenuItem>
+    </Menu>
 
     {showPlanilhaActions && (
       <>

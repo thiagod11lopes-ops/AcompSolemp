@@ -9,7 +9,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
-import { useMemo, useState, type SyntheticEvent } from 'react'
+import { useMemo, useState, useCallback, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
@@ -35,6 +35,7 @@ import {
   getMesAtualModelo,
   getMesModeloFromParts,
   dataPertenceAoMes,
+  syncExtraRowsFromMesSheet,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 
@@ -60,20 +61,43 @@ export default function ClinicaNovoPedidoPage() {
   const [imhConsumoRows, setImhConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [materialModalOpen, setMaterialModalOpen] = useState(false)
   const [materialConsumoRows, setMaterialConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [rowsByMes, setRowsByMes] = useState<Record<string, ConsumoMaterialRow[]>>({})
+  const [deletedRowIds, setDeletedRowIds] = useState<Set<string>>(new Set())
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
   const planilhaRows = useMemo(
-    () => buildPlanilhaLancamentos(pedidos, extraRows),
-    [pedidos, extraRows],
+    () => buildPlanilhaLancamentos(pedidos, extraRows, deletedRowIds),
+    [pedidos, extraRows, deletedRowIds],
   )
 
   const limparPlanilha = () => {
     setExtraRows([])
+    setRowsByMes({})
+    setDeletedRowIds(new Set())
     setPlanilhaNome(CONSUMO_PLANILHA_NOME_PADRAO)
     setRowSelection({})
     setBatchError(null)
   }
+
+  const handleMesRowsChange = useCallback(
+    (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
+      setRowsByMes((prev) => ({ ...prev, [mes.id]: rows }))
+      setExtraRows((prev) =>
+        syncExtraRowsFromMesSheet(prev, rows, mes, getRowIdsComPedido(pedidos)),
+      )
+    },
+    [pedidos],
+  )
+
+  const handleExcluirLinhaRow = useCallback(
+    (rowId: string) => {
+      if (rowIdsComPedido.has(rowId)) {
+        setDeletedRowIds((prev) => new Set(prev).add(rowId))
+      }
+    },
+    [rowIdsComPedido],
+  )
 
   const handleExcluirTudo = async () => {
     setBatchError(null)
@@ -115,6 +139,11 @@ export default function ClinicaNovoPedidoPage() {
       })
       setPlanilhaNome(file.name)
       setMesSelecionado(mesModelo)
+      setRowsByMes((prev) => {
+        const next = { ...prev }
+        delete next[mesModelo.id]
+        return next
+      })
       const initialSelection: RowSelectionState = {}
       novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
         initialSelection[r.id] = true
@@ -283,6 +312,9 @@ export default function ClinicaNovoPedidoPage() {
           onEnviarImh={handleAbrirImhModal}
           onEnviarMaterial={handleAbrirMaterialModal}
           isEnviando={isBatchSending}
+          rowsByMes={rowsByMes[mesSelecionado.id]}
+          onRowsChange={handleMesRowsChange}
+          onExcluirLinhaRow={handleExcluirLinhaRow}
         />
       )}
 

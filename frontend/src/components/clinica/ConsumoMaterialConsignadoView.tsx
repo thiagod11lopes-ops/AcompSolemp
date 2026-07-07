@@ -13,9 +13,14 @@ import {
   CONSUMO_MESES_MODELO,
   getMesAtualModelo,
   isLinhaPreenchida,
-  montarLinhasPlanilhaFixa,
+  inicializarLinhasDoMes,
+  inserirLinhaConsumo,
+  excluirLinhaConsumo,
+  atualizarCampoConsumo,
   dataPertenceAoMes,
   type MesConsumoModelo,
+  type ConsumoMaterialColunaKey,
+  type InserirLinhaConsumoPosicao,
 } from '@/utils/consumoMaterialTemplate'
 
 interface ConsumoMaterialConsignadoViewProps {
@@ -37,6 +42,9 @@ interface ConsumoMaterialConsignadoViewProps {
   onEnviarImh?: () => void
   onEnviarMaterial?: () => void
   isEnviando?: boolean
+  rowsByMes?: ConsumoMaterialRow[]
+  onRowsChange?: (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => void
+  onExcluirLinhaRow?: (rowId: string) => void
 }
 
 export function ConsumoMaterialConsignadoView({
@@ -58,21 +66,50 @@ export function ConsumoMaterialConsignadoView({
   onEnviarImh,
   onEnviarMaterial,
   isEnviando,
+  rowsByMes,
+  onRowsChange,
+  onExcluirLinhaRow,
 }: ConsumoMaterialConsignadoViewProps) {
   const [mesInterno, setMesInterno] = useState<MesConsumoModelo>(getMesAtualModelo)
   const mesSelecionado = mesControlado ?? mesInterno
   const setMesSelecionado = onMesSelecionadoChange ?? setMesInterno
 
-  const linhasExibidas = useMemo(
-    () => montarLinhasPlanilhaFixa(lancamentos, mesSelecionado),
-    [lancamentos, mesSelecionado],
-  )
+  const linhasExibidas = useMemo(() => {
+    if (rowsByMes) return rowsByMes
+    return inicializarLinhasDoMes(lancamentos, mesSelecionado)
+  }, [rowsByMes, lancamentos, mesSelecionado])
 
   const preenchidasNoMes = lancamentos.filter(
     (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesSelecionado),
   ).length
 
   const totalNoSistema = totalPedidos ?? lancamentos.filter(isLinhaPreenchida).length
+
+  const updateRows = (next: ConsumoMaterialRow[]) => {
+    onRowsChange?.(next, mesSelecionado)
+  }
+
+  const handleCellChange = (rowId: string, field: ConsumoMaterialColunaKey, value: string) => {
+    updateRows(
+      linhasExibidas.map((row) =>
+        row.id === rowId ? atualizarCampoConsumo(row, field, value) : row,
+      ),
+    )
+  }
+
+  const handleInserirLinha = (rowId: string, position: InserirLinhaConsumoPosicao) => {
+    updateRows(inserirLinhaConsumo(linhasExibidas, rowId, position, mesSelecionado))
+  }
+
+  const handleExcluirLinha = (rowId: string) => {
+    onExcluirLinhaRow?.(rowId)
+    updateRows(excluirLinhaConsumo(linhasExibidas, rowId))
+    onRowSelectionChange(
+      Object.fromEntries(
+        Object.entries(rowSelection).filter(([id]) => id !== rowId),
+      ),
+    )
+  }
 
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
@@ -121,6 +158,10 @@ export function ConsumoMaterialConsignadoView({
         onEnviarImh={onEnviarImh}
         onEnviarMaterial={onEnviarMaterial}
         isEnviando={isEnviando}
+        editable={Boolean(onRowsChange)}
+        onCellChange={handleCellChange}
+        onInserirLinha={handleInserirLinha}
+        onExcluirLinha={handleExcluirLinha}
       />
     </Box>
   )

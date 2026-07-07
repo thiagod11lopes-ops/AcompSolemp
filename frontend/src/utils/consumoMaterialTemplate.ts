@@ -2,6 +2,7 @@ import seedData from '@/data/consumoMaterialSeed.json'
 import type { Pedido } from '@/types'
 import {
   formatValorBrasileiro,
+  parseValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
 
@@ -113,9 +114,23 @@ export function pedidoToConsumoRow(pedido: Pedido): ConsumoMaterialRow {
 export function buildPlanilhaLancamentos(
   pedidos: Pedido[],
   extraRows: ConsumoMaterialRow[] = [],
+  deletedRowIds: ReadonlySet<string> = new Set(),
 ): ConsumoMaterialRow[] {
-  const fromPedidos = pedidos.map(pedidoToConsumoRow)
   const pedidoIds = new Set(pedidos.map((p) => p.id))
+  const overrideMap = new Map<string, ConsumoMaterialRow>()
+
+  for (const row of extraRows) {
+    if (!isLinhaPreenchida(row)) continue
+    const pedidoId = pedidoIdFromRowId(row.id)
+    if (pedidoIds.has(pedidoId)) {
+      overrideMap.set(row.id, row)
+    }
+  }
+
+  const fromPedidos = pedidos
+    .map(pedidoToConsumoRow)
+    .filter((r) => !deletedRowIds.has(r.id))
+    .map((r) => overrideMap.get(r.id) ?? r)
 
   const extras = extraRows.filter((row) => {
     if (!isLinhaPreenchida(row)) return false
@@ -228,4 +243,99 @@ export function montarLinhasPlanilhaFixa(
     createLinhaVazia(`slot-${mesModelo.id}-${i}`, String(preenchidas.length + i + 1)),
   )
   return [...preenchidas, ...slots]
+}
+
+export type InserirLinhaConsumoPosicao = 'above' | 'below'
+
+export type ConsumoMaterialColunaKey = Exclude<
+  keyof ConsumoMaterialRow,
+  'id' | 'valorNumerico'
+>
+
+export function filterLinhasDoMes(
+  lancamentos: ConsumoMaterialRow[],
+  mes: MesConsumoModelo,
+): ConsumoMaterialRow[] {
+  return lancamentos.filter(
+    (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mes),
+  )
+}
+
+export function createNovaLinhaConsumo(mes: MesConsumoModelo, numero: string): ConsumoMaterialRow {
+  const id = `draft-${mes.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  return createLinhaVazia(id, numero)
+}
+
+export function renumerarLinhasConsumo(rows: ConsumoMaterialRow[]): ConsumoMaterialRow[] {
+  return rows.map((row, index) => ({ ...row, numero: String(index + 1) }))
+}
+
+export function inicializarLinhasDoMes(
+  lancamentos: ConsumoMaterialRow[],
+  mes: MesConsumoModelo,
+): ConsumoMaterialRow[] {
+  const preenchidas = filterLinhasDoMes(lancamentos, mes)
+  if (preenchidas.length === 0) {
+    return [createNovaLinhaConsumo(mes, '1')]
+  }
+  return renumerarLinhasConsumo(preenchidas.map((row) => ({ ...row })))
+}
+
+export function inserirLinhaConsumo(
+  rows: ConsumoMaterialRow[],
+  targetId: string,
+  position: InserirLinhaConsumoPosicao,
+  mes: MesConsumoModelo,
+): ConsumoMaterialRow[] {
+  const index = rows.findIndex((row) => row.id === targetId)
+  if (index < 0) return rows
+  const insertAt = position === 'above' ? index : index + 1
+  const newRow = createNovaLinhaConsumo(mes, String(insertAt + 1))
+  const next = [...rows.slice(0, insertAt), newRow, ...rows.slice(insertAt)]
+  return renumerarLinhasConsumo(next)
+}
+
+export function excluirLinhaConsumo(
+  rows: ConsumoMaterialRow[],
+  rowId: string,
+): ConsumoMaterialRow[] {
+  if (rows.length <= 1) return rows
+  return renumerarLinhasConsumo(rows.filter((row) => row.id !== rowId))
+}
+
+export function atualizarCampoConsumo(
+  row: ConsumoMaterialRow,
+  field: ConsumoMaterialColunaKey,
+  value: string,
+): ConsumoMaterialRow {
+  if (field === 'valor') {
+    const valorNumerico = parseValorBrasileiro(value)
+    return {
+      ...row,
+      valor: value,
+      valorNumerico,
+    }
+  }
+  return { ...row, [field]: value }
+}
+
+export function syncExtraRowsFromMesSheet(
+  prevExtraRows: ConsumoMaterialRow[],
+  sheetRows: ConsumoMaterialRow[],
+  mes: MesConsumoModelo,
+  pedidoRowIds: Set<string>,
+): ConsumoMaterialRow[] {
+  const sheetIds = new Set(sheetRows.map((row) => row.id))
+  const kept = prevExtraRows.filter((row) => {
+    if (sheetIds.has(row.id)) return false
+    if (pedidoRowIds.has(row.id)) return false
+    const isDraftMes = row.id.startsWith(`draft-${mes.id}-`)
+    const isMonthExtra =
+      isLinhaPreenchida(row) &&
+      dataPertenceAoMes(row.data, mes) &&
+      !pedidoRowIds.has(row.id)
+    return !isDraftMes && !isMonthExtra
+  })
+  const fromSheet = sheetRows.filter(isLinhaPreenchida)
+  return [...kept, ...fromSheet]
 }
