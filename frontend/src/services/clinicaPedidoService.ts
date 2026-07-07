@@ -14,6 +14,7 @@ import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
   id?: string
+  fluxo?: 'auditoria' | 'paralelo'
   paciente: PacientePedido
   dadosClinica: DadosClinicaLancamento
 }
@@ -135,6 +136,33 @@ export const clinicaPedidoService = {
     const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
     const observacaoInicial = `Lançamento do paciente ${input.paciente.nome}.`
+    const somenteAuditoria = input.fluxo === 'auditoria'
+
+    const historicoAuditoria = {
+      etapaId: auditoria.id,
+      etapaNome: auditoria.nome,
+      responsavelId: null,
+      responsavelNome: null,
+      dataInicio: agora,
+      dataConclusao: null as string | null,
+      observacao: somenteAuditoria
+        ? 'Aguardando recebimento da planilha pela Auditoria.'
+        : 'Fluxo paralelo — Material (Auditoria).',
+      arquivos: [] as never[],
+    }
+
+    const historicoConfeccao = somenteAuditoria
+      ? null
+      : {
+          etapaId: confeccao.id,
+          etapaNome: confeccao.nome,
+          responsavelId: null,
+          responsavelNome: null,
+          dataInicio: agora,
+          dataConclusao: null as string | null,
+          observacao: 'Fluxo paralelo — Material (Confecção de Solemp).',
+          arquivos: [] as never[],
+        }
 
     const pedido = {
       id: pedidoId,
@@ -149,8 +177,8 @@ export const clinicaPedidoService = {
       dadosClinica: input.dadosClinica,
       dataSolicitacao: agora,
       dataEntrega: null,
-      etapaAtualId: confeccao.id,
-      etapasAtivasIds: [confeccao.id, auditoria.id],
+      etapaAtualId: somenteAuditoria ? auditoria.id : confeccao.id,
+      etapasAtivasIds: somenteAuditoria ? [auditoria.id] : [confeccao.id, auditoria.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
@@ -164,26 +192,8 @@ export const clinicaPedidoService = {
           observacao: observacaoInicial,
           arquivos: [],
         },
-        {
-          etapaId: auditoria.id,
-          etapaNome: auditoria.nome,
-          responsavelId: null,
-          responsavelNome: null,
-          dataInicio: agora,
-          dataConclusao: null,
-          observacao: 'Fluxo paralelo — Material (Auditoria).',
-          arquivos: [],
-        },
-        {
-          etapaId: confeccao.id,
-          etapaNome: confeccao.nome,
-          responsavelId: null,
-          responsavelNome: null,
-          dataInicio: agora,
-          dataConclusao: null,
-          observacao: 'Fluxo paralelo — Material (Confecção de Solemp).',
-          arquivos: [],
-        },
+        historicoAuditoria,
+        ...(historicoConfeccao ? [historicoConfeccao] : []),
       ],
     }
 
@@ -196,7 +206,9 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
+      observacao: somenteAuditoria
+        ? `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
+        : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
     })
 
     notifySetoresEtapasAtivas(data, pedido.id)

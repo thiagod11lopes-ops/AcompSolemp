@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
 import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
+import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
 import { AssinaturaSolempModal } from '@/components/ordenador/Assinatura1SolempModal'
@@ -17,6 +18,10 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
+import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
+import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -26,6 +31,8 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
   const [auditoriaOpen, setAuditoriaOpen] = useState(false)
+  const [planilhaOpen, setPlanilhaOpen] = useState(false)
+  const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const [assinatura1Open, setAssinatura1Open] = useState(false)
@@ -52,6 +59,25 @@ export default function OrdenadorTimelineDetailPage() {
     return getSolempDefaults(loadAppData(), pedido.clinicaId)
   }, [pedido])
 
+  const planilhaEnvio = useMemo<PedidoPlanilhaEnvioState | null>(() => {
+    if (!pedido) return null
+    const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
+    if (stored) return stored
+    const row = pedidoToConsumoRow(pedido)
+    const built = buildImhPlanilhaFromConsumo([row])
+    return {
+      cabecalho: built.cabecalho,
+      linhas: built.linhas,
+      enviadoEm: pedido.dataSolicitacao,
+    }
+  }, [pedido])
+
+  useEffect(() => {
+    if (!pedido) return
+    const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
+    setPlanilhaRecebida(Boolean(stored?.recebidaEm))
+  }, [pedido])
+
   if (isLoading) return <LoadingSpinner />
 
   if (!pedido) {
@@ -76,10 +102,7 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const handleAssinar = () => {
-    if (isAuditoria) {
-      setAuditoriaOpen(true)
-      return
-    }
+    if (isAuditoria) return
     if (isContabilidade) {
       setContabilidadeOpen(true)
       return
@@ -108,6 +131,16 @@ export default function OrdenadorTimelineDetailPage() {
       { pedidoId: pedido.id, anotacoes },
       { onSuccess: concluirComSucesso },
     )
+  }
+
+  const handleReceberPlanilha = () => {
+    pedidoPlanilhaEnvioService.markRecebida(pedido.id)
+    setPlanilhaRecebida(true)
+    setPlanilhaOpen(true)
+  }
+
+  const handleEncaminharImh = () => {
+    setAuditoriaOpen(true)
   }
 
   const handleConfirmarContabilidade = (anotacoes: string) => {
@@ -150,6 +183,7 @@ export default function OrdenadorTimelineDetailPage() {
 
   const modalAberto =
     auditoriaOpen ||
+    planilhaOpen ||
     contabilidadeOpen ||
     confeccaoOpen ||
     assinatura1Open ||
@@ -178,6 +212,9 @@ export default function OrdenadorTimelineDetailPage() {
             etapas={etapas}
             onAssinar={handleAssinar}
             assinando={assinar.isPending && !modalAberto}
+            onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
+            onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
+            planilhaRecebida={planilhaRecebida}
           />
         </Grid>
 
@@ -239,6 +276,13 @@ export default function OrdenadorTimelineDetailPage() {
           )}
         </Grid>
       </Grid>
+
+      <AuditoriaPlanilhaModal
+        open={planilhaOpen}
+        pedidoNumero={pedido.numero}
+        planilha={planilhaEnvio}
+        onClose={() => setPlanilhaOpen(false)}
+      />
 
       <SetorConclusaoModal
         open={auditoriaOpen}

@@ -39,6 +39,8 @@ import {
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
@@ -277,7 +279,7 @@ export default function ClinicaNovoPedidoPage() {
     setMaterialModalOpen(true)
   }
 
-  const handleConfirmarEnvioImh = async () => {
+  const handleConfirmarEnvioImh = async (planilha: ImhPlanilha) => {
     const clinicaNome = clinicaLogada?.nome ?? ''
     if (!clinicaNome) {
       setBatchError('Clínica não identificada. Faça login novamente.')
@@ -291,10 +293,13 @@ export default function ClinicaNovoPedidoPage() {
     try {
       const enviadosRows: ConsumoMaterialRow[] = []
       for (const row of novos) {
+        const pedidoId = pedidoIdFromRowId(row.id)
         await createPedido.mutateAsync({
           ...consumoRowToPedidoInput(row, clinicaNome),
-          id: pedidoIdFromRowId(row.id),
+          id: pedidoId,
+          fluxo: 'auditoria',
         })
+        pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha, row.id)
         enviadosRows.push(row)
       }
       if (enviadosRows.length > 0) {

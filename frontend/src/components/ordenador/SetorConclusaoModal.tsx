@@ -35,13 +35,13 @@ interface VarianteConfig {
 
 const VARIANTES: Record<SetorConclusaoVariante, VarianteConfig> = {
   auditoria: {
-    overline: 'Conclusão de Auditoria',
-    title: 'Enviar para Contabilidade/IMH',
+    overline: 'Encaminhamento ao IMH',
+    title: 'Encaminhar ao IMH',
     etapaDe: 'Auditoria',
     etapaPara: 'Contabilidade/IMH',
-    notesHint: 'Anotações são opcionais. Se quiser, registre observações para a Contabilidade/IMH.',
+    notesHint: 'Anotações são opcionais. Registre observações para a Contabilidade/IMH, se necessário.',
     placeholder: 'Escreva anotações da auditoria, se necessário…',
-    submitLabel: 'Enviar Contabilidade/IMH',
+    submitLabel: 'Encaminhar ao IMH',
     icon: <FactCheckIcon sx={{ fontSize: 28 }} />,
     accent: 'secondary',
   },

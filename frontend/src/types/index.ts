@@ -282,10 +282,18 @@ export interface CredencialUsuario {
 }
 
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
+import type { ImhCabecalho, ImhLinha } from '@/utils/imhPlanilhaTemplate'
 
 export interface ConsumoPlanilhaClinicaState {
   finalizedRowIds: string[]
   extraRows: ConsumoMaterialRow[]
+}
+
+export interface PedidoPlanilhaEnvioState {
+  cabecalho: ImhCabecalho
+  linhas: ImhLinha[]
+  enviadoEm: string
+  recebidaEm?: string
 }
 
 export interface AppData {
@@ -303,4 +311,5 @@ export interface AppData {
   reversoes: ReversaoTimeline[]
   credenciais: Record<string, CredencialUsuario>
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
+  pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
 }

@@ -25,6 +25,9 @@ interface OrdenadorInteractiveTimelineProps {
   etapas: WorkflowEtapa[]
   onAssinar?: () => void
   assinando?: boolean
+  onReceberPlanilha?: () => void
+  onEncaminharImh?: () => void
+  planilhaRecebida?: boolean
 }
 
 export function OrdenadorInteractiveTimeline({
@@ -32,6 +35,9 @@ export function OrdenadorInteractiveTimeline({
   etapas,
   onAssinar,
   assinando = false,
+  onReceberPlanilha,
+  onEncaminharImh,
+  planilhaRecebida = false,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
   const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
@@ -47,6 +53,7 @@ export function OrdenadorInteractiveTimeline({
   const acaoAtual = etapaDoPerfil
     ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave]
     : undefined
+  const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -60,7 +67,7 @@ export function OrdenadorInteractiveTimeline({
           icon={<DrawIcon />}
           sx={{ mb: 2 }}
           action={
-            onAssinar && (
+            !isAuditoriaAtiva && onAssinar ? (
               <Button
                 color="inherit"
                 size="small"
@@ -70,10 +77,37 @@ export function OrdenadorInteractiveTimeline({
               >
                 {assinando ? 'Processando...' : acaoAtual.label}
               </Button>
-            )
+            ) : undefined
           }
         >
           <strong>Ação necessária:</strong> {acaoAtual.descricao}
+          {isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
+            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={onReceberPlanilha}
+                disabled={assinando}
+              >
+                Receber Planilha
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                size="small"
+                onClick={onEncaminharImh}
+                disabled={assinando || !planilhaRecebida}
+              >
+                Encaminhar ao IMH
+              </Button>
+              {!planilhaRecebida && (
+                <Typography variant="caption" color="text.secondary">
+                  Abra a planilha antes de encaminhar ao IMH.
+                </Typography>
+              )}
+            </Box>
+          )}
           {pedido.solemp && (
             <Typography variant="body2" sx={{ mt: 0.5 }}>
               SOLEMP: <strong>{pedido.solemp.numero}</strong>
@@ -138,7 +172,7 @@ export function OrdenadorInteractiveTimeline({
                         {historico.observacao}
                       </Typography>
                     )}
-                    {minhaEtapa && onAssinar && (
+                    {minhaEtapa && !isAuditoriaAtiva && onAssinar && (
                       <Button
                         variant="contained"
                         color="warning"
@@ -150,6 +184,28 @@ export function OrdenadorInteractiveTimeline({
                       >
                         {assinando ? 'Processando...' : acaoAtual?.label ?? 'Concluir etapa'}
                       </Button>
+                    )}
+                    {minhaEtapa && isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
+                      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={onReceberPlanilha}
+                          disabled={assinando}
+                        >
+                          Receber Planilha
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          size="small"
+                          onClick={onEncaminharImh}
+                          disabled={assinando || !planilhaRecebida}
+                        >
+                          Encaminhar ao IMH
+                        </Button>
+                      </Box>
                     )}
                   </Box>
                 ) : (

@@ -10,13 +10,15 @@ import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModal
 import { buildImhXlsxLinhas, getImhXlsxFileName } from '@/utils/imhXlsxLinha'
 import { downloadImhXlsx } from '@/utils/imhXlsxExport'
 
+import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+
 interface ImhEnvioModalProps {
   open: boolean
   consumoRows: ConsumoMaterialRow[]
   mesReferencia?: MesConsumoModelo
   isSubmitting?: boolean
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (planilha: ImhPlanilha) => void
 }
 
 export function ImhEnvioModal({
@@ -92,7 +94,7 @@ export function ImhEnvioModal({
             variant="contained"
             size="small"
             startIcon={<SendIcon />}
-            onClick={onConfirm}
+            onClick={() => onConfirm({ cabecalho, linhas })}
             disabled={busy || linhas.length === 0}
             sx={{ fontWeight: 700 }}
           >

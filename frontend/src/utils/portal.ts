@@ -72,8 +72,8 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   { label: string; descricao: string }
 > = {
   DIV_MAT_AUDITORIA: {
-    label: 'Concluir Auditoria',
-    descricao: 'Conclua a auditoria e envie o processo para Contabilidade/IMH.',
+    label: 'Encaminhar ao IMH',
+    descricao: 'Receba a planilha enviada pela clínica e, após conferir, encaminhe ao IMH.',
   },
   DIV_MAT_CONTABILIDADE_IMH: {
     label: 'Concluir Contabilidade/IMH',
