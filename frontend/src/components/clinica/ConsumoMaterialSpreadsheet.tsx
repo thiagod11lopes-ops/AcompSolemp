@@ -75,6 +75,15 @@ const GROUP_COLORS: Record<string, string> = {
 }
 
 const MAX_CELL_LINES = 3
+const MAX_CHARS_PER_LINE = 30
+
+const cellTextWrapSx = {
+  maxWidth: `${MAX_CHARS_PER_LINE}ch`,
+  width: '100%',
+  whiteSpace: 'pre-wrap' as const,
+  overflowWrap: 'anywhere' as const,
+  wordBreak: 'break-word' as const,
+}
 
 function clampLinhasCelula(value: string, maxLines: number): string {
   const lines = value.split('\n')
@@ -94,6 +103,11 @@ const editableCellInputSx = {
     resize: 'none',
     lineHeight: 1.4,
     scrollbarWidth: 'none',
+    maxWidth: `${MAX_CHARS_PER_LINE}ch`,
+    width: '100%',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
     '&::-webkit-scrollbar': { display: 'none' },
   },
 } as const
@@ -249,13 +263,11 @@ export function ConsumoMaterialSpreadsheet({
           const field = col.key as ConsumoMaterialColunaKey
           const value = String(getValue() ?? '')
           const rowId = row.original.id
-          const colWidth = columnWidths[field] ?? col.width
 
           if (editable && onCellChange) {
             return (
               <TextField
                 size="small"
-                fullWidth
                 variant="standard"
                 multiline
                 minRows={1}
@@ -274,11 +286,13 @@ export function ConsumoMaterialSpreadsheet({
                         field === 'valor'
                           ? '"JetBrains Mono", "Roboto Mono", monospace'
                           : undefined,
-                      whiteSpace: 'pre-wrap',
                     },
                   },
                 }}
-                sx={{ '& .MuiInputBase-root': { overflow: 'hidden' } }}
+                sx={{
+                  ...cellTextWrapSx,
+                  '& .MuiInputBase-root': { overflow: 'hidden', width: '100%' },
+                }}
               />
             )
           }
@@ -304,7 +318,7 @@ export function ConsumoMaterialSpreadsheet({
                   fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
                   fontWeight: 600,
                   color: num > 0 ? 'success.dark' : 'text.secondary',
-                  whiteSpace: 'nowrap',
+                  ...cellTextWrapSx,
                 }}
               >
                 {num > 0 ? formatValorBrasileiro(num) : value || '—'}
@@ -329,10 +343,8 @@ export function ConsumoMaterialSpreadsheet({
               title={value}
               sx={{
                 display: 'block',
-                maxWidth: colWidth,
+                ...cellTextWrapSx,
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
               }}
             >
               {value || '—'}
