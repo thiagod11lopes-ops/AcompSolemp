@@ -264,6 +264,52 @@ function inferVinculo(postoGrad: string): PacienteVinculo {
   return postoGrad.toUpperCase().includes('DEP') ? 'DEPENDENTE' : 'TITULAR'
 }
 
+export function consumoRowsToPedidoInput(
+  rows: ConsumoMaterialRow[],
+  clinicaNome: string,
+  tituloPlanilha?: string,
+): CreatePedidoInput {
+  if (rows.length === 1) {
+    return consumoRowToPedidoInput(rows[0], clinicaNome)
+  }
+
+  const valorTotal = rows.reduce(
+    (sum, row) => sum + (row.valorNumerico > 0 ? row.valorNumerico : 0),
+    0,
+  )
+  const fornecedores = [...new Set(rows.map((row) => row.fornecedor.trim()).filter(Boolean))]
+  const primeira = rows[0]
+  const titulo = tituloPlanilha?.trim() || `Planilha IMH — ${rows.length} lançamentos`
+
+  return {
+    consumoRowIds: rows.map((row) => row.id),
+    paciente: {
+      nome: titulo,
+      vinculo: 'TITULAR',
+      nip: '—',
+      nipTitular: '—',
+      nomeTitular: titulo,
+      tipoUsuario: 'MILITAR',
+    },
+    dadosClinica: {
+      nomeClinica: clinicaNome,
+      medico: '—',
+      procedimento: `Lote com ${rows.length} lançamentos`,
+      dataCirurgia: new Date().toISOString().slice(0, 10),
+      empresaConsignada: fornecedores[0] || primeira?.fornecedor || '—',
+      pregao: primeira?.ref || '—',
+      materialUtilizado: `${rows.length} itens na planilha enviada`,
+      quantidade: rows.length,
+      valorUnitario: valorTotal > 0 ? valorTotal / rows.length : 0.01,
+      valorTotal: valorTotal > 0 ? valorTotal : 0.01 * rows.length,
+      folhaSala: '',
+      descricaoCirurgica: `Envio de planilha com ${rows.length} lançamentos para auditoria.`,
+      etiquetas: '',
+      fotos: [],
+    },
+  }
+}
+
 export function consumoRowToPedidoInput(
   row: ConsumoMaterialRow,
   clinicaNome: string,

@@ -28,6 +28,17 @@ export function archiveActivePedidosAsFinalized(data: AppData, pedidos: Pedido[]
       finalizedRowIds: [],
       extraRows: [],
     }
+
+    if (pedido.consumoRowIds?.length) {
+      for (const rowId of pedido.consumoRowIds) {
+        if (!current.finalizedRowIds.includes(rowId)) {
+          current.finalizedRowIds = [...current.finalizedRowIds, rowId]
+        }
+      }
+      data.consumoPlanilha[clinicaId] = current
+      continue
+    }
+
     const row = pedidoToConsumoRow(pedido)
     const rowId = rowIdFromPedidoId(pedido.id)
 

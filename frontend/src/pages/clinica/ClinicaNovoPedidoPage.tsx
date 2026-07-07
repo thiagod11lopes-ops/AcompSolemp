@@ -20,7 +20,7 @@ import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos, 
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
-  consumoRowToPedidoInput,
+  consumoRowsToPedidoInput,
   parseConsumoMaterialOds,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
@@ -28,7 +28,7 @@ import {
   isLinhaPreenchida,
   buildPlanilhaLancamentos,
   getRowIdsComPedido,
-  pedidoIdFromRowId,
+  createPedidoLoteId,
   CONSUMO_PLANILHA_NOME_PADRAO,
   rowPodeSerEnviada,
   getMesAtualModelo,
@@ -197,11 +197,11 @@ export default function ClinicaNovoPedidoPage() {
     try {
       const rows = await parseConsumoMaterialOds(file)
       const mesModelo = getMesModeloFromParts(mes, ano)
-      const pedidoIds = new Set(pedidos.map((p) => p.id))
       const novos = rows.filter(
         (r) =>
           dataPertenceAoMes(r.data, mesModelo) &&
-          !pedidoIds.has(pedidoIdFromRowId(r.id)),
+          !rowIdsComPedido.has(r.id) &&
+          !finalizedRowIds.has(r.id),
       )
       if (novos.length === 0) {
         setAddPlanilhaError(
@@ -291,38 +291,40 @@ export default function ClinicaNovoPedidoPage() {
     setBatchError(null)
     setIsBatchSending(true)
     try {
-      const enviadosRows: ConsumoMaterialRow[] = []
-      for (const row of novos) {
-        const pedidoId = pedidoIdFromRowId(row.id)
-        await createPedido.mutateAsync({
-          ...consumoRowToPedidoInput(row, clinicaNome),
-          id: pedidoId,
-          fluxo: 'auditoria',
-        })
-        pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha, row.id)
-        enviadosRows.push(row)
+      if (novos.length === 0) {
+        setBatchError('Nenhum lançamento novo para enviar.')
+        return
       }
-      if (enviadosRows.length > 0) {
-        const nextFinalized = new Set(finalizedRowIds)
-        for (const row of enviadosRows) nextFinalized.add(row.id)
-        setFinalizedRowIds(nextFinalized)
-        setRowSelection((prev) => {
-          const next = { ...prev }
-          for (const row of enviadosRows) next[row.id] = true
-          return next
-        })
-        setExtraRows((prev) => {
-          const merged = [...prev]
-          for (const row of enviadosRows) {
-            const index = merged.findIndex((item) => item.id === row.id)
-            if (index >= 0) merged[index] = row
-            else merged.push(row)
-          }
-          persistPlanilhaState(merged, nextFinalized)
-          return merged
-        })
-        consumoPlanilhaService.markRowsFinalized(clinicaId, enviadosRows)
-      }
+
+      const pedidoId = createPedidoLoteId()
+      const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
+      await createPedido.mutateAsync({
+        ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha),
+        id: pedidoId,
+        fluxo: 'auditoria',
+        consumoRowIds: novos.map((row) => row.id),
+      })
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+
+      const nextFinalized = new Set(finalizedRowIds)
+      for (const row of novos) nextFinalized.add(row.id)
+      setFinalizedRowIds(nextFinalized)
+      setRowSelection((prev) => {
+        const next = { ...prev }
+        for (const row of novos) next[row.id] = true
+        return next
+      })
+      setExtraRows((prev) => {
+        const merged = [...prev]
+        for (const row of novos) {
+          const index = merged.findIndex((item) => item.id === row.id)
+          if (index >= 0) merged[index] = row
+          else merged.push(row)
+        }
+        persistPlanilhaState(merged, nextFinalized)
+        return merged
+      })
+      consumoPlanilhaService.markRowsFinalized(clinicaId, novos)
       setImhModalOpen(false)
       setImhConsumoRows([])
     } catch {

@@ -15,6 +15,7 @@ import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 export interface CreatePedidoInput {
   id?: string
   fluxo?: 'auditoria' | 'paralelo'
+  consumoRowIds?: string[]
   paciente: PacientePedido
   dadosClinica: DadosClinicaLancamento
 }
@@ -135,7 +136,10 @@ export const clinicaPedidoService = {
 
     const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
-    const observacaoInicial = `Lançamento do paciente ${input.paciente.nome}.`
+    const observacaoInicial =
+      input.consumoRowIds && input.consumoRowIds.length > 1
+        ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Auditoria.`
+        : `Lançamento do paciente ${input.paciente.nome}.`
     const somenteAuditoria = input.fluxo === 'auditoria'
 
     const historicoAuditoria = {
@@ -175,6 +179,7 @@ export const clinicaPedidoService = {
       observacoes: observacaoInicial,
       paciente: input.paciente,
       dadosClinica: input.dadosClinica,
+      consumoRowIds: input.consumoRowIds,
       dataSolicitacao: agora,
       dataEntrega: null,
       etapaAtualId: somenteAuditoria ? auditoria.id : confeccao.id,

@@ -44,6 +44,14 @@ export function pedidoIdFromRowId(rowId: string): string {
   return `pedido-${rowId}`
 }
 
+export function createPedidoLoteId(): string {
+  return `pedido-lote-${Date.now()}`
+}
+
+export function isPedidoLote(pedidoId: string): boolean {
+  return pedidoId.startsWith('pedido-lote-')
+}
+
 function formatDataIsoParaPlanilha(iso: string): string {
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!match) return ''
@@ -128,6 +136,7 @@ export function buildPlanilhaLancamentos(
   }
 
   const fromPedidos = pedidos
+    .filter((p) => !p.consumoRowIds?.length)
     .map(pedidoToConsumoRow)
     .filter((r) => !deletedRowIds.has(r.id))
     .map((r) => overrideMap.get(r.id) ?? r)
@@ -141,7 +150,15 @@ export function buildPlanilhaLancamentos(
 }
 
 export function getRowIdsComPedido(pedidos: Pedido[]): Set<string> {
-  return new Set(pedidos.map((p) => rowIdFromPedidoId(p.id)))
+  const ids = new Set<string>()
+  for (const pedido of pedidos) {
+    if (pedido.consumoRowIds?.length) {
+      for (const rowId of pedido.consumoRowIds) ids.add(rowId)
+    } else if (!isPedidoLote(pedido.id)) {
+      ids.add(rowIdFromPedidoId(pedido.id))
+    }
+  }
+  return ids
 }
 
 /** Linhas vazias fixas ao final da planilha para novos lançamentos */

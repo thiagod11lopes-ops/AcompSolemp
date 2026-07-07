@@ -204,6 +204,8 @@ export interface Pedido {
   responsavelAtualId: string | null
   concluido: boolean
   etapasHistorico: PedidoEtapaHistorico[]
+  /** IDs das linhas da planilha de consumo incluídas neste envio (lote) */
+  consumoRowIds?: string[]
 }
 
 export interface Notification {
