@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { authService } from '@/services/authService'
 import { canAccessGestorRoute, canAccessOrdenadorRoute, canAccessFinanceiroRoute } from '@/utils/permissions'
 import type { Portal } from '@/utils/portal'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -12,33 +11,13 @@ export function GestorProtectedRoute({ children }: { children: ReactNode }) {
   const { gestorUser, isLoading } = useAuth()
   const location = useLocation()
   const isFirebase = useFirebaseDataSource()
-  const [firebaseReady, setFirebaseReady] = useState(!isFirebase)
 
   useEffect(() => {
-    if (!isFirebase || !gestorUser) {
-      setFirebaseReady(true)
-      return
-    }
-
-    let cancelled = false
-    setFirebaseReady(false)
-
-    void authService
-      .ensureGestorFirebaseSession()
-      .then(() => syncRemoteDataWhenAuthenticated())
-      .catch((error) => {
-        console.error('[Gestor] Falha ao restaurar sessão Google:', error)
-      })
-      .finally(() => {
-        if (!cancelled) setFirebaseReady(true)
-      })
-
-    return () => {
-      cancelled = true
-    }
+    if (!isFirebase || !gestorUser) return
+    void syncRemoteDataWhenAuthenticated()
   }, [isFirebase, gestorUser])
 
-  if (isLoading || !firebaseReady) return <LoadingSpinner />
+  if (isLoading) return <LoadingSpinner />
 
   if (!gestorUser || !canAccessGestorRoute(gestorUser.perfil)) {
     return <Navigate to="/login" state={{ from: location }} replace />

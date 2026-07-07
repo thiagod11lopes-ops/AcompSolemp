@@ -25,7 +25,7 @@ export function OrgCodeCard() {
   useEffect(() => {
     if (!isFirebase || !orgCode) return
     void authService
-      .ensureGestorFirebaseSession()
+      .ensureGestorFirebaseSession({ interactive: false })
       .then(() => syncOrgCodePublicIndex(loadAppData()))
       .catch((error) => {
         console.error('[Firebase] Falha ao publicar cadastros no código da organização:', error)

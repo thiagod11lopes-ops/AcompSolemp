@@ -4,7 +4,7 @@ import {
   FIRESTORE_APP_STATE_DOC_ID,
   FIRESTORE_COLLECTIONS,
 } from '@/firebase/collections'
-import { getFirestoreDb } from '@/firebase/app'
+import { resolveActiveFirestoreDb } from '@/firebase/app'
 import { getTenantId } from '@/services/tenantService'
 import {
   type AppDataPersistence,
@@ -13,9 +13,10 @@ import {
   serializeAppData,
 } from '@/data/persistence/types'
 
-function appStateDocRef(tenantId: string) {
+async function appStateDocRef(tenantId: string) {
+  const db = await resolveActiveFirestoreDb()
   return doc(
-    getFirestoreDb(),
+    db,
     FIRESTORE_COLLECTIONS.tenants,
     tenantId,
     FIRESTORE_COLLECTIONS.appState,
@@ -31,7 +32,7 @@ export class FirebaseAppDataPersistence implements AppDataPersistence {
   }
 
   async load(): Promise<AppDataSnapshot | null> {
-    const snapshot = await getDoc(appStateDocRef(this.tenantId))
+    const snapshot = await getDoc(await appStateDocRef(this.tenantId))
     if (!snapshot.exists()) return null
 
     const data = snapshot.data() as Partial<AppDataSnapshot>
@@ -46,7 +47,7 @@ export class FirebaseAppDataPersistence implements AppDataPersistence {
 
   async save(data: AppData, version: string): Promise<void> {
     const snapshot = serializeAppData(data, version)
-    await setDoc(appStateDocRef(this.tenantId), snapshot, { merge: true })
+    await setDoc(await appStateDocRef(this.tenantId), snapshot, { merge: true })
   }
 }
 

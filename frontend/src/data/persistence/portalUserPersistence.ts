@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { getFirestoreDb } from '@/firebase/app'
+import { getFirestoreDb, getPortalSessionFirestore } from '@/firebase/app'
 
 /** Vincula conta da timeline (uid Firebase) ao tenant do gestor */
 export async function registerPortalUserMapping(portalUid: string, tenantId: string): Promise<void> {
@@ -8,7 +8,7 @@ export async function registerPortalUserMapping(portalUid: string, tenantId: str
 
 /** Resolve o tenant a partir da conta da timeline autenticada */
 export async function resolvePortalTenantId(portalUid: string): Promise<string | null> {
-  const snapshot = await getDoc(doc(getFirestoreDb(), 'portalUsers', portalUid))
+  const snapshot = await getDoc(doc(getPortalSessionFirestore(), 'portalUsers', portalUid))
   if (!snapshot.exists()) return null
 
   const data = snapshot.data() as { tenantId?: string }

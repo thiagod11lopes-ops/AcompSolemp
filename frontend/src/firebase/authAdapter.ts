@@ -9,7 +9,12 @@ import {
 } from 'firebase/auth'
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { registerPortalUserMapping } from '@/data/persistence/portalUserPersistence'
-import { getFirebaseAuth, getPortalUserCreatorAuth, initFirebase } from '@/firebase/app'
+import {
+  getFirebaseAuth,
+  getPortalSessionAuth,
+  getPortalUserCreatorAuth,
+  initFirebase,
+} from '@/firebase/app'
 import { isPortalAuthEmail, portalAuthEmail } from '@/firebase/portalAuth'
 
 export interface FirebaseAuthSession {
@@ -54,7 +59,19 @@ function isPopupDismissed(error: unknown): boolean {
   )
 }
 
-async function signInGoogleForTenant(auth: ReturnType<typeof getFirebaseAuth>, expectedTenantId: string): Promise<FirebaseAuthSession> {
+function isPopupBlocked(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'auth/popup-blocked'
+  )
+}
+
+async function signInGoogleForTenant(
+  auth: ReturnType<typeof getFirebaseAuth>,
+  expectedTenantId: string,
+): Promise<FirebaseAuthSession> {
   const provider = new GoogleAuthProvider()
 
   provider.setCustomParameters({ prompt: 'none' })
@@ -66,7 +83,7 @@ async function signInGoogleForTenant(auth: ReturnType<typeof getFirebaseAuth>, e
     }
     return toSession(credential.user)
   } catch (error) {
-    if (!isPopupDismissed(error)) {
+    if (!isPopupDismissed(error) && !isPopupBlocked(error)) {
       // prompt none falha quando não há sessão Google ativa — tenta popup interativo
     }
   }
@@ -82,6 +99,11 @@ async function signInGoogleForTenant(auth: ReturnType<typeof getFirebaseAuth>, e
   } catch (error) {
     if (isPopupDismissed(error)) {
       throw new Error('É necessário entrar com Google para gerenciar cadastros.')
+    }
+    if (isPopupBlocked(error)) {
+      throw new Error(
+        'O navegador bloqueou a janela do Google. Permita pop-ups para este site ou saia da Timeline e entre novamente pelo Portal do Gestor.',
+      )
     }
     throw error
   }
@@ -126,30 +148,48 @@ export const firebaseAuthAdapter = {
     return toSession(credential.user)
   },
 
-  /** Garante sessão Google do gestor (necessário após login da timeline no mesmo navegador) */
-  async ensureGestorFirebaseAuth(expectedTenantId: string): Promise<void> {
+  /** Verifica se a sessão Google do gestor está ativa (sem abrir popup) */
+  async hasGestorFirebaseAuth(expectedTenantId: string): Promise<boolean> {
+    if (!useFirebaseDataSource()) return true
+    initFirebase()
+    const auth = getFirebaseAuth()
+    await auth.authStateReady()
+    const current = auth.currentUser
+    return Boolean(current && !isPortalAuthEmail(current.email) && current.uid === expectedTenantId)
+  },
+
+  /** Garante sessão Google do gestor; só abre popup quando interactive=true (clique do usuário) */
+  async ensureGestorFirebaseAuth(
+    expectedTenantId: string,
+    options?: { interactive?: boolean },
+  ): Promise<void> {
     if (!useFirebaseDataSource()) return
+    if (await this.hasGestorFirebaseAuth(expectedTenantId)) return
+
+    if (!options?.interactive) return
+
     initFirebase()
     const auth = getFirebaseAuth()
     await auth.authStateReady()
 
     const current = auth.currentUser
-    if (current && !isPortalAuthEmail(current.email) && current.uid === expectedTenantId) {
-      return
-    }
-
-    if (current) {
+    if (current && isPortalAuthEmail(current.email)) {
+      // Timeline em instância separada — não deveria ocorrer; limpa por segurança
+      await signOut(auth)
+    } else if (current && current.uid !== expectedTenantId) {
+      await signOut(auth)
+    } else if (current) {
       await signOut(auth)
     }
 
     await signInGoogleForTenant(auth, expectedTenantId)
   },
 
-  /** Login da timeline — e-mail/senha internos (sem Google) */
+  /** Login da timeline — e-mail/senha na instância secundária (gestor Google permanece no app principal) */
   async signInPortalUser(tenantId: string, login: string, senha: string): Promise<void> {
     if (!useFirebaseDataSource()) return
     initFirebase()
-    const auth = getFirebaseAuth()
+    const auth = getPortalSessionAuth()
     const email = portalAuthEmail(tenantId, login)
 
     if (auth.currentUser?.email === email) return
@@ -200,6 +240,15 @@ export const firebaseAuthAdapter = {
     if (!useFirebaseDataSource()) return
     initFirebase()
     await signOut(getFirebaseAuth())
+  },
+
+  async signOutPortalSession(): Promise<void> {
+    if (!useFirebaseDataSource()) return
+    initFirebase()
+    const portalAuth = getPortalSessionAuth()
+    if (portalAuth.currentUser) {
+      await signOut(portalAuth)
+    }
   },
 
   onAuthStateChanged(listener: (user: FirebaseAuthSession | null) => void): () => void {

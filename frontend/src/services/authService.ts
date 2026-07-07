@@ -194,7 +194,7 @@ export const authService = {
     return resolveGestorTenantIdFromOwnerUserId(gestor.id) ?? getTenantId()
   },
 
-  async ensureGestorFirebaseSession(): Promise<void> {
+  async ensureGestorFirebaseSession(options?: { interactive?: boolean }): Promise<void> {
     if (!useFirebaseDataSource()) return
 
     const gestor = this.getGestorUser()
@@ -206,7 +206,7 @@ export const authService = {
     }
 
     setTenantId(tenantId)
-    await firebaseAuthAdapter.ensureGestorFirebaseAuth(tenantId)
+    await firebaseAuthAdapter.ensureGestorFirebaseAuth(tenantId, options)
   },
 
   async syncRemoteDataIfAuthenticated(): Promise<void> {
@@ -273,9 +273,9 @@ export const authService = {
     }
 
     const hasGestor = Boolean(readStoredUser(GESTOR_AUTH_KEY))
+    await firebaseAuthAdapter.signOutPortalSession()
     if (!hasGestor) {
       setTenantId(null)
-      await firebaseAuthAdapter.signOut()
     }
   },
 

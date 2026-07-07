@@ -76,6 +76,15 @@ function findOrCreateClinica(nomeClinica: string, data: ReturnType<typeof loadAp
 
 export const usuarioCadastroService = {
   async createPortalUser(input: CreatePortalUserInput): Promise<CreateUserResult> {
+    if (useFirebaseDataSource()) {
+      try {
+        const { authService } = await import('@/services/authService')
+        await authService.ensureGestorFirebaseSession({ interactive: true })
+      } catch (error) {
+        throw wrapFirebasePermissionError(error)
+      }
+    }
+
     await delay(null, 400)
 
     const nome = input.nome.trim()
@@ -107,16 +116,6 @@ export const usuarioCadastroService = {
     data.usuarios.push(user)
     if (!data.credenciais) data.credenciais = {}
     data.credenciais[login] = { senha: input.senha, userId: user.id }
-
-    if (useFirebaseDataSource()) {
-      try {
-        const { authService } = await import('@/services/authService')
-        await authService.ensureGestorFirebaseSession()
-      } catch (error) {
-        throw wrapFirebasePermissionError(error)
-      }
-    }
-
     saveAppData(data)
 
     if (useFirebaseDataSource()) {
