@@ -287,7 +287,10 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { ImhCabecalho, ImhLinha } from '@/utils/imhPlanilhaTemplate'
 
 export interface ConsumoPlanilhaClinicaState {
+  /** Legado — espelha finalizedAuditoriaRowIds ao salvar */
   finalizedRowIds: string[]
+  finalizedAuditoriaRowIds?: string[]
+  finalizedMaterialRowIds?: string[]
   extraRows: ConsumoMaterialRow[]
 }
 

@@ -165,10 +165,11 @@ export function measureColumnWidths(
 export function resolveColumnWidths(
   contentWidths: Record<string, number>,
   manualOverrides: Record<string, number>,
-  selectWidth = 48,
+  selectWidth = 40,
 ): Record<string, number> {
   const resolved: Record<string, number> = {
-    select: Math.max(selectWidth, manualOverrides.select ?? 0),
+    'select-a': Math.max(selectWidth, manualOverrides['select-a'] ?? manualOverrides.select ?? 0),
+    'select-s': Math.max(selectWidth, manualOverrides['select-s'] ?? manualOverrides.select ?? 0),
   }
 
   for (const [key, contentWidth] of Object.entries(contentWidths)) {

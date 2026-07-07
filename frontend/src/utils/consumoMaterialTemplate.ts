@@ -232,16 +232,32 @@ export function rowPodeSerSelecionada(row: ConsumoMaterialRow): boolean {
   return isLinhaPreenchida(row)
 }
 
+export function rowPodeSerEnviadaAuditoria(
+  row: ConsumoMaterialRow,
+  rowIdsComPedido: Set<string>,
+  finalizedAuditoriaRowIds?: Set<string>,
+): boolean {
+  return (
+    isLinhaPreenchida(row) &&
+    !rowIdsComPedido.has(row.id) &&
+    !finalizedAuditoriaRowIds?.has(row.id)
+  )
+}
+
+export function rowPodeSerEnviadaMaterial(
+  row: ConsumoMaterialRow,
+  finalizedMaterialRowIds?: Set<string>,
+): boolean {
+  return isLinhaPreenchida(row) && !finalizedMaterialRowIds?.has(row.id)
+}
+
+/** @deprecated Use rowPodeSerEnviadaAuditoria */
 export function rowPodeSerEnviada(
   row: ConsumoMaterialRow,
   rowIdsComPedido: Set<string>,
   finalizedRowIds?: Set<string>,
 ): boolean {
-  return (
-    isLinhaPreenchida(row) &&
-    !rowIdsComPedido.has(row.id) &&
-    !finalizedRowIds?.has(row.id)
-  )
+  return rowPodeSerEnviadaAuditoria(row, rowIdsComPedido, finalizedRowIds)
 }
 
 export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow {

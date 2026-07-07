@@ -45,7 +45,7 @@ import {
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPreenchida, rowPodeSerSelecionada, rowPodeSerEnviada } from '@/utils/consumoMaterialTemplate'
+import { isLinhaPreenchida, rowPodeSerSelecionada, rowPodeSerEnviadaAuditoria, rowPodeSerEnviadaMaterial } from '@/utils/consumoMaterialTemplate'
 import type {
   ConsumoMaterialColunaKey,
   InserirLinhaConsumoPosicao,
@@ -113,16 +113,23 @@ interface ContextMenuState {
   rowId: string
 }
 
+export type ConsumoEnvioCanal = 'auditoria' | 'material'
+
+const SELECT_COLUMN_IDS = ['select-a', 'select-s'] as const
+
 interface ConsumoMaterialSpreadsheetProps {
   measureRows?: ConsumoMaterialRow[]
   rows: ConsumoMaterialRow[]
   fileName: string
-  rowSelection: RowSelectionState
-  onRowSelectionChange: (selection: RowSelectionState) => void
+  rowSelectionAuditoria: RowSelectionState
+  onRowSelectionAuditoriaChange: (selection: RowSelectionState) => void
+  rowSelectionMaterial: RowSelectionState
+  onRowSelectionMaterialChange: (selection: RowSelectionState) => void
   mesReferencia?: string
   lancamentosPreenchidos?: number
   rowIdsComPedido?: Set<string>
-  finalizedRowIds?: Set<string>
+  finalizedAuditoriaRowIds?: Set<string>
+  finalizedMaterialRowIds?: Set<string>
   totalLancamentos?: number
   onExcluirTudo?: () => Promise<void>
   onAdicionarPlanilha?: (mes: number, ano: number, file: File) => Promise<void>
@@ -138,7 +145,7 @@ interface ConsumoMaterialSpreadsheetProps {
   onCellChange?: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
   onInserirLinha?: (rowId: string, position: InserirLinhaConsumoPosicao) => void
   onExcluirLinha?: (rowId: string) => void
-  onDesfinalizarLinha?: (rowId: string) => void
+  onDesfinalizarLinha?: (rowId: string, canal: ConsumoEnvioCanal) => void
   headerExtra?: ReactNode
 }
 
@@ -146,12 +153,15 @@ function ConsumoMaterialSpreadsheetInner({
   measureRows,
   rows,
   fileName,
-  rowSelection,
-  onRowSelectionChange,
+  rowSelectionAuditoria,
+  onRowSelectionAuditoriaChange,
+  rowSelectionMaterial,
+  onRowSelectionMaterialChange,
   mesReferencia,
   lancamentosPreenchidos,
   rowIdsComPedido,
-  finalizedRowIds,
+  finalizedAuditoriaRowIds,
+  finalizedMaterialRowIds,
   totalLancamentos = 0,
   onExcluirTudo,
   onAdicionarPlanilha,
@@ -178,6 +188,7 @@ function ConsumoMaterialSpreadsheetInner({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [editingDrafts, setEditingDrafts] = useState<Record<string, string>>({})
   const [finalizadoModalRow, setFinalizadoModalRow] = useState<ConsumoMaterialRow | null>(null)
+  const [finalizadoModalCanal, setFinalizadoModalCanal] = useState<ConsumoEnvioCanal | null>(null)
 
   const { columnWidths, getRowHeight, startColumnResize, startRowResize } =
     useSpreadsheetResize()
@@ -311,45 +322,145 @@ function ConsumoMaterialSpreadsheetInner({
   }
 
   const handleFinalizadoCheckboxClick = useCallback(
-    (event: MouseEvent, row: ConsumoMaterialRow) => {
+    (event: MouseEvent, row: ConsumoMaterialRow, canal: ConsumoEnvioCanal) => {
       event.stopPropagation()
       event.preventDefault()
       setFinalizadoModalRow(row)
+      setFinalizadoModalCanal(canal)
     },
     [],
   )
 
   const closeFinalizadoModal = useCallback(() => {
     setFinalizadoModalRow(null)
+    setFinalizadoModalCanal(null)
   }, [])
 
   const handleDesmarcarFinalizado = useCallback(() => {
-    if (!finalizadoModalRow || !onDesfinalizarLinha) return
-    onDesfinalizarLinha(finalizadoModalRow.id)
-    setFinalizadoModalRow(null)
-  }, [finalizadoModalRow, onDesfinalizarLinha])
+    if (!finalizadoModalRow || !finalizadoModalCanal || !onDesfinalizarLinha) return
+    onDesfinalizarLinha(finalizadoModalRow.id, finalizadoModalCanal)
+    closeFinalizadoModal()
+  }, [finalizadoModalRow, finalizadoModalCanal, onDesfinalizarLinha, closeFinalizadoModal])
 
-  const isFinalizado = useCallback(
-    (row: ConsumoMaterialRow) => Boolean(finalizedRowIds?.has(row.id)),
-    [finalizedRowIds],
+  const isFinalizadoAuditoria = useCallback(
+    (row: ConsumoMaterialRow) => Boolean(finalizedAuditoriaRowIds?.has(row.id)),
+    [finalizedAuditoriaRowIds],
   )
 
-  const podeSelecionar = useCallback(
-    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizado(row),
-    [isFinalizado],
+  const isFinalizadoMaterial = useCallback(
+    (row: ConsumoMaterialRow) => Boolean(finalizedMaterialRowIds?.has(row.id)),
+    [finalizedMaterialRowIds],
   )
 
-  const handleRowSelectionChange = useCallback(
-    (updater: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
-      const next = typeof updater === 'function' ? updater(rowSelection) : updater
-      if (finalizedRowIds?.size) {
-        for (const rowId of finalizedRowIds) {
-          next[rowId] = true
-        }
-      }
-      onRowSelectionChange(next)
-    },
-    [rowSelection, finalizedRowIds, onRowSelectionChange],
+  const podeSelecionarAuditoria = useCallback(
+    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizadoAuditoria(row),
+    [isFinalizadoAuditoria],
+  )
+
+  const podeSelecionarMaterial = useCallback(
+    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizadoMaterial(row),
+    [isFinalizadoMaterial],
+  )
+
+  const toggleRowSelection = useCallback(
+  (
+    rowId: string,
+    checked: boolean,
+    selection: RowSelectionState,
+    onChange: (next: RowSelectionState) => void,
+    finalizedIds?: Set<string>,
+  ) => {
+    const next = { ...selection }
+    if (checked) next[rowId] = true
+    else delete next[rowId]
+    if (finalizedIds?.size) {
+      for (const id of finalizedIds) next[id] = true
+    }
+    onChange(next)
+  },
+  [],
+)
+
+  const createEnvioSelectColumn = useCallback(
+    (
+      columnId: 'select-a' | 'select-s',
+      headerLabel: 'A' | 'S',
+      canal: ConsumoEnvioCanal,
+      selection: RowSelectionState,
+      onSelectionChange: (next: RowSelectionState) => void,
+      finalizedIds: Set<string> | undefined,
+      podeSelecionar: (row: ConsumoMaterialRow) => boolean,
+      isFinalizado: (row: ConsumoMaterialRow) => boolean,
+    ): ColumnDef<ConsumoMaterialRow> => ({
+      id: columnId,
+      size: 40,
+      enableSorting: false,
+      header: () => {
+        const pageRows = rows.filter((row) => podeSelecionar(row))
+        const allSelected =
+          pageRows.length > 0 && pageRows.every((row) => Boolean(selection[row.id]))
+        const someSelected = pageRows.some((row) => Boolean(selection[row.id]))
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+            <Typography
+              component="span"
+              variant="caption"
+              sx={{ fontWeight: 800, lineHeight: 1, color: 'white', letterSpacing: 0.6 }}
+            >
+              {headerLabel}
+            </Typography>
+            <Checkbox
+              size="small"
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(_, checked) => {
+                const next = { ...selection }
+                for (const row of pageRows) {
+                  if (checked) next[row.id] = true
+                  else delete next[row.id]
+                }
+                if (finalizedIds?.size) {
+                  for (const rowId of finalizedIds) next[rowId] = true
+                }
+                onSelectionChange(next)
+              }}
+              sx={{ color: 'white', p: 0, '&.Mui-checked': { color: 'white' } }}
+            />
+          </Box>
+        )
+      },
+      cell: ({ row }) => {
+        const finalizado = isFinalizado(row.original)
+        const selecionavel = podeSelecionar(row.original)
+        const checked = finalizado || Boolean(selection[row.original.id])
+        return (
+          <Checkbox
+            size="small"
+            checked={checked}
+            disabled={!selecionavel && !finalizado}
+            onClick={(e) => {
+              if (finalizado) handleFinalizadoCheckboxClick(e, row.original, canal)
+            }}
+            onChange={(_, nextChecked) => {
+              if (finalizado) return
+              toggleRowSelection(
+                row.original.id,
+                nextChecked,
+                selection,
+                onSelectionChange,
+                finalizedIds,
+              )
+            }}
+            sx={{
+              ...(finalizado ? finalizedCheckboxSx : undefined),
+              ...(finalizado ? { cursor: 'pointer' } : undefined),
+            }}
+          />
+        )
+      },
+    }),
+    [rows, handleFinalizadoCheckboxClick, toggleRowSelection],
   )
 
   const columns = useMemo<ColumnDef<ConsumoMaterialRow>[]>(() => {
@@ -431,56 +542,53 @@ function ConsumoMaterialSpreadsheetInner({
     )
 
     return [
-      {
-        id: 'select',
-        size: 48,
-        enableSorting: false,
-        header: ({ table }) => (
-          <Checkbox
-            size="small"
-            checked={table.getIsAllPageRowsSelected()}
-            indeterminate={table.getIsSomePageRowsSelected()}
-            onClick={(e) => e.stopPropagation()}
-            onChange={table.getToggleAllPageRowsSelectedHandler()}
-            sx={{ color: 'white', '&.Mui-checked': { color: 'white' } }}
-          />
-        ),
-        cell: ({ row }) => {
-          const finalizado = isFinalizado(row.original)
-          const selecionavel = podeSelecionar(row.original)
-          return (
-            <Checkbox
-              size="small"
-              checked={finalizado || row.getIsSelected()}
-              disabled={!selecionavel && !finalizado}
-              onClick={(e) => {
-                if (finalizado) handleFinalizadoCheckboxClick(e, row.original)
-              }}
-              onChange={(e) => {
-                if (finalizado) return
-                row.getToggleSelectedHandler()(e)
-              }}
-              sx={{
-                ...(finalizado ? finalizedCheckboxSx : undefined),
-                ...(finalizado ? { cursor: 'pointer' } : undefined),
-              }}
-            />
-          )
-        },
-      },
+      createEnvioSelectColumn(
+        'select-a',
+        'A',
+        'auditoria',
+        rowSelectionAuditoria,
+        onRowSelectionAuditoriaChange,
+        finalizedAuditoriaRowIds,
+        podeSelecionarAuditoria,
+        isFinalizadoAuditoria,
+      ),
+      createEnvioSelectColumn(
+        'select-s',
+        'S',
+        'material',
+        rowSelectionMaterial,
+        onRowSelectionMaterialChange,
+        finalizedMaterialRowIds,
+        podeSelecionarMaterial,
+        isFinalizadoMaterial,
+      ),
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleDraftChange, handleContextMenu, handleFinalizadoCheckboxClick, podeSelecionar, isFinalizado])
+  }, [
+    editable,
+    onCellChange,
+    handleDraftChange,
+    handleContextMenu,
+    createEnvioSelectColumn,
+    rowSelectionAuditoria,
+    onRowSelectionAuditoriaChange,
+    finalizedAuditoriaRowIds,
+    podeSelecionarAuditoria,
+    isFinalizadoAuditoria,
+    rowSelectionMaterial,
+    onRowSelectionMaterialChange,
+    finalizedMaterialRowIds,
+    podeSelecionarMaterial,
+    isFinalizadoMaterial,
+  ])
 
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting, globalFilter, rowSelection, pagination },
+    state: { sorting, globalFilter, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
-    onRowSelectionChange: handleRowSelectionChange,
-    enableRowSelection: (row) => podeSelecionar(row.original),
     getRowId: (row) => row.id,
     autoResetPageIndex: false,
     globalFilterFn: (row, _columnId, filterValue) =>
@@ -506,22 +614,34 @@ function ConsumoMaterialSpreadsheetInner({
     )
   }, [rows, lastPageIndex, globalFilter])
 
-  const selectedCount = useMemo(
-    () =>
-      table
-        .getSelectedRowModel()
-        .rows.filter((r) => podeSelecionar(r.original)).length,
-    [table, rowSelection, rows, podeSelecionar],
+  const selectedAuditoriaCount = useMemo(
+    () => rows.filter((row) => rowSelectionAuditoria[row.id] && podeSelecionarAuditoria(row)).length,
+    [rows, rowSelectionAuditoria, podeSelecionarAuditoria],
   )
 
-  const enviavelCount = useMemo(
+  const selectedMaterialCount = useMemo(
+    () => rows.filter((row) => rowSelectionMaterial[row.id] && podeSelecionarMaterial(row)).length,
+    [rows, rowSelectionMaterial, podeSelecionarMaterial],
+  )
+
+  const enviavelAuditoriaCount = useMemo(
     () =>
-      table
-        .getSelectedRowModel()
-        .rows.filter((r) =>
-          rowPodeSerEnviada(r.original, rowIdsComPedido ?? new Set(), finalizedRowIds),
-        ).length,
-    [table, rowSelection, rows, rowIdsComPedido, finalizedRowIds],
+      rows.filter(
+        (row) =>
+          rowSelectionAuditoria[row.id] &&
+          rowPodeSerEnviadaAuditoria(row, rowIdsComPedido ?? new Set(), finalizedAuditoriaRowIds),
+      ).length,
+    [rows, rowSelectionAuditoria, rowIdsComPedido, finalizedAuditoriaRowIds],
+  )
+
+  const enviavelMaterialCount = useMemo(
+    () =>
+      rows.filter(
+        (row) =>
+          rowSelectionMaterial[row.id] &&
+          rowPodeSerEnviadaMaterial(row, finalizedMaterialRowIds),
+      ).length,
+    [rows, rowSelectionMaterial, finalizedMaterialRowIds],
   )
 
   const totalValorFiltrado = useMemo(() => {
@@ -531,13 +651,22 @@ function ConsumoMaterialSpreadsheetInner({
     )
   }, [table, rows, globalFilter, sorting])
 
-  const selectedValor = useMemo(
-    () =>
-      table
-        .getSelectedRowModel()
-        .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0),
-    [table, rowSelection, rows],
-  )
+  const selectedValor = useMemo(() => {
+    const selectedIds = new Set<string>()
+    for (const [rowId, selected] of Object.entries(rowSelectionAuditoria)) {
+      if (selected) selectedIds.add(rowId)
+    }
+    for (const [rowId, selected] of Object.entries(rowSelectionMaterial)) {
+      if (selected) selectedIds.add(rowId)
+    }
+    return rows
+      .filter((row) => selectedIds.has(row.id))
+      .reduce((sum, row) => sum + row.valorNumerico, 0)
+  }, [rows, rowSelectionAuditoria, rowSelectionMaterial])
+
+  const selectAColWidth = resolvedColumnWidths['select-a'] ?? 40
+  const selectSColWidth = resolvedColumnWidths['select-s'] ?? 40
+  const hasAnySelection = selectedAuditoriaCount > 0 || selectedMaterialCount > 0
 
   const linhasPreenchidas = useMemo(
     () => rows.filter((r) => isLinhaPreenchida(r)).length,
@@ -667,10 +796,10 @@ function ConsumoMaterialSpreadsheetInner({
                           variant="contained"
                           startIcon={<SendIcon />}
                           onClick={onEnviarImh}
-                          disabled={isEnviando || enviavelCount === 0}
+                          disabled={isEnviando || enviavelAuditoriaCount === 0}
                           sx={headerContainedSx}
                         >
-                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${enviavelCount})`}
+                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
                         </Button>
                       )}
                       {onEnviarMaterial && (
@@ -679,27 +808,39 @@ function ConsumoMaterialSpreadsheetInner({
                           variant="contained"
                           startIcon={<InventoryIcon />}
                           onClick={onEnviarMaterial}
-                          disabled={isEnviando || enviavelCount === 0}
+                          disabled={isEnviando || enviavelMaterialCount === 0}
                           sx={{
                             ...headerContainedSx,
                             bgcolor: alpha('#fff', 0.28),
                             '&:hover': { bgcolor: alpha('#fff', 0.38), boxShadow: 'none' },
                           }}
                         >
-                          Enviar para Material ({enviavelCount})
+                          Enviar para Material ({enviavelMaterialCount})
                         </Button>
                       )}
                     </Box>
                   )}
                 </>
               )}
-              {selectedCount > 0 && (
-                <Chip
-                  label={`${selectedCount} selecionado(s)`}
-                  size="small"
-                  color="secondary"
-                  sx={{ fontWeight: 700 }}
-                />
+              {hasAnySelection && (
+                <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
+                  {selectedAuditoriaCount > 0 && (
+                    <Chip
+                      label={`A: ${selectedAuditoriaCount}`}
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {selectedMaterialCount > 0 && (
+                    <Chip
+                      label={`S: ${selectedMaterialCount}`}
+                      size="small"
+                      color="secondary"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                </Stack>
               )}
             </Box>
           </Box>
@@ -755,7 +896,7 @@ function ConsumoMaterialSpreadsheetInner({
           Total filtrado:{' '}
           <strong>{formatValorBrasileiro(totalValorFiltrado)}</strong>
         </Typography>
-        {selectedCount > 0 && (
+        {hasAnySelection && (
           <Typography variant="body2" color="primary.main">
             Selecionados:{' '}
             <strong>{formatValorBrasileiro(selectedValor)}</strong>
@@ -776,37 +917,46 @@ function ConsumoMaterialSpreadsheetInner({
         >
           <TableHead>
             <TableRow>
-              <TableCell
-                rowSpan={2}
-                sx={{
-                  ...getColumnCellSx(resolvedColumnWidths.select ?? 48),
-                  bgcolor: '#072A66',
-                  borderBottom: 'none',
-                  position: 'sticky',
-                  left: 0,
-                  zIndex: 4,
-                  verticalAlign: 'middle',
-                  textAlign: 'center',
-                }}
-              >
-                {table.getHeaderGroups()[0]?.headers
-                  .filter((h) => h.id === 'select')
-                  .map((header) => (
-                    <Box key={header.id} sx={{ display: 'flex', justifyContent: 'center' }}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </Box>
-                  ))}
-                <ColumnResizeHandle
-                  onResizeStart={(event) => {
-                    const cell = (event.currentTarget as HTMLElement).closest('th, td')
-                    startColumnResize(
-                      'select',
-                      event.clientX,
-                      cell?.getBoundingClientRect().width ?? resolvedColumnWidths.select,
-                    )
+              {SELECT_COLUMN_IDS.map((columnId, index) => (
+                <TableCell
+                  key={columnId}
+                  rowSpan={2}
+                  sx={{
+                    ...getColumnCellSx(
+                      columnId === 'select-a' ? selectAColWidth : selectSColWidth,
+                    ),
+                    bgcolor: '#072A66',
+                    borderBottom: 'none',
+                    position: 'sticky',
+                    left: index === 0 ? 0 : selectAColWidth,
+                    zIndex: 4,
+                    verticalAlign: 'middle',
+                    textAlign: 'center',
+                    ...(index === 1
+                      ? { borderRight: 1, borderColor: alpha('#fff', 0.12) }
+                      : {}),
                   }}
-                />
-              </TableCell>
+                >
+                  {table.getHeaderGroups()[0]?.headers
+                    .filter((h) => h.id === columnId)
+                    .map((header) => (
+                      <Box key={header.id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </Box>
+                    ))}
+                  <ColumnResizeHandle
+                    onResizeStart={(event) => {
+                      const cell = (event.currentTarget as HTMLElement).closest('th, td')
+                      startColumnResize(
+                        columnId,
+                        event.clientX,
+                        cell?.getBoundingClientRect().width ??
+                          (columnId === 'select-a' ? selectAColWidth : selectSColWidth),
+                      )
+                    }}
+                  />
+                </TableCell>
+              ))}
               {groupSpans.map((g) => (
                 <TableCell
                   key={g.group}
@@ -829,7 +979,7 @@ function ConsumoMaterialSpreadsheetInner({
             </TableRow>
             <TableRow>
               {table.getHeaderGroups()[0]?.headers
-                .filter((h) => h.id !== 'select')
+                .filter((h) => !SELECT_COLUMN_IDS.includes(h.id as (typeof SELECT_COLUMN_IDS)[number]))
                 .map((header) => {
                   const colDef = CONSUMO_MATERIAL_HEADERS.find((c) => c.key === header.id)
                   const group = colDef?.group ?? 'paciente'
@@ -890,11 +1040,13 @@ function ConsumoMaterialSpreadsheetInner({
               table.getRowModel().rows.map((row, index) => {
                 const vazia = !isLinhaPreenchida(row.original)
                 const customRowHeight = getRowHeight(row.id)
+                const rowSelected =
+                  Boolean(rowSelectionAuditoria[row.id]) || Boolean(rowSelectionMaterial[row.id])
                 return (
                 <TableRow
                   key={row.id}
                   hover
-                  selected={row.getIsSelected()}
+                  selected={rowSelected}
                   onContextMenu={(e) => handleContextMenu(e, row.id)}
                   sx={(theme) => ({
                     cursor: editable ? 'context-menu' : undefined,
@@ -918,6 +1070,12 @@ function ConsumoMaterialSpreadsheetInner({
                   {row.getVisibleCells().map((cell, cellIndex) => {
                     const colId = cell.column.id
                     const colWidth = resolvedColumnWidths[colId] ?? 100
+                    const stickySx =
+                      cellIndex === 0
+                        ? { position: 'sticky' as const, left: 0, zIndex: 1 }
+                        : cellIndex === 1
+                          ? { position: 'sticky' as const, left: selectAColWidth, zIndex: 1 }
+                          : {}
                     return (
                     <TableCell
                       key={cell.id}
@@ -927,11 +1085,9 @@ function ConsumoMaterialSpreadsheetInner({
                         py: editable ? 0.5 : 0.75,
                         verticalAlign: 'top',
                         overflow: 'visible',
-                        ...(cellIndex === 0
+                        ...stickySx,
+                        ...(cellIndex <= 1
                           ? {
-                              position: 'sticky',
-                              left: 0,
-                              zIndex: 1,
                               bgcolor: 'inherit',
                               borderRight: 1,
                               borderColor: 'divider',

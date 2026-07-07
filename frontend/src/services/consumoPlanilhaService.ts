@@ -4,7 +4,21 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 
 const EMPTY_STATE: ConsumoPlanilhaClinicaState = {
   finalizedRowIds: [],
+  finalizedAuditoriaRowIds: [],
+  finalizedMaterialRowIds: [],
   extraRows: [],
+}
+
+function normalizeState(state: ConsumoPlanilhaClinicaState): ConsumoPlanilhaClinicaState {
+  const finalizedAuditoriaRowIds =
+    state.finalizedAuditoriaRowIds ?? [...state.finalizedRowIds]
+  const finalizedMaterialRowIds = state.finalizedMaterialRowIds ?? []
+  return {
+    finalizedRowIds: [...finalizedAuditoriaRowIds],
+    finalizedAuditoriaRowIds: [...finalizedAuditoriaRowIds],
+    finalizedMaterialRowIds: [...finalizedMaterialRowIds],
+    extraRows: state.extraRows.map((row) => ({ ...row })),
+  }
 }
 
 export const consumoPlanilhaService = {
@@ -12,38 +26,38 @@ export const consumoPlanilhaService = {
     const data = loadAppData()
     const state = data.consumoPlanilha?.[clinicaId]
     if (!state) return EMPTY_STATE
-    return {
-      finalizedRowIds: [...state.finalizedRowIds],
-      extraRows: state.extraRows.map((row) => ({ ...row })),
-    }
+    return normalizeState(state)
   },
 
   saveState(clinicaId: string, state: ConsumoPlanilhaClinicaState): ConsumoPlanilhaClinicaState {
     const data = loadAppData()
     if (!data.consumoPlanilha) data.consumoPlanilha = {}
-    const next = {
-      finalizedRowIds: [...state.finalizedRowIds],
+    const auditoria = state.finalizedAuditoriaRowIds ?? state.finalizedRowIds
+    const next = normalizeState({
+      ...state,
+      finalizedAuditoriaRowIds: [...auditoria],
+      finalizedMaterialRowIds: [...(state.finalizedMaterialRowIds ?? [])],
+      finalizedRowIds: [...auditoria],
       extraRows: state.extraRows.map((row) => ({ ...row })),
-    }
+    })
     data.consumoPlanilha[clinicaId] = next
     saveAppData(data)
     return next
   },
 
-  markRowsFinalized(
+  markRowsFinalizedAuditoria(
     clinicaId: string,
     rows: ConsumoMaterialRow[],
   ): ConsumoPlanilhaClinicaState {
     const data = loadAppData()
     if (!data.consumoPlanilha) data.consumoPlanilha = {}
-    const current = data.consumoPlanilha[clinicaId] ?? {
-      finalizedRowIds: [],
-      extraRows: [],
-    }
+    const current = normalizeState(
+      data.consumoPlanilha[clinicaId] ?? EMPTY_STATE,
+    )
 
     for (const row of rows) {
-      if (!current.finalizedRowIds.includes(row.id)) {
-        current.finalizedRowIds.push(row.id)
+      if (!current.finalizedAuditoriaRowIds!.includes(row.id)) {
+        current.finalizedAuditoriaRowIds!.push(row.id)
       }
       const index = current.extraRows.findIndex((item) => item.id === row.id)
       if (index >= 0) {
@@ -53,12 +67,18 @@ export const consumoPlanilhaService = {
       }
     }
 
-    data.consumoPlanilha[clinicaId] = {
-      finalizedRowIds: [...current.finalizedRowIds],
-      extraRows: current.extraRows.map((item) => ({ ...item })),
-    }
+    current.finalizedRowIds = [...current.finalizedAuditoriaRowIds!]
+    data.consumoPlanilha[clinicaId] = current
     saveAppData(data)
     return consumoPlanilhaService.getState(clinicaId)
+  },
+
+  /** @deprecated Use markRowsFinalizedAuditoria */
+  markRowsFinalized(
+    clinicaId: string,
+    rows: ConsumoMaterialRow[],
+  ): ConsumoPlanilhaClinicaState {
+    return consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, rows)
   },
 
   clearState(clinicaId: string): void {

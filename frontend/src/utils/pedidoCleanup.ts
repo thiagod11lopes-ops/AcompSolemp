@@ -22,6 +22,9 @@ function releasePedidoConsumoRows(data: AppData, pedido: Pedido) {
 
   const ids = new Set(rowIds)
   state.finalizedRowIds = state.finalizedRowIds.filter((id) => !ids.has(id))
+  if (state.finalizedAuditoriaRowIds) {
+    state.finalizedAuditoriaRowIds = state.finalizedAuditoriaRowIds.filter((id) => !ids.has(id))
+  }
   data.consumoPlanilha[pedido.clinicaId] = state
 }
 
@@ -59,6 +62,8 @@ export function archiveActivePedidosAsFinalized(data: AppData, pedidos: Pedido[]
     const clinicaId = pedido.clinicaId
     const current = data.consumoPlanilha[clinicaId] ?? {
       finalizedRowIds: [],
+      finalizedAuditoriaRowIds: [],
+      finalizedMaterialRowIds: [],
       extraRows: [],
     }
 
@@ -66,6 +71,10 @@ export function archiveActivePedidosAsFinalized(data: AppData, pedidos: Pedido[]
       for (const rowId of pedido.consumoRowIds) {
         if (!current.finalizedRowIds.includes(rowId)) {
           current.finalizedRowIds = [...current.finalizedRowIds, rowId]
+        }
+        const auditoria = current.finalizedAuditoriaRowIds ?? current.finalizedRowIds
+        if (!auditoria.includes(rowId)) {
+          current.finalizedAuditoriaRowIds = [...auditoria, rowId]
         }
       }
       data.consumoPlanilha[clinicaId] = current
@@ -77,6 +86,10 @@ export function archiveActivePedidosAsFinalized(data: AppData, pedidos: Pedido[]
 
     if (!current.finalizedRowIds.includes(rowId)) {
       current.finalizedRowIds = [...current.finalizedRowIds, rowId]
+    }
+    const auditoria = current.finalizedAuditoriaRowIds ?? current.finalizedRowIds
+    if (!auditoria.includes(rowId)) {
+      current.finalizedAuditoriaRowIds = [...auditoria, rowId]
     }
     if (!current.extraRows.some((item) => item.id === rowId)) {
       current.extraRows = [...current.extraRows, row]

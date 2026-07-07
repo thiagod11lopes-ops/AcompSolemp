@@ -7,7 +7,10 @@ import {
 } from '@mui/material'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
-import { ConsumoMaterialSpreadsheet } from '@/components/clinica/ConsumoMaterialSpreadsheet'
+import {
+  ConsumoMaterialSpreadsheet,
+  type ConsumoEnvioCanal,
+} from '@/components/clinica/ConsumoMaterialSpreadsheet'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   CONSUMO_MESES_MODELO,
@@ -26,10 +29,13 @@ import {
 interface ConsumoMaterialConsignadoViewProps {
   lancamentos: ConsumoMaterialRow[]
   fileName: string
-  rowSelection: RowSelectionState
-  onRowSelectionChange: (selection: RowSelectionState) => void
+  rowSelectionAuditoria: RowSelectionState
+  onRowSelectionAuditoriaChange: (selection: RowSelectionState) => void
+  rowSelectionMaterial: RowSelectionState
+  onRowSelectionMaterialChange: (selection: RowSelectionState) => void
   rowIdsComPedido?: Set<string>
-  finalizedRowIds?: Set<string>
+  finalizedAuditoriaRowIds?: Set<string>
+  finalizedMaterialRowIds?: Set<string>
   totalPedidos?: number
   mesSelecionado?: MesConsumoModelo
   onMesSelecionadoChange?: (mes: MesConsumoModelo) => void
@@ -46,16 +52,19 @@ interface ConsumoMaterialConsignadoViewProps {
   rowsByMes?: ConsumoMaterialRow[]
   onRowsChange?: (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => void
   onExcluirLinhaRow?: (rowId: string) => void
-  onDesfinalizarLinha?: (rowId: string) => void
+  onDesfinalizarLinha?: (rowId: string, canal: ConsumoEnvioCanal) => void
 }
 
 function ConsumoMaterialConsignadoViewInner({
   lancamentos,
   fileName,
-  rowSelection,
-  onRowSelectionChange,
+  rowSelectionAuditoria,
+  onRowSelectionAuditoriaChange,
+  rowSelectionMaterial,
+  onRowSelectionMaterialChange,
   rowIdsComPedido,
-  finalizedRowIds,
+  finalizedAuditoriaRowIds,
+  finalizedMaterialRowIds,
   totalPedidos,
   mesSelecionado: mesControlado,
   onMesSelecionadoChange,
@@ -129,13 +138,19 @@ function ConsumoMaterialConsignadoViewInner({
     (rowId: string) => {
       onExcluirLinhaRow?.(rowId)
       updateRows(excluirLinhaConsumo(linhasExibidasRef.current, rowId))
-      onRowSelectionChange(
-        Object.fromEntries(
-          Object.entries(rowSelection).filter(([id]) => id !== rowId),
-        ),
-      )
+      const withoutRow = (selection: RowSelectionState) =>
+        Object.fromEntries(Object.entries(selection).filter(([id]) => id !== rowId))
+      onRowSelectionAuditoriaChange(withoutRow(rowSelectionAuditoria))
+      onRowSelectionMaterialChange(withoutRow(rowSelectionMaterial))
     },
-    [onExcluirLinhaRow, updateRows, onRowSelectionChange, rowSelection],
+    [
+      onExcluirLinhaRow,
+      updateRows,
+      onRowSelectionAuditoriaChange,
+      onRowSelectionMaterialChange,
+      rowSelectionAuditoria,
+      rowSelectionMaterial,
+    ],
   )
 
   return (
@@ -143,11 +158,14 @@ function ConsumoMaterialConsignadoViewInner({
       measureRows={lancamentos}
       rows={linhasExibidas}
       fileName={`${mesSelecionado.label} — ${fileName || 'Consumo Material Consignado'}`}
-      rowSelection={rowSelection}
-      onRowSelectionChange={onRowSelectionChange}
+      rowSelectionAuditoria={rowSelectionAuditoria}
+      onRowSelectionAuditoriaChange={onRowSelectionAuditoriaChange}
+      rowSelectionMaterial={rowSelectionMaterial}
+      onRowSelectionMaterialChange={onRowSelectionMaterialChange}
       lancamentosPreenchidos={preenchidasNoMes}
       rowIdsComPedido={rowIdsComPedido}
-      finalizedRowIds={finalizedRowIds}
+      finalizedAuditoriaRowIds={finalizedAuditoriaRowIds}
+      finalizedMaterialRowIds={finalizedMaterialRowIds}
       totalLancamentos={totalNoSistema}
       onExcluirTudo={onExcluirTudo}
       onAdicionarPlanilha={onAdicionarPlanilha}
