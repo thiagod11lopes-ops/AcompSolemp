@@ -68,8 +68,8 @@ export function getColumnCellSx(width: number) {
   return {
     width,
     minWidth: width,
-    maxWidth: width,
     position: 'relative' as const,
-    overflow: 'hidden',
+    overflow: 'visible',
+    whiteSpace: 'nowrap' as const,
   }
 }

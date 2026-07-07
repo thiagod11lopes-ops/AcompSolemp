@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MIN_COL_WIDTH = 48
 const MIN_ROW_HEIGHT = 28
@@ -46,11 +46,11 @@ export function useSpreadsheetResize(defaultColumnWidths: Record<string, number>
   }, [defaultColumnWidths])
 
   const startColumnResize = useCallback(
-    (columnId: string, startX: number) => {
+    (columnId: string, startX: number, currentWidth?: number) => {
       columnSession.current = {
         columnId,
         startX,
-        startWidth: columnWidths[columnId] ?? MIN_COL_WIDTH,
+        startWidth: currentWidth ?? columnWidths[columnId] ?? MIN_COL_WIDTH,
       }
     },
     [columnWidths],
@@ -131,16 +131,10 @@ export function useSpreadsheetResize(defaultColumnWidths: Record<string, number>
     [rowHeights],
   )
 
-  const tableMinWidth = useMemo(
-    () => Object.values(columnWidths).reduce((sum, width) => sum + width, 0),
-    [columnWidths],
-  )
-
   return {
     columnWidths,
     getRowHeight,
     startColumnResize,
     startRowResize,
-    tableMinWidth,
   }
 }

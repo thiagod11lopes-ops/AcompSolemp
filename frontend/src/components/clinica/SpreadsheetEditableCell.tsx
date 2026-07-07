@@ -10,12 +10,10 @@ function toSingleLine(value: string): string {
 
 const inputSx = {
   width: '100%',
-  minHeight: 28,
+  minWidth: 0,
   fontSize: '0.78rem',
   lineHeight: 1.4,
   whiteSpace: 'nowrap' as const,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
   border: 'none',
   outline: 'none',
   background: 'transparent',

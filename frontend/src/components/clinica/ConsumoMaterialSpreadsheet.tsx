@@ -60,6 +60,7 @@ import {
   useSpreadsheetResize,
 } from '@/hooks/useSpreadsheetResize'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
+import { computeAutoColumnWidths } from '@/utils/spreadsheetColumnWidth'
 
 const DEFAULT_ROW_MIN_HEIGHT = 40
 
@@ -75,12 +76,9 @@ const GROUP_COLORS: Record<string, string> = {
   financeiro: '#2E7D32',
 }
 
-const cellSingleLineSx = {
+const cellContentSx = {
   display: 'block',
-  width: '100%',
   whiteSpace: 'nowrap' as const,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
 }
 
 function toSingleLine(value: string): string {
@@ -154,8 +152,18 @@ function ConsumoMaterialSpreadsheetInner({
     () => buildDefaultColumnWidths(CONSUMO_MATERIAL_HEADERS),
     [],
   )
-  const { columnWidths, getRowHeight, startColumnResize, startRowResize, tableMinWidth } =
+  const { columnWidths, getRowHeight, startColumnResize, startRowResize } =
     useSpreadsheetResize(defaultColumnWidths)
+
+  const resolvedColumnWidths = useMemo(
+    () => computeAutoColumnWidths(rows, CONSUMO_MATERIAL_HEADERS, columnWidths),
+    [rows, columnWidths],
+  )
+
+  const tableMinWidth = useMemo(
+    () => Object.values(resolvedColumnWidths).reduce((sum, width) => sum + width, 0),
+    [resolvedColumnWidths],
+  )
 
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
 
@@ -272,7 +280,7 @@ function ConsumoMaterialSpreadsheetInner({
                   fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
                   fontWeight: 600,
                   color: num > 0 ? 'success.dark' : 'text.secondary',
-                  ...cellSingleLineSx,
+                  ...cellContentSx,
                 }}
               >
                 {num > 0 ? formatValorBrasileiro(num) : toSingleLine(value) || '—'}
@@ -294,9 +302,8 @@ function ConsumoMaterialSpreadsheetInner({
             <Typography
               component="span"
               variant="body2"
-              title={toSingleLine(value)}
               sx={{
-                ...cellSingleLineSx,
+                ...cellContentSx,
               }}
             >
               {toSingleLine(value) || '—'}
@@ -633,7 +640,7 @@ function ConsumoMaterialSpreadsheetInner({
         )}
       </Stack>
 
-      <TableContainer sx={{ maxHeight: 'min(70vh, 720px)' }}>
+      <TableContainer sx={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
         <Table
           stickyHeader
           size="small"
@@ -644,7 +651,7 @@ function ConsumoMaterialSpreadsheetInner({
               <TableCell
                 rowSpan={2}
                 sx={{
-                  ...getColumnCellSx(columnWidths.select ?? 48),
+                  ...getColumnCellSx(resolvedColumnWidths.select ?? 48),
                   bgcolor: '#072A66',
                   borderBottom: 'none',
                   position: 'sticky',
@@ -662,7 +669,9 @@ function ConsumoMaterialSpreadsheetInner({
                     </Box>
                   ))}
                 <ColumnResizeHandle
-                  onResizeStart={(event) => startColumnResize('select', event.clientX)}
+                  onResizeStart={(event) =>
+                    startColumnResize('select', event.clientX, resolvedColumnWidths.select)
+                  }
                 />
               </TableCell>
               {groupSpans.map((g) => (
@@ -691,7 +700,7 @@ function ConsumoMaterialSpreadsheetInner({
                 .map((header) => {
                   const colDef = CONSUMO_MATERIAL_HEADERS.find((c) => c.key === header.id)
                   const group = colDef?.group ?? 'paciente'
-                  const colWidth = columnWidths[header.id] ?? colDef?.width ?? 100
+                  const colWidth = resolvedColumnWidths[header.id] ?? colDef?.width ?? 100
                   return (
                     <TableCell
                       key={header.id}
@@ -723,7 +732,9 @@ function ConsumoMaterialSpreadsheetInner({
                         flexRender(header.column.columnDef.header, header.getContext())
                       )}
                       <ColumnResizeHandle
-                        onResizeStart={(event) => startColumnResize(header.id, event.clientX)}
+                        onResizeStart={(event) =>
+                          startColumnResize(header.id, event.clientX, colWidth)
+                        }
                       />
                     </TableCell>
                   )
@@ -768,10 +779,7 @@ function ConsumoMaterialSpreadsheetInner({
                 >
                   {row.getVisibleCells().map((cell, cellIndex) => {
                     const colId = cell.column.id
-                    const colWidth =
-                      columnWidths[colId] ??
-                      CONSUMO_MATERIAL_HEADERS.find((c) => c.key === colId)?.width ??
-                      100
+                    const colWidth = resolvedColumnWidths[colId] ?? 100
                     return (
                     <TableCell
                       key={cell.id}
@@ -780,7 +788,7 @@ function ConsumoMaterialSpreadsheetInner({
                         ...getColumnCellSx(colWidth),
                         py: editable ? 0.5 : 0.75,
                         verticalAlign: 'top',
-                        overflow: customRowHeight ? 'hidden' : 'visible',
+                        overflow: 'visible',
                         ...(cellIndex === 0
                           ? {
                               position: 'sticky',
