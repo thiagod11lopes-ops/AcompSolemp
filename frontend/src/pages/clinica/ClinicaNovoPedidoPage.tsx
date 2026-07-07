@@ -1,8 +1,10 @@
 import {
+  Box,
   Button,
   Tab,
   Tabs,
   Alert,
+  Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteIcon from '@mui/icons-material/EditNote'
@@ -10,7 +12,6 @@ import GridOnIcon from '@mui/icons-material/GridOn'
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
-import { PageHeader } from '@/components/common/PageHeader'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
@@ -204,31 +205,53 @@ export default function ClinicaNovoPedidoPage() {
 
   return (
     <>
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/clinica/pedidos')}
-        sx={{ mb: 2 }}
-      >
-        Voltar
-      </Button>
+      <Box sx={{ mb: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+          <Button
+            size="small"
+            startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />}
+            onClick={() => navigate('/clinica/pedidos')}
+            sx={{ minWidth: 0, px: 1, py: 0.25, flexShrink: 0 }}
+          >
+            Voltar
+          </Button>
+          <Typography variant="h6" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+            Novo Lançamento
+          </Typography>
+        </Box>
 
-      <PageHeader title="Novo Lançamento" />
-
-      <Tabs
-        value={abaAtiva}
-        onChange={(_: SyntheticEvent, v: number) => setAbaAtiva(v)}
-        sx={{ mb: 3 }}
-      >
-        <Tab icon={<EditNoteIcon />} iconPosition="start" label="Lançamento manual" />
-        <Tab
-          icon={<GridOnIcon />}
-          iconPosition="start"
-          label="Consumo Material Consignado"
-        />
-      </Tabs>
+        <Tabs
+          value={abaAtiva}
+          onChange={(_: SyntheticEvent, v: number) => setAbaAtiva(v)}
+          sx={{
+            minHeight: 36,
+            '& .MuiTabs-indicator': { height: 2 },
+            '& .MuiTab-root': {
+              minHeight: 36,
+              py: 0.5,
+              px: 1.25,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.8125rem',
+              gap: 0.5,
+            },
+          }}
+        >
+          <Tab
+            icon={<EditNoteIcon sx={{ fontSize: 16 }} />}
+            iconPosition="start"
+            label="Lançamento manual"
+          />
+          <Tab
+            icon={<GridOnIcon sx={{ fontSize: 16 }} />}
+            iconPosition="start"
+            label="Consumo Material Consignado"
+          />
+        </Tabs>
+      </Box>
 
       {batchError && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBatchError(null)}>
+        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setBatchError(null)}>
           {batchError}
         </Alert>
       )}
