@@ -7,6 +7,8 @@ import type {
 import { enrichPedido } from '@/utils/workflow'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
+import { canAccessGestorRoute } from '@/utils/permissions'
 
 function getContext(data: AppData) {
   return {
@@ -251,6 +253,21 @@ export const pedidoService = {
   },
 
   persist(data: AppData): void {
+    saveAppData(data)
+  },
+
+  async deleteById(pedidoId: string, usuarioId: string): Promise<void> {
+    await delay(null, 300)
+    const data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
+    if (!usuario || !canAccessGestorRoute(usuario.perfil)) {
+      throw new Error('Apenas o gestor pode excluir timelines.')
+    }
+
+    const pedido = data.pedidos.find((p) => p.id === pedidoId)
+    if (!pedido) throw new Error('Timeline não encontrada.')
+
+    removePedidosFromAppData(data, new Set([pedidoId]))
     saveAppData(data)
   },
 }

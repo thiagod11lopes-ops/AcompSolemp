@@ -2,22 +2,31 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
+  Button,
   Card,
   CardActionArea,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
+  IconButton,
   LinearProgress,
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatusChip } from '@/components/common/StatusChip'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { usePedidos } from '@/hooks/usePedidos'
+import { useDeleteGestorPedido, usePedidos } from '@/hooks/usePedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { calcularProgressoTimeline } from '@/utils/portal'
 import { TIMELINE_ETAPA_META } from '@/utils/timelineFlow'
@@ -79,9 +88,12 @@ function passaBusca(pedido: PedidoComDetalhes, busca: string): boolean {
 export default function GestorTimelinesPage() {
   const navigate = useNavigate()
   const { data: pedidos = [], isLoading } = usePedidos()
+  const deletePedido = useDeleteGestorPedido()
   const { data: etapas = [] } = useWorkflowEtapas()
   const [filtro, setFiltro] = useState<FiltroStatus>('TODAS')
   const [busca, setBusca] = useState('')
+  const [pedidoExcluir, setPedidoExcluir] = useState<PedidoComDetalhes | null>(null)
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null)
 
   const ordenadas = useMemo(
     () => [...etapas].sort((a, b) => a.ordem - b.ordem),
@@ -113,6 +125,17 @@ export default function GestorTimelinesPage() {
       itens: mapa.get(fase) ?? [],
     })).filter((g) => g.itens.length > 0)
   }, [filtrados, etapas])
+
+  const handleConfirmarExclusao = async () => {
+    if (!pedidoExcluir) return
+    setErroExclusao(null)
+    try {
+      await deletePedido.mutateAsync(pedidoExcluir.id)
+      setPedidoExcluir(null)
+    } catch {
+      setErroExclusao('Não foi possível excluir a timeline. Tente novamente.')
+    }
+  }
 
   if (isLoading) return <LoadingSpinner />
 
@@ -202,15 +225,35 @@ export default function GestorTimelinesPage() {
                                 justifyContent: 'space-between',
                                 gap: 1,
                                 mb: 1,
+                                alignItems: 'flex-start',
                               }}
                             >
                               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                 {pedido.numero}
                               </Typography>
-                              <StatusChip
-                                status={pedido.prazoStatus}
-                                concluido={pedido.concluido}
-                              />
+                              <Box
+                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <StatusChip
+                                  status={pedido.prazoStatus}
+                                  concluido={pedido.concluido}
+                                />
+                                <Tooltip title="Excluir timeline">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    aria-label={`Excluir timeline ${pedido.numero}`}
+                                    onClick={() => {
+                                      setErroExclusao(null)
+                                      setPedidoExcluir(pedido)
+                                    }}
+                                  >
+                                    <DeleteOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
                             </Box>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                               {pedido.clinica.nome}
@@ -271,6 +314,41 @@ export default function GestorTimelinesPage() {
           ))}
         </Box>
       )}
+
+      <Dialog
+        open={Boolean(pedidoExcluir)}
+        onClose={() => !deletePedido.isPending && setPedidoExcluir(null)}
+      >
+        <DialogTitle>Excluir timeline</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Deseja realmente excluir a timeline <strong>{pedidoExcluir?.numero}</strong> da clínica{' '}
+            <strong>{pedidoExcluir?.clinica.nome}</strong>? Esta ação não pode ser desfeita e
+            remove o processo de todas as áreas do sistema.
+          </DialogContentText>
+          {erroExclusao && (
+            <Typography color="error" variant="body2" sx={{ mt: 2 }}>
+              {erroExclusao}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setPedidoExcluir(null)}
+            disabled={deletePedido.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmarExclusao}
+            disabled={deletePedido.isPending}
+          >
+            {deletePedido.isPending ? 'Excluindo...' : 'Excluir timeline'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }
