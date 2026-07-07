@@ -16,7 +16,7 @@ import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMater
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
-import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos, useDeletePedidosByIds, useConsumoPlanilhaState } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos, useConsumoPlanilhaState } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
@@ -44,7 +44,6 @@ export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
   const createPedido = useCreateClinicaPedido()
   const deleteAllPedidos = useDeleteAllClinicaPedidos()
-  const deletePedidosByIds = useDeletePedidosByIds()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: pedidos = [] } = useClinicaPedidos()
@@ -290,19 +289,15 @@ export default function ClinicaNovoPedidoPage() {
     setBatchError(null)
     setIsBatchSending(true)
     try {
-      const createdPedidoIds: string[] = []
       const enviadosRows: ConsumoMaterialRow[] = []
       for (const row of novos) {
-        const pedido = await createPedido.mutateAsync(
-          consumoRowToPedidoInput(row, clinicaNome),
-        )
-        createdPedidoIds.push(pedido.id)
+        await createPedido.mutateAsync({
+          ...consumoRowToPedidoInput(row, clinicaNome),
+          id: pedidoIdFromRowId(row.id),
+        })
         enviadosRows.push(row)
       }
       if (enviadosRows.length > 0) {
-        if (createdPedidoIds.length > 0) {
-          await deletePedidosByIds.mutateAsync(createdPedidoIds)
-        }
         const nextFinalized = new Set(finalizedRowIds)
         for (const row of enviadosRows) nextFinalized.add(row.id)
         setFinalizedRowIds(nextFinalized)

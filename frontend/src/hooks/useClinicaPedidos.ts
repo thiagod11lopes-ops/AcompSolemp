@@ -82,6 +82,9 @@ export function useCreateClinicaPedido() {
       clinicaPedidoService.create(input, user!.id, user!.clinicaId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
     },
   })
 }

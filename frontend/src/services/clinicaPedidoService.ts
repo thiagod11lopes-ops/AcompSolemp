@@ -13,6 +13,7 @@ import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
+  id?: string
   paciente: PacientePedido
   dadosClinica: DadosClinicaLancamento
 }
@@ -126,13 +127,17 @@ export const clinicaPedidoService = {
 
     const numero = `PED-${String(data.pedidos.length + 1).padStart(5, '0')}`
     const agora = new Date().toISOString()
+    const pedidoId = input.id ?? `pedido-${Date.now()}`
+    if (data.pedidos.some((p) => p.id === pedidoId)) {
+      throw new Error('Este lançamento já possui um processo em andamento.')
+    }
 
     const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
     const observacaoInicial = `Lançamento do paciente ${input.paciente.nome}.`
 
     const pedido = {
-      id: `pedido-${Date.now()}`,
+      id: pedidoId,
       numero,
       clinicaId,
       empresaId,
