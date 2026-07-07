@@ -17,20 +17,19 @@ interface AuthContextValue {
   ordenadorUser: AuthUser | null
   financeiroUser: AuthUser | null
   isLoading: boolean
-  requiresGoogleAuth: boolean
+  requiresGoogleAuth: (portal: Portal) => boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
   loginWithGoogle: (portal: Portal) => Promise<AuthUser>
   logout: (portal: Portal) => Promise<void>
-  loginClinicaByClinica: (clinicaId: string, senha: string) => Promise<AuthUser>
-  loginClinicaWithGoogle: (clinicaId: string) => Promise<AuthUser>
-  loginOrdenadorByNome: (nome: string, senha: string) => Promise<AuthUser>
-  loginFinanceiroByNome: (nome: string, senha: string) => Promise<AuthUser>
+  loginClinicaByClinica: (clinicaId: string, senha: string, orgCode?: string) => Promise<AuthUser>
+  loginOrdenadorByNome: (nome: string, senha: string, orgCode?: string) => Promise<AuthUser>
+  loginFinanceiroByNome: (nome: string, senha: string, orgCode?: string) => Promise<AuthUser>
   loginByPerfilNome: (
     nome: string,
     senha: string,
     perfil: UserRole,
+    orgCode?: string,
   ) => Promise<AuthUser>
-  loginByPerfilWithGoogle: (perfil: UserRole) => Promise<AuthUser>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -62,9 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(async (portal: Portal) => {
     const authUser = await authService.loginWithGoogle(portal)
     if (portal === 'gestor') setGestorUser(authUser)
-    else if (portal === 'clinica') setClinicaUser(authUser)
-    else if (portal === 'ordenador') setOrdenadorUser(authUser)
-    else setFinanceiroUser(authUser)
     return authUser
   }, [])
 
@@ -76,61 +72,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else setFinanceiroUser(null)
   }, [])
 
-  const loginClinicaByClinica = useCallback(async (clinicaId: string, senha: string) => {
-    const authUser = await authService.loginClinicaByClinicaId(clinicaId, senha)
-    setClinicaUser(authUser)
-    return authUser
-  }, [])
+  const loginClinicaByClinica = useCallback(
+    async (clinicaId: string, senha: string, orgCode?: string) => {
+      const authUser = await authService.loginClinicaByClinicaId(clinicaId, senha, orgCode)
+      setClinicaUser(authUser)
+      return authUser
+    },
+    [],
+  )
 
-  const loginClinicaWithGoogle = useCallback(async (clinicaId: string) => {
-    const authUser = await authService.loginClinicaWithGoogle(clinicaId)
-    setClinicaUser(authUser)
-    return authUser
-  }, [])
-
-  const loginOrdenadorByNome = useCallback(async (nome: string, senha: string) => {
-    const authUser = await authService.loginOrdenadorByNome(nome, senha)
-    setOrdenadorUser(authUser)
-    return authUser
-  }, [])
-
-  const loginFinanceiroByNome = useCallback(async (nome: string, senha: string) => {
-    const authUser = await authService.loginFinanceiroByNome(nome, senha)
-    setFinanceiroUser(authUser)
-    return authUser
-  }, [])
-
-  const loginByPerfilNome = useCallback(
-    async (nome: string, senha: string, perfil: UserRole) => {
-      if (perfil === 'FINANCEIRO') {
-        const authUser = await authService.loginByPerfilNome(
-          nome,
-          senha,
-          ['FINANCEIRO'],
-          'financeiro',
-        )
-        setFinanceiroUser(authUser)
-        return authUser
-      }
-
-      const authUser = await authService.loginByPerfilNome(nome, senha, [perfil], 'ordenador')
+  const loginOrdenadorByNome = useCallback(
+    async (nome: string, senha: string, orgCode?: string) => {
+      const authUser = await authService.loginOrdenadorByNome(nome, senha, orgCode)
       setOrdenadorUser(authUser)
       return authUser
     },
     [],
   )
 
-  const loginByPerfilWithGoogle = useCallback(async (perfil: UserRole) => {
-    if (perfil === 'FINANCEIRO') {
-      const authUser = await authService.loginByPerfilWithGoogle(perfil, 'financeiro')
+  const loginFinanceiroByNome = useCallback(
+    async (nome: string, senha: string, orgCode?: string) => {
+      const authUser = await authService.loginFinanceiroByNome(nome, senha, orgCode)
       setFinanceiroUser(authUser)
       return authUser
-    }
+    },
+    [],
+  )
 
-    const authUser = await authService.loginByPerfilWithGoogle(perfil, 'ordenador')
-    setOrdenadorUser(authUser)
-    return authUser
-  }, [])
+  const loginByPerfilNome = useCallback(
+    async (nome: string, senha: string, perfil: UserRole, orgCode?: string) => {
+      if (perfil === 'FINANCEIRO') {
+        const authUser = await authService.loginByPerfilNome(
+          nome,
+          senha,
+          ['FINANCEIRO'],
+          'financeiro',
+          orgCode,
+        )
+        setFinanceiroUser(authUser)
+        return authUser
+      }
+
+      const authUser = await authService.loginByPerfilNome(
+        nome,
+        senha,
+        [perfil],
+        'ordenador',
+        orgCode,
+      )
+      setOrdenadorUser(authUser)
+      return authUser
+    },
+    [],
+  )
 
   const value = useMemo(
     () => ({
@@ -139,16 +133,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ordenadorUser,
       financeiroUser,
       isLoading,
-      requiresGoogleAuth: authService.requiresGoogleAuth(),
+      requiresGoogleAuth: (portal: Portal) => authService.requiresGoogleAuth(portal),
       login,
       loginWithGoogle,
       logout,
       loginClinicaByClinica,
-      loginClinicaWithGoogle,
       loginOrdenadorByNome,
       loginFinanceiroByNome,
       loginByPerfilNome,
-      loginByPerfilWithGoogle,
     }),
     [
       gestorUser,
@@ -160,11 +152,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       logout,
       loginClinicaByClinica,
-      loginClinicaWithGoogle,
       loginOrdenadorByNome,
       loginFinanceiroByNome,
       loginByPerfilNome,
-      loginByPerfilWithGoogle,
     ],
   )
 
@@ -182,7 +172,7 @@ export function useGestorAuth() {
   return {
     user: gestorUser,
     isLoading,
-    requiresGoogleAuth,
+    requiresGoogleAuth: requiresGoogleAuth('gestor'),
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
     loginWithGoogle: () => loginWithGoogle('gestor'),
     logout: () => logout('gestor'),

@@ -17,6 +17,8 @@ export const FIRESTORE_COLLECTIONS = {
   processosArquivados: 'processosArquivados',
   /** Documento transitório com snapshot completo (fase 1 da migração) */
   appState: 'appState',
+  /** Raiz de cada organização (multi-tenant por conta Google) */
+  tenants: 'tenants',
 } as const
 
 export const FIRESTORE_APP_STATE_DOC_ID = 'current'

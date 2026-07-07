@@ -1,6 +1,5 @@
 import type { User, UserRole } from '@/types'
 import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
-import { useFirebaseDataSource } from '@/config/dataSource'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 
@@ -21,7 +20,6 @@ export function getCredenciaisPorLogin(): Record<string, string> {
 export interface CreatePortalUserInput {
   nome: string
   senha: string
-  email?: string
   opcao: CadastroPerfilOpcao
 }
 
@@ -66,13 +64,6 @@ export const usuarioCadastroService = {
     }
     if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
 
-    const email = input.email?.trim() ?? ''
-    if (useFirebaseDataSource()) {
-      if (!email || !email.includes('@')) {
-        throw new Error('Informe o e-mail Google do usuário para acesso em produção')
-      }
-    }
-
     const data = loadAppData()
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
@@ -86,7 +77,6 @@ export const usuarioCadastroService = {
       posto: '',
       graduacao: input.opcao.graduacao,
       login,
-      email: email || null,
       perfil,
       clinicaId,
       ativo: true,

@@ -1,14 +1,31 @@
-import type { AuthUser, LoginCredentials, CredencialUsuario, User, UserRole } from '@/types'
+import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { useFirebaseDataSource } from '@/config/dataSource'
+import { createUniqueOrgCode, resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
-import { delay, loadAppData, MOCK_CREDENTIALS, reloadFreshAppData } from '@/mocks/seed'
+import { initFirebase } from '@/firebase/app'
+import {
+  createOwnerGestor,
+  delay,
+  generateEmptyTenantData,
+  loadAppData,
+  MOCK_CREDENTIALS,
+  reloadFreshAppData,
+  saveAppData,
+} from '@/mocks/seed'
 import { slugLogin } from '@/utils/loginSlug'
 import {
   canAccessGestorRoute,
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
 } from '@/utils/permissions'
+import {
+  getStoredOrgCode,
+  getTenantId,
+  ownerUserId,
+  setStoredOrgCode,
+  setTenantId,
+} from '@/services/tenantService'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
@@ -48,10 +65,6 @@ function migrateLegacyAuth(): void {
   storageRemove(LEGACY_AUTH_KEY)
 }
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase()
-}
-
 function resolveCredential(login: string, senha: string): CredencialUsuario | null {
   const data = loadAppData()
   const dynamic = data.credenciais?.[login]
@@ -79,39 +92,67 @@ function setSession(portal: Portal, authUser: AuthUser | null): void {
   writeStoredUser(sessionKey(portal), authUser)
 }
 
-function findUserByEmail(
-  email: string,
-  filter?: { perfil?: UserRole; perfis?: UserRole[]; clinicaId?: string },
-): User | null {
-  const normalized = normalizeEmail(email)
-  const data = loadAppData()
+async function resolveAndSetTenant(orgCode?: string): Promise<void> {
+  initFirebase()
+  const code = (orgCode ?? getStoredOrgCode())?.trim().toUpperCase()
+  if (!code) {
+    throw new Error('Informe o código da organização')
+  }
 
-  return (
-    data.usuarios.find((user) => {
-      if (!user.ativo || !user.email) return false
-      if (normalizeEmail(user.email) !== normalized) return false
-      if (filter?.perfil && user.perfil !== filter.perfil) return false
-      if (filter?.perfis && !filter.perfis.includes(user.perfil)) return false
-      if (filter?.clinicaId && user.clinicaId !== filter.clinicaId) return false
-      return true
-    }) ?? null
-  )
+  const tenantId = await resolveOrgCodeToTenantId(code)
+  if (!tenantId) {
+    throw new Error('Código da organização inválido')
+  }
+
+  setTenantId(tenantId)
+  setStoredOrgCode(code)
 }
 
-async function syncAppDataAfterFirebaseAuth(): Promise<void> {
-  if (!useFirebaseDataSource()) return
+async function ensurePortalFirestoreAccess(): Promise<void> {
+  if (!getTenantId()) {
+    throw new Error('Informe o código da organização')
+  }
+  await firebaseAuthAdapter.ensureAnonymousAuth()
   await reloadFreshAppData()
 }
 
-async function completeFirebasePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
+async function provisionGestorTenant(uid: string, email: string): Promise<User> {
+  await reloadFreshAppData()
+  let data = loadAppData()
+  const ownerId = ownerUserId(uid)
+  let owner = data.usuarios.find((user) => user.id === ownerId)
+
+  if (!owner) {
+    if (!data.tenantMeta && data.usuarios.length === 0 && data.pedidos.length === 0) {
+      data = generateEmptyTenantData()
+    }
+
+    owner = createOwnerGestor(uid, email)
+    const orgCode = data.tenantMeta?.orgCode ?? (await createUniqueOrgCode(uid))
+    data.tenantMeta = data.tenantMeta ?? {
+      orgCode,
+      ownerEmail: email,
+      ownerUid: uid,
+      createdAt: new Date().toISOString(),
+    }
+    data.usuarios = [owner, ...data.usuarios.filter((user) => user.id !== ownerId)]
+    saveAppData(data)
+    setStoredOrgCode(data.tenantMeta.orgCode)
+  } else if (data.tenantMeta?.orgCode) {
+    setStoredOrgCode(data.tenantMeta.orgCode)
+  }
+
+  return owner
+}
+
+async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
   if (!validatePortalAccess(portal, user.perfil)) {
-    await firebaseAuthAdapter.signOut()
     throw new Error('Este usuário não tem acesso a este portal')
   }
 
   const authUser: AuthUser = {
     ...user,
-    token: `firebase-${user.id}`,
+    token: `session-${user.id}-${Date.now()}`,
   }
 
   setSession(portal, authUser)
@@ -124,49 +165,31 @@ async function completeFirebasePortalLogin(portal: Portal, user: User): Promise<
 }
 
 export const authService = {
-  /** Deve ser chamado após initStorage() */
   bootstrap(): void {
     migrateLegacyAuth()
   },
 
-  requiresGoogleAuth(): boolean {
-    return useFirebaseDataSource()
+  /** Google obrigatório apenas no portal do gestor em produção */
+  requiresGoogleAuth(portal: Portal = 'gestor'): boolean {
+    return useFirebaseDataSource() && portal === 'gestor'
+  },
+
+  getOrgCode(): string | null {
+    const data = loadAppData()
+    return data.tenantMeta?.orgCode ?? getStoredOrgCode()
   },
 
   async syncRemoteDataIfAuthenticated(): Promise<void> {
-    if (!useFirebaseDataSource()) return
-    const session = firebaseAuthAdapter.getCurrentSession()
-    if (!session?.email) return
-    await syncAppDataAfterFirebaseAuth()
+    if (!useFirebaseDataSource() || !getTenantId()) return
+    await reloadFreshAppData()
   },
 
   async loginWithGoogle(portal: Portal): Promise<AuthUser> {
     if (!useFirebaseDataSource()) {
       throw new Error('Login com Google disponível apenas com Firebase configurado')
     }
-
-    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
-    if (!firebaseSession.email) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error('Conta Google sem e-mail. Use outra conta.')
-    }
-
-    await syncAppDataAfterFirebaseAuth()
-
-    const user = findUserByEmail(firebaseSession.email)
-    if (!user) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error(
-        'E-mail não autorizado. Cadastre seu e-mail Google em Gestor → Cadastros → Usuários.',
-      )
-    }
-
-    return completeFirebasePortalLogin(portal, user)
-  },
-
-  async loginClinicaWithGoogle(clinicaId: string): Promise<AuthUser> {
-    if (!useFirebaseDataSource()) {
-      throw new Error('Login com Google disponível apenas com Firebase configurado')
+    if (portal !== 'gestor') {
+      throw new Error('Login com Google é exclusivo do Portal do Gestor')
     }
 
     const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
@@ -175,46 +198,17 @@ export const authService = {
       throw new Error('Conta Google sem e-mail. Use outra conta.')
     }
 
-    await syncAppDataAfterFirebaseAuth()
-
-    const user = findUserByEmail(firebaseSession.email, {
-      perfil: 'CLINICA',
-      clinicaId,
-    })
-
-    if (!user) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error('E-mail não autorizado para esta clínica.')
-    }
-
-    return completeFirebasePortalLogin('clinica', user)
-  },
-
-  async loginByPerfilWithGoogle(perfil: UserRole, portal: Portal): Promise<AuthUser> {
-    if (!useFirebaseDataSource()) {
-      throw new Error('Login com Google disponível apenas com Firebase configurado')
-    }
-
-    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
-    if (!firebaseSession.email) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error('Conta Google sem e-mail. Use outra conta.')
-    }
-
-    await syncAppDataAfterFirebaseAuth()
-
-    const user = findUserByEmail(firebaseSession.email, { perfil })
-    if (!user) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error(`E-mail não autorizado para ${perfil.replace(/_/g, ' ').toLowerCase()}.`)
-    }
-
-    return completeFirebasePortalLogin(portal, user)
+    setTenantId(firebaseSession.uid)
+    const owner = await provisionGestorTenant(firebaseSession.uid, firebaseSession.email)
+    return completePortalLogin('gestor', owner)
   },
 
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
-      throw new Error('Use o login com Google para acessar o sistema em produção.')
+      if (portal === 'gestor') {
+        throw new Error('Use o login com Google no Portal do Gestor')
+      }
+      await ensurePortalFirestoreAccess()
     }
 
     await delay(null, 600)
@@ -231,28 +225,25 @@ export const authService = {
       throw new Error('Usuário não encontrado ou inativo')
     }
 
-    if (!validatePortalAccess(portal, user.perfil)) {
-      throw new Error('Este usuário não tem acesso a este portal')
-    }
-
-    const authUser: AuthUser = {
-      ...user,
-      token: `mock-jwt-${user.id}-${Date.now()}`,
-    }
-
-    setSession(portal, authUser)
-
-    if (portal === 'ordenador' || portal === 'financeiro') {
-      await reloadFreshAppData()
-    }
-
-    return authUser
+    return completePortalLogin(portal, user)
   },
 
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
     setSession(portal, null)
-    if (useFirebaseDataSource()) {
+
+    if (!useFirebaseDataSource()) return
+
+    if (portal === 'gestor') {
+      setTenantId(null)
+      setStoredOrgCode(null)
+      await firebaseAuthAdapter.signOut()
+      return
+    }
+
+    const hasGestor = Boolean(readStoredUser(GESTOR_AUTH_KEY))
+    if (!hasGestor) {
+      setTenantId(null)
       await firebaseAuthAdapter.signOut()
     }
   },
@@ -283,9 +274,14 @@ export const authService = {
     storageRemove(FINANCEIRO_AUTH_KEY)
   },
 
-  async loginClinicaByClinicaId(clinicaId: string, senha: string): Promise<AuthUser> {
+  async loginClinicaByClinicaId(
+    clinicaId: string,
+    senha: string,
+    orgCode?: string,
+  ): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
-      return this.loginClinicaWithGoogle(clinicaId)
+      await resolveAndSetTenant(orgCode)
+      await ensurePortalFirestoreAccess()
     }
 
     await delay(null, 300)
@@ -308,20 +304,26 @@ export const authService = {
     throw new Error('Senha inválida para esta clínica')
   },
 
-  async loginOrdenadorByNome(nome: string, senha: string): Promise<AuthUser> {
-    return this.loginByPerfilNome(nome, senha, [
-      'ASSINANTE',
-      'CONFECCAO_SOLEMP',
-      'ASSINATURA_1_SOLEMP',
-      'ASSINATURA_2_SOLEMP',
-      'AUDITORIA',
-      'CONTABILIDADE_IMH',
-      'SDA',
-    ], 'ordenador')
+  async loginOrdenadorByNome(nome: string, senha: string, orgCode?: string): Promise<AuthUser> {
+    return this.loginByPerfilNome(
+      nome,
+      senha,
+      [
+        'ASSINANTE',
+        'CONFECCAO_SOLEMP',
+        'ASSINATURA_1_SOLEMP',
+        'ASSINATURA_2_SOLEMP',
+        'AUDITORIA',
+        'CONTABILIDADE_IMH',
+        'SDA',
+      ],
+      'ordenador',
+      orgCode,
+    )
   },
 
-  async loginFinanceiroByNome(nome: string, senha: string): Promise<AuthUser> {
-    return this.loginByPerfilNome(nome, senha, ['FINANCEIRO'], 'financeiro')
+  async loginFinanceiroByNome(nome: string, senha: string, orgCode?: string): Promise<AuthUser> {
+    return this.loginByPerfilNome(nome, senha, ['FINANCEIRO'], 'financeiro', orgCode)
   },
 
   async loginByPerfilNome(
@@ -329,12 +331,11 @@ export const authService = {
     senha: string,
     perfis: AuthUser['perfil'][],
     portal: Portal,
+    orgCode?: string,
   ): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
-      if (perfis.length !== 1) {
-        throw new Error('Selecione um perfil para entrar com Google.')
-      }
-      return this.loginByPerfilWithGoogle(perfis[0], portal)
+      await resolveAndSetTenant(orgCode)
+      await ensurePortalFirestoreAccess()
     }
 
     await delay(null, 300)

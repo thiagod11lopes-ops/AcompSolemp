@@ -26,8 +26,7 @@ import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { SenhaMascarada } from '@/components/cadastros/SenhaMascarada'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
-import { authService } from '@/services/authService'
-import { AdminEmailsPanel } from '@/components/cadastros/AdminEmailsPanel'
+import { OrgCodeCard } from '@/components/cadastros/OrgCodeCard'
 
 interface RegistroCadastro {
   id: string
@@ -49,7 +48,6 @@ export function UsuariosTab() {
   const opcao = CADASTRO_PERFIS[subTab]
 
   const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
@@ -124,17 +122,13 @@ export function UsuariosTab() {
     try {
       const result = await createUser.mutateAsync({
         nome,
-        email,
         senha,
         opcao,
       })
       setSucesso(
-        authService.requiresGoogleAuth()
-          ? `${opcao.label} cadastrado(a)! E-mail Google: ${email.trim()} — use-o para entrar.`
-          : `${opcao.label} cadastrado(a)! Login de acesso: ${result.login} — use este login e a senha informada.`,
+        `${opcao.label} cadastrado(a)! Login de acesso: ${result.login} — use este login e a senha informada na Timeline.`,
       )
       setNome('')
-      setEmail('')
       setSenha('')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
@@ -160,7 +154,7 @@ export function UsuariosTab() {
 
   return (
     <Box>
-      <AdminEmailsPanel />
+      <OrgCodeCard />
 
       <Tabs
         value={subTab}
@@ -169,7 +163,6 @@ export function UsuariosTab() {
           setErro('')
           setSucesso('')
           setNome('')
-          setEmail('')
           setSenha('')
           setRegistroExcluir(null)
         }}
@@ -219,19 +212,6 @@ export function UsuariosTab() {
                   placeholder={opcao.campoNomePlaceholder}
                 />
               </Grid>
-              {authService.requiresGoogleAuth() && (
-                <Grid size={{ xs: 12 }}>
-                  <TextField
-                    fullWidth
-                    type="email"
-                    label="E-mail Google"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="usuario@gmail.com"
-                    helperText="Conta Google autorizada a acessar este perfil"
-                  />
-                </Grid>
-              )}
               <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
@@ -239,11 +219,7 @@ export function UsuariosTab() {
                   label="Senha"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  helperText={
-                    authService.requiresGoogleAuth()
-                      ? 'Mínimo 6 caracteres — login em produção usa Google'
-                      : 'Mínimo 6 caracteres'
-                  }
+                  helperText="Mínimo 6 caracteres — usada no acesso à Timeline"
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>

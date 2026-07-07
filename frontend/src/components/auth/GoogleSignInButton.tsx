@@ -1,20 +1,23 @@
 import { Button, type ButtonProps } from '@mui/material'
+import type { Portal } from '@/utils/portal'
 import { authService } from '@/services/authService'
 
 interface GoogleSignInButtonProps extends Omit<ButtonProps, 'onClick'> {
+  portal?: Portal
   onClick: () => void | Promise<void>
   loading?: boolean
   label?: string
 }
 
 export function GoogleSignInButton({
+  portal = 'gestor',
   onClick,
   loading = false,
   label = 'Entrar com Google',
   disabled,
   ...props
 }: GoogleSignInButtonProps) {
-  if (!authService.requiresGoogleAuth()) return null
+  if (!authService.requiresGoogleAuth(portal)) return null
 
   return (
     <Button

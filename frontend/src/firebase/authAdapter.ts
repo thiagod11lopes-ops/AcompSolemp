@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -51,7 +52,7 @@ export const firebaseAuthAdapter = {
   async signInWithGoogle(): Promise<FirebaseAuthSession> {
     initFirebase()
     const auth = getFirebaseAuth()
-    if (auth.currentUser?.email) {
+    if (auth.currentUser && !auth.currentUser.isAnonymous && auth.currentUser.email) {
       return toSession(auth.currentUser)
     }
 
@@ -59,6 +60,14 @@ export const firebaseAuthAdapter = {
     provider.setCustomParameters({ prompt: 'select_account' })
     const credential = await signInWithPopup(auth, provider)
     return toSession(credential.user)
+  },
+
+  async ensureAnonymousAuth(): Promise<void> {
+    if (!useFirebaseDataSource()) return
+    initFirebase()
+    const auth = getFirebaseAuth()
+    if (auth.currentUser) return
+    await signInAnonymously(auth)
   },
 
   async signIn(email: string, password: string): Promise<FirebaseAuthSession> {

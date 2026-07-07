@@ -11,6 +11,8 @@ export const STORAGE_KEYS = {
   AUTH_ORDENADOR: 'acomp_solemp_auth_ordenador',
   AUTH_FINANCEIRO: 'acomp_solemp_auth_financeiro',
   THEME: 'acomp_solemp_theme',
+  TENANT_ID: 'acomp_solemp_tenant_id',
+  ORG_CODE: 'acomp_solemp_org_code',
 } as const
 
 const ALL_KEYS = Object.values(STORAGE_KEYS)

@@ -1,11 +1,11 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import type { AppData } from '@/types'
-import { env } from '@/config/env'
 import {
   FIRESTORE_APP_STATE_DOC_ID,
   FIRESTORE_COLLECTIONS,
 } from '@/firebase/collections'
 import { getFirestoreDb } from '@/firebase/app'
+import { getTenantId } from '@/services/tenantService'
 import {
   type AppDataPersistence,
   type AppDataSnapshot,
@@ -13,17 +13,25 @@ import {
   serializeAppData,
 } from '@/data/persistence/types'
 
-function appStateDocRef() {
-  const [collection, docId] = env.firebase.appStateDocPath.includes('/')
-    ? env.firebase.appStateDocPath.split('/')
-    : [FIRESTORE_COLLECTIONS.appState, FIRESTORE_APP_STATE_DOC_ID]
-
-  return doc(getFirestoreDb(), collection, docId)
+function appStateDocRef(tenantId: string) {
+  return doc(
+    getFirestoreDb(),
+    FIRESTORE_COLLECTIONS.tenants,
+    tenantId,
+    FIRESTORE_COLLECTIONS.appState,
+    FIRESTORE_APP_STATE_DOC_ID,
+  )
 }
 
 export class FirebaseAppDataPersistence implements AppDataPersistence {
+  private readonly tenantId: string
+
+  constructor(tenantId: string) {
+    this.tenantId = tenantId
+  }
+
   async load(): Promise<AppDataSnapshot | null> {
-    const snapshot = await getDoc(appStateDocRef())
+    const snapshot = await getDoc(appStateDocRef(this.tenantId))
     if (!snapshot.exists()) return null
 
     const data = snapshot.data() as Partial<AppDataSnapshot>
@@ -38,16 +46,20 @@ export class FirebaseAppDataPersistence implements AppDataPersistence {
 
   async save(data: AppData, version: string): Promise<void> {
     const snapshot = serializeAppData(data, version)
-    await setDoc(appStateDocRef(), snapshot, { merge: true })
+    await setDoc(appStateDocRef(this.tenantId), snapshot, { merge: true })
   }
 }
 
-export function createFirebaseAppDataPersistence(): AppDataPersistence {
-  return new FirebaseAppDataPersistence()
+export function createFirebaseAppDataPersistence(tenantId?: string): AppDataPersistence {
+  const resolvedTenantId = tenantId ?? getTenantId()
+  if (!resolvedTenantId) {
+    throw new Error('Organização não selecionada')
+  }
+  return new FirebaseAppDataPersistence(resolvedTenantId)
 }
 
-export async function loadAppDataFromFirebase(): Promise<AppData | null> {
-  const persistence = createFirebaseAppDataPersistence()
+export async function loadAppDataFromFirebase(tenantId?: string): Promise<AppData | null> {
+  const persistence = createFirebaseAppDataPersistence(tenantId)
   const snapshot = await persistence.load()
   if (!snapshot) return null
   return deserializeAppData(snapshot)

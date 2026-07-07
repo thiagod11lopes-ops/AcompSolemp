@@ -271,6 +271,47 @@ function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
   return { data, changed }
 }
 
+export function generateEmptyTenantData(): AppData {
+  const workflowEtapas: WorkflowEtapa[] = DEFAULT_WORKFLOW_ETAPAS.map((etapa) => ({
+    ...etapa,
+    id: `etapa-${etapa.chave.toLowerCase()}`,
+  }))
+
+  return {
+    usuarios: [],
+    clinicas: [],
+    empresas: [],
+    materiais: [],
+    workflowEtapas,
+    pedidos: [],
+    solemp: [],
+    notasFiscais: [],
+    historico: [],
+    arquivos: [],
+    notificacoes: [],
+    reversoes: [],
+    credenciais: {},
+    consumoPlanilha: {},
+    pedidoPlanilhaEnvio: {},
+    processosArquivados: [],
+  }
+}
+
+export function createOwnerGestor(uid: string, email: string, displayName?: string | null): User {
+  const nomeBase = displayName?.trim() || email.split('@')[0] || 'Gestor'
+  return {
+    id: `user-owner-${uid}`,
+    nome: nomeBase,
+    posto: '',
+    graduacao: 'Gestor Geral',
+    login: 'gestor',
+    email,
+    perfil: 'GESTOR',
+    clinicaId: null,
+    ativo: true,
+  }
+}
+
 export function generateSeedData(): AppData {
   const workflowEtapas: WorkflowEtapa[] = DEFAULT_WORKFLOW_ETAPAS.map((etapa) => ({
     ...etapa,
@@ -346,6 +387,7 @@ export function generateSeedData(): AppData {
 }
 
 function ensureDefaultConfeccaoUser(data: AppData): boolean {
+  if (data.tenantMeta) return false
   if (data.usuarios.some((user) => user.perfil === 'CONFECCAO_SOLEMP' && user.ativo)) {
     return false
   }
@@ -370,6 +412,7 @@ function ensureDefaultConfeccaoUser(data: AppData): boolean {
 }
 
 function ensureBootstrapGoogleEmails(data: AppData): boolean {
+  if (data.tenantMeta) return false
   const email = env.gestorGoogleEmail
   if (!email) return false
 
@@ -443,7 +486,7 @@ function cloneData(data: AppData): AppData {
 export function initAppData(): AppData {
   if (useFirebaseDataSource()) {
     if (appDataCache) return cloneData(appDataCache)
-    const { data } = normalizeAppData(generateSeedData())
+    const { data } = normalizeAppData(generateEmptyTenantData())
     appDataCache = data
     return cloneData(data)
   }

@@ -326,6 +326,13 @@ export interface ProcessoArquivado {
   mensagemArquivamento: string
 }
 
+export interface TenantMeta {
+  orgCode: string
+  ownerEmail: string
+  ownerUid: string
+  createdAt: string
+}
+
 export interface AppData {
   usuarios: User[]
   clinicas: Clinica[]
@@ -343,4 +350,6 @@ export interface AppData {
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
   processosArquivados?: ProcessoArquivado[]
+  /** Metadados da organização (multi-tenant) */
+  tenantMeta?: TenantMeta
 }

@@ -110,7 +110,7 @@ export default function LoginGestorPage() {
             label="Entrar com Google"
           />
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-            Use a conta Google cadastrada em Gestor → Cadastros → Usuários.
+            Qualquer conta Google cria sua organização. No primeiro acesso você será o gestor geral.
           </Typography>
         </Box>
       ) : (

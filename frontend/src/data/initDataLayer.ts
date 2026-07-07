@@ -4,6 +4,7 @@ import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
+import { getTenantId, setTenantId } from '@/services/tenantService'
 import { STORAGE_KEYS, storageRemove } from '@/storage/indexedDb'
 import type { AppData } from '@/types'
 
@@ -18,7 +19,13 @@ export async function initDataLayer(): Promise<void> {
   initAppData()
 
   await firebaseAuthAdapter.waitForAuthReady()
-  if (getFirebaseAuth().currentUser) {
+  const authUser = getFirebaseAuth().currentUser
+
+  if (authUser && !authUser.isAnonymous) {
+    setTenantId(authUser.uid)
+  }
+
+  if (getTenantId()) {
     await hydrateLocalCacheFromFirebase((data: AppData) => {
       applyRemoteAppData(data)
     })
@@ -32,7 +39,6 @@ export async function initDataLayer(): Promise<void> {
 
 export { getRepositories }
 
-/** API estável para novos módulos — preferir em vez de importar seed diretamente */
 export function loadAppDataSnapshot(): AppData {
   return getRepositories().appData.load()
 }

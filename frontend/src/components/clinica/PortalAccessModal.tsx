@@ -31,8 +31,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
-import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
-import { authService } from '@/services/authService'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { reloadFreshAppData } from '@/mocks/seed'
+import { firebaseAuthAdapter } from '@/firebase/authAdapter'
+import { initFirebase } from '@/firebase/app'
+import { resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
+import { getStoredOrgCode, setStoredOrgCode, setTenantId } from '@/services/tenantService'
 
 const PERFIL_ICONS: Record<string, ReactElement> = {
   clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 32 }} />,
@@ -52,22 +56,23 @@ interface PortalAccessModalProps {
 export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const theme = useTheme()
   const navigate = useNavigate()
-  const { loginClinicaByClinica, loginClinicaWithGoogle, loginByPerfilNome, loginByPerfilWithGoogle } =
-    useAuth()
+  const { loginClinicaByClinica, loginByPerfilNome } = useAuth()
   const { data: clinicas = [], refetch: refetchClinicas } = useClinicas()
+  const isFirebase = useFirebaseDataSource()
 
   const [opcao, setOpcao] = useState<CadastroPerfilOpcao | null>(null)
+  const [orgCode, setOrgCode] = useState('')
   const [clinicaId, setClinicaId] = useState('')
   const [nome, setNome] = useState('')
   const [senha, setSenha] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [erro, setErro] = useState('')
-  const [googleLoading, setGoogleLoading] = useState(false)
-  const requiresGoogle = authService.requiresGoogleAuth()
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (open) {
       setOpcao(null)
+      setOrgCode(getStoredOrgCode() ?? '')
       setClinicaId('')
       setNome('')
       setSenha('')
@@ -77,48 +82,87 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
     }
   }, [open, refetchClinicas])
 
-  const [loading, setLoading] = useState(false)
-
-  const handleClinicaGoogleLogin = async () => {
-    if (!clinicaId) {
-      setErro('Selecione uma clínica')
-      return
-    }
-    setGoogleLoading(true)
-    setErro('')
-    try {
-      await loginClinicaWithGoogle(clinicaId)
-      navigate('/clinica/timelines', { replace: true })
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
-    } finally {
-      setGoogleLoading(false)
-    }
+  const persistOrgCode = (value: string) => {
+    setOrgCode(value.toUpperCase())
+    if (value.trim()) setStoredOrgCode(value)
   }
 
-  const handlePerfilGoogleLogin = async () => {
-    if (!opcao) return
-    setGoogleLoading(true)
-    setErro('')
-    try {
-      const user = await loginByPerfilWithGoogle(opcao.perfil)
-      navigate(getHomeRouteForPerfil(user.perfil), { replace: true })
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
-    } finally {
-      setGoogleLoading(false)
+  const ensureTenantDataLoaded = async (): Promise<boolean> => {
+    if (!isFirebase) return true
+    const code = orgCode.trim()
+    if (!code) {
+      setErro('Informe o código da organização')
+      return false
     }
+    initFirebase()
+    const tenantId = await resolveOrgCodeToTenantId(code)
+    if (!tenantId) {
+      setErro('Código da organização inválido')
+      return false
+    }
+    setTenantId(tenantId)
+    setStoredOrgCode(code)
+    await firebaseAuthAdapter.ensureAnonymousAuth()
+    await reloadFreshAppData()
+    await refetchClinicas()
+    return true
   }
+
+  const orgCodeField = (
+    <TextField
+      fullWidth
+      label="Código da organização"
+      value={orgCode}
+      onChange={(e) => {
+        persistOrgCode(e.target.value)
+        setErro('')
+      }}
+      placeholder="Ex.: ABC123"
+      helperText="Fornecido pelo gestor geral da sua organização"
+      sx={{ mb: 2 }}
+      onBlur={() => {
+        void ensureTenantDataLoaded()
+      }}
+    />
+  )
+
+  const passwordField = (
+    <TextField
+      fullWidth
+      type={showPassword ? 'text' : 'password'}
+      label="Senha"
+      value={senha}
+      onChange={(e) => {
+        setSenha(e.target.value)
+        setErro('')
+      }}
+      slotProps={{
+        input: {
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+              </IconButton>
+            </InputAdornment>
+          ),
+        },
+      }}
+    />
+  )
 
   const handleClinicaLogin = async () => {
     if (!clinicaId) {
       setErro('Selecione uma clínica')
       return
     }
+    if (isFirebase && !orgCode.trim()) {
+      setErro('Informe o código da organização')
+      return
+    }
     setLoading(true)
     setErro('')
     try {
-      await loginClinicaByClinica(clinicaId, senha)
+      await loginClinicaByClinica(clinicaId, senha, orgCode.trim() || undefined)
       navigate('/clinica/timelines', { replace: true })
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao entrar')
@@ -133,10 +177,14 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       setErro('Informe o nome cadastrado')
       return
     }
+    if (isFirebase && !orgCode.trim()) {
+      setErro('Informe o código da organização')
+      return
+    }
     setLoading(true)
     setErro('')
     try {
-      const user = await loginByPerfilNome(nome, senha, opcao.perfil)
+      const user = await loginByPerfilNome(nome, senha, opcao.perfil, orgCode.trim() || undefined)
       navigate(getHomeRouteForPerfil(user.perfil), { replace: true })
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao entrar')
@@ -215,6 +263,15 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       </Box>
 
       <DialogContent sx={{ pt: 3 }}>
+        {isFirebase && !opcao && (
+          <Box sx={{ mb: 3 }}>
+            {orgCodeField}
+            <Typography variant="caption" color="text.secondary">
+              Informe o código e depois selecione seu perfil.
+            </Typography>
+          </Box>
+        )}
+
         {!opcao && (
           <Box
             sx={{
@@ -274,10 +331,9 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
         {opcao?.isClinica && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {requiresGoogle
-                ? 'Selecione a clínica e entre com a conta Google cadastrada.'
-                : 'Selecione a clínica e informe a senha cadastrada pelo gestor.'}
+              Informe o código da organização, selecione a clínica e a senha cadastrada pelo gestor.
             </Typography>
+            {isFirebase && orgCodeField}
             <TextField
               select
               fullWidth
@@ -300,125 +356,59 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
                 </MenuItem>
               ))}
             </TextField>
-            {!requiresGoogle && (
-              <TextField
-                fullWidth
-                type={showPassword ? 'text' : 'password'}
-                label="Senha"
-                value={senha}
-                onChange={(e) => {
-                  setSenha(e.target.value)
-                  setErro('')
-                }}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            )}
+            {passwordField}
             {erro && (
               <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                 {erro}
               </Typography>
             )}
-            {requiresGoogle ? (
-              <Box sx={{ mt: 3 }}>
-                <GoogleSignInButton
-                  onClick={handleClinicaGoogleLogin}
-                  loading={googleLoading}
-                  label="Entrar com Google"
-                />
-              </Box>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                sx={{ mt: 3 }}
-                onClick={handleClinicaLogin}
-                disabled={loading}
-              >
-                {loading ? 'Entrando...' : 'Entrar como Clínica'}
-              </Button>
-            )}
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              sx={{ mt: 3 }}
+              onClick={handleClinicaLogin}
+              disabled={loading}
+            >
+              {loading ? 'Entrando...' : 'Entrar como Clínica'}
+            </Button>
           </Box>
         )}
 
         {opcao && !opcao.isClinica && (
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {requiresGoogle
-                ? `Entre com a conta Google cadastrada para ${opcao.label}.`
-                : `Informe o nome e a senha cadastrados pelo gestor para ${opcao.label}.`}
+              Informe o código da organização, nome e senha cadastrados pelo gestor para{' '}
+              {opcao.label}.
             </Typography>
-            {!requiresGoogle && (
-              <>
-                <TextField
-                  fullWidth
-                  label={opcao.campoNomeLabel}
-                  value={nome}
-                  onChange={(e) => {
-                    setNome(e.target.value)
-                    setErro('')
-                  }}
-                  placeholder={opcao.campoNomePlaceholder}
-                  sx={{ mb: 2 }}
-                />
-                <TextField
-                  fullWidth
-                  type={showPassword ? 'text' : 'password'}
-                  label="Senha"
-                  value={senha}
-                  onChange={(e) => {
-                    setSenha(e.target.value)
-                    setErro('')
-                  }}
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
-              </>
-            )}
+            {isFirebase && orgCodeField}
+            <TextField
+              fullWidth
+              label={opcao.campoNomeLabel}
+              value={nome}
+              onChange={(e) => {
+                setNome(e.target.value)
+                setErro('')
+              }}
+              placeholder={opcao.campoNomePlaceholder}
+              sx={{ mb: 2 }}
+            />
+            {passwordField}
             {erro && (
               <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                 {erro}
               </Typography>
             )}
-            {requiresGoogle ? (
-              <Box sx={{ mt: 3 }}>
-                <GoogleSignInButton
-                  onClick={handlePerfilGoogleLogin}
-                  loading={googleLoading}
-                  label="Entrar com Google"
-                />
-              </Box>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                sx={{ mt: 3 }}
-                onClick={handlePerfilLogin}
-                disabled={loading}
-              >
-                {loading ? 'Entrando...' : `Entrar como ${opcao.label}`}
-              </Button>
-            )}
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              sx={{ mt: 3 }}
+              onClick={handlePerfilLogin}
+              disabled={loading}
+            >
+              {loading ? 'Entrando...' : `Entrar como ${opcao.label}`}
+            </Button>
           </Box>
         )}
       </DialogContent>
