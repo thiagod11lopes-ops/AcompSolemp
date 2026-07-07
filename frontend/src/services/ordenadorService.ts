@@ -1,5 +1,11 @@
-import type { PedidoComDetalhes, UserRole } from '@/types'
-import { delay, loadAppData, reloadFreshAppData, saveAppData } from '@/mocks/seed'
+import type { PedidoComDetalhes, User, UserRole } from '@/types'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
+import {
+  DEMO_EXEMPLO_USER_PREFIX,
+  ensureDemoUserById,
+} from '@/services/demoCadastrosService'
+import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
 import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
 import {
@@ -36,12 +42,38 @@ function pedidoPendenteParaPerfil(
   )
 }
 
+async function resolveDataForSetor(usuarioId: string): Promise<{
+  data: ReturnType<typeof loadAppData>
+  usuario: User | null
+}> {
+  let data = await loadFreshAppData()
+  let usuario = data.usuarios.find((item) => item.id === usuarioId && item.ativo) ?? null
+
+  if (!usuario && usuarioId.startsWith(DEMO_EXEMPLO_USER_PREFIX)) {
+    await ensureDemoUserById(usuarioId)
+    data = loadAppData()
+    usuario = data.usuarios.find((item) => item.id === usuarioId && item.ativo) ?? null
+  }
+
+  if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) {
+    return { data, usuario: null }
+  }
+
+  return { data, usuario }
+}
+
+async function persistSetorData(data: ReturnType<typeof loadAppData>): Promise<void> {
+  saveAppData(data)
+  if (useFirebaseDataSource()) {
+    await flushFirebaseAppDataSync()
+  }
+}
+
 export const ordenadorService = {
   async listPendentesAssinatura(usuarioId: string): Promise<PedidoComDetalhes[]> {
     await delay(null)
-    const data = await reloadFreshAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
-    if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) return []
+    const { data, usuario } = await resolveDataForSetor(usuarioId)
+    if (!usuario) return []
 
     const ctx = getContext(data)
     return data.pedidos
@@ -53,8 +85,7 @@ export const ordenadorService = {
 
   async getById(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = await reloadFreshAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
+    const { data, usuario } = await resolveDataForSetor(usuarioId)
     if (!usuario) return null
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
@@ -73,11 +104,9 @@ export const ordenadorService = {
     },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
-    let data = await reloadFreshAppData()
-    const usuario = data.usuarios.find(
-      (u) => u.id === usuarioId && PERFIS_SETOR.includes(u.perfil),
-    )
+    const { data: initialData, usuario } = await resolveDataForSetor(usuarioId)
     if (!usuario) throw new Error('Usuário não autorizado')
+    let data = initialData
 
     const anotacoes = options?.anotacoes
 
@@ -131,7 +160,7 @@ export const ordenadorService = {
       data = advancePedidoEtapa(data, pedidoId, usuario, observacao, etapa.id)
     }
 
-    saveAppData(data)
+    await persistSetorData(data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)!
     const enriched = enrichPedido(pedido, getContext(data))

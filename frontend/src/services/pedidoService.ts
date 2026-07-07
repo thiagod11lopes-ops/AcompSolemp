@@ -5,7 +5,9 @@ import type {
   PedidoFilters,
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
-import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadFreshAppData, saveAppData } from '@/mocks/seed'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { canAccessGestorRoute } from '@/utils/permissions'
@@ -67,7 +69,7 @@ function filterPedidos(pedidos: PedidoComDetalhes[], filters?: PedidoFilters) {
 export const pedidoService = {
   async list(filters?: PedidoFilters, clinicaId?: string | null): Promise<PedidoComDetalhes[]> {
     await delay(null)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 
     if (clinicaId) {
@@ -79,7 +81,7 @@ export const pedidoService = {
 
   async getById(id: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     const pedido = data.pedidos.find((p) => p.id === id)
     if (!pedido) return null
     return enrichPedido(pedido, getContext(data))
@@ -87,7 +89,7 @@ export const pedidoService = {
 
   async getDashboardMetrics(clinicaId?: string | null): Promise<DashboardMetrics> {
     await delay(null, 500)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 
     if (clinicaId) {
@@ -258,7 +260,7 @@ export const pedidoService = {
 
   async deleteById(pedidoId: string, usuarioId: string): Promise<void> {
     await delay(null, 300)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
     if (!usuario || !canAccessGestorRoute(usuario.perfil)) {
       throw new Error('Apenas o gestor pode excluir timelines.')
@@ -269,5 +271,8 @@ export const pedidoService = {
 
     removePedidosFromAppData(data, new Set([pedidoId]))
     saveAppData(data)
+    if (useFirebaseDataSource()) {
+      await flushFirebaseAppDataSync()
+    }
   },
 }

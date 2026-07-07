@@ -8,6 +8,9 @@ export function usePedidos(filters?: PedidoFilters) {
   return useQuery({
     queryKey: ['pedidos', filters],
     queryFn: () => pedidoService.list(filters),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -16,6 +19,8 @@ export function usePedido(id: string) {
     queryKey: ['pedido', id],
     queryFn: () => pedidoService.getById(id),
     enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 

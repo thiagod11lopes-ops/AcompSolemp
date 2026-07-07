@@ -612,6 +612,14 @@ export async function reloadFreshAppData(): Promise<AppData> {
   return reloadAppDataFromStorage()
 }
 
+/** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
+export async function loadFreshAppData(): Promise<AppData> {
+  if (useFirebaseDataSource()) {
+    return reloadFreshAppData()
+  }
+  return loadAppData()
+}
+
 export function delay<T>(value: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
 }
