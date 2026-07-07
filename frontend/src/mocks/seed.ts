@@ -16,10 +16,17 @@ import {
   buildPedidosConsumoMaterialSeed,
   USUARIO_CLINICA_OPME_ID,
 } from '@/mocks/consumoMaterialPedidosSeed'
-import { CLINICA_CONSUMO_OPME_NOME } from '@/utils/consumoMaterialTemplate'
+import {
+  CLINICA_CONSUMO_OPME_NOME,
+  CONSUMO_MATERIAL_SEED,
+} from '@/utils/consumoMaterialTemplate'
+import {
+  archiveActivePedidosAsFinalized,
+  removePedidosFromAppData,
+} from '@/utils/pedidoCleanup'
 
 const STORAGE_KEY = STORAGE_KEYS.APP_DATA
-const SEED_VERSION = 'v13'
+const SEED_VERSION = 'v14'
 
 let appDataCache: AppData | null = null
 
@@ -251,7 +258,7 @@ export function generateSeedData(): AppData {
     empresas: consumoSeed.empresas,
     materiais: consumoSeed.materiais,
     workflowEtapas,
-    pedidos: consumoSeed.pedidos,
+    pedidos: [],
     solemp: [],
     notasFiscais: [],
     historico: [],
@@ -259,6 +266,12 @@ export function generateSeedData(): AppData {
     notificacoes: [],
     reversoes: [],
     credenciais: {},
+    consumoPlanilha: {
+      [consumoSeed.clinica.id]: {
+        finalizedRowIds: CONSUMO_MATERIAL_SEED.map((row) => row.id),
+        extraRows: CONSUMO_MATERIAL_SEED.map((row) => ({ ...row })),
+      },
+    },
   }
 }
 
@@ -292,6 +305,16 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   return { data, changed: changed || notifChanged }
 }
 
+function migrateRemoveActiveTimelines(data: AppData): AppData {
+  const activePedidos = data.pedidos.filter((pedido) => !pedido.concluido)
+  if (activePedidos.length === 0) return data
+
+  archiveActivePedidosAsFinalized(data, activePedidos)
+  const activeIds = new Set(activePedidos.map((pedido) => pedido.id))
+  removePedidosFromAppData(data, activeIds)
+  return data
+}
+
 function cloneData(data: AppData): AppData {
   return JSON.parse(JSON.stringify(data)) as AppData
 }
@@ -308,6 +331,14 @@ export function initAppData(): AppData {
         appDataCache = data
         if (changed) persistAppData(data)
         return cloneData(data)
+      }
+      if (parsed._version === 'v13') {
+        const { _version: _, ...raw } = parsed
+        let data = migrateRemoveActiveTimelines(raw as AppData)
+        const { data: normalized } = normalizeAppData(data)
+        appDataCache = normalized
+        persistAppData(normalized)
+        return cloneData(normalized)
       }
     } catch {
       // regenera dados vazios

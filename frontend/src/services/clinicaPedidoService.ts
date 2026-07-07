@@ -9,6 +9,7 @@ import {
 import { CLINICA_ETAPA_ACOES } from '@/utils/portal'
 import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
@@ -328,17 +329,21 @@ export const clinicaPedidoService = {
       return 0
     }
 
-    data.pedidos = data.pedidos.filter((p) => p.clinicaId !== clinicaId)
-    data.historico = data.historico.filter((h) => !pedidoIds.has(h.pedidoId))
-    data.notificacoes = data.notificacoes.filter(
-      (n) => !n.pedidoId || !pedidoIds.has(n.pedidoId),
-    )
-    data.solemp = data.solemp.filter((s) => !pedidoIds.has(s.pedidoId))
-    data.notasFiscais = data.notasFiscais.filter((n) => !pedidoIds.has(n.pedidoId))
-    if (data.reversoes) {
-      data.reversoes = data.reversoes.filter((r) => !pedidoIds.has(r.pedidoId))
-    }
+    removePedidosFromAppData(data, pedidoIds)
     saveAppData(data)
     return pedidoIds.size
+  },
+
+  async deletePedidosByIds(pedidoIds: string[]): Promise<number> {
+    await delay(null, 300)
+    const data = loadAppData()
+    const ids = new Set(pedidoIds)
+    if (ids.size === 0) {
+      saveAppData(data)
+      return 0
+    }
+    removePedidosFromAppData(data, ids)
+    saveAppData(data)
+    return ids.size
   },
 }

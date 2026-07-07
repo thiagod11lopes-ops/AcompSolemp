@@ -281,6 +281,13 @@ export interface CredencialUsuario {
   userId: string
 }
 
+import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
+
+export interface ConsumoPlanilhaClinicaState {
+  finalizedRowIds: string[]
+  extraRows: ConsumoMaterialRow[]
+}
+
 export interface AppData {
   usuarios: User[]
   clinicas: Clinica[]
@@ -295,4 +302,5 @@ export interface AppData {
   notificacoes: Notification[]
   reversoes: ReversaoTimeline[]
   credenciais: Record<string, CredencialUsuario>
+  consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
 }

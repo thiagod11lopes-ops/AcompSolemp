@@ -101,6 +101,7 @@ interface ConsumoMaterialSpreadsheetProps {
   mesReferencia?: string
   lancamentosPreenchidos?: number
   rowIdsComPedido?: Set<string>
+  finalizedRowIds?: Set<string>
   totalLancamentos?: number
   onExcluirTudo?: () => Promise<void>
   onAdicionarPlanilha?: (mes: number, ano: number, file: File) => Promise<void>
@@ -127,6 +128,7 @@ function ConsumoMaterialSpreadsheetInner({
   mesReferencia,
   lancamentosPreenchidos,
   rowIdsComPedido: _rowIdsComPedido,
+  finalizedRowIds,
   totalLancamentos = 0,
   onExcluirTudo,
   onAdicionarPlanilha,
@@ -233,9 +235,27 @@ function ConsumoMaterialSpreadsheetInner({
     closeContextMenu()
   }
 
+  const isFinalizado = useCallback(
+    (row: ConsumoMaterialRow) => Boolean(finalizedRowIds?.has(row.id)),
+    [finalizedRowIds],
+  )
+
   const podeSelecionar = useCallback(
-    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row),
-    [],
+    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizado(row),
+    [isFinalizado],
+  )
+
+  const handleRowSelectionChange = useCallback(
+    (updater: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
+      const next = typeof updater === 'function' ? updater(rowSelection) : updater
+      if (finalizedRowIds?.size) {
+        for (const rowId of finalizedRowIds) {
+          next[rowId] = true
+        }
+      }
+      onRowSelectionChange(next)
+    },
+    [rowSelection, finalizedRowIds, onRowSelectionChange],
   )
 
   const columns = useMemo<ColumnDef<ConsumoMaterialRow>[]>(() => {
@@ -332,21 +352,23 @@ function ConsumoMaterialSpreadsheetInner({
           />
         ),
         cell: ({ row }) => {
+          const finalizado = isFinalizado(row.original)
           const selecionavel = podeSelecionar(row.original)
           return (
             <Checkbox
               size="small"
-              checked={row.getIsSelected()}
+              checked={finalizado || row.getIsSelected()}
               disabled={!selecionavel}
               onClick={(e) => e.stopPropagation()}
               onChange={row.getToggleSelectedHandler()}
+              sx={finalizado ? { color: 'success.main', '&.Mui-checked': { color: 'success.main' } } : undefined}
             />
           )
         },
       },
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleContextMenu, podeSelecionar])
+  }, [editable, onCellChange, handleContextMenu, podeSelecionar, isFinalizado])
 
   const table = useReactTable({
     data: rows,
@@ -354,10 +376,7 @@ function ConsumoMaterialSpreadsheetInner({
     state: { sorting, globalFilter, rowSelection },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    onRowSelectionChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(rowSelection) : updater
-      onRowSelectionChange(next)
-    },
+    onRowSelectionChange: handleRowSelectionChange,
     enableRowSelection: (row) => podeSelecionar(row.original),
     getRowId: (row) => row.id,
     globalFilterFn: (row, _columnId, filterValue) => {

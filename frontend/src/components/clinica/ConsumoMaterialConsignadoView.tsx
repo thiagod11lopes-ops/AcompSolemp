@@ -29,6 +29,7 @@ interface ConsumoMaterialConsignadoViewProps {
   rowSelection: RowSelectionState
   onRowSelectionChange: (selection: RowSelectionState) => void
   rowIdsComPedido?: Set<string>
+  finalizedRowIds?: Set<string>
   totalPedidos?: number
   mesSelecionado?: MesConsumoModelo
   onMesSelecionadoChange?: (mes: MesConsumoModelo) => void
@@ -53,6 +54,7 @@ function ConsumoMaterialConsignadoViewInner({
   rowSelection,
   onRowSelectionChange,
   rowIdsComPedido,
+  finalizedRowIds,
   totalPedidos,
   mesSelecionado: mesControlado,
   onMesSelecionadoChange,
@@ -142,6 +144,7 @@ function ConsumoMaterialConsignadoViewInner({
       onRowSelectionChange={onRowSelectionChange}
       lancamentosPreenchidos={preenchidasNoMes}
       rowIdsComPedido={rowIdsComPedido}
+      finalizedRowIds={finalizedRowIds}
       totalLancamentos={totalNoSistema}
       onExcluirTudo={onExcluirTudo}
       onAdicionarPlanilha={onAdicionarPlanilha}

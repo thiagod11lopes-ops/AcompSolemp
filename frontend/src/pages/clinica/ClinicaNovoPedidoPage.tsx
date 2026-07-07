@@ -16,7 +16,7 @@ import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMater
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
-import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos, useDeletePedidosByIds, useConsumoPlanilhaState } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
@@ -39,13 +39,17 @@ import {
   inicializarLinhasDoMes,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
+import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 
 export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
   const createPedido = useCreateClinicaPedido()
   const deleteAllPedidos = useDeleteAllClinicaPedidos()
+  const deletePedidosByIds = useDeletePedidosByIds()
   const { user } = useClinicaAuth()
+  const clinicaId = user?.clinicaId ?? ''
   const { data: pedidos = [] } = useClinicaPedidos()
+  const { data: planilhaPersistida } = useConsumoPlanilhaState(clinicaId)
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
@@ -64,7 +68,9 @@ export default function ClinicaNovoPedidoPage() {
   const [materialConsumoRows, setMaterialConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [rowsByMes, setRowsByMes] = useState<Record<string, ConsumoMaterialRow[]>>({})
   const [deletedRowIds, setDeletedRowIds] = useState<Set<string>>(new Set())
+  const [finalizedRowIds, setFinalizedRowIds] = useState<Set<string>>(new Set())
   const extraRowsSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const planilhaHydrated = useRef(false)
 
   useEffect(
     () => () => {
@@ -75,6 +81,34 @@ export default function ClinicaNovoPedidoPage() {
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
+  useEffect(() => {
+    if (!clinicaId || !planilhaPersistida || planilhaHydrated.current) return
+    planilhaHydrated.current = true
+    if (planilhaPersistida.extraRows.length > 0) {
+      setExtraRows(planilhaPersistida.extraRows)
+    }
+    if (planilhaPersistida.finalizedRowIds.length > 0) {
+      const finalized = new Set(planilhaPersistida.finalizedRowIds)
+      setFinalizedRowIds(finalized)
+      setRowSelection((prev) => {
+        const next = { ...prev }
+        for (const rowId of finalized) next[rowId] = true
+        return next
+      })
+    }
+  }, [clinicaId, planilhaPersistida])
+
+  const persistPlanilhaState = useCallback(
+    (nextExtraRows: ConsumoMaterialRow[], nextFinalized: Set<string>) => {
+      if (!clinicaId) return
+      consumoPlanilhaService.saveState(clinicaId, {
+        finalizedRowIds: [...nextFinalized],
+        extraRows: nextExtraRows,
+      })
+    },
+    [clinicaId],
+  )
+
   const planilhaRows = useMemo(
     () => buildPlanilhaLancamentos(pedidos, extraRows, deletedRowIds),
     [pedidos, extraRows, deletedRowIds],
@@ -84,23 +118,38 @@ export default function ClinicaNovoPedidoPage() {
     setExtraRows([])
     setRowsByMes({})
     setDeletedRowIds(new Set())
+    setFinalizedRowIds(new Set())
     setPlanilhaNome(CONSUMO_PLANILHA_NOME_PADRAO)
     setRowSelection({})
     setBatchError(null)
+    if (clinicaId) consumoPlanilhaService.clearState(clinicaId)
   }
+
+  const handleRowSelectionChange = useCallback(
+    (selection: RowSelectionState) => {
+      const next = { ...selection }
+      for (const rowId of finalizedRowIds) {
+        next[rowId] = true
+      }
+      setRowSelection(next)
+    },
+    [finalizedRowIds],
+  )
 
   const handleMesRowsChange = useCallback(
     (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
       setRowsByMes((prev) => ({ ...prev, [mes.id]: rows }))
       if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
       extraRowsSyncTimer.current = setTimeout(() => {
-        setExtraRows((prev) =>
-          syncExtraRowsFromMesSheet(prev, rows, mes, rowIdsComPedido),
-        )
+        setExtraRows((prev) => {
+          const next = syncExtraRowsFromMesSheet(prev, rows, mes, rowIdsComPedido)
+          persistPlanilhaState(next, finalizedRowIds)
+          return next
+        })
         extraRowsSyncTimer.current = null
       }, 400)
     },
-    [rowIdsComPedido],
+    [rowIdsComPedido, finalizedRowIds, persistPlanilhaState],
   )
 
   const handleExcluirLinhaRow = useCallback(
@@ -214,31 +263,46 @@ export default function ClinicaNovoPedidoPage() {
       return
     }
 
-    const novos = imhConsumoRows.filter((r) => rowPodeSerEnviada(r, rowIdsComPedido))
+    const novos = imhConsumoRows.filter((r) => rowPodeSerEnviada(r, rowIdsComPedido, finalizedRowIds))
 
     setBatchError(null)
     setIsBatchSending(true)
     try {
-      let ultimoId: string | null = null
-      const enviadosIds = new Set<string>()
+      const createdPedidoIds: string[] = []
+      const enviadosRows: ConsumoMaterialRow[] = []
       for (const row of novos) {
         const pedido = await createPedido.mutateAsync(
           consumoRowToPedidoInput(row, clinicaNome),
         )
-        ultimoId = pedido.id
-        enviadosIds.add(row.id)
+        createdPedidoIds.push(pedido.id)
+        enviadosRows.push(row)
       }
-      if (enviadosIds.size > 0) {
-        setExtraRows((prev) => prev.filter((r) => !enviadosIds.has(r.id)))
+      if (enviadosRows.length > 0) {
+        if (createdPedidoIds.length > 0) {
+          await deletePedidosByIds.mutateAsync(createdPedidoIds)
+        }
+        const nextFinalized = new Set(finalizedRowIds)
+        for (const row of enviadosRows) nextFinalized.add(row.id)
+        setFinalizedRowIds(nextFinalized)
+        setRowSelection((prev) => {
+          const next = { ...prev }
+          for (const row of enviadosRows) next[row.id] = true
+          return next
+        })
+        setExtraRows((prev) => {
+          const merged = [...prev]
+          for (const row of enviadosRows) {
+            const index = merged.findIndex((item) => item.id === row.id)
+            if (index >= 0) merged[index] = row
+            else merged.push(row)
+          }
+          persistPlanilhaState(merged, nextFinalized)
+          return merged
+        })
+        consumoPlanilhaService.markRowsFinalized(clinicaId, enviadosRows)
       }
       setImhModalOpen(false)
-      setRowSelection({})
       setImhConsumoRows([])
-      if (novos.length === 1 && ultimoId) {
-        navigate(`/clinica/timeline/${ultimoId}`)
-      } else if (novos.length > 0) {
-        navigate('/clinica/pedidos')
-      }
     } catch {
       setBatchError('Erro ao enviar lançamentos. Tente novamente.')
     } finally {
@@ -316,8 +380,9 @@ export default function ClinicaNovoPedidoPage() {
           lancamentos={planilhaRows}
           fileName={planilhaNome || 'Consumo Material Consignado'}
           rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
+          onRowSelectionChange={handleRowSelectionChange}
           rowIdsComPedido={rowIdsComPedido}
+          finalizedRowIds={finalizedRowIds}
           totalPedidos={pedidos.length}
           mesSelecionado={mesSelecionado}
           onMesSelecionadoChange={setMesSelecionado}

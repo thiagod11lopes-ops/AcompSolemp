@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { clinicaPedidoService, type CreatePedidoInput } from '@/services/clinicaPedidoService'
+import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 
 export function useClinicaPedidos() {
@@ -45,7 +46,30 @@ export function useDeleteAllClinicaPedidos() {
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['solemp-defaults'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['consumo-planilha'] })
     },
+  })
+}
+
+export function useDeletePedidosByIds() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (pedidoIds: string[]) => clinicaPedidoService.deletePedidosByIds(pedidoIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['solemp-defaults'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['consumo-planilha'] })
+    },
+  })
+}
+
+export function useConsumoPlanilhaState(clinicaId: string) {
+  return useQuery({
+    queryKey: ['consumo-planilha', clinicaId],
+    queryFn: () => consumoPlanilhaService.getState(clinicaId),
+    enabled: Boolean(clinicaId),
   })
 }
 

@@ -199,8 +199,13 @@ export function rowPodeSerSelecionada(row: ConsumoMaterialRow): boolean {
 export function rowPodeSerEnviada(
   row: ConsumoMaterialRow,
   rowIdsComPedido: Set<string>,
+  finalizedRowIds?: Set<string>,
 ): boolean {
-  return isLinhaPreenchida(row) && !rowIdsComPedido.has(row.id)
+  return (
+    isLinhaPreenchida(row) &&
+    !rowIdsComPedido.has(row.id) &&
+    !finalizedRowIds?.has(row.id)
+  )
 }
 
 export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow {
