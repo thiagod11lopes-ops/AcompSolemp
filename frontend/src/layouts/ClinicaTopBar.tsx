@@ -33,7 +33,7 @@ function resolveActiveTab(pathname: string): string {
   return '/clinica/pedidos'
 }
 
-export const CLINICA_TOPBAR_HEIGHT = 84
+export const CLINICA_TOPBAR_HEIGHT = 108
 
 export function ClinicaTopBar() {
   const { user, logout } = useClinicaAuth()
