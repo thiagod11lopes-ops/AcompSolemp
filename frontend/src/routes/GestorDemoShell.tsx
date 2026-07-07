@@ -19,7 +19,7 @@ const PORTAL_ROUTE_PREFIX: Record<Portal, string> = {
 
 function getDemoHomeRoute(portal: Portal, perfil: UserRole): string {
   if (portal === 'gestor') {
-    return mapPortalPath('/gestor/timeline', DEMO_ROUTE_BASE)
+    return mapPortalPath('/gestor/dashboard', DEMO_ROUTE_BASE)
   }
   return mapPortalPath(getHomeRouteForPerfil(perfil), DEMO_ROUTE_BASE)
 }

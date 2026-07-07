@@ -21,6 +21,7 @@ import UndoIcon from '@mui/icons-material/Undo'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getRoleLabel } from '@/mocks/seed'
 
 const DRAWER_WIDTH = 260
@@ -43,8 +44,17 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { user } = useGestorAuth()
+  const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const drawerPaperSx = {
+    width: DRAWER_WIDTH,
+    boxSizing: 'border-box' as const,
+    ...(demoBannerHeight > 0 && {
+      top: demoBannerHeight,
+      height: `calc(100% - ${demoBannerHeight}px)`,
+    }),
+  }
 
   const drawer = (
     <Box>
@@ -75,7 +85,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <ListItemButton
             key={item.path}
             component={NavLink}
-            to={item.path}
+            to={mapPath(item.path)}
             onClick={isMobile ? onClose : undefined}
             sx={{
               '&.active': {
@@ -102,7 +112,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH },
+          '& .MuiDrawer-paper': drawerPaperSx,
         }}
       >
         {drawer}
@@ -111,7 +121,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+          '& .MuiDrawer-paper': drawerPaperSx,
         }}
         open
       >

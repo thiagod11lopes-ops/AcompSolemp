@@ -425,7 +425,7 @@ export const authService = {
     return {
       authUser,
       portal: 'gestor',
-      route: mapPortalPath('/gestor/timeline', DEMO_ROUTE_BASE),
+      route: mapPortalPath('/gestor/dashboard', DEMO_ROUTE_BASE),
       tabTitle,
     }
   },

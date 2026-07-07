@@ -182,7 +182,7 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
       userId: DEMO_GESTOR_OVERVIEW_USER_ID,
       label: 'Gestor',
       nome: 'Visão Geral',
-      subtitulo: 'Timeline de demonstração — armazenamento local',
+      subtitulo: 'Portal do gestor completo — armazenamento local',
       isExemplo: true,
     },
   ]

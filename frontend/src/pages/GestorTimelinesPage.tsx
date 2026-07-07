@@ -160,12 +160,12 @@ export default function GestorTimelinesPage() {
   if (isLoading) return <LoadingSpinner />
 
   const abrirTimeline = (pedidoId: string) => {
+    if (isDemo) {
+      navigatePortal(`/gestor/timeline/${pedidoId}`)
+      return
+    }
     if (mostraDemo) {
-      if (isDemo) {
-        navigatePortal(`/gestor/timeline/${pedidoId}`)
-      } else {
-        navigate(`/gestor/timeline/${pedidoId}?fonte=demo`)
-      }
+      navigate(`/gestor/timeline/${pedidoId}?fonte=demo`)
       return
     }
     navigate(`/gestor/timeline/${pedidoId}`)

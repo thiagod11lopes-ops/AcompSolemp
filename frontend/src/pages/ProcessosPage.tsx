@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { IconButton, Tooltip } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -10,10 +9,11 @@ import { StatusChip } from '@/components/common/StatusChip'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ProcessFilters } from '@/components/workflow/ProcessFilters'
 import { usePedidos } from '@/hooks/usePedidos'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { formatCurrency, formatDate } from '@/utils/format'
 
 export default function ProcessosPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const [filters, setFilters] = useState<PedidoFilters>({})
   const { data: pedidos = [], isLoading } = usePedidos(filters)
 
@@ -54,7 +54,7 @@ export default function ProcessosPage() {
           <Tooltip title="Ver detalhes">
             <IconButton
               size="small"
-              onClick={() => navigate(`/gestor/processos/${row.original.id}`)}
+              onClick={() => navigatePortal(`/gestor/processos/${row.original.id}`)}
             >
               <VisibilityIcon fontSize="small" />
             </IconButton>
@@ -62,7 +62,7 @@ export default function ProcessosPage() {
         ),
       },
     ],
-    [navigate],
+    [navigatePortal],
   )
 
   if (isLoading) return <LoadingSpinner />

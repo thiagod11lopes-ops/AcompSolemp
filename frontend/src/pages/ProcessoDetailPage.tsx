@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   Grid,
   Paper,
@@ -17,12 +17,13 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ProcessTimeline } from '@/components/workflow/ProcessTimeline'
 import { usePedido } from '@/hooks/usePedidos'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
 
 export default function ProcessoDetailPage() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: pedido, isLoading } = usePedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const { data: historico = [] } = useHistorico(id)
@@ -34,7 +35,7 @@ export default function ProcessoDetailPage() {
 
   return (
     <>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/gestor/processos')} sx={{ mb: 2 }}>
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigatePortal('/gestor/processos')} sx={{ mb: 2 }}>
         Voltar
       </Button>
       <PageHeader

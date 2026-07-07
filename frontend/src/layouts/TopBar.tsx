@@ -17,6 +17,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
@@ -30,6 +31,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: TopBarProps) {
   const { user, logout } = useGestorAuth()
   const { mode, toggleTheme } = useThemeMode()
+  const { demoBannerHeight } = usePortalPaths()
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
@@ -47,6 +49,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
       sx={{
         width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
         ml: { md: `${DRAWER_WIDTH}px` },
+        top: demoBannerHeight,
         borderBottom: 1,
         borderColor: 'divider',
         bgcolor: 'background.paper',

@@ -5,7 +5,6 @@ import { ClinicaLayout } from '@/layouts/ClinicaLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { GestorProtectedRoute, ClinicaProtectedRoute, OrdenadorProtectedRoute, FinanceiroProtectedRoute, GuestRoute } from '@/routes/PortalRoutes'
 import { GestorDemoShell } from '@/routes/GestorDemoShell'
-import { DemoGestorLayout } from '@/layouts/DemoGestorLayout'
 import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -184,9 +183,20 @@ export function AppRoutes() {
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
           </Route>
 
-          <Route element={<DemoGestorLayout />}>
+          <Route element={<MainLayout />}>
+            <Route path="/gestor/demo/gestor" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
+            <Route path="/gestor/demo/gestor/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/processos" element={<LazyPage><ProcessosPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/workflow" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
+            <Route path="/gestor/demo/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/configuracao" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
+            <Route path="/gestor/demo/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/timeline" element={<LazyPage><GestorTimelinesPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
           </Route>
           </Route>
         </Route>
