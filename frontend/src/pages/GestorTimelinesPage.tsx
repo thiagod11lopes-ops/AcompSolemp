@@ -299,21 +299,19 @@ export default function GestorTimelinesPage() {
                                   status={pedido.prazoStatus}
                                   concluido={pedido.concluido}
                                 />
-                                {!mostraDemo && (
-                                  <Tooltip title="Excluir timeline">
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      aria-label={`Excluir timeline ${pedido.numero}`}
-                                      onClick={() => {
-                                        setErroExclusao(null)
-                                        setPedidoExcluir(pedido)
-                                      }}
-                                    >
-                                      <DeleteOutlinedIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
+                                <Tooltip title="Excluir timeline">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    aria-label={`Excluir timeline ${pedido.numero}`}
+                                    onClick={() => {
+                                      setErroExclusao(null)
+                                      setPedidoExcluir(pedido)
+                                    }}
+                                  >
+                                    <DeleteOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                               </Box>
                             </Box>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -384,8 +382,10 @@ export default function GestorTimelinesPage() {
         <DialogContent>
           <DialogContentText>
             Deseja realmente excluir a timeline <strong>{pedidoExcluir?.numero}</strong> da clínica{' '}
-            <strong>{pedidoExcluir?.clinica.nome}</strong>? Esta ação não pode ser desfeita e
-            remove o processo de todas as áreas do sistema.
+            <strong>{pedidoExcluir?.clinica.nome}</strong>?
+            {mostraDemo
+              ? ' Ela será removida do exemplo local (IndexedDB).'
+              : ' Esta ação não pode ser desfeita e remove o processo de todas as áreas do sistema.'}
           </DialogContentText>
           {erroExclusao && (
             <Typography color="error" variant="body2" sx={{ mt: 2 }}>

@@ -106,6 +106,8 @@ export function useDeleteGestorPedido() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
