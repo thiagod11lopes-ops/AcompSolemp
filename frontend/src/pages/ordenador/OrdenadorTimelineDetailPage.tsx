@@ -131,6 +131,7 @@ export default function OrdenadorTimelineDetailPage() {
       return
     }
     if (isConfeccao) {
+      if (!planilhaRecebida) return
       setConfeccaoOpen(true)
       return
     }
@@ -252,7 +253,7 @@ export default function OrdenadorTimelineDetailPage() {
             etapas={etapas}
             onAssinar={handleAssinar}
             assinando={assinar.isPending && !modalAberto}
-            onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
+            onReceberPlanilha={isAuditoria || isConfeccao ? handleReceberPlanilha : undefined}
             onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
             planilhaRecebida={planilhaRecebida}
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
@@ -339,7 +340,9 @@ export default function OrdenadorTimelineDetailPage() {
         title={
           isContabilidade
             ? `Contabilidade/IMH — Planilha ${pedido.numero}`
-            : undefined
+            : isConfeccao
+              ? `Confecção de Solemp — Planilha ${pedido.numero}`
+              : undefined
         }
         onClose={() => setPlanilhaOpen(false)}
       />

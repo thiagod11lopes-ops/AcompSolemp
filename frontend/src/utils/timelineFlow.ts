@@ -50,6 +50,7 @@ export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowE
     .filter((etapa) => permitidas.has(etapa.chave))
     .sort((a, b) => a.ordem - b.ordem)
 }
+
 /** Confecção (Material) → Assinaturas/SDA (Finanças) → Pagamento */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
@@ -58,6 +59,17 @@ export const DIVISAO_2_CHAVES = [
   'DIV_MAT_SDA',
   'DIV_MAT_FINANCAS',
 ] as const
+
+export function filtrarEtapasTrilhaConfeccao(etapas: WorkflowEtapa[]): WorkflowEtapa[] {
+  const permitidas = new Set<string>(['SOLICITACAO', ...DIVISAO_2_CHAVES])
+  return [...etapas]
+    .filter((etapa) => permitidas.has(etapa.chave))
+    .sort((a, b) => a.ordem - b.ordem)
+}
+
+export function usaTrilhaConfeccaoOrdenador(chavePerfil: string | null | undefined): boolean {
+  return chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
+}
 
 export const DIV_MATERIAL_CHAVES = [...DIVISAO_1_CHAVES, ...DIVISAO_2_CHAVES] as const
 

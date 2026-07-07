@@ -22,7 +22,9 @@ import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import {
   filtrarEtapasTrilhaAuditoria,
+  filtrarEtapasTrilhaConfeccao,
   usaTrilhaAuditoriaOrdenador,
+  usaTrilhaConfeccaoOrdenador,
 } from '@/utils/timelineFlow'
 
 interface OrdenadorInteractiveTimelineProps {
@@ -57,11 +59,13 @@ export function OrdenadorInteractiveTimeline({
   const { user } = useOrdenadorAuth()
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
+  const trilhaConfeccao = usaTrilhaConfeccaoOrdenador(chavePerfil)
   const ordenadas = useMemo(() => {
     const sorted = [...etapas].sort((a, b) => a.ordem - b.ordem)
     if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(sorted)
+    if (trilhaConfeccao) return filtrarEtapasTrilhaConfeccao(sorted)
     return sorted
-  }, [etapas, trilhaAuditoria])
+  }, [etapas, trilhaAuditoria, trilhaConfeccao])
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0
       ? pedido.etapasAtivasIds
@@ -75,7 +79,8 @@ export function OrdenadorInteractiveTimeline({
     : undefined
   const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
-  const usaFluxoPlanilha = isAuditoriaAtiva || isContabilidadeAtiva
+  const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
+  const usaFluxoPlanilha = isAuditoriaAtiva || isContabilidadeAtiva || isConfeccaoAtiva
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -164,6 +169,33 @@ export function OrdenadorInteractiveTimeline({
               {planilhaEncaminhadaImh && !planilhaRecebidaImh && (
                 <Typography variant="caption" color="text.secondary">
                   Abra a planilha antes de concluir a Contabilidade/IMH.
+                </Typography>
+              )}
+            </Box>
+          )}
+          {isConfeccaoAtiva && onReceberPlanilha && onAssinar && (
+            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={onReceberPlanilha}
+                disabled={assinando}
+              >
+                Receber Planilha
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                size="small"
+                onClick={onAssinar}
+                disabled={assinando || !planilhaRecebida}
+              >
+                {acaoAtual.label}
+              </Button>
+              {!planilhaRecebida && (
+                <Typography variant="caption" color="text.secondary">
+                  Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
                 </Typography>
               )}
             </Box>
@@ -286,6 +318,28 @@ export function OrdenadorInteractiveTimeline({
                           disabled={assinando || !planilhaRecebidaImh}
                         >
                           {acaoAtual?.label ?? 'Concluir Contabilidade/IMH'}
+                        </Button>
+                      </Box>
+                    )}
+                    {minhaEtapa && isConfeccaoAtiva && onReceberPlanilha && onAssinar && (
+                      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={onReceberPlanilha}
+                          disabled={assinando}
+                        >
+                          Receber Planilha
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          size="small"
+                          onClick={onAssinar}
+                          disabled={assinando || !planilhaRecebida}
+                        >
+                          {acaoAtual?.label ?? 'Confeccionar Solemp'}
                         </Button>
                       </Box>
                     )}

@@ -6,6 +6,7 @@ import {
   PERFIS_SETOR,
   PERFIS_SOLEMP,
   PERFIL_PARA_CHAVE_ETAPA,
+  pedidoPendenteParaChave,
 } from '@/utils/perfilEtapa'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
@@ -25,28 +26,14 @@ function pedidoPendenteParaPerfil(
   data: ReturnType<typeof loadAppData>,
   perfil: UserRole,
 ): boolean {
-  if (pedido.concluido) return false
   const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
   if (!chave) return false
-
-  if (
-    data.processosArquivados?.some(
-      (arquivo) => arquivo.pedidoId === pedido.id && arquivo.etapaChave === chave,
-    )
-  ) {
-    return false
-  }
-
-  const ativasIds =
-    pedido.etapasAtivasIds !== undefined
-      ? pedido.etapasAtivasIds
-      : pedido.etapaAtualId
-        ? [pedido.etapaAtualId]
-        : []
-
-  if (ativasIds.length === 0) return false
-
-  return data.workflowEtapas.some((e) => ativasIds.includes(e.id) && e.chave === chave)
+  return pedidoPendenteParaChave(
+    pedido,
+    data.workflowEtapas,
+    chave,
+    data.processosArquivados,
+  )
 }
 
 export const ordenadorService = {

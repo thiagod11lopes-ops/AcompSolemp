@@ -129,6 +129,27 @@ function normalizeTextoCampo(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+function resolveEtapaId(
+  etapaId: string | undefined,
+  etapaNome: string | undefined,
+  etapas: WorkflowEtapa[],
+): string | null {
+  if (etapaId && etapas.some((etapa) => etapa.id === etapaId)) return etapaId
+
+  if (etapaId?.startsWith('etapa-')) {
+    const chaveGuess = etapaId.slice('etapa-'.length)
+    const porChave = etapas.find((etapa) => etapa.chave.toLowerCase() === chaveGuess)
+    if (porChave) return porChave.id
+  }
+
+  if (etapaNome) {
+    const porNome = etapas.find((etapa) => etapa.nome === etapaNome)
+    if (porNome) return porNome.id
+  }
+
+  return null
+}
+
 function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
   let changed = false
 
@@ -197,12 +218,40 @@ function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
           ? historicoAberto.etapaId
           : null
       const solicitacao = data.workflowEtapas.find((e) => e.chave === 'SOLICITACAO')?.id
-      const novoId = ativaValida ?? historicoValido ?? solicitacao
+      const remapeado = resolveEtapaId(
+        pedido.etapaAtualId,
+        historicoAberto?.etapaNome,
+        data.workflowEtapas,
+      )
+      const novoId = remapeado ?? ativaValida ?? historicoValido ?? solicitacao
       if (novoId) {
         pedido.etapaAtualId = novoId
         if (!pedido.etapasAtivasIds?.length) {
           pedido.etapasAtivasIds = [novoId]
         }
+        changed = true
+      }
+    }
+
+    const ativasRemapeadas = (pedido.etapasAtivasIds ?? [])
+      .map((id) => resolveEtapaId(id, undefined, data.workflowEtapas) ?? id)
+      .filter((id) => etapaIds.has(id))
+    if (
+      ativasRemapeadas.length > 0 &&
+      JSON.stringify(ativasRemapeadas) !== JSON.stringify(pedido.etapasAtivasIds ?? [])
+    ) {
+      pedido.etapasAtivasIds = ativasRemapeadas
+      changed = true
+    }
+
+    for (const historico of pedido.etapasHistorico) {
+      const remapeado = resolveEtapaId(
+        historico.etapaId,
+        historico.etapaNome,
+        data.workflowEtapas,
+      )
+      if (remapeado && remapeado !== historico.etapaId) {
+        historico.etapaId = remapeado
         changed = true
       }
     }
@@ -282,7 +331,11 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   data.pedidos = (data.pedidos ?? []).map((p) => ({
     ...p,
     paciente: p.paciente ?? null,
-    etapasAtivasIds: p.etapasAtivasIds ?? (p.etapaAtualId ? [p.etapaAtualId] : []),
+    etapasAtivasIds: p.etapasAtivasIds?.length
+      ? p.etapasAtivasIds
+      : p.etapaAtualId
+        ? [p.etapaAtualId]
+        : [],
     dadosClinica: p.dadosClinica
       ? {
           ...p.dadosClinica,
