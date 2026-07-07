@@ -19,6 +19,7 @@ import {
   TextField,
   Typography,
   alpha,
+  type Theme,
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
@@ -80,6 +81,21 @@ const GROUP_COLORS: Record<string, string> = {
   clinico: '#1565C0',
   financeiro: '#2E7D32',
 }
+
+const FINALIZED_CHECKBOX_OPACITY = 0.42
+
+const finalizedCheckboxSx = {
+  color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+  '&.Mui-checked': {
+    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+  },
+  '&.Mui-disabled': {
+    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+  },
+  '&.Mui-disabled.Mui-checked': {
+    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+  },
+} as const
 
 const cellContentSx = {
   display: 'block',
@@ -416,7 +432,7 @@ function ConsumoMaterialSpreadsheetInner({
               disabled={!selecionavel}
               onClick={(e) => e.stopPropagation()}
               onChange={row.getToggleSelectedHandler()}
-              sx={finalizado ? { color: 'success.main', '&.Mui-checked': { color: 'success.main' } } : undefined}
+              sx={finalizado ? finalizedCheckboxSx : undefined}
             />
           )
         },
