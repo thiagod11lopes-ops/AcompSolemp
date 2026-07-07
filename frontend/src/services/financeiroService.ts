@@ -17,18 +17,50 @@ function getContext(data: ReturnType<typeof loadAppData>) {
 
 const ETAPAS_FINANCEIRO = ['DIV_MAT_FINANCAS'] as const
 
+function financasEtapaConcluida(
+  pedido: ReturnType<typeof loadAppData>['pedidos'][0],
+  etapas: ReturnType<typeof loadAppData>['workflowEtapas'],
+): boolean {
+  const financas = etapas.find((etapa) => etapa.chave === 'DIV_MAT_FINANCAS')
+  if (!financas) return false
+
+  return pedido.etapasHistorico.some(
+    (historico) =>
+      (historico.etapaId === financas.id || historico.etapaNome === financas.nome) &&
+      Boolean(historico.dataConclusao),
+  )
+}
+
 function isPedidoPagamentoPendente(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
 ): boolean {
-  if (pedido.concluido) return false
+  if (pedido.concluido || financasEtapaConcluida(pedido, data.workflowEtapas)) return false
+
   const ativas = pedido.etapasAtivasIds?.length
     ? pedido.etapasAtivasIds
     : [pedido.etapaAtualId]
+
   return data.workflowEtapas.some(
     (e) =>
       ativas.includes(e.id) &&
       ETAPAS_FINANCEIRO.includes(e.chave as (typeof ETAPAS_FINANCEIRO)[number]),
+  )
+}
+
+function isPedidoFinanceiroAcessivel(
+  pedido: ReturnType<typeof loadAppData>['pedidos'][0],
+  data: ReturnType<typeof loadAppData>,
+): boolean {
+  if (isPedidoPagamentoPendente(pedido, data)) return true
+
+  const arquivadoFinanceiro = data.processosArquivados?.some(
+    (arquivo) => arquivo.pedidoId === pedido.id && arquivo.etapaChave === 'DIV_MAT_FINANCAS',
+  )
+
+  return (
+    financasEtapaConcluida(pedido, data.workflowEtapas) ||
+    Boolean(arquivadoFinanceiro)
   )
 }
 
@@ -49,7 +81,7 @@ export const financeiroService = {
     await delay(null)
     const data = loadAppData()
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || !isPedidoPagamentoPendente(pedido, data)) return null
+    if (!pedido || !isPedidoFinanceiroAcessivel(pedido, data)) return null
     return enrichPedido(pedido, getContext(data))
   },
 

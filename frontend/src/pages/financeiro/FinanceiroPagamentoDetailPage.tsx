@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Grid, Paper, Typography, Chip, Alert } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import ArchiveIcon from '@mui/icons-material/Archive'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { FinanceiroInteractiveTimeline } from '@/components/workflow/FinanceiroInteractiveTimeline'
@@ -12,6 +13,8 @@ import {
 } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { financeiroPagamentoConcluido } from '@/utils/portal'
+import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 
 export default function FinanceiroPagamentoDetailPage() {
   const { id = '' } = useParams()
@@ -21,6 +24,12 @@ export default function FinanceiroPagamentoDetailPage() {
   const registrar = useRegistrarPagamento()
   const [modalOpen, setModalOpen] = useState(false)
   const [erro, setErro] = useState('')
+  const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
+
+  const pagamentoConcluido = useMemo(() => {
+    if (!pedido) return fluxoEncerrado
+    return fluxoEncerrado || financeiroPagamentoConcluido(pedido, etapas)
+  }, [pedido, etapas, fluxoEncerrado])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -36,6 +45,7 @@ export default function FinanceiroPagamentoDetailPage() {
   }
 
   const abrirModal = () => {
+    if (pagamentoConcluido) return
     setErro('')
     if (!pedido.solemp?.id) {
       setErro('SOLEMP não encontrada para este processo')
@@ -66,7 +76,7 @@ export default function FinanceiroPagamentoDetailPage() {
       {
         onSuccess: () => {
           setModalOpen(false)
-          navigate('/financeiro/pagamentos')
+          setFluxoEncerrado(true)
         },
         onError: (e) => setErro(e instanceof Error ? e.message : 'Erro ao registrar pagamento'),
       },
@@ -77,14 +87,20 @@ export default function FinanceiroPagamentoDetailPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/financeiro/pagamentos')}
+        onClick={() =>
+          navigate(pagamentoConcluido ? '/financeiro/arquivados' : '/financeiro/pagamentos')
+        }
         sx={{ mb: 2 }}
       >
-        Voltar aos pagamentos
+        {pagamentoConcluido ? 'Voltar aos arquivados' : 'Voltar aos pagamentos'}
       </Button>
 
       <PageHeader
-        title={`Pagamento pendente — ${pedido.numero}`}
+        title={
+          pagamentoConcluido
+            ? `Pagamento concluído — ${pedido.numero}`
+            : `Pagamento pendente — ${pedido.numero}`
+        }
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
       />
 
@@ -99,9 +115,25 @@ export default function FinanceiroPagamentoDetailPage() {
           <FinanceiroInteractiveTimeline
             pedido={pedido}
             etapas={etapas}
-            onPagamento={abrirModal}
+            onPagamento={pagamentoConcluido ? undefined : abrirModal}
             registrando={registrar.isPending && !modalOpen}
+            mensagemFluxoEncerrado={
+              pagamentoConcluido
+                ? MENSAGENS_ARQUIVAMENTO.DIV_MAT_FINANCAS
+                : null
+            }
           />
+          {pagamentoConcluido && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<ArchiveIcon />}
+              sx={{ mt: 2 }}
+              onClick={() => navigate('/financeiro/arquivados')}
+            >
+              Ver arquivados
+            </Button>
+          )}
         </Grid>
 
         <Grid size={{ xs: 12, lg: 5 }}>
@@ -123,8 +155,12 @@ export default function FinanceiroPagamentoDetailPage() {
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
               <Chip
-                label="Finanças Pagamento — pendente"
-                color="info"
+                label={
+                  pagamentoConcluido
+                    ? 'Finanças Pagamento — concluído'
+                    : 'Finanças Pagamento — pendente'
+                }
+                color={pagamentoConcluido ? 'success' : 'info'}
                 size="small"
                 sx={{ width: 'fit-content', mt: 1 }}
               />
@@ -144,9 +180,15 @@ export default function FinanceiroPagamentoDetailPage() {
                   {formatCurrency(pedido.solemp.valor)}
                 </Typography>
               )}
+              {pedido.notaFiscal && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Nota fiscal:</strong> {pedido.notaFiscal.numero}
+                </Typography>
+              )}
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Clique em <strong>Registrar pagamento</strong> para informar a nota fiscal e a
-                empresa e finalizar a timeline.
+                {pagamentoConcluido
+                  ? 'Pagamento registrado e processo arquivado pelo Financeiro.'
+                  : 'Clique em Registrar pagamento para informar a nota fiscal e a empresa e finalizar a timeline.'}
               </Typography>
             </Paper>
           )}

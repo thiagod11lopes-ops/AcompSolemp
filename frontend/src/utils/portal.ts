@@ -59,10 +59,11 @@ export const CLINICA_ETAPA_ACOES: Record<
 
 export const FINANCEIRO_ETAPA_ACOES: Record<
   string,
-  { label: string; descricao: string }
+  { label: string; labelConcluido?: string; descricao: string }
 > = {
   DIV_MAT_FINANCAS: {
     label: 'Registrar pagamento',
+    labelConcluido: 'Concluído',
     descricao: 'Confirme o pagamento na etapa Finanças Pagamento.',
   },
 }
@@ -123,6 +124,25 @@ export function setorPodeAgir(etapaChave: string): boolean {
 
 export function financeiroPodeRegistrarPagamento(etapaChave: string): boolean {
   return etapaChave in FINANCEIRO_ETAPA_ACOES
+}
+
+export function financeiroPagamentoConcluido(
+  pedido: {
+    concluido: boolean
+    etapasHistorico: { etapaId: string; etapaNome: string; dataConclusao: string | null }[]
+  },
+  etapas: { id: string; chave: string; nome: string }[],
+): boolean {
+  if (pedido.concluido) return true
+
+  const financas = etapas.find((etapa) => etapa.chave === 'DIV_MAT_FINANCAS')
+  if (!financas) return false
+
+  return pedido.etapasHistorico.some(
+    (historico) =>
+      (historico.etapaId === financas.id || historico.etapaNome === financas.nome) &&
+      Boolean(historico.dataConclusao),
+  )
 }
 
 export function calcularProgressoTimeline(etapaAtualIndex: number, totalEtapas: number): number {

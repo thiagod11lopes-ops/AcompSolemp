@@ -15,14 +15,20 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate, formatDateTime } from '@/utils/format'
-import { FINANCEIRO_ETAPA_ACOES, financeiroPodeRegistrarPagamento } from '@/utils/portal'
+import {
+  FINANCEIRO_ETAPA_ACOES,
+  financeiroPagamentoConcluido,
+  financeiroPodeRegistrarPagamento,
+} from '@/utils/portal'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
+import { resolveEtapaFromRef } from '@/utils/workflow'
 
 interface FinanceiroInteractiveTimelineProps {
   pedido: PedidoComDetalhes
   etapas: WorkflowEtapa[]
   onPagamento?: () => void
   registrando?: boolean
+  mensagemFluxoEncerrado?: string | null
 }
 
 export function FinanceiroInteractiveTimeline({
@@ -30,11 +36,15 @@ export function FinanceiroInteractiveTimeline({
   etapas,
   onPagamento,
   registrando = false,
+  mensagemFluxoEncerrado = null,
 }: FinanceiroInteractiveTimelineProps) {
   const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
-  const etapaAtualIndex = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
-  const acaoAtual = FINANCEIRO_ETAPA_ACOES[pedido.etapaAtual.chave]
-  const podeRegistrar = financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
+  const pagamentoConcluido = financeiroPagamentoConcluido(pedido, ordenadas)
+  const acaoFinancas = FINANCEIRO_ETAPA_ACOES.DIV_MAT_FINANCAS
+  const podeRegistrar =
+    !pagamentoConcluido && financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
+  const etapasAtivasIds =
+    pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -42,7 +52,13 @@ export function FinanceiroInteractiveTimeline({
         Timeline do Processo
       </Typography>
 
-      {acaoAtual && podeRegistrar && (
+      {pagamentoConcluido && mensagemFluxoEncerrado && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {mensagemFluxoEncerrado}
+        </Alert>
+      )}
+
+      {acaoFinancas && podeRegistrar && (
         <Alert
           severity="info"
           icon={<PaymentsIcon />}
@@ -56,12 +72,12 @@ export function FinanceiroInteractiveTimeline({
                 onClick={onPagamento}
                 disabled={registrando}
               >
-                {registrando ? 'Registrando...' : acaoAtual.label}
+                {registrando ? 'Registrando...' : acaoFinancas.label}
               </Button>
             )
           }
         >
-          <strong>Pagamento pendente:</strong> {acaoAtual.descricao}
+          <strong>Pagamento pendente:</strong> {acaoFinancas.descricao}
           {pedido.solemp && (
             <Typography variant="body2" sx={{ mt: 0.5 }}>
               SOLEMP: <strong>{pedido.solemp.numero}</strong>
@@ -70,14 +86,22 @@ export function FinanceiroInteractiveTimeline({
         </Alert>
       )}
 
-      <Stepper activeStep={etapaAtualIndex} orientation="vertical">
-        {ordenadas.map((etapa, index) => {
-          const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
-          const concluida = index < etapaAtualIndex || pedido.concluido
-          const atual = index === etapaAtualIndex && !pedido.concluido
+      <Stepper orientation="vertical" nonLinear activeStep={-1}>
+        {ordenadas.map((etapa) => {
+          const historico = pedido.etapasHistorico.find(
+            (item) =>
+              item.etapaId === etapa.id ||
+              resolveEtapaFromRef(item.etapaId, item.etapaNome, ordenadas)?.id === etapa.id,
+          )
+          const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
+          const atual =
+            etapasAtivasIds.includes(etapa.id) &&
+            !pedido.concluido &&
+            !historico?.dataConclusao
+          const etapaFinancas = etapa.chave === 'DIV_MAT_FINANCAS'
 
           return (
-            <Step key={etapa.id} completed={concluida} active={atual}>
+            <Step key={etapa.id} completed={concluida} active={atual} expanded>
               <StepLabel
                 slots={{
                   stepIcon: () =>
@@ -95,10 +119,15 @@ export function FinanceiroInteractiveTimeline({
                     numero={pedido.solemp?.numero}
                     notaFiscalNumero={pedido.notaFiscal?.numero}
                   />
-                  {atual && etapa.chave === 'DIV_MAT_FINANCAS' && (
+                  {atual && etapaFinancas && (
                     <Chip label="Pagamento pendente" size="small" color="info" variant="outlined" />
                   )}
-                  {concluida && <Chip label="Concluída" size="small" color="success" />}
+                  {concluida && etapaFinancas && pagamentoConcluido && (
+                    <Chip label="Concluída" size="small" color="success" />
+                  )}
+                  {concluida && !etapaFinancas && (
+                    <Chip label="Concluída" size="small" color="success" />
+                  )}
                 </Box>
               </StepLabel>
               <StepContent>
@@ -117,17 +146,21 @@ export function FinanceiroInteractiveTimeline({
                         {historico.observacao}
                       </Typography>
                     )}
-                    {atual && podeRegistrar && onPagamento && (
+                    {etapaFinancas && (
                       <Button
-                        variant="contained"
-                        color="success"
+                        variant={pagamentoConcluido ? 'outlined' : 'contained'}
+                        color={pagamentoConcluido ? 'success' : 'success'}
                         size="small"
                         sx={{ mt: 2 }}
-                        onClick={onPagamento}
-                        disabled={registrando}
-                        startIcon={<PaymentsIcon />}
+                        onClick={pagamentoConcluido ? undefined : onPagamento}
+                        disabled={pagamentoConcluido || registrando || !onPagamento}
+                        startIcon={pagamentoConcluido ? <CheckCircleIcon /> : <PaymentsIcon />}
                       >
-                        {registrando ? 'Registrando...' : acaoAtual?.label ?? 'Pagamento realizado'}
+                        {pagamentoConcluido
+                          ? (acaoFinancas.labelConcluido ?? 'Concluído')
+                          : registrando
+                            ? 'Registrando...'
+                            : acaoFinancas.label}
                       </Button>
                     )}
                   </Box>

@@ -14,6 +14,8 @@ export function useFinanceiroPedido(id: string) {
     queryKey: ['financeiro-pedido', id],
     queryFn: () => financeiroService.getById(id),
     enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 
@@ -37,11 +39,13 @@ export function useRegistrarPagamento() {
         notaFiscalNumero,
         empresaNome,
       }),
-    onSuccess: () => {
+    onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['financeiro-pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
     },
   })
