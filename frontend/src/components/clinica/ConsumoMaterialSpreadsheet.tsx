@@ -37,7 +37,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useMemo, useState, useCallback, type MouseEvent } from 'react'
+import { useMemo, useState, useCallback, type MouseEvent, type ReactNode } from 'react'
 import {
   CONSUMO_MATERIAL_HEADERS,
   formatValorBrasileiro,
@@ -98,6 +98,7 @@ interface ConsumoMaterialSpreadsheetProps {
   onCellChange?: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
   onInserirLinha?: (rowId: string, position: InserirLinhaConsumoPosicao) => void
   onExcluirLinha?: (rowId: string) => void
+  headerExtra?: ReactNode
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -123,6 +124,7 @@ export function ConsumoMaterialSpreadsheet({
   onCellChange,
   onInserirLinha,
   onExcluirLinha,
+  headerExtra,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -412,8 +414,8 @@ export function ConsumoMaterialSpreadsheet({
     >
       <Box
         sx={(theme) => ({
-          px: 2.5,
-          py: 2,
+          px: 2,
+          py: 1.25,
           background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 55%, ${theme.palette.primary.light} 100%)`,
           color: 'white',
         })}
@@ -424,7 +426,7 @@ export function ConsumoMaterialSpreadsheet({
             flexDirection: { xs: 'column', md: 'row' },
             alignItems: { xs: 'stretch', md: 'center' },
             justifyContent: 'space-between',
-            gap: 2,
+            gap: 1,
           }}
         >
           <Box>
@@ -541,9 +543,19 @@ export function ConsumoMaterialSpreadsheet({
             </Box>
           </Box>
 
-          <TextField
-            size="small"
-            placeholder="Buscar NIP, nome, procedimento..."
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: 1,
+              minWidth: { md: 320 },
+            }}
+          >
+            {headerExtra}
+            <TextField
+              size="small"
+              placeholder="Buscar NIP, nome, procedimento..."
             value={globalFilter}
             onChange={(e) => {
               setGlobalFilter(e.target.value)
@@ -567,15 +579,16 @@ export function ConsumoMaterialSpreadsheet({
                 },
               },
             }}
-            sx={{ minWidth: { xs: '100%', md: 320 } }}
+            sx={{ minWidth: { xs: '100%', md: 280 }, flex: 1 }}
           />
+          </Box>
         </Box>
       </Box>
 
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
-        sx={{ px: 2.5, py: 1.5, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}
+        sx={{ px: 2, py: 1, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}
       >
         <Typography variant="body2" color="text.secondary">
           Total filtrado:{' '}

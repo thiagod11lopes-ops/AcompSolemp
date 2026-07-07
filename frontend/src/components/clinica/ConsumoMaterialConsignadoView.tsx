@@ -1,9 +1,9 @@
 import {
-  Box,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
+  alpha,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
@@ -112,15 +112,36 @@ export function ConsumoMaterialConsignadoView({
   }
 
   return (
-    <Box sx={{ display: 'grid', gap: 2 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: { xs: 'stretch', sm: 'flex-end' },
-        }}
-      >
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel id="mes-consumo-label">Mês de referência</InputLabel>
+    <ConsumoMaterialSpreadsheet
+      rows={linhasExibidas}
+      fileName={`${mesSelecionado.label} — ${fileName || 'Consumo Material Consignado'}`}
+      rowSelection={rowSelection}
+      onRowSelectionChange={onRowSelectionChange}
+      lancamentosPreenchidos={preenchidasNoMes}
+      rowIdsComPedido={rowIdsComPedido}
+      totalLancamentos={totalNoSistema}
+      onExcluirTudo={onExcluirTudo}
+      onAdicionarPlanilha={onAdicionarPlanilha}
+      isExcluindo={isExcluindo}
+      isAdicionando={isAdicionando}
+      addPlanilhaError={addPlanilhaError}
+      onAddPlanilhaErrorClear={onAddPlanilhaErrorClear}
+      onLimparRascunho={onLimparRascunho}
+      onEnviarImh={onEnviarImh}
+      onEnviarMaterial={onEnviarMaterial}
+      isEnviando={isEnviando}
+      editable={Boolean(onRowsChange)}
+      onCellChange={handleCellChange}
+      onInserirLinha={handleInserirLinha}
+      onExcluirLinha={handleExcluirLinha}
+      headerExtra={
+        <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
+          <InputLabel
+            id="mes-consumo-label"
+            sx={{ color: alpha('#fff', 0.85), '&.Mui-focused': { color: 'white' } }}
+          >
+            Mês de referência
+          </InputLabel>
           <Select
             labelId="mes-consumo-label"
             label="Mês de referência"
@@ -128,6 +149,15 @@ export function ConsumoMaterialConsignadoView({
             onChange={(e) => {
               const mes = CONSUMO_MESES_MODELO.find((m) => m.id === e.target.value)
               if (mes) setMesSelecionado(mes)
+            }}
+            sx={{
+              color: 'white',
+              bgcolor: alpha('#fff', 0.12),
+              borderRadius: 2,
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.25) },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.45) },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+              '& .MuiSvgIcon-root': { color: alpha('#fff', 0.85) },
             }}
           >
             {CONSUMO_MESES_MODELO.map((m) => (
@@ -137,32 +167,7 @@ export function ConsumoMaterialConsignadoView({
             ))}
           </Select>
         </FormControl>
-      </Box>
-
-      <ConsumoMaterialSpreadsheet
-        rows={linhasExibidas}
-        fileName={`${mesSelecionado.label} — ${fileName || 'Consumo Material Consignado'}`}
-        rowSelection={rowSelection}
-        onRowSelectionChange={onRowSelectionChange}
-        mesReferencia={mesSelecionado.label}
-        lancamentosPreenchidos={preenchidasNoMes}
-        rowIdsComPedido={rowIdsComPedido}
-        totalLancamentos={totalNoSistema}
-        onExcluirTudo={onExcluirTudo}
-        onAdicionarPlanilha={onAdicionarPlanilha}
-        isExcluindo={isExcluindo}
-        isAdicionando={isAdicionando}
-        addPlanilhaError={addPlanilhaError}
-        onAddPlanilhaErrorClear={onAddPlanilhaErrorClear}
-        onLimparRascunho={onLimparRascunho}
-        onEnviarImh={onEnviarImh}
-        onEnviarMaterial={onEnviarMaterial}
-        isEnviando={isEnviando}
-        editable={Boolean(onRowsChange)}
-        onCellChange={handleCellChange}
-        onInserirLinha={handleInserirLinha}
-        onExcluirLinha={handleExcluirLinha}
-      />
-    </Box>
+      }
+    />
   )
 }
