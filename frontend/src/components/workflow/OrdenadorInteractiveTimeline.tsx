@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   Box,
   Step,
@@ -19,6 +20,10 @@ import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import {
+  filtrarEtapasTrilhaAuditoria,
+  usaTrilhaAuditoriaOrdenador,
+} from '@/utils/timelineFlow'
 
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -46,13 +51,18 @@ export function OrdenadorInteractiveTimeline({
   planilhaRecebidaImh = false,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
-  const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
+  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
+  const ordenadas = useMemo(() => {
+    const sorted = [...etapas].sort((a, b) => a.ordem - b.ordem)
+    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(sorted)
+    return sorted
+  }, [etapas, trilhaAuditoria])
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0
       ? pedido.etapasAtivasIds
       : [pedido.etapaAtualId]
 
-  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaDoPerfil = ordenadas.find(
     (e) => etapasAtivasIds.includes(e.id) && e.chave === chavePerfil,
   )
@@ -148,7 +158,7 @@ export function OrdenadorInteractiveTimeline({
               )}
             </Box>
           )}
-          {pedido.solemp && (
+          {pedido.solemp && !trilhaAuditoria && (
             <Typography variant="body2" sx={{ mt: 0.5 }}>
               SOLEMP: <strong>{pedido.solemp.numero}</strong>
             </Typography>

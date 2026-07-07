@@ -33,6 +33,23 @@ export const TIMELINE_ETAPA_META: Record<
 
 /** Fluxos paralelos / sequenciais */
 export const DIVISAO_1_CHAVES = ['DIV_MAT_AUDITORIA', 'DIV_MAT_CONTABILIDADE_IMH'] as const
+
+/** Etapas visíveis para Auditoria e Contabilidade/IMH no portal ordenador */
+export const ORDENADOR_TRILHA_AUDITORIA_CHAVES = [
+  'SOLICITACAO',
+  ...DIVISAO_1_CHAVES,
+] as const
+
+export function usaTrilhaAuditoriaOrdenador(chavePerfil: string | null | undefined): boolean {
+  return chavePerfil === 'DIV_MAT_AUDITORIA' || chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
+}
+
+export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowEtapa[] {
+  const permitidas = new Set<string>(ORDENADOR_TRILHA_AUDITORIA_CHAVES)
+  return [...etapas]
+    .filter((etapa) => permitidas.has(etapa.chave))
+    .sort((a, b) => a.ordem - b.ordem)
+}
 /** Confecção (Material) → Assinaturas/SDA (Finanças) → Pagamento */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
