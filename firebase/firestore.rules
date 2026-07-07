@@ -6,13 +6,22 @@ service cloud.firestore {
     }
 
     function isPortalUserForTenant(tenantId) {
-      return request.auth.token.email != null
-        && request.auth.token.email.matches('^' + tenantId + '\\.[^@]+@portal\\.acompsolemp\\.app$');
+      return exists(/databases/$(database)/documents/portalUsers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/portalUsers/$(request.auth.uid)).data.tenantId == tenantId;
     }
 
     function canAccessTenant(tenantId) {
       return request.auth != null
         && (isGestorForTenant(tenantId) || isPortalUserForTenant(tenantId));
+    }
+
+    // Vínculo conta timeline → tenant (criado pelo gestor)
+    match /portalUsers/{portalUid} {
+      allow read: if request.auth != null && request.auth.uid == portalUid;
+      allow create, update: if request.auth != null
+        && request.resource.data.tenantId == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.tenantId == request.auth.uid;
     }
 
     // Código da organização — leitura pública para login da timeline

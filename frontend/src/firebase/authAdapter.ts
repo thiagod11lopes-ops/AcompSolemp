@@ -8,6 +8,7 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { useFirebaseDataSource } from '@/config/dataSource'
+import { registerPortalUserMapping } from '@/data/persistence/portalUserPersistence'
 import { getFirebaseAuth, getPortalUserCreatorAuth, initFirebase } from '@/firebase/app'
 import { isPortalAuthEmail, portalAuthEmail } from '@/firebase/portalAuth'
 
@@ -97,7 +98,8 @@ export const firebaseAuthAdapter = {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, senha)
+      const credential = await signInWithEmailAndPassword(auth, email, senha)
+      await credential.user.getIdToken(true)
     } catch (error) {
       if (isInvalidCredential(error)) {
         throw new Error('Login ou senha inválidos')
@@ -113,11 +115,18 @@ export const firebaseAuthAdapter = {
     const email = portalAuthEmail(tenantId, login)
     const creatorAuth = getPortalUserCreatorAuth()
 
+    let portalUid: string
     try {
-      await createUserWithEmailAndPassword(creatorAuth, email, senha)
+      const credential = await createUserWithEmailAndPassword(creatorAuth, email, senha)
+      portalUid = credential.user.uid
     } catch (error) {
       if (!isEmailAlreadyInUse(error)) throw error
+      const credential = await signInWithEmailAndPassword(creatorAuth, email, senha)
+      portalUid = credential.user.uid
+      await signOut(creatorAuth)
     }
+
+    await registerPortalUserMapping(portalUid, tenantId)
   },
 
   async signIn(email: string, password: string): Promise<FirebaseAuthSession> {
