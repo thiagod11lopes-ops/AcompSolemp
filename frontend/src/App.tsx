@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRoutes } from '@/routes'
-import { initAppData } from '@/mocks/seed'
+import { initDataLayer } from '@/data/initDataLayer'
 import { authService } from '@/services/authService'
 import { initStorage } from '@/storage/indexedDb'
 
@@ -37,7 +37,7 @@ function App() {
     async function bootstrap() {
       try {
         await initStorage()
-        initAppData()
+        await initDataLayer()
         authService.bootstrap()
         if (!cancelled) setReady(true)
       } catch (e) {

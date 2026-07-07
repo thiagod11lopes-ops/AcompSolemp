@@ -478,6 +478,20 @@ export function reloadAppDataFromStorage(): AppData {
 
 function persistAppData(data: AppData): void {
   storageSet(STORAGE_KEY, JSON.stringify({ ...data, _version: SEED_VERSION }))
+  void import('@/data/persistence/firebaseSync').then(({ scheduleFirebaseAppDataSync }) => {
+    scheduleFirebaseAppDataSync(data, SEED_VERSION)
+  })
+}
+
+/** Aplica dados vindos do Firestore no cache local (fase 1 da migração) */
+export function applyRemoteAppData(raw: AppData): AppData {
+  const { data, changed } = normalizeAppData(raw)
+  appDataCache = data
+  persistAppData(data)
+  if (changed && import.meta.env.DEV) {
+    console.info('[AcompSolemp] AppData normalizado após hidratação Firebase')
+  }
+  return cloneData(data)
 }
 
 export function saveAppData(data: AppData): void {

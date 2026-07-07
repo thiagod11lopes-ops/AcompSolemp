@@ -21,6 +21,7 @@
     "axios": "^1.18.1",
     "date-fns": "^4.4.0",
     "fflate": "^0.8.3",
+    "firebase": "^12.15.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hook-form": "^7.80.0",
