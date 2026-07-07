@@ -25,6 +25,7 @@ import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadast
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
+import { DEMO_CLINICA_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
 
 interface RegistroCadastro {
   id: string
@@ -51,8 +52,12 @@ export function UsuariosTab() {
 
   const registros = useMemo<RegistroCadastro[]>(() => {
     if (opcao.isClinica) {
-      const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
-      return clinicas.map((c) => {
+      const usuariosClinica = usuarios.filter(
+        (u) => u.perfil === 'CLINICA' && !isDemoExampleUser(u),
+      )
+      return clinicas
+        .filter((clinica) => clinica.id !== DEMO_CLINICA_EXEMPLO_ID)
+        .map((c) => {
         const user =
           usuariosClinica.find((u) => u.clinicaId === c.id && u.email) ??
           usuariosClinica.find((u) => u.clinicaId === c.id)
@@ -65,7 +70,7 @@ export function UsuariosTab() {
       })
     }
     return usuarios
-      .filter((u) => u.perfil === opcao.perfil)
+      .filter((u) => u.perfil === opcao.perfil && !isDemoExampleUser(u))
       .map((u) => ({
         id: u.id,
         nome: u.nome,

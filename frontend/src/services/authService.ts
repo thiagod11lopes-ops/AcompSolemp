@@ -23,6 +23,7 @@ import {
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
+import { ensureDemoUserById } from '@/services/demoCadastrosService'
 import {
   getStoredOrgCode,
   getTenantId,
@@ -382,11 +383,7 @@ export const authService = {
 
     await this.ensureGestorFirebaseSession({ interactive: false }).catch(() => undefined)
 
-    const data = loadAppData()
-    const user = data.usuarios.find((item) => item.id === userId && item.ativo)
-    if (!user || user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') {
-      throw new Error('Cadastro não encontrado ou inativo')
-    }
+    const user = await ensureDemoUserById(userId)
 
     const portal = portalForPerfil(user.perfil)
     const authUser: AuthUser = {

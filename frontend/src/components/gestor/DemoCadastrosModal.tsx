@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Box,
   Chip,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -16,17 +17,11 @@ import CloseIcon from '@mui/icons-material/Close'
 import ScienceIcon from '@mui/icons-material/Science'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
-import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
-
-interface DemoCadastroItem {
-  id: string
-  userId: string
-  label: string
-  nome: string
-  email: string
-  ativo: boolean
-}
+import {
+  buildDemoCadastroItens,
+  ensureDemoExampleCadastros,
+  type DemoCadastroItem,
+} from '@/services/demoCadastrosService'
 
 interface DemoCadastrosModalProps {
   open: boolean
@@ -36,49 +31,40 @@ interface DemoCadastrosModalProps {
 export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
   const navigate = useNavigate()
   const { startDemo } = useAuth()
-  const { data: usuarios = [] } = useUsuarios()
-  const { data: clinicas = [] } = useClinicas()
   const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [itens, setItens] = useState<DemoCadastroItem[]>([])
 
-  const itens = useMemo<DemoCadastroItem[]>(() => {
-    const resultado: DemoCadastroItem[] = []
+  useEffect(() => {
+    if (!open) return
 
-    for (const opcao of CADASTRO_PERFIS) {
-      if (opcao.isClinica) {
-        const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
-        for (const clinica of clinicas) {
-          const user =
-            usuariosClinica.find((u) => u.clinicaId === clinica.id && u.email) ??
-            usuariosClinica.find((u) => u.clinicaId === clinica.id)
-          resultado.push({
-            id: `clinica-${clinica.id}`,
-            userId: user?.id ?? '',
-            label: opcao.label,
-            nome: clinica.nome,
-            email: user?.email?.trim() || '—',
-            ativo: Boolean(user?.id && user.ativo && user.email?.trim()),
-          })
-        }
-        continue
-      }
+    let ativo = true
+    setCarregando(true)
+    setErro('')
 
-      for (const user of usuarios.filter((u) => u.perfil === opcao.perfil)) {
-        resultado.push({
-          id: user.id,
-          userId: user.id,
-          label: opcao.label,
-          nome: user.nome,
-          email: user.email?.trim() || '—',
-          ativo: Boolean(user.ativo && user.email?.trim()),
-        })
-      }
+    void ensureDemoExampleCadastros()
+      .then(() => {
+        if (!ativo) return
+        setItens(buildDemoCadastroItens())
+      })
+      .catch((error) => {
+        if (!ativo) return
+        setErro(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível preparar os cadastros de exemplo',
+        )
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false)
+      })
+
+    return () => {
+      ativo = false
     }
-
-    return resultado
-  }, [clinicas, usuarios])
+  }, [open])
 
   const handleSelect = async (item: DemoCadastroItem) => {
-    if (!item.ativo || !item.userId) return
     setErro('')
     try {
       const { route } = await startDemo(item.userId)
@@ -104,8 +90,8 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
       </DialogTitle>
       <DialogContent dividers>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Escolha um cadastro para simular o acesso à Timeline. As ações são reais e afetam os dados da
-          organização.
+          Escolha uma clínica ou setor para testar a Timeline sem senha. Os cadastros de exemplo são
+          criados automaticamente e as ações afetam os dados reais da organização.
         </Alert>
         {erro && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -113,14 +99,17 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
           </Alert>
         )}
 
-        {itens.length === 0 ? (
-          <Typography color="text.secondary">Nenhum cadastro encontrado.</Typography>
+        {carregando ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : itens.length === 0 ? (
+          <Typography color="text.secondary">Nenhum cadastro de exemplo disponível.</Typography>
         ) : (
           <List disablePadding>
             {itens.map((item) => (
               <ListItemButton
                 key={item.id}
-                disabled={!item.ativo}
                 onClick={() => void handleSelect(item)}
                 sx={{ borderRadius: 1, mb: 0.5 }}
               >
@@ -131,10 +120,12 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
                         {item.nome}
                       </Typography>
                       <Chip label={item.label} size="small" variant="outlined" />
-                      {!item.ativo && <Chip label="Inativo" size="small" color="default" />}
+                      {item.isExemplo && (
+                        <Chip label="Exemplo" size="small" color="primary" variant="outlined" />
+                      )}
                     </Box>
                   }
-                  secondary={item.email}
+                  secondary={item.subtitulo}
                 />
               </ListItemButton>
             ))}
