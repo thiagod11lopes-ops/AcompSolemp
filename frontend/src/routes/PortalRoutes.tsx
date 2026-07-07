@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { canAccessGestorRoute, canAccessOrdenadorRoute, canAccessFinanceiroRoute } from '@/utils/permissions'
 import type { Portal } from '@/utils/portal'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -27,12 +28,15 @@ export function GestorProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
-  const { clinicaUser, isLoading } = useAuth()
+  const { clinicaUser, demoMode, isLoading } = useAuth()
+  const { isDemo } = usePortalPaths()
   const location = useLocation()
+
+  const user = isDemo && demoMode?.portal === 'clinica' ? demoMode.authUser : clinicaUser
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!clinicaUser || clinicaUser.perfil !== 'CLINICA') {
+  if (!user || user.perfil !== 'CLINICA') {
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 
@@ -40,12 +44,15 @@ export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
-  const { ordenadorUser, isLoading } = useAuth()
+  const { ordenadorUser, demoMode, isLoading } = useAuth()
+  const { isDemo } = usePortalPaths()
   const location = useLocation()
+
+  const user = isDemo && demoMode?.portal === 'ordenador' ? demoMode.authUser : ordenadorUser
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!ordenadorUser || !canAccessOrdenadorRoute(ordenadorUser.perfil)) {
+  if (!user || !canAccessOrdenadorRoute(user.perfil)) {
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 
@@ -53,12 +60,15 @@ export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) {
-  const { financeiroUser, isLoading } = useAuth()
+  const { financeiroUser, demoMode, isLoading } = useAuth()
+  const { isDemo } = usePortalPaths()
   const location = useLocation()
+
+  const user = isDemo && demoMode?.portal === 'financeiro' ? demoMode.authUser : financeiroUser
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!financeiroUser || !canAccessFinanceiroRoute(financeiroUser.perfil)) {
+  if (!user || !canAccessFinanceiroRoute(user.perfil)) {
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 

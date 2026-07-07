@@ -1,14 +1,14 @@
 import { Box, Button, Paper, Typography, Alert } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ProcessosArquivadosTable } from '@/components/workflow/ProcessosArquivadosTable'
 import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 
 export default function FinanceiroArquivadosPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: processos = [], isLoading } = useProcessosArquivadosSetor('DIV_MAT_FINANCAS')
 
   if (isLoading) return <LoadingSpinner />
@@ -17,7 +17,7 @@ export default function FinanceiroArquivadosPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/financeiro/pagamentos')}
+        onClick={() => navigatePortal('/financeiro/pagamentos')}
         sx={{ mb: 2 }}
       >
         Voltar aos pagamentos

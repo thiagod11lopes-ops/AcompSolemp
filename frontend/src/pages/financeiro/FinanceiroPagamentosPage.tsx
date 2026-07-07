@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
   Box,
   Card,
@@ -15,7 +15,7 @@ import { useFinanceiroPedidos } from '@/hooks/useFinanceiroPedidos'
 import { formatCurrency, formatDate } from '@/utils/format'
 
 export default function FinanceiroPagamentosPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: pedidos = [], isLoading } = useFinanceiroPedidos()
 
   if (isLoading) return <LoadingSpinner />
@@ -39,7 +39,7 @@ export default function FinanceiroPagamentosPage() {
           {pedidos.map((pedido) => (
             <Grid key={pedido.id} size={{ xs: 12, md: 6 }}>
               <Card variant="outlined" sx={{ borderLeft: 4, borderColor: 'info.main' }}>
-                <CardActionArea onClick={() => navigate(`/financeiro/pagamentos/${pedido.id}`)}>
+                <CardActionArea onClick={() => navigatePortal(`/financeiro/pagamentos/${pedido.id}`)}>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>

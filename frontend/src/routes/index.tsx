@@ -4,6 +4,7 @@ import { MainLayout } from '@/layouts/MainLayout'
 import { ClinicaLayout } from '@/layouts/ClinicaLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { GestorProtectedRoute, ClinicaProtectedRoute, OrdenadorProtectedRoute, FinanceiroProtectedRoute, GuestRoute } from '@/routes/PortalRoutes'
+import { GestorDemoShell } from '@/routes/GestorDemoShell'
 import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -124,6 +125,53 @@ export function AppRoutes() {
           <Route path="/gestor/timeline" element={<LazyPage><GestorTimelinesPage /></LazyPage>} />
           <Route path="/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
           <Route path="/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
+        </Route>
+
+        {/* Demonstração da Timeline — dentro da sessão do gestor */}
+        <Route
+          element={
+            <GestorProtectedRoute>
+              <GestorDemoShell />
+            </GestorProtectedRoute>
+          }
+        >
+          <Route
+            element={
+              <ClinicaProtectedRoute>
+                <ClinicaLayout />
+              </ClinicaProtectedRoute>
+            }
+          >
+            <Route path="/gestor/demo/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/pedidos/:id" element={<LazyPage><ClinicaPedidoDetailPage /></LazyPage>} />
+          </Route>
+
+          <Route
+            element={
+              <OrdenadorProtectedRoute>
+                <OrdenadorLayout />
+              </OrdenadorProtectedRoute>
+            }
+          >
+            <Route path="/gestor/demo/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
+            <Route path="/gestor/demo/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
+          </Route>
+
+          <Route
+            element={
+              <FinanceiroProtectedRoute>
+                <FinanceiroLayout />
+              </FinanceiroProtectedRoute>
+            }
+          >
+            <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
+            <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
+          </Route>
         </Route>
 
         {/* Portal da Clínica — somente pedidos próprios */}

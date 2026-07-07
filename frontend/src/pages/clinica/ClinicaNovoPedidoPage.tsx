@@ -10,7 +10,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
 import { useMemo, useState, useCallback, useRef, useEffect, type SyntheticEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
@@ -46,7 +46,7 @@ import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpreadsheet'
 
 export default function ClinicaNovoPedidoPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const createPedido = useCreateClinicaPedido()
   const deleteAllPedidos = useDeleteAllClinicaPedidos()
   const { user } = useClinicaAuth()
@@ -488,7 +488,7 @@ export default function ClinicaNovoPedidoPage() {
           <Button
             size="small"
             startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />}
-            onClick={() => navigate('/clinica/pedidos')}
+            onClick={() => navigatePortal('/clinica/pedidos')}
             sx={{ minWidth: 0, px: 1, py: 0.25, flexShrink: 0 }}
           >
             Voltar

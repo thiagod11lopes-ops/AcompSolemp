@@ -1,7 +1,7 @@
 import { Box, Button, Paper, Typography, Alert } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ProcessosArquivadosTable } from '@/components/workflow/ProcessosArquivadosTable'
@@ -11,7 +11,7 @@ import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import { getRoleLabel } from '@/mocks/seed'
 
 export default function OrdenadorArquivadosPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
   const etapaChave = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
@@ -23,7 +23,7 @@ export default function OrdenadorArquivadosPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/ordenador/timelines')}
+        onClick={() => navigatePortal('/ordenador/timelines')}
         sx={{ mb: 2 }}
       >
         Voltar às timelines

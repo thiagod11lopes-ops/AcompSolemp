@@ -36,6 +36,10 @@ export function getHomeRouteForPerfil(perfil: UserRole): string {
   return '/login'
 }
 
+export function getDemoHomeRouteForPerfil(perfil: UserRole): string {
+  return `/gestor/demo${getHomeRouteForPerfil(perfil)}`
+}
+
 export function getEtapasAtivasIds(pedido: Pedido): string[] {
   if (pedido.etapasAtivasIds?.length) return pedido.etapasAtivasIds
   return pedido.etapaAtualId ? [pedido.etapaAtualId] : []

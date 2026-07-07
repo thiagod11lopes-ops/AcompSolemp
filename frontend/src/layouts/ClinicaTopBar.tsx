@@ -15,10 +15,12 @@ import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { useMemo, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { stripDemoRouteBase } from '@/utils/portalPaths'
 
 const NAV_ITEMS = [
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon sx={{ fontSize: 18 }} /> },
@@ -27,18 +29,19 @@ const NAV_ITEMS = [
 ] as const
 
 function resolveActiveTab(pathname: string): string {
-  if (pathname.startsWith('/clinica/pedidos/novo')) return '/clinica/pedidos/novo'
-  if (pathname.startsWith('/clinica/timeline')) return '/clinica/timelines'
-  if (pathname.startsWith('/clinica/pedidos')) return '/clinica/pedidos'
+  const path = stripDemoRouteBase(pathname)
+  if (path.startsWith('/clinica/pedidos/novo')) return '/clinica/pedidos/novo'
+  if (path.startsWith('/clinica/timeline')) return '/clinica/timelines'
+  if (path.startsWith('/clinica/pedidos')) return '/clinica/pedidos'
   return '/clinica/pedidos'
 }
 
 export const CLINICA_TOPBAR_HEIGHT = 108
 
 export function ClinicaTopBar() {
-  const { user, logout } = useClinicaAuth()
+  const { user, logout, isDemo } = useClinicaAuth()
   const { data: clinicas = [] } = useClinicas()
-  const navigate = useNavigate()
+  const { mapPath, navigatePortal, demoBannerHeight } = usePortalPaths()
   const location = useLocation()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
@@ -47,7 +50,7 @@ export function ClinicaTopBar() {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/clinica/timeline')
+    navigatePortal(isDemo ? '/gestor/dashboard' : '/clinica/timeline')
   }
 
   return (
@@ -55,7 +58,7 @@ export function ClinicaTopBar() {
       component="header"
       sx={{
         position: 'fixed',
-        top: 0,
+        top: demoBannerHeight,
         left: 0,
         right: 0,
         zIndex: (t) => t.zIndex.appBar,
@@ -91,7 +94,7 @@ export function ClinicaTopBar() {
           </MenuItem>
           <MenuItem onClick={handleLogout}>
             <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-            Sair
+            {isDemo ? 'Voltar ao gestor' : 'Sair'}
           </MenuItem>
         </Menu>
       </Toolbar>
@@ -125,7 +128,7 @@ export function ClinicaTopBar() {
             icon={item.icon}
             iconPosition="start"
             component={NavLink}
-            to={item.path}
+            to={mapPath(item.path)}
             end={item.path === '/clinica/pedidos' || item.path === '/clinica/timelines'}
           />
         ))}

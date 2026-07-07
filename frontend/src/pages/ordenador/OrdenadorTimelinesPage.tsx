@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
   Box,
   Card,
@@ -18,7 +18,7 @@ import { getRoleLabel } from '@/mocks/seed'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 
 export default function OrdenadorTimelinesPage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
   const { data: pedidos = [], isLoading } = useOrdenadorPedidos()
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
@@ -51,7 +51,7 @@ export default function OrdenadorTimelinesPage() {
             return (
               <Grid key={pedido.id} size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined" sx={{ borderLeft: 4, borderColor: 'warning.main' }}>
-                  <CardActionArea onClick={() => navigate(`/ordenador/timelines/${pedido.id}`)}>
+                  <CardActionArea onClick={() => navigatePortal(`/ordenador/timelines/${pedido.id}`)}>
                     <CardContent>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>

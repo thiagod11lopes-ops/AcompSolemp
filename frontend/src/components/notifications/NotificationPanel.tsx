@@ -17,6 +17,7 @@ import { formatRelative } from '@/utils/format'
 import { notificationService } from '@/services/cadastroService'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import type { Notification } from '@/types'
 
@@ -44,8 +45,12 @@ function getNotificationPath(n: Notification): string | null {
 export function NotificationPanel() {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
-  const user = gestorUser ?? ordenadorUser ?? financeiroUser ?? clinicaUser
+  const { gestorUser, clinicaUser, ordenadorUser, financeiroUser, demoMode } = useAuth()
+  const { isDemo, mapPath } = usePortalPaths()
+  const user =
+    isDemo && demoMode
+      ? demoMode.authUser
+      : gestorUser ?? ordenadorUser ?? financeiroUser ?? clinicaUser
   const { data: notifications = [] } = useNotifications(user?.perfil ?? null)
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
@@ -89,7 +94,7 @@ export function NotificationPanel() {
                 if (!n.lida) markRead.mutate(n.id)
                 const path = getNotificationPath(n)
                 if (path) {
-                  navigate(path)
+                  navigate(mapPath(path))
                   setAnchorEl(null)
                 }
               }}

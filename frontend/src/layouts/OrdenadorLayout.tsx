@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { OrdenadorSidebar, ORDENADOR_DRAWER_WIDTH } from './OrdenadorSidebar'
 import { OrdenadorTopBar } from './OrdenadorTopBar'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 
 export function OrdenadorLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { demoBannerHeight } = usePortalPaths()
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -17,6 +19,7 @@ export function OrdenadorLayout() {
           flexGrow: 1,
           width: { md: `calc(100% - ${ORDENADOR_DRAWER_WIDTH}px)` },
           bgcolor: 'background.default',
+          pt: `${demoBannerHeight}px`,
         }}
       >
         <Toolbar />

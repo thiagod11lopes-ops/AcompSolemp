@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { FinanceiroSidebar, FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
 import { FinanceiroTopBar } from './FinanceiroTopBar'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 
 export function FinanceiroLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { demoBannerHeight } = usePortalPaths()
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -17,6 +19,7 @@ export function FinanceiroLayout() {
           flexGrow: 1,
           width: { md: `calc(100% - ${FINANCEIRO_DRAWER_WIDTH}px)` },
           bgcolor: 'background.default',
+          pt: `${demoBannerHeight}px`,
         }}
       >
         <Toolbar />

@@ -1,4 +1,5 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
   Grid,
   Paper,
@@ -30,7 +31,7 @@ import {
 
 export default function ClinicaTimelineDetailPage() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: pedido, isLoading } = useClinicaPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const { data: historico = [] } = useHistorico(id)
@@ -40,7 +41,7 @@ export default function ClinicaTimelineDetailPage() {
     return (
       <Box>
         <Typography>Timeline não encontrada.</Typography>
-        <Button onClick={() => navigate('/clinica/timelines')} sx={{ mt: 2 }}>
+        <Button onClick={() => navigatePortal('/clinica/timelines')} sx={{ mt: 2 }}>
           Voltar
         </Button>
       </Box>
@@ -53,7 +54,7 @@ export default function ClinicaTimelineDetailPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/clinica/timelines')}
+        onClick={() => navigatePortal('/clinica/timelines')}
         sx={{ mb: 2 }}
       >
         Voltar às timelines

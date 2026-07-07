@@ -12,12 +12,14 @@ import {
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
+import ScienceIcon from '@mui/icons-material/Science'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { DRAWER_WIDTH } from './Sidebar'
 
 interface TopBarProps {
@@ -30,6 +32,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const { mode, toggleTheme } = useThemeMode()
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [demoOpen, setDemoOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -62,6 +65,11 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
           {title}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Demonstração da Timeline">
+            <IconButton onClick={() => setDemoOpen(true)} color="inherit">
+              <ScienceIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Alternar tema">
             <IconButton onClick={toggleTheme} color="inherit">
               {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
@@ -86,6 +94,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
           </Menu>
         </Box>
       </Toolbar>
+      <DemoCadastrosModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </AppBar>
   )
 }

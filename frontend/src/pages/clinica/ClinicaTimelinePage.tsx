@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
   Box,
   Card,
@@ -19,7 +19,7 @@ import { calcularProgressoTimeline } from '@/utils/portal'
 import { formatDate, formatNip } from '@/utils/format'
 
 export default function ClinicaTimelinePage() {
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: pedidos = [], isLoading } = useClinicaPedidos()
   const { data: etapas = [] } = useWorkflowEtapas()
 
@@ -61,7 +61,7 @@ export default function ClinicaTimelinePage() {
                   }}
                 >
                   <CardActionArea
-                    onClick={() => navigate(`/clinica/timeline/${pedido.id}`)}
+                    onClick={() => navigatePortal(`/clinica/timeline/${pedido.id}`)}
                     sx={{ height: '100%' }}
                   >
                     <CardContent>

@@ -21,6 +21,7 @@ import {
   canAccessFinanceiroRoute,
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
 import {
   getStoredOrgCode,
@@ -37,6 +38,27 @@ const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
 const CLINICA_AUTH_KEY = STORAGE_KEYS.AUTH_CLINICA
 const ORDENADOR_AUTH_KEY = STORAGE_KEYS.AUTH_ORDENADOR
 const FINANCEIRO_AUTH_KEY = STORAGE_KEYS.AUTH_FINANCEIRO
+const DEMO_MODE_KEY = STORAGE_KEYS.AUTH_DEMO_MODE
+
+export interface DemoModeState {
+  portal: Portal
+  authUser: AuthUser
+}
+
+function readDemoMode(): DemoModeState | null {
+  const stored = storageGet(DEMO_MODE_KEY)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored) as DemoModeState
+  } catch {
+    return null
+  }
+}
+
+function writeDemoMode(state: DemoModeState | null): void {
+  if (state) storageSet(DEMO_MODE_KEY, JSON.stringify(state))
+  else storageRemove(DEMO_MODE_KEY)
+}
 
 export interface TimelineLoginResult {
   authUser: AuthUser
@@ -346,6 +368,45 @@ export const authService = {
 
   getCurrentUser(portal: Portal): AuthUser | null {
     return readStoredUser(sessionKey(portal))
+  },
+
+  getDemoMode(): DemoModeState | null {
+    return readDemoMode()
+  },
+
+  async startDemoMode(userId: string): Promise<{ authUser: AuthUser; portal: Portal; route: string }> {
+    const gestor = this.getGestorUser()
+    if (!gestor) {
+      throw new Error('Faça login como gestor para usar a demonstração')
+    }
+
+    await this.ensureGestorFirebaseSession({ interactive: false }).catch(() => undefined)
+
+    const data = loadAppData()
+    const user = data.usuarios.find((item) => item.id === userId && item.ativo)
+    if (!user || user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') {
+      throw new Error('Cadastro não encontrado ou inativo')
+    }
+
+    const portal = portalForPerfil(user.perfil)
+    const authUser: AuthUser = {
+      ...user,
+      token: `demo-${user.id}-${Date.now()}`,
+    }
+
+    writeDemoMode({ portal, authUser })
+    await reloadFreshAppData()
+
+    const homeRoute = getHomeRouteForPerfil(user.perfil)
+    return {
+      authUser,
+      portal,
+      route: mapPortalPath(homeRoute, DEMO_ROUTE_BASE),
+    }
+  },
+
+  endDemoMode(): void {
+    writeDemoMode(null)
   },
 
   clearClinicaOrdenadorSessions(): void {

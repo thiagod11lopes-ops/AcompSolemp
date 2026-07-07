@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   AUTH_CLINICA: 'acomp_solemp_auth_clinica',
   AUTH_ORDENADOR: 'acomp_solemp_auth_ordenador',
   AUTH_FINANCEIRO: 'acomp_solemp_auth_financeiro',
+  AUTH_DEMO_MODE: 'acomp_solemp_auth_demo_mode',
   THEME: 'acomp_solemp_theme',
   TENANT_ID: 'acomp_solemp_tenant_id',
   ORG_CODE: 'acomp_solemp_org_code',

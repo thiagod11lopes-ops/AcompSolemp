@@ -16,6 +16,7 @@ import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink } from 'react-router-dom'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 
 const DRAWER_WIDTH = 240
 
@@ -31,12 +32,13 @@ interface OrdenadorSidebarProps {
 
 export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps) {
   const { user } = useOrdenadorAuth()
+  const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ px: 2 }}>
+      <Toolbar sx={{ px: 2, minHeight: `${56 + demoBannerHeight}px !important` }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <GavelIcon color="warning" />
           <Box>
@@ -66,7 +68,7 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
           <ListItemButton
             key={item.path}
             component={NavLink}
-            to={item.path}
+            to={mapPath(item.path)}
             end
             onClick={isMobile ? onClose : undefined}
             sx={{
@@ -103,7 +105,11 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+            pt: `${demoBannerHeight}px`,
+          },
         }}
         open
       >

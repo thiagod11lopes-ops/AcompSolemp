@@ -2,8 +2,8 @@ import { Box, Toolbar, IconButton, Typography, Avatar, Menu, MenuItem } from '@m
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ORDENADOR_DRAWER_WIDTH } from './OrdenadorSidebar'
 
@@ -13,13 +13,13 @@ interface OrdenadorTopBarProps {
 }
 
 export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }: OrdenadorTopBarProps) {
-  const { user, logout } = useOrdenadorAuth()
-  const navigate = useNavigate()
+  const { user, logout, isDemo } = useOrdenadorAuth()
+  const { navigatePortal, demoBannerHeight } = usePortalPaths()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const handleLogout = async () => {
     await logout()
-    navigate('/clinica/timeline')
+    navigatePortal(isDemo ? '/gestor/dashboard' : '/clinica/timeline')
   }
 
   return (
@@ -27,7 +27,7 @@ export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }:
       component="header"
       sx={{
         position: 'fixed',
-        top: 0,
+        top: demoBannerHeight,
         left: { md: ORDENADOR_DRAWER_WIDTH },
         right: 0,
         zIndex: (t) => t.zIndex.drawer + 1,
@@ -55,7 +55,7 @@ export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }:
           </MenuItem>
           <MenuItem onClick={handleLogout}>
             <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-            Sair
+            {isDemo ? 'Voltar ao gestor' : 'Sair'}
           </MenuItem>
         </Menu>
       </Toolbar>

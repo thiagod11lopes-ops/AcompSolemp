@@ -2,8 +2,8 @@ import { Box, Toolbar, IconButton, Typography, Avatar, Menu, MenuItem } from '@m
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
 
@@ -16,13 +16,13 @@ export function FinanceiroTopBar({
   onMenuClick,
   title = 'Pagamentos pendentes',
 }: FinanceiroTopBarProps) {
-  const { user, logout } = useFinanceiroAuth()
-  const navigate = useNavigate()
+  const { user, logout, isDemo } = useFinanceiroAuth()
+  const { navigatePortal, demoBannerHeight } = usePortalPaths()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const handleLogout = async () => {
     await logout()
-    navigate('/clinica/timeline')
+    navigatePortal(isDemo ? '/gestor/dashboard' : '/clinica/timeline')
   }
 
   return (
@@ -30,7 +30,7 @@ export function FinanceiroTopBar({
       component="header"
       sx={{
         position: 'fixed',
-        top: 0,
+        top: demoBannerHeight,
         left: { md: FINANCEIRO_DRAWER_WIDTH },
         right: 0,
         zIndex: (t) => t.zIndex.drawer + 1,
@@ -58,7 +58,7 @@ export function FinanceiroTopBar({
           </MenuItem>
           <MenuItem onClick={handleLogout}>
             <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-            Sair
+            {isDemo ? 'Voltar ao gestor' : 'Sair'}
           </MenuItem>
         </Menu>
       </Toolbar>

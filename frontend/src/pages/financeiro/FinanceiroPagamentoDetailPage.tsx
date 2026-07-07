@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { Box, Button, Grid, Paper, Typography, Chip, Alert } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArchiveIcon from '@mui/icons-material/Archive'
@@ -18,7 +19,7 @@ import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 
 export default function FinanceiroPagamentoDetailPage() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { data: pedido, isLoading } = useFinanceiroPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const registrar = useRegistrarPagamento()
@@ -37,7 +38,7 @@ export default function FinanceiroPagamentoDetailPage() {
     return (
       <Box>
         <Typography>Processo não encontrado ou pagamento já realizado.</Typography>
-        <Button onClick={() => navigate('/financeiro/pagamentos')} sx={{ mt: 2 }}>
+        <Button onClick={() => navigatePortal('/financeiro/pagamentos')} sx={{ mt: 2 }}>
           Voltar
         </Button>
       </Box>
@@ -88,7 +89,7 @@ export default function FinanceiroPagamentoDetailPage() {
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() =>
-          navigate(pagamentoConcluido ? '/financeiro/arquivados' : '/financeiro/pagamentos')
+          navigatePortal(pagamentoConcluido ? '/financeiro/arquivados' : '/financeiro/pagamentos')
         }
         sx={{ mb: 2 }}
       >
@@ -129,7 +130,7 @@ export default function FinanceiroPagamentoDetailPage() {
               color="primary"
               startIcon={<ArchiveIcon />}
               sx={{ mt: 2 }}
-              onClick={() => navigate('/financeiro/arquivados')}
+              onClick={() => navigatePortal('/financeiro/arquivados')}
             >
               Ver arquivados
             </Button>

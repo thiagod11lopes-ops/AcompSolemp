@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -26,7 +27,7 @@ import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
+  const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
@@ -106,7 +107,7 @@ export default function OrdenadorTimelineDetailPage() {
     return (
       <Box>
         <Typography>Processo não encontrado ou sem pendência para o seu perfil.</Typography>
-        <Button onClick={() => navigate('/ordenador/timelines')} sx={{ mt: 2 }}>
+        <Button onClick={() => navigatePortal('/ordenador/timelines')} sx={{ mt: 2 }}>
           Voltar
         </Button>
       </Box>
@@ -120,7 +121,7 @@ export default function OrdenadorTimelineDetailPage() {
     setAssinatura1Open(false)
     setAssinatura2Open(false)
     setSdaOpen(false)
-    navigate('/ordenador/arquivados')
+    navigatePortal('/ordenador/arquivados')
   }
 
   const handleAssinar = () => {
@@ -157,7 +158,7 @@ export default function OrdenadorTimelineDetailPage() {
         onSuccess: () => {
           pedidoPlanilhaEnvioService.markEncaminhadaImh(pedido.id)
           setAuditoriaOpen(false)
-          navigate('/ordenador/arquivados')
+          navigatePortal('/ordenador/arquivados')
         },
       },
     )
@@ -185,7 +186,7 @@ export default function OrdenadorTimelineDetailPage() {
       {
         onSuccess: () => {
           setContabilidadeOpen(false)
-          navigate('/ordenador/arquivados')
+          navigatePortal('/ordenador/arquivados')
         },
       },
     )
@@ -235,7 +236,7 @@ export default function OrdenadorTimelineDetailPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/ordenador/timelines')}
+        onClick={() => navigatePortal('/ordenador/timelines')}
         sx={{ mb: 2 }}
       >
         Voltar às timelines
@@ -267,7 +268,7 @@ export default function OrdenadorTimelineDetailPage() {
               variant="contained"
               color="primary"
               sx={{ mt: 2 }}
-              onClick={() => navigate('/ordenador/arquivados')}
+              onClick={() => navigatePortal('/ordenador/arquivados')}
             >
               Ver arquivados
             </Button>
