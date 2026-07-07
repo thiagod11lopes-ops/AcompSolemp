@@ -296,8 +296,6 @@ export function ConsumoMaterialSpreadsheet({
     .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0)
 
   const linhasPreenchidas = rows.filter((r) => !isLinhaPlaceholder(r)).length
-  const linhasEmBranco = rows.filter((r) => isLinhaPlaceholder(r)).length
-  const totalLinhas = rows.length
 
   const groupSpans = useMemo(() => {
     const groups: { group: string; span: number }[] = []
@@ -361,7 +359,7 @@ export function ConsumoMaterialSpreadsheet({
                 }}
               />
               <Chip
-                label={`${totalLinhas} linhas · ${linhasPreenchidas} preenchidas · ${linhasEmBranco} em branco`}
+                label={`${linhasPreenchidas} lançamentos`}
                 size="small"
                 sx={{ bgcolor: alpha('#fff', 0.12), color: 'white' }}
               />
