@@ -14,14 +14,15 @@ import {
   Typography,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import ScienceIcon from '@mui/icons-material/Science'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import {
   buildDemoCadastroItens,
   ensureDemoExampleCadastros,
+  formatDemoTabTitle,
   type DemoCadastroItem,
 } from '@/services/demoCadastrosService'
+import { buildDemoEnterUrl } from '@/utils/portalPaths'
 
 interface DemoCadastrosModalProps {
   open: boolean
@@ -29,8 +30,6 @@ interface DemoCadastrosModalProps {
 }
 
 export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
-  const navigate = useNavigate()
-  const { startDemo } = useAuth()
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
   const [itens, setItens] = useState<DemoCadastroItem[]>([])
@@ -64,15 +63,15 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
     }
   }, [open])
 
-  const handleSelect = async (item: DemoCadastroItem) => {
+  const handleSelect = (item: DemoCadastroItem) => {
     setErro('')
-    try {
-      const { route } = await startDemo(item.userId)
-      onClose()
-      navigate(route)
-    } catch (error) {
-      setErro(error instanceof Error ? error.message : 'Não foi possível iniciar a demonstração')
+    const url = buildDemoEnterUrl(item.userId, formatDemoTabTitle(item))
+    const opened = window.open(url, '_blank', 'noopener,noreferrer')
+    if (!opened) {
+      setErro('Não foi possível abrir a nova aba. Verifique se o navegador bloqueou pop-ups.')
+      return
     }
+    onClose()
   }
 
   return (
@@ -90,8 +89,9 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
       </DialogTitle>
       <DialogContent dividers>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Escolha uma clínica ou setor para testar a Timeline sem senha. Os cadastros de exemplo são
-          criados automaticamente e as ações afetam os dados reais da organização.
+          Escolha uma clínica ou setor para abrir a Timeline em uma nova aba, com o nome no título
+          da janela. Os cadastros de exemplo são criados automaticamente e as ações afetam os dados
+          reais da organização.
         </Alert>
         {erro && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -110,7 +110,7 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
             {itens.map((item) => (
               <ListItemButton
                 key={item.id}
-                onClick={() => void handleSelect(item)}
+                onClick={() => handleSelect(item)}
                 sx={{ borderRadius: 1, mb: 0.5 }}
               >
                 <ListItemText
@@ -127,6 +127,7 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
                   }
                   secondary={item.subtitulo}
                 />
+                <OpenInNewIcon fontSize="small" color="action" sx={{ ml: 1 }} />
               </ListItemButton>
             ))}
           </List>

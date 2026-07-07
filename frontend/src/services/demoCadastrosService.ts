@@ -28,6 +28,10 @@ export interface DemoCadastroItem {
   isExemplo: boolean
 }
 
+export function formatDemoTabTitle(item: Pick<DemoCadastroItem, 'label' | 'nome'>): string {
+  return `${item.label} — ${item.nome} | AcompSolemp`
+}
+
 function demoExampleUserId(opcaoId: string, clinicaId?: string): string {
   if (opcaoId === 'clinica' && clinicaId) {
     return `${DEMO_EXEMPLO_USER_PREFIX}clinica-${clinicaId}`

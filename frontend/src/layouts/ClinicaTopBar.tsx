@@ -50,6 +50,10 @@ export function ClinicaTopBar() {
 
   const handleLogout = async () => {
     await logout()
+    if (window.opener) {
+      window.close()
+      return
+    }
     navigatePortal(isDemo ? '/gestor/dashboard' : '/clinica/timeline')
   }
 

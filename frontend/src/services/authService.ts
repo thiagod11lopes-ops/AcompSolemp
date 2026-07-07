@@ -44,10 +44,11 @@ const DEMO_MODE_KEY = STORAGE_KEYS.AUTH_DEMO_MODE
 export interface DemoModeState {
   portal: Portal
   authUser: AuthUser
+  tabTitle?: string
 }
 
 function readDemoMode(): DemoModeState | null {
-  const stored = storageGet(DEMO_MODE_KEY)
+  const stored = sessionStorage.getItem(DEMO_MODE_KEY)
   if (!stored) return null
   try {
     return JSON.parse(stored) as DemoModeState
@@ -57,8 +58,9 @@ function readDemoMode(): DemoModeState | null {
 }
 
 function writeDemoMode(state: DemoModeState | null): void {
-  if (state) storageSet(DEMO_MODE_KEY, JSON.stringify(state))
-  else storageRemove(DEMO_MODE_KEY)
+  if (state) sessionStorage.setItem(DEMO_MODE_KEY, JSON.stringify(state))
+  else sessionStorage.removeItem(DEMO_MODE_KEY)
+  storageRemove(DEMO_MODE_KEY)
 }
 
 export interface TimelineLoginResult {
@@ -375,7 +377,10 @@ export const authService = {
     return readDemoMode()
   },
 
-  async startDemoMode(userId: string): Promise<{ authUser: AuthUser; portal: Portal; route: string }> {
+  async startDemoMode(
+    userId: string,
+    tabTitle?: string,
+  ): Promise<{ authUser: AuthUser; portal: Portal; route: string; tabTitle?: string }> {
     const gestor = this.getGestorUser()
     if (!gestor) {
       throw new Error('Faça login como gestor para usar a demonstração')
@@ -391,7 +396,7 @@ export const authService = {
       token: `demo-${user.id}-${Date.now()}`,
     }
 
-    writeDemoMode({ portal, authUser })
+    writeDemoMode({ portal, authUser, tabTitle })
     await reloadFreshAppData()
 
     const homeRoute = getHomeRouteForPerfil(user.perfil)
@@ -399,6 +404,7 @@ export const authService = {
       authUser,
       portal,
       route: mapPortalPath(homeRoute, DEMO_ROUTE_BASE),
+      tabTitle,
     }
   },
 

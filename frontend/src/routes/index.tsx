@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { MainLayout } from '@/layouts/MainLayout'
 import { ClinicaLayout } from '@/layouts/ClinicaLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
@@ -31,6 +31,7 @@ const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
 const GestorArquivadosPage = lazy(() => import('@/pages/GestorArquivadosPage'))
+const DemoEntryPage = lazy(() => import('@/pages/gestor/DemoEntryPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
@@ -127,21 +128,30 @@ export function AppRoutes() {
           <Route path="/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
         </Route>
 
-        {/* Demonstração da Timeline — dentro da sessão do gestor */}
+        {/* Demonstração da Timeline — abre em nova aba */}
         <Route
           element={
             <GestorProtectedRoute>
-              <GestorDemoShell />
+              <Outlet />
             </GestorProtectedRoute>
           }
         >
           <Route
+            path="/gestor/demo/entrar"
             element={
-              <ClinicaProtectedRoute>
-                <ClinicaLayout />
-              </ClinicaProtectedRoute>
+              <LazyPage>
+                <DemoEntryPage />
+              </LazyPage>
             }
-          >
+          />
+          <Route element={<GestorDemoShell />}>
+            <Route
+              element={
+                <ClinicaProtectedRoute>
+                  <ClinicaLayout />
+                </ClinicaProtectedRoute>
+              }
+            >
             <Route path="/gestor/demo/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
@@ -171,6 +181,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
+          </Route>
           </Route>
         </Route>
 

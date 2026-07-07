@@ -25,7 +25,7 @@ interface AuthContextValue {
   loginWithGoogleTimeline: () => Promise<TimelineLoginResult>
   loginWithEmailTimeline: (email: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
-  startDemo: (userId: string) => Promise<{ route: string }>
+  startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   endDemo: () => void
 }
 
@@ -106,9 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else setFinanceiroUser(null)
   }, [])
 
-  const startDemo = useCallback(async (userId: string) => {
-    const result = await authService.startDemoMode(userId)
-    setDemoMode({ portal: result.portal, authUser: result.authUser })
+  const startDemo = useCallback(async (userId: string, tabTitle?: string) => {
+    const result = await authService.startDemoMode(userId, tabTitle)
+    setDemoMode({ portal: result.portal, authUser: result.authUser, tabTitle: result.tabTitle })
     return { route: result.route }
   }, [])
 

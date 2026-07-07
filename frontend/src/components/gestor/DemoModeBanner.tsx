@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
 import { DEMO_BANNER_HEIGHT } from '@/contexts/DemoRouteContext'
+import { exitDemoTab } from '@/utils/portalPaths'
 
 export function DemoModeBanner() {
   const navigate = useNavigate()
@@ -16,8 +17,7 @@ export function DemoModeBanner() {
     demoMode.authUser.perfil
 
   const handleExit = () => {
-    endDemo()
-    navigate('/gestor/dashboard')
+    exitDemoTab(endDemo, () => navigate('/gestor/dashboard'))
   }
 
   return (
@@ -36,7 +36,7 @@ export function DemoModeBanner() {
         icon={<ScienceIcon fontSize="inherit" />}
         action={
           <Button color="inherit" size="small" onClick={handleExit} sx={{ fontWeight: 700 }}>
-            Voltar ao gestor
+            {window.opener ? 'Fechar aba' : 'Voltar ao gestor'}
           </Button>
         }
         sx={{

@@ -19,6 +19,10 @@ export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }:
 
   const handleLogout = async () => {
     await logout()
+    if (window.opener) {
+      window.close()
+      return
+    }
     navigatePortal(isDemo ? '/gestor/dashboard' : '/clinica/timeline')
   }
 
