@@ -591,6 +591,16 @@ export function notifyDemoAppDataChanged(): void {
   window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT))
 }
 
+/** Persiste AppData de demonstração sem depender da rota atual. */
+export function saveDemoAppData(data: AppData): void {
+  const cloned = cloneData(data)
+  storageSet(STORAGE_KEYS.DEMO_APP_DATA, JSON.stringify({ ...cloned, _version: SEED_VERSION }))
+  if (isDemoDataSession()) {
+    appDataCache = cloned
+  }
+  notifyDemoAppDataChanged()
+}
+
 export function subscribeDemoAppDataChanged(listener: () => void): () => void {
   if (typeof window === 'undefined') return () => undefined
   window.addEventListener(DEMO_DATA_CHANGED_EVENT, listener)

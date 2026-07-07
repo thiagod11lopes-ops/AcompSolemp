@@ -5,12 +5,19 @@ import type {
   PedidoFilters,
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
-import { delay, loadFreshAppData, peekDemoAppData, saveAppData } from '@/mocks/seed'
+import {
+  delay,
+  loadFreshAppData,
+  peekDemoAppData,
+  saveAppData,
+  saveDemoAppData,
+} from '@/mocks/seed'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { canAccessGestorRoute } from '@/utils/permissions'
+import { authService } from '@/services/authService'
 
 function getContext(data: AppData) {
   return {
@@ -29,6 +36,20 @@ function enrichAll(data: AppData): PedidoComDetalhes[] {
   return data.pedidos
     .map((p) => enrichPedido(p, context))
     .filter((p): p is PedidoComDetalhes => p !== null)
+}
+
+function assertGestorPodeExcluir(usuarioId: string, data: AppData): void {
+  const gestor = authService.getGestorUser()
+  if (gestor?.id === usuarioId && canAccessGestorRoute(gestor.perfil)) {
+    return
+  }
+
+  const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
+  if (usuario && canAccessGestorRoute(usuario.perfil)) {
+    return
+  }
+
+  throw new Error('Apenas o gestor pode excluir timelines.')
 }
 
 function filterPedidos(pedidos: PedidoComDetalhes[], filters?: PedidoFilters) {
@@ -276,11 +297,17 @@ export const pedidoService = {
 
   async deleteById(pedidoId: string, usuarioId: string): Promise<void> {
     await delay(null, 300)
-    const data = await loadFreshAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
-    if (!usuario || !canAccessGestorRoute(usuario.perfil)) {
-      throw new Error('Apenas o gestor pode excluir timelines.')
+
+    const demoSnapshot = peekDemoAppData()
+    if (demoSnapshot?.pedidos.some((p) => p.id === pedidoId)) {
+      assertGestorPodeExcluir(usuarioId, demoSnapshot)
+      removePedidosFromAppData(demoSnapshot, new Set([pedidoId]))
+      saveDemoAppData(demoSnapshot)
+      return
     }
+
+    const data = await loadFreshAppData()
+    assertGestorPodeExcluir(usuarioId, data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
     if (!pedido) throw new Error('Timeline não encontrada.')

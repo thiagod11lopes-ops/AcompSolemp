@@ -152,8 +152,12 @@ export default function GestorTimelinesPage() {
     try {
       await deletePedido.mutateAsync(pedidoExcluir.id)
       setPedidoExcluir(null)
-    } catch {
-      setErroExclusao('Não foi possível excluir a timeline. Tente novamente.')
+    } catch (error) {
+      setErroExclusao(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível excluir a timeline. Tente novamente.',
+      )
     }
   }
 
