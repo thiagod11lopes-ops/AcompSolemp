@@ -1,4 +1,10 @@
 import type { DadosClinicaLancamento, PacientePedido, PedidoComDetalhes } from '@/types'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
+import {
+  DEMO_EXEMPLO_USER_PREFIX,
+  ensureDemoUserById,
+} from '@/services/demoCadastrosService'
 import { enrichPedido } from '@/utils/workflow'
 import {
   advancePedidoEtapa,
@@ -115,9 +121,26 @@ export const clinicaPedidoService = {
     clinicaId: string,
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
+
+    if (usuarioId.startsWith(DEMO_EXEMPLO_USER_PREFIX)) {
+      await ensureDemoUserById(usuarioId)
+    }
+
     let data = loadAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    let usuario = data.usuarios.find((u) => u.id === usuarioId)
     if (!usuario) throw new Error('Usuário não encontrado')
+
+    if (!data.clinicas.some((clinica) => clinica.id === clinicaId)) {
+      const clinicaUsuario = data.usuarios.find(
+        (item) => item.clinicaId === clinicaId && item.perfil === 'CLINICA',
+      )
+      data.clinicas.push({
+        id: clinicaId,
+        nome: clinicaUsuario?.nome ?? 'Clínica',
+        responsavel: clinicaUsuario?.nome ?? 'Clínica',
+        telefone: '',
+      })
+    }
 
     const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
     const solicitacao = etapas.find((e) => e.chave === 'SOLICITACAO')
@@ -233,6 +256,9 @@ export const clinicaPedidoService = {
 
     notifySetoresEtapasAtivas(data, pedido.id)
     saveAppData(data)
+    if (useFirebaseDataSource()) {
+      await flushFirebaseAppDataSync()
+    }
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao criar pedido')
     return enriched

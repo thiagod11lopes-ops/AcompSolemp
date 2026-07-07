@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
+import { ensureDemoExampleCadastros } from '@/services/demoCadastrosService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 
 export default function DemoEntryPage() {
@@ -16,16 +17,18 @@ export default function DemoEntryPage() {
   useEffect(() => {
     if (isLoading || !gestorUser || !userId) return
 
-    void startDemo(userId, titulo ?? undefined)
-      .then(({ route }) => {
+    void (async () => {
+      try {
+        await ensureDemoExampleCadastros()
+        const { route } = await startDemo(userId, titulo ?? undefined)
         if (titulo) document.title = titulo
         navigate(route, { replace: true })
-      })
-      .catch((error) => {
+      } catch (error) {
         setErro(
           error instanceof Error ? error.message : 'Não foi possível iniciar a demonstração',
         )
-      })
+      }
+    })()
   }, [gestorUser, isLoading, navigate, startDemo, titulo, userId])
 
   if (isLoading) return <LoadingSpinner />

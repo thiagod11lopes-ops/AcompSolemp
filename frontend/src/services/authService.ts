@@ -397,7 +397,6 @@ export const authService = {
     }
 
     writeDemoMode({ portal, authUser, tabTitle })
-    await reloadFreshAppData()
 
     const homeRoute = getHomeRouteForPerfil(user.perfil)
     return {

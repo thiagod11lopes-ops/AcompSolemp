@@ -12,11 +12,12 @@ export function GestorProtectedRoute({ children }: { children: ReactNode }) {
   const { gestorUser, isLoading } = useAuth()
   const location = useLocation()
   const isFirebase = useFirebaseDataSource()
+  const isDemoRoute = location.pathname.startsWith('/gestor/demo')
 
   useEffect(() => {
-    if (!isFirebase || !gestorUser) return
+    if (!isFirebase || !gestorUser || isDemoRoute) return
     void syncRemoteDataWhenAuthenticated()
-  }, [isFirebase, gestorUser])
+  }, [isFirebase, gestorUser, isDemoRoute])
 
   if (isLoading) return <LoadingSpinner />
 
