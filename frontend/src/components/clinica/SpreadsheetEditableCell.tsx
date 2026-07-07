@@ -2,27 +2,20 @@ import { Box } from '@mui/material'
 import { memo, useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react'
 import type { ConsumoMaterialColunaKey } from '@/utils/consumoMaterialTemplate'
 
-const MAX_CELL_LINES = 3
-const MAX_CHARS_PER_LINE = 30
 const COMMIT_DEBOUNCE_MS = 150
 
-function clampLinhasCelula(value: string, maxLines: number): string {
-  const lines = value.split('\n')
-  if (lines.length <= maxLines) return value
-  return lines.slice(0, maxLines).join('\n')
+function toSingleLine(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim()
 }
 
-const textareaSx = {
+const inputSx = {
   width: '100%',
-  maxWidth: `${MAX_CHARS_PER_LINE}ch`,
   minHeight: 28,
   fontSize: '0.78rem',
   lineHeight: 1.4,
-  whiteSpace: 'pre-wrap' as const,
-  overflowWrap: 'anywhere' as const,
-  wordBreak: 'break-word' as const,
+  whiteSpace: 'nowrap' as const,
   overflow: 'hidden',
-  resize: 'none' as const,
+  textOverflow: 'ellipsis',
   border: 'none',
   outline: 'none',
   background: 'transparent',
@@ -48,13 +41,15 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
   onCellChange,
   onContextMenu,
 }: SpreadsheetEditableCellProps) {
-  const [localValue, setLocalValue] = useState(value)
+  const singleLineValue = toSingleLine(value)
+  const [localValue, setLocalValue] = useState(singleLineValue)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestValueRef = useRef(value)
+  const latestValueRef = useRef(singleLineValue)
 
   useEffect(() => {
-    latestValueRef.current = value
-    setLocalValue(value)
+    const next = toSingleLine(value)
+    latestValueRef.current = next
+    setLocalValue(next)
   }, [value])
 
   useEffect(
@@ -66,16 +61,16 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
 
   const commit = useCallback(
     (next: string) => {
-      const clamped = clampLinhasCelula(next, MAX_CELL_LINES)
-      if (clamped !== latestValueRef.current) {
-        onCellChange(rowId, field, clamped)
+      const normalized = toSingleLine(next)
+      if (normalized !== latestValueRef.current) {
+        onCellChange(rowId, field, normalized)
       }
     },
     [onCellChange, rowId, field],
   )
 
-  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const next = clampLinhasCelula(event.target.value, MAX_CELL_LINES)
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = toSingleLine(event.target.value)
     setLocalValue(next)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -94,15 +89,15 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
 
   return (
     <Box
-      component="textarea"
+      component="input"
+      type="text"
       value={localValue}
-      rows={1}
       onChange={handleChange}
       onBlur={handleBlur}
       onContextMenu={(event) => onContextMenu(event, rowId)}
       aria-label={field}
       sx={{
-        ...textareaSx,
+        ...inputSx,
         fontFamily:
           field === 'valor' ? '"JetBrains Mono", "Roboto Mono", monospace' : 'inherit',
       }}

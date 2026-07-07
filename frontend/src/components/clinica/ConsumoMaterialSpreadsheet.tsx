@@ -75,14 +75,16 @@ const GROUP_COLORS: Record<string, string> = {
   financeiro: '#2E7D32',
 }
 
-const MAX_CHARS_PER_LINE = 30
-
-const cellTextWrapSx = {
-  maxWidth: `${MAX_CHARS_PER_LINE}ch`,
+const cellSingleLineSx = {
+  display: 'block',
   width: '100%',
-  whiteSpace: 'pre-wrap' as const,
-  overflowWrap: 'anywhere' as const,
-  wordBreak: 'break-word' as const,
+  whiteSpace: 'nowrap' as const,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}
+
+function toSingleLine(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').trim()
 }
 
 interface ContextMenuState {
@@ -270,10 +272,10 @@ function ConsumoMaterialSpreadsheetInner({
                   fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
                   fontWeight: 600,
                   color: num > 0 ? 'success.dark' : 'text.secondary',
-                  ...cellTextWrapSx,
+                  ...cellSingleLineSx,
                 }}
               >
-                {num > 0 ? formatValorBrasileiro(num) : value || '—'}
+                {num > 0 ? formatValorBrasileiro(num) : toSingleLine(value) || '—'}
               </Typography>
             )
           }
@@ -292,14 +294,12 @@ function ConsumoMaterialSpreadsheetInner({
             <Typography
               component="span"
               variant="body2"
-              title={value}
+              title={toSingleLine(value)}
               sx={{
-                display: 'block',
-                ...cellTextWrapSx,
-                overflow: 'hidden',
+                ...cellSingleLineSx,
               }}
             >
-              {value || '—'}
+              {toSingleLine(value) || '—'}
             </Typography>
           )
         },
