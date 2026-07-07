@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
+import type { AppData } from '@/types'
 import { getFirestoreDb } from '@/firebase/app'
-import { generateOrgCode } from '@/services/tenantService'
+import { generateOrgCode, getTenantId } from '@/services/tenantService'
 
 export interface OrgCodePublicClinica {
   id: string
@@ -57,6 +58,25 @@ export async function syncOrgCodeClinicas(
     },
     { merge: true },
   )
+}
+
+export function buildOrgCodeClinicasFromAppData(data: AppData): OrgCodePublicClinica[] {
+  return data.clinicas.map((clinica) => ({
+    id: clinica.id,
+    nome: clinica.nome,
+    login: data.usuarios.find(
+      (user) => user.clinicaId === clinica.id && user.perfil === 'CLINICA' && user.ativo,
+    )?.login,
+  }))
+}
+
+/** Publica clínicas no doc orgCodes para o modal da timeline (leitura sem login) */
+export async function syncOrgCodePublicIndex(data: AppData): Promise<void> {
+  const tenantId = getTenantId() ?? data.tenantMeta?.ownerUid ?? null
+  const orgCode = data.tenantMeta?.orgCode
+  if (!tenantId || !orgCode) return
+
+  await syncOrgCodeClinicas(orgCode, tenantId, buildOrgCodeClinicasFromAppData(data))
 }
 
 export async function createUniqueOrgCode(tenantId: string): Promise<string> {

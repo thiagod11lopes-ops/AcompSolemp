@@ -9,17 +9,27 @@ import {
   useTheme,
 } from '@mui/material'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authService } from '@/services/authService'
 import { useFirebaseDataSource } from '@/config/dataSource'
+import { syncOrgCodePublicIndex } from '@/data/persistence/tenantPersistence'
+import { loadAppData } from '@/mocks/seed'
 
 /** Exibe o código da organização para compartilhar com clínica/ordenadores */
 export function OrgCodeCard() {
   const theme = useTheme()
   const [copied, setCopied] = useState(false)
+  const isFirebase = useFirebaseDataSource()
   const orgCode = authService.getOrgCode()
 
-  if (!useFirebaseDataSource() || !orgCode) return null
+  useEffect(() => {
+    if (!isFirebase || !orgCode) return
+    void syncOrgCodePublicIndex(loadAppData()).catch((error) => {
+      console.error('[Firebase] Falha ao publicar clínicas no código da organização:', error)
+    })
+  }, [isFirebase, orgCode])
+
+  if (!isFirebase || !orgCode) return null
 
   const shareHint =
     'Usuários da Timeline usam este código na tela de acesso, junto com nome e senha cadastrados aqui.'

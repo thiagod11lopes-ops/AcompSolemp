@@ -72,16 +72,44 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   useEffect(() => {
     if (open) {
       setOpcao(null)
-      setOrgCode(getStoredOrgCode() ?? '')
+      const storedCode = getStoredOrgCode() ?? ''
+      setOrgCode(storedCode)
       setClinicaId('')
       setNome('')
       setSenha('')
       setErro('')
       setShowPassword(false)
       setPublicClinicas([])
-      void refetchClinicas()
+
+      if (isFirebase && storedCode.trim()) {
+        void loadOrgPublicData(storedCode)
+      } else {
+        void refetchClinicas()
+      }
     }
-  }, [open, refetchClinicas])
+  }, [open, isFirebase, refetchClinicas])
+
+  const loadOrgPublicData = async (code: string): Promise<boolean> => {
+    const normalized = code.trim()
+    if (!normalized) {
+      setPublicClinicas([])
+      return false
+    }
+
+    initFirebase()
+    const orgData = await resolveOrgCodePublicData(normalized)
+    if (!orgData) {
+      setErro('Código da organização inválido')
+      setPublicClinicas([])
+      return false
+    }
+
+    setTenantId(orgData.tenantId)
+    setStoredOrgCode(normalized)
+    setPublicClinicas(orgData.clinicas)
+    setErro('')
+    return true
+  }
 
   const persistOrgCode = (value: string) => {
     setOrgCode(value.toUpperCase())
@@ -95,18 +123,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       setErro('Informe o código da organização')
       return false
     }
-    initFirebase()
-    const orgData = await resolveOrgCodePublicData(code)
-    if (!orgData) {
-      setErro('Código da organização inválido')
-      setPublicClinicas([])
-      return false
-    }
-    setTenantId(orgData.tenantId)
-    setStoredOrgCode(code)
-    setPublicClinicas(orgData.clinicas)
-    setErro('')
-    return true
+    return loadOrgPublicData(code)
   }
 
   const clinicasDisponiveis = isFirebase ? publicClinicas : clinicas
@@ -125,6 +142,9 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       sx={{ mb: 2 }}
       onBlur={() => {
         void ensureTenantDataLoaded()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') void ensureTenantDataLoaded()
       }}
     />
   )
@@ -165,6 +185,10 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
     setLoading(true)
     setErro('')
     try {
+      if (isFirebase) {
+        const ok = await ensureTenantDataLoaded()
+        if (!ok) return
+      }
       await loginClinicaByClinica(clinicaId, senha, orgCode.trim() || undefined)
       navigate('/clinica/timelines', { replace: true })
     } catch (e) {
@@ -299,7 +323,10 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
                   onClick={() => {
                     setOpcao(perfil)
                     setErro('')
-                    if (perfil.isClinica) void refetchClinicas()
+                    if (perfil.isClinica) {
+                      if (isFirebase) void ensureTenantDataLoaded()
+                      else void refetchClinicas()
+                    }
                   }}
                   sx={{ p: 1.75, height: '100%', alignItems: 'stretch' }}
                 >
@@ -349,7 +376,9 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
               sx={{ mb: 2 }}
               helperText={
                 clinicasDisponiveis.length === 0
-                  ? 'Nenhuma clínica cadastrada. Cadastre em Gestor → Cadastros.'
+                  ? orgCode.trim()
+                    ? 'Nenhuma clínica encontrada para este código. Confirme o código ou peça ao gestor para abrir Cadastros.'
+                    : 'Informe o código da organização para carregar as clínicas.'
                   : undefined
               }
             >
