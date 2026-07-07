@@ -180,6 +180,29 @@ export function getRowIdsComPedido(
   return ids
 }
 
+export function sameConsumoRowSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const setA = new Set(a)
+  return b.every((id) => setA.has(id))
+}
+
+/** Localiza pedido ativo da clínica com exatamente as mesmas linhas da planilha. */
+export function findPedidoParaMesmasLinhas(
+  pedidos: Pedido[],
+  rowIds: string[],
+  clinicaId: string,
+): Pedido | null {
+  if (rowIds.length === 0) return null
+  for (const pedido of pedidos) {
+    if (pedido.clinicaId !== clinicaId || pedido.concluido) continue
+    if (!pedido.consumoRowIds?.length) continue
+    if (sameConsumoRowSet(pedido.consumoRowIds, rowIds)) {
+      return pedido
+    }
+  }
+  return null
+}
+
 /** Linhas vazias fixas ao final da planilha para novos lançamentos */
 export const SLOTS_NOVOS_LANCAMENTOS = 15
 

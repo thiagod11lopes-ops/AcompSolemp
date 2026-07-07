@@ -264,6 +264,109 @@ export const clinicaPedidoService = {
     return enriched
   },
 
+  async adicionarFluxoParalelo(
+    pedidoId: string,
+    fluxo: 'auditoria' | 'confeccao',
+    usuarioId: string,
+    clinicaId: string,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 300)
+
+    if (usuarioId.startsWith(DEMO_EXEMPLO_USER_PREFIX)) {
+      await ensureDemoUserById(usuarioId)
+    }
+
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    if (!usuario) throw new Error('Usuário não encontrado')
+
+    const pedidoIndex = data.pedidos.findIndex(
+      (p) => p.id === pedidoId && p.clinicaId === clinicaId,
+    )
+    if (pedidoIndex < 0) throw new Error('Pedido não encontrado')
+
+    const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    const auditoria = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
+    const confeccao = etapas.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
+    if (!auditoria || !confeccao) throw new Error('Workflow não configurado')
+
+    const targetEtapa = fluxo === 'auditoria' ? auditoria : confeccao
+    const pedido = {
+      ...data.pedidos[pedidoIndex],
+      etapasHistorico: [...data.pedidos[pedidoIndex].etapasHistorico],
+      etapasAtivasIds: [...(data.pedidos[pedidoIndex].etapasAtivasIds ?? [])],
+    }
+
+    const hasOpenTrack = pedido.etapasHistorico.some(
+      (h) => h.etapaId === targetEtapa.id && !h.dataConclusao,
+    )
+    const alreadyInAtivas = pedido.etapasAtivasIds.includes(targetEtapa.id)
+
+    if (hasOpenTrack && alreadyInAtivas) {
+      const enriched = enrichPedido(pedido, getContext(data))
+      if (!enriched) throw new Error('Erro ao atualizar pedido')
+      return enriched
+    }
+
+    const agora = new Date().toISOString()
+    const countRows = pedido.consumoRowIds?.length ?? 0
+
+    if (!hasOpenTrack && !pedido.etapasHistorico.some((h) => h.etapaId === targetEtapa.id)) {
+      pedido.etapasHistorico.push({
+        etapaId: targetEtapa.id,
+        etapaNome: targetEtapa.nome,
+        responsavelId: null,
+        responsavelNome: null,
+        dataInicio: agora,
+        dataConclusao: null,
+        observacao:
+          fluxo === 'auditoria'
+            ? 'Aguardando recebimento da planilha pela Auditoria.'
+            : 'Aguardando recebimento da planilha pela Confecção de Solemp.',
+        arquivos: [],
+      })
+    }
+
+    if (!alreadyInAtivas) {
+      pedido.etapasAtivasIds.push(targetEtapa.id)
+    }
+
+    const temAuditoria = pedido.etapasAtivasIds.includes(auditoria.id)
+    const temConfeccao = pedido.etapasAtivasIds.includes(confeccao.id)
+    if (temAuditoria && temConfeccao) {
+      pedido.etapasAtivasIds = [confeccao.id, auditoria.id]
+      pedido.observacoes =
+        countRows > 1
+          ? `Planilha enviada com ${countRows} lançamentos em fluxo paralelo — Auditoria e Confecção de Solemp.`
+          : 'Planilha em fluxo paralelo — Auditoria e Confecção de Solemp.'
+    }
+
+    data.pedidos[pedidoIndex] = pedido
+    data.historico.push({
+      id: `hist-${Date.now()}`,
+      pedidoId,
+      etapaId: targetEtapa.id,
+      etapaNome: targetEtapa.nome,
+      usuarioId: usuario.id,
+      usuarioNome: usuario.nome,
+      data: agora,
+      observacao:
+        fluxo === 'auditoria'
+          ? `Planilha também enviada para Auditoria — ${pedido.numero}.`
+          : `Planilha também enviada para Confecção de Solemp — ${pedido.numero}.`,
+    })
+
+    notifySetoresEtapasAtivas(data, pedidoId)
+    saveAppData(data)
+    if (useCloudAppDataSync()) {
+      await flushFirebaseAppDataSync()
+    }
+
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao atualizar pedido')
+    return enriched
+  },
+
   async executarAcao(input: ExecutarAcaoInput): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()

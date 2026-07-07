@@ -16,7 +16,13 @@ import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMater
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
-import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos, useConsumoPlanilhaState } from '@/hooks/useClinicaPedidos'
+import {
+  useCreateClinicaPedido,
+  useAdicionarFluxoParalelo,
+  useClinicaPedidos,
+  useDeleteAllClinicaPedidos,
+  useConsumoPlanilhaState,
+} from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
@@ -28,6 +34,7 @@ import {
   isLinhaPreenchida,
   buildPlanilhaLancamentos,
   getRowIdsComPedido,
+  findPedidoParaMesmasLinhas,
   createPedidoLoteId,
   CONSUMO_PLANILHA_NOME_PADRAO,
   rowPodeSerEnviadaAuditoria,
@@ -48,6 +55,7 @@ import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpre
 export default function ClinicaNovoPedidoPage() {
   const { navigatePortal } = usePortalPaths()
   const createPedido = useCreateClinicaPedido()
+  const adicionarFluxo = useAdicionarFluxoParalelo()
   const deleteAllPedidos = useDeleteAllClinicaPedidos()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
@@ -381,14 +389,23 @@ export default function ClinicaNovoPedidoPage() {
         return
       }
 
-      const pedidoId = createPedidoLoteId()
+      const rowIds = novos.map((row) => row.id)
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
       const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
-      await createPedido.mutateAsync({
-        ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha),
-        id: pedidoId,
-        fluxo: 'auditoria',
-        consumoRowIds: novos.map((row) => row.id),
-      })
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha),
+          id: pedidoId,
+          fluxo: 'auditoria',
+          consumoRowIds: rowIds,
+        })
+      }
       pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
 
       const nextFinalizedAuditoria = new Set(finalizedAuditoriaRowIds)
@@ -439,14 +456,23 @@ export default function ClinicaNovoPedidoPage() {
         return
       }
 
-      const pedidoId = createPedidoLoteId()
+      const rowIds = novos.map((row) => row.id)
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
       const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
-      await createPedido.mutateAsync({
-        ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'confeccao'),
-        id: pedidoId,
-        fluxo: 'confeccao',
-        consumoRowIds: novos.map((row) => row.id),
-      })
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'confeccao'),
+          id: pedidoId,
+          fluxo: 'confeccao',
+          consumoRowIds: rowIds,
+        })
+      }
       pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
 
       const nextFinalizedMaterial = new Set(finalizedMaterialRowIds)

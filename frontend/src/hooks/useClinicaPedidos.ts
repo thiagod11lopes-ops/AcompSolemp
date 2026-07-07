@@ -105,6 +105,26 @@ export function useConsumoPlanilhaState(clinicaId: string) {
   })
 }
 
+function invalidateAfterPedidoMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  pedidoId?: string,
+) {
+  queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+  queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+  queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
+  queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
+  queryClient.invalidateQueries({ queryKey: ['historico'] })
+  queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
+  if (pedidoId) {
+    queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
+    queryClient.invalidateQueries({ queryKey: ['demo-pedido', pedidoId] })
+    queryClient.invalidateQueries({ queryKey: ['historico', pedidoId] })
+  }
+}
+
 export function useCreateClinicaPedido() {
   const { user } = useClinicaAuth()
   const queryClient = useQueryClient()
@@ -113,15 +133,25 @@ export function useCreateClinicaPedido() {
     mutationFn: (input: CreatePedidoInput) =>
       clinicaPedidoService.create(input, user!.id, user!.clinicaId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
-      queryClient.invalidateQueries({ queryKey: ['historico'] })
-      queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
+      invalidateAfterPedidoMutation(queryClient)
+    },
+  })
+}
+
+export function useAdicionarFluxoParalelo() {
+  const { user } = useClinicaAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: { pedidoId: string; fluxo: 'auditoria' | 'confeccao' }) =>
+      clinicaPedidoService.adicionarFluxoParalelo(
+        params.pedidoId,
+        params.fluxo,
+        user!.id,
+        user!.clinicaId!,
+      ),
+    onSuccess: (pedido) => {
+      invalidateAfterPedidoMutation(queryClient, pedido.id)
     },
   })
 }
