@@ -56,10 +56,13 @@ import {
   getColumnCellSx,
 } from '@/components/clinica/SpreadsheetResizeHandle'
 import {
-  buildDefaultColumnWidths,
   useSpreadsheetResize,
 } from '@/hooks/useSpreadsheetResize'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
+import {
+  measureColumnWidths,
+  resolveColumnWidths,
+} from '@/utils/spreadsheetColumnWidth'
 
 const DEFAULT_ROW_MIN_HEIGHT = 40
 
@@ -147,12 +150,23 @@ function ConsumoMaterialSpreadsheetInner({
   const [adicionarOpen, setAdicionarOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
 
-  const defaultColumnWidths = useMemo(
-    () => buildDefaultColumnWidths(CONSUMO_MATERIAL_HEADERS),
-    [],
-  )
   const { columnWidths, getRowHeight, startColumnResize, startRowResize } =
-    useSpreadsheetResize(defaultColumnWidths)
+    useSpreadsheetResize()
+
+  const contentColumnWidths = useMemo(
+    () => measureColumnWidths(rows, CONSUMO_MATERIAL_HEADERS),
+    [rows],
+  )
+
+  const resolvedColumnWidths = useMemo(
+    () => resolveColumnWidths(contentColumnWidths, columnWidths),
+    [contentColumnWidths, columnWidths],
+  )
+
+  const tableMinWidth = useMemo(
+    () => Object.values(resolvedColumnWidths).reduce((sum, width) => sum + width, 0),
+    [resolvedColumnWidths],
+  )
 
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
 
@@ -633,14 +647,14 @@ function ConsumoMaterialSpreadsheetInner({
         <Table
           stickyHeader
           size="small"
-          sx={{ tableLayout: 'auto', width: 'max-content', minWidth: '100%' }}
+          sx={{ tableLayout: 'fixed', width: tableMinWidth, minWidth: tableMinWidth }}
         >
           <TableHead>
             <TableRow>
               <TableCell
                 rowSpan={2}
                 sx={{
-                  ...getColumnCellSx(columnWidths.select ?? 48),
+                  ...getColumnCellSx(resolvedColumnWidths.select ?? 48),
                   bgcolor: '#072A66',
                   borderBottom: 'none',
                   position: 'sticky',
@@ -663,7 +677,7 @@ function ConsumoMaterialSpreadsheetInner({
                     startColumnResize(
                       'select',
                       event.clientX,
-                      cell?.getBoundingClientRect().width,
+                      cell?.getBoundingClientRect().width ?? resolvedColumnWidths.select,
                     )
                   }}
                 />
@@ -694,7 +708,7 @@ function ConsumoMaterialSpreadsheetInner({
                 .map((header) => {
                   const colDef = CONSUMO_MATERIAL_HEADERS.find((c) => c.key === header.id)
                   const group = colDef?.group ?? 'paciente'
-                  const colWidth = columnWidths[header.id]
+                  const colWidth = resolvedColumnWidths[header.id] ?? 100
                   return (
                     <TableCell
                       key={header.id}
@@ -731,7 +745,7 @@ function ConsumoMaterialSpreadsheetInner({
                           startColumnResize(
                             header.id,
                             event.clientX,
-                            cell?.getBoundingClientRect().width,
+                            cell?.getBoundingClientRect().width ?? colWidth,
                           )
                         }}
                       />
@@ -778,7 +792,7 @@ function ConsumoMaterialSpreadsheetInner({
                 >
                   {row.getVisibleCells().map((cell, cellIndex) => {
                     const colId = cell.column.id
-                    const colWidth = columnWidths[colId]
+                    const colWidth = resolvedColumnWidths[colId] ?? 100
                     return (
                     <TableCell
                       key={cell.id}

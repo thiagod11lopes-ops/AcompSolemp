@@ -64,18 +64,11 @@ export function RowResizeHandle({
   )
 }
 
-export function getColumnCellSx(manualWidth?: number) {
-  if (manualWidth != null) {
-    return {
-      width: manualWidth,
-      minWidth: manualWidth,
-      whiteSpace: 'nowrap' as const,
-      position: 'relative' as const,
-      overflow: 'visible',
-    }
-  }
+export function getColumnCellSx(width: number) {
   return {
-    width: '1px',
+    width,
+    minWidth: width,
+    maxWidth: width,
     whiteSpace: 'nowrap' as const,
     position: 'relative' as const,
     overflow: 'visible',

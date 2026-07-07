@@ -15,35 +15,14 @@ type RowResizeSession = {
   startHeight: number
 }
 
-export function buildDefaultColumnWidths(
-  columns: ReadonlyArray<{ key: string; width: number }>,
-  selectColumnWidth = 48,
-): Record<string, number> {
-  const widths: Record<string, number> = { select: selectColumnWidth }
-  for (const column of columns) {
-    widths[column.key] = column.width
-  }
-  return widths
-}
-
-export function useSpreadsheetResize(defaultColumnWidths: Record<string, number>) {
-  const [columnWidths, setColumnWidths] = useState(defaultColumnWidths)
+export function useSpreadsheetResize() {
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [rowHeights, setRowHeights] = useState<Record<string, number>>({})
   const columnSession = useRef<ColumnResizeSession | null>(null)
   const rowSession = useRef<RowResizeSession | null>(null)
   const rafId = useRef<number | null>(null)
   const pendingColumn = useRef<{ columnId: string; width: number } | null>(null)
   const pendingRow = useRef<{ rowId: string; height: number } | null>(null)
-
-  useEffect(() => {
-    setColumnWidths((prev) => {
-      const next = { ...defaultColumnWidths }
-      for (const key of Object.keys(prev)) {
-        if (key in next) next[key] = prev[key]
-      }
-      return next
-    })
-  }, [defaultColumnWidths])
 
   const startColumnResize = useCallback(
     (columnId: string, startX: number, currentWidth?: number) => {
