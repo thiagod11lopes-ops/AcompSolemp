@@ -33,6 +33,8 @@ export default function OrdenadorTimelineDetailPage() {
   const [auditoriaOpen, setAuditoriaOpen] = useState(false)
   const [planilhaOpen, setPlanilhaOpen] = useState(false)
   const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
+  const [planilhaEncaminhadaImh, setPlanilhaEncaminhadaImh] = useState(false)
+  const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const [assinatura1Open, setAssinatura1Open] = useState(false)
@@ -75,8 +77,21 @@ export default function OrdenadorTimelineDetailPage() {
   useEffect(() => {
     if (!pedido) return
     const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
+    const auditoriaEtapa = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
+    const auditoriaConcluida = auditoriaEtapa
+      ? Boolean(
+          pedido.etapasHistorico.find(
+            (h) => h.etapaId === auditoriaEtapa.id && h.dataConclusao,
+          ),
+        )
+      : false
+
     setPlanilhaRecebida(Boolean(stored?.recebidaEm))
-  }, [pedido])
+    setPlanilhaEncaminhadaImh(
+      Boolean(stored?.encaminhadaImhEm) || (auditoriaConcluida && Boolean(stored)),
+    )
+    setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
+  }, [pedido, etapas])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -104,6 +119,7 @@ export default function OrdenadorTimelineDetailPage() {
   const handleAssinar = () => {
     if (isAuditoria) return
     if (isContabilidade) {
+      if (!planilhaRecebidaImh) return
       setContabilidadeOpen(true)
       return
     }
@@ -129,8 +145,19 @@ export default function OrdenadorTimelineDetailPage() {
   const handleEnviarAuditoria = (anotacoes: string) => {
     assinar.mutate(
       { pedidoId: pedido.id, anotacoes },
-      { onSuccess: concluirComSucesso },
+      {
+        onSuccess: () => {
+          pedidoPlanilhaEnvioService.markEncaminhadaImh(pedido.id)
+          concluirComSucesso()
+        },
+      },
     )
+  }
+
+  const handleReceberPlanilhaImh = () => {
+    pedidoPlanilhaEnvioService.markRecebidaImh(pedido.id)
+    setPlanilhaRecebidaImh(true)
+    setPlanilhaOpen(true)
   }
 
   const handleReceberPlanilha = () => {
@@ -215,6 +242,9 @@ export default function OrdenadorTimelineDetailPage() {
             onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
             onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
             planilhaRecebida={planilhaRecebida}
+            onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
+            planilhaEncaminhadaImh={planilhaEncaminhadaImh}
+            planilhaRecebidaImh={planilhaRecebidaImh}
           />
         </Grid>
 
@@ -281,6 +311,11 @@ export default function OrdenadorTimelineDetailPage() {
         open={planilhaOpen}
         pedidoNumero={pedido.numero}
         planilha={planilhaEnvio}
+        title={
+          isContabilidade
+            ? `Contabilidade/IMH — Planilha ${pedido.numero}`
+            : undefined
+        }
         onClose={() => setPlanilhaOpen(false)}
       />
 

@@ -37,6 +37,8 @@ export const pedidoPlanilhaEnvioService = {
       linhas: snapshot.linhas.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,
       recebidaEm: snapshot.recebidaEm,
+      encaminhadaImhEm: snapshot.encaminhadaImhEm,
+      recebidaImhEm: snapshot.recebidaImhEm,
     }
   },
 
@@ -48,6 +50,34 @@ export const pedidoPlanilhaEnvioService = {
     const next: PedidoPlanilhaEnvioState = {
       ...current,
       recebidaEm: new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio![pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  markEncaminhadaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    const data = loadAppData()
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
+    const next: PedidoPlanilhaEnvioState = {
+      ...current,
+      encaminhadaImhEm: new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio![pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  markRecebidaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    const data = loadAppData()
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
+    const next: PedidoPlanilhaEnvioState = {
+      ...current,
+      recebidaImhEm: new Date().toISOString(),
     }
     data.pedidoPlanilhaEnvio![pedidoId] = next
     saveAppData(data)

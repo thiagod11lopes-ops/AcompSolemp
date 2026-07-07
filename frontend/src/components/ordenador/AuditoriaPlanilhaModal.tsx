@@ -8,6 +8,7 @@ interface AuditoriaPlanilhaModalProps {
   pedidoNumero: string
   planilha: PedidoPlanilhaEnvioState | null
   onClose: () => void
+  title?: string
 }
 
 export function AuditoriaPlanilhaModal({
@@ -15,19 +16,22 @@ export function AuditoriaPlanilhaModal({
   pedidoNumero,
   planilha,
   onClose,
+  title,
 }: AuditoriaPlanilhaModalProps) {
   if (!planilha) return null
+
+  const modalTitle = title ?? `Auditoria — Planilha ${pedidoNumero}`
 
   return (
     <PlanilhaEnvioModalShell
       open={open}
-      title={`Auditoria — Planilha ${pedidoNumero}`}
+      title={modalTitle}
       lancamentoCount={planilha.linhas.filter((l) => l.isLinhaPaciente).length}
       icon={<DescriptionIcon />}
       appBarColor="primary"
       cabecalho={planilha.cabecalho}
       linhas={planilha.linhas}
-      savedAt={planilha.recebidaEm ?? planilha.enviadoEm}
+      savedAt={planilha.recebidaImhEm ?? planilha.encaminhadaImhEm ?? planilha.recebidaEm ?? planilha.enviadoEm}
       isSaving={false}
       disabled
       onClose={onClose}

@@ -296,6 +296,10 @@ export interface PedidoPlanilhaEnvioState {
   linhas: ImhLinha[]
   enviadoEm: string
   recebidaEm?: string
+  /** Planilha encaminhada pela Auditoria ao IMH */
+  encaminhadaImhEm?: string
+  /** Planilha recebida pela Contabilidade/IMH */
+  recebidaImhEm?: string
 }
 
 export interface AppData {

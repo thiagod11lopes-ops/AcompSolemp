@@ -77,7 +77,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_CONTABILIDADE_IMH: {
     label: 'Concluir Contabilidade/IMH',
-    descricao: 'Confira paciente, material, valor e data e finalize a etapa.',
+    descricao: 'Receba a planilha encaminhada pela Auditoria e, após conferir, finalize a etapa.',
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',
