@@ -138,6 +138,7 @@ function ConsumoMaterialConsignadoViewInner({
 
   return (
     <ConsumoMaterialSpreadsheet
+      measureRows={lancamentos}
       rows={linhasExibidas}
       fileName={`${mesSelecionado.label} — ${fileName || 'Consumo Material Consignado'}`}
       rowSelection={rowSelection}

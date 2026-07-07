@@ -1,33 +1,41 @@
 import { formatValorBrasileiro, type ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 
 export const MIN_COL_WIDTH = 48
-const CELL_HORIZONTAL_PAD = 32
-const SORT_ICON_EXTRA = 22
+const CELL_PAD_READONLY = 36
+const CELL_PAD_EDITABLE = 52
+const MEASURE_BUFFER = 16
+const SORT_ICON_EXTRA = 28
 
-const FONTS = {
-  header: '700 10.88px Roboto, Helvetica, Arial, sans-serif',
-  body: '400 14px Roboto, Helvetica, Arial, sans-serif',
-  valor: '600 14px "JetBrains Mono", "Roboto Mono", monospace',
-  input: '400 12.48px Roboto, Helvetica, Arial, sans-serif',
+const MEASURE_STYLES = {
+  header: {
+    fontSize: '0.68rem',
+    fontWeight: '700',
+    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+    letterSpacing: '0.4px',
+  },
+  body: {
+    fontSize: '0.875rem',
+    fontWeight: '400',
+    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+    letterSpacing: 'normal',
+  },
+  input: {
+    fontSize: '0.78rem',
+    fontWeight: '400',
+    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+    letterSpacing: 'normal',
+  },
+  valor: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
+    letterSpacing: 'normal',
+  },
 } as const
 
-let measureCanvas: HTMLCanvasElement | null = null
+type MeasureVariant = keyof typeof MEASURE_STYLES
 
-function getMeasureContext(): CanvasRenderingContext2D {
-  if (typeof document === 'undefined') {
-    throw new Error('measureColumnWidths requires a browser environment')
-  }
-  if (!measureCanvas) measureCanvas = document.createElement('canvas')
-  const ctx = measureCanvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas 2D context unavailable')
-  return ctx
-}
-
-function measureText(text: string, font: string): number {
-  const ctx = getMeasureContext()
-  ctx.font = font
-  return Math.ceil(ctx.measureText(text || ' ').width)
-}
+let measureNode: HTMLSpanElement | null = null
 
 function toSingleLine(value: string): string {
   return value.replace(/[\r\n]+/g, ' ').trim()
@@ -40,25 +48,57 @@ function cellTextForMeasure(row: ConsumoMaterialRow, key: string): string {
   return toSingleLine(String(row[key as keyof ConsumoMaterialRow] ?? ''))
 }
 
+function measureInDom(text: string, variant: MeasureVariant): number {
+  if (typeof document === 'undefined') return text.length * 8
+
+  if (!measureNode) {
+    measureNode = document.createElement('span')
+    measureNode.style.position = 'absolute'
+    measureNode.style.visibility = 'hidden'
+    measureNode.style.whiteSpace = 'nowrap'
+    measureNode.style.top = '-9999px'
+    measureNode.style.left = '-9999px'
+    measureNode.style.pointerEvents = 'none'
+    document.body.appendChild(measureNode)
+  }
+
+  const style = MEASURE_STYLES[variant]
+  measureNode.style.fontSize = style.fontSize
+  measureNode.style.fontWeight = style.fontWeight
+  measureNode.style.fontFamily = style.fontFamily
+  measureNode.style.letterSpacing = style.letterSpacing
+  measureNode.textContent = text || ' '
+  return Math.ceil(measureNode.getBoundingClientRect().width)
+}
+
 export function measureColumnWidths(
   rows: ConsumoMaterialRow[],
   headers: ReadonlyArray<{ key: string; label: string }>,
+  editable = false,
 ): Record<string, number> {
   const widths: Record<string, number> = {}
+  const cellPad = editable ? CELL_PAD_EDITABLE : CELL_PAD_READONLY
 
   for (const col of headers) {
-    const bodyFont = col.key === 'valor' ? FONTS.valor : FONTS.body
-    const inputFont = col.key === 'valor' ? FONTS.valor : FONTS.input
-    let maxContent = measureText(col.label, FONTS.header) + SORT_ICON_EXTRA
+    const bodyVariant: MeasureVariant = col.key === 'valor' ? 'valor' : 'body'
+    const inputVariant: MeasureVariant = col.key === 'valor' ? 'valor' : 'input'
+
+    let maxContent =
+      measureInDom(col.label, 'header') + SORT_ICON_EXTRA
 
     for (const row of rows) {
       const text = cellTextForMeasure(row, col.key)
       if (!text) continue
-      maxContent = Math.max(maxContent, measureText(text, bodyFont))
-      maxContent = Math.max(maxContent, measureText(text, inputFont))
+      maxContent = Math.max(maxContent, measureInDom(text, bodyVariant))
+      if (editable) {
+        maxContent = Math.max(maxContent, measureInDom(text, inputVariant))
+      }
     }
 
-    widths[col.key] = Math.max(MIN_COL_WIDTH, maxContent + CELL_HORIZONTAL_PAD)
+    widths[col.key] = Math.max(
+      MIN_COL_WIDTH,
+      maxContent + cellPad + MEASURE_BUFFER,
+    )
   }
 
   return widths

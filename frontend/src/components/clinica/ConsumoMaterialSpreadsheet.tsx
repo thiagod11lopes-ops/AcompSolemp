@@ -94,6 +94,7 @@ interface ContextMenuState {
 }
 
 interface ConsumoMaterialSpreadsheetProps {
+  measureRows?: ConsumoMaterialRow[]
   rows: ConsumoMaterialRow[]
   fileName: string
   rowSelection: RowSelectionState
@@ -121,6 +122,7 @@ interface ConsumoMaterialSpreadsheetProps {
 }
 
 function ConsumoMaterialSpreadsheetInner({
+  measureRows,
   rows,
   fileName,
   rowSelection,
@@ -156,8 +158,8 @@ function ConsumoMaterialSpreadsheetInner({
     useSpreadsheetResize()
 
   const contentColumnWidths = useMemo(
-    () => measureColumnWidths(rows, CONSUMO_MATERIAL_HEADERS),
-    [rows],
+    () => measureColumnWidths(measureRows ?? rows, CONSUMO_MATERIAL_HEADERS, editable),
+    [measureRows, rows, editable],
   )
 
   const resolvedColumnWidths = useMemo(
