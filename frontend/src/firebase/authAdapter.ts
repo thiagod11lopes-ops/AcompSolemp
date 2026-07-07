@@ -1,14 +1,15 @@
 import {
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInAnonymously,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { getFirebaseAuth, initFirebase } from '@/firebase/app'
+import { getFirebaseAuth, getPortalUserCreatorAuth, initFirebase } from '@/firebase/app'
+import { isPortalAuthEmail, portalAuthEmail } from '@/firebase/portalAuth'
 
 export interface FirebaseAuthSession {
   uid: string
@@ -20,6 +21,26 @@ function toSession(user: FirebaseUser): FirebaseAuthSession {
     uid: user.uid,
     email: user.email,
   }
+}
+
+function isEmailAlreadyInUse(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'auth/email-already-in-use'
+  )
+}
+
+function isInvalidCredential(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    ((error as { code: string }).code === 'auth/invalid-credential' ||
+      (error as { code: string }).code === 'auth/wrong-password' ||
+      (error as { code: string }).code === 'auth/user-not-found')
+  )
 }
 
 /** Adapter Firebase Auth — substitui credenciais mock quando VITE_DATA_SOURCE=firebase */
@@ -52,7 +73,7 @@ export const firebaseAuthAdapter = {
   async signInWithGoogle(): Promise<FirebaseAuthSession> {
     initFirebase()
     const auth = getFirebaseAuth()
-    if (auth.currentUser && !auth.currentUser.isAnonymous && auth.currentUser.email) {
+    if (auth.currentUser && auth.currentUser.email && !isPortalAuthEmail(auth.currentUser.email)) {
       return toSession(auth.currentUser)
     }
 
@@ -62,12 +83,41 @@ export const firebaseAuthAdapter = {
     return toSession(credential.user)
   },
 
-  async ensureAnonymousAuth(): Promise<void> {
+  /** Login da timeline — e-mail/senha internos (sem Google) */
+  async signInPortalUser(tenantId: string, login: string, senha: string): Promise<void> {
     if (!useFirebaseDataSource()) return
     initFirebase()
     const auth = getFirebaseAuth()
-    if (auth.currentUser) return
-    await signInAnonymously(auth)
+    const email = portalAuthEmail(tenantId, login)
+
+    if (auth.currentUser?.email === email) return
+
+    if (auth.currentUser) {
+      await signOut(auth)
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, senha)
+    } catch (error) {
+      if (isInvalidCredential(error)) {
+        throw new Error('Login ou senha inválidos')
+      }
+      throw error
+    }
+  },
+
+  /** Cria conta Firebase para usuário da timeline (gestor permanece logado) */
+  async createPortalUser(tenantId: string, login: string, senha: string): Promise<void> {
+    if (!useFirebaseDataSource()) return
+    initFirebase()
+    const email = portalAuthEmail(tenantId, login)
+    const creatorAuth = getPortalUserCreatorAuth()
+
+    try {
+      await createUserWithEmailAndPassword(creatorAuth, email, senha)
+    } catch (error) {
+      if (!isEmailAlreadyInUse(error)) throw error
+    }
   },
 
   async signIn(email: string, password: string): Promise<FirebaseAuthSession> {

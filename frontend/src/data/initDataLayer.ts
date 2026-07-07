@@ -1,6 +1,7 @@
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { getFirebaseAuth, initFirebase } from '@/firebase/app'
+import { isPortalAuthEmail, parseTenantIdFromPortalEmail } from '@/firebase/portalAuth'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
@@ -21,8 +22,11 @@ export async function initDataLayer(): Promise<void> {
   await firebaseAuthAdapter.waitForAuthReady()
   const authUser = getFirebaseAuth().currentUser
 
-  if (authUser && !authUser.isAnonymous) {
+  if (authUser && !isPortalAuthEmail(authUser.email)) {
     setTenantId(authUser.uid)
+  } else if (authUser && isPortalAuthEmail(authUser.email)) {
+    const tenantFromEmail = parseTenantIdFromPortalEmail(authUser.email)
+    if (tenantFromEmail) setTenantId(tenantFromEmail)
   }
 
   if (getTenantId()) {

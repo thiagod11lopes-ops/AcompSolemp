@@ -1,6 +1,6 @@
 # Firebase — modo produção (AcompSolemp)
 
-Guia para ativar Firestore em **modo produção** com login **Google**.
+Guia para ativar Firestore em **modo produção** com login **Google** (gestor) e **e-mail/senha** (timeline).
 
 ## 1. Firebase Console
 
@@ -8,10 +8,13 @@ Projeto: **acompsolemp** — [console.firebase.google.com](https://console.fireb
 
 ### Authentication → Sign-in method
 
-1. Abra **Authentication** → **Sign-in method**
+1. Abra **Authentication** → **Sign-in method** (Método de login)
 2. Ative **Google**
-3. Informe um e-mail de suporte do projeto
-4. Salve
+3. Clique em **Adicionar novo provedor** (botão acima da tabela, se só o Google aparecer)
+4. Ative **E-mail/senha** (Email/Password) — necessário para usuários da Timeline
+5. Informe um e-mail de suporte do projeto e salve
+
+> **Não é necessário** ativar login Anônimo. A timeline usa contas internas `{tenantId}.{login}@portal.acompsolemp.app`.
 
 ### Authentication → Settings → Authorized domains
 
@@ -42,9 +45,6 @@ firebase deploy --only firestore:rules
 ```env
 VITE_DATA_SOURCE=firebase
 
-# Mesmo e-mail da conta Google usada no login
-VITE_GESTOR_GOOGLE_EMAIL=seu.email@gmail.com
-
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=acompsolemp.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=acompsolemp
@@ -56,31 +56,29 @@ VITE_FIREBASE_APP_STATE_DOC=appState/current
 
 Reinicie o servidor de desenvolvimento após alterar o `.env`.
 
-## 3. Cadastrar e-mails Google (obrigatório)
+## 3. Modelo multi-tenant
 
-**Antes** de `VITE_DATA_SOURCE=firebase`, com o app ainda em modo local:
+| Quem | Como entra | Dados |
+|------|------------|-------|
+| **Gestor geral** | Google em `/login` | Cria organização no 1º acesso; `tenantId` = UID Google |
+| **Clínica, auditoria, IMH…** | Código da org + nome/senha na Timeline | Sem Google; conta Firebase interna automática |
 
-1. Entre como gestor (`gestor` / `gestor123`)
-2. Vá em **Gestor → Cadastros → Usuários**
-3. No painel **E-mails Google — Administradores**, cadastre o e-mail de cada gestor/admin
-4. Para clínicas e ordenadores, ao cadastrar usuário informe o campo **E-mail Google**
-
-Em produção, só entram contas cujo e-mail está cadastrado no sistema.
+O gestor compartilha o **código da organização** (em Cadastros) com a equipe.
 
 ## 4. Primeiro acesso em produção
 
-1. Firestore vazio + regras exigindo `request.auth != null`
-2. Usuário faz login com Google (gestor)
-3. O app carrega dados da nuvem (`appState/current`); se vazio, usa estrutura inicial em memória
-4. Cada alteração grava **somente no Firestore** — AppData não é mais salvo no IndexedDB
-5. Demais usuários recebem os mesmos dados após autenticação
+1. Gestor faz login com Google em `/login`
+2. O app cria o tenant e o código da organização
+3. Em **Cadastros**, cadastre clínicas e usuários (nome + senha)
+4. Cada cadastro cria automaticamente a conta Firebase da timeline
+5. Usuários entram na Timeline com código + credenciais
 
 ### Armazenamento em produção (`VITE_DATA_SOURCE=firebase`)
 
 | Dado | Onde fica |
 |------|-----------|
-| Pedidos, usuários, clínicas, etc. | **Firestore** (`appState/current`) |
-| Cache em memória | Sessão do navegador (não persiste ao fechar) |
+| Pedidos, usuários, clínicas, etc. | **Firestore** (`tenants/{tenantId}/appState/current`) |
+| Código da org + lista de clínicas | **Firestore** (`orgCodes/{code}`) |
 | Sessão de login (portal) | IndexedDB (leve, só auth) |
 | Tema claro/escuro | IndexedDB (preferência de UI) |
 
@@ -88,7 +86,7 @@ Em produção, só entram contas cujo e-mail está cadastrado no sistema.
 
 - Não commite `frontend/.env`
 - Modo produção **bloqueia** leitura/escrita sem login Firebase
-- Refine regras por perfil/clínica na fase 2 (coleções separadas)
+- Gestor acessa pelo UID Google; timeline acessa só o tenant do código informado
 
 ## 6. Desenvolvimento local
 
@@ -109,7 +107,6 @@ No repositório GitHub → **Settings** → **Secrets and variables** → **Acti
 | Secret | Exemplo |
 |--------|---------|
 | `VITE_DATA_SOURCE` | `firebase` |
-| `VITE_GESTOR_GOOGLE_EMAIL` | seu e-mail Google |
 | `VITE_FIREBASE_API_KEY` | (Firebase Console) |
 | `VITE_FIREBASE_AUTH_DOMAIN` | `acompsolemp.firebaseapp.com` |
 | `VITE_FIREBASE_PROJECT_ID` | `acompsolemp` |

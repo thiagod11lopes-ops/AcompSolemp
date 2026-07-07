@@ -1,4 +1,4 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
@@ -56,4 +56,14 @@ export function getFirebaseStorage(): FirebaseStorage {
 
 export function isFirebaseInitialized(): boolean {
   return firebaseApp !== null
+}
+
+const PORTAL_USER_CREATOR_APP = 'portal-user-creator'
+
+/** Instância secundária — cria usuários da timeline sem deslogar o gestor Google */
+export function getPortalUserCreatorAuth(): Auth {
+  initFirebase()
+  const existing = getApps().find((app) => app.name === PORTAL_USER_CREATOR_APP)
+  const app = existing ?? initializeApp(getFirebaseApp().options, PORTAL_USER_CREATOR_APP)
+  return getAuth(app)
 }

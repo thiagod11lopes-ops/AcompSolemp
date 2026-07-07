@@ -1,6 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isGestorForTenant(tenantId) {
+      return request.auth.uid == tenantId;
+    }
+
+    function isPortalUserForTenant(tenantId) {
+      return request.auth.token.email != null
+        && request.auth.token.email.matches('^' + tenantId + '\\.[^@]+@portal\\.acompsolemp\\.app$');
+    }
+
+    function canAccessTenant(tenantId) {
+      return request.auth != null
+        && (isGestorForTenant(tenantId) || isPortalUserForTenant(tenantId));
+    }
+
     // Código da organização — leitura pública para login da timeline
     match /orgCodes/{code} {
       allow read: if true;
@@ -12,7 +26,7 @@ service cloud.firestore {
 
     // Banco isolado por conta Google (tenantId = uid do gestor)
     match /tenants/{tenantId}/appState/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if canAccessTenant(tenantId);
     }
 
     // Legado — manter temporariamente

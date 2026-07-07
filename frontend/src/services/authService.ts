@@ -1,7 +1,7 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { createUniqueOrgCode, resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
+import { createUniqueOrgCode, resolveOrgCodePublicData, resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { initFirebase } from '@/firebase/app'
 import {
@@ -26,6 +26,7 @@ import {
   setStoredOrgCode,
   setTenantId,
 } from '@/services/tenantService'
+import { syncPortalFirebaseUsers } from '@/services/portalUserSync'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
@@ -108,11 +109,12 @@ async function resolveAndSetTenant(orgCode?: string): Promise<void> {
   setStoredOrgCode(code)
 }
 
-async function ensurePortalFirestoreAccess(): Promise<void> {
-  if (!getTenantId()) {
+async function ensurePortalFirestoreAccess(login: string, senha: string): Promise<void> {
+  const tenantId = getTenantId()
+  if (!tenantId) {
     throw new Error('Informe o código da organização')
   }
-  await firebaseAuthAdapter.ensureAnonymousAuth()
+  await firebaseAuthAdapter.signInPortalUser(tenantId, login, senha)
   await reloadFreshAppData()
 }
 
@@ -141,6 +143,8 @@ async function provisionGestorTenant(uid: string, email: string): Promise<User> 
   } else if (data.tenantMeta?.orgCode) {
     setStoredOrgCode(data.tenantMeta.orgCode)
   }
+
+  void syncPortalFirebaseUsers()
 
   return owner
 }
@@ -208,10 +212,10 @@ export const authService = {
       if (portal === 'gestor') {
         throw new Error('Use o login com Google no Portal do Gestor')
       }
-      await ensurePortalFirestoreAccess()
+      await ensurePortalFirestoreAccess(credentials.login, credentials.senha)
+    } else {
+      await delay(null, 600)
     }
-
-    await delay(null, 600)
 
     const cred = resolveCredential(credentials.login, credentials.senha)
     if (!cred) {
@@ -281,7 +285,19 @@ export const authService = {
   ): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
       await resolveAndSetTenant(orgCode)
-      await ensurePortalFirestoreAccess()
+      const tenantId = getTenantId()
+      if (!tenantId) throw new Error('Informe o código da organização')
+
+      const code = (orgCode ?? getStoredOrgCode())?.trim().toUpperCase()
+      const orgData = code ? await resolveOrgCodePublicData(code) : null
+      const clinica = orgData?.clinicas.find((item) => item.id === clinicaId)
+
+      if (!clinica?.login) {
+        throw new Error('Nenhum usuário cadastrado para esta clínica')
+      }
+
+      await firebaseAuthAdapter.signInPortalUser(tenantId, clinica.login, senha)
+      return this.login({ login: clinica.login, senha }, 'clinica')
     }
 
     await delay(null, 300)
@@ -335,7 +351,12 @@ export const authService = {
   ): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
       await resolveAndSetTenant(orgCode)
-      await ensurePortalFirestoreAccess()
+      const tenantId = getTenantId()
+      if (!tenantId) throw new Error('Informe o código da organização')
+
+      const loginGuess = slugLogin(nome)
+      await firebaseAuthAdapter.signInPortalUser(tenantId, loginGuess, senha)
+      return this.login({ login: loginGuess, senha }, portal)
     }
 
     await delay(null, 300)

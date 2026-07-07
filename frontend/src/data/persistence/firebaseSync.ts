@@ -2,10 +2,12 @@ import type { AppData } from '@/types'
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { initFirebase } from '@/firebase/app'
 import { applyRemoteAppData } from '@/mocks/seed'
+import { syncOrgCodeClinicas } from '@/data/persistence/tenantPersistence'
 import {
   createFirebaseAppDataPersistence,
   loadAppDataFromFirebase,
 } from '@/data/persistence/firebaseAppDataPersistence'
+import { getTenantId } from '@/services/tenantService'
 
 let syncQueue: Promise<void> = Promise.resolve()
 let firebaseReady = false
@@ -54,6 +56,22 @@ export function scheduleFirebaseAppDataSync(
     .then(async () => {
       await ensureFirebasePersistence()
       await createFirebaseAppDataPersistence().save(data, version)
+
+      const tenantId = getTenantId()
+      const orgCode = data.tenantMeta?.orgCode
+      if (tenantId && orgCode) {
+        await syncOrgCodeClinicas(
+          orgCode,
+          tenantId,
+          data.clinicas.map((clinica) => ({
+            id: clinica.id,
+            nome: clinica.nome,
+            login: data.usuarios.find(
+              (user) => user.clinicaId === clinica.id && user.perfil === 'CLINICA' && user.ativo,
+            )?.login,
+          })),
+        )
+      }
     })
     .catch((error) => {
       console.error('[Firebase] Falha ao sincronizar AppData:', error)

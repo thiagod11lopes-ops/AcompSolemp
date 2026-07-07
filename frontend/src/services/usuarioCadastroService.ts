@@ -1,6 +1,9 @@
 import type { User, UserRole } from '@/types'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
+import { getTenantId } from '@/services/tenantService'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 
 export function getCredenciaisPorLogin(): Record<string, string> {
@@ -86,6 +89,13 @@ export const usuarioCadastroService = {
     if (!data.credenciais) data.credenciais = {}
     data.credenciais[login] = { senha: input.senha, userId: user.id }
     saveAppData(data)
+
+    if (useFirebaseDataSource()) {
+      const tenantId = getTenantId()
+      if (tenantId) {
+        await firebaseAuthAdapter.createPortalUser(tenantId, login, input.senha)
+      }
+    }
 
     return { user, login }
   },

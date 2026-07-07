@@ -32,11 +32,10 @@ import { useClinicas } from '@/hooks/useCadastros'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { reloadFreshAppData } from '@/mocks/seed'
-import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { initFirebase } from '@/firebase/app'
-import { resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
+import { resolveOrgCodePublicData } from '@/data/persistence/tenantPersistence'
 import { getStoredOrgCode, setStoredOrgCode, setTenantId } from '@/services/tenantService'
+import type { OrgCodePublicClinica } from '@/data/persistence/tenantPersistence'
 
 const PERFIL_ICONS: Record<string, ReactElement> = {
   clinica: <LocalHospitalIcon color="primary" sx={{ fontSize: 32 }} />,
@@ -68,6 +67,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const [publicClinicas, setPublicClinicas] = useState<OrgCodePublicClinica[]>([])
 
   useEffect(() => {
     if (open) {
@@ -78,6 +78,7 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       setSenha('')
       setErro('')
       setShowPassword(false)
+      setPublicClinicas([])
       void refetchClinicas()
     }
   }, [open, refetchClinicas])
@@ -95,18 +96,20 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
       return false
     }
     initFirebase()
-    const tenantId = await resolveOrgCodeToTenantId(code)
-    if (!tenantId) {
+    const orgData = await resolveOrgCodePublicData(code)
+    if (!orgData) {
       setErro('Código da organização inválido')
+      setPublicClinicas([])
       return false
     }
-    setTenantId(tenantId)
+    setTenantId(orgData.tenantId)
     setStoredOrgCode(code)
-    await firebaseAuthAdapter.ensureAnonymousAuth()
-    await reloadFreshAppData()
-    await refetchClinicas()
+    setPublicClinicas(orgData.clinicas)
+    setErro('')
     return true
   }
+
+  const clinicasDisponiveis = isFirebase ? publicClinicas : clinicas
 
   const orgCodeField = (
     <TextField
@@ -345,12 +348,12 @@ export function PortalAccessModal({ open }: PortalAccessModalProps) {
               }}
               sx={{ mb: 2 }}
               helperText={
-                clinicas.length === 0
+                clinicasDisponiveis.length === 0
                   ? 'Nenhuma clínica cadastrada. Cadastre em Gestor → Cadastros.'
                   : undefined
               }
             >
-              {clinicas.map((c) => (
+              {clinicasDisponiveis.map((c) => (
                 <MenuItem key={c.id} value={c.id}>
                   {c.nome}
                 </MenuItem>
