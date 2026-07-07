@@ -19,6 +19,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import {
+  CatalogoReferenciaPanel,
+  CATALOGO_REFERENCIA_BAR_HEIGHT,
+} from '@/components/clinica/CatalogoReferenciaPanel'
 
 const NAV_ITEMS = [
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon sx={{ fontSize: 18 }} /> },
@@ -33,7 +37,17 @@ function resolveActiveTab(pathname: string): string {
   return '/clinica/pedidos'
 }
 
-export const CLINICA_TOPBAR_HEIGHT = 112
+export const CLINICA_TOPBAR_BASE_HEIGHT = 112
+
+export function getClinicaTopbarHeight(pathname: string): number {
+  if (pathname.startsWith('/clinica/pedidos/novo')) {
+    return CLINICA_TOPBAR_BASE_HEIGHT + CATALOGO_REFERENCIA_BAR_HEIGHT
+  }
+  return CLINICA_TOPBAR_BASE_HEIGHT
+}
+
+/** @deprecated Use getClinicaTopbarHeight(pathname) */
+export const CLINICA_TOPBAR_HEIGHT = CLINICA_TOPBAR_BASE_HEIGHT
 
 export function ClinicaTopBar() {
   const { user, logout } = useClinicaAuth()
@@ -44,6 +58,7 @@ export function ClinicaTopBar() {
 
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
   const activeTab = useMemo(() => resolveActiveTab(location.pathname), [location.pathname])
+  const showCatalogoReferencia = location.pathname.startsWith('/clinica/pedidos/novo')
 
   const handleLogout = async () => {
     await logout()
@@ -129,6 +144,22 @@ export function ClinicaTopBar() {
           />
         ))}
       </Tabs>
+
+      {showCatalogoReferencia && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            px: { xs: 1, sm: 2 },
+            py: 1,
+            borderTop: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.default',
+          }}
+        >
+          <CatalogoReferenciaPanel />
+        </Box>
+      )}
     </Box>
   )
 }

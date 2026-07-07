@@ -21,6 +21,9 @@ import {
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import PostAddIcon from '@mui/icons-material/PostAdd'
+import RefreshIcon from '@mui/icons-material/Refresh'
+import SendIcon from '@mui/icons-material/Send'
+import InventoryIcon from '@mui/icons-material/Inventory'
 import {
   flexRender,
   getCoreRowModel,
@@ -69,6 +72,10 @@ interface ConsumoMaterialSpreadsheetProps {
   isAdicionando?: boolean
   addPlanilhaError?: string | null
   onAddPlanilhaErrorClear?: () => void
+  onLimparRascunho?: () => void
+  onEnviarImh?: () => void
+  onEnviarMaterial?: () => void
+  isEnviando?: boolean
 }
 
 export function ConsumoMaterialSpreadsheet({
@@ -86,6 +93,10 @@ export function ConsumoMaterialSpreadsheet({
   isAdicionando = false,
   addPlanilhaError = null,
   onAddPlanilhaErrorClear,
+  onLimparRascunho,
+  onEnviarImh,
+  onEnviarMaterial,
+  isEnviando = false,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
@@ -93,6 +104,27 @@ export function ConsumoMaterialSpreadsheet({
   const [adicionarOpen, setAdicionarOpen] = useState(false)
 
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
+
+  const headerActionSx = {
+    fontWeight: 600,
+    color: 'white',
+    borderColor: alpha('#fff', 0.4),
+    '&:hover': {
+      borderColor: 'white',
+      bgcolor: alpha('#fff', 0.1),
+    },
+  } as const
+
+  const headerContainedSx = {
+    fontWeight: 700,
+    bgcolor: alpha('#fff', 0.2),
+    color: 'white',
+    boxShadow: 'none',
+    '&:hover': {
+      bgcolor: alpha('#fff', 0.3),
+      boxShadow: 'none',
+    },
+  } as const
 
   const handleExcluirConfirm = async () => {
     if (!onExcluirTudo) return
@@ -345,22 +377,22 @@ export function ConsumoMaterialSpreadsheet({
                     sx={{ color: 'white', borderColor: alpha('#fff', 0.35) }}
                   />
                   {showPlanilhaActions && (
-                    <>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 0.5,
+                        alignItems: 'center',
+                        width: { xs: '100%', sm: 'auto' },
+                      }}
+                    >
                       <Button
                         size="small"
                         variant="outlined"
                         startIcon={<DeleteSweepIcon />}
                         onClick={() => setExcluirOpen(true)}
-                        disabled={isExcluindo || isAdicionando}
-                        sx={{
-                          color: 'white',
-                          borderColor: alpha('#fff', 0.4),
-                          fontWeight: 600,
-                          '&:hover': {
-                            borderColor: 'white',
-                            bgcolor: alpha('#fff', 0.1),
-                          },
-                        }}
+                        disabled={isExcluindo || isAdicionando || isEnviando}
+                        sx={headerActionSx}
                       >
                         Excluir tudo
                       </Button>
@@ -369,21 +401,52 @@ export function ConsumoMaterialSpreadsheet({
                         variant="contained"
                         startIcon={<PostAddIcon />}
                         onClick={openAdicionarModal}
-                        disabled={isExcluindo || isAdicionando}
-                        sx={{
-                          fontWeight: 700,
-                          bgcolor: alpha('#fff', 0.2),
-                          color: 'white',
-                          boxShadow: 'none',
-                          '&:hover': {
-                            bgcolor: alpha('#fff', 0.3),
-                            boxShadow: 'none',
-                          },
-                        }}
+                        disabled={isExcluindo || isAdicionando || isEnviando}
+                        sx={headerContainedSx}
                       >
                         Adicionar planilha
                       </Button>
-                    </>
+                      {onLimparRascunho && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<RefreshIcon />}
+                          onClick={onLimparRascunho}
+                          disabled={isExcluindo || isAdicionando || isEnviando}
+                          sx={headerActionSx}
+                        >
+                          Limpar rascunho
+                        </Button>
+                      )}
+                      {onEnviarImh && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<SendIcon />}
+                          onClick={onEnviarImh}
+                          disabled={isEnviando || selectedCount === 0}
+                          sx={headerContainedSx}
+                        >
+                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${selectedCount})`}
+                        </Button>
+                      )}
+                      {onEnviarMaterial && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<InventoryIcon />}
+                          onClick={onEnviarMaterial}
+                          disabled={isEnviando || selectedCount === 0}
+                          sx={{
+                            ...headerContainedSx,
+                            bgcolor: alpha('#fff', 0.28),
+                            '&:hover': { bgcolor: alpha('#fff', 0.38), boxShadow: 'none' },
+                          }}
+                        >
+                          Enviar para Material ({selectedCount})
+                        </Button>
+                      )}
+                    </Box>
                   )}
                 </>
               )}

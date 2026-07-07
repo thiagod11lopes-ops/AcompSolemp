@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Tab,
   Tabs,
@@ -8,9 +7,6 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
-import SendIcon from '@mui/icons-material/Send'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import RefreshIcon from '@mui/icons-material/Refresh'
 import { useMemo, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
@@ -40,56 +36,6 @@ import {
   dataPertenceAoMes,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
-
-function PlanilhaToolbar({
-  onClear,
-  onSendImh,
-  onSendMaterial,
-  selectedCount,
-  isSending,
-  clearLabel,
-  disabled = false,
-}: {
-  onClear: () => void
-  onSendImh: () => void
-  onSendMaterial: () => void
-  selectedCount: number
-  isSending: boolean
-  clearLabel: string
-  disabled?: boolean
-}) {
-  return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-      <Button
-        variant="outlined"
-        startIcon={<RefreshIcon />}
-        onClick={onClear}
-        disabled={isSending || disabled}
-      >
-        {clearLabel}
-      </Button>
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={<SendIcon />}
-        onClick={onSendImh}
-        disabled={isSending || selectedCount === 0}
-      >
-        {isSending ? 'Enviando para IMH...' : `Enviar para IMH (${selectedCount})`}
-      </Button>
-      <Button
-        variant="contained"
-        size="large"
-        color="secondary"
-        startIcon={<InventoryIcon />}
-        onClick={onSendMaterial}
-        disabled={isSending || selectedCount === 0}
-      >
-        Enviar para o Material ({selectedCount})
-      </Button>
-    </Box>
-  )
-}
 
 export default function ClinicaNovoPedidoPage() {
   const navigate = useNavigate()
@@ -254,10 +200,6 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const selectedCount = planilhaRows.filter(
-    (r) => rowSelection[r.id] && rowPodeSerSelecionada(r),
-  ).length
-
   const totalPreenchidos = planilhaRows.filter(isLinhaPreenchida).length
 
   return (
@@ -299,32 +241,26 @@ export default function ClinicaNovoPedidoPage() {
       )}
 
       {abaAtiva === 1 && (
-        <Box sx={{ display: 'grid', gap: 3 }}>
-          <PlanilhaToolbar
-            onClear={limparPlanilha}
-            onSendImh={handleAbrirImhModal}
-            onSendMaterial={handleAbrirMaterialModal}
-            selectedCount={selectedCount}
-            isSending={isBatchSending}
-            clearLabel="Limpar rascunhos"
-          />
-          <ConsumoMaterialConsignadoView
-            lancamentos={planilhaRows}
-            fileName={planilhaNome || 'Consumo Material Consignado'}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-            rowIdsComPedido={rowIdsComPedido}
-            totalPedidos={pedidos.length}
-            mesSelecionado={mesSelecionado}
-            onMesSelecionadoChange={setMesSelecionado}
-            onExcluirTudo={handleExcluirTudo}
-            onAdicionarPlanilha={handleAdicionarPlanilha}
-            isExcluindo={deleteAllPedidos.isPending}
-            isAdicionando={isAdicionandoPlanilha}
-            addPlanilhaError={addPlanilhaError}
-            onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
-          />
-        </Box>
+        <ConsumoMaterialConsignadoView
+          lancamentos={planilhaRows}
+          fileName={planilhaNome || 'Consumo Material Consignado'}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          rowIdsComPedido={rowIdsComPedido}
+          totalPedidos={pedidos.length}
+          mesSelecionado={mesSelecionado}
+          onMesSelecionadoChange={setMesSelecionado}
+          onExcluirTudo={handleExcluirTudo}
+          onAdicionarPlanilha={handleAdicionarPlanilha}
+          isExcluindo={deleteAllPedidos.isPending}
+          isAdicionando={isAdicionandoPlanilha}
+          addPlanilhaError={addPlanilhaError}
+          onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
+          onLimparRascunho={limparPlanilha}
+          onEnviarImh={handleAbrirImhModal}
+          onEnviarMaterial={handleAbrirMaterialModal}
+          isEnviando={isBatchSending}
+        />
       )}
 
       <ImhEnvioModal
