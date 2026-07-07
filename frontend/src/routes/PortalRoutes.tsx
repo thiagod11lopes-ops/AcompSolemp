@@ -1,13 +1,22 @@
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { canAccessGestorRoute, canAccessOrdenadorRoute, canAccessFinanceiroRoute } from '@/utils/permissions'
 import type { Portal } from '@/utils/portal'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { useFirebaseDataSource } from '@/config/dataSource'
+import { syncRemoteDataWhenAuthenticated } from '@/data/initDataLayer'
 
 export function GestorProtectedRoute({ children }: { children: ReactNode }) {
   const { gestorUser, isLoading } = useAuth()
   const location = useLocation()
+  const isFirebase = useFirebaseDataSource()
+
+  useEffect(() => {
+    if (!isFirebase || !gestorUser) return
+    void syncRemoteDataWhenAuthenticated()
+  }, [isFirebase, gestorUser])
 
   if (isLoading) return <LoadingSpinner />
 

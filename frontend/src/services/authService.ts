@@ -184,8 +184,9 @@ export const authService = {
   },
 
   async syncRemoteDataIfAuthenticated(): Promise<void> {
-    if (!useFirebaseDataSource() || !getTenantId()) return
-    await reloadFreshAppData()
+    if (!useFirebaseDataSource()) return
+    const { syncRemoteDataWhenAuthenticated } = await import('@/data/initDataLayer')
+    await syncRemoteDataWhenAuthenticated()
   },
 
   async loginWithGoogle(portal: Portal): Promise<AuthUser> {

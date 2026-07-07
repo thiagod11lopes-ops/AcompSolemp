@@ -54,14 +54,9 @@ export const firebaseAuthAdapter = {
     if (!useFirebaseDataSource()) return null
     initFirebase()
     const auth = getFirebaseAuth()
-    if (auth.currentUser) return toSession(auth.currentUser)
-
-    return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe()
-        resolve(user ? toSession(user) : null)
-      })
-    })
+    await auth.authStateReady()
+    const user = auth.currentUser
+    return user ? toSession(user) : null
   },
 
   getCurrentSession(): FirebaseAuthSession | null {

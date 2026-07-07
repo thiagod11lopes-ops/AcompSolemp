@@ -1,13 +1,31 @@
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { getFirebaseAuth, initFirebase } from '@/firebase/app'
-import { isPortalAuthEmail, parseTenantIdFromPortalEmail } from '@/firebase/portalAuth'
+import { isPortalAuthEmail } from '@/firebase/portalAuth'
+import { resolvePortalTenantId } from '@/data/persistence/portalUserPersistence'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
-import { getTenantId, setTenantId } from '@/services/tenantService'
+import { setTenantId } from '@/services/tenantService'
 import { STORAGE_KEYS, storageRemove } from '@/storage/indexedDb'
 import type { AppData } from '@/types'
+
+async function resolveTenantFromFirebaseAuth(): Promise<string | null> {
+  if (!useFirebaseDataSource()) return null
+
+  initFirebase()
+  const auth = getFirebaseAuth()
+  await auth.authStateReady()
+
+  const authUser = auth.currentUser
+  if (!authUser) return null
+
+  if (!isPortalAuthEmail(authUser.email)) {
+    return authUser.uid
+  }
+
+  return resolvePortalTenantId(authUser.uid)
+}
 
 export async function initDataLayer(): Promise<void> {
   if (!useFirebaseDataSource()) {
@@ -20,16 +38,10 @@ export async function initDataLayer(): Promise<void> {
   initAppData()
 
   await firebaseAuthAdapter.waitForAuthReady()
-  const authUser = getFirebaseAuth().currentUser
 
-  if (authUser && !isPortalAuthEmail(authUser.email)) {
-    setTenantId(authUser.uid)
-  } else if (authUser && isPortalAuthEmail(authUser.email)) {
-    const tenantFromEmail = parseTenantIdFromPortalEmail(authUser.email)
-    if (tenantFromEmail) setTenantId(tenantFromEmail)
-  }
-
-  if (getTenantId()) {
+  const tenantId = await resolveTenantFromFirebaseAuth()
+  if (tenantId) {
+    setTenantId(tenantId)
     await hydrateLocalCacheFromFirebase((data: AppData) => {
       applyRemoteAppData(data)
     })
@@ -53,4 +65,15 @@ export function saveAppDataSnapshot(data: AppData): void {
 
 export function reloadAppDataSnapshot(): AppData {
   return getRepositories().appData.reload()
+}
+
+/** Recarrega dados da nuvem quando há sessão Firebase válida */
+export async function syncRemoteDataWhenAuthenticated(): Promise<boolean> {
+  const tenantId = await resolveTenantFromFirebaseAuth()
+  if (!tenantId) return false
+
+  setTenantId(tenantId)
+  return hydrateLocalCacheFromFirebase((data: AppData) => {
+    applyRemoteAppData(data)
+  })
 }

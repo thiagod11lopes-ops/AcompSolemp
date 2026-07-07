@@ -11,6 +11,15 @@ import {
 let syncQueue: Promise<void> = Promise.resolve()
 let firebaseReady = false
 
+function isPermissionDenied(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'permission-denied'
+  )
+}
+
 export async function ensureFirebasePersistence(): Promise<boolean> {
   if (!useFirebaseDataSource()) return false
   if (!firebaseReady) {
@@ -27,11 +36,19 @@ export async function hydrateLocalCacheFromFirebase(
   const enabled = await ensureFirebasePersistence()
   if (!enabled) return false
 
-  const remote = await loadAppDataFromFirebase()
-  if (!remote) return false
+  try {
+    const remote = await loadAppDataFromFirebase()
+    if (!remote) return false
 
-  applyData(remote)
-  return true
+    applyData(remote)
+    return true
+  } catch (error) {
+    if (isPermissionDenied(error)) {
+      console.warn('[Firebase] Sem permissão para carregar dados remotos')
+      return false
+    }
+    throw error
+  }
 }
 
 /** Recarrega AppData a partir da nuvem (fonte de verdade em produção) */
