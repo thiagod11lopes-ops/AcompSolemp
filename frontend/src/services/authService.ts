@@ -1,6 +1,6 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { delay, loadAppData, MOCK_CREDENTIALS } from '@/mocks/seed'
+import { delay, loadAppData, MOCK_CREDENTIALS, reloadAppDataFromStorage } from '@/mocks/seed'
 import { slugLogin } from '@/utils/loginSlug'
 import {
   canAccessGestorRoute,
@@ -104,6 +104,11 @@ export const authService = {
     }
 
     setSession(portal, authUser)
+
+    if (portal === 'ordenador' || portal === 'financeiro') {
+      reloadAppDataFromStorage()
+    }
+
     return authUser
   },
 

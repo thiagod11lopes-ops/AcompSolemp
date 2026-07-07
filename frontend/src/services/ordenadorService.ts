@@ -1,5 +1,5 @@
 import type { PedidoComDetalhes, UserRole } from '@/types'
-import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
 import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
 import {
@@ -39,7 +39,7 @@ function pedidoPendenteParaPerfil(
 export const ordenadorService = {
   async listPendentesAssinatura(usuarioId: string): Promise<PedidoComDetalhes[]> {
     await delay(null)
-    const data = loadAppData()
+    const data = reloadAppDataFromStorage()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
     if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) return []
 
@@ -53,7 +53,7 @@ export const ordenadorService = {
 
   async getById(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = loadAppData()
+    const data = reloadAppDataFromStorage()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
     if (!usuario) return null
 
@@ -73,7 +73,7 @@ export const ordenadorService = {
     },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
-    let data = loadAppData()
+    let data = reloadAppDataFromStorage()
     const usuario = data.usuarios.find(
       (u) => u.id === usuarioId && PERFIS_SETOR.includes(u.perfil),
     )
@@ -94,11 +94,19 @@ export const ordenadorService = {
       const pedido = data.pedidos.find((p) => p.id === pedidoId)
       if (!pedido) throw new Error('Pedido não encontrado')
 
-      const ativas = pedido.etapasAtivasIds?.length
-        ? pedido.etapasAtivasIds
-        : [pedido.etapaAtualId]
-      const etapa = data.workflowEtapas.find((e) => ativas.includes(e.id) && e.chave === chave)
-      if (!etapa) throw new Error('Nenhuma etapa ativa para o seu perfil')
+      if (
+        !pedidoPendenteParaChave(
+          pedido,
+          data.workflowEtapas,
+          chave,
+          data.processosArquivados,
+        )
+      ) {
+        throw new Error('Nenhuma etapa ativa para o seu perfil')
+      }
+
+      const etapa = data.workflowEtapas.find((item) => item.chave === chave)
+      if (!etapa) throw new Error('Etapa do workflow não encontrada')
 
       const notas = anotacoes?.trim()
       let observacao: string

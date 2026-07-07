@@ -12,12 +12,35 @@ import type {
   NotaFiscal,
 } from '@/types'
 
+export function resolveEtapaFromRef(
+  etapaId: string | undefined,
+  etapaNome: string | undefined,
+  etapas: WorkflowEtapa[],
+): WorkflowEtapa | undefined {
+  if (etapaId) {
+    const porId = etapas.find((etapa) => etapa.id === etapaId)
+    if (porId) return porId
+
+    if (etapaId.startsWith('etapa-')) {
+      const chaveGuess = etapaId.slice('etapa-'.length)
+      const porChave = etapas.find((etapa) => etapa.chave.toLowerCase() === chaveGuess)
+      if (porChave) return porChave
+    }
+  }
+
+  if (etapaNome) {
+    return etapas.find((etapa) => etapa.nome === etapaNome)
+  }
+
+  return undefined
+}
+
 export function getEtapaAtual(
   pedido: Pedido,
   etapas: WorkflowEtapa[],
 ): WorkflowEtapa | undefined {
-  const porId = etapas.find((e) => e.id === pedido.etapaAtualId)
-  if (porId) return porId
+  const porAtual = resolveEtapaFromRef(pedido.etapaAtualId, undefined, etapas)
+  if (porAtual) return porAtual
 
   const ativas = pedido.etapasAtivasIds?.length
     ? pedido.etapasAtivasIds
@@ -26,13 +49,13 @@ export function getEtapaAtual(
       : []
 
   for (const id of ativas) {
-    const etapa = etapas.find((e) => e.id === id)
+    const etapa = resolveEtapaFromRef(id, undefined, etapas)
     if (etapa) return etapa
   }
 
   const historicoAberto = pedido.etapasHistorico.find((h) => h.dataConclusao === null)
   if (historicoAberto) {
-    return etapas.find((e) => e.id === historicoAberto.etapaId)
+    return resolveEtapaFromRef(historicoAberto.etapaId, historicoAberto.etapaNome, etapas)
   }
 
   return undefined

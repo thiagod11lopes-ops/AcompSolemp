@@ -8,6 +8,8 @@ export function useOrdenadorPedidos() {
     queryKey: ['ordenador-pedidos', user?.id],
     queryFn: () => ordenadorService.listPendentesAssinatura(user!.id),
     enabled: Boolean(user?.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 
@@ -17,6 +19,8 @@ export function useOrdenadorPedido(id: string) {
     queryKey: ['ordenador-pedido', id, user?.id],
     queryFn: () => ordenadorService.getById(id, user!.id),
     enabled: Boolean(id && user?.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 

@@ -27,6 +27,7 @@ import {
 
 const STORAGE_KEY = STORAGE_KEYS.APP_DATA
 const SEED_VERSION = 'v14'
+export const USUARIO_CONFECCAO_SOLEMP_ID = 'user-confeccao-solemp'
 
 let appDataCache: AppData | null = null
 
@@ -122,6 +123,7 @@ export const MOCK_CREDENTIALS: Record<string, { senha: string; userId: string }>
   admin: { senha: 'admin123', userId: 'user-admin' },
   gestor: { senha: 'gestor123', userId: 'user-gestor' },
   opme: { senha: 'opme123', userId: USUARIO_CLINICA_OPME_ID },
+  solemp: { senha: '123456', userId: USUARIO_CONFECCAO_SOLEMP_ID },
 }
 
 function normalizeTextoCampo(value: unknown): string {
@@ -242,6 +244,13 @@ function normalizeClinicas(data: AppData): { data: AppData; changed: boolean } {
     ) {
       pedido.etapasAtivasIds = ativasRemapeadas
       changed = true
+    } else if (
+      !pedido.etapasAtivasIds?.length &&
+      pedido.etapaAtualId &&
+      etapaIds.has(pedido.etapaAtualId)
+    ) {
+      pedido.etapasAtivasIds = [pedido.etapaAtualId]
+      changed = true
     }
 
     for (const historico of pedido.etapasHistorico) {
@@ -299,6 +308,16 @@ export function generateSeedData(): AppData {
       clinicaId: consumoSeed.clinica.id,
       ativo: true,
     },
+    {
+      id: USUARIO_CONFECCAO_SOLEMP_ID,
+      nome: 'Solemp',
+      posto: '',
+      graduacao: 'Confecção de Solemp',
+      login: 'solemp',
+      perfil: 'CONFECCAO_SOLEMP',
+      clinicaId: null,
+      ativo: true,
+    },
   ]
 
   return {
@@ -324,10 +343,37 @@ export function generateSeedData(): AppData {
   }
 }
 
+function ensureDefaultConfeccaoUser(data: AppData): boolean {
+  if (data.usuarios.some((user) => user.perfil === 'CONFECCAO_SOLEMP' && user.ativo)) {
+    return false
+  }
+
+  data.usuarios.push({
+    id: USUARIO_CONFECCAO_SOLEMP_ID,
+    nome: 'Solemp',
+    posto: '',
+    graduacao: 'Confecção de Solemp',
+    login: 'solemp',
+    perfil: 'CONFECCAO_SOLEMP',
+    clinicaId: null,
+    ativo: true,
+  })
+
+  if (!data.credenciais) data.credenciais = {}
+  if (!data.credenciais.solemp) {
+    data.credenciais.solemp = { senha: '123456', userId: USUARIO_CONFECCAO_SOLEMP_ID }
+  }
+
+  return true
+}
+
 function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const { data, changed } = normalizeClinicas(raw)
   if (!data.reversoes) data.reversoes = []
   if (!data.credenciais) data.credenciais = {}
+  if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+  if (!data.processosArquivados) data.processosArquivados = []
+  const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
   data.pedidos = (data.pedidos ?? []).map((p) => ({
     ...p,
     paciente: p.paciente ?? null,
@@ -355,7 +401,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
-  return { data, changed: changed || notifChanged }
+  return { data, changed: changed || notifChanged || confeccaoUserChanged }
 }
 
 function migrateRemoveActiveTimelines(data: AppData): AppData {
@@ -409,6 +455,25 @@ export function loadAppData(): AppData {
     return initAppData()
   }
   return cloneData(appDataCache)
+}
+
+/** Recarrega do IndexedDB — garante dados atualizados após envio em outra aba/sessão */
+export function reloadAppDataFromStorage(): AppData {
+  const stored = storageGet(STORAGE_KEY)
+  if (!stored) {
+    return loadAppData()
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as AppData & { _version?: string }
+    const { _version: _, ...raw } = parsed
+    const { data, changed } = normalizeAppData(raw as AppData)
+    appDataCache = data
+    if (changed) persistAppData(data)
+    return cloneData(data)
+  } catch {
+    return loadAppData()
+  }
 }
 
 function persistAppData(data: AppData): void {
