@@ -1,4 +1,4 @@
-import { useFirebaseDataSource } from '@/config/dataSource'
+import { isDemoDataSession, useFirebaseDataSource } from '@/config/dataSource'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 import { resolvePortalTenantId } from '@/data/persistence/portalUserPersistence'
@@ -26,6 +26,12 @@ async function resolveTenantFromFirebaseAuth(): Promise<string | null> {
 }
 
 export async function initDataLayer(): Promise<void> {
+  if (isDemoDataSession()) {
+    const { initDemoAppData } = await import('@/services/demoCadastrosService')
+    await initDemoAppData()
+    return
+  }
+
   if (!useFirebaseDataSource()) {
     initAppData()
     return

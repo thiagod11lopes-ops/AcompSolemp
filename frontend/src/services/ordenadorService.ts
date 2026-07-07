@@ -1,5 +1,5 @@
 import type { PedidoComDetalhes, User, UserRole } from '@/types'
-import { useFirebaseDataSource } from '@/config/dataSource'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import {
   DEMO_EXEMPLO_USER_PREFIX,
@@ -64,7 +64,7 @@ async function resolveDataForSetor(usuarioId: string): Promise<{
 
 async function persistSetorData(data: ReturnType<typeof loadAppData>): Promise<void> {
   saveAppData(data)
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     await flushFirebaseAppDataSync()
   }
 }

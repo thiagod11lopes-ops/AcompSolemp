@@ -47,7 +47,8 @@ export function DemoModeBanner() {
           '& .MuiAlert-message': { py: 0.5 },
         }}
       >
-        Modo demonstração — {demoMode.authUser.nome} ({perfilLabel})
+        Modo demonstração — {demoMode.authUser.nome} ({perfilLabel}). Dados locais (IndexedDB), sem
+        sincronização com a nuvem.
       </Alert>
     </Box>
   )

@@ -18,7 +18,6 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import ScienceIcon from '@mui/icons-material/Science'
 import {
   buildDemoCadastroItens,
-  ensureDemoExampleCadastros,
   formatDemoTabTitle,
   type DemoCadastroItem,
 } from '@/services/demoCadastrosService'
@@ -37,30 +36,10 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
   useEffect(() => {
     if (!open) return
 
-    let ativo = true
     setCarregando(true)
     setErro('')
-
-    void ensureDemoExampleCadastros()
-      .then(() => {
-        if (!ativo) return
-        setItens(buildDemoCadastroItens())
-      })
-      .catch((error) => {
-        if (!ativo) return
-        setErro(
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível preparar os cadastros de exemplo',
-        )
-      })
-      .finally(() => {
-        if (ativo) setCarregando(false)
-      })
-
-    return () => {
-      ativo = false
-    }
+    setItens(buildDemoCadastroItens())
+    setCarregando(false)
   }, [open])
 
   const handleSelect = (item: DemoCadastroItem) => {
@@ -89,9 +68,8 @@ export function DemoCadastrosModal({ open, onClose }: DemoCadastrosModalProps) {
       </DialogTitle>
       <DialogContent dividers>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Escolha uma clínica ou setor para abrir a Timeline em uma nova aba, com o nome no título
-          da janela. Os cadastros de exemplo são criados automaticamente e as ações afetam os dados
-          reais da organização.
+          Escolha uma clínica ou setor para abrir a Timeline em uma nova aba. A demonstração usa
+          apenas armazenamento local (IndexedDB) e não altera os dados da organização na nuvem.
         </Alert>
         {erro && (
           <Alert severity="error" sx={{ mb: 2 }}>

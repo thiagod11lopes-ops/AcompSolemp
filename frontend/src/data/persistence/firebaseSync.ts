@@ -1,5 +1,5 @@
 import type { AppData } from '@/types'
-import { useFirebaseDataSource } from '@/config/dataSource'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import { initFirebase } from '@/firebase/app'
 import { applyRemoteAppData } from '@/mocks/seed'
 import { syncOrgCodePublicIndex } from '@/data/persistence/tenantPersistence'
@@ -21,7 +21,7 @@ function isPermissionDenied(error: unknown): boolean {
 }
 
 export async function ensureFirebasePersistence(): Promise<boolean> {
-  if (!useFirebaseDataSource()) return false
+  if (!useCloudAppDataSync()) return false
   if (!firebaseReady) {
     initFirebase()
     firebaseReady = true
@@ -66,7 +66,7 @@ export function scheduleFirebaseAppDataSync(
   data: AppData,
   version: string,
 ): void {
-  if (!useFirebaseDataSource()) return
+  if (!useCloudAppDataSync()) return
 
   syncQueue = syncQueue
     .then(async () => {

@@ -1,5 +1,5 @@
 import type { DadosClinicaLancamento, PacientePedido, PedidoComDetalhes } from '@/types'
-import { useFirebaseDataSource } from '@/config/dataSource'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import {
   DEMO_EXEMPLO_USER_PREFIX,
@@ -14,7 +14,7 @@ import {
 } from '@/utils/workflowAdvance'
 import { CLINICA_ETAPA_ACOES } from '@/utils/portal'
 import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
-import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
@@ -94,7 +94,7 @@ function getContext(data: ReturnType<typeof loadAppData>) {
 export const clinicaPedidoService = {
   async listByClinica(clinicaId: string): Promise<PedidoComDetalhes[]> {
     await delay(null)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     return data.pedidos
       .filter((p) => p.clinicaId === clinicaId)
       .map((p) => enrichPedido(p, getContext(data)))
@@ -104,7 +104,7 @@ export const clinicaPedidoService = {
 
   async getById(id: string, clinicaId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = loadAppData()
+    const data = await loadFreshAppData()
     const pedido = data.pedidos.find((p) => p.id === id && p.clinicaId === clinicaId)
     if (!pedido) return null
     return enrichPedido(pedido, getContext(data))
@@ -256,7 +256,7 @@ export const clinicaPedidoService = {
 
     notifySetoresEtapasAtivas(data, pedido.id)
     saveAppData(data)
-    if (useFirebaseDataSource()) {
+    if (useCloudAppDataSync()) {
       await flushFirebaseAppDataSync()
     }
     const enriched = enrichPedido(pedido, getContext(data))

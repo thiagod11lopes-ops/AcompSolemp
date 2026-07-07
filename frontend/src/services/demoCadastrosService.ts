@@ -1,8 +1,12 @@
 import type { Clinica, User } from '@/types'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
-import { useFirebaseDataSource } from '@/config/dataSource'
-import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
-import { loadAppData, saveAppData } from '@/mocks/seed'
+import { isDemoDataSession } from '@/config/dataSource'
+import {
+  clearAppDataCache,
+  loadAppData,
+  reloadAppDataFromStorage,
+  saveAppData,
+} from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
@@ -114,9 +118,6 @@ function findOrEnsureClinicaUser(clinica: Clinica, data: ReturnType<typeof loadA
 }
 
 function findOrEnsureSetorUser(opcao: CadastroPerfilOpcao, data: ReturnType<typeof loadAppData>): User {
-  const existing = data.usuarios.find((user) => user.perfil === opcao.perfil && user.ativo)
-  if (existing) return existing
-
   const exampleId = demoExampleUserId(opcao.id)
   const storedExample = data.usuarios.find((user) => user.id === exampleId)
   if (storedExample) {
@@ -129,82 +130,74 @@ function findOrEnsureSetorUser(opcao: CadastroPerfilOpcao, data: ReturnType<type
   return user
 }
 
-function resolveClinicaUser(data: ReturnType<typeof loadAppData>, clinica: Clinica): User | null {
-  return (
-    data.usuarios.find(
-      (user) => user.clinicaId === clinica.id && user.perfil === 'CLINICA' && user.ativo,
-    ) ?? null
-  )
-}
-
-function resolveSetorUser(data: ReturnType<typeof loadAppData>, opcao: CadastroPerfilOpcao): User | null {
-  return data.usuarios.find((user) => user.perfil === opcao.perfil && user.ativo) ?? null
-}
-
-/** Garante usuários de demonstração para cada clínica e setor da organização. */
-export async function ensureDemoExampleCadastros(): Promise<void> {
-  const data = loadAppData()
-  const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
-
-  if (data.clinicas.length === 0) {
-    ensureDefaultClinica(data)
-  }
-
-  for (const clinica of data.clinicas) {
-    findOrEnsureClinicaUser(clinica, data)
-  }
+function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
+  const clinica = ensureDefaultClinica(data)
+  findOrEnsureClinicaUser(clinica, data)
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica) continue
     findOrEnsureSetorUser(opcao, data)
   }
+}
+
+/** Inicializa AppData de demonstração no IndexedDB (isolado da nuvem). */
+export async function initDemoAppData(): Promise<void> {
+  if (!isDemoDataSession()) return
+
+  clearAppDataCache()
+  reloadAppDataFromStorage()
+
+  const data = loadAppData()
+  const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
+
+  seedDemoExampleCadastros(data)
+
+  const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
+  if (before !== after || data.clinicas.length === 0) {
+    saveAppData(data)
+  }
+}
+
+/** Garante usuários de demonstração no IndexedDB local da sessão demo. */
+export async function ensureDemoExampleCadastros(): Promise<void> {
+  if (!isDemoDataSession()) return
+
+  const data = loadAppData()
+  const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
+
+  seedDemoExampleCadastros(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
   if (before === after) return
 
   saveAppData(data)
-  if (useFirebaseDataSource()) {
-    await flushFirebaseAppDataSync()
-  }
 }
 
+/** Lista fixa de cadastros de exemplo para o modal (sem ler dados da nuvem). */
 export function buildDemoCadastroItens(): DemoCadastroItem[] {
-  const data = loadAppData()
-  const clinicas =
-    data.clinicas.length > 0 ? data.clinicas : [data.clinicas.find((c) => c.id === DEMO_CLINICA_EXEMPLO_ID)].filter(Boolean) as Clinica[]
   const resultado: DemoCadastroItem[] = []
 
   const opcaoClinica = CADASTRO_PERFIS.find((opcao) => opcao.isClinica)
   if (opcaoClinica) {
-    for (const clinica of clinicas) {
-      const user = resolveClinicaUser(data, clinica)
-      if (!user) continue
-      resultado.push({
-        id: `clinica-${clinica.id}`,
-        userId: user.id,
-        label: opcaoClinica.label,
-        nome: clinica.nome,
-        subtitulo: isDemoExampleUser(user)
-          ? 'Cadastro de exemplo — acesso direto'
-          : user.email?.trim() || 'Cadastro da organização',
-        isExemplo: isDemoExampleUser(user),
-      })
-    }
+    resultado.push({
+      id: `clinica-${DEMO_CLINICA_EXEMPLO_ID}`,
+      userId: demoExampleUserId('clinica', DEMO_CLINICA_EXEMPLO_ID),
+      label: opcaoClinica.label,
+      nome: DEMO_NOMES.clinica,
+      subtitulo: 'Cadastro de exemplo — armazenamento local',
+      isExemplo: true,
+    })
   }
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica) continue
-    const user = resolveSetorUser(data, opcao)
-    if (!user) continue
     resultado.push({
       id: opcao.id,
-      userId: user.id,
+      userId: demoExampleUserId(opcao.id),
       label: opcao.label,
-      nome: user.nome,
-      subtitulo: isDemoExampleUser(user)
-        ? 'Cadastro de exemplo — acesso direto'
-        : user.email?.trim() || 'Cadastro da organização',
-      isExemplo: isDemoExampleUser(user),
+      nome: DEMO_NOMES[opcao.id] ?? opcao.label,
+      subtitulo: 'Cadastro de exemplo — armazenamento local',
+      isExemplo: true,
     })
   }
 

@@ -6,7 +6,7 @@ import type {
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
 import { delay, loadFreshAppData, saveAppData } from '@/mocks/seed'
-import { useFirebaseDataSource } from '@/config/dataSource'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
@@ -271,7 +271,7 @@ export const pedidoService = {
 
     removePedidosFromAppData(data, new Set([pedidoId]))
     saveAppData(data)
-    if (useFirebaseDataSource()) {
+    if (useCloudAppDataSync()) {
       await flushFirebaseAppDataSync()
     }
   },

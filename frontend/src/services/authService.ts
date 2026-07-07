@@ -386,8 +386,6 @@ export const authService = {
       throw new Error('Faça login como gestor para usar a demonstração')
     }
 
-    await this.ensureGestorFirebaseSession({ interactive: false }).catch(() => undefined)
-
     const user = await ensureDemoUserById(userId)
 
     const portal = portalForPerfil(user.perfil)

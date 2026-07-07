@@ -12,7 +12,11 @@ import {
   storageRemove,
   storageSet,
 } from '@/storage/indexedDb'
-import { useFirebaseDataSource } from '@/config/dataSource'
+import {
+  isDemoDataSession,
+  useCloudAppDataSync,
+  usesIndexedDbAppData,
+} from '@/config/dataSource'
 import {
   buildPedidosConsumoMaterialSeed,
   USUARIO_CLINICA_OPME_ID,
@@ -27,11 +31,19 @@ import {
 } from '@/utils/pedidoCleanup'
 import { env } from '@/config/env'
 
-const STORAGE_KEY = STORAGE_KEYS.APP_DATA
 const SEED_VERSION = 'v14'
 export const USUARIO_CONFECCAO_SOLEMP_ID = 'user-confeccao-solemp'
 
 let appDataCache: AppData | null = null
+
+function getAppDataStorageKey(): string {
+  if (isDemoDataSession()) return STORAGE_KEYS.DEMO_APP_DATA
+  return STORAGE_KEYS.APP_DATA
+}
+
+export function clearAppDataCache(): void {
+  appDataCache = null
+}
 
 /** Nomes sugeridos para cadastro de clínicas */
 export const CLINICAS_HOSPITALARES = [
@@ -482,16 +494,17 @@ function cloneData(data: AppData): AppData {
   return JSON.parse(JSON.stringify(data)) as AppData
 }
 
-/** Carrega dados — IndexedDB (local) ou memória (firebase) */
+/** Carrega dados — IndexedDB (local/demo) ou memória (firebase) */
 export function initAppData(): AppData {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     if (appDataCache) return cloneData(appDataCache)
     const { data } = normalizeAppData(generateEmptyTenantData())
     appDataCache = data
     return cloneData(data)
   }
 
-  const stored = storageGet(STORAGE_KEY)
+  const storageKey = getAppDataStorageKey()
+  const stored = storageGet(storageKey)
   if (stored) {
     try {
       const parsed = JSON.parse(stored) as AppData & { _version?: string }
@@ -515,6 +528,12 @@ export function initAppData(): AppData {
     }
   }
 
+  if (isDemoDataSession()) {
+    const data = generateEmptyTenantData()
+    appDataCache = data
+    return cloneData(data)
+  }
+
   const data = generateSeedData()
   appDataCache = data
   persistAppData(data)
@@ -528,13 +547,13 @@ export function loadAppData(): AppData {
   return cloneData(appDataCache)
 }
 
-/** Recarrega dados — IndexedDB (local) ou cache em memória (firebase) */
+/** Recarrega dados — IndexedDB (local/demo) ou cache em memória (firebase) */
 export function reloadAppDataFromStorage(): AppData {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     return loadAppData()
   }
 
-  const stored = storageGet(STORAGE_KEY)
+  const stored = storageGet(getAppDataStorageKey())
   if (!stored) {
     return loadAppData()
   }
@@ -552,21 +571,21 @@ export function reloadAppDataFromStorage(): AppData {
 }
 
 function persistAppData(data: AppData): void {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     void import('@/data/persistence/firebaseSync').then(({ scheduleFirebaseAppDataSync }) => {
       scheduleFirebaseAppDataSync(data, SEED_VERSION)
     })
     return
   }
 
-  storageSet(STORAGE_KEY, JSON.stringify({ ...data, _version: SEED_VERSION }))
+  storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
 }
 
 /** Aplica dados vindos do Firestore no cache em memória (sem regravar na nuvem) */
 export function applyRemoteAppData(raw: AppData): AppData {
   const { data, changed } = normalizeAppData(raw)
   appDataCache = data
-  if (!useFirebaseDataSource()) {
+  if (usesIndexedDbAppData() && !isDemoDataSession()) {
     persistAppData(data)
   }
   if (changed && import.meta.env.DEV) {
@@ -581,8 +600,8 @@ export function saveAppData(data: AppData): void {
 }
 
 export function resetAppData(): AppData {
-  if (!useFirebaseDataSource()) {
-    storageRemove(STORAGE_KEY)
+  if (usesIndexedDbAppData()) {
+    storageRemove(getAppDataStorageKey())
   }
   appDataCache = null
   return initAppData()
@@ -590,7 +609,7 @@ export function resetAppData(): AppData {
 
 /** Remove dados persistidos e sessões (mantém tema) */
 export function clearAllSystemData(): AppData {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     storageRemove(STORAGE_KEYS.AUTH_LEGACY)
     storageRemove(STORAGE_KEYS.AUTH_GESTOR)
     storageRemove(STORAGE_KEYS.AUTH_CLINICA)
@@ -603,9 +622,9 @@ export function clearAllSystemData(): AppData {
   return initAppData()
 }
 
-/** Recarrega da fonte ativa — Firestore em produção, IndexedDB em local */
+/** Recarrega da fonte ativa — Firestore em produção, IndexedDB em local/demo */
 export async function reloadFreshAppData(): Promise<AppData> {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     const { refreshAppDataFromCloud } = await import('@/data/persistence/firebaseSync')
     return refreshAppDataFromCloud()
   }
@@ -614,10 +633,10 @@ export async function reloadFreshAppData(): Promise<AppData> {
 
 /** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
 export async function loadFreshAppData(): Promise<AppData> {
-  if (useFirebaseDataSource()) {
+  if (useCloudAppDataSync()) {
     return reloadFreshAppData()
   }
-  return loadAppData()
+  return reloadAppDataFromStorage()
 }
 
 export function delay<T>(value: T, ms = 400): Promise<T> {
