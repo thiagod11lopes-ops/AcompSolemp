@@ -6,13 +6,12 @@ import {
   Alert,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import TableChartIcon from '@mui/icons-material/TableChart'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
 import SendIcon from '@mui/icons-material/Send'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import RefreshIcon from '@mui/icons-material/Refresh'
-import { useCallback, useMemo, useState, type SyntheticEvent } from 'react'
+import { useMemo, useState, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -20,7 +19,6 @@ import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMater
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
-import { OdsUploadZone } from '@/components/clinica/OdsUploadZone'
 import { useCreateClinicaPedido, useClinicaPedidos, useDeleteAllClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -102,11 +100,9 @@ export default function ClinicaNovoPedidoPage() {
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
-  const [abaAtiva, setAbaAtiva] = useState(0)
+  const [abaAtiva, setAbaAtiva] = useState(1)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
   const [planilhaNome, setPlanilhaNome] = useState(CONSUMO_PLANILHA_NOME_PADRAO)
-  const [parseError, setParseError] = useState<string | null>(null)
-  const [isParsing, setIsParsing] = useState(false)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [batchError, setBatchError] = useState<string | null>(null)
   const [isBatchSending, setIsBatchSending] = useState(false)
@@ -125,41 +121,10 @@ export default function ClinicaNovoPedidoPage() {
     [pedidos, extraRows],
   )
 
-  const handleOdsFile = useCallback(async (file: File) => {
-    setParseError(null)
-    setIsParsing(true)
-    setRowSelection({})
-    try {
-      const rows = await parseConsumoMaterialOds(file)
-      const pedidoIds = new Set(pedidos.map((p) => p.id))
-      const novos = rows.filter((r) => !pedidoIds.has(pedidoIdFromRowId(r.id)))
-      setExtraRows((prev) => {
-        const ids = new Set(prev.map((r) => r.id))
-        const merged = [...prev]
-        for (const row of novos) {
-          if (!ids.has(row.id)) merged.push(row)
-        }
-        return merged
-      })
-      setPlanilhaNome(file.name)
-      const initialSelection: RowSelectionState = {}
-      novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
-        initialSelection[r.id] = true
-      })
-      setRowSelection(initialSelection)
-      setAbaAtiva(2)
-    } catch (err) {
-      setParseError(err instanceof Error ? err.message : 'Erro ao ler o arquivo ODS')
-    } finally {
-      setIsParsing(false)
-    }
-  }, [pedidos])
-
   const limparPlanilha = () => {
     setExtraRows([])
     setPlanilhaNome(CONSUMO_PLANILHA_NOME_PADRAO)
     setRowSelection({})
-    setParseError(null)
     setBatchError(null)
   }
 
@@ -222,7 +187,7 @@ export default function ClinicaNovoPedidoPage() {
     setExtraRows((prev) => [...prev, row])
     setRowSelection((prev) => ({ ...prev, [row.id]: true }))
     setBatchError(null)
-    setAbaAtiva(2)
+    setAbaAtiva(1)
   }
 
   const getSelectedRows = () =>
@@ -307,7 +272,7 @@ export default function ClinicaNovoPedidoPage() {
 
       <PageHeader
         title="Novo Lançamento"
-        subtitle="Importe a planilha (.ods), adicione lançamentos manuais ou revise na aba Consumo Material Consignado"
+        subtitle="Adicione lançamentos manuais ou revise na aba Consumo Material Consignado"
       />
 
       <Tabs
@@ -315,7 +280,6 @@ export default function ClinicaNovoPedidoPage() {
         onChange={(_: SyntheticEvent, v: number) => setAbaAtiva(v)}
         sx={{ mb: 3 }}
       >
-        <Tab icon={<TableChartIcon />} iconPosition="start" label="Importar planilha (.ods)" />
         <Tab icon={<EditNoteIcon />} iconPosition="start" label="Lançamento manual" />
         <Tab
           icon={<GridOnIcon />}
@@ -331,29 +295,13 @@ export default function ClinicaNovoPedidoPage() {
       )}
 
       {abaAtiva === 0 && (
-        <Box sx={{ display: 'grid', gap: 3 }}>
-          <OdsUploadZone onFile={handleOdsFile} isLoading={isParsing} error={parseError} />
-          <Alert severity="info">
-            A planilha exibe <strong>{pedidos.length} pedido(s)</strong> do sistema
-            {extraRows.length > 0 && (
-              <>
-                {' '}
-                e <strong>{extraRows.length}</strong> rascunho(s) pendente(s)
-              </>
-            )}
-            . Acesse a aba <strong>Consumo Material Consignado</strong> para revisar.
-          </Alert>
-        </Box>
-      )}
-
-      {abaAtiva === 1 && (
         <ConsumoMaterialManualForm
           nextNumero={String(totalPreenchidos + 1)}
           onAddRow={handleAddManualRow}
         />
       )}
 
-      {abaAtiva === 2 && (
+      {abaAtiva === 1 && (
         <Box sx={{ display: 'grid', gap: 3 }}>
           <PlanilhaToolbar
             onClear={limparPlanilha}
