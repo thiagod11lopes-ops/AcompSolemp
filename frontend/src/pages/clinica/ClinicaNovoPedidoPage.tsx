@@ -270,10 +270,7 @@ export default function ClinicaNovoPedidoPage() {
         Voltar
       </Button>
 
-      <PageHeader
-        title="Novo Lançamento"
-        subtitle="Adicione lançamentos manuais ou revise na aba Consumo Material Consignado"
-      />
+      <PageHeader title="Novo Lançamento" />
 
       <Tabs
         value={abaAtiva}
