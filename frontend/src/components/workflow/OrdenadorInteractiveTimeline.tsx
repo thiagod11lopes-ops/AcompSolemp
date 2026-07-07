@@ -36,6 +36,8 @@ interface OrdenadorInteractiveTimelineProps {
   onReceberPlanilhaImh?: () => void
   planilhaEncaminhadaImh?: boolean
   planilhaRecebidaImh?: boolean
+  fluxoEncerrado?: boolean
+  mensagemFluxoEncerrado?: string | null
 }
 
 export function OrdenadorInteractiveTimeline({
@@ -49,6 +51,8 @@ export function OrdenadorInteractiveTimeline({
   onReceberPlanilhaImh,
   planilhaEncaminhadaImh = false,
   planilhaRecebidaImh = false,
+  fluxoEncerrado = false,
+  mensagemFluxoEncerrado = null,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
@@ -79,7 +83,13 @@ export function OrdenadorInteractiveTimeline({
         Timeline do Processo
       </Typography>
 
-      {acaoAtual && etapaDoPerfil && (
+      {fluxoEncerrado && mensagemFluxoEncerrado && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {mensagemFluxoEncerrado}
+        </Alert>
+      )}
+
+      {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
         <Alert
           severity="warning"
           icon={<DrawIcon />}

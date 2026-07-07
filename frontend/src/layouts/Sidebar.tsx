@@ -11,6 +11,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import ArchiveIcon from '@mui/icons-material/Archive'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import PeopleIcon from '@mui/icons-material/People'
@@ -32,6 +33,7 @@ const menuItems = [
   { path: '/gestor/relatorios', label: 'Relatórios', icon: <AssessmentIcon /> },
   { path: '/gestor/reversoes', label: 'Reversões', icon: <UndoIcon /> },
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
+  { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface SidebarProps {

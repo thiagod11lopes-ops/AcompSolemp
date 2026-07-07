@@ -14,6 +14,7 @@ import {
   getEtapaByChave,
   getProximaChaveNaDivisao,
 } from '@/utils/timelineFlow'
+import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
 import { validateNomeAssinante } from '@/utils/format'
 
@@ -250,6 +251,15 @@ export function advancePedidoEtapa(
     observacao,
   }
   data.historico.push(evento)
+
+  arquivarEtapaConcluida(
+    data,
+    pedidoId,
+    etapaAtual.chave,
+    etapaAtual.nome,
+    usuario,
+    observacao,
+  )
 
   if (!atualizado.concluido) {
     notifySetoresEtapasAtivas(data, pedidoId)

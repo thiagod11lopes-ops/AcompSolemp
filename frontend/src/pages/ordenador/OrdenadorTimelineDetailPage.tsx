@@ -12,6 +12,7 @@ import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModa
 import { AssinaturaSolempModal } from '@/components/ordenador/Assinatura1SolempModal'
 import { SdaConfirmacaoModal } from '@/components/ordenador/SdaConfirmacaoModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
+import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
@@ -40,6 +41,8 @@ export default function OrdenadorTimelineDetailPage() {
   const [assinatura1Open, setAssinatura1Open] = useState(false)
   const [assinatura2Open, setAssinatura2Open] = useState(false)
   const [sdaOpen, setSdaOpen] = useState(false)
+  const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
+  const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
@@ -91,7 +94,11 @@ export default function OrdenadorTimelineDetailPage() {
       Boolean(stored?.encaminhadaImhEm) || (auditoriaConcluida && Boolean(stored)),
     )
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
-  }, [pedido, etapas])
+    setFluxoEncerrado(Boolean(stored?.arquivadaEm))
+    if (stored?.arquivadaEm && chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH') {
+      setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
+    }
+  }, [pedido, etapas, chavePerfil])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -113,7 +120,7 @@ export default function OrdenadorTimelineDetailPage() {
     setAssinatura1Open(false)
     setAssinatura2Open(false)
     setSdaOpen(false)
-    navigate('/ordenador/timelines')
+    navigate('/ordenador/arquivados')
   }
 
   const handleAssinar = () => {
@@ -148,7 +155,9 @@ export default function OrdenadorTimelineDetailPage() {
       {
         onSuccess: () => {
           pedidoPlanilhaEnvioService.markEncaminhadaImh(pedido.id)
-          concluirComSucesso()
+          setAuditoriaOpen(false)
+          setFluxoEncerrado(true)
+          setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_AUDITORIA)
         },
       },
     )
@@ -173,7 +182,13 @@ export default function OrdenadorTimelineDetailPage() {
   const handleConfirmarContabilidade = (anotacoes: string) => {
     assinar.mutate(
       { pedidoId: pedido.id, anotacoes },
-      { onSuccess: concluirComSucesso },
+      {
+        onSuccess: () => {
+          setContabilidadeOpen(false)
+          setFluxoEncerrado(true)
+          setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
+        },
+      },
     )
   }
 
@@ -245,7 +260,19 @@ export default function OrdenadorTimelineDetailPage() {
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
             planilhaEncaminhadaImh={planilhaEncaminhadaImh}
             planilhaRecebidaImh={planilhaRecebidaImh}
+            fluxoEncerrado={fluxoEncerrado}
+            mensagemFluxoEncerrado={mensagemFluxoEncerrado}
           />
+          {fluxoEncerrado && (
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+              onClick={() => navigate('/ordenador/arquivados')}
+            >
+              Ver arquivados
+            </Button>
+          )}
         </Grid>
 
         <Grid size={{ xs: 12, lg: 5 }}>

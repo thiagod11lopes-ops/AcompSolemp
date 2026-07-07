@@ -39,6 +39,7 @@ export const pedidoPlanilhaEnvioService = {
       recebidaEm: snapshot.recebidaEm,
       encaminhadaImhEm: snapshot.encaminhadaImhEm,
       recebidaImhEm: snapshot.recebidaImhEm,
+      arquivadaEm: snapshot.arquivadaEm,
     }
   },
 

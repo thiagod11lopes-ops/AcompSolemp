@@ -29,7 +29,7 @@ const HistoricoPage = lazy(() => import('@/pages/HistoricoPage'))
 const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
-const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetailPage'))
+const GestorArquivadosPage = lazy(() => import('@/pages/GestorArquivadosPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
@@ -38,6 +38,9 @@ const ClinicaTimelineDetailPage = lazy(() => import('@/pages/clinica/ClinicaTime
 const ClinicaPedidoDetailPage = lazy(() => import('@/pages/clinica/ClinicaPedidoDetailPage'))
 const OrdenadorTimelinesPage = lazy(() => import('@/pages/ordenador/OrdenadorTimelinesPage'))
 const OrdenadorTimelineDetailPage = lazy(() => import('@/pages/ordenador/OrdenadorTimelineDetailPage'))
+const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetailPage'))
+const OrdenadorArquivadosPage = lazy(() => import('@/pages/ordenador/OrdenadorArquivadosPage'))
+const FinanceiroArquivadosPage = lazy(() => import('@/pages/financeiro/FinanceiroArquivadosPage'))
 const FinanceiroPagamentosPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentosPage'))
 const FinanceiroPagamentoDetailPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentoDetailPage'))
 
@@ -120,6 +123,7 @@ export function AppRoutes() {
           <Route path="/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
           <Route path="/gestor/timeline" element={<LazyPage><GestorTimelinesPage /></LazyPage>} />
           <Route path="/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
+          <Route path="/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
         </Route>
 
         {/* Portal da Clínica — somente pedidos próprios */}
@@ -149,6 +153,7 @@ export function AppRoutes() {
           <Route path="/ordenador" element={<Navigate to="/ordenador/timelines" replace />} />
           <Route path="/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
           <Route path="/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
+          <Route path="/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
         </Route>
 
         {/* Portal do Financeiro */}
@@ -162,6 +167,7 @@ export function AppRoutes() {
           <Route path="/financeiro" element={<Navigate to="/financeiro/pagamentos" replace />} />
           <Route path="/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+          <Route path="/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
         </Route>
 
         {/* Rotas legadas */}

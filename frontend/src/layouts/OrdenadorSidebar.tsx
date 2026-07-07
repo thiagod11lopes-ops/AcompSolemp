@@ -11,6 +11,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import ArchiveIcon from '@mui/icons-material/Archive'
 import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink } from 'react-router-dom'
@@ -20,6 +21,7 @@ const DRAWER_WIDTH = 240
 
 const menuItems = [
   { path: '/ordenador/timelines', label: 'Timelines pendentes', icon: <TimelineIcon /> },
+  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface OrdenadorSidebarProps {

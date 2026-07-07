@@ -300,6 +300,25 @@ export interface PedidoPlanilhaEnvioState {
   encaminhadaImhEm?: string
   /** Planilha recebida pela Contabilidade/IMH */
   recebidaImhEm?: string
+  /** Planilha arquivada pela Contabilidade/IMH ao finalizar */
+  arquivadaEm?: string
+}
+
+export interface ProcessoArquivado {
+  id: string
+  pedidoId: string
+  pedidoNumero: string
+  clinicaId: string
+  clinicaNome: string
+  etapaChave: string
+  etapaNome: string
+  arquivoNome: string
+  concluidoEm: string
+  concluidoPorUsuarioId: string
+  concluidoPorNome: string
+  observacao: string
+  valor: number
+  mensagemArquivamento: string
 }
 
 export interface AppData {
@@ -318,4 +337,5 @@ export interface AppData {
   credenciais: Record<string, CredencialUsuario>
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
+  processosArquivados?: ProcessoArquivado[]
 }

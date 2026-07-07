@@ -50,6 +50,7 @@ export function useAssinarSolemp() {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
     },
   })
 }

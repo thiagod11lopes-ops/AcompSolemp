@@ -42,6 +42,7 @@ export function useRegistrarPagamento() {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
     },
   })
 }

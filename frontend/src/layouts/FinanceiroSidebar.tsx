@@ -11,6 +11,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import ArchiveIcon from '@mui/icons-material/Archive'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import { NavLink } from 'react-router-dom'
@@ -20,6 +21,7 @@ const DRAWER_WIDTH = 240
 
 const menuItems = [
   { path: '/financeiro/pagamentos', label: 'Pagamentos pendentes', icon: <PaymentsIcon /> },
+  { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface FinanceiroSidebarProps {
