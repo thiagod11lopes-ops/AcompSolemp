@@ -25,7 +25,6 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const ProcessosPage = lazy(() => import('@/pages/ProcessosPage'))
 const ProcessoDetailPage = lazy(() => import('@/pages/ProcessoDetailPage'))
 const CadastrosPage = lazy(() => import('@/pages/CadastrosPage'))
-const WorkflowPage = lazy(() => import('@/pages/WorkflowPage'))
 const HistoricoPage = lazy(() => import('@/pages/HistoricoPage'))
 const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
@@ -114,7 +113,7 @@ export function AppRoutes() {
           <Route path="/gestor/processos" element={<LazyPage><ProcessosPage /></LazyPage>} />
           <Route path="/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
           <Route path="/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
-          <Route path="/gestor/workflow" element={<LazyPage><WorkflowPage /></LazyPage>} />
+          <Route path="/gestor/workflow" element={<Navigate to="/gestor/dashboard" replace />} />
           <Route path="/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
           <Route path="/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
           <Route path="/gestor/configuracao" element={<LazyPage><ConfiguracaoPage /></LazyPage>} />
@@ -170,8 +169,8 @@ export function AppRoutes() {
         <Route path="/processos" element={<Navigate to="/gestor/processos" replace />} />
         <Route path="/processos/:id" element={<Navigate to="/gestor/processos" replace />} />
         <Route path="/cadastros" element={<Navigate to="/gestor/cadastros" replace />} />
-        <Route path="/workflow" element={<Navigate to="/gestor/workflow" replace />} />
-        <Route path="/configuracao" element={<Navigate to="/gestor/workflow?tab=prazos" replace />} />
+        <Route path="/workflow" element={<Navigate to="/gestor/dashboard" replace />} />
+        <Route path="/configuracao" element={<Navigate to="/gestor/dashboard" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
