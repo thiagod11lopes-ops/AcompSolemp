@@ -96,7 +96,7 @@ export function ImhEnvioModal({
             disabled={busy || linhas.length === 0}
             sx={{ fontWeight: 700 }}
           >
-            {isSubmitting ? 'Enviando...' : 'Confirmar envio IMH'}
+            {isSubmitting ? 'Enviando...' : 'Confirmar envio Auditoria'}
           </Button>
         </>
       }
