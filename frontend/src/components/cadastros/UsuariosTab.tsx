@@ -21,15 +21,17 @@ import {
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
+import { useCreatePortalUser, useCredenciaisPorLogin, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
+import { SenhaMascarada } from '@/components/cadastros/SenhaMascarada'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
 
 interface RegistroCadastro {
   id: string
   nome: string
   login: string
+  senha: string | null
   ativo: boolean
 }
 
@@ -40,6 +42,7 @@ export function UsuariosTab() {
   const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
+  const { data: credenciais = {} } = useCredenciaisPorLogin()
 
   const opcao = CADASTRO_PERFIS[subTab]
 
@@ -50,14 +53,19 @@ export function UsuariosTab() {
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
   const registros = useMemo<RegistroCadastro[]>(() => {
+    const senhaDoLogin = (login: string) =>
+      login && login !== '—' ? credenciais[login] ?? null : null
+
     if (opcao.isClinica) {
       const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
       return clinicas.map((c) => {
         const user = usuariosClinica.find((u) => u.clinicaId === c.id)
+        const login = user?.login ?? '—'
         return {
           id: c.id,
           nome: c.nome,
-          login: user?.login ?? '—',
+          login,
+          senha: senhaDoLogin(login),
           ativo: user?.ativo ?? false,
         }
       })
@@ -68,14 +76,20 @@ export function UsuariosTab() {
         id: u.id,
         nome: u.nome,
         login: u.login,
+        senha: senhaDoLogin(u.login),
         ativo: u.ativo,
       }))
-  }, [opcao, clinicas, usuarios])
+  }, [opcao, clinicas, usuarios, credenciais])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
       { accessorKey: 'nome', header: 'Nome' },
       { accessorKey: 'login', header: 'Login' },
+      {
+        id: 'senha',
+        header: 'Senha',
+        cell: ({ row }) => <SenhaMascarada senha={row.original.senha} />,
+      },
       {
         accessorKey: 'ativo',
         header: 'Status',

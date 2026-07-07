@@ -3,6 +3,20 @@ import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 
+export function getCredenciaisPorLogin(): Record<string, string> {
+  const data = loadAppData()
+  const map: Record<string, string> = {}
+
+  for (const [login, cred] of Object.entries(MOCK_CREDENTIALS)) {
+    map[login] = cred.senha
+  }
+  for (const [login, cred] of Object.entries(data.credenciais ?? {})) {
+    map[login] = cred.senha
+  }
+
+  return map
+}
+
 export interface CreatePortalUserInput {
   nome: string
   senha: string
