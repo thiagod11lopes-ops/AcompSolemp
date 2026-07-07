@@ -156,8 +156,7 @@ export default function OrdenadorTimelineDetailPage() {
         onSuccess: () => {
           pedidoPlanilhaEnvioService.markEncaminhadaImh(pedido.id)
           setAuditoriaOpen(false)
-          setFluxoEncerrado(true)
-          setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_AUDITORIA)
+          navigate('/ordenador/arquivados')
         },
       },
     )
@@ -185,8 +184,7 @@ export default function OrdenadorTimelineDetailPage() {
       {
         onSuccess: () => {
           setContabilidadeOpen(false)
-          setFluxoEncerrado(true)
-          setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
+          navigate('/ordenador/arquivados')
         },
       },
     )

@@ -29,11 +29,24 @@ function pedidoPendenteParaPerfil(
   const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
   if (!chave) return false
 
-  const ativas = pedido.etapasAtivasIds?.length
-    ? pedido.etapasAtivasIds
-    : [pedido.etapaAtualId]
+  if (
+    data.processosArquivados?.some(
+      (arquivo) => arquivo.pedidoId === pedido.id && arquivo.etapaChave === chave,
+    )
+  ) {
+    return false
+  }
 
-  return data.workflowEtapas.some((e) => ativas.includes(e.id) && e.chave === chave)
+  const ativasIds =
+    pedido.etapasAtivasIds !== undefined
+      ? pedido.etapasAtivasIds
+      : pedido.etapaAtualId
+        ? [pedido.etapaAtualId]
+        : []
+
+  if (ativasIds.length === 0) return false
+
+  return data.workflowEtapas.some((e) => ativasIds.includes(e.id) && e.chave === chave)
 }
 
 export const ordenadorService = {
