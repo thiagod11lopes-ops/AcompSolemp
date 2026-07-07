@@ -12,7 +12,7 @@ export interface CadastroPerfilOpcao {
   isClinica?: boolean
 }
 
-/** Opções de cadastro da aba Cadastros (nome + senha) */
+/** Opções de cadastro da aba Cadastros (nome + e-mail Google) */
 export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   {
     id: 'clinica',

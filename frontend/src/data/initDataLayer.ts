@@ -1,7 +1,6 @@
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
-import { getFirebaseAuth, getPortalSessionAuth, initFirebase } from '@/firebase/app'
-import { isPortalAuthEmail } from '@/firebase/portalAuth'
+import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 import { resolvePortalTenantId } from '@/data/persistence/portalUserPersistence'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
@@ -18,18 +17,12 @@ async function resolveTenantFromFirebaseAuth(): Promise<string | null> {
   await mainAuth.authStateReady()
 
   const mainUser = mainAuth.currentUser
-  if (mainUser && !isPortalAuthEmail(mainUser.email)) {
-    return mainUser.uid
-  }
+  if (!mainUser) return null
 
-  const portalAuth = getPortalSessionAuth()
-  await portalAuth.authStateReady()
-  const portalUser = portalAuth.currentUser
-  if (portalUser) {
-    return resolvePortalTenantId(portalUser.uid)
-  }
+  const portalTenant = await resolvePortalTenantId(mainUser.uid)
+  if (portalTenant) return portalTenant
 
-  return null
+  return mainUser.uid
 }
 
 export async function initDataLayer(): Promise<void> {

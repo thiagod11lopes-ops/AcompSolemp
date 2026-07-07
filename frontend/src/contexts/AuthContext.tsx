@@ -7,9 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { AuthUser, LoginCredentials, UserRole } from '@/types'
+import type { AuthUser, LoginCredentials } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { authService } from '@/services/authService'
+import { authService, type TimelineLoginResult } from '@/services/authService'
 
 interface AuthContextValue {
   gestorUser: AuthUser | null
@@ -20,19 +20,25 @@ interface AuthContextValue {
   requiresGoogleAuth: (portal: Portal) => boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
   loginWithGoogle: (portal: Portal) => Promise<AuthUser>
+  loginWithGoogleTimeline: () => Promise<TimelineLoginResult>
+  loginWithEmailTimeline: (email: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
-  loginClinicaByClinica: (clinicaId: string, senha: string, orgCode?: string) => Promise<AuthUser>
-  loginOrdenadorByNome: (nome: string, senha: string, orgCode?: string) => Promise<AuthUser>
-  loginFinanceiroByNome: (nome: string, senha: string, orgCode?: string) => Promise<AuthUser>
-  loginByPerfilNome: (
-    nome: string,
-    senha: string,
-    perfil: UserRole,
-    orgCode?: string,
-  ) => Promise<AuthUser>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+function applyTimelineLogin(
+  setters: {
+    setClinicaUser: (user: AuthUser | null) => void
+    setOrdenadorUser: (user: AuthUser | null) => void
+    setFinanceiroUser: (user: AuthUser | null) => void
+  },
+  result: TimelineLoginResult,
+): void {
+  setters.setClinicaUser(result.portal === 'clinica' ? result.authUser : null)
+  setters.setOrdenadorUser(result.portal === 'ordenador' ? result.authUser : null)
+  setters.setFinanceiroUser(result.portal === 'financeiro' ? result.authUser : null)
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [gestorUser, setGestorUser] = useState<AuthUser | null>(null)
@@ -64,6 +70,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
+  const loginWithGoogleTimeline = useCallback(async () => {
+    const result = await authService.loginWithGoogleTimeline()
+    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+    return result
+  }, [])
+
+  const loginWithEmailTimeline = useCallback(async (email: string) => {
+    const result = await authService.loginWithEmailTimeline(email)
+    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+    return result
+  }, [])
+
   const logout = useCallback(async (portal: Portal) => {
     await authService.logout(portal)
     if (portal === 'gestor') setGestorUser(null)
@@ -71,60 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else if (portal === 'ordenador') setOrdenadorUser(null)
     else setFinanceiroUser(null)
   }, [])
-
-  const loginClinicaByClinica = useCallback(
-    async (clinicaId: string, senha: string, orgCode?: string) => {
-      const authUser = await authService.loginClinicaByClinicaId(clinicaId, senha, orgCode)
-      setClinicaUser(authUser)
-      return authUser
-    },
-    [],
-  )
-
-  const loginOrdenadorByNome = useCallback(
-    async (nome: string, senha: string, orgCode?: string) => {
-      const authUser = await authService.loginOrdenadorByNome(nome, senha, orgCode)
-      setOrdenadorUser(authUser)
-      return authUser
-    },
-    [],
-  )
-
-  const loginFinanceiroByNome = useCallback(
-    async (nome: string, senha: string, orgCode?: string) => {
-      const authUser = await authService.loginFinanceiroByNome(nome, senha, orgCode)
-      setFinanceiroUser(authUser)
-      return authUser
-    },
-    [],
-  )
-
-  const loginByPerfilNome = useCallback(
-    async (nome: string, senha: string, perfil: UserRole, orgCode?: string) => {
-      if (perfil === 'FINANCEIRO') {
-        const authUser = await authService.loginByPerfilNome(
-          nome,
-          senha,
-          ['FINANCEIRO'],
-          'financeiro',
-          orgCode,
-        )
-        setFinanceiroUser(authUser)
-        return authUser
-      }
-
-      const authUser = await authService.loginByPerfilNome(
-        nome,
-        senha,
-        [perfil],
-        'ordenador',
-        orgCode,
-      )
-      setOrdenadorUser(authUser)
-      return authUser
-    },
-    [],
-  )
 
   const value = useMemo(
     () => ({
@@ -136,11 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requiresGoogleAuth: (portal: Portal) => authService.requiresGoogleAuth(portal),
       login,
       loginWithGoogle,
+      loginWithGoogleTimeline,
+      loginWithEmailTimeline,
       logout,
-      loginClinicaByClinica,
-      loginOrdenadorByNome,
-      loginFinanceiroByNome,
-      loginByPerfilNome,
     }),
     [
       gestorUser,
@@ -150,11 +112,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginWithGoogle,
+      loginWithGoogleTimeline,
+      loginWithEmailTimeline,
       logout,
-      loginClinicaByClinica,
-      loginOrdenadorByNome,
-      loginFinanceiroByNome,
-      loginByPerfilNome,
     ],
   )
 
@@ -180,31 +140,28 @@ export function useGestorAuth() {
 }
 
 export function useClinicaAuth() {
-  const { clinicaUser, isLoading, login, logout } = useAuth()
+  const { clinicaUser, isLoading, logout } = useAuth()
   return {
     user: clinicaUser,
     isLoading,
-    login: (credentials: LoginCredentials) => login(credentials, 'clinica'),
     logout: () => logout('clinica'),
   }
 }
 
 export function useOrdenadorAuth() {
-  const { ordenadorUser, isLoading, login, logout } = useAuth()
+  const { ordenadorUser, isLoading, logout } = useAuth()
   return {
     user: ordenadorUser,
     isLoading,
-    login: (credentials: LoginCredentials) => login(credentials, 'ordenador'),
     logout: () => logout('ordenador'),
   }
 }
 
 export function useFinanceiroAuth() {
-  const { financeiroUser, isLoading, login, logout } = useAuth()
+  const { financeiroUser, isLoading, logout } = useAuth()
   return {
     user: financeiroUser,
     isLoading,
-    login: (credentials: LoginCredentials) => login(credentials, 'financeiro'),
     logout: () => logout('financeiro'),
   }
 }

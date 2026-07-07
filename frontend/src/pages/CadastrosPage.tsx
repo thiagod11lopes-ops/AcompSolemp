@@ -6,7 +6,7 @@ export default function CadastrosPage() {
     <>
       <PageHeader
         title="Cadastros"
-        subtitle="Cadastro de clínicas e responsáveis das etapas da Div. de Material (nome e senha)"
+        subtitle="Cadastro de clínicas e setores com e-mail Google autorizado"
       />
       <UsuariosTab />
     </>

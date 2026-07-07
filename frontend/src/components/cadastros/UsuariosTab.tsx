@@ -21,18 +21,15 @@ import {
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useCreatePortalUser, useCredenciaisPorLogin, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
+import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
-import { SenhaMascarada } from '@/components/cadastros/SenhaMascarada'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
-import { OrgCodeCard } from '@/components/cadastros/OrgCodeCard'
 
 interface RegistroCadastro {
   id: string
   nome: string
-  login: string
-  senha: string | null
+  email: string
   ativo: boolean
 }
 
@@ -43,30 +40,24 @@ export function UsuariosTab() {
   const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
-  const { data: credenciais = {} } = useCredenciaisPorLogin()
 
   const opcao = CADASTRO_PERFIS[subTab]
 
   const [nome, setNome] = useState('')
-  const [senha, setSenha] = useState('')
+  const [email, setEmail] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
   const registros = useMemo<RegistroCadastro[]>(() => {
-    const senhaDoLogin = (login: string) =>
-      login && login !== '—' ? credenciais[login] ?? null : null
-
     if (opcao.isClinica) {
       const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
       return clinicas.map((c) => {
         const user = usuariosClinica.find((u) => u.clinicaId === c.id)
-        const login = user?.login ?? '—'
         return {
           id: c.id,
           nome: c.nome,
-          login,
-          senha: senhaDoLogin(login),
+          email: user?.email ?? '—',
           ativo: user?.ativo ?? false,
         }
       })
@@ -76,21 +67,15 @@ export function UsuariosTab() {
       .map((u) => ({
         id: u.id,
         nome: u.nome,
-        login: u.login,
-        senha: senhaDoLogin(u.login),
+        email: u.email ?? '—',
         ativo: u.ativo,
       }))
-  }, [opcao, clinicas, usuarios, credenciais])
+  }, [opcao, clinicas, usuarios])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
       { accessorKey: 'nome', header: 'Nome' },
-      { accessorKey: 'login', header: 'Login' },
-      {
-        id: 'senha',
-        header: 'Senha',
-        cell: ({ row }) => <SenhaMascarada senha={row.original.senha} />,
-      },
+      { accessorKey: 'email', header: 'E-mail Google' },
       {
         accessorKey: 'ativo',
         header: 'Status',
@@ -120,16 +105,16 @@ export function UsuariosTab() {
     setErro('')
     setSucesso('')
     try {
-      const result = await createUser.mutateAsync({
+      await createUser.mutateAsync({
         nome,
-        senha,
+        email,
         opcao,
       })
       setSucesso(
-        `${opcao.label} cadastrado(a)! Login de acesso: ${result.login} — use este login e a senha informada na Timeline.`,
+        `${opcao.label} cadastrado(a)! O usuário deve acessar a Timeline com este e-mail Google.`,
       )
       setNome('')
-      setSenha('')
+      setEmail('')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
     }
@@ -154,7 +139,10 @@ export function UsuariosTab() {
 
   return (
     <Box>
-      <OrgCodeCard />
+      <Alert severity="info" sx={{ mb: 3 }}>
+        Compartilhe o link da Timeline com clínicas e setores:{' '}
+        <strong>/clinica/timeline</strong>. Cada cadastro usa o e-mail Google autorizado para entrar.
+      </Alert>
 
       <Tabs
         value={subTab}
@@ -163,7 +151,7 @@ export function UsuariosTab() {
           setErro('')
           setSucesso('')
           setNome('')
-          setSenha('')
+          setEmail('')
           setRegistroExcluir(null)
         }}
         sx={{ mb: 3 }}
@@ -215,11 +203,11 @@ export function UsuariosTab() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
-                  type="password"
-                  label="Senha"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  helperText="Mínimo 6 caracteres — usada no acesso à Timeline"
+                  type="email"
+                  label="E-mail Google"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  helperText="Conta Google que o usuário usará em /clinica/timeline"
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -260,8 +248,8 @@ export function UsuariosTab() {
           <DialogContentText>
             Deseja realmente excluir o cadastro de{' '}
             <strong>{opcao.label}</strong> <strong>{registroExcluir?.nome}</strong>
-            {registroExcluir?.login && registroExcluir.login !== '—'
-              ? ` (login: ${registroExcluir.login})`
+            {registroExcluir?.email && registroExcluir.email !== '—'
+              ? ` (${registroExcluir.email})`
               : ''}
             ? Esta ação não pode ser desfeita.
           </DialogContentText>

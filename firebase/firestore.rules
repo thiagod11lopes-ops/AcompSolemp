@@ -15,16 +15,26 @@ service cloud.firestore {
         && (isGestorForTenant(tenantId) || isPortalUserForTenant(tenantId));
     }
 
-    // Vínculo conta timeline → tenant (criado pelo gestor)
-    match /portalUsers/{portalUid} {
-      allow read: if request.auth != null && request.auth.uid == portalUid;
-      allow create, update: if request.auth != null
-        && request.resource.data.tenantId == request.auth.uid;
-      allow delete: if request.auth != null
+    // Índice global e-mail Google → clínica/setor (criado pelo gestor)
+    match /emailAccess/{email} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.tenantId == request.auth.uid
+        && (!exists(/databases/$(database)/documents/emailAccess/$(email))
+            || get(/databases/$(database)/documents/emailAccess/$(email)).data.tenantId == request.auth.uid);
+      allow update, delete: if request.auth != null
         && resource.data.tenantId == request.auth.uid;
     }
 
-    // Código da organização — leitura pública para login da timeline
+    // Vínculo conta Google da timeline → tenant (criado no login)
+    match /portalUsers/{portalUid} {
+      allow read: if request.auth != null && request.auth.uid == portalUid;
+      allow create, update: if request.auth != null && portalUid == request.auth.uid;
+      allow delete: if request.auth != null
+        && (portalUid == request.auth.uid || resource.data.tenantId == request.auth.uid);
+    }
+
+    // Código da organização — legado (gestor)
     match /orgCodes/{code} {
       allow read: if true;
       allow create: if request.auth != null

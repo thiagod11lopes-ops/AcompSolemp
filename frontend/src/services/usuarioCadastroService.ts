@@ -1,11 +1,15 @@
 import type { User, UserRole } from '@/types'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { firebaseAuthAdapter } from '@/firebase/authAdapter'
-import { delay, loadAppData, MOCK_CREDENTIALS, saveAppData } from '@/mocks/seed'
+import {
+  getEmailAccess,
+  normalizeEmailKey,
+  registerEmailAccess,
+  removeEmailAccess,
+} from '@/data/persistence/emailAccessPersistence'
+import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import { getTenantId } from '@/services/tenantService'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
-import { syncOrgCodePublicIndex } from '@/data/persistence/tenantPersistence'
 
 function isPermissionDenied(error: unknown): boolean {
   return (
@@ -19,29 +23,23 @@ function isPermissionDenied(error: unknown): boolean {
 function wrapFirebasePermissionError(error: unknown): Error {
   if (isPermissionDenied(error)) {
     return new Error(
-      'Sem permissão no Firebase. Entre novamente com Google no Portal do Gestor (se usou a Timeline neste navegador, saia dela antes).',
+      'Sem permissão no Firebase. Entre novamente com Google no Portal do Gestor.',
     )
   }
   return error instanceof Error ? error : new Error('Erro ao salvar cadastro')
 }
 
-export function getCredenciaisPorLogin(): Record<string, string> {
-  const data = loadAppData()
-  const map: Record<string, string> = {}
-
-  for (const [login, cred] of Object.entries(MOCK_CREDENTIALS)) {
-    map[login] = cred.senha
+function validateGoogleEmail(email: string): string {
+  const normalized = normalizeEmailKey(email)
+  if (!normalized || !normalized.includes('@')) {
+    throw new Error('Informe um e-mail Google válido')
   }
-  for (const [login, cred] of Object.entries(data.credenciais ?? {})) {
-    map[login] = cred.senha
-  }
-
-  return map
+  return normalized
 }
 
 export interface CreatePortalUserInput {
   nome: string
-  senha: string
+  email: string
   opcao: CadastroPerfilOpcao
 }
 
@@ -51,8 +49,7 @@ export interface CreateUserResult {
 }
 
 function getExistingLogins(data: ReturnType<typeof loadAppData>): Set<string> {
-  const logins = new Set<string>(Object.keys(MOCK_CREDENTIALS))
-  Object.keys(data.credenciais ?? {}).forEach((l) => logins.add(l))
+  const logins = new Set<string>()
   data.usuarios.forEach((u) => logins.add(u.login))
   return logins
 }
@@ -74,6 +71,33 @@ function findOrCreateClinica(nomeClinica: string, data: ReturnType<typeof loadAp
   return clinica.id
 }
 
+async function assertEmailAvailableInTenant(
+  email: string,
+  tenantId: string,
+  ignoreUserId?: string,
+): Promise<void> {
+  const data = loadAppData()
+  const duplicateLocal = data.usuarios.find(
+    (user) =>
+      user.id !== ignoreUserId &&
+      user.email?.trim().toLowerCase() === email &&
+      user.ativo,
+  )
+  if (duplicateLocal) {
+    throw new Error('Este e-mail já está em uso nesta organização')
+  }
+
+  if (!useFirebaseDataSource()) return
+
+  const existing = await getEmailAccess(email)
+  if (existing && existing.tenantId !== tenantId) {
+    throw new Error('Este e-mail já está em uso em outra organização')
+  }
+  if (existing && existing.userId !== ignoreUserId && existing.tenantId === tenantId) {
+    throw new Error('Este e-mail já está em uso nesta organização')
+  }
+}
+
 export const usuarioCadastroService = {
   async createPortalUser(input: CreatePortalUserInput): Promise<CreateUserResult> {
     if (useFirebaseDataSource()) {
@@ -85,21 +109,27 @@ export const usuarioCadastroService = {
       }
     }
 
-    await delay(null, 400)
-
     const nome = input.nome.trim()
     if (nome.length < 3) {
       throw new Error(
         input.opcao.isClinica ? 'Informe o nome da clínica' : 'Informe o nome',
       )
     }
-    if (input.senha.length < 6) throw new Error('A senha deve ter pelo menos 6 caracteres')
+
+    const email = validateGoogleEmail(input.email)
+    const tenantId = getTenantId()
+    if (useFirebaseDataSource() && !tenantId) {
+      throw new Error('Organização do gestor não encontrada. Faça login novamente.')
+    }
+
+    await assertEmailAvailableInTenant(email, tenantId ?? 'local', undefined)
+
+    await delay(null, 200)
 
     const data = loadAppData()
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
     const perfil: UserRole = input.opcao.perfil
-
     const clinicaId = input.opcao.isClinica ? findOrCreateClinica(nome, data) : null
 
     const user: User = {
@@ -108,23 +138,28 @@ export const usuarioCadastroService = {
       posto: '',
       graduacao: input.opcao.graduacao,
       login,
+      email,
       perfil,
       clinicaId,
       ativo: true,
     }
 
     data.usuarios.push(user)
-    if (!data.credenciais) data.credenciais = {}
-    data.credenciais[login] = { senha: input.senha, userId: user.id }
     saveAppData(data)
 
-    if (useFirebaseDataSource()) {
+    if (useFirebaseDataSource() && tenantId) {
       try {
-        const tenantId = getTenantId()
-        if (tenantId) {
-          await firebaseAuthAdapter.createPortalUser(tenantId, login, input.senha)
-        }
-        await syncOrgCodePublicIndex(data)
+        await registerEmailAccess(
+          email,
+          {
+            tenantId,
+            userId: user.id,
+            perfil: user.perfil,
+            clinicaId: user.clinicaId,
+            nome: user.nome,
+          },
+          tenantId,
+        )
       } catch (error) {
         throw wrapFirebasePermissionError(error)
       }
@@ -133,31 +168,7 @@ export const usuarioCadastroService = {
     return { user, login }
   },
 
-  async updateUsuarioEmail(userId: string, email: string): Promise<User> {
-    await delay(null, 200)
-    const normalized = email.trim().toLowerCase()
-    if (!normalized || !normalized.includes('@')) {
-      throw new Error('Informe um e-mail válido')
-    }
-
-    const data = loadAppData()
-    const user = data.usuarios.find((u) => u.id === userId)
-    if (!user) throw new Error('Usuário não encontrado')
-
-    const duplicate = data.usuarios.find(
-      (u) => u.id !== userId && u.email?.trim().toLowerCase() === normalized,
-    )
-    if (duplicate) throw new Error('Este e-mail já está em uso por outro usuário')
-
-    user.email = normalized
-    saveAppData(data)
-    return user
-  },
-
-  async deleteCadastro(input: {
-    isClinica: boolean
-    id: string
-  }): Promise<void> {
+  async deleteCadastro(input: { isClinica: boolean; id: string }): Promise<void> {
     await delay(null, 300)
     const data = loadAppData()
 
@@ -166,15 +177,12 @@ export const usuarioCadastroService = {
       if (!clinica) throw new Error('Clínica não encontrada')
 
       const usersToRemove = data.usuarios.filter((u) => u.clinicaId === input.id)
-      const logins = usersToRemove.map((u) => u.login)
 
       data.clinicas = data.clinicas.filter((c) => c.id !== input.id)
       data.usuarios = data.usuarios.filter((u) => u.clinicaId !== input.id)
 
-      if (data.credenciais) {
-        logins.forEach((login) => {
-          delete data.credenciais[login]
-        })
+      if (useFirebaseDataSource()) {
+        await Promise.all(usersToRemove.map((user) => removeEmailAccess(user.email)))
       }
     } else {
       const user = data.usuarios.find((u) => u.id === input.id)
@@ -183,8 +191,8 @@ export const usuarioCadastroService = {
         throw new Error('Este usuário não pode ser excluído')
       }
 
-      if (data.credenciais) {
-        delete data.credenciais[user.login]
+      if (useFirebaseDataSource()) {
+        await removeEmailAccess(user.email)
       }
       data.usuarios = data.usuarios.filter((u) => u.id !== input.id)
     }

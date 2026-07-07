@@ -1,7 +1,9 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { createUniqueOrgCode, resolveOrgCodePublicData, resolveOrgCodeToTenantId } from '@/data/persistence/tenantPersistence'
+import { getEmailAccess, normalizeEmailKey } from '@/data/persistence/emailAccessPersistence'
+import { registerPortalUserMapping } from '@/data/persistence/portalUserPersistence'
+import { createUniqueOrgCode } from '@/data/persistence/tenantPersistence'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
 import { initFirebase } from '@/firebase/app'
 import {
@@ -13,12 +15,13 @@ import {
   reloadFreshAppData,
   saveAppData,
 } from '@/mocks/seed'
-import { slugLogin } from '@/utils/loginSlug'
 import {
   canAccessGestorRoute,
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
 } from '@/utils/permissions'
+import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { portalForPerfil } from '@/utils/portalForPerfil'
 import {
   getStoredOrgCode,
   getTenantId,
@@ -27,7 +30,6 @@ import {
   setStoredOrgCode,
   setTenantId,
 } from '@/services/tenantService'
-import { syncPortalFirebaseUsers } from '@/services/portalUserSync'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
@@ -35,6 +37,12 @@ const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
 const CLINICA_AUTH_KEY = STORAGE_KEYS.AUTH_CLINICA
 const ORDENADOR_AUTH_KEY = STORAGE_KEYS.AUTH_ORDENADOR
 const FINANCEIRO_AUTH_KEY = STORAGE_KEYS.AUTH_FINANCEIRO
+
+export interface TimelineLoginResult {
+  authUser: AuthUser
+  portal: Portal
+  route: string
+}
 
 function readStoredUser(key: string): AuthUser | null {
   const stored = storageGet(key)
@@ -51,6 +59,14 @@ function writeStoredUser(key: string, authUser: AuthUser | null): void {
   else storageRemove(key)
 }
 
+function resolveCredential(login: string, senha: string): CredencialUsuario | null {
+  const data = loadAppData()
+  const dynamic = data.credenciais?.[login]
+  const cred = dynamic ?? MOCK_CREDENTIALS[login]
+  if (!cred || cred.senha !== senha) return null
+  return cred
+}
+
 function migrateLegacyAuth(): void {
   const legacy = storageGet(LEGACY_AUTH_KEY)
   if (!legacy) return
@@ -65,14 +81,6 @@ function migrateLegacyAuth(): void {
   }
 
   storageRemove(LEGACY_AUTH_KEY)
-}
-
-function resolveCredential(login: string, senha: string): CredencialUsuario | null {
-  const data = loadAppData()
-  const dynamic = data.credenciais?.[login]
-  const cred = dynamic ?? MOCK_CREDENTIALS[login]
-  if (!cred || cred.senha !== senha) return null
-  return cred
 }
 
 function validatePortalAccess(portal: Portal, perfil: AuthUser['perfil']): boolean {
@@ -92,31 +100,6 @@ function sessionKey(portal: Portal): string {
 
 function setSession(portal: Portal, authUser: AuthUser | null): void {
   writeStoredUser(sessionKey(portal), authUser)
-}
-
-async function resolveAndSetTenant(orgCode?: string): Promise<void> {
-  initFirebase()
-  const code = (orgCode ?? getStoredOrgCode())?.trim().toUpperCase()
-  if (!code) {
-    throw new Error('Informe o código da organização')
-  }
-
-  const tenantId = await resolveOrgCodeToTenantId(code)
-  if (!tenantId) {
-    throw new Error('Código da organização inválido')
-  }
-
-  setTenantId(tenantId)
-  setStoredOrgCode(code)
-}
-
-async function ensurePortalFirestoreAccess(login: string, senha: string): Promise<void> {
-  const tenantId = getTenantId()
-  if (!tenantId) {
-    throw new Error('Informe o código da organização')
-  }
-  await firebaseAuthAdapter.signInPortalUser(tenantId, login, senha)
-  await reloadFreshAppData()
 }
 
 async function provisionGestorTenant(uid: string, email: string): Promise<User> {
@@ -145,8 +128,6 @@ async function provisionGestorTenant(uid: string, email: string): Promise<User> 
     setStoredOrgCode(data.tenantMeta.orgCode)
   }
 
-  void syncPortalFirebaseUsers()
-
   return owner
 }
 
@@ -162,11 +143,25 @@ async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser
 
   setSession(portal, authUser)
 
-  if (portal === 'ordenador' || portal === 'financeiro') {
+  if (portal === 'ordenador' || portal === 'financeiro' || portal === 'clinica') {
     await reloadFreshAppData()
   }
 
   return authUser
+}
+
+function findLocalUserByEmail(email: string): User | null {
+  const normalized = normalizeEmailKey(email)
+  const data = loadAppData()
+  return (
+    data.usuarios.find(
+      (user) =>
+        user.ativo &&
+        user.perfil !== 'GESTOR' &&
+        user.perfil !== 'ADMINISTRADOR' &&
+        user.email?.trim().toLowerCase() === normalized,
+    ) ?? null
+  )
 }
 
 export const authService = {
@@ -174,9 +169,8 @@ export const authService = {
     migrateLegacyAuth()
   },
 
-  /** Google obrigatório apenas no portal do gestor em produção */
   requiresGoogleAuth(portal: Portal = 'gestor'): boolean {
-    return useFirebaseDataSource() && portal === 'gestor'
+    return useFirebaseDataSource() && (portal === 'gestor' || portal === 'clinica')
   },
 
   getOrgCode(): string | null {
@@ -220,7 +214,7 @@ export const authService = {
       throw new Error('Login com Google disponível apenas com Firebase configurado')
     }
     if (portal !== 'gestor') {
-      throw new Error('Login com Google é exclusivo do Portal do Gestor')
+      throw new Error('Login com Google do gestor é exclusivo do Portal do Gestor')
     }
 
     const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
@@ -234,16 +228,13 @@ export const authService = {
     return completePortalLogin('gestor', owner)
   },
 
+  /** Login local (modo demo sem Firebase) */
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
     if (useFirebaseDataSource()) {
-      if (portal === 'gestor') {
-        throw new Error('Use o login com Google no Portal do Gestor')
-      }
-      await ensurePortalFirestoreAccess(credentials.login, credentials.senha)
-    } else {
-      await delay(null, 600)
+      throw new Error('Use o login com Google')
     }
 
+    await delay(null, 600)
     const cred = resolveCredential(credentials.login, credentials.senha)
     if (!cred) {
       throw new Error('Login ou senha inválidos')
@@ -251,12 +242,70 @@ export const authService = {
 
     const data = loadAppData()
     const user = data.usuarios.find((u) => u.id === cred.userId && u.ativo)
-
     if (!user) {
       throw new Error('Usuário não encontrado ou inativo')
     }
 
     return completePortalLogin(portal, user)
+  },
+
+  async loginWithGoogleTimeline(): Promise<TimelineLoginResult> {
+    if (useFirebaseDataSource()) {
+      const firebaseSession = await firebaseAuthAdapter.signInWithGoogle({ selectAccount: true })
+      if (!firebaseSession.email) {
+        await firebaseAuthAdapter.signOut()
+        throw new Error('Conta Google sem e-mail. Use outra conta.')
+      }
+
+      const email = normalizeEmailKey(firebaseSession.email)
+      const access = await getEmailAccess(email)
+      if (!access) {
+        await firebaseAuthAdapter.signOut()
+        throw new Error('Email não cadastrado')
+      }
+
+      setTenantId(access.tenantId)
+      await registerPortalUserMapping(firebaseSession.uid, access.tenantId)
+      await reloadFreshAppData()
+
+      const data = loadAppData()
+      const user = data.usuarios.find((item) => item.id === access.userId && item.ativo)
+      if (!user) {
+        await firebaseAuthAdapter.signOut()
+        throw new Error('Email não cadastrado')
+      }
+
+      const portal = portalForPerfil(user.perfil)
+      const authUser = await completePortalLogin(portal, user)
+      return {
+        authUser,
+        portal,
+        route: getHomeRouteForPerfil(user.perfil),
+      }
+    }
+
+    await delay(null, 300)
+    throw new Error('Configure Firebase para acesso à Timeline com Google')
+  },
+
+  async loginWithEmailTimeline(email: string): Promise<TimelineLoginResult> {
+    const normalized = normalizeEmailKey(email)
+    if (!normalized.includes('@')) {
+      throw new Error('Informe um e-mail válido')
+    }
+
+    const user = findLocalUserByEmail(normalized)
+    if (!user) {
+      throw new Error('Email não cadastrado')
+    }
+
+    const portal = portalForPerfil(user.perfil)
+    const authUser = await completePortalLogin(portal, user)
+    return {
+      authUser,
+      portal,
+      route: getHomeRouteForPerfil(user.perfil),
+    }
   },
 
   async logout(portal: Portal): Promise<void> {
@@ -273,7 +322,7 @@ export const authService = {
     }
 
     const hasGestor = Boolean(readStoredUser(GESTOR_AUTH_KEY))
-    await firebaseAuthAdapter.signOutPortalSession()
+    await firebaseAuthAdapter.signOut()
     if (!hasGestor) {
       setTenantId(null)
     }
@@ -305,103 +354,11 @@ export const authService = {
     storageRemove(FINANCEIRO_AUTH_KEY)
   },
 
-  async loginClinicaByClinicaId(
-    clinicaId: string,
-    senha: string,
-    orgCode?: string,
-  ): Promise<AuthUser> {
+  async prepareTimelineEntry(): Promise<void> {
+    this.clearClinicaOrdenadorSessions()
     if (useFirebaseDataSource()) {
-      await resolveAndSetTenant(orgCode)
-      const tenantId = getTenantId()
-      if (!tenantId) throw new Error('Informe o código da organização')
-
-      const code = (orgCode ?? getStoredOrgCode())?.trim().toUpperCase()
-      const orgData = code ? await resolveOrgCodePublicData(code) : null
-      const clinica = orgData?.clinicas.find((item) => item.id === clinicaId)
-
-      if (!clinica?.login) {
-        throw new Error('Nenhum usuário cadastrado para esta clínica')
-      }
-
-      await firebaseAuthAdapter.signInPortalUser(tenantId, clinica.login, senha)
-      return this.login({ login: clinica.login, senha }, 'clinica')
+      initFirebase()
+      await firebaseAuthAdapter.signOut()
     }
-
-    await delay(null, 300)
-    const data = loadAppData()
-    const users = data.usuarios.filter(
-      (u) => u.perfil === 'CLINICA' && u.clinicaId === clinicaId && u.ativo,
-    )
-
-    if (users.length === 0) {
-      throw new Error('Nenhum usuário cadastrado para esta clínica')
-    }
-
-    for (const user of users) {
-      const cred = resolveCredential(user.login, senha)
-      if (cred && cred.userId === user.id) {
-        return this.login({ login: user.login, senha }, 'clinica')
-      }
-    }
-
-    throw new Error('Senha inválida para esta clínica')
-  },
-
-  async loginOrdenadorByNome(nome: string, senha: string, orgCode?: string): Promise<AuthUser> {
-    return this.loginByPerfilNome(
-      nome,
-      senha,
-      [
-        'ASSINANTE',
-        'CONFECCAO_SOLEMP',
-        'ASSINATURA_1_SOLEMP',
-        'ASSINATURA_2_SOLEMP',
-        'AUDITORIA',
-        'CONTABILIDADE_IMH',
-        'SDA',
-      ],
-      'ordenador',
-      orgCode,
-    )
-  },
-
-  async loginFinanceiroByNome(nome: string, senha: string, orgCode?: string): Promise<AuthUser> {
-    return this.loginByPerfilNome(nome, senha, ['FINANCEIRO'], 'financeiro', orgCode)
-  },
-
-  async loginByPerfilNome(
-    nome: string,
-    senha: string,
-    perfis: AuthUser['perfil'][],
-    portal: Portal,
-    orgCode?: string,
-  ): Promise<AuthUser> {
-    if (useFirebaseDataSource()) {
-      await resolveAndSetTenant(orgCode)
-      const tenantId = getTenantId()
-      if (!tenantId) throw new Error('Informe o código da organização')
-
-      const loginGuess = slugLogin(nome)
-      await firebaseAuthAdapter.signInPortalUser(tenantId, loginGuess, senha)
-      return this.login({ login: loginGuess, senha }, portal)
-    }
-
-    await delay(null, 300)
-    const data = loadAppData()
-    const nomeNorm = nome.trim().toLowerCase()
-    const loginSlugValue = slugLogin(nome)
-
-    const user = data.usuarios.find(
-      (u) =>
-        perfis.includes(u.perfil) &&
-        u.ativo &&
-        (u.nome.trim().toLowerCase() === nomeNorm || u.login === loginSlugValue),
-    )
-
-    if (!user) {
-      throw new Error('Usuário não encontrado para este perfil')
-    }
-
-    return this.login({ login: user.login, senha }, portal)
   },
 }

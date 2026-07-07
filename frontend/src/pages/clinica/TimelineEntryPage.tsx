@@ -1,32 +1,41 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Box, Typography, alpha, useTheme } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
+import {
+  Alert,
+  Box,
+  Button,
+  TextField,
+  Typography,
+  alpha,
+  useTheme,
+} from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import GoogleIcon from '@mui/icons-material/Google'
 import { useAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { PortalAccessModal } from '@/components/clinica/PortalAccessModal'
+import { useFirebaseDataSource } from '@/config/dataSource'
 
 /**
- * Portão público de acesso à timeline.
- * Sempre que a rota /clinica/timeline é aberta, encerra sessões de
- * clínica/setor/financeiro e exibe o modal de seleção de perfil + senha.
+ * Portão de acesso à Timeline — login com Google (e-mail cadastrado pelo gestor).
  */
 export default function TimelineEntryPage() {
   const theme = useTheme()
-  const location = useLocation()
-  const { logout, isLoading } = useAuth()
+  const navigate = useNavigate()
+  const { loginWithGoogleTimeline, loginWithEmailTimeline } = useAuth()
+  const isFirebase = useFirebaseDataSource()
   const [gateReady, setGateReady] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState('')
+  const [devEmail, setDevEmail] = useState('')
 
   useEffect(() => {
     let cancelled = false
 
     const abrirPorta = async () => {
       setGateReady(false)
-      authService.clearClinicaOrdenadorSessions()
-      await logout('clinica')
-      await logout('ordenador')
-      await logout('financeiro')
+      setErro('')
+      await authService.prepareTimelineEntry()
       if (!cancelled) setGateReady(true)
     }
 
@@ -34,9 +43,35 @@ export default function TimelineEntryPage() {
     return () => {
       cancelled = true
     }
-  }, [logout, location.key, location.pathname])
+  }, [])
 
-  if (isLoading || !gateReady) return <LoadingSpinner />
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    setErro('')
+    try {
+      const result = await loginWithGoogleTimeline()
+      navigate(result.route, { replace: true })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDevEmailLogin = async () => {
+    setLoading(true)
+    setErro('')
+    try {
+      const result = await loginWithEmailTimeline(devEmail)
+      navigate(result.route, { replace: true })
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!gateReady) return <LoadingSpinner />
 
   return (
     <Box
@@ -45,19 +80,93 @@ export default function TimelineEntryPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        px: 2,
         background: `linear-gradient(160deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${theme.palette.background.default} 50%)`,
       }}
     >
-      <Box sx={{ textAlign: 'center', px: 2, mb: 8 }}>
-        <TimelineIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 420,
+          p: 4,
+          borderRadius: 4,
+          bgcolor: 'background.paper',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.12)',
+          textAlign: 'center',
+        }}
+      >
+        <Box
+          sx={{
+            width: 64,
+            height: 64,
+            mx: 'auto',
+            mb: 2,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: alpha(theme.palette.primary.main, 0.12),
+            color: 'primary.main',
+          }}
+        >
+          <TimelineIcon sx={{ fontSize: 36 }} />
+        </Box>
+
+        <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
           AcompSOLEMP
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Timeline de Materiais Consignados
         </Typography>
+
+        {isFirebase ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Entre com o Google cadastrado pelo gestor da sua organização.
+            </Typography>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={() => void handleGoogleLogin()}
+              disabled={loading}
+              sx={{ mb: 2 }}
+            >
+              {loading ? 'Entrando...' : 'Entrar com Google'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Modo local — informe o e-mail cadastrado pelo gestor.
+            </Typography>
+            <TextField
+              fullWidth
+              type="email"
+              label="E-mail Google"
+              value={devEmail}
+              onChange={(e) => setDevEmail(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              onClick={() => void handleDevEmailLogin()}
+              disabled={loading || !devEmail.trim()}
+            >
+              {loading ? 'Entrando...' : 'Entrar'}
+            </Button>
+          </>
+        )}
+
+        {erro && (
+          <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
+            {erro}
+          </Alert>
+        )}
       </Box>
-      <PortalAccessModal open />
     </Box>
   )
 }

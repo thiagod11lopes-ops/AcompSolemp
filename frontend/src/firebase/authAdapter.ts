@@ -1,21 +1,12 @@
 import {
-  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { useFirebaseDataSource } from '@/config/dataSource'
-import { registerPortalUserMapping } from '@/data/persistence/portalUserPersistence'
-import {
-  getFirebaseAuth,
-  getPortalSessionAuth,
-  getPortalUserCreatorAuth,
-  initFirebase,
-} from '@/firebase/app'
-import { isPortalAuthEmail, portalAuthEmail } from '@/firebase/portalAuth'
+import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 
 export interface FirebaseAuthSession {
   uid: string
@@ -27,26 +18,6 @@ function toSession(user: FirebaseUser): FirebaseAuthSession {
     uid: user.uid,
     email: user.email,
   }
-}
-
-function isEmailAlreadyInUse(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: string }).code === 'auth/email-already-in-use'
-  )
-}
-
-function isInvalidCredential(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    ((error as { code: string }).code === 'auth/invalid-credential' ||
-      (error as { code: string }).code === 'auth/wrong-password' ||
-      (error as { code: string }).code === 'auth/user-not-found')
-  )
 }
 
 function isPopupDismissed(error: unknown): boolean {
@@ -82,10 +53,8 @@ async function signInGoogleForTenant(
       throw new Error('Use a mesma conta Google com a qual criou esta organização.')
     }
     return toSession(credential.user)
-  } catch (error) {
-    if (!isPopupDismissed(error) && !isPopupBlocked(error)) {
-      // prompt none falha quando não há sessão Google ativa — tenta popup interativo
-    }
+  } catch {
+    // tenta popup interativo
   }
 
   provider.setCustomParameters({ prompt: 'select_account' })
@@ -102,7 +71,7 @@ async function signInGoogleForTenant(
     }
     if (isPopupBlocked(error)) {
       throw new Error(
-        'O navegador bloqueou a janela do Google. Permita pop-ups para este site ou saia da Timeline e entre novamente pelo Portal do Gestor.',
+        'O navegador bloqueou a janela do Google. Permita pop-ups para este site.',
       )
     }
     throw error
@@ -131,10 +100,11 @@ export const firebaseAuthAdapter = {
     return user ? toSession(user) : null
   },
 
-  async signInWithGoogle(): Promise<FirebaseAuthSession> {
+  async signInWithGoogle(options?: { selectAccount?: boolean }): Promise<FirebaseAuthSession> {
     initFirebase()
     const auth = getFirebaseAuth()
-    if (auth.currentUser && auth.currentUser.email && !isPortalAuthEmail(auth.currentUser.email)) {
+
+    if (!options?.selectAccount && auth.currentUser?.email) {
       return toSession(auth.currentUser)
     }
 
@@ -148,107 +118,38 @@ export const firebaseAuthAdapter = {
     return toSession(credential.user)
   },
 
-  /** Verifica se a sessão Google do gestor está ativa (sem abrir popup) */
   async hasGestorFirebaseAuth(expectedTenantId: string): Promise<boolean> {
     if (!useFirebaseDataSource()) return true
     initFirebase()
     const auth = getFirebaseAuth()
     await auth.authStateReady()
     const current = auth.currentUser
-    return Boolean(current && !isPortalAuthEmail(current.email) && current.uid === expectedTenantId)
+    return Boolean(current && current.uid === expectedTenantId)
   },
 
-  /** Garante sessão Google do gestor; só abre popup quando interactive=true (clique do usuário) */
   async ensureGestorFirebaseAuth(
     expectedTenantId: string,
     options?: { interactive?: boolean },
   ): Promise<void> {
     if (!useFirebaseDataSource()) return
     if (await this.hasGestorFirebaseAuth(expectedTenantId)) return
-
     if (!options?.interactive) return
 
     initFirebase()
     const auth = getFirebaseAuth()
     await auth.authStateReady()
 
-    const current = auth.currentUser
-    if (current && isPortalAuthEmail(current.email)) {
-      // Timeline em instância separada — não deveria ocorrer; limpa por segurança
-      await signOut(auth)
-    } else if (current && current.uid !== expectedTenantId) {
-      await signOut(auth)
-    } else if (current) {
+    if (auth.currentUser) {
       await signOut(auth)
     }
 
     await signInGoogleForTenant(auth, expectedTenantId)
   },
 
-  /** Login da timeline — e-mail/senha na instância secundária (gestor Google permanece no app principal) */
-  async signInPortalUser(tenantId: string, login: string, senha: string): Promise<void> {
-    if (!useFirebaseDataSource()) return
-    initFirebase()
-    const auth = getPortalSessionAuth()
-    const email = portalAuthEmail(tenantId, login)
-
-    if (auth.currentUser?.email === email) return
-
-    if (auth.currentUser) {
-      await signOut(auth)
-    }
-
-    try {
-      const credential = await signInWithEmailAndPassword(auth, email, senha)
-      await credential.user.getIdToken(true)
-    } catch (error) {
-      if (isInvalidCredential(error)) {
-        throw new Error('Login ou senha inválidos')
-      }
-      throw error
-    }
-  },
-
-  /** Cria conta Firebase para usuário da timeline (gestor permanece logado) */
-  async createPortalUser(tenantId: string, login: string, senha: string): Promise<void> {
-    if (!useFirebaseDataSource()) return
-    initFirebase()
-    const email = portalAuthEmail(tenantId, login)
-    const creatorAuth = getPortalUserCreatorAuth()
-
-    let portalUid: string
-    try {
-      const credential = await createUserWithEmailAndPassword(creatorAuth, email, senha)
-      portalUid = credential.user.uid
-    } catch (error) {
-      if (!isEmailAlreadyInUse(error)) throw error
-      const credential = await signInWithEmailAndPassword(creatorAuth, email, senha)
-      portalUid = credential.user.uid
-      await signOut(creatorAuth)
-    }
-
-    await registerPortalUserMapping(portalUid, tenantId)
-  },
-
-  async signIn(email: string, password: string): Promise<FirebaseAuthSession> {
-    initFirebase()
-    const credential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password)
-    return toSession(credential.user)
-  },
-
   async signOut(): Promise<void> {
     if (!useFirebaseDataSource()) return
     initFirebase()
     await signOut(getFirebaseAuth())
-  },
-
-  async signOutPortalSession(): Promise<void> {
-    if (!useFirebaseDataSource()) return
-    initFirebase()
-    const portalAuth = getPortalSessionAuth()
-    if (portalAuth.currentUser) {
-      await signOut(portalAuth)
-    }
   },
 
   onAuthStateChanged(listener: (user: FirebaseAuthSession | null) => void): () => void {
