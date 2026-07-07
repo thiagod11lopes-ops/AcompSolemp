@@ -31,7 +31,6 @@ import {
   pedidoIdFromRowId,
   CONSUMO_PLANILHA_NOME_PADRAO,
   rowPodeSerEnviada,
-  rowPodeSerSelecionada,
   getMesAtualModelo,
   getMesModeloFromParts,
   dataPertenceAoMes,
@@ -250,13 +249,17 @@ export default function ClinicaNovoPedidoPage() {
   const getSelectedRows = useCallback(() => {
     const mesSheet = rowsByMes[mesSelecionado.id]
     const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
-    return sourceRows.filter((r) => rowSelection[r.id] && rowPodeSerSelecionada(r))
-  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelection])
+    return sourceRows.filter(
+      (r) =>
+        rowSelection[r.id] &&
+        rowPodeSerEnviada(r, rowIdsComPedido, finalizedRowIds),
+    )
+  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelection, rowIdsComPedido, finalizedRowIds])
 
   const handleAbrirImhModal = () => {
     const selectedRows = getSelectedRows()
     if (selectedRows.length === 0) {
-      setBatchError('Selecione lançamentos preenchidos para enviar.')
+      setBatchError('Selecione lançamentos novos preenchidos para enviar.')
       return
     }
     setBatchError(null)
@@ -267,7 +270,7 @@ export default function ClinicaNovoPedidoPage() {
   const handleAbrirMaterialModal = () => {
     const selectedRows = getSelectedRows()
     if (selectedRows.length === 0) {
-      setBatchError('Selecione lançamentos preenchidos para enviar.')
+      setBatchError('Selecione lançamentos novos preenchidos para enviar.')
       return
     }
     setBatchError(null)

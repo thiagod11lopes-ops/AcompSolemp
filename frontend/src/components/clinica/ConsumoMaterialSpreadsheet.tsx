@@ -45,7 +45,7 @@ import {
   formatValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
-import { isLinhaPreenchida, rowPodeSerSelecionada } from '@/utils/consumoMaterialTemplate'
+import { isLinhaPreenchida, rowPodeSerSelecionada, rowPodeSerEnviada } from '@/utils/consumoMaterialTemplate'
 import type {
   ConsumoMaterialColunaKey,
   InserirLinhaConsumoPosicao,
@@ -150,7 +150,7 @@ function ConsumoMaterialSpreadsheetInner({
   onRowSelectionChange,
   mesReferencia,
   lancamentosPreenchidos,
-  rowIdsComPedido: _rowIdsComPedido,
+  rowIdsComPedido,
   finalizedRowIds,
   totalLancamentos = 0,
   onExcluirTudo,
@@ -514,6 +514,16 @@ function ConsumoMaterialSpreadsheetInner({
     [table, rowSelection, rows, podeSelecionar],
   )
 
+  const enviavelCount = useMemo(
+    () =>
+      table
+        .getSelectedRowModel()
+        .rows.filter((r) =>
+          rowPodeSerEnviada(r.original, rowIdsComPedido ?? new Set(), finalizedRowIds),
+        ).length,
+    [table, rowSelection, rows, rowIdsComPedido, finalizedRowIds],
+  )
+
   const totalValorFiltrado = useMemo(() => {
     return table.getFilteredRowModel().rows.reduce(
       (sum, r) => sum + (!isLinhaPreenchida(r.original) ? 0 : r.original.valorNumerico),
@@ -657,10 +667,10 @@ function ConsumoMaterialSpreadsheetInner({
                           variant="contained"
                           startIcon={<SendIcon />}
                           onClick={onEnviarImh}
-                          disabled={isEnviando || selectedCount === 0}
+                          disabled={isEnviando || enviavelCount === 0}
                           sx={headerContainedSx}
                         >
-                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${selectedCount})`}
+                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${enviavelCount})`}
                         </Button>
                       )}
                       {onEnviarMaterial && (
@@ -669,14 +679,14 @@ function ConsumoMaterialSpreadsheetInner({
                           variant="contained"
                           startIcon={<InventoryIcon />}
                           onClick={onEnviarMaterial}
-                          disabled={isEnviando || selectedCount === 0}
+                          disabled={isEnviando || enviavelCount === 0}
                           sx={{
                             ...headerContainedSx,
                             bgcolor: alpha('#fff', 0.28),
                             '&:hover': { bgcolor: alpha('#fff', 0.38), boxShadow: 'none' },
                           }}
                         >
-                          Enviar para Material ({selectedCount})
+                          Enviar para Material ({enviavelCount})
                         </Button>
                       )}
                     </Box>
