@@ -234,8 +234,8 @@ export default function ClinicaNovoPedidoPage() {
 
   return (
     <>
-      <Box sx={{ mb: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+      <Box sx={{ mb: 0, mt: -0.25 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
           <Button
             size="small"
             startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />}

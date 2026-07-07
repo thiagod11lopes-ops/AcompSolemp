@@ -33,7 +33,7 @@ function resolveActiveTab(pathname: string): string {
   return '/clinica/pedidos'
 }
 
-export const CLINICA_TOPBAR_HEIGHT = 112
+export const CLINICA_TOPBAR_HEIGHT = 84
 
 export function ClinicaTopBar() {
   const { user, logout } = useClinicaAuth()
@@ -64,7 +64,7 @@ export function ClinicaTopBar() {
         borderColor: 'divider',
       }}
     >
-      <Toolbar variant="dense" sx={{ gap: 1, minHeight: 48 }}>
+      <Toolbar variant="dense" sx={{ gap: 1, minHeight: 40, py: 0.5 }}>
         <LocalHospitalIcon color="primary" />
         <Box sx={{ minWidth: 0, mr: 1 }}>
           <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
@@ -102,17 +102,18 @@ export function ClinicaTopBar() {
         scrollButtons="auto"
         allowScrollButtonsMobile
         sx={{
-          minHeight: 44,
+          minHeight: 40,
           px: { xs: 0.5, sm: 2 },
           borderTop: 1,
           borderColor: 'divider',
           bgcolor: (t) => t.palette.action.hover,
           '& .MuiTab-root': {
-            minHeight: 44,
+            minHeight: 40,
+            py: 0.25,
             textTransform: 'none',
             fontWeight: 600,
-            fontSize: '0.875rem',
-            gap: 0.75,
+            fontSize: '0.8125rem',
+            gap: 0.5,
           },
         }}
       >

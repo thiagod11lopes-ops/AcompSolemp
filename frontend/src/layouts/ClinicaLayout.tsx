@@ -15,7 +15,9 @@ export function ClinicaLayout({ children }: { children?: ReactNode }) {
           pt: `${CLINICA_TOPBAR_HEIGHT}px`,
         }}
       >
-        <Box sx={{ p: { xs: 2, md: 3 } }}>{children ?? <Outlet />}</Box>
+        <Box sx={{ px: { xs: 2, md: 3 }, pb: { xs: 2, md: 3 }, pt: { xs: 0.5, md: 0.75 } }}>
+          {children ?? <Outlet />}
+        </Box>
       </Box>
     </Box>
   )
