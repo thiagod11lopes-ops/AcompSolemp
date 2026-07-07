@@ -53,11 +53,13 @@ export function UsuariosTab() {
     if (opcao.isClinica) {
       const usuariosClinica = usuarios.filter((u) => u.perfil === 'CLINICA')
       return clinicas.map((c) => {
-        const user = usuariosClinica.find((u) => u.clinicaId === c.id)
+        const user =
+          usuariosClinica.find((u) => u.clinicaId === c.id && u.email) ??
+          usuariosClinica.find((u) => u.clinicaId === c.id)
         return {
           id: c.id,
           nome: c.nome,
-          email: user?.email ?? '—',
+          email: user?.email?.trim() || '—',
           ativo: user?.ativo ?? false,
         }
       })
@@ -67,7 +69,7 @@ export function UsuariosTab() {
       .map((u) => ({
         id: u.id,
         nome: u.nome,
-        email: u.email ?? '—',
+        email: u.email?.trim() || '—',
         ativo: u.ativo,
       }))
   }, [opcao, clinicas, usuarios])
@@ -75,7 +77,11 @@ export function UsuariosTab() {
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
       { accessorKey: 'nome', header: 'Nome' },
-      { accessorKey: 'email', header: 'E-mail Google' },
+      {
+        accessorKey: 'email',
+        header: 'E-mail Google',
+        cell: ({ row }) => row.original.email,
+      },
       {
         accessorKey: 'ativo',
         header: 'Status',

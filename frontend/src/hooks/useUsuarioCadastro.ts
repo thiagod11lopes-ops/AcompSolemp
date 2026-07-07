@@ -10,9 +10,8 @@ export function useCreatePortalUser() {
     mutationFn: (input: CreatePortalUserInput) =>
       usuarioCadastroService.createPortalUser(input),
     onSuccess: async (_result, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      await queryClient.refetchQueries({ queryKey: ['usuarios'] })
       if (variables.opcao.isClinica) {
-        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
         await queryClient.refetchQueries({ queryKey: ['clinicas'] })
       }
     },
@@ -25,9 +24,8 @@ export function useDeleteCadastro() {
     mutationFn: (input: { isClinica: boolean; id: string }) =>
       usuarioCadastroService.deleteCadastro(input),
     onSuccess: async (_result, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      await queryClient.refetchQueries({ queryKey: ['usuarios'] })
       if (variables.isClinica) {
-        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
         await queryClient.refetchQueries({ queryKey: ['clinicas'] })
       }
     },

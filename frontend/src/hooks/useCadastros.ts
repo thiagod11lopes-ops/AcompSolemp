@@ -24,7 +24,12 @@ export function useMateriais() {
 }
 
 export function useUsuarios() {
-  return useQuery({ queryKey: ['usuarios'], queryFn: cadastroService.listUsuarios })
+  return useQuery({
+    queryKey: ['usuarios'],
+    queryFn: cadastroService.listUsuarios,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
 }
 
 export function useWorkflowEtapas() {

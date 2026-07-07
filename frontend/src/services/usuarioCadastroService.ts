@@ -7,6 +7,7 @@ import {
   removeEmailAccess,
 } from '@/data/persistence/emailAccessPersistence'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import { getTenantId } from '@/services/tenantService'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
@@ -132,7 +133,7 @@ export const usuarioCadastroService = {
     const perfil: UserRole = input.opcao.perfil
     const clinicaId = input.opcao.isClinica ? findOrCreateClinica(nome, data) : null
 
-    const user: User = {
+    let user: User = {
       id: `user-${input.opcao.id}-${Date.now()}`,
       nome,
       posto: '',
@@ -144,8 +145,31 @@ export const usuarioCadastroService = {
       ativo: true,
     }
 
-    data.usuarios.push(user)
+    if (input.opcao.isClinica && clinicaId) {
+      const existingIdx = data.usuarios.findIndex(
+        (u) => u.clinicaId === clinicaId && u.perfil === 'CLINICA',
+      )
+      if (existingIdx >= 0) {
+        const existing = data.usuarios[existingIdx]
+        if (useFirebaseDataSource() && existing.email && existing.email !== email) {
+          await removeEmailAccess(existing.email)
+        }
+        existing.nome = nome
+        existing.email = email
+        existing.ativo = true
+        user = existing
+      } else {
+        data.usuarios.push(user)
+      }
+    } else {
+      data.usuarios.push(user)
+    }
+
     saveAppData(data)
+
+    if (useFirebaseDataSource()) {
+      await flushFirebaseAppDataSync()
+    }
 
     if (useFirebaseDataSource() && tenantId) {
       try {
