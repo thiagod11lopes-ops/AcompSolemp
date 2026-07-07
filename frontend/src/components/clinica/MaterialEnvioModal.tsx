@@ -1,25 +1,31 @@
 import { Button } from '@mui/material'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import DownloadIcon from '@mui/icons-material/Download'
+import SendIcon from '@mui/icons-material/Send'
 import { useState } from 'react'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { MesConsumoModelo } from '@/utils/consumoMaterialTemplate'
 import { usePlanilhaDraft } from '@/hooks/usePlanilhaDraft'
 import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModalShell'
 import { downloadMaterialOds, getMaterialOdsFileName } from '@/utils/materialOdsExport'
+import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 interface MaterialEnvioModalProps {
   open: boolean
   consumoRows: ConsumoMaterialRow[]
   mesReferencia?: MesConsumoModelo
+  isSubmitting?: boolean
   onClose: () => void
+  onConfirm: (planilha: ImhPlanilha) => void
 }
 
 export function MaterialEnvioModal({
   open,
   consumoRows,
   mesReferencia,
+  isSubmitting = false,
   onClose,
+  onConfirm,
 }: MaterialEnvioModalProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -34,6 +40,8 @@ export function MaterialEnvioModal({
     inserirLinha,
     excluirLinha,
   } = usePlanilhaDraft('material', open, consumoRows, mesReferencia)
+
+  const busy = isSubmitting || isGenerating
 
   const handleGerarPlanilha = async () => {
     setExportError(null)
@@ -58,7 +66,7 @@ export function MaterialEnvioModal({
       linhas={linhas}
       savedAt={savedAt}
       isSaving={isSaving}
-      disabled={isGenerating}
+      disabled={busy}
       exportError={exportError}
       onClose={onClose}
       onCabecalhoChange={updateCabecalho}
@@ -67,18 +75,27 @@ export function MaterialEnvioModal({
       onExcluirLinha={excluirLinha}
       footerActions={
         <>
-          <Button onClick={onClose} disabled={isGenerating} color="inherit" size="small">
-            Fechar
+          <Button onClick={onClose} disabled={busy} color="inherit" size="small">
+            Cancelar
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<DownloadIcon />}
+            onClick={handleGerarPlanilha}
+            disabled={busy || linhas.length === 0}
+          >
+            {isGenerating ? 'Gerando...' : 'Gerar .ods'}
           </Button>
           <Button
             variant="contained"
             size="small"
-            startIcon={<DownloadIcon />}
-            onClick={handleGerarPlanilha}
-            disabled={isGenerating || linhas.length === 0}
+            startIcon={<SendIcon />}
+            onClick={() => onConfirm({ cabecalho, linhas })}
+            disabled={busy || linhas.length === 0}
             sx={{ fontWeight: 700 }}
           >
-            {isGenerating ? 'Gerando...' : 'Gerar .ods'}
+            {isSubmitting ? 'Enviando...' : 'Enviar para Conf. de Solemp'}
           </Button>
         </>
       }

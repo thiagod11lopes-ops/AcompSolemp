@@ -419,6 +419,63 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
+  const handleConfirmarEnvioMaterial = async (planilha: ImhPlanilha) => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome) {
+      setBatchError('Clínica não identificada. Faça login novamente.')
+      return
+    }
+
+    const novos = materialConsumoRows.filter((r) =>
+      rowPodeSerEnviadaMaterial(r, finalizedMaterialRowIds),
+    )
+
+    setBatchError(null)
+    setIsBatchSending(true)
+    try {
+      if (novos.length === 0) {
+        setBatchError('Nenhum lançamento novo para enviar.')
+        return
+      }
+
+      const pedidoId = createPedidoLoteId()
+      const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
+      await createPedido.mutateAsync({
+        ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'confeccao'),
+        id: pedidoId,
+        fluxo: 'confeccao',
+        consumoRowIds: novos.map((row) => row.id),
+      })
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+
+      const nextFinalizedMaterial = new Set(finalizedMaterialRowIds)
+      for (const row of novos) nextFinalizedMaterial.add(row.id)
+      setFinalizedMaterialRowIds(nextFinalizedMaterial)
+      setRowSelectionMaterial((prev) => {
+        const next = { ...prev }
+        for (const row of novos) next[row.id] = true
+        return next
+      })
+      setExtraRows((prev) => {
+        const merged = [...prev]
+        for (const row of novos) {
+          const index = merged.findIndex((item) => item.id === row.id)
+          if (index >= 0) merged[index] = row
+          else merged.push(row)
+        }
+        persistPlanilhaState(merged, finalizedAuditoriaRowIds, nextFinalizedMaterial)
+        return merged
+      })
+      consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
+      setMaterialModalOpen(false)
+      setMaterialConsumoRows([])
+    } catch {
+      setBatchError('Erro ao enviar lançamentos para Confecção de Solemp. Tente novamente.')
+    } finally {
+      setIsBatchSending(false)
+    }
+  }
+
   const totalPreenchidos = useMemo(
     () => planilhaRows.filter(isLinhaPreenchida).length,
     [planilhaRows],
@@ -533,10 +590,14 @@ export default function ClinicaNovoPedidoPage() {
         open={materialModalOpen}
         consumoRows={materialConsumoRows}
         mesReferencia={mesSelecionado}
+        isSubmitting={isBatchSending}
         onClose={() => {
-          setMaterialModalOpen(false)
-          setMaterialConsumoRows([])
+          if (!isBatchSending) {
+            setMaterialModalOpen(false)
+            setMaterialConsumoRows([])
+          }
         }}
+        onConfirm={handleConfirmarEnvioMaterial}
       />
     </>
   )

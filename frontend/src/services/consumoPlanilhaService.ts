@@ -73,6 +73,33 @@ export const consumoPlanilhaService = {
     return consumoPlanilhaService.getState(clinicaId)
   },
 
+  markRowsFinalizedMaterial(
+    clinicaId: string,
+    rows: ConsumoMaterialRow[],
+  ): ConsumoPlanilhaClinicaState {
+    const data = loadAppData()
+    if (!data.consumoPlanilha) data.consumoPlanilha = {}
+    const current = normalizeState(
+      data.consumoPlanilha[clinicaId] ?? EMPTY_STATE,
+    )
+
+    for (const row of rows) {
+      if (!current.finalizedMaterialRowIds!.includes(row.id)) {
+        current.finalizedMaterialRowIds!.push(row.id)
+      }
+      const index = current.extraRows.findIndex((item) => item.id === row.id)
+      if (index >= 0) {
+        current.extraRows[index] = row
+      } else {
+        current.extraRows.push({ ...row })
+      }
+    }
+
+    data.consumoPlanilha[clinicaId] = current
+    saveAppData(data)
+    return consumoPlanilhaService.getState(clinicaId)
+  },
+
   /** @deprecated Use markRowsFinalizedAuditoria */
   markRowsFinalized(
     clinicaId: string,

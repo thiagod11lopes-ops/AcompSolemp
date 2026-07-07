@@ -22,9 +22,23 @@ function releasePedidoConsumoRows(data: AppData, pedido: Pedido) {
 
   const ids = new Set(rowIds)
   state.finalizedRowIds = state.finalizedRowIds.filter((id) => !ids.has(id))
-  if (state.finalizedAuditoriaRowIds) {
-    state.finalizedAuditoriaRowIds = state.finalizedAuditoriaRowIds.filter((id) => !ids.has(id))
+
+  const auditoriaEtapaId = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')?.id
+  const confeccaoEtapaId = data.workflowEtapas.find(
+    (e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP',
+  )?.id
+  const temAuditoria = pedido.etapasHistorico.some((item) => item.etapaId === auditoriaEtapaId)
+  const temConfeccao = pedido.etapasHistorico.some((item) => item.etapaId === confeccaoEtapaId)
+
+  if (temAuditoria) {
+    if (state.finalizedAuditoriaRowIds) {
+      state.finalizedAuditoriaRowIds = state.finalizedAuditoriaRowIds.filter((id) => !ids.has(id))
+    }
   }
+  if (temConfeccao && state.finalizedMaterialRowIds) {
+    state.finalizedMaterialRowIds = state.finalizedMaterialRowIds.filter((id) => !ids.has(id))
+  }
+
   data.consumoPlanilha[pedido.clinicaId] = state
 }
 

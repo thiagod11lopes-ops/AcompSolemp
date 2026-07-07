@@ -14,7 +14,7 @@ import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
   id?: string
-  fluxo?: 'auditoria' | 'paralelo'
+  fluxo?: 'auditoria' | 'confeccao' | 'paralelo'
   consumoRowIds?: string[]
   paciente: PacientePedido
   dadosClinica: DadosClinicaLancamento
@@ -136,24 +136,31 @@ export const clinicaPedidoService = {
 
     const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
+    const somenteAuditoria = input.fluxo === 'auditoria'
+    const somenteConfeccao = input.fluxo === 'confeccao'
     const observacaoInicial =
       input.consumoRowIds && input.consumoRowIds.length > 1
-        ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Auditoria.`
-        : `Lançamento do paciente ${input.paciente.nome}.`
-    const somenteAuditoria = input.fluxo === 'auditoria'
+        ? somenteConfeccao
+          ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Confecção de Solemp.`
+          : `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Auditoria.`
+        : somenteConfeccao
+          ? `Lançamento enviado para Confecção de Solemp — ${input.paciente.nome}.`
+          : `Lançamento do paciente ${input.paciente.nome}.`
 
-    const historicoAuditoria = {
-      etapaId: auditoria.id,
-      etapaNome: auditoria.nome,
-      responsavelId: null,
-      responsavelNome: null,
-      dataInicio: agora,
-      dataConclusao: null as string | null,
-      observacao: somenteAuditoria
-        ? 'Aguardando recebimento da planilha pela Auditoria.'
-        : 'Fluxo paralelo — Material (Auditoria).',
-      arquivos: [] as never[],
-    }
+    const historicoAuditoria = somenteConfeccao
+      ? null
+      : {
+          etapaId: auditoria.id,
+          etapaNome: auditoria.nome,
+          responsavelId: null,
+          responsavelNome: null,
+          dataInicio: agora,
+          dataConclusao: null as string | null,
+          observacao: somenteAuditoria
+            ? 'Aguardando recebimento da planilha pela Auditoria.'
+            : 'Fluxo paralelo — Material (Auditoria).',
+          arquivos: [] as never[],
+        }
 
     const historicoConfeccao = somenteAuditoria
       ? null
@@ -164,7 +171,9 @@ export const clinicaPedidoService = {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null as string | null,
-          observacao: 'Fluxo paralelo — Material (Confecção de Solemp).',
+          observacao: somenteConfeccao
+            ? 'Aguardando recebimento da planilha pela Confecção de Solemp.'
+            : 'Fluxo paralelo — Material (Confecção de Solemp).',
           arquivos: [] as never[],
         }
 
@@ -183,7 +192,11 @@ export const clinicaPedidoService = {
       dataSolicitacao: agora,
       dataEntrega: null,
       etapaAtualId: somenteAuditoria ? auditoria.id : confeccao.id,
-      etapasAtivasIds: somenteAuditoria ? [auditoria.id] : [confeccao.id, auditoria.id],
+      etapasAtivasIds: somenteAuditoria
+        ? [auditoria.id]
+        : somenteConfeccao
+          ? [confeccao.id]
+          : [confeccao.id, auditoria.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
@@ -197,7 +210,7 @@ export const clinicaPedidoService = {
           observacao: observacaoInicial,
           arquivos: [],
         },
-        historicoAuditoria,
+        ...(historicoAuditoria ? [historicoAuditoria] : []),
         ...(historicoConfeccao ? [historicoConfeccao] : []),
       ],
     }
@@ -213,7 +226,9 @@ export const clinicaPedidoService = {
       data: agora,
       observacao: somenteAuditoria
         ? `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
-        : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
+        : somenteConfeccao
+          ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
+          : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
     })
 
     notifySetoresEtapasAtivas(data, pedido.id)

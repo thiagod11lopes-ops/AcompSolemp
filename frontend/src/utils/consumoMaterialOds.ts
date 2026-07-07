@@ -268,6 +268,7 @@ export function consumoRowsToPedidoInput(
   rows: ConsumoMaterialRow[],
   clinicaNome: string,
   tituloPlanilha?: string,
+  destino: 'auditoria' | 'confeccao' = 'auditoria',
 ): CreatePedidoInput {
   if (rows.length === 1) {
     return consumoRowToPedidoInput(rows[0], clinicaNome)
@@ -279,7 +280,15 @@ export function consumoRowsToPedidoInput(
   )
   const fornecedores = [...new Set(rows.map((row) => row.fornecedor.trim()).filter(Boolean))]
   const primeira = rows[0]
-  const titulo = tituloPlanilha?.trim() || `Planilha IMH — ${rows.length} lançamentos`
+  const titulo =
+    tituloPlanilha?.trim() ||
+    (destino === 'confeccao'
+      ? `Planilha Material — ${rows.length} lançamentos`
+      : `Planilha IMH — ${rows.length} lançamentos`)
+  const descricaoEnvio =
+    destino === 'confeccao'
+      ? `Envio de planilha com ${rows.length} lançamentos para Confecção de Solemp.`
+      : `Envio de planilha com ${rows.length} lançamentos para auditoria.`
 
   return {
     consumoRowIds: rows.map((row) => row.id),
@@ -303,7 +312,7 @@ export function consumoRowsToPedidoInput(
       valorUnitario: valorTotal > 0 ? valorTotal / rows.length : 0.01,
       valorTotal: valorTotal > 0 ? valorTotal : 0.01 * rows.length,
       folhaSala: '',
-      descricaoCirurgica: `Envio de planilha com ${rows.length} lançamentos para auditoria.`,
+      descricaoCirurgica: descricaoEnvio,
       etiquetas: '',
       fotos: [],
     },
