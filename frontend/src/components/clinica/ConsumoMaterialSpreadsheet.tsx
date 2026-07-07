@@ -60,7 +60,9 @@ import {
 } from '@/hooks/useSpreadsheetResize'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import {
+  applyEditingDrafts,
   measureColumnWidths,
+  mergeRowsForColumnMeasure,
   resolveColumnWidths,
 } from '@/utils/spreadsheetColumnWidth'
 
@@ -153,13 +155,37 @@ function ConsumoMaterialSpreadsheetInner({
   const [excluirOpen, setExcluirOpen] = useState(false)
   const [adicionarOpen, setAdicionarOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [editingDrafts, setEditingDrafts] = useState<Record<string, string>>({})
 
   const { columnWidths, getRowHeight, startColumnResize, startRowResize } =
     useSpreadsheetResize()
 
+  const handleDraftChange = useCallback(
+    (rowId: string, field: ConsumoMaterialColunaKey, draft: string | null) => {
+      const key = `${rowId}:${field}`
+      setEditingDrafts((prev) => {
+        if (draft === null) {
+          if (!(key in prev)) return prev
+          const { [key]: _, ...rest } = prev
+          return rest
+        }
+        if (prev[key] === draft) return prev
+        return { ...prev, [key]: draft }
+      })
+    },
+    [],
+  )
+
+  const rowsForMeasurement = useMemo(() => {
+    const merged = measureRows
+      ? mergeRowsForColumnMeasure(measureRows, rows)
+      : rows
+    return applyEditingDrafts(merged, editingDrafts)
+  }, [measureRows, rows, editingDrafts])
+
   const contentColumnWidths = useMemo(
-    () => measureColumnWidths(measureRows ?? rows, CONSUMO_MATERIAL_HEADERS, editable),
-    [measureRows, rows, editable],
+    () => measureColumnWidths(rowsForMeasurement, CONSUMO_MATERIAL_HEADERS, editable),
+    [rowsForMeasurement, editable],
   )
 
   const resolvedColumnWidths = useMemo(
@@ -266,7 +292,6 @@ function ConsumoMaterialSpreadsheetInner({
         id: col.key,
         accessorKey: col.key,
         header: col.label,
-        size: col.width,
         cell: ({ getValue, row }) => {
           const field = col.key as ConsumoMaterialColunaKey
           const value = String(getValue() ?? '')
@@ -279,6 +304,7 @@ function ConsumoMaterialSpreadsheetInner({
                 field={field}
                 value={value}
                 onCellChange={onCellChange}
+                onDraftChange={handleDraftChange}
                 onContextMenu={handleContextMenu}
               />
             )
@@ -370,7 +396,7 @@ function ConsumoMaterialSpreadsheetInner({
       },
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleContextMenu, podeSelecionar, isFinalizado])
+  }, [editable, onCellChange, handleDraftChange, handleContextMenu, podeSelecionar, isFinalizado])
 
   const table = useReactTable({
     data: rows,

@@ -9,9 +9,9 @@ function toSingleLine(value: string): string {
 }
 
 const inputSx = {
-  width: 'max-content',
-  minWidth: '100%',
-  maxWidth: 'none',
+  width: '100%',
+  minWidth: 0,
+  maxWidth: '100%',
   fontSize: '0.78rem',
   lineHeight: 1.4,
   whiteSpace: 'nowrap' as const,
@@ -23,7 +23,6 @@ const inputSx = {
   margin: 0,
   display: 'block',
   boxSizing: 'border-box' as const,
-  fieldSizing: 'content' as const,
 }
 
 interface SpreadsheetEditableCellProps {
@@ -31,6 +30,7 @@ interface SpreadsheetEditableCellProps {
   field: ConsumoMaterialColunaKey
   value: string
   onCellChange: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
+  onDraftChange?: (rowId: string, field: ConsumoMaterialColunaKey, draft: string | null) => void
   onContextMenu: (event: MouseEvent, rowId: string) => void
 }
 
@@ -39,6 +39,7 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
   field,
   value,
   onCellChange,
+  onDraftChange,
   onContextMenu,
 }: SpreadsheetEditableCellProps) {
   const singleLineValue = toSingleLine(value)
@@ -72,6 +73,7 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const next = toSingleLine(event.target.value)
     setLocalValue(next)
+    onDraftChange?.(rowId, field, next)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null
@@ -85,6 +87,7 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
       debounceRef.current = null
     }
     commit(localValue)
+    onDraftChange?.(rowId, field, null)
   }
 
   return (
