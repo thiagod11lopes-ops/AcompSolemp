@@ -59,7 +59,10 @@ export function ClinicaInteractiveTimeline({
   const blocos = buildTimelineBlocos(etapas)
 
   const renderEtapa = (etapa: WorkflowEtapa, indent = false) => {
-    const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
+    const historico =
+      pedido.etapasHistorico.find(
+        (h) => h.etapaId === etapa.id || h.etapaNome === etapa.nome,
+      ) ?? null
     const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
     const atual = etapasAtivasIds.includes(etapa.id) && !pedido.concluido && !historico?.dataConclusao
     const podeClicar = podeEditar && atual && clinicaPodeAvancar(etapa.chave)
@@ -199,7 +202,7 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Após o envio, a Div. de Material segue em fluxo duplo. Em seguida vêm as timelines Finanças e Finanças Pagamento.'
+          ? 'Acompanhe todas as etapas do processo — Div. de Material, Finanças e Finanças Pagamento — até a conclusão.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 

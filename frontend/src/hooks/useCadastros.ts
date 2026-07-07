@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cadastroService,
   historicoService,
   notificationService,
   workflowService,
 } from '@/services/cadastroService'
-import { peekDemoAppData } from '@/mocks/seed'
+import { peekDemoAppData, subscribeDemoAppDataChanged } from '@/mocks/seed'
 
 export function useClinicas() {
   return useQuery({
@@ -34,10 +35,33 @@ export function useUsuarios() {
 }
 
 export function useWorkflowEtapas() {
-  return useQuery({ queryKey: ['workflow-etapas'], queryFn: workflowService.listEtapas })
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
+    })
+  }, [queryClient])
+
+  return useQuery({
+    queryKey: ['workflow-etapas'],
+    queryFn: workflowService.listEtapas,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
 }
 
 export function useDemoWorkflowEtapas() {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
+    })
+  }, [queryClient])
+
   return useQuery({
     queryKey: ['demo-workflow-etapas'],
     queryFn: async () => {
@@ -52,13 +76,33 @@ export function useDemoWorkflowEtapas() {
 }
 
 export function useHistorico(pedidoId?: string) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['historico', pedidoId] })
+    })
+  }, [queryClient, pedidoId])
+
   return useQuery({
     queryKey: ['historico', pedidoId],
     queryFn: () => historicoService.list(pedidoId),
+    enabled: Boolean(pedidoId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 
 export function useDemoHistorico(pedidoId?: string) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['demo-historico', pedidoId] })
+    })
+  }, [queryClient, pedidoId])
+
   return useQuery({
     queryKey: ['demo-historico', pedidoId],
     queryFn: async () => {

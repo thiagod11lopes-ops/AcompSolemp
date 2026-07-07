@@ -58,7 +58,25 @@ export function getEtapaAtual(
     return resolveEtapaFromRef(historicoAberto.etapaId, historicoAberto.etapaNome, etapas)
   }
 
-  return undefined
+  if (pedido.concluido) {
+    const concluidas = [...pedido.etapasHistorico]
+      .filter((h) => h.dataConclusao)
+      .sort(
+        (a, b) =>
+          new Date(b.dataConclusao!).getTime() - new Date(a.dataConclusao!).getTime(),
+      )
+    for (const item of concluidas) {
+      const etapa = resolveEtapaFromRef(item.etapaId, item.etapaNome, etapas)
+      if (etapa) return etapa
+    }
+  }
+
+  const ultimoHistorico = pedido.etapasHistorico[pedido.etapasHistorico.length - 1]
+  if (ultimoHistorico) {
+    return resolveEtapaFromRef(ultimoHistorico.etapaId, ultimoHistorico.etapaNome, etapas)
+  }
+
+  return etapas.find((etapa) => etapa.chave === 'SOLICITACAO') ?? etapas[0]
 }
 
 function resolveClinica(pedido: Pedido, clinicas: Clinica[]): Clinica | undefined {

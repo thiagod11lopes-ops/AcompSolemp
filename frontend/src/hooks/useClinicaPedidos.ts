@@ -1,27 +1,54 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { clinicaPedidoService, type CreatePedidoInput } from '@/services/clinicaPedidoService'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { subscribeDemoAppDataChanged } from '@/mocks/seed'
+
+function useDemoClinicaInvalidation(queryKey: readonly unknown[]): void {
+  const queryClient = useQueryClient()
+  const { isDemo } = usePortalPaths()
+
+  useEffect(() => {
+    if (!isDemo) return
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: [...queryKey] })
+    })
+  }, [isDemo, queryClient, queryKey])
+}
 
 export function useClinicaPedidos() {
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
+  const queryKey = ['clinica-pedidos', clinicaId] as const
+
+  useDemoClinicaInvalidation(queryKey)
 
   return useQuery({
-    queryKey: ['clinica-pedidos', clinicaId],
+    queryKey,
     queryFn: () => clinicaPedidoService.listByClinica(clinicaId),
     enabled: Boolean(clinicaId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 
 export function useClinicaPedido(id: string) {
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
+  const queryKey = ['clinica-pedido', id, clinicaId] as const
+
+  useDemoClinicaInvalidation(queryKey)
 
   return useQuery({
-    queryKey: ['clinica-pedido', id, clinicaId],
+    queryKey,
     queryFn: () => clinicaPedidoService.getById(id, clinicaId),
     enabled: Boolean(id && clinicaId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -66,10 +93,15 @@ export function useDeletePedidosByIds() {
 }
 
 export function useConsumoPlanilhaState(clinicaId: string) {
+  const queryKey = ['consumo-planilha', clinicaId] as const
+  useDemoClinicaInvalidation(queryKey)
+
   return useQuery({
-    queryKey: ['consumo-planilha', clinicaId],
+    queryKey,
     queryFn: () => consumoPlanilhaService.getState(clinicaId),
     enabled: Boolean(clinicaId),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -84,11 +116,12 @@ export function useCreateClinicaPedido() {
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['historico'] })
+      queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
     },
   })
 }

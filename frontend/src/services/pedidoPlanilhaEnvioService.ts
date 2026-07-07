@@ -1,7 +1,13 @@
-import { loadAppData, saveAppData } from '@/mocks/seed'
+import { isDemoDataSession } from '@/config/dataSource'
+import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
+
+function readPlanilhaData() {
+  if (isDemoDataSession()) return reloadAppDataFromStorage()
+  return loadAppData()
+}
 
 function filterPlanilhaForRow(planilha: ImhPlanilha, rowId: string): ImhPlanilha {
   const linhas = planilha.linhas.filter((linha) => linha.pacienteGrupoId === rowId)
@@ -13,7 +19,7 @@ function filterPlanilhaForRow(planilha: ImhPlanilha, rowId: string): ImhPlanilha
 
 export const pedidoPlanilhaEnvioService = {
   saveForPedido(pedidoId: string, planilha: ImhPlanilha, rowId?: string): PedidoPlanilhaEnvioState {
-    const data = loadAppData()
+    const data = readPlanilhaData()
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
 
     const filtered = rowId ? filterPlanilhaForRow(planilha, rowId) : planilha
@@ -29,7 +35,7 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   getForPedido(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = loadAppData()
+    const data = readPlanilhaData()
     const snapshot = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!snapshot) return null
     return {
@@ -44,7 +50,7 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   markRecebida(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = loadAppData()
+    const data = readPlanilhaData()
     const current = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!current) return null
 
@@ -58,7 +64,7 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   markEncaminhadaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = loadAppData()
+    const data = readPlanilhaData()
     const current = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!current) return null
 
@@ -72,7 +78,7 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   markRecebidaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = loadAppData()
+    const data = readPlanilhaData()
     const current = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!current) return null
 

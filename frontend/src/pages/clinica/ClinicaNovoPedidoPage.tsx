@@ -412,6 +412,7 @@ export default function ClinicaNovoPedidoPage() {
       consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
       setImhModalOpen(false)
       setImhConsumoRows([])
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {
       setBatchError('Erro ao enviar lançamentos. Tente novamente.')
     } finally {
@@ -469,6 +470,7 @@ export default function ClinicaNovoPedidoPage() {
       consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
       setMaterialModalOpen(false)
       setMaterialConsumoRows([])
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {
       setBatchError('Erro ao enviar lançamentos para Confecção de Solemp. Tente novamente.')
     } finally {

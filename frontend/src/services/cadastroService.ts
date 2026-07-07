@@ -7,7 +7,7 @@ import type {
   User,
   WorkflowEtapa,
 } from '@/types'
-import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -121,7 +121,8 @@ export const cadastroService = {
 export const workflowService = {
   async listEtapas(): Promise<WorkflowEtapa[]> {
     await delay(null)
-    return [...loadAppData().workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    const data = await loadFreshAppData()
+    return [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
   },
 
   async saveEtapas(etapas: WorkflowEtapa[]): Promise<WorkflowEtapa[]> {
@@ -136,7 +137,8 @@ export const workflowService = {
 export const historicoService = {
   async list(pedidoId?: string): Promise<HistoricoEvento[]> {
     await delay(null)
-    let historico = loadAppData().historico
+    const data = await loadFreshAppData()
+    let historico = data.historico
     if (pedidoId) historico = historico.filter((h) => h.pedidoId === pedidoId)
     return historico.sort(
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),

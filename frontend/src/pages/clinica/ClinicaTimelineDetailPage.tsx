@@ -71,8 +71,9 @@ export default function ClinicaTimelineDetailPage() {
       />
 
       <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
-        Após o envio para a Div. de Material, a clínica possui apenas visualização. O processo
-        segue em fluxo duplo na Div. de Material; depois Finanças (Assinaturas e SDA) e Finanças Pagamento.
+        Após o envio para a Div. de Material, a clínica acompanha todas as etapas em
+        visualização até a conclusão do processo. As atualizações dos setores aparecem aqui
+        automaticamente.
       </Alert>
 
       <Grid container spacing={3}>
