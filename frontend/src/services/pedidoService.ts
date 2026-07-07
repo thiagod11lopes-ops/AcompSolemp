@@ -5,7 +5,7 @@ import type {
   PedidoFilters,
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
-import { delay, loadFreshAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadFreshAppData, peekDemoAppData, saveAppData } from '@/mocks/seed'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
@@ -82,6 +82,22 @@ export const pedidoService = {
   async getById(id: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
     const data = await loadFreshAppData()
+    const pedido = data.pedidos.find((p) => p.id === id)
+    if (!pedido) return null
+    return enrichPedido(pedido, getContext(data))
+  },
+
+  async listDemo(filters?: PedidoFilters): Promise<PedidoComDetalhes[]> {
+    await delay(null)
+    const data = peekDemoAppData()
+    if (!data) return []
+    return filterPedidos(enrichAll(data), filters)
+  },
+
+  async getDemoById(id: string): Promise<PedidoComDetalhes | null> {
+    await delay(null)
+    const data = peekDemoAppData()
+    if (!data) return null
     const pedido = data.pedidos.find((p) => p.id === id)
     if (!pedido) return null
     return enrichPedido(pedido, getContext(data))

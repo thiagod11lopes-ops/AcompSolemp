@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -26,14 +27,16 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatusChip } from '@/components/common/StatusChip'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { useDeleteGestorPedido, usePedidos } from '@/hooks/usePedidos'
-import { useWorkflowEtapas } from '@/hooks/useCadastros'
+import { useDeleteGestorPedido, useDemoPedidos, usePedidos } from '@/hooks/usePedidos'
+import { useDemoWorkflowEtapas, useWorkflowEtapas } from '@/hooks/useCadastros'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { calcularProgressoTimeline } from '@/utils/portal'
 import { TIMELINE_ETAPA_META } from '@/utils/timelineFlow'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 
 type FiltroStatus = 'TODAS' | 'EM_ANDAMENTO' | 'CONCLUIDAS' | 'ATRASADAS'
+type FonteTimeline = 'organizacao' | 'demonstracao'
 
 const FASE_ORDEM = [
   'Solicitação da Clínica',
@@ -87,13 +90,30 @@ function passaBusca(pedido: PedidoComDetalhes, busca: string): boolean {
 
 export default function GestorTimelinesPage() {
   const navigate = useNavigate()
-  const { data: pedidos = [], isLoading } = usePedidos()
+  const location = useLocation()
+  const { isDemo, navigatePortal } = usePortalPaths()
+  const [fonte, setFonte] = useState<FonteTimeline>(isDemo ? 'demonstracao' : 'organizacao')
+  const { data: pedidosOrg = [], isLoading: loadingOrg } = usePedidos()
+  const { data: pedidosDemo = [], isLoading: loadingDemo } = useDemoPedidos()
   const deletePedido = useDeleteGestorPedido()
-  const { data: etapas = [] } = useWorkflowEtapas()
+  const { data: etapasOrg = [] } = useWorkflowEtapas()
+  const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
   const [filtro, setFiltro] = useState<FiltroStatus>('TODAS')
   const [busca, setBusca] = useState('')
   const [pedidoExcluir, setPedidoExcluir] = useState<PedidoComDetalhes | null>(null)
   const [erroExclusao, setErroExclusao] = useState<string | null>(null)
+
+  useEffect(() => {
+    const state = location.state as { fonte?: FonteTimeline } | null
+    if (state?.fonte === 'demonstracao') {
+      setFonte('demonstracao')
+    }
+  }, [location.state])
+
+  const mostraDemo = isDemo || fonte === 'demonstracao'
+  const pedidos = mostraDemo ? pedidosDemo : pedidosOrg
+  const isLoading = mostraDemo ? loadingDemo : loadingOrg
+  const etapas = mostraDemo ? etapasDemo : etapasOrg
 
   const ordenadas = useMemo(
     () => [...etapas].sort((a, b) => a.ordem - b.ordem),
@@ -139,12 +159,51 @@ export default function GestorTimelinesPage() {
 
   if (isLoading) return <LoadingSpinner />
 
+  const abrirTimeline = (pedidoId: string) => {
+    if (mostraDemo) {
+      if (isDemo) {
+        navigatePortal(`/gestor/timeline/${pedidoId}`)
+      } else {
+        navigate(`/gestor/timeline/${pedidoId}?fonte=demo`)
+      }
+      return
+    }
+    navigate(`/gestor/timeline/${pedidoId}`)
+  }
+
   return (
     <>
       <PageHeader
         title="Timeline"
-        subtitle={`${filtrados.length} timeline(s) · visão geral de todos os processos do sistema`}
+        subtitle={
+          mostraDemo
+            ? `${filtrados.length} timeline(s) de demonstração · armazenamento local (IndexedDB)`
+            : `${filtrados.length} timeline(s) · visão geral de todos os processos do sistema`
+        }
       />
+
+      {!isDemo && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Timelines criadas na demonstração (clínica, auditoria etc.) aparecem na aba
+          &quot;Demonstração&quot; abaixo ou ao abrir &quot;Gestor — Visão Geral&quot; no modal de
+          exemplo.
+        </Alert>
+      )}
+
+      {!isDemo && (
+        <Tabs
+          value={fonte}
+          onChange={(_, value: FonteTimeline) => setFonte(value)}
+          sx={{ mb: 2 }}
+        >
+          <Tab value="organizacao" label={`Organização (${pedidosOrg.length})`} />
+          <Tab value="demonstracao" label={`Demonstração (${pedidosDemo.length})`} />
+        </Tabs>
+      )}
+
+      {mostraDemo && (
+        <Chip label="Modo demonstração" color="warning" size="small" sx={{ mb: 2 }} />
+      )}
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3, alignItems: 'center' }}>
         <Tabs
@@ -215,7 +274,7 @@ export default function GestorTimelinesPage() {
                         }}
                       >
                         <CardActionArea
-                          onClick={() => navigate(`/gestor/timeline/${pedido.id}`)}
+                          onClick={() => abrirTimeline(pedido.id)}
                           sx={{ height: '100%' }}
                         >
                           <CardContent>
@@ -240,19 +299,21 @@ export default function GestorTimelinesPage() {
                                   status={pedido.prazoStatus}
                                   concluido={pedido.concluido}
                                 />
-                                <Tooltip title="Excluir timeline">
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    aria-label={`Excluir timeline ${pedido.numero}`}
-                                    onClick={() => {
-                                      setErroExclusao(null)
-                                      setPedidoExcluir(pedido)
-                                    }}
-                                  >
-                                    <DeleteOutlinedIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
+                                {!mostraDemo && (
+                                  <Tooltip title="Excluir timeline">
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      aria-label={`Excluir timeline ${pedido.numero}`}
+                                      onClick={() => {
+                                        setErroExclusao(null)
+                                        setPedidoExcluir(pedido)
+                                      }}
+                                    >
+                                      <DeleteOutlinedIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
                               </Box>
                             </Box>
                             <Typography variant="body2" color="text.secondary" gutterBottom>

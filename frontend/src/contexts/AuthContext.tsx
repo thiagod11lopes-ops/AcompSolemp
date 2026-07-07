@@ -26,6 +26,7 @@ interface AuthContextValue {
   loginWithEmailTimeline: (email: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
+  startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
   endDemo: () => void
 }
 
@@ -112,6 +113,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { route: result.route }
   }, [])
 
+  const startDemoGestorOverview = useCallback(async (tabTitle?: string) => {
+    const result = await authService.startDemoGestorOverview(tabTitle)
+    setDemoMode({ portal: result.portal, authUser: result.authUser, tabTitle: result.tabTitle })
+    return { route: result.route }
+  }, [])
+
   const endDemo = useCallback(() => {
     authService.endDemoMode()
     setDemoMode(null)
@@ -132,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithEmailTimeline,
       logout,
       startDemo,
+      startDemoGestorOverview,
       endDemo,
     }),
     [
@@ -147,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithEmailTimeline,
       logout,
       startDemo,
+      startDemoGestorOverview,
       endDemo,
     ],
   )

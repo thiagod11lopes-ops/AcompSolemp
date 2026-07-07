@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
-import { ensureDemoExampleCadastros, initDemoAppData } from '@/services/demoCadastrosService'
+import {
+  DEMO_GESTOR_OVERVIEW_USER_ID,
+  ensureDemoExampleCadastros,
+  initDemoAppData,
+} from '@/services/demoCadastrosService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 
 export default function DemoEntryPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { startDemo, gestorUser, isLoading } = useAuth()
+  const { startDemo, startDemoGestorOverview, gestorUser, isLoading } = useAuth()
   const [erro, setErro] = useState('')
 
   const userId = params.get('userId')
@@ -19,6 +23,13 @@ export default function DemoEntryPage() {
 
     void (async () => {
       try {
+        if (userId === DEMO_GESTOR_OVERVIEW_USER_ID) {
+          const { route } = await startDemoGestorOverview(titulo ?? undefined)
+          if (titulo) document.title = titulo
+          navigate(route, { replace: true })
+          return
+        }
+
         await initDemoAppData()
         await ensureDemoExampleCadastros()
         const { route } = await startDemo(userId, titulo ?? undefined)
@@ -30,7 +41,7 @@ export default function DemoEntryPage() {
         )
       }
     })()
-  }, [gestorUser, isLoading, navigate, startDemo, titulo, userId])
+  }, [gestorUser, isLoading, navigate, startDemo, startDemoGestorOverview, titulo, userId])
 
   if (isLoading) return <LoadingSpinner />
   if (!gestorUser) return <Navigate to="/login" replace />

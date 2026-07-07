@@ -5,6 +5,7 @@ import {
   notificationService,
   workflowService,
 } from '@/services/cadastroService'
+import { peekDemoAppData } from '@/mocks/seed'
 
 export function useClinicas() {
   return useQuery({
@@ -36,10 +37,43 @@ export function useWorkflowEtapas() {
   return useQuery({ queryKey: ['workflow-etapas'], queryFn: workflowService.listEtapas })
 }
 
+export function useDemoWorkflowEtapas() {
+  return useQuery({
+    queryKey: ['demo-workflow-etapas'],
+    queryFn: async () => {
+      const data = peekDemoAppData()
+      if (!data) return []
+      return [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
 export function useHistorico(pedidoId?: string) {
   return useQuery({
     queryKey: ['historico', pedidoId],
     queryFn: () => historicoService.list(pedidoId),
+  })
+}
+
+export function useDemoHistorico(pedidoId?: string) {
+  return useQuery({
+    queryKey: ['demo-historico', pedidoId],
+    queryFn: async () => {
+      const data = peekDemoAppData()
+      if (!data) return []
+      let historico = data.historico
+      if (pedidoId) historico = historico.filter((h) => h.pedidoId === pedidoId)
+      return historico.sort(
+        (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
+      )
+    },
+    enabled: Boolean(pedidoId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 

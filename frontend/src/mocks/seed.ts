@@ -579,6 +579,37 @@ function persistAppData(data: AppData): void {
   }
 
   storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
+  if (getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
+    notifyDemoAppDataChanged()
+  }
+}
+
+const DEMO_DATA_CHANGED_EVENT = 'acomp-demo-data-changed'
+
+export function notifyDemoAppDataChanged(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT))
+}
+
+export function subscribeDemoAppDataChanged(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined
+  window.addEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+  return () => window.removeEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+}
+
+/** Lê snapshot de demonstração no IndexedDB (sem exigir sessão demo ativa). */
+export function peekDemoAppData(): AppData | null {
+  const stored = storageGet(STORAGE_KEYS.DEMO_APP_DATA)
+  if (!stored) return null
+
+  try {
+    const parsed = JSON.parse(stored) as AppData & { _version?: string }
+    const { _version: _, ...raw } = parsed
+    const { data } = normalizeAppData(raw as AppData)
+    return cloneData(data)
+  } catch {
+    return null
+  }
 }
 
 /** Aplica dados vindos do Firestore no cache em memória (sem regravar na nuvem) */

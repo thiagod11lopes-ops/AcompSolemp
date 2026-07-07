@@ -23,7 +23,7 @@ import {
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
-import { ensureDemoUserById } from '@/services/demoCadastrosService'
+import { ensureDemoUserById, initDemoAppData } from '@/services/demoCadastrosService'
 import {
   getStoredOrgCode,
   getTenantId,
@@ -401,6 +401,31 @@ export const authService = {
       authUser,
       portal,
       route: mapPortalPath(homeRoute, DEMO_ROUTE_BASE),
+      tabTitle,
+    }
+  },
+
+  async startDemoGestorOverview(
+    tabTitle?: string,
+  ): Promise<{ authUser: AuthUser; portal: Portal; route: string; tabTitle?: string }> {
+    const gestor = this.getGestorUser()
+    if (!gestor) {
+      throw new Error('Faça login como gestor para usar a demonstração')
+    }
+
+    await initDemoAppData()
+
+    const authUser: AuthUser = {
+      ...gestor,
+      token: `demo-gestor-${Date.now()}`,
+    }
+
+    writeDemoMode({ portal: 'gestor', authUser, tabTitle })
+
+    return {
+      authUser,
+      portal: 'gestor',
+      route: mapPortalPath('/gestor/timeline', DEMO_ROUTE_BASE),
       tabTitle,
     }
   },

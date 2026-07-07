@@ -1,7 +1,7 @@
 export const DEMO_ROUTE_BASE = '/gestor/demo'
 export const DEFAULT_APP_TITLE = 'AcompSolemp'
 
-const PORTAL_PREFIXES = ['/clinica', '/ordenador', '/financeiro'] as const
+const PORTAL_PREFIXES = ['/clinica', '/ordenador', '/financeiro', '/gestor'] as const
 
 /** Rota interna do app (sem basename do Vite/GitHub Pages). */
 export function getAppRoutePath(): string {

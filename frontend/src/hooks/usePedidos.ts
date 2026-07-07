@@ -1,13 +1,36 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PedidoFilters } from '@/types'
 import { pedidoService } from '@/services/pedidoService'
 import { notificationService } from '@/services/cadastroService'
 import { useGestorAuth } from '@/contexts/AuthContext'
+import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 
 export function usePedidos(filters?: PedidoFilters) {
   return useQuery({
     queryKey: ['pedidos', filters],
     queryFn: () => pedidoService.list(filters),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useDemoPedidos(filters?: PedidoFilters) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-historico'] })
+    })
+  }, [queryClient])
+
+  return useQuery({
+    queryKey: ['demo-pedidos', filters],
+    queryFn: () => pedidoService.listDemo(filters),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
@@ -24,6 +47,25 @@ export function usePedido(id: string) {
   })
 }
 
+export function useDemoPedido(id: string) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeDemoAppDataChanged(() => {
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido', id] })
+    })
+  }, [queryClient, id])
+
+  return useQuery({
+    queryKey: ['demo-pedido', id],
+    queryFn: () => pedidoService.getDemoById(id),
+    enabled: Boolean(id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
 export function useDashboardMetrics() {
   return useQuery({
     queryKey: ['dashboard'],
@@ -37,6 +79,8 @@ export function useInvalidatePedidos() {
     queryClient.invalidateQueries({ queryKey: ['pedidos'] })
     queryClient.invalidateQueries({ queryKey: ['pedido'] })
     queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+    queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
   }
 }
 

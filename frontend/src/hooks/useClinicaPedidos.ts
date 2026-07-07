@@ -83,6 +83,8 @@ export function useCreateClinicaPedido() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
@@ -137,5 +139,7 @@ function invalidatePedidoQueries(
   queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
   queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
   queryClient.invalidateQueries({ queryKey: ['historico', pedidoId] })
+  queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+  queryClient.invalidateQueries({ queryKey: ['demo-pedido', pedidoId] })
   queryClient.invalidateQueries({ queryKey: ['solemp-defaults'] })
 }

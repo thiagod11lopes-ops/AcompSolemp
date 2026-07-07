@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Grid,
   Paper,
@@ -18,23 +18,46 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
-import { usePedido } from '@/hooks/usePedidos'
-import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
+import { useDemoPedido, usePedido } from '@/hooks/usePedidos'
+import { useDemoHistorico, useDemoWorkflowEtapas, useHistorico, useWorkflowEtapas } from '@/hooks/useCadastros'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { formatCurrency, formatDate, formatDateTime, formatNip } from '@/utils/format'
 
 export default function GestorTimelineDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const { data: pedido, isLoading } = usePedido(id)
-  const { data: etapas = [] } = useWorkflowEtapas()
-  const { data: historico = [] } = useHistorico(id)
+  const [searchParams] = useSearchParams()
+  const { isDemo, navigatePortal } = usePortalPaths()
+  const fonteDemo = isDemo || searchParams.get('fonte') === 'demo'
+  const { data: pedidoOrg, isLoading: loadingOrg } = usePedido(id)
+  const { data: pedidoDemo, isLoading: loadingDemo } = useDemoPedido(id)
+  const pedido = fonteDemo ? pedidoDemo : pedidoOrg
+  const isLoading = fonteDemo ? loadingDemo : loadingOrg
+  const { data: etapasOrg = [] } = useWorkflowEtapas()
+  const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
+  const etapas = fonteDemo ? etapasDemo : etapasOrg
+  const { data: historicoOrg = [] } = useHistorico(id)
+  const { data: historicoDemo = [] } = useDemoHistorico(id)
+  const historico = fonteDemo ? historicoDemo : historicoOrg
+
+  const voltar = () => {
+    if (isDemo) {
+      navigatePortal('/gestor/timeline')
+      return
+    }
+    if (fonteDemo) {
+      navigate('/gestor/timeline', { state: { fonte: 'demonstracao' } })
+      return
+    }
+    navigate('/gestor/timeline')
+  }
 
   if (isLoading) return <LoadingSpinner />
   if (!pedido) {
     return (
       <Box>
         <Typography>Timeline não encontrada.</Typography>
-        <Button onClick={() => navigate('/gestor/timeline')} sx={{ mt: 2 }}>
+        <Button onClick={voltar} sx={{ mt: 2 }}>
           Voltar
         </Button>
       </Box>
@@ -49,7 +72,7 @@ export default function GestorTimelineDetailPage() {
     <>
       <Button
         startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/gestor/timeline')}
+        onClick={voltar}
         sx={{ mb: 2 }}
       >
         Voltar às timelines

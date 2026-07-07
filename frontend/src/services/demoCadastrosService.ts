@@ -11,6 +11,7 @@ import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
 export const DEMO_CLINICA_EXEMPLO_ID = 'demo-clinica-exemplo'
+export const DEMO_GESTOR_OVERVIEW_USER_ID = '__gestor_demo_overview__'
 
 const DEMO_NOMES: Record<string, string> = {
   clinica: 'Clínica Exemplo',
@@ -175,7 +176,16 @@ export async function ensureDemoExampleCadastros(): Promise<void> {
 
 /** Lista fixa de cadastros de exemplo para o modal (sem ler dados da nuvem). */
 export function buildDemoCadastroItens(): DemoCadastroItem[] {
-  const resultado: DemoCadastroItem[] = []
+  const resultado: DemoCadastroItem[] = [
+    {
+      id: 'gestor',
+      userId: DEMO_GESTOR_OVERVIEW_USER_ID,
+      label: 'Gestor',
+      nome: 'Visão Geral',
+      subtitulo: 'Timeline de demonstração — armazenamento local',
+      isExemplo: true,
+    },
+  ]
 
   const opcaoClinica = CADASTRO_PERFIS.find((opcao) => opcao.isClinica)
   if (opcaoClinica) {

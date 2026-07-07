@@ -5,13 +5,23 @@ import { DemoRouteProvider } from '@/contexts/DemoRouteContext'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DemoModeBanner } from '@/components/gestor/DemoModeBanner'
 import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
-import { getDemoHomeRouteForPerfil } from '@/utils/perfilEtapa'
-import { DEFAULT_APP_TITLE, portalPathFromDemo } from '@/utils/portalPaths'
+import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { DEFAULT_APP_TITLE, DEMO_ROUTE_BASE, mapPortalPath, portalPathFromDemo } from '@/utils/portalPaths'
+import type { Portal } from '@/utils/portal'
+import type { UserRole } from '@/types'
 
-const PORTAL_ROUTE_PREFIX: Record<string, string> = {
+const PORTAL_ROUTE_PREFIX: Record<Portal, string> = {
+  gestor: '/gestor',
   clinica: '/clinica',
   ordenador: '/ordenador',
   financeiro: '/financeiro',
+}
+
+function getDemoHomeRoute(portal: Portal, perfil: UserRole): string {
+  if (portal === 'gestor') {
+    return mapPortalPath('/gestor/timeline', DEMO_ROUTE_BASE)
+  }
+  return mapPortalPath(getHomeRouteForPerfil(perfil), DEMO_ROUTE_BASE)
 }
 
 function resolveDemoDocumentTitle(demoMode: NonNullable<ReturnType<typeof useAuth>['demoMode']>): string {
@@ -51,7 +61,7 @@ export function GestorDemoShell() {
   const expectedPrefix = PORTAL_ROUTE_PREFIX[demoMode.portal]
 
   if (!portalPath?.startsWith(expectedPrefix)) {
-    return <Navigate to={getDemoHomeRouteForPerfil(demoMode.authUser.perfil)} replace />
+    return <Navigate to={getDemoHomeRoute(demoMode.portal, demoMode.authUser.perfil)} replace />
   }
 
   return (

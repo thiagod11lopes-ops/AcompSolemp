@@ -5,6 +5,7 @@ import { ClinicaLayout } from '@/layouts/ClinicaLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { GestorProtectedRoute, ClinicaProtectedRoute, OrdenadorProtectedRoute, FinanceiroProtectedRoute, GuestRoute } from '@/routes/PortalRoutes'
 import { GestorDemoShell } from '@/routes/GestorDemoShell'
+import { DemoGestorLayout } from '@/layouts/DemoGestorLayout'
 import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -181,6 +182,11 @@ export function AppRoutes() {
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
+          </Route>
+
+          <Route element={<DemoGestorLayout />}>
+            <Route path="/gestor/demo/gestor/timeline" element={<LazyPage><GestorTimelinesPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
           </Route>
           </Route>
         </Route>
