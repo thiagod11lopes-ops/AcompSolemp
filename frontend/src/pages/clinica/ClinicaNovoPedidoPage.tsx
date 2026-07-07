@@ -136,6 +136,25 @@ export default function ClinicaNovoPedidoPage() {
     [finalizedRowIds],
   )
 
+  const handleDesfinalizarLinha = useCallback(
+    (rowId: string) => {
+      setFinalizedRowIds((prevFinalized) => {
+        const nextFinalized = new Set(prevFinalized)
+        nextFinalized.delete(rowId)
+        setExtraRows((prevExtra) => {
+          persistPlanilhaState(prevExtra, nextFinalized)
+          return prevExtra
+        })
+        return nextFinalized
+      })
+      setRowSelection((prev) => {
+        const { [rowId]: _, ...rest } = prev
+        return rest
+      })
+    },
+    [persistPlanilhaState],
+  )
+
   const handleMesRowsChange = useCallback(
     (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
       setRowsByMes((prev) => ({ ...prev, [mes.id]: rows }))
@@ -399,6 +418,7 @@ export default function ClinicaNovoPedidoPage() {
           rowsByMes={rowsByMes[mesSelecionado.id]}
           onRowsChange={handleMesRowsChange}
           onExcluirLinhaRow={handleExcluirLinhaRow}
+          onDesfinalizarLinha={handleDesfinalizarLinha}
         />
       )}
 

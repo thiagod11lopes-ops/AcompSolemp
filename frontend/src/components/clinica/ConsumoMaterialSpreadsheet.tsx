@@ -52,6 +52,7 @@ import type {
 } from '@/utils/consumoMaterialTemplate'
 import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
 import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
+import { FinalizadoLinhaModal } from '@/components/clinica/FinalizadoLinhaModal'
 import {
   ColumnResizeHandle,
   RowResizeHandle,
@@ -137,6 +138,7 @@ interface ConsumoMaterialSpreadsheetProps {
   onCellChange?: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
   onInserirLinha?: (rowId: string, position: InserirLinhaConsumoPosicao) => void
   onExcluirLinha?: (rowId: string) => void
+  onDesfinalizarLinha?: (rowId: string) => void
   headerExtra?: ReactNode
 }
 
@@ -165,6 +167,7 @@ function ConsumoMaterialSpreadsheetInner({
   onCellChange,
   onInserirLinha,
   onExcluirLinha,
+  onDesfinalizarLinha,
   headerExtra,
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
@@ -174,6 +177,7 @@ function ConsumoMaterialSpreadsheetInner({
   const [adicionarOpen, setAdicionarOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [editingDrafts, setEditingDrafts] = useState<Record<string, string>>({})
+  const [finalizadoModalRow, setFinalizadoModalRow] = useState<ConsumoMaterialRow | null>(null)
 
   const { columnWidths, getRowHeight, startColumnResize, startRowResize } =
     useSpreadsheetResize()
@@ -306,6 +310,25 @@ function ConsumoMaterialSpreadsheetInner({
     closeContextMenu()
   }
 
+  const handleFinalizadoCheckboxClick = useCallback(
+    (event: MouseEvent, row: ConsumoMaterialRow) => {
+      event.stopPropagation()
+      event.preventDefault()
+      setFinalizadoModalRow(row)
+    },
+    [],
+  )
+
+  const closeFinalizadoModal = useCallback(() => {
+    setFinalizadoModalRow(null)
+  }, [])
+
+  const handleDesmarcarFinalizado = useCallback(() => {
+    if (!finalizadoModalRow || !onDesfinalizarLinha) return
+    onDesfinalizarLinha(finalizadoModalRow.id)
+    setFinalizadoModalRow(null)
+  }, [finalizadoModalRow, onDesfinalizarLinha])
+
   const isFinalizado = useCallback(
     (row: ConsumoMaterialRow) => Boolean(finalizedRowIds?.has(row.id)),
     [finalizedRowIds],
@@ -429,17 +452,25 @@ function ConsumoMaterialSpreadsheetInner({
             <Checkbox
               size="small"
               checked={finalizado || row.getIsSelected()}
-              disabled={!selecionavel}
-              onClick={(e) => e.stopPropagation()}
-              onChange={row.getToggleSelectedHandler()}
-              sx={finalizado ? finalizedCheckboxSx : undefined}
+              disabled={!selecionavel && !finalizado}
+              onClick={(e) => {
+                if (finalizado) handleFinalizadoCheckboxClick(e, row.original)
+              }}
+              onChange={(e) => {
+                if (finalizado) return
+                row.getToggleSelectedHandler()(e)
+              }}
+              sx={{
+                ...(finalizado ? finalizedCheckboxSx : undefined),
+                ...(finalizado ? { cursor: 'pointer' } : undefined),
+              }}
             />
           )
         },
       },
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleDraftChange, handleContextMenu, podeSelecionar, isFinalizado])
+  }, [editable, onCellChange, handleDraftChange, handleContextMenu, handleFinalizadoCheckboxClick, podeSelecionar, isFinalizado])
 
   const table = useReactTable({
     data: rows,
@@ -978,6 +1009,14 @@ function ConsumoMaterialSpreadsheetInner({
         />
       </>
     )}
+
+    <FinalizadoLinhaModal
+      open={finalizadoModalRow !== null}
+      row={finalizadoModalRow}
+      canDesmarcar={Boolean(onDesfinalizarLinha)}
+      onClose={closeFinalizadoModal}
+      onDesmarcar={handleDesmarcarFinalizado}
+    />
     </>
   )
 }

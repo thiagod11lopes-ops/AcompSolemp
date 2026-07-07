@@ -46,6 +46,7 @@ interface ConsumoMaterialConsignadoViewProps {
   rowsByMes?: ConsumoMaterialRow[]
   onRowsChange?: (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => void
   onExcluirLinhaRow?: (rowId: string) => void
+  onDesfinalizarLinha?: (rowId: string) => void
 }
 
 function ConsumoMaterialConsignadoViewInner({
@@ -71,6 +72,7 @@ function ConsumoMaterialConsignadoViewInner({
   rowsByMes,
   onRowsChange,
   onExcluirLinhaRow,
+  onDesfinalizarLinha,
 }: ConsumoMaterialConsignadoViewProps) {
   const [mesInterno, setMesInterno] = useState<MesConsumoModelo>(getMesAtualModelo)
   const mesSelecionado = mesControlado ?? mesInterno
@@ -161,6 +163,7 @@ function ConsumoMaterialConsignadoViewInner({
       onCellChange={handleCellChange}
       onInserirLinha={handleInserirLinha}
       onExcluirLinha={handleExcluirLinha}
+      onDesfinalizarLinha={onDesfinalizarLinha}
       headerExtra={
         <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
           <InputLabel
