@@ -130,7 +130,7 @@ export function AdicionarPlanilhaModal({
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ opacity: 0.9, maxWidth: 380 }}>
-          Escolha o período de referência e importe o arquivo ODS do consumo material consignado.
+          Escolha o período de referência e importe o arquivo .ods ou .xlsx do consumo material consignado.
         </Typography>
       </Box>
 
@@ -196,7 +196,7 @@ export function AdicionarPlanilhaModal({
             <>
               <UploadFileIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Arquivo no formato <strong>.ods</strong> — modelo OPME TRO
+                Arquivo no formato <strong>.ods</strong> ou <strong>.xlsx</strong> — consumo material consignado
               </Typography>
             </>
           )}
@@ -204,7 +204,7 @@ export function AdicionarPlanilhaModal({
           <input
             ref={inputRef}
             type="file"
-            accept=".ods,application/vnd.oasis.opendocument.spreadsheet"
+            accept=".ods,.xlsx,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             hidden
             onChange={handleFileChange}
           />

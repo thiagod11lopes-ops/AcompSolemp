@@ -116,6 +116,36 @@ function parseOdsXml(xml: string): string[][] {
   return rows.map((r) => extractRowTexts(r[1]))
 }
 
+function normalizeHeader(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/N°/g, 'Nº')
+}
+
+const NORMALIZED_HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = Object.fromEntries(
+  Object.entries(HEADER_TO_FIELD).map(([header, field]) => [normalizeHeader(header), field]),
+) as Record<string, keyof ConsumoMaterialRow>
+
+function normalizeSpreadsheetCell(value: string, field?: keyof ConsumoMaterialRow): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  if (field === 'data') {
+    const asSerial = parseFloat(trimmed.replace(',', '.'))
+    if (Number.isFinite(asSerial) && asSerial > 30_000 && asSerial < 60_000) {
+      const excelEpoch = Date.UTC(1899, 11, 30)
+      const date = new Date(excelEpoch + Math.round(asSerial) * 86_400_000)
+      const day = String(date.getUTCDate()).padStart(2, '0')
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const year = String(date.getUTCFullYear()).slice(-2)
+      return `${day}/${month}/${year}`
+    }
+  }
+
+  return trimmed
+}
+
 function cleanCell(value: string): string {
   const trimmed = value.trim()
   if (!trimmed || trimmed === '***' || trimmed === '-') return ''
@@ -123,7 +153,13 @@ function cleanCell(value: string): string {
 }
 
 export function parseValorBrasileiro(value: string): number {
-  const cleaned = value.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')
+  const trimmed = value.trim()
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const direct = parseFloat(trimmed)
+    if (Number.isFinite(direct)) return direct
+  }
+
+  const cleaned = trimmed.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')
   const n = parseFloat(cleaned)
   return Number.isFinite(n) ? n : 0
 }
@@ -142,19 +178,19 @@ function findHeaderMapping(rows: string[][]): {
 } {
   for (let i = 0; i < Math.min(20, rows.length); i++) {
     const row = rows[i]
-    const hasNip = row.some((c) => c.trim() === 'NIP')
-    const hasNome = row.some((c) => c.trim() === 'NOME')
+    const hasNip = row.some((c) => normalizeHeader(c) === 'NIP')
+    const hasNome = row.some((c) => normalizeHeader(c) === 'NOME')
     if (!hasNip || !hasNome) continue
 
     const columnMap: Partial<Record<keyof ConsumoMaterialRow, number>> = {}
     row.forEach((header, index) => {
-      const field = HEADER_TO_FIELD[header.trim()]
+      const field = NORMALIZED_HEADER_TO_FIELD[normalizeHeader(header)]
       if (field) columnMap[field] = index
     })
     return { headerIndex: i, columnMap }
   }
   throw new Error(
-    'Cabeçalho não reconhecido. Utilize o modelo CONSUMO MATERIAL CONSIGNADO (.ods).',
+    'Cabeçalho não reconhecido. Utilize o modelo CONSUMO MATERIAL CONSIGNADO (.ods ou .xlsx).',
   )
 }
 
@@ -185,7 +221,8 @@ function rowFromCells(
   const get = (field: keyof ConsumoMaterialRow): string => {
     const idx = columnMap[field]
     if (idx === undefined) return ''
-    return cleanCell(cells[idx - columnOffset] ?? '')
+    const raw = normalizeSpreadsheetCell(cells[idx - columnOffset] ?? '', field)
+    return cleanCell(raw)
   }
 
   const valorRaw = get('valor')
@@ -217,18 +254,7 @@ function rowFromCells(
   }
 }
 
-export async function parseConsumoMaterialOds(file: File): Promise<ConsumoMaterialRow[]> {
-  if (!file.name.toLowerCase().endsWith('.ods')) {
-    throw new Error('Selecione um arquivo no formato .ods')
-  }
-
-  const buffer = await file.arrayBuffer()
-  const unzipped = unzipSync(new Uint8Array(buffer))
-  const contentXml = unzipped['content.xml']
-  if (!contentXml) throw new Error('Arquivo ODS inválido ou corrompido')
-
-  const xml = new TextDecoder('utf-8').decode(contentXml)
-  const tableRows = parseOdsXml(xml)
+function parseConsumoMaterialRows(tableRows: string[][]): ConsumoMaterialRow[] {
   const { headerIndex, columnMap } = findHeaderMapping(tableRows)
   const nipIndex = columnMap.nip
 
@@ -250,6 +276,72 @@ export async function parseConsumoMaterialOds(file: File): Promise<ConsumoMateri
   }
 
   return dataRows
+}
+
+function readXlsxSharedStrings(xml: string): string[] {
+  return [...xml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((match) =>
+    decodeXmlText(match[1]),
+  )
+}
+
+function readXlsxCellValue(cellXml: string, sharedStrings: string[]): string {
+  const type = cellXml.match(/\bt="([^"]+)"/)?.[1]
+  const value = cellXml.match(/<v>([^<]*)<\/v>/)?.[1]
+  const inline = cellXml.match(/<is><t>([^<]*)<\/t><\/is>/)?.[1]
+  if (inline) return decodeXmlText(inline)
+  if (type === 's' && value) return sharedStrings[parseInt(value, 10)] ?? value
+  return value ?? ''
+}
+
+function parseXlsxXml(sheetXml: string, sharedStrings: string[]): string[][] {
+  const rows = [...sheetXml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)]
+  return rows.map((rowMatch) => {
+    const cells = [...rowMatch[1].matchAll(/<c[^>]*>[\s\S]*?<\/c>|<c[^>/]*\/>/g)].map((cellMatch) =>
+      readXlsxCellValue(cellMatch[0], sharedStrings),
+    )
+    while (cells.length < MAX_COLS) cells.push('')
+    return cells.slice(0, MAX_COLS)
+  })
+}
+
+async function readOdsRows(file: File): Promise<string[][]> {
+  const buffer = await file.arrayBuffer()
+  const unzipped = unzipSync(new Uint8Array(buffer))
+  const contentXml = unzipped['content.xml']
+  if (!contentXml) throw new Error('Arquivo ODS inválido ou corrompido')
+
+  const xml = new TextDecoder('utf-8').decode(contentXml)
+  return parseOdsXml(xml)
+}
+
+async function readXlsxRows(file: File): Promise<string[][]> {
+  const buffer = await file.arrayBuffer()
+  const unzipped = unzipSync(new Uint8Array(buffer))
+  const sheetPath = Object.keys(unzipped).find((key) => /^xl\/worksheets\/sheet\d+\.xml$/.test(key))
+  if (!sheetPath) throw new Error('Arquivo XLSX inválido ou corrompido')
+
+  const sharedXml = unzipped['xl/sharedStrings.xml']
+  const sharedStrings = sharedXml
+    ? readXlsxSharedStrings(new TextDecoder('utf-8').decode(sharedXml))
+    : []
+  const sheetXml = new TextDecoder('utf-8').decode(unzipped[sheetPath])
+  return parseXlsxXml(sheetXml, sharedStrings)
+}
+
+/** Importa planilha de consumo material (.ods ou .xlsx) */
+export async function parseConsumoMaterialFile(file: File): Promise<ConsumoMaterialRow[]> {
+  const lowerName = file.name.toLowerCase()
+  if (lowerName.endsWith('.ods')) {
+    return parseConsumoMaterialRows(await readOdsRows(file))
+  }
+  if (lowerName.endsWith('.xlsx')) {
+    return parseConsumoMaterialRows(await readXlsxRows(file))
+  }
+  throw new Error('Selecione um arquivo no formato .ods ou .xlsx')
+}
+
+export async function parseConsumoMaterialOds(file: File): Promise<ConsumoMaterialRow[]> {
+  return parseConsumoMaterialFile(file)
 }
 
 function inferTipoUsuario(postoGrad: string): TipoUsuarioPaciente {

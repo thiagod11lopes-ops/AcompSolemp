@@ -21,7 +21,7 @@ import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import {
   consumoRowsToPedidoInput,
-  parseConsumoMaterialOds,
+  parseConsumoMaterialFile,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
 import {
@@ -254,7 +254,7 @@ export default function ClinicaNovoPedidoPage() {
     setAddPlanilhaError(null)
     setIsAdicionandoPlanilha(true)
     try {
-      const rows = await parseConsumoMaterialOds(file)
+      const rows = await parseConsumoMaterialFile(file)
       const mesModelo = getMesModeloFromParts(mes, ano)
       const novos = rows.filter(
         (r) =>
