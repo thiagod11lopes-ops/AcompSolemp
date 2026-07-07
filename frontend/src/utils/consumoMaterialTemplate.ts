@@ -1,5 +1,5 @@
 import seedData from '@/data/consumoMaterialSeed.json'
-import type { Pedido } from '@/types'
+import type { Pedido, PedidoPlanilhaEnvioState, ProcessoArquivado } from '@/types'
 import {
   formatValorBrasileiro,
   parseValorBrasileiro,
@@ -149,9 +149,28 @@ export function buildPlanilhaLancamentos(
   return [...fromPedidos, ...extras]
 }
 
-export function getRowIdsComPedido(pedidos: Pedido[]): Set<string> {
+function pedidoPlanilhaArquivada(
+  pedidoId: string,
+  planilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>,
+  processosArquivados?: ProcessoArquivado[],
+): boolean {
+  if (planilhaEnvio?.[pedidoId]?.arquivadaEm) return true
+  return Boolean(
+    processosArquivados?.some(
+      (item) => item.pedidoId === pedidoId && item.etapaChave === 'DIV_MAT_CONTABILIDADE_IMH',
+    ),
+  )
+}
+
+export function getRowIdsComPedido(
+  pedidos: Pedido[],
+  planilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>,
+  processosArquivados?: ProcessoArquivado[],
+): Set<string> {
   const ids = new Set<string>()
   for (const pedido of pedidos) {
+    if (pedidoPlanilhaArquivada(pedido.id, planilhaEnvio, processosArquivados)) continue
+
     if (pedido.consumoRowIds?.length) {
       for (const rowId of pedido.consumoRowIds) ids.add(rowId)
     } else if (!isPedidoLote(pedido.id)) {

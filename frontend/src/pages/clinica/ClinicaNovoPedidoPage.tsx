@@ -40,6 +40,7 @@ import {
 } from '@/utils/consumoMaterialTemplate'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import { loadAppData } from '@/mocks/seed'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 export default function ClinicaNovoPedidoPage() {
@@ -79,7 +80,14 @@ export default function ClinicaNovoPedidoPage() {
     [],
   )
 
-  const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
+  const rowIdsComPedido = useMemo(() => {
+    const data = loadAppData()
+    return getRowIdsComPedido(
+      pedidos,
+      data.pedidoPlanilhaEnvio,
+      data.processosArquivados,
+    )
+  }, [pedidos, finalizedRowIds])
 
   useEffect(() => {
     if (!clinicaId || !planilhaPersistida || planilhaHydrated.current) return
