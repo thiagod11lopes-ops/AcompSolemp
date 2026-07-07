@@ -3,6 +3,25 @@ export const DEFAULT_APP_TITLE = 'AcompSolemp'
 
 const PORTAL_PREFIXES = ['/clinica', '/ordenador', '/financeiro'] as const
 
+/** Rota interna do app (sem basename do Vite/GitHub Pages). */
+export function getAppRoutePath(): string {
+  if (typeof window === 'undefined') return '/'
+
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
+  const pathname = window.location.pathname
+
+  if (base && (pathname === base || pathname.startsWith(`${base}/`))) {
+    const rest = pathname.slice(base.length)
+    return rest.startsWith('/') ? rest : `/${rest}`
+  }
+
+  return pathname
+}
+
+export function isDemoRoutePath(pathname: string): boolean {
+  return pathname === DEMO_ROUTE_BASE || pathname.startsWith(`${DEMO_ROUTE_BASE}/`)
+}
+
 export function buildAbsoluteAppUrl(path: string): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '') || ''
   const normalizedPath = path.startsWith('/') ? path : `/${path}`

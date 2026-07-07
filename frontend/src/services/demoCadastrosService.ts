@@ -205,7 +205,9 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
 }
 
 export async function ensureDemoUserById(userId: string): Promise<User> {
+  await initDemoAppData()
   await ensureDemoExampleCadastros()
+
   const data = loadAppData()
   const user = data.usuarios.find((item) => item.id === userId && item.ativo)
   if (!user || user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') {

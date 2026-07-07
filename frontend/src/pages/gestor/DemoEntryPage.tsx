@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Box } from '@mui/material'
 import { useAuth } from '@/contexts/AuthContext'
-import { ensureDemoExampleCadastros } from '@/services/demoCadastrosService'
+import { ensureDemoExampleCadastros, initDemoAppData } from '@/services/demoCadastrosService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 
 export default function DemoEntryPage() {
@@ -19,6 +19,7 @@ export default function DemoEntryPage() {
 
     void (async () => {
       try {
+        await initDemoAppData()
         await ensureDemoExampleCadastros()
         const { route } = await startDemo(userId, titulo ?? undefined)
         if (titulo) document.title = titulo

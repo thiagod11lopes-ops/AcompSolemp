@@ -1,4 +1,5 @@
 import { env, isFirebaseConfigured } from '@/config/env'
+import { getAppRoutePath, isDemoRoutePath } from '@/utils/portalPaths'
 
 export function useFirebaseDataSource(): boolean {
   return env.isFirebase && isFirebaseConfigured()
@@ -7,7 +8,7 @@ export function useFirebaseDataSource(): boolean {
 /** Sessão de demonstração (/gestor/demo/*) — dados locais isolados da nuvem */
 export function isDemoDataSession(): boolean {
   if (typeof window === 'undefined') return false
-  return window.location.pathname.startsWith('/gestor/demo')
+  return isDemoRoutePath(getAppRoutePath())
 }
 
 /** AppData na nuvem (Firestore) — desativado no modo demonstração */
