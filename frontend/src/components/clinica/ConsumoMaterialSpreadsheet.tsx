@@ -412,6 +412,13 @@ function ConsumoMaterialSpreadsheetInner({
     }
   }, [editable, pageSize, table])
 
+  useEffect(() => {
+    if (globalFilter.trim()) return
+    const filteredCount = table.getFilteredRowModel().rows.length
+    const lastPage = Math.max(0, Math.ceil(filteredCount / pageSize) - 1)
+    table.setPageIndex(lastPage)
+  }, [rows, pageSize, globalFilter, table])
+
   const selectedCount = useMemo(
     () =>
       table
@@ -863,7 +870,15 @@ function ConsumoMaterialSpreadsheetInner({
         page={table.getState().pagination.pageIndex}
         onPageChange={(_, page) => table.setPageIndex(page)}
         rowsPerPage={table.getState().pagination.pageSize}
-        onRowsPerPageChange={(e) => table.setPageSize(parseInt(e.target.value, 10))}
+        onRowsPerPageChange={(e) => {
+          const nextSize = parseInt(e.target.value, 10)
+          table.setPageSize(nextSize)
+          if (!globalFilter.trim()) {
+            const filteredCount = table.getFilteredRowModel().rows.length
+            const lastPage = Math.max(0, Math.ceil(filteredCount / nextSize) - 1)
+            table.setPageIndex(lastPage)
+          }
+        }}
         rowsPerPageOptions={rowsPerPageOptions}
         labelRowsPerPage="Linhas por página"
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
