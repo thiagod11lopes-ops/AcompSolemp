@@ -50,6 +50,17 @@ import type {
 } from '@/utils/consumoMaterialTemplate'
 import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
 import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
+import {
+  ColumnResizeHandle,
+  RowResizeHandle,
+  getColumnCellSx,
+} from '@/components/clinica/SpreadsheetResizeHandle'
+import {
+  buildDefaultColumnWidths,
+  useSpreadsheetResize,
+} from '@/hooks/useSpreadsheetResize'
+
+const DEFAULT_ROW_MIN_HEIGHT = 40
 
 const GROUP_LABELS: Record<string, string> = {
   paciente: 'Paciente',
@@ -150,6 +161,13 @@ export function ConsumoMaterialSpreadsheet({
   const [adicionarOpen, setAdicionarOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
 
+  const defaultColumnWidths = useMemo(
+    () => buildDefaultColumnWidths(CONSUMO_MATERIAL_HEADERS),
+    [],
+  )
+  const { columnWidths, getRowHeight, startColumnResize, startRowResize, tableMinWidth } =
+    useSpreadsheetResize(defaultColumnWidths)
+
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
 
   const headerActionSx = {
@@ -231,6 +249,7 @@ export function ConsumoMaterialSpreadsheet({
           const field = col.key as ConsumoMaterialColunaKey
           const value = String(getValue() ?? '')
           const rowId = row.original.id
+          const colWidth = columnWidths[field] ?? col.width
 
           if (editable && onCellChange) {
             return (
@@ -310,7 +329,7 @@ export function ConsumoMaterialSpreadsheet({
               title={value}
               sx={{
                 display: 'block',
-                maxWidth: col.width,
+                maxWidth: colWidth,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -353,7 +372,7 @@ export function ConsumoMaterialSpreadsheet({
       },
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleContextMenu, podeSelecionar])
+  }, [editable, onCellChange, handleContextMenu, podeSelecionar, columnWidths])
 
   const table = useReactTable({
     data: rows,
@@ -622,19 +641,23 @@ export function ConsumoMaterialSpreadsheet({
         )}
         {editable && (
           <Typography variant="caption" color="text.secondary">
-            Clique com o botão direito em uma linha para adicionar ou excluir
+            Clique com o botão direito para adicionar ou excluir · Arraste as bordas para redimensionar
           </Typography>
         )}
       </Stack>
 
       <TableContainer sx={{ maxHeight: 'min(70vh, 720px)' }}>
-        <Table stickyHeader size="small" sx={{ minWidth: 2400 }}>
+        <Table
+          stickyHeader
+          size="small"
+          sx={{ minWidth: tableMinWidth, tableLayout: 'fixed', width: tableMinWidth }}
+        >
           <TableHead>
             <TableRow>
               <TableCell
                 rowSpan={2}
                 sx={{
-                  width: 48,
+                  ...getColumnCellSx(columnWidths.select ?? 48),
                   bgcolor: '#072A66',
                   borderBottom: 'none',
                   position: 'sticky',
@@ -651,6 +674,9 @@ export function ConsumoMaterialSpreadsheet({
                       {flexRender(header.column.columnDef.header, header.getContext())}
                     </Box>
                   ))}
+                <ColumnResizeHandle
+                  onResizeStart={(event) => startColumnResize('select', event.clientX)}
+                />
               </TableCell>
               {groupSpans.map((g) => (
                 <TableCell
@@ -678,17 +704,18 @@ export function ConsumoMaterialSpreadsheet({
                 .map((header) => {
                   const colDef = CONSUMO_MATERIAL_HEADERS.find((c) => c.key === header.id)
                   const group = colDef?.group ?? 'paciente'
+                  const colWidth = columnWidths[header.id] ?? colDef?.width ?? 100
                   return (
                     <TableCell
                       key={header.id}
                       sx={{
+                        ...getColumnCellSx(colWidth),
                         bgcolor: alpha(GROUP_COLORS[group], 0.92),
                         color: 'white',
                         fontWeight: 700,
                         fontSize: '0.68rem',
                         letterSpacing: 0.4,
                         whiteSpace: 'nowrap',
-                        minWidth: colDef?.width,
                         py: 1,
                         borderBottom: `2px solid ${GROUP_COLORS[group]}`,
                       }}
@@ -708,6 +735,9 @@ export function ConsumoMaterialSpreadsheet({
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())
                       )}
+                      <ColumnResizeHandle
+                        onResizeStart={(event) => startColumnResize(header.id, event.clientX)}
+                      />
                     </TableCell>
                   )
                 })}
@@ -723,6 +753,7 @@ export function ConsumoMaterialSpreadsheet({
             ) : (
               table.getRowModel().rows.map((row, index) => {
                 const vazia = !isLinhaPreenchida(row.original)
+                const customRowHeight = getRowHeight(row.id)
                 return (
                 <TableRow
                   key={row.id}
@@ -731,7 +762,8 @@ export function ConsumoMaterialSpreadsheet({
                   onContextMenu={(e) => handleContextMenu(e, row.id)}
                   sx={(theme) => ({
                     cursor: editable ? 'context-menu' : undefined,
-                    height: editable ? 'auto' : undefined,
+                    height: customRowHeight,
+                    minHeight: customRowHeight ?? DEFAULT_ROW_MIN_HEIGHT,
                     bgcolor: vazia
                       ? alpha(theme.palette.action.disabled, 0.06)
                       : index % 2 === 0
@@ -747,14 +779,21 @@ export function ConsumoMaterialSpreadsheet({
                     },
                   })}
                 >
-                  {row.getVisibleCells().map((cell, cellIndex) => (
+                  {row.getVisibleCells().map((cell, cellIndex) => {
+                    const colId = cell.column.id
+                    const colWidth =
+                      columnWidths[colId] ??
+                      CONSUMO_MATERIAL_HEADERS.find((c) => c.key === colId)?.width ??
+                      100
+                    return (
                     <TableCell
                       key={cell.id}
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
                       sx={{
+                        ...getColumnCellSx(colWidth),
                         py: editable ? 0.5 : 0.75,
                         verticalAlign: 'top',
-                        overflow: 'visible',
+                        overflow: customRowHeight ? 'hidden' : 'visible',
                         ...(cellIndex === 0
                           ? {
                               position: 'sticky',
@@ -768,8 +807,20 @@ export function ConsumoMaterialSpreadsheet({
                       }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {cellIndex === 0 && (
+                        <RowResizeHandle
+                          onResizeStart={(event) => {
+                            const tr = (event.currentTarget as HTMLElement).closest('tr')
+                            const height =
+                              customRowHeight ??
+                              tr?.getBoundingClientRect().height ??
+                              DEFAULT_ROW_MIN_HEIGHT
+                            startRowResize(row.id, event.clientY, height)
+                          }}
+                        />
+                      )}
                     </TableCell>
-                  ))}
+                  )})}
                 </TableRow>
               )})
             )}
