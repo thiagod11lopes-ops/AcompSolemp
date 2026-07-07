@@ -12,13 +12,18 @@ export default function HistoricoPage() {
   const { data: historico = [], isLoading } = useHistorico()
   const { data: pedidos = [] } = usePedidos()
 
+  const pedidosPorId = useMemo(
+    () => new Map(pedidos.map((pedido) => [pedido.id, pedido])),
+    [pedidos],
+  )
+
   const columns = useMemo<ColumnDef<HistoricoEvento>[]>(
     () => [
       {
         id: 'pedido',
         header: 'Processo',
         cell: ({ row }) => {
-          const pedido = pedidos.find((p) => p.id === row.original.pedidoId)
+          const pedido = pedidosPorId.get(row.original.pedidoId)
           return pedido?.numero ?? row.original.pedidoId
         },
       },
@@ -31,7 +36,7 @@ export default function HistoricoPage() {
       },
       { accessorKey: 'observacao', header: 'Observação' },
     ],
-    [pedidos],
+    [pedidosPorId],
   )
 
   if (isLoading) return <LoadingSpinner />

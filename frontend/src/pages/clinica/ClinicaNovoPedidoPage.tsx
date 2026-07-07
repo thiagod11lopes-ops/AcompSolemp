@@ -9,7 +9,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import GridOnIcon from '@mui/icons-material/GridOn'
-import { useMemo, useState, useCallback, type SyntheticEvent } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect, type SyntheticEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
@@ -36,6 +36,7 @@ import {
   getMesModeloFromParts,
   dataPertenceAoMes,
   syncExtraRowsFromMesSheet,
+  inicializarLinhasDoMes,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 
@@ -63,6 +64,14 @@ export default function ClinicaNovoPedidoPage() {
   const [materialConsumoRows, setMaterialConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [rowsByMes, setRowsByMes] = useState<Record<string, ConsumoMaterialRow[]>>({})
   const [deletedRowIds, setDeletedRowIds] = useState<Set<string>>(new Set())
+  const extraRowsSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
+    },
+    [],
+  )
 
   const rowIdsComPedido = useMemo(() => getRowIdsComPedido(pedidos), [pedidos])
 
@@ -83,11 +92,15 @@ export default function ClinicaNovoPedidoPage() {
   const handleMesRowsChange = useCallback(
     (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
       setRowsByMes((prev) => ({ ...prev, [mes.id]: rows }))
-      setExtraRows((prev) =>
-        syncExtraRowsFromMesSheet(prev, rows, mes, getRowIdsComPedido(pedidos)),
-      )
+      if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
+      extraRowsSyncTimer.current = setTimeout(() => {
+        setExtraRows((prev) =>
+          syncExtraRowsFromMesSheet(prev, rows, mes, rowIdsComPedido),
+        )
+        extraRowsSyncTimer.current = null
+      }, 400)
     },
-    [pedidos],
+    [rowIdsComPedido],
   )
 
   const handleExcluirLinhaRow = useCallback(
@@ -166,8 +179,11 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtiva(1)
   }
 
-  const getSelectedRows = () =>
-    planilhaRows.filter((r) => rowSelection[r.id] && rowPodeSerSelecionada(r))
+  const getSelectedRows = useCallback(() => {
+    const mesSheet = rowsByMes[mesSelecionado.id]
+    const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
+    return sourceRows.filter((r) => rowSelection[r.id] && rowPodeSerSelecionada(r))
+  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelection])
 
   const handleAbrirImhModal = () => {
     const selectedRows = getSelectedRows()
@@ -230,7 +246,10 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const totalPreenchidos = planilhaRows.filter(isLinhaPreenchida).length
+  const totalPreenchidos = useMemo(
+    () => planilhaRows.filter(isLinhaPreenchida).length,
+    [planilhaRows],
+  )
 
   return (
     <>

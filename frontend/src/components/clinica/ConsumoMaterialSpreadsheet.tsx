@@ -37,7 +37,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useMemo, useState, useCallback, type MouseEvent, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useState, useCallback, type MouseEvent, type ReactNode } from 'react'
 import {
   CONSUMO_MATERIAL_HEADERS,
   formatValorBrasileiro,
@@ -59,6 +59,7 @@ import {
   buildDefaultColumnWidths,
   useSpreadsheetResize,
 } from '@/hooks/useSpreadsheetResize'
+import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 
 const DEFAULT_ROW_MIN_HEIGHT = 40
 
@@ -74,7 +75,6 @@ const GROUP_COLORS: Record<string, string> = {
   financeiro: '#2E7D32',
 }
 
-const MAX_CELL_LINES = 3
 const MAX_CHARS_PER_LINE = 30
 
 const cellTextWrapSx = {
@@ -84,33 +84,6 @@ const cellTextWrapSx = {
   overflowWrap: 'anywhere' as const,
   wordBreak: 'break-word' as const,
 }
-
-function clampLinhasCelula(value: string, maxLines: number): string {
-  const lines = value.split('\n')
-  if (lines.length <= maxLines) return value
-  return lines.slice(0, maxLines).join('\n')
-}
-
-const editableCellInputSx = {
-  fontSize: '0.78rem',
-  px: 0.75,
-  py: 0.5,
-  minHeight: 28,
-  alignItems: 'flex-start',
-  overflow: 'hidden',
-  '& textarea': {
-    overflow: 'hidden !important',
-    resize: 'none',
-    lineHeight: 1.4,
-    scrollbarWidth: 'none',
-    maxWidth: `${MAX_CHARS_PER_LINE}ch`,
-    width: '100%',
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
-    '&::-webkit-scrollbar': { display: 'none' },
-  },
-} as const
 
 interface ContextMenuState {
   mouseX: number
@@ -144,7 +117,7 @@ interface ConsumoMaterialSpreadsheetProps {
   headerExtra?: ReactNode
 }
 
-export function ConsumoMaterialSpreadsheet({
+function ConsumoMaterialSpreadsheetInner({
   rows,
   fileName,
   rowSelection,
@@ -266,33 +239,12 @@ export function ConsumoMaterialSpreadsheet({
 
           if (editable && onCellChange) {
             return (
-              <TextField
-                size="small"
-                variant="standard"
-                multiline
-                minRows={1}
-                maxRows={MAX_CELL_LINES}
+              <SpreadsheetEditableCell
+                rowId={rowId}
+                field={field}
                 value={value}
-                onChange={(e) =>
-                  onCellChange(rowId, field, clampLinhasCelula(e.target.value, MAX_CELL_LINES))
-                }
-                slotProps={{
-                  input: {
-                    disableUnderline: true,
-                    onContextMenu: (e: MouseEvent) => handleContextMenu(e, rowId),
-                    sx: {
-                      ...editableCellInputSx,
-                      fontFamily:
-                        field === 'valor'
-                          ? '"JetBrains Mono", "Roboto Mono", monospace'
-                          : undefined,
-                    },
-                  },
-                }}
-                sx={{
-                  ...cellTextWrapSx,
-                  '& .MuiInputBase-root': { overflow: 'hidden', width: '100%' },
-                }}
+                onCellChange={onCellChange}
+                onContextMenu={handleContextMenu}
               />
             )
           }
@@ -384,7 +336,7 @@ export function ConsumoMaterialSpreadsheet({
       },
       ...dataColumns,
     ]
-  }, [editable, onCellChange, handleContextMenu, podeSelecionar, columnWidths])
+  }, [editable, onCellChange, handleContextMenu, podeSelecionar])
 
   const table = useReactTable({
     data: rows,
@@ -417,22 +369,45 @@ export function ConsumoMaterialSpreadsheet({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 50 } },
+    initialState: { pagination: { pageSize: editable ? 50 : 50 } },
   })
 
-  const selectedCount = table
-    .getSelectedRowModel()
-    .rows.filter((r) => podeSelecionar(r.original)).length
-  const filteredRows = table.getFilteredRowModel().rows
-  const totalValorFiltrado = filteredRows.reduce(
-    (sum, r) => sum + (!isLinhaPreenchida(r.original) ? 0 : r.original.valorNumerico),
-    0,
-  )
-  const selectedValor = table
-    .getSelectedRowModel()
-    .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0)
+  const pageSize = table.getState().pagination.pageSize
+  const rowsPerPageOptions = editable ? [25, 50] : [25, 50, 100, 250]
 
-  const linhasPreenchidas = rows.filter((r) => isLinhaPreenchida(r)).length
+  useEffect(() => {
+    if (editable && pageSize > 50) {
+      table.setPageSize(50)
+    }
+  }, [editable, pageSize, table])
+
+  const selectedCount = useMemo(
+    () =>
+      table
+        .getSelectedRowModel()
+        .rows.filter((r) => podeSelecionar(r.original)).length,
+    [table, rowSelection, rows, podeSelecionar],
+  )
+
+  const totalValorFiltrado = useMemo(() => {
+    return table.getFilteredRowModel().rows.reduce(
+      (sum, r) => sum + (!isLinhaPreenchida(r.original) ? 0 : r.original.valorNumerico),
+      0,
+    )
+  }, [table, rows, globalFilter, sorting])
+
+  const selectedValor = useMemo(
+    () =>
+      table
+        .getSelectedRowModel()
+        .rows.reduce((sum, r) => sum + r.original.valorNumerico, 0),
+    [table, rowSelection, rows],
+  )
+
+  const linhasPreenchidas = useMemo(
+    () => rows.filter((r) => isLinhaPreenchida(r)).length,
+    [rows],
+  )
 
   const groupSpans = useMemo(() => {
     const groups: { group: string; span: number }[] = []
@@ -847,7 +822,7 @@ export function ConsumoMaterialSpreadsheet({
         onPageChange={(_, page) => table.setPageIndex(page)}
         rowsPerPage={table.getState().pagination.pageSize}
         onRowsPerPageChange={(e) => table.setPageSize(parseInt(e.target.value, 10))}
-        rowsPerPageOptions={[25, 50, 100, 250]}
+        rowsPerPageOptions={rowsPerPageOptions}
         labelRowsPerPage="Linhas por página"
         labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
       />
@@ -895,3 +870,5 @@ export function ConsumoMaterialSpreadsheet({
     </>
   )
 }
+
+export const ConsumoMaterialSpreadsheet = memo(ConsumoMaterialSpreadsheetInner)

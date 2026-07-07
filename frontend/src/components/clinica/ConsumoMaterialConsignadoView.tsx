@@ -5,7 +5,7 @@ import {
   Select,
   alpha,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialSpreadsheet } from '@/components/clinica/ConsumoMaterialSpreadsheet'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
@@ -47,7 +47,7 @@ interface ConsumoMaterialConsignadoViewProps {
   onExcluirLinhaRow?: (rowId: string) => void
 }
 
-export function ConsumoMaterialConsignadoView({
+function ConsumoMaterialConsignadoViewInner({
   lancamentos,
   fileName,
   rowSelection,
@@ -79,37 +79,60 @@ export function ConsumoMaterialConsignadoView({
     return inicializarLinhasDoMes(lancamentos, mesSelecionado)
   }, [rowsByMes, lancamentos, mesSelecionado])
 
-  const preenchidasNoMes = lancamentos.filter(
-    (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesSelecionado),
-  ).length
+  const linhasExibidasRef = useRef(linhasExibidas)
+  linhasExibidasRef.current = linhasExibidas
 
-  const totalNoSistema = totalPedidos ?? lancamentos.filter(isLinhaPreenchida).length
+  const preenchidasNoMes = useMemo(() => {
+    if (rowsByMes) {
+      return linhasExibidas.filter(isLinhaPreenchida).length
+    }
+    return lancamentos.filter(
+      (r) => isLinhaPreenchida(r) && dataPertenceAoMes(r.data, mesSelecionado),
+    ).length
+  }, [rowsByMes, linhasExibidas, lancamentos, mesSelecionado])
 
-  const updateRows = (next: ConsumoMaterialRow[]) => {
-    onRowsChange?.(next, mesSelecionado)
-  }
+  const totalNoSistema = useMemo(
+    () => totalPedidos ?? lancamentos.filter(isLinhaPreenchida).length,
+    [totalPedidos, lancamentos],
+  )
 
-  const handleCellChange = (rowId: string, field: ConsumoMaterialColunaKey, value: string) => {
-    updateRows(
-      linhasExibidas.map((row) =>
-        row.id === rowId ? atualizarCampoConsumo(row, field, value) : row,
-      ),
-    )
-  }
+  const updateRows = useCallback(
+    (next: ConsumoMaterialRow[]) => {
+      onRowsChange?.(next, mesSelecionado)
+    },
+    [onRowsChange, mesSelecionado],
+  )
 
-  const handleInserirLinha = (rowId: string, position: InserirLinhaConsumoPosicao) => {
-    updateRows(inserirLinhaConsumo(linhasExibidas, rowId, position, mesSelecionado))
-  }
+  const handleCellChange = useCallback(
+    (rowId: string, field: ConsumoMaterialColunaKey, value: string) => {
+      updateRows(
+        linhasExibidasRef.current.map((row) =>
+          row.id === rowId ? atualizarCampoConsumo(row, field, value) : row,
+        ),
+      )
+    },
+    [updateRows],
+  )
 
-  const handleExcluirLinha = (rowId: string) => {
-    onExcluirLinhaRow?.(rowId)
-    updateRows(excluirLinhaConsumo(linhasExibidas, rowId))
-    onRowSelectionChange(
-      Object.fromEntries(
-        Object.entries(rowSelection).filter(([id]) => id !== rowId),
-      ),
-    )
-  }
+  const handleInserirLinha = useCallback(
+    (rowId: string, position: InserirLinhaConsumoPosicao) => {
+      updateRows(inserirLinhaConsumo(linhasExibidasRef.current, rowId, position, mesSelecionado))
+    },
+    [updateRows, mesSelecionado],
+  )
+
+  const handleExcluirLinha = useCallback(
+    (rowId: string) => {
+      onExcluirLinhaRow?.(rowId)
+      updateRows(excluirLinhaConsumo(linhasExibidasRef.current, rowId))
+      onRowSelectionChange(
+        Object.fromEntries(
+          Object.entries(rowSelection).filter(([id]) => id !== rowId),
+        ),
+      )
+    },
+    [onExcluirLinhaRow, updateRows, onRowSelectionChange, rowSelection],
+  )
 
   return (
     <ConsumoMaterialSpreadsheet
@@ -171,3 +194,5 @@ export function ConsumoMaterialConsignadoView({
     />
   )
 }
+
+export const ConsumoMaterialConsignadoView = memo(ConsumoMaterialConsignadoViewInner)
