@@ -34,6 +34,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type PaginationState,
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
@@ -152,6 +153,7 @@ function ConsumoMaterialSpreadsheetInner({
 }: ConsumoMaterialSpreadsheetProps) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
   const [excluirOpen, setExcluirOpen] = useState(false)
   const [adicionarOpen, setAdicionarOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -182,6 +184,31 @@ function ConsumoMaterialSpreadsheetInner({
       : rows
     return applyEditingDrafts(merged, editingDrafts)
   }, [measureRows, rows, editingDrafts])
+
+  const rowMatchesFilter = useCallback((row: ConsumoMaterialRow, filterValue: string) => {
+    const q = filterValue.toLowerCase()
+    if (!q) return true
+    return [
+      row.nip,
+      row.nome,
+      row.procedimento,
+      row.fornecedor,
+      row.cirurgiao,
+      row.materiais,
+      row.empenho,
+      row.valor,
+    ].some((v) => v.toLowerCase().includes(q))
+  }, [])
+
+  const filteredRowCount = useMemo(() => {
+    if (!globalFilter.trim()) return rows.length
+    return rows.filter((row) => rowMatchesFilter(row, globalFilter)).length
+  }, [rows, globalFilter, rowMatchesFilter])
+
+  const lastPageIndex = useMemo(
+    () => Math.max(0, Math.ceil(filteredRowCount / pagination.pageSize) - 1),
+    [filteredRowCount, pagination.pageSize],
+  )
 
   const contentColumnWidths = useMemo(
     () => measureColumnWidths(rowsForMeasurement, CONSUMO_MATERIAL_HEADERS, editable),
@@ -401,49 +428,36 @@ function ConsumoMaterialSpreadsheetInner({
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting, globalFilter, rowSelection },
+    state: { sorting, globalFilter, rowSelection, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
     onRowSelectionChange: handleRowSelectionChange,
     enableRowSelection: (row) => podeSelecionar(row.original),
     getRowId: (row) => row.id,
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const q = String(filterValue).toLowerCase()
-      if (!q) return true
-      const r = row.original
-      return [
-        r.nip,
-        r.nome,
-        r.procedimento,
-        r.fornecedor,
-        r.cirurgiao,
-        r.materiais,
-        r.empenho,
-        r.valor,
-      ].some((v) => v.toLowerCase().includes(q))
-    },
+    autoResetPageIndex: false,
+    globalFilterFn: (row, _columnId, filterValue) =>
+      rowMatchesFilter(row.original, String(filterValue)),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: editable ? 50 : 50 } },
   })
 
-  const pageSize = table.getState().pagination.pageSize
   const rowsPerPageOptions = editable ? [25, 50] : [25, 50, 100, 250]
 
   useEffect(() => {
-    if (editable && pageSize > 50) {
-      table.setPageSize(50)
+    if (editable && pagination.pageSize > 50) {
+      setPagination((prev) => ({ ...prev, pageSize: 50 }))
     }
-  }, [editable, pageSize, table])
+  }, [editable, pagination.pageSize])
 
   useEffect(() => {
     if (globalFilter.trim()) return
-    const filteredCount = table.getFilteredRowModel().rows.length
-    const lastPage = Math.max(0, Math.ceil(filteredCount / pageSize) - 1)
-    table.setPageIndex(lastPage)
-  }, [rows, pageSize, globalFilter, table])
+    setPagination((prev) =>
+      prev.pageIndex === lastPageIndex ? prev : { ...prev, pageIndex: lastPageIndex },
+    )
+  }, [rows, lastPageIndex, globalFilter])
 
   const selectedCount = useMemo(
     () =>
@@ -649,7 +663,7 @@ function ConsumoMaterialSpreadsheetInner({
             value={globalFilter}
             onChange={(e) => {
               setGlobalFilter(e.target.value)
-              table.setPageIndex(0)
+              setPagination((prev) => ({ ...prev, pageIndex: 0 }))
             }}
             slotProps={{
               input: {
@@ -893,17 +907,15 @@ function ConsumoMaterialSpreadsheetInner({
       <TablePagination
         component="div"
         count={table.getFilteredRowModel().rows.length}
-        page={table.getState().pagination.pageIndex}
-        onPageChange={(_, page) => table.setPageIndex(page)}
-        rowsPerPage={table.getState().pagination.pageSize}
+        page={pagination.pageIndex}
+        onPageChange={(_, page) => setPagination((prev) => ({ ...prev, pageIndex: page }))}
+        rowsPerPage={pagination.pageSize}
         onRowsPerPageChange={(e) => {
           const nextSize = parseInt(e.target.value, 10)
-          table.setPageSize(nextSize)
-          if (!globalFilter.trim()) {
-            const filteredCount = table.getFilteredRowModel().rows.length
-            const lastPage = Math.max(0, Math.ceil(filteredCount / nextSize) - 1)
-            table.setPageIndex(lastPage)
-          }
+          const nextPageIndex = globalFilter.trim()
+            ? 0
+            : Math.max(0, Math.ceil(filteredRowCount / nextSize) - 1)
+          setPagination({ pageIndex: nextPageIndex, pageSize: nextSize })
         }}
         rowsPerPageOptions={rowsPerPageOptions}
         labelRowsPerPage="Linhas por página"
