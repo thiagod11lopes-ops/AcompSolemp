@@ -1,6 +1,7 @@
 import type { AppData } from '@/types'
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { initFirebase } from '@/firebase/app'
+import { applyRemoteAppData } from '@/mocks/seed'
 import {
   createFirebaseAppDataPersistence,
   loadAppDataFromFirebase,
@@ -18,7 +19,7 @@ export async function ensureFirebasePersistence(): Promise<boolean> {
   return true
 }
 
-/** Hidrata cache local a partir do Firestore (fase 1 — snapshot completo) */
+/** Carrega AppData do Firestore para o cache em memória */
 export async function hydrateLocalCacheFromFirebase(
   applyData: (data: AppData) => void,
 ): Promise<boolean> {
@@ -32,7 +33,17 @@ export async function hydrateLocalCacheFromFirebase(
   return true
 }
 
-/** Enfileira gravação do snapshot no Firestore após save local */
+/** Recarrega AppData a partir da nuvem (fonte de verdade em produção) */
+export async function refreshAppDataFromCloud(): Promise<AppData> {
+  const hydrated = await hydrateLocalCacheFromFirebase(applyRemoteAppData)
+  const { loadAppData } = await import('@/mocks/seed')
+  if (!hydrated && import.meta.env.DEV) {
+    console.info('[AcompSolemp] Firestore sem snapshot — usando cache em memória')
+  }
+  return loadAppData()
+}
+
+/** Enfileira gravação do snapshot no Firestore */
 export function scheduleFirebaseAppDataSync(
   data: AppData,
   version: string,

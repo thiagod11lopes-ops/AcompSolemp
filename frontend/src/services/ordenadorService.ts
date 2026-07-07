@@ -1,5 +1,5 @@
 import type { PedidoComDetalhes, UserRole } from '@/types'
-import { delay, loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
+import { delay, loadAppData, reloadFreshAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
 import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
 import {
@@ -39,7 +39,7 @@ function pedidoPendenteParaPerfil(
 export const ordenadorService = {
   async listPendentesAssinatura(usuarioId: string): Promise<PedidoComDetalhes[]> {
     await delay(null)
-    const data = reloadAppDataFromStorage()
+    const data = await reloadFreshAppData()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
     if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) return []
 
@@ -53,7 +53,7 @@ export const ordenadorService = {
 
   async getById(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = reloadAppDataFromStorage()
+    const data = await reloadFreshAppData()
     const usuario = data.usuarios.find((u) => u.id === usuarioId && u.ativo)
     if (!usuario) return null
 
@@ -73,7 +73,7 @@ export const ordenadorService = {
     },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
-    let data = reloadAppDataFromStorage()
+    let data = await reloadFreshAppData()
     const usuario = data.usuarios.find(
       (u) => u.id === usuarioId && PERFIS_SETOR.includes(u.perfil),
     )

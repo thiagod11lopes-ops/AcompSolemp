@@ -1,5 +1,6 @@
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { LocalAppDataRepository } from '@/data/repositories/local/LocalAppDataRepository'
+import { FirebaseAppDataRepository } from '@/data/repositories/firebase/FirebaseAppDataRepository'
 import { LocalCadastroRepository } from '@/data/repositories/local/LocalCadastroRepository'
 import { LocalPedidoRepository } from '@/data/repositories/local/LocalPedidoRepository'
 import {
@@ -31,6 +32,7 @@ function createFirebaseRepositories(): Repositories {
   const local = createLocalRepositories()
   return {
     ...local,
+    appData: new FirebaseAppDataRepository(),
     pedidos: new FirebasePedidoRepository(),
   }
 }

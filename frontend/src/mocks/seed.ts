@@ -12,6 +12,7 @@ import {
   storageRemove,
   storageSet,
 } from '@/storage/indexedDb'
+import { useFirebaseDataSource } from '@/config/dataSource'
 import {
   buildPedidosConsumoMaterialSeed,
   USUARIO_CLINICA_OPME_ID,
@@ -377,7 +378,7 @@ function ensureBootstrapGoogleEmails(data: AppData): boolean {
     if (
       user.ativo &&
       (user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') &&
-      user.email?.trim().toLowerCase() !== email
+      !user.email
     ) {
       user.email = email
       changed = true
@@ -438,8 +439,15 @@ function cloneData(data: AppData): AppData {
   return JSON.parse(JSON.stringify(data)) as AppData
 }
 
-/** Carrega dados do IndexedDB (cache em memória) — chamar após initStorage() */
+/** Carrega dados — IndexedDB (local) ou memória (firebase) */
 export function initAppData(): AppData {
+  if (useFirebaseDataSource()) {
+    if (appDataCache) return cloneData(appDataCache)
+    const { data } = normalizeAppData(generateSeedData())
+    appDataCache = data
+    return cloneData(data)
+  }
+
   const stored = storageGet(STORAGE_KEY)
   if (stored) {
     try {
@@ -477,8 +485,12 @@ export function loadAppData(): AppData {
   return cloneData(appDataCache)
 }
 
-/** Recarrega do IndexedDB — garante dados atualizados após envio em outra aba/sessão */
+/** Recarrega dados — IndexedDB (local) ou cache em memória (firebase) */
 export function reloadAppDataFromStorage(): AppData {
+  if (useFirebaseDataSource()) {
+    return loadAppData()
+  }
+
   const stored = storageGet(STORAGE_KEY)
   if (!stored) {
     return loadAppData()
@@ -497,17 +509,23 @@ export function reloadAppDataFromStorage(): AppData {
 }
 
 function persistAppData(data: AppData): void {
+  if (useFirebaseDataSource()) {
+    void import('@/data/persistence/firebaseSync').then(({ scheduleFirebaseAppDataSync }) => {
+      scheduleFirebaseAppDataSync(data, SEED_VERSION)
+    })
+    return
+  }
+
   storageSet(STORAGE_KEY, JSON.stringify({ ...data, _version: SEED_VERSION }))
-  void import('@/data/persistence/firebaseSync').then(({ scheduleFirebaseAppDataSync }) => {
-    scheduleFirebaseAppDataSync(data, SEED_VERSION)
-  })
 }
 
-/** Aplica dados vindos do Firestore no cache local (fase 1 da migração) */
+/** Aplica dados vindos do Firestore no cache em memória (sem regravar na nuvem) */
 export function applyRemoteAppData(raw: AppData): AppData {
   const { data, changed } = normalizeAppData(raw)
   appDataCache = data
-  persistAppData(data)
+  if (!useFirebaseDataSource()) {
+    persistAppData(data)
+  }
   if (changed && import.meta.env.DEV) {
     console.info('[AcompSolemp] AppData normalizado após hidratação Firebase')
   }
@@ -520,16 +538,35 @@ export function saveAppData(data: AppData): void {
 }
 
 export function resetAppData(): AppData {
-  storageRemove(STORAGE_KEY)
+  if (!useFirebaseDataSource()) {
+    storageRemove(STORAGE_KEY)
+  }
   appDataCache = null
   return initAppData()
 }
 
-/** Remove todos os dados persistidos e sessões */
+/** Remove dados persistidos e sessões (mantém tema) */
 export function clearAllSystemData(): AppData {
-  Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
+  if (useFirebaseDataSource()) {
+    storageRemove(STORAGE_KEYS.AUTH_LEGACY)
+    storageRemove(STORAGE_KEYS.AUTH_GESTOR)
+    storageRemove(STORAGE_KEYS.AUTH_CLINICA)
+    storageRemove(STORAGE_KEYS.AUTH_ORDENADOR)
+    storageRemove(STORAGE_KEYS.AUTH_FINANCEIRO)
+  } else {
+    Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
+  }
   appDataCache = null
   return initAppData()
+}
+
+/** Recarrega da fonte ativa — Firestore em produção, IndexedDB em local */
+export async function reloadFreshAppData(): Promise<AppData> {
+  if (useFirebaseDataSource()) {
+    const { refreshAppDataFromCloud } = await import('@/data/persistence/firebaseSync')
+    return refreshAppDataFromCloud()
+  }
+  return reloadAppDataFromStorage()
 }
 
 export function delay<T>(value: T, ms = 400): Promise<T> {

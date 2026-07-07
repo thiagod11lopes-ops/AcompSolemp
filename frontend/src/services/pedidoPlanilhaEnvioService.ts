@@ -1,4 +1,4 @@
-import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
+import { loadAppData, saveAppData } from '@/mocks/seed'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
@@ -29,7 +29,7 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   getForPedido(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = reloadAppDataFromStorage()
+    const data = loadAppData()
     const snapshot = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!snapshot) return null
     return {

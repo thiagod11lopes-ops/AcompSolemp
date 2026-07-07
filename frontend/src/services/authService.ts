@@ -2,8 +2,7 @@ import type { AuthUser, LoginCredentials, CredencialUsuario, User, UserRole } fr
 import type { Portal } from '@/utils/portal'
 import { useFirebaseDataSource } from '@/config/dataSource'
 import { firebaseAuthAdapter } from '@/firebase/authAdapter'
-import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
-import { delay, loadAppData, MOCK_CREDENTIALS, reloadAppDataFromStorage, applyRemoteAppData } from '@/mocks/seed'
+import { delay, loadAppData, MOCK_CREDENTIALS, reloadFreshAppData } from '@/mocks/seed'
 import { slugLogin } from '@/utils/loginSlug'
 import {
   canAccessGestorRoute,
@@ -101,8 +100,7 @@ function findUserByEmail(
 
 async function syncAppDataAfterFirebaseAuth(): Promise<void> {
   if (!useFirebaseDataSource()) return
-  await hydrateLocalCacheFromFirebase(applyRemoteAppData)
-  reloadAppDataFromStorage()
+  await reloadFreshAppData()
 }
 
 async function completeFirebasePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
@@ -119,7 +117,7 @@ async function completeFirebasePortalLogin(portal: Portal, user: User): Promise<
   setSession(portal, authUser)
 
   if (portal === 'ordenador' || portal === 'financeiro') {
-    reloadAppDataFromStorage()
+    await reloadFreshAppData()
   }
 
   return authUser
@@ -245,7 +243,7 @@ export const authService = {
     setSession(portal, authUser)
 
     if (portal === 'ordenador' || portal === 'financeiro') {
-      reloadAppDataFromStorage()
+      await reloadFreshAppData()
     }
 
     return authUser

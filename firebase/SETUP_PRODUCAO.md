@@ -71,8 +71,18 @@ Em produção, só entram contas cujo e-mail está cadastrado no sistema.
 
 1. Firestore vazio + regras exigindo `request.auth != null`
 2. Usuário faz login com Google (gestor)
-3. O app carrega dados locais, valida o e-mail e sincroniza com `appState/current` no Firestore
-4. Demais usuários passam a receber os dados do Firestore após autenticação
+3. O app carrega dados da nuvem (`appState/current`); se vazio, usa estrutura inicial em memória
+4. Cada alteração grava **somente no Firestore** — AppData não é mais salvo no IndexedDB
+5. Demais usuários recebem os mesmos dados após autenticação
+
+### Armazenamento em produção (`VITE_DATA_SOURCE=firebase`)
+
+| Dado | Onde fica |
+|------|-----------|
+| Pedidos, usuários, clínicas, etc. | **Firestore** (`appState/current`) |
+| Cache em memória | Sessão do navegador (não persiste ao fechar) |
+| Sessão de login (portal) | IndexedDB (leve, só auth) |
+| Tema claro/escuro | IndexedDB (preferência de UI) |
 
 ## 5. Segurança
 

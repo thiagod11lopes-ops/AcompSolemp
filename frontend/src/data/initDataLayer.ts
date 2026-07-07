@@ -4,6 +4,7 @@ import { getFirebaseAuth, initFirebase } from '@/firebase/app'
 import { hydrateLocalCacheFromFirebase } from '@/data/persistence/firebaseSync'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
+import { STORAGE_KEYS, storageRemove } from '@/storage/indexedDb'
 import type { AppData } from '@/types'
 
 export async function initDataLayer(): Promise<void> {
@@ -13,6 +14,7 @@ export async function initDataLayer(): Promise<void> {
   }
 
   initFirebase()
+  storageRemove(STORAGE_KEYS.APP_DATA)
   initAppData()
 
   await firebaseAuthAdapter.waitForAuthReady()
