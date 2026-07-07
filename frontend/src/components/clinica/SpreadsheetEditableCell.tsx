@@ -9,8 +9,8 @@ function toSingleLine(value: string): string {
 }
 
 const inputSx = {
-  width: '100%',
-  minWidth: 0,
+  width: 'max-content',
+  minWidth: '100%',
   fontSize: '0.78rem',
   lineHeight: 1.4,
   whiteSpace: 'nowrap' as const,
