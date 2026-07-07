@@ -85,21 +85,9 @@ export function ConsumoMaterialConsignadoView({
       <Box
         sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2,
-          alignItems: { xs: 'stretch', sm: 'center' },
-          justifyContent: 'space-between',
+          justifyContent: { xs: 'stretch', sm: 'flex-end' },
         }}
       >
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Planilha mensal — modelo OPME TRO
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Estrutura fixa conforme modelos definitivos (Jan–Jun/2026).{' '}
-            <strong>{totalNoSistema} pedido(s)</strong> na planilha.
-          </Typography>
-        </Box>
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel id="mes-consumo-label">Mês de referência</InputLabel>
           <Select
