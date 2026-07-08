@@ -21,7 +21,6 @@ import {
   useAdicionarFluxoParalelo,
   useClinicaPedidos,
   useDeleteAllClinicaPedidos,
-  useConsumoPlanilhaState,
 } from '@/hooks/useClinicaPedidos'
 import { useClinicas } from '@/hooks/useCadastros'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -37,6 +36,7 @@ import {
   findPedidoParaMesmasLinhas,
   createPedidoLoteId,
   CONSUMO_PLANILHA_NOME_PADRAO,
+  getConsumoMaterialInicial,
   rowPodeSerEnviadaAuditoria,
   rowPodeSerEnviadaMaterial,
   getMesAtualModelo,
@@ -47,20 +47,20 @@ import {
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
+import { DEMO_CLINICA_EXEMPLO_ID, ensureDemoExamplePlanilha } from '@/services/demoCadastrosService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { loadAppData } from '@/mocks/seed'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpreadsheet'
 
 export default function ClinicaNovoPedidoPage() {
-  const { navigatePortal } = usePortalPaths()
+  const { navigatePortal, isDemo } = usePortalPaths()
   const createPedido = useCreateClinicaPedido()
   const adicionarFluxo = useAdicionarFluxoParalelo()
   const deleteAllPedidos = useDeleteAllClinicaPedidos()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: pedidos = [] } = useClinicaPedidos()
-  const { data: planilhaPersistida } = useConsumoPlanilhaState(clinicaId)
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
 
@@ -102,14 +102,38 @@ export default function ClinicaNovoPedidoPage() {
   }, [pedidos, finalizedAuditoriaRowIds, finalizedMaterialRowIds])
 
   useEffect(() => {
-    if (!clinicaId || !planilhaPersistida || planilhaHydrated.current) return
-    planilhaHydrated.current = true
-    if (planilhaPersistida.extraRows.length > 0) {
-      setExtraRows(planilhaPersistida.extraRows)
+    if (!clinicaId || planilhaHydrated.current) return
+
+    if (isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID) {
+      ensureDemoExamplePlanilha()
     }
-    if (planilhaPersistida.finalizedAuditoriaRowIds?.length || planilhaPersistida.finalizedRowIds.length > 0) {
+
+    const persisted = consumoPlanilhaService.getState(clinicaId)
+    const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
+    const rowsToLoad =
+      persisted.extraRows.length > 0
+        ? persisted.extraRows
+        : isDemoClinica
+          ? getConsumoMaterialInicial()
+          : []
+
+    planilhaHydrated.current = true
+
+    if (rowsToLoad.length > 0) {
+      setExtraRows(rowsToLoad)
+      if (persisted.extraRows.length === 0 && isDemoClinica) {
+        consumoPlanilhaService.saveState(clinicaId, {
+          finalizedRowIds: [],
+          finalizedAuditoriaRowIds: [],
+          finalizedMaterialRowIds: [],
+          extraRows: rowsToLoad,
+        })
+      }
+    }
+
+    if (persisted.finalizedAuditoriaRowIds?.length || persisted.finalizedRowIds.length > 0) {
       const finalizedAuditoria = new Set(
-        planilhaPersistida.finalizedAuditoriaRowIds ?? planilhaPersistida.finalizedRowIds,
+        persisted.finalizedAuditoriaRowIds ?? persisted.finalizedRowIds,
       )
       setFinalizedAuditoriaRowIds(finalizedAuditoria)
       setRowSelectionAuditoria((prev) => {
@@ -118,8 +142,8 @@ export default function ClinicaNovoPedidoPage() {
         return next
       })
     }
-    if (planilhaPersistida.finalizedMaterialRowIds?.length) {
-      const finalizedMaterial = new Set(planilhaPersistida.finalizedMaterialRowIds)
+    if (persisted.finalizedMaterialRowIds?.length) {
+      const finalizedMaterial = new Set(persisted.finalizedMaterialRowIds)
       setFinalizedMaterialRowIds(finalizedMaterial)
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
@@ -127,7 +151,7 @@ export default function ClinicaNovoPedidoPage() {
         return next
       })
     }
-  }, [clinicaId, planilhaPersistida])
+  }, [clinicaId, isDemo])
 
   const persistPlanilhaState = useCallback(
     (

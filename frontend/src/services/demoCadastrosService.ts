@@ -7,6 +7,7 @@ import {
   reloadAppDataFromStorage,
   saveAppData,
 } from '@/mocks/seed'
+import { createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
@@ -141,6 +142,29 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
   }
 }
 
+/** Garante planilha de exemplo fixa (código) para a clínica demo quando ainda vazia. */
+export function seedDemoExamplePlanilha(data: ReturnType<typeof loadAppData>): boolean {
+  if (!data.consumoPlanilha) data.consumoPlanilha = {}
+
+  const current = data.consumoPlanilha[DEMO_CLINICA_EXEMPLO_ID]
+  if (current?.extraRows?.length) return false
+
+  data.consumoPlanilha[DEMO_CLINICA_EXEMPLO_ID] = createDemoPlanilhaExemploState()
+  return true
+}
+
+/** Recarrega planilha de exemplo no IndexedDB demo se estiver vazia. */
+export function ensureDemoExamplePlanilha(): boolean {
+  if (!isDemoDataSession()) return false
+
+  const data = loadAppData()
+  const seeded = seedDemoExamplePlanilha(data)
+  if (!seeded) return false
+
+  saveAppData(data)
+  return true
+}
+
 /** Inicializa AppData de demonstração no IndexedDB (isolado da nuvem). */
 export async function initDemoAppData(): Promise<void> {
   if (!isDemoDataSession()) return
@@ -152,9 +176,10 @@ export async function initDemoAppData(): Promise<void> {
   const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
 
   seedDemoExampleCadastros(data)
+  const planilhaSeeded = seedDemoExamplePlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
-  if (before !== after || data.clinicas.length === 0) {
+  if (before !== after || data.clinicas.length === 0 || planilhaSeeded) {
     saveAppData(data)
   }
 }
@@ -167,11 +192,12 @@ export async function ensureDemoExampleCadastros(): Promise<void> {
   const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
 
   seedDemoExampleCadastros(data)
+  const planilhaSeeded = seedDemoExamplePlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
-  if (before === after) return
-
-  saveAppData(data)
+  if (before !== after || planilhaSeeded) {
+    saveAppData(data)
+  }
 }
 
 /** Lista fixa de cadastros de exemplo para o modal (sem ler dados da nuvem). */
@@ -194,7 +220,7 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
       userId: demoExampleUserId('clinica', DEMO_CLINICA_EXEMPLO_ID),
       label: opcaoClinica.label,
       nome: DEMO_NOMES.clinica,
-      subtitulo: 'Cadastro de exemplo — armazenamento local',
+      subtitulo: 'Planilha de exemplo Jan–Jun/2026 (691 lançamentos)',
       isExemplo: true,
     })
   }

@@ -1,5 +1,5 @@
 import seedData from '@/data/consumoMaterialSeed.json'
-import type { Pedido, PedidoPlanilhaEnvioState, ProcessoArquivado } from '@/types'
+import type { ConsumoPlanilhaClinicaState, Pedido, PedidoPlanilhaEnvioState, ProcessoArquivado } from '@/types'
 import {
   formatValorBrasileiro,
   parseValorBrasileiro,
@@ -34,6 +34,16 @@ export const TOTAL_LANCAMENTOS_MODELO = CONSUMO_MATERIAL_SEED.length
 
 export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
   return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
+}
+
+/** Estado inicial da planilha de consumo para a clínica de demonstração. */
+export function createDemoPlanilhaExemploState(): ConsumoPlanilhaClinicaState {
+  return {
+    finalizedRowIds: [],
+    finalizedAuditoriaRowIds: [],
+    finalizedMaterialRowIds: [],
+    extraRows: getConsumoMaterialInicial(),
+  }
 }
 
 export function rowIdFromPedidoId(pedidoId: string): string {
