@@ -12,43 +12,53 @@ interface TimelineCardProps {
   actions?: React.ReactNode
 }
 
+function activeShellClass(status: TimelineNodeData['status'], isActive: boolean): string {
+  if (!isActive) return 'timeline-card-shell'
+  if (status === 'error') return 'timeline-card-shell timeline-card-shell--active timeline-card-shell--error'
+  if (status === 'review') return 'timeline-card-shell timeline-card-shell--active timeline-card-shell--review'
+  return 'timeline-card-shell timeline-card-shell--active'
+}
+
 export const TimelineCard = memo(function TimelineCard({
   node,
   onOpenDetails,
   actions,
 }: TimelineCardProps) {
   const Icon = node.icon
-  const isActive = node.isHighlighted || node.status === 'active'
+  const isActive = node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review'
+  const showRotateRing = isActive && node.status !== 'completed'
 
-  return (
+  const cardBody = (
     <motion.article
       layout
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       whileHover={{
-        y: -4,
-        boxShadow: `0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px ${isActive ? timelineTheme.blue : timelineTheme.border}`,
+        y: showRotateRing ? -2 : -4,
       }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="timeline-card-inner"
       style={{
-        width: '100%',
-        minWidth: 240,
-        maxWidth: 300,
         padding: 20,
-        borderRadius: timelineTheme.radius,
-        background: `linear-gradient(145deg, ${timelineTheme.card} 0%, rgba(17,24,39,0.85) 100%)`,
-        border: `1px solid ${isActive ? `${timelineTheme.blue}55` : timelineTheme.border}`,
+        background: `linear-gradient(145deg, ${timelineTheme.card} 0%, rgba(17,24,39,0.92) 100%)`,
+        border: showRotateRing
+          ? '1px solid rgba(255,255,255,0.1)'
+          : `1px solid ${isActive ? `${timelineTheme.blue}66` : timelineTheme.border}`,
         backdropFilter: 'blur(12px)',
-        boxShadow: isActive
-          ? `0 0 24px ${timelineTheme.blue}22, ${timelineTheme.shadow}`
-          : timelineTheme.shadow,
+        boxShadow: showRotateRing
+          ? `0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)`
+          : isActive
+            ? `0 0 24px ${timelineTheme.blue}22, ${timelineTheme.shadow}`
+            : timelineTheme.shadow,
         cursor: 'pointer',
         position: 'relative',
         overflow: 'hidden',
       }}
       onClick={onOpenDetails}
     >
-      {isActive && (
+      {showRotateRing && <span className="timeline-card-active-badge">Etapa atual</span>}
+
+      {isActive && !showRotateRing && (
         <motion.div
           layoutId={`glow-${node.id}`}
           style={{
@@ -69,7 +79,7 @@ export const TimelineCard = memo(function TimelineCard({
             display: 'grid',
             placeItems: 'center',
             background: 'rgba(59,130,246,0.12)',
-            border: `1px solid ${timelineTheme.border}`,
+            border: `1px solid ${showRotateRing ? 'rgba(59,130,246,0.35)' : timelineTheme.border}`,
             color: timelineTheme.blue,
             flexShrink: 0,
           }}
@@ -164,5 +174,20 @@ export const TimelineCard = memo(function TimelineCard({
         <ChevronRight size={14} />
       </motion.button>
     </motion.article>
+  )
+
+  if (!showRotateRing) {
+    return (
+      <div className={activeShellClass(node.status, isActive)} style={{ width: '100%', minWidth: 240, maxWidth: 300 }}>
+        {cardBody}
+      </div>
+    )
+  }
+
+  return (
+    <div className={activeShellClass(node.status, true)}>
+      <div className="timeline-card-rotate-ring" aria-hidden />
+      {cardBody}
+    </div>
   )
 })

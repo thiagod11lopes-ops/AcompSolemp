@@ -1,7 +1,8 @@
 .timeline-root {
   --tl-bg: var(--premium-bg);
   --tl-card: var(--premium-card);
-  --tl-border: var(--premium-border);
+  --tl-border: rgba(255, 255, 255, 0.16);
+  --tl-border-strong: rgba(255, 255, 255, 0.24);
   --tl-text: var(--premium-text);
   --tl-muted: var(--premium-muted);
   --tl-line: #334155;
@@ -10,12 +11,25 @@
   --tl-yellow: #f59e0b;
   --tl-red: #ef4444;
   --tl-purple: #8b5cf6;
-  background: rgba(17, 24, 39, 0.55);
-  border: 1px solid var(--premium-border);
+  position: relative;
+  background: rgba(17, 24, 39, 0.72);
+  border: 1.5px solid var(--tl-border-strong);
   border-radius: 20px;
-  color: var(--premium-text);
+  color: var(--tl-text);
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.timeline-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .timeline-inner {
@@ -135,6 +149,111 @@
 
 .tl-spin {
   animation: tl-spin 2s linear infinite;
+}
+
+/* Borda rotativa na etapa ativa */
+.timeline-card-shell {
+  position: relative;
+  width: 100%;
+  min-width: 240px;
+  max-width: 300px;
+  border-radius: 18px;
+  padding: 2px;
+  isolation: isolate;
+}
+
+.timeline-card-shell--active {
+  overflow: hidden;
+}
+
+.timeline-card-rotate-ring {
+  position: absolute;
+  inset: -120%;
+  z-index: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    var(--ring-color, var(--tl-blue)) 300deg,
+    rgba(255, 255, 255, 0.9) 330deg,
+    var(--ring-color, var(--tl-blue)) 360deg
+  );
+  animation: tl-border-rotate 2.8s linear infinite;
+  opacity: 0.95;
+}
+
+.timeline-card-shell--error .timeline-card-rotate-ring {
+  --ring-color: var(--tl-red);
+}
+
+.timeline-card-shell--review .timeline-card-rotate-ring {
+  --ring-color: var(--tl-purple);
+}
+
+.timeline-card-shell--active::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 16px;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.12);
+}
+
+@keyframes tl-border-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.timeline-card-active-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, var(--tl-blue), #2563eb);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
+  animation: tl-badge-pulse 2s ease-in-out infinite;
+}
+
+.timeline-card-shell--error .timeline-card-active-badge {
+  background: linear-gradient(135deg, var(--tl-red), #dc2626);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+}
+
+.timeline-card-shell--review .timeline-card-active-badge {
+  background: linear-gradient(135deg, var(--tl-purple), #7c3aed);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.45);
+}
+
+@keyframes tl-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(0.97);
+  }
+}
+
+.timeline-card-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  border-radius: 16px;
 }
 
 @media (max-width: 900px) {
