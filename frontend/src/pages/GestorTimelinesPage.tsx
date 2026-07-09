@@ -218,11 +218,11 @@ export default function GestorTimelinesPage() {
           scrollButtons="auto"
           sx={{ flexGrow: 1, minWidth: 280 }}
         >
-          <Tab value="TODAS" label={`Todas (${pedidos.length})`} />
           <Tab
             value="EM_ANDAMENTO"
             label={`Em andamento (${pedidos.filter((p) => !p.concluido).length})`}
           />
+          <Tab value="TODAS" label={`Todas (${pedidos.length})`} />
           <Tab
             value="CONCLUIDAS"
             label={`Concluídas (${pedidos.filter((p) => p.concluido).length})`}
