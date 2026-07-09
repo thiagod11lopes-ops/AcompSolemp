@@ -136,6 +136,39 @@ export function getEtapaByChave(
   return etapas.find((e) => e.chave === chave)
 }
 
+/** Etapas ignoradas em timelines de medicamento (fluxo direto Contabilidade/IMH). */
+export const ETAPAS_DISPENSAVEIS_MEDICAMENTO = new Set([
+  'DIV_MAT_CONFECCAO_SOLEMP',
+  'DIV_MAT_AUDITORIA',
+  'DIV_MAT_FINANCAS',
+])
+
+export function isEtapaDispensavelMedicamento(chave: string): boolean {
+  return ETAPAS_DISPENSAVEIS_MEDICAMENTO.has(chave)
+}
+
+export function isPedidoTimelineMedicamento(
+  pedido: Pick<PedidoComDetalhes, 'clinica' | 'etapasHistorico'>,
+  etapas: WorkflowEtapa[],
+): boolean {
+  if (pedido.clinica.tipo === 'medicamento') return true
+
+  const auditoria = getEtapaByChave(etapas, 'DIV_MAT_AUDITORIA')
+  const contabilidade = getEtapaByChave(etapas, 'DIV_MAT_CONTABILIDADE_IMH')
+  if (!contabilidade) return false
+
+  const temHistoricoContabilidade = pedido.etapasHistorico.some(
+    (h) => h.etapaId === contabilidade.id || h.etapaNome === contabilidade.nome,
+  )
+  const temHistoricoAuditoria = auditoria
+    ? pedido.etapasHistorico.some(
+        (h) => h.etapaId === auditoria.id || h.etapaNome === auditoria.nome,
+      )
+    : false
+
+  return temHistoricoContabilidade && !temHistoricoAuditoria
+}
+
 export type TimelineBloco =
   | { tipo: 'etapa'; etapa: WorkflowEtapa; index: number }
   | {

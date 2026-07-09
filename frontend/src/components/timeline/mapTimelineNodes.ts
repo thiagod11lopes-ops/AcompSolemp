@@ -11,7 +11,7 @@ import type {
   TimelineNodeStatus,
   TimelineSection,
 } from './types'
-import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, timelineConnectorVisivel, tituloGrupoOcultoNaTimeline } from '@/utils/timelineFlow'
+import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, timelineConnectorVisivel, tituloGrupoOcultoNaTimeline, isEtapaDispensavelMedicamento, isPedidoTimelineMedicamento } from '@/utils/timelineFlow'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
@@ -88,6 +88,31 @@ export function buildTimelineNode(
   options?: { isHighlighted?: boolean },
 ): TimelineNodeData {
   const historico = resolveHistorico(pedido, etapa, etapas)
+  const dispensavel =
+    isPedidoTimelineMedicamento(pedido, etapas) &&
+    isEtapaDispensavelMedicamento(etapa.chave)
+
+  if (dispensavel) {
+    return {
+      id: etapa.id,
+      etapa,
+      displayName: resolveEtapaNomeExibicao(etapa, pedido),
+      status: 'waiting',
+      historico: null,
+      numeroPedido: pedido.numero,
+      responsavel: null,
+      dataInicio: null,
+      dataConclusao: null,
+      tempoNaEtapa: null,
+      processoNumero: resolveProcessoNumero(pedido, etapa),
+      observacaoResumo: null,
+      edgeAfter: 'waiting',
+      isHighlighted: false,
+      dispensavel: true,
+      icon: getEtapaIcon(etapa.chave),
+    }
+  }
+
   const atual =
     etapasAtivasIds.includes(etapa.id) && !pedido.concluido && !historico?.dataConclusao
   const status = resolveNodeStatus(pedido, historico, atual)

@@ -21,13 +21,17 @@ export const TimelineCard = memo(function TimelineCard({
   node,
   onOpenDetails,
 }: TimelineCardProps) {
-  const isActive = node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review'
+  const isDispensavel = node.dispensavel === true
+  const isActive =
+    !isDispensavel &&
+    (node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review')
   const showRotateRing = isActive && node.status !== 'completed'
-  const isPending = nodeNaoIniciada(node)
-  const isCompleted = node.status === 'completed'
+  const isPending = !isDispensavel && nodeNaoIniciada(node)
+  const isCompleted = !isDispensavel && node.status === 'completed'
 
   const shellClass = [
     activeShellClass(node.status, isActive),
+    isDispensavel ? 'timeline-card-shell--dispensavel' : '',
     isPending ? 'timeline-card-shell--pending' : '',
     isCompleted ? 'timeline-card-shell--completed' : '',
   ]
@@ -71,6 +75,12 @@ export const TimelineCard = memo(function TimelineCard({
             pointerEvents: 'none',
           }}
         />
+      )}
+
+      {isDispensavel && (
+        <div className="timeline-card-dispensavel-band" aria-hidden>
+          <span>Dispensável</span>
+        </div>
       )}
 
       {isCompleted && (

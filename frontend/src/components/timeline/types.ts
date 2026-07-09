@@ -20,6 +20,8 @@ export interface TimelineNodeData {
   observacaoResumo: string | null
   edgeAfter: TimelineEdgeState
   isHighlighted?: boolean
+  /** Etapa não usada em timeline de medicamento (fluxo direto IMH). */
+  dispensavel?: boolean
   icon?: LucideIcon
 }
 
