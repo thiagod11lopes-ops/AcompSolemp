@@ -370,16 +370,26 @@ export default function GestorTimelinesPage() {
                                 />
                               )}
                             </Box>
-                            <Box>
-                              <LinearProgress
-                                variant="determinate"
-                                value={progresso}
-                                sx={{ height: 8, borderRadius: 4 }}
-                              />
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={progresso}
+                                  sx={{ height: 8, borderRadius: 4 }}
+                                />
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ display: 'block', mt: 0.5, textAlign: 'right' }}
+                                >
+                                  {progresso}%
+                                </Typography>
+                              </Box>
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
-                                sx={{ display: 'block', mt: 0.5, textAlign: 'right' }}
+                                aria-hidden
+                                sx={{ visibility: 'hidden', flexShrink: 0, lineHeight: 1 }}
                               >
                                 {progresso}%
                               </Typography>
