@@ -186,7 +186,15 @@ function ConsumoMaterialConsignadoViewInner({
       onDesfinalizarLinha={onDesfinalizarLinha}
       headerExtra={
         <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-          <InputLabel id="mes-consumo-label">Mês de referência</InputLabel>
+          <InputLabel
+            id="mes-consumo-label"
+            sx={{
+              color: '#374151',
+              '&.Mui-focused': { color: 'primary.main' },
+            }}
+          >
+            Mês de referência
+          </InputLabel>
           <Select
             labelId="mes-consumo-label"
             label="Mês de referência"
@@ -197,8 +205,18 @@ function ConsumoMaterialConsignadoViewInner({
             }}
             sx={{
               bgcolor: '#fff',
+              color: '#111827',
               fontSize: '11px',
               fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
+              '& .MuiSelect-select': {
+                color: '#111827',
+              },
+              '& .MuiSvgIcon-root': {
+                color: '#4b5563',
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(0,0,0,0.23)',
+              },
             }}
           >
             {CONSUMO_MESES_MODELO.map((m) => (
