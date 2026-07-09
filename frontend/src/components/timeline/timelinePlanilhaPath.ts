@@ -51,7 +51,7 @@ export function planilhaEnviadaEntre(
         Boolean(contabilidade?.dataInicio) &&
         !auditoria?.dataInicio
       const planilhaDiretaImh = Boolean(
-        planilhaEnvio?.recebidaImhEm && !planilhaEnvio?.recebidaEm,
+        planilhaEnvio?.enviadoEm && !planilhaEnvio?.recebidaEm && !auditoria?.dataInicio,
       )
       return diretoImh || planilhaDiretaImh
     }

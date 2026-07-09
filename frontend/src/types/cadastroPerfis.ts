@@ -5,11 +5,16 @@ export interface CadastroPerfilOpcao {
   label: string
   perfil: UserRole
   graduacao: string
-  /** Clínica usa nome da clínica; demais usam nome do usuário */
+  /** Clínica / Medicamento usam nome da entidade; demais usam nome do usuário */
   campoNomeLabel: string
   campoNomePlaceholder: string
   descricao: string
   isClinica?: boolean
+  isMedicamento?: boolean
+}
+
+export function isCadastroEntidadeClinica(opcao: CadastroPerfilOpcao): boolean {
+  return Boolean(opcao.isClinica || opcao.isMedicamento)
 }
 
 /** Opções de cadastro da aba Cadastros (nome + e-mail Google) */
@@ -23,6 +28,17 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     campoNomePlaceholder: 'Ex.: Clínica de Ortopedia',
     descricao: 'Acesso ao portal da clínica para lançamentos e visualização da timeline.',
     isClinica: true,
+  },
+  {
+    id: 'medicamento',
+    label: 'Medicamento',
+    perfil: 'MEDICAMENTO',
+    graduacao: 'Medicamento',
+    campoNomeLabel: 'Nome do medicamento',
+    campoNomePlaceholder: 'Ex.: Farmácia Central OPME',
+    descricao:
+      'Mesmo portal da clínica para lançamentos; a planilha é enviada diretamente para Contabilidade/IMH, sem passar pela Auditoria.',
+    isMedicamento: true,
   },
   {
     id: 'auditoria',

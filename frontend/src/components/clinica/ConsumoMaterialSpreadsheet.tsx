@@ -135,6 +135,7 @@ interface ConsumoMaterialSpreadsheetProps {
   onLimparRascunho?: () => void
   onEnviarImh?: () => void
   onEnviarMaterial?: () => void
+  modoMedicamento?: boolean
   isEnviando?: boolean
   editable?: boolean
   onCellChange?: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
@@ -167,6 +168,7 @@ function ConsumoMaterialSpreadsheetInner({
   onLimparRascunho,
   onEnviarImh,
   onEnviarMaterial,
+  modoMedicamento = false,
   isEnviando = false,
   editable = false,
   onCellChange,
@@ -358,7 +360,7 @@ function ConsumoMaterialSpreadsheetInner({
   const createEnvioSelectColumn = useCallback(
     (
       columnId: 'select-a' | 'select-s',
-      headerLabel: 'A' | 'S',
+      headerLabel: 'A' | 'S' | 'IMH',
       canal: ConsumoEnvioCanal,
       selection: RowSelectionState,
       onSelectionChange: (next: RowSelectionState) => void,
@@ -511,7 +513,7 @@ function ConsumoMaterialSpreadsheetInner({
     return [
       createEnvioSelectColumn(
         'select-a',
-        'A',
+        modoMedicamento ? 'IMH' : 'A',
         'auditoria',
         rowSelectionAuditoria,
         onRowSelectionAuditoriaChange,
@@ -519,16 +521,20 @@ function ConsumoMaterialSpreadsheetInner({
         podeSelecionarAuditoria,
         isFinalizadoAuditoria,
       ),
-      createEnvioSelectColumn(
-        'select-s',
-        'S',
-        'material',
-        rowSelectionMaterial,
-        onRowSelectionMaterialChange,
-        finalizedMaterialRowIds,
-        podeSelecionarMaterial,
-        isFinalizadoMaterial,
-      ),
+      ...(modoMedicamento
+        ? []
+        : [
+            createEnvioSelectColumn(
+              'select-s',
+              'S',
+              'material',
+              rowSelectionMaterial,
+              onRowSelectionMaterialChange,
+              finalizedMaterialRowIds,
+              podeSelecionarMaterial,
+              isFinalizadoMaterial,
+            ),
+          ]),
       ...dataColumns,
     ]
   }, [
@@ -537,6 +543,7 @@ function ConsumoMaterialSpreadsheetInner({
     handleDraftChange,
     handleContextMenu,
     createEnvioSelectColumn,
+    modoMedicamento,
     rowSelectionAuditoria,
     onRowSelectionAuditoriaChange,
     finalizedAuditoriaRowIds,
@@ -758,7 +765,13 @@ function ConsumoMaterialSpreadsheetInner({
                           onClick={onEnviarImh}
                           disabled={isEnviando || enviavelAuditoriaCount === 0}
                         >
-                          {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
+                          {isEnviando
+                            ? modoMedicamento
+                              ? 'Enviando para Contabilidade/IMH...'
+                              : 'Enviando para Auditoria...'
+                            : modoMedicamento
+                              ? `Enviar para Contabilidade/IMH (${enviavelAuditoriaCount})`
+                              : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
                         </Button>
                       )}
                       {onEnviarMaterial && (

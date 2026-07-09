@@ -3,7 +3,7 @@ import type { Portal } from '@/utils/portal'
 import { canAccessOrdenadorRoute } from '@/utils/permissions'
 
 export function portalForPerfil(perfil: UserRole): Portal {
-  if (perfil === 'CLINICA') return 'clinica'
+  if (perfil === 'CLINICA' || perfil === 'MEDICAMENTO') return 'clinica'
   if (perfil === 'FINANCEIRO') return 'financeiro'
   if (canAccessOrdenadorRoute(perfil)) return 'ordenador'
   throw new Error('Perfil sem acesso à Timeline')

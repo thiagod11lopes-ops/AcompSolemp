@@ -110,7 +110,7 @@ function migrateLegacyAuth(): void {
 
 function validatePortalAccess(portal: Portal, perfil: AuthUser['perfil']): boolean {
   if (portal === 'gestor') return canAccessGestorRoute(perfil)
-  if (portal === 'clinica') return perfil === 'CLINICA'
+  if (portal === 'clinica') return perfil === 'CLINICA' || perfil === 'MEDICAMENTO'
   if (portal === 'ordenador') return canAccessOrdenadorRoute(perfil)
   if (portal === 'financeiro') return canAccessFinanceiroRoute(perfil)
   return false

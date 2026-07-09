@@ -44,6 +44,13 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'historico:read',
     'notificacoes:read',
   ],
+  MEDICAMENTO: [
+    'processos:read',
+    'processos:write',
+    'processos:advance',
+    'historico:read',
+    'notificacoes:read',
+  ],
   ASSINANTE: PROCESSO_PERMISSIONS,
   FINANCEIRO: PROCESSO_PERMISSIONS,
   AUDITORIA: PROCESSO_PERMISSIONS,
@@ -73,7 +80,7 @@ export function canAccessOrdenadorRoute(role: UserRole): boolean {
 }
 
 export function canAccessClinicaRoute(role: UserRole): boolean {
-  return role === 'CLINICA'
+  return role === 'CLINICA' || role === 'MEDICAMENTO'
 }
 
 export function canAccessFinanceiroRoute(role: UserRole): boolean {

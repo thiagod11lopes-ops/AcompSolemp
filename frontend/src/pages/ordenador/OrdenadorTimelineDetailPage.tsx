@@ -70,6 +70,19 @@ export default function OrdenadorTimelineDetailPage() {
     }
   }, [pedido])
 
+  const fluxoDiretoImh = useMemo(() => {
+    if (!pedido) return false
+    const auditoriaEtapa = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
+    const contabilidadeEtapa = etapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
+    const temHistoricoAuditoria = auditoriaEtapa
+      ? pedido.etapasHistorico.some((h) => h.etapaId === auditoriaEtapa.id)
+      : false
+    const temHistoricoContabilidade = contabilidadeEtapa
+      ? pedido.etapasHistorico.some((h) => h.etapaId === contabilidadeEtapa.id)
+      : false
+    return temHistoricoContabilidade && !temHistoricoAuditoria
+  }, [pedido, etapas])
+
   useEffect(() => {
     if (!pedido) return
     const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
@@ -84,14 +97,16 @@ export default function OrdenadorTimelineDetailPage() {
 
     setPlanilhaRecebida(Boolean(stored?.recebidaEm))
     setPlanilhaEncaminhadaImh(
-      Boolean(stored?.encaminhadaImhEm) || (auditoriaConcluida && Boolean(stored)),
+      Boolean(stored?.encaminhadaImhEm) ||
+        (auditoriaConcluida && Boolean(stored)) ||
+        (fluxoDiretoImh && Boolean(stored?.enviadoEm)),
     )
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
     setFluxoEncerrado(Boolean(stored?.arquivadaEm))
     if (stored?.arquivadaEm && chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH') {
       setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
     }
-  }, [pedido, etapas, chavePerfil])
+  }, [pedido, etapas, chavePerfil, fluxoDiretoImh])
 
   if (isLoading) return <LoadingSpinner />
 
@@ -207,6 +222,7 @@ export default function OrdenadorTimelineDetailPage() {
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
             planilhaEncaminhadaImh={planilhaEncaminhadaImh}
             planilhaRecebidaImh={planilhaRecebidaImh}
+            fluxoDiretoImh={fluxoDiretoImh}
             fluxoEncerrado={fluxoEncerrado}
             mensagemFluxoEncerrado={mensagemFluxoEncerrado}
           />

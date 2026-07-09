@@ -3,6 +3,7 @@ import {
   usuarioCadastroService,
   type CreatePortalUserInput,
 } from '@/services/usuarioCadastroService'
+import { isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
 
 export function useCreatePortalUser() {
   const queryClient = useQueryClient()
@@ -11,7 +12,7 @@ export function useCreatePortalUser() {
       usuarioCadastroService.createPortalUser(input),
     onSuccess: async (_result, variables) => {
       await queryClient.refetchQueries({ queryKey: ['usuarios'] })
-      if (variables.opcao.isClinica) {
+      if (isCadastroEntidadeClinica(variables.opcao)) {
         await queryClient.refetchQueries({ queryKey: ['clinicas'] })
       }
     },
@@ -21,11 +22,11 @@ export function useCreatePortalUser() {
 export function useDeleteCadastro() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { isClinica: boolean; id: string }) =>
+    mutationFn: (input: { isEntidadeClinica: boolean; id: string }) =>
       usuarioCadastroService.deleteCadastro(input),
     onSuccess: async (_result, variables) => {
       await queryClient.refetchQueries({ queryKey: ['usuarios'] })
-      if (variables.isClinica) {
+      if (variables.isEntidadeClinica) {
         await queryClient.refetchQueries({ queryKey: ['clinicas'] })
       }
     },

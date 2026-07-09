@@ -360,7 +360,7 @@ export function consumoRowsToPedidoInput(
   rows: ConsumoMaterialRow[],
   clinicaNome: string,
   tituloPlanilha?: string,
-  destino: 'auditoria' | 'confeccao' = 'auditoria',
+  destino: 'auditoria' | 'confeccao' | 'imh' = 'auditoria',
 ): CreatePedidoInput {
   if (rows.length === 1) {
     return consumoRowToPedidoInput(rows[0], clinicaNome)
@@ -376,11 +376,15 @@ export function consumoRowsToPedidoInput(
     tituloPlanilha?.trim() ||
     (destino === 'confeccao'
       ? `Planilha Material — ${rows.length} lançamentos`
-      : `Planilha IMH — ${rows.length} lançamentos`)
+      : destino === 'imh'
+        ? `Planilha IMH — ${rows.length} lançamentos`
+        : `Planilha IMH — ${rows.length} lançamentos`)
   const descricaoEnvio =
     destino === 'confeccao'
       ? `Envio de planilha com ${rows.length} lançamentos para Confecção de Solemp.`
-      : `Envio de planilha com ${rows.length} lançamentos para auditoria.`
+      : destino === 'imh'
+        ? `Envio de planilha com ${rows.length} lançamentos diretamente para Contabilidade/IMH.`
+        : `Envio de planilha com ${rows.length} lançamentos para auditoria.`
 
   return {
     consumoRowIds: rows.map((row) => row.id),

@@ -30,6 +30,7 @@ interface OrdenadorInteractiveTimelineProps {
   onReceberPlanilhaImh?: () => void
   planilhaEncaminhadaImh?: boolean
   planilhaRecebidaImh?: boolean
+  fluxoDiretoImh?: boolean
   fluxoEncerrado?: boolean
   mensagemFluxoEncerrado?: string | null
 }
@@ -45,6 +46,7 @@ export function OrdenadorInteractiveTimeline({
   onReceberPlanilhaImh,
   planilhaEncaminhadaImh = false,
   planilhaRecebidaImh = false,
+  fluxoDiretoImh = false,
   fluxoEncerrado = false,
   mensagemFluxoEncerrado = null,
 }: OrdenadorInteractiveTimelineProps) {
@@ -168,9 +170,14 @@ export function OrdenadorInteractiveTimeline({
                   Abra a planilha antes de encaminhar ao IMH.
                 </p>
               )}
-              {isContabilidadeAtiva && !planilhaEncaminhadaImh && (
+              {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (
                 <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Aguardando encaminhamento pela Auditoria.
+                </p>
+              )}
+              {isContabilidadeAtiva && fluxoDiretoImh && !planilhaRecebidaImh && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                  Planilha enviada diretamente — abra e receba antes de concluir.
                 </p>
               )}
               {isContabilidadeAtiva && planilhaEncaminhadaImh && !planilhaRecebidaImh && (

@@ -24,7 +24,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
-import { CADASTRO_PERFIS } from '@/types/cadastroPerfis'
+import { CADASTRO_PERFIS, isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
 import { DEMO_CLINICA_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
 
 interface RegistroCadastro {
@@ -51,23 +51,29 @@ export function UsuariosTab() {
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
   const registros = useMemo<RegistroCadastro[]>(() => {
-    if (opcao.isClinica) {
-      const usuariosClinica = usuarios.filter(
-        (u) => u.perfil === 'CLINICA' && !isDemoExampleUser(u),
+    if (opcao.isClinica || opcao.isMedicamento) {
+      const perfilEntidade = opcao.isMedicamento ? 'MEDICAMENTO' : 'CLINICA'
+      const tipoEntidade = opcao.isMedicamento ? 'medicamento' : 'clinica'
+      const usuariosEntidade = usuarios.filter(
+        (u) => u.perfil === perfilEntidade && !isDemoExampleUser(u),
       )
       return clinicas
-        .filter((clinica) => clinica.id !== DEMO_CLINICA_EXEMPLO_ID)
+        .filter(
+          (clinica) =>
+            clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
+            (clinica.tipo ?? 'clinica') === tipoEntidade,
+        )
         .map((c) => {
-        const user =
-          usuariosClinica.find((u) => u.clinicaId === c.id && u.email) ??
-          usuariosClinica.find((u) => u.clinicaId === c.id)
-        return {
-          id: c.id,
-          nome: c.nome,
-          email: user?.email?.trim() || '—',
-          ativo: user?.ativo ?? false,
-        }
-      })
+          const user =
+            usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
+            usuariosEntidade.find((u) => u.clinicaId === c.id)
+          return {
+            id: c.id,
+            nome: c.nome,
+            email: user?.email?.trim() || '—',
+            ativo: user?.ativo ?? false,
+          }
+        })
     }
     return usuarios
       .filter((u) => u.perfil === opcao.perfil && !isDemoExampleUser(u))
@@ -137,7 +143,7 @@ export function UsuariosTab() {
     setSucesso('')
     try {
       await deleteCadastro.mutateAsync({
-        isClinica: Boolean(opcao.isClinica),
+        isEntidadeClinica: isCadastroEntidadeClinica(opcao),
         id: registroExcluir.id,
       })
       setSucesso(`${opcao.label} "${registroExcluir.nome}" excluído(a) com sucesso.`)

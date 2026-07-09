@@ -785,6 +785,7 @@ export function getRoleLabel(role: UserRole): string {
     ADMINISTRADOR: 'Administrador',
     GESTOR: 'Gestor',
     CLINICA: 'Clínica',
+    MEDICAMENTO: 'Medicamento',
     ASSINANTE: 'Ordenador de Despesa',
     FINANCEIRO: 'Finanças Pagamento',
     AUDITORIA: 'Auditoria',

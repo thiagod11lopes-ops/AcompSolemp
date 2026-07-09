@@ -2,6 +2,7 @@ export type UserRole =
   | 'ADMINISTRADOR'
   | 'GESTOR'
   | 'CLINICA'
+  | 'MEDICAMENTO'
   | 'ASSINANTE'
   | 'FINANCEIRO'
   | 'AUDITORIA'
@@ -63,6 +64,8 @@ export interface Clinica {
   nome: string
   responsavel: string
   telefone: string
+  /** medicamento = envio direto para Contabilidade/IMH */
+  tipo?: 'clinica' | 'medicamento'
 }
 
 export interface Empresa {

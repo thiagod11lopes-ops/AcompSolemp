@@ -9,7 +9,7 @@ export function isGestorPortalRole(role: UserRole): boolean {
 }
 
 export function isClinicaPortalRole(role: UserRole): boolean {
-  return role === 'CLINICA'
+  return role === 'CLINICA' || role === 'MEDICAMENTO'
 }
 
 export function isOrdenadorPortalRole(role: UserRole): boolean {

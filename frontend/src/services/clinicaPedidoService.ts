@@ -20,7 +20,7 @@ import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 
 export interface CreatePedidoInput {
   id?: string
-  fluxo?: 'auditoria' | 'confeccao' | 'paralelo'
+  fluxo?: 'auditoria' | 'confeccao' | 'paralelo' | 'imh'
   consumoRowIds?: string[]
   paciente: PacientePedido
   dadosClinica: DadosClinicaLancamento
@@ -132,13 +132,17 @@ export const clinicaPedidoService = {
 
     if (!data.clinicas.some((clinica) => clinica.id === clinicaId)) {
       const clinicaUsuario = data.usuarios.find(
-        (item) => item.clinicaId === clinicaId && item.perfil === 'CLINICA',
+        (item) =>
+          item.clinicaId === clinicaId &&
+          (item.perfil === 'CLINICA' || item.perfil === 'MEDICAMENTO'),
       )
+      const tipoEntidade = clinicaUsuario?.perfil === 'MEDICAMENTO' ? 'medicamento' : 'clinica'
       data.clinicas.push({
         id: clinicaId,
-        nome: clinicaUsuario?.nome ?? 'Clínica',
-        responsavel: clinicaUsuario?.nome ?? 'Clínica',
+        nome: clinicaUsuario?.nome ?? (tipoEntidade === 'medicamento' ? 'Medicamento' : 'Clínica'),
+        responsavel: clinicaUsuario?.nome ?? '—',
         telefone: '',
+        tipo: tipoEntidade,
       })
     }
 
@@ -146,7 +150,9 @@ export const clinicaPedidoService = {
     const solicitacao = etapas.find((e) => e.chave === 'SOLICITACAO')
     const auditoria = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
     const confeccao = etapas.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
-    if (!solicitacao || !auditoria || !confeccao) {
+    const contabilidade = etapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
+    const somenteImh = input.fluxo === 'imh'
+    if (!solicitacao || (somenteImh ? !contabilidade : !auditoria || !confeccao)) {
       throw new Error('Workflow não configurado')
     }
 
@@ -161,8 +167,11 @@ export const clinicaPedidoService = {
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
     const somenteAuditoria = input.fluxo === 'auditoria'
     const somenteConfeccao = input.fluxo === 'confeccao'
-    const observacaoInicial =
-      input.consumoRowIds && input.consumoRowIds.length > 1
+    const observacaoInicial = somenteImh
+      ? input.consumoRowIds && input.consumoRowIds.length > 1
+        ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Contabilidade/IMH.`
+        : `Lançamento enviado diretamente para Contabilidade/IMH — ${input.paciente.nome}.`
+      : input.consumoRowIds && input.consumoRowIds.length > 1
         ? somenteConfeccao
           ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Confecção de Solemp.`
           : `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Auditoria.`
@@ -170,11 +179,24 @@ export const clinicaPedidoService = {
           ? `Lançamento enviado para Confecção de Solemp — ${input.paciente.nome}.`
           : `Lançamento do paciente ${input.paciente.nome}.`
 
-    const historicoAuditoria = somenteConfeccao
+    const historicoContabilidade = somenteImh
+      ? {
+          etapaId: contabilidade!.id,
+          etapaNome: contabilidade!.nome,
+          responsavelId: null,
+          responsavelNome: null,
+          dataInicio: agora,
+          dataConclusao: null as string | null,
+          observacao: 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
+          arquivos: [] as never[],
+        }
+      : null
+
+    const historicoAuditoria = somenteImh || somenteConfeccao
       ? null
       : {
-          etapaId: auditoria.id,
-          etapaNome: auditoria.nome,
+          etapaId: auditoria!.id,
+          etapaNome: auditoria!.nome,
           responsavelId: null,
           responsavelNome: null,
           dataInicio: agora,
@@ -185,11 +207,11 @@ export const clinicaPedidoService = {
           arquivos: [] as never[],
         }
 
-    const historicoConfeccao = somenteAuditoria
+    const historicoConfeccao = somenteAuditoria || somenteImh
       ? null
       : {
-          etapaId: confeccao.id,
-          etapaNome: confeccao.nome,
+          etapaId: confeccao!.id,
+          etapaNome: confeccao!.nome,
           responsavelId: null,
           responsavelNome: null,
           dataInicio: agora,
@@ -214,12 +236,18 @@ export const clinicaPedidoService = {
       consumoRowIds: input.consumoRowIds,
       dataSolicitacao: agora,
       dataEntrega: null,
-      etapaAtualId: somenteAuditoria ? auditoria.id : confeccao.id,
-      etapasAtivasIds: somenteAuditoria
-        ? [auditoria.id]
-        : somenteConfeccao
-          ? [confeccao.id]
-          : [confeccao.id, auditoria.id],
+      etapaAtualId: somenteImh
+        ? contabilidade!.id
+        : somenteAuditoria
+          ? auditoria!.id
+          : confeccao!.id,
+      etapasAtivasIds: somenteImh
+        ? [contabilidade!.id]
+        : somenteAuditoria
+          ? [auditoria!.id]
+          : somenteConfeccao
+            ? [confeccao!.id]
+            : [confeccao!.id, auditoria!.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
@@ -235,6 +263,7 @@ export const clinicaPedidoService = {
         },
         ...(historicoAuditoria ? [historicoAuditoria] : []),
         ...(historicoConfeccao ? [historicoConfeccao] : []),
+        ...(historicoContabilidade ? [historicoContabilidade] : []),
       ],
     }
 
@@ -247,11 +276,13 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: somenteAuditoria
-        ? `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
-        : somenteConfeccao
-          ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
-          : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
+      observacao: somenteImh
+        ? `Timeline iniciada — pedido ${numero} enviado diretamente para Contabilidade/IMH.`
+        : somenteAuditoria
+          ? `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
+          : somenteConfeccao
+            ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
+            : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
     })
 
     notifySetoresEtapasAtivas(data, pedido.id)
@@ -375,7 +406,7 @@ export const clinicaPedidoService = {
       (p) => p.id === input.pedidoId && p.clinicaId === input.clinicaId,
     )
     if (!usuario || !pedido) throw new Error('Pedido não encontrado')
-    if (usuario.perfil === 'CLINICA') {
+    if (usuario.perfil === 'CLINICA' || usuario.perfil === 'MEDICAMENTO') {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',
       )
@@ -452,7 +483,7 @@ export const clinicaPedidoService = {
     const pedido = data.pedidos.find((p) => p.id === pedidoId && p.clinicaId === clinicaId)
     const clinica = data.clinicas.find((c) => c.id === clinicaId)
     if (!usuario || !pedido || !clinica) throw new Error('Pedido não encontrado')
-    if (usuario.perfil === 'CLINICA') {
+    if (usuario.perfil === 'CLINICA' || usuario.perfil === 'MEDICAMENTO') {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',
       )

@@ -11,6 +11,7 @@ import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import { getTenantId } from '@/services/tenantService'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
+import { isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
 
 function isPermissionDenied(error: unknown): boolean {
   return (
@@ -55,21 +56,29 @@ function getExistingLogins(data: ReturnType<typeof loadAppData>): Set<string> {
   return logins
 }
 
-function findOrCreateClinica(nomeClinica: string, data: ReturnType<typeof loadAppData>): string {
-  const nome = nomeClinica.trim()
+function findOrCreateEntidadeClinica(
+  nomeEntidade: string,
+  data: ReturnType<typeof loadAppData>,
+  tipo: 'clinica' | 'medicamento',
+): string {
+  const nome = nomeEntidade.trim()
   const existente = data.clinicas.find(
-    (c) => c.nome.localeCompare(nome, 'pt-BR', { sensitivity: 'accent' }) === 0,
+    (c) =>
+      (c.tipo ?? 'clinica') === tipo &&
+      c.nome.localeCompare(nome, 'pt-BR', { sensitivity: 'accent' }) === 0,
   )
   if (existente) return existente.id
 
-  const clinica = {
-    id: `clinica-custom-${Date.now()}`,
+  const prefix = tipo === 'medicamento' ? 'medicamento' : 'clinica'
+  const entidade = {
+    id: `${prefix}-custom-${Date.now()}`,
     nome,
     responsavel: nome,
     telefone: '',
+    tipo,
   }
-  data.clinicas.push(clinica)
-  return clinica.id
+  data.clinicas.push(entidade)
+  return entidade.id
 }
 
 async function assertEmailAvailableInTenant(
@@ -111,9 +120,10 @@ export const usuarioCadastroService = {
     }
 
     const nome = input.nome.trim()
+    const isEntidade = isCadastroEntidadeClinica(input.opcao)
     if (nome.length < 3) {
       throw new Error(
-        input.opcao.isClinica ? 'Informe o nome da clínica' : 'Informe o nome',
+        isEntidade ? `Informe o nome da ${input.opcao.label.toLowerCase()}` : 'Informe o nome',
       )
     }
 
@@ -131,7 +141,10 @@ export const usuarioCadastroService = {
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
     const perfil: UserRole = input.opcao.perfil
-    const clinicaId = input.opcao.isClinica ? findOrCreateClinica(nome, data) : null
+    const tipoEntidade = input.opcao.isMedicamento ? 'medicamento' : 'clinica'
+    const clinicaId = isEntidade
+      ? findOrCreateEntidadeClinica(nome, data, tipoEntidade)
+      : null
 
     let user: User = {
       id: `user-${input.opcao.id}-${Date.now()}`,
@@ -145,9 +158,9 @@ export const usuarioCadastroService = {
       ativo: true,
     }
 
-    if (input.opcao.isClinica && clinicaId) {
+    if (isEntidade && clinicaId) {
       const existingIdx = data.usuarios.findIndex(
-        (u) => u.clinicaId === clinicaId && u.perfil === 'CLINICA',
+        (u) => u.clinicaId === clinicaId && u.perfil === perfil,
       )
       if (existingIdx >= 0) {
         const existing = data.usuarios[existingIdx]
@@ -192,13 +205,13 @@ export const usuarioCadastroService = {
     return { user, login }
   },
 
-  async deleteCadastro(input: { isClinica: boolean; id: string }): Promise<void> {
+  async deleteCadastro(input: { isEntidadeClinica: boolean; id: string }): Promise<void> {
     await delay(null, 300)
     const data = loadAppData()
 
-    if (input.isClinica) {
+    if (input.isEntidadeClinica) {
       const clinica = data.clinicas.find((c) => c.id === input.id)
-      if (!clinica) throw new Error('Clínica não encontrada')
+      if (!clinica) throw new Error('Cadastro não encontrado')
 
       const usersToRemove = data.usuarios.filter((u) => u.clinicaId === input.id)
 

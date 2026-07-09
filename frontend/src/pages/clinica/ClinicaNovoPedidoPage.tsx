@@ -63,6 +63,8 @@ export default function ClinicaNovoPedidoPage() {
   const { data: pedidos = [] } = useClinicaPedidos()
   const { data: clinicas = [] } = useClinicas()
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
+  const isMedicamentoPortal =
+    user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
 
   const [abaAtiva, setAbaAtiva] = useState(1)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
@@ -418,7 +420,19 @@ export default function ClinicaNovoPedidoPage() {
       const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
       let pedidoId: string
 
-      if (pedidoExistente) {
+      if (isMedicamentoPortal) {
+        if (pedidoExistente) {
+          pedidoId = pedidoExistente.id
+        } else {
+          pedidoId = createPedidoLoteId()
+          await createPedido.mutateAsync({
+            ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'imh'),
+            id: pedidoId,
+            fluxo: 'imh',
+            consumoRowIds: rowIds,
+          })
+        }
+      } else if (pedidoExistente) {
         pedidoId = pedidoExistente.id
         await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
       } else {
@@ -615,7 +629,8 @@ export default function ClinicaNovoPedidoPage() {
           onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
           onLimparRascunho={limparPlanilha}
           onEnviarImh={handleAbrirImhModal}
-          onEnviarMaterial={handleAbrirMaterialModal}
+          onEnviarMaterial={isMedicamentoPortal ? undefined : handleAbrirMaterialModal}
+          modoMedicamento={isMedicamentoPortal}
           isEnviando={isBatchSending}
           rowsByMes={rowsByMes[mesSelecionado.id]}
           onRowsChange={handleMesRowsChange}

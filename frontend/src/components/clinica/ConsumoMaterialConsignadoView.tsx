@@ -47,6 +47,7 @@ interface ConsumoMaterialConsignadoViewProps {
   onLimparRascunho?: () => void
   onEnviarImh?: () => void
   onEnviarMaterial?: () => void
+  modoMedicamento?: boolean
   isEnviando?: boolean
   rowsByMes?: ConsumoMaterialRow[]
   onRowsChange?: (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => void
@@ -76,6 +77,7 @@ function ConsumoMaterialConsignadoViewInner({
   onLimparRascunho,
   onEnviarImh,
   onEnviarMaterial,
+  modoMedicamento = false,
   isEnviando,
   rowsByMes,
   onRowsChange,
@@ -175,6 +177,7 @@ function ConsumoMaterialConsignadoViewInner({
       onLimparRascunho={onLimparRascunho}
       onEnviarImh={onEnviarImh}
       onEnviarMaterial={onEnviarMaterial}
+      modoMedicamento={modoMedicamento}
       isEnviando={isEnviando}
       editable={Boolean(onRowsChange)}
       onCellChange={handleCellChange}
