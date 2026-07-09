@@ -33,13 +33,53 @@ function completeEtapaById(
   return historico
 }
 
-function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
-  const financas = etapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
-  if (!financas) return false
+function historicoDaEtapa(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  chave: string,
+): PedidoEtapaHistorico | null {
+  const etapa = getEtapaByChave(etapas, chave)
+  if (!etapa) return null
+  return pedido.etapasHistorico.find((h) => h.etapaId === etapa.id) ?? null
+}
 
-  return pedido.etapasHistorico.some(
-    (h) => h.etapaId === financas.id && Boolean(h.dataConclusao),
+function trilhaImhIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
+  return (
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_AUDITORIA') !== null ||
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH') !== null
   )
+}
+
+function trilhaMaterialIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
+  return (
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP') !== null ||
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS') !== null
+  )
+}
+
+function etapaConcluidaNoHistorico(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  chave: string,
+): boolean {
+  return Boolean(historicoDaEtapa(pedido, etapas, chave)?.dataConclusao)
+}
+
+/** Processo encerrado quando cada trilha de planilha iniciada atingir sua etapa final (IMH e/ou Finanças). */
+function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
+  const imhIniciada = trilhaImhIniciada(pedido, etapas)
+  const materialIniciada = trilhaMaterialIniciada(pedido, etapas)
+
+  if (!imhIniciada && !materialIniciada) return false
+
+  const imhFinalizada =
+    !imhIniciada ||
+    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
+  const materialFinalizada =
+    !materialIniciada ||
+    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_FINANCAS')
+
+  return imhFinalizada && materialFinalizada
 }
 
 function startNovaEtapa(
