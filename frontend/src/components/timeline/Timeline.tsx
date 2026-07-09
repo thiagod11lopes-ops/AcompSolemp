@@ -3,8 +3,11 @@ import { useMediaQuery } from '@mui/material'
 import type { PedidoComDetalhes } from '@/types'
 import type { TimelineDrawerDetail, TimelineHeaderModel, TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineHeader } from './TimelineHeader'
-import { TimelineNode } from './TimelineNode'
 import { TimelineDrawer } from './TimelineDrawer'
+import { TimelineFlowLayout } from './TimelineFlowLayout'
+import { TimelineNode } from './TimelineNode'
+import { TimelineEdge } from './TimelineEdge'
+import { isClinicNode } from './timelineFlowUtils'
 import './timeline.css'
 
 export interface TimelineProps {
@@ -60,26 +63,16 @@ export const Timeline = memo(function Timeline({
       <div className="timeline-inner">
         <TimelineHeader model={header} />
         {alerts}
-        {sections?.length
-          ? sections.map((section) => (
-              <div key={section.id} className="timeline-section">
-                {section.title && <div className="timeline-section-title">{section.title}</div>}
-                {section.subtitle && (
-                  <div className="timeline-section-subtitle">{section.subtitle}</div>
-                )}
-                <div className={section.lanes.length > 1 ? 'timeline-parallel-grid' : undefined}>
-                  {section.lanes.map((lane) => (
-                    <LaneRow
-                      key={lane.id}
-                      lane={lane}
-                      vertical={isMobile || section.lanes.length > 1}
-                      onOpenDetails={openDrawer}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
-          : resolvedLanes.map((lane) => (
+        {sections?.length ? (
+          <TimelineFlowLayout
+            sections={sections}
+            isMobile={isMobile}
+            onOpenDetails={openDrawer}
+          />
+        ) : nodes?.length && isClinicNode(nodes[0]) ? (
+          <LinearFlowLayout nodes={nodes} isMobile={isMobile} onOpenDetails={openDrawer} />
+        ) : (
+          resolvedLanes.map((lane) => (
               <div key={lane.id} className="timeline-section">
                 {lane.title && <div className="timeline-lane-title">{lane.title}</div>}
                 {lane.subtitle && (
@@ -91,7 +84,8 @@ export const Timeline = memo(function Timeline({
                   onOpenDetails={openDrawer}
                 />
               </div>
-            ))}
+            ))
+        )}
         {footer && <div className="timeline-footer">{footer}</div>}
       </div>
       <TimelineDrawer
@@ -127,6 +121,61 @@ const LaneRow = memo(function LaneRow({
           />
         ))}
       </div>
+    </div>
+  )
+})
+
+const LinearFlowLayout = memo(function LinearFlowLayout({
+  nodes,
+  isMobile,
+  onOpenDetails,
+}: {
+  nodes: TimelineNodeData[]
+  isMobile: boolean
+  onOpenDetails: (node: TimelineNodeData) => void
+}) {
+  const [clinicNode, ...restNodes] = nodes
+
+  if (!clinicNode || !isClinicNode(clinicNode)) {
+    return (
+      <LaneRow
+        lane={{ id: 'main', nodes }}
+        vertical={isMobile}
+        onOpenDetails={onOpenDetails}
+      />
+    )
+  }
+
+  return (
+    <div className="timeline-flow">
+      <div className="timeline-flow-clinic">
+        <TimelineNode
+          node={clinicNode}
+          vertical={false}
+          showEdgeAfter={false}
+          onOpenDetails={() => onOpenDetails(clinicNode)}
+        />
+      </div>
+      {restNodes.length > 0 && (
+        <>
+          <div className="timeline-flow-connector">
+            <TimelineEdge state={clinicNode.edgeAfter} vertical />
+          </div>
+          <div className="timeline-flow-sequential-grid">
+            <div className="timeline-flow-lane">
+              {restNodes.map((node, index) => (
+                <TimelineNode
+                  key={node.id}
+                  node={node}
+                  vertical={isMobile}
+                  showEdgeAfter={index < restNodes.length - 1}
+                  onOpenDetails={() => onOpenDetails(node)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 })

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import type { TimelineNodeData } from './types'
 import { timelineTheme } from './theme'
+import { nodeNaoIniciada } from './timelineFlowUtils'
 
 interface TimelineCardProps {
   node: TimelineNodeData
@@ -22,6 +23,14 @@ export const TimelineCard = memo(function TimelineCard({
 }: TimelineCardProps) {
   const isActive = node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review'
   const showRotateRing = isActive && node.status !== 'completed'
+  const isPending = nodeNaoIniciada(node)
+
+  const shellClass = [
+    activeShellClass(node.status, isActive),
+    isPending ? 'timeline-card-shell--pending' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const cardBody = (
     <motion.article
@@ -109,14 +118,14 @@ export const TimelineCard = memo(function TimelineCard({
 
   if (!showRotateRing) {
     return (
-      <div className={activeShellClass(node.status, isActive)} style={{ width: '100%', minWidth: 200, maxWidth: 260 }}>
+      <div className={shellClass} style={{ width: '100%', minWidth: 200, maxWidth: 260 }}>
         {cardBody}
       </div>
     )
   }
 
   return (
-    <div className={activeShellClass(node.status, true)}>
+    <div className={shellClass}>
       <div className="timeline-card-rotate-ring" aria-hidden />
       {cardBody}
     </div>

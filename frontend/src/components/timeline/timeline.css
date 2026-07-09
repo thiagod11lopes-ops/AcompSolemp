@@ -256,6 +256,126 @@
   border-radius: 16px;
 }
 
+.timeline-card-shell--pending {
+  opacity: 0.38;
+  filter: grayscale(0.25) saturate(0.7);
+}
+
+.timeline-card-shell--pending .timeline-card-inner {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+}
+
+.timeline-card-shell--pending:hover {
+  opacity: 0.52;
+}
+
+/* Layout em fluxo: clínica centralizada + ramificações */
+.timeline-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.timeline-flow-clinic {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.timeline-flow-connector {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.timeline-flow-segment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.timeline-flow-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-flow-parallel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  width: 100%;
+  max-width: 100%;
+  justify-items: center;
+}
+
+.timeline-flow-sequential-grid {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.timeline-flow-lane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-flow-branch-split {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+.timeline-flow-connector-line {
+  border-radius: 999px;
+}
+
+.timeline-flow-connector-line--vertical,
+.timeline-flow-connector-line--stem,
+.timeline-flow-connector-line--drop {
+  width: 3px;
+}
+
+.timeline-flow-connector-line--vertical,
+.timeline-flow-connector-line--stem {
+  height: 28px;
+}
+
+.timeline-flow-connector-line--drop {
+  height: 22px;
+}
+
+.timeline-flow-branch-rail {
+  position: relative;
+  width: 100%;
+  padding-top: 0;
+}
+
+.timeline-flow-connector-line--horizontal {
+  height: 3px;
+  width: 100%;
+}
+
+.timeline-flow-branch-drops {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  width: 100%;
+  gap: 24px;
+}
+
+.timeline-flow-branch-drop {
+  display: flex;
+  justify-content: center;
+}
+
 @media (max-width: 900px) {
   .timeline-inner {
     padding: 20px 16px;
