@@ -4,11 +4,9 @@ import type { TimelineEdgeState } from './types'
 import { isTraveledEdgeState, TIMELINE_EDGE_COLORS } from './timelineEdgeColors'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
-interface LineCoords {
-  x1: number
-  y1: number
-  x2: number
-  y2: number
+interface PathPoint {
+  x: number
+  y: number
 }
 
 interface TimelineDirectClinicImhLinkProps {
@@ -31,6 +29,49 @@ function findAnchor(
   )
 }
 
+function resolveCorridorX(container: HTMLElement, bounds: DOMRect): number {
+  const columns = container.querySelectorAll('.timeline-flow-lane-column')
+  if (columns.length >= 2) {
+    const left = columns[0].getBoundingClientRect()
+    const right = columns[columns.length - 1].getBoundingClientRect()
+    return (left.right + right.left) / 2 - bounds.left
+  }
+
+  const grid = container.querySelector('.timeline-flow-parallel-grid')
+  if (grid) {
+    const gridBounds = grid.getBoundingClientRect()
+    return gridBounds.left + gridBounds.width / 2 - bounds.left
+  }
+
+  return bounds.width / 2
+}
+
+function buildOrthogonalPath(
+  clinicCx: number,
+  clinicBottom: number,
+  corridorX: number,
+  imhCx: number,
+  imhTop: number,
+): PathPoint[] {
+  const points: PathPoint[] = [{ x: clinicCx, y: clinicBottom }]
+
+  if (Math.abs(clinicCx - corridorX) > 2) {
+    points.push({ x: corridorX, y: clinicBottom })
+  }
+
+  points.push({ x: corridorX, y: imhTop })
+
+  if (Math.abs(corridorX - imhCx) > 2) {
+    points.push({ x: imhCx, y: imhTop })
+  }
+
+  return points
+}
+
+function pointsToPolyline(points: PathPoint[]): string {
+  return points.map((point) => `${point.x},${point.y}`).join(' ')
+}
+
 /** Rota futura: clínica → Contabilidade/IMH sem passar pela auditoria. */
 export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImhLink({
   containerRef,
@@ -40,7 +81,7 @@ export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImh
   etapas,
   planilhaEnvio,
 }: TimelineDirectClinicImhLinkProps) {
-  const [coords, setCoords] = useState<LineCoords | null>(null)
+  const [pathPoints, setPathPoints] = useState<PathPoint[] | null>(null)
   const state: TimelineEdgeState = resolvePlanilhaEdgeState(
     'SOLICITACAO',
     'DIV_MAT_CONTABILIDADE_IMH',
@@ -60,7 +101,7 @@ export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImh
       const clinicEl = findAnchor(container, clinicNodeId, 'clinic')
       const imhEl = findAnchor(container, imhNodeId, 'contabilidade-imh')
       if (!clinicEl || !imhEl) {
-        setCoords(null)
+        setPathPoints(null)
         return
       }
 
@@ -69,16 +110,19 @@ export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImh
       const imh = imhEl.getBoundingClientRect()
 
       if (clinic.width === 0 || imh.width === 0) {
-        setCoords(null)
+        setPathPoints(null)
         return
       }
 
-      setCoords({
-        x1: clinic.left + clinic.width / 2 - bounds.left,
-        y1: clinic.bottom - bounds.top,
-        x2: imh.left + imh.width / 2 - bounds.left,
-        y2: imh.top - bounds.top,
-      })
+      const clinicCx = clinic.left + clinic.width / 2 - bounds.left
+      const clinicBottom = clinic.bottom - bounds.top
+      const imhCx = imh.left + imh.width / 2 - bounds.left
+      const imhTop = imh.top - bounds.top
+      const corridorX = resolveCorridorX(container, bounds)
+
+      setPathPoints(
+        buildOrthogonalPath(clinicCx, clinicBottom, corridorX, imhCx, imhTop),
+      )
     }
 
     const scheduleMeasure = () => {
@@ -111,22 +155,21 @@ export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImh
     }
   }, [containerRef, clinicNodeId, imhNodeId, pedido.id, state])
 
-  if (!coords) return null
+  if (!pathPoints?.length) return null
 
   const stroke = traveled ? TIMELINE_EDGE_COLORS[state] : '#94a3b8'
   const strokeOpacity = traveled ? 1 : 0.55
 
   return (
     <svg className="timeline-direct-clinic-imh" aria-hidden>
-      <line
-        x1={coords.x1}
-        y1={coords.y1}
-        x2={coords.x2}
-        y2={coords.y2}
+      <polyline
+        points={pointsToPolyline(pathPoints)}
+        fill="none"
         stroke={stroke}
         strokeOpacity={strokeOpacity}
         strokeWidth={3}
         strokeLinecap="round"
+        strokeLinejoin="round"
         className={
           traveled
             ? 'timeline-direct-clinic-imh__line--traveled'
