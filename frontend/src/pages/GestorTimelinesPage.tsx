@@ -280,6 +280,29 @@ export default function GestorTimelinesPage() {
                           '&:hover': { boxShadow: pedido.concluido ? 2 : 4 },
                         }}
                       >
+                        <Tooltip title="Excluir timeline">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            aria-label={`Excluir timeline ${pedido.numero}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setErroExclusao(null)
+                              setPedidoExcluir(pedido)
+                            }}
+                            sx={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              zIndex: 3,
+                              bgcolor: 'background.paper',
+                              boxShadow: 1,
+                              '&:hover': { bgcolor: 'background.paper' },
+                            }}
+                          >
+                            <DeleteOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <CardActionArea
                           onClick={() => abrirTimeline(pedido.id)}
                           sx={{
@@ -298,34 +321,16 @@ export default function GestorTimelinesPage() {
                                 gap: 1,
                                 mb: 1,
                                 alignItems: 'flex-start',
+                                pr: 5,
                               }}
                             >
                               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                 {pedido.numero}
                               </Typography>
-                              <Box
-                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                              >
-                                <StatusChip
-                                  status={pedido.prazoStatus}
-                                  concluido={pedido.concluido}
-                                />
-                                <Tooltip title="Excluir timeline">
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    aria-label={`Excluir timeline ${pedido.numero}`}
-                                    onClick={() => {
-                                      setErroExclusao(null)
-                                      setPedidoExcluir(pedido)
-                                    }}
-                                  >
-                                    <DeleteOutlinedIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
+                              <StatusChip
+                                status={pedido.prazoStatus}
+                                concluido={pedido.concluido}
+                              />
                             </Box>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                               {pedido.clinica.nome}
@@ -365,13 +370,17 @@ export default function GestorTimelinesPage() {
                                 />
                               )}
                             </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box>
                               <LinearProgress
                                 variant="determinate"
                                 value={progresso}
-                                sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
+                                sx={{ height: 8, borderRadius: 4 }}
                               />
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: 'block', mt: 0.5, textAlign: 'right' }}
+                              >
                                 {progresso}%
                               </Typography>
                             </Box>
