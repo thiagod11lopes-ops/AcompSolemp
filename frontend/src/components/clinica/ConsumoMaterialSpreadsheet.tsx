@@ -110,7 +110,9 @@ interface ContextMenuState {
 
 export type ConsumoEnvioCanal = 'auditoria' | 'material'
 
-const SELECT_COLUMN_IDS = ['select-a', 'select-s'] as const
+type SelectColumnId = 'select-a' | 'select-s' | 'select-imh'
+const SELECT_COLUMNS_CLINICA: SelectColumnId[] = ['select-a', 'select-s']
+const SELECT_COLUMNS_MEDICAMENTO: SelectColumnId[] = ['select-imh']
 
 interface ConsumoMaterialSpreadsheetProps {
   measureRows?: ConsumoMaterialRow[]
@@ -359,8 +361,8 @@ function ConsumoMaterialSpreadsheetInner({
 
   const createEnvioSelectColumn = useCallback(
     (
-      columnId: 'select-a' | 'select-s',
-      headerLabel: 'A' | 'S',
+      columnId: SelectColumnId,
+      headerLabel: 'A' | 'S' | 'IMH',
       canal: ConsumoEnvioCanal,
       selection: RowSelectionState,
       onSelectionChange: (next: RowSelectionState) => void,
@@ -510,30 +512,45 @@ function ConsumoMaterialSpreadsheetInner({
       }),
     )
 
-    return [
-      createEnvioSelectColumn(
-        'select-a',
-        'A',
-        'auditoria',
-        rowSelectionAuditoria,
-        onRowSelectionAuditoriaChange,
-        finalizedAuditoriaRowIds,
-        podeSelecionarAuditoria,
-        isFinalizadoAuditoria,
-      ),
-      createEnvioSelectColumn(
-        'select-s',
-        'S',
-        'material',
-        rowSelectionMaterial,
-        onRowSelectionMaterialChange,
-        finalizedMaterialRowIds,
-        podeSelecionarMaterial,
-        isFinalizadoMaterial,
-      ),
-      ...dataColumns,
-    ]
+    return modoMedicamento
+      ? [
+          createEnvioSelectColumn(
+            'select-imh',
+            'IMH',
+            'auditoria',
+            rowSelectionAuditoria,
+            onRowSelectionAuditoriaChange,
+            finalizedAuditoriaRowIds,
+            podeSelecionarAuditoria,
+            isFinalizadoAuditoria,
+          ),
+          ...dataColumns,
+        ]
+      : [
+          createEnvioSelectColumn(
+            'select-a',
+            'A',
+            'auditoria',
+            rowSelectionAuditoria,
+            onRowSelectionAuditoriaChange,
+            finalizedAuditoriaRowIds,
+            podeSelecionarAuditoria,
+            isFinalizadoAuditoria,
+          ),
+          createEnvioSelectColumn(
+            'select-s',
+            'S',
+            'material',
+            rowSelectionMaterial,
+            onRowSelectionMaterialChange,
+            finalizedMaterialRowIds,
+            podeSelecionarMaterial,
+            isFinalizadoMaterial,
+          ),
+          ...dataColumns,
+        ]
   }, [
+    modoMedicamento,
     editable,
     onCellChange,
     handleDraftChange,
@@ -633,9 +650,29 @@ function ConsumoMaterialSpreadsheetInner({
       .reduce((sum, row) => sum + row.valorNumerico, 0)
   }, [rows, rowSelectionAuditoria, rowSelectionMaterial])
 
+  const selectColumnIds = modoMedicamento ? SELECT_COLUMNS_MEDICAMENTO : SELECT_COLUMNS_CLINICA
+  const selectImhColWidth = resolvedColumnWidths['select-imh'] ?? 52
   const selectAColWidth = resolvedColumnWidths['select-a'] ?? 40
   const selectSColWidth = resolvedColumnWidths['select-s'] ?? 40
-  const hasAnySelection = selectedAuditoriaCount > 0 || selectedMaterialCount > 0
+
+  const resolveSelectColWidth = (columnId: SelectColumnId) => {
+    if (columnId === 'select-imh') return selectImhColWidth
+    if (columnId === 'select-a') return selectAColWidth
+    return selectSColWidth
+  }
+
+  const stickySelectOffset = (columnIndex: number) => {
+    if (columnIndex <= 0) return 0
+    let offset = 0
+    for (let i = 0; i < columnIndex; i += 1) {
+      offset += resolveSelectColWidth(selectColumnIds[i])
+    }
+    return offset
+  }
+
+  const hasAnySelection = modoMedicamento
+    ? selectedAuditoriaCount > 0
+    : selectedAuditoriaCount > 0 || selectedMaterialCount > 0
 
   const linhasPreenchidas = useMemo(
     () => rows.filter((r) => isLinhaPreenchida(r)).length,
@@ -752,7 +789,8 @@ function ConsumoMaterialSpreadsheetInner({
                           Limpar rascunho
                         </Button>
                       )}
-                      {onEnviarImh && (
+                      {onEnviarImh &&
+                        (!modoMedicamento || enviavelAuditoriaCount > 0) && (
                         <Button
                           size="small"
                           variant="contained"
@@ -762,10 +800,12 @@ function ConsumoMaterialSpreadsheetInner({
                         >
                           {isEnviando
                             ? modoMedicamento
-                              ? 'Enviando para Contabilidade/IMH...'
+                              ? 'Enviando para IMH...'
                               : 'Enviando para Auditoria...'
                             : modoMedicamento
-                              ? `Enviar para Contabilidade/IMH (${enviavelAuditoriaCount})`
+                              ? enviavelAuditoriaCount > 1
+                                ? `Enviar para IMH (${enviavelAuditoriaCount})`
+                                : 'Enviar para IMH'
                               : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
                         </Button>
                       )}
@@ -787,7 +827,15 @@ function ConsumoMaterialSpreadsheetInner({
               )}
               {hasAnySelection && (
                 <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap' }}>
-                  {selectedAuditoriaCount > 0 && (
+                  {modoMedicamento && selectedAuditoriaCount > 0 && (
+                    <Chip
+                      label={`IMH: ${selectedAuditoriaCount}`}
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 700 }}
+                    />
+                  )}
+                  {!modoMedicamento && selectedAuditoriaCount > 0 && (
                     <Chip
                       label={`A: ${selectedAuditoriaCount}`}
                       size="small"
@@ -795,7 +843,7 @@ function ConsumoMaterialSpreadsheetInner({
                       sx={{ fontWeight: 700 }}
                     />
                   )}
-                  {selectedMaterialCount > 0 && (
+                  {!modoMedicamento && selectedMaterialCount > 0 && (
                     <Chip
                       label={`S: ${selectedMaterialCount}`}
                       size="small"
@@ -877,17 +925,15 @@ function ConsumoMaterialSpreadsheetInner({
         >
           <TableHead>
             <TableRow>
-              {SELECT_COLUMN_IDS.map((columnId, index) => (
+              {selectColumnIds.map((columnId, index) => (
                 <TableCell
                   key={columnId}
                   rowSpan={2}
                   className="excel-select-header"
                   sx={{
-                    ...getColumnCellSx(
-                      columnId === 'select-a' ? selectAColWidth : selectSColWidth,
-                    ),
+                    ...getColumnCellSx(resolveSelectColWidth(columnId)),
                     position: 'sticky',
-                    left: index === 0 ? 0 : selectAColWidth,
+                    left: stickySelectOffset(index),
                     zIndex: 4,
                     verticalAlign: 'middle',
                     textAlign: 'center',
@@ -906,8 +952,7 @@ function ConsumoMaterialSpreadsheetInner({
                       startColumnResize(
                         columnId,
                         event.clientX,
-                        cell?.getBoundingClientRect().width ??
-                          (columnId === 'select-a' ? selectAColWidth : selectSColWidth),
+                        cell?.getBoundingClientRect().width ?? resolveSelectColWidth(columnId),
                       )
                     }}
                   />
@@ -927,7 +972,7 @@ function ConsumoMaterialSpreadsheetInner({
             </TableRow>
             <TableRow>
               {table.getHeaderGroups()[0]?.headers
-                .filter((h) => !SELECT_COLUMN_IDS.includes(h.id as (typeof SELECT_COLUMN_IDS)[number]))
+                .filter((h) => !selectColumnIds.includes(h.id as SelectColumnId))
                 .map((header) => {
                   const colWidth = resolvedColumnWidths[header.id] ?? 100
                   return (
@@ -976,8 +1021,9 @@ function ConsumoMaterialSpreadsheetInner({
               table.getRowModel().rows.map((row) => {
                 const vazia = !isLinhaPreenchida(row.original)
                 const customRowHeight = getRowHeight(row.id)
-                const rowSelected =
-                  Boolean(rowSelectionAuditoria[row.id]) || Boolean(rowSelectionMaterial[row.id])
+                const rowSelected = modoMedicamento
+                  ? Boolean(rowSelectionAuditoria[row.id])
+                  : Boolean(rowSelectionAuditoria[row.id]) || Boolean(rowSelectionMaterial[row.id])
                 return (
                 <TableRow
                   key={row.id}
@@ -994,16 +1040,18 @@ function ConsumoMaterialSpreadsheetInner({
                     const colId = cell.column.id
                     const colWidth = resolvedColumnWidths[colId] ?? 100
                     const stickySx =
-                      cellIndex === 0
-                        ? { position: 'sticky' as const, left: 0, zIndex: 1 }
-                        : cellIndex === 1
-                          ? { position: 'sticky' as const, left: selectAColWidth, zIndex: 1 }
-                          : {}
+                      cellIndex < selectColumnIds.length
+                        ? {
+                            position: 'sticky' as const,
+                            left: stickySelectOffset(cellIndex),
+                            zIndex: 1,
+                          }
+                        : {}
                     return (
                     <TableCell
                       key={cell.id}
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
-                      className={cellIndex <= 1 ? 'excel-cell-sticky' : undefined}
+                      className={cellIndex < selectColumnIds.length ? 'excel-cell-sticky' : undefined}
                       sx={{
                         ...getColumnCellSx(colWidth),
                         py: 0,

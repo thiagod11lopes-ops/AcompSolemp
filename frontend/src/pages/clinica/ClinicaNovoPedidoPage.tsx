@@ -656,6 +656,7 @@ export default function ClinicaNovoPedidoPage() {
         consumoRows={imhConsumoRows}
         mesReferencia={mesSelecionado}
         isSubmitting={isBatchSending}
+        modoMedicamento={isMedicamentoPortal}
         onClose={() => {
           if (!isBatchSending) {
             setImhModalOpen(false)

@@ -17,6 +17,7 @@ interface ImhEnvioModalProps {
   consumoRows: ConsumoMaterialRow[]
   mesReferencia?: MesConsumoModelo
   isSubmitting?: boolean
+  modoMedicamento?: boolean
   onClose: () => void
   onConfirm: (planilha: ImhPlanilha) => void
 }
@@ -26,6 +27,7 @@ export function ImhEnvioModal({
   consumoRows,
   mesReferencia,
   isSubmitting = false,
+  modoMedicamento = false,
   onClose,
   onConfirm,
 }: ImhEnvioModalProps) {
@@ -61,7 +63,11 @@ export function ImhEnvioModal({
   return (
     <PlanilhaEnvioModalShell
       open={open}
-      title="Planilha IMH — Envio para Contabilidade"
+      title={
+        modoMedicamento
+          ? 'Planilha IMH — Envio direto para Contabilidade/IMH'
+          : 'Planilha IMH — Envio para Contabilidade'
+      }
       lancamentoCount={consumoRows.length}
       icon={<DescriptionIcon />}
       appBarColor="primary"
@@ -98,7 +104,11 @@ export function ImhEnvioModal({
             disabled={busy || linhas.length === 0}
             sx={{ fontWeight: 700 }}
           >
-            {isSubmitting ? 'Enviando...' : 'Confirmar envio Auditoria'}
+            {isSubmitting
+              ? 'Enviando...'
+              : modoMedicamento
+                ? 'Confirmar Envio para o IMH'
+                : 'Confirmar envio Auditoria'}
           </Button>
         </>
       }
