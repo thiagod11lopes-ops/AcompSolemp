@@ -38,7 +38,7 @@ export const TimelineCard = memo(function TimelineCard({
     .filter(Boolean)
     .join(' ')
 
-  const contentOpacity = isDispensavel ? 0.68 : 1
+  const contentOpacity = isDispensavel ? 0.5 : 1
 
   const cardBody = (
     <motion.article
