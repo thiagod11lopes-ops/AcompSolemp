@@ -10,10 +10,8 @@ import {
   ListItem,
   ListItemText,
   Divider,
-  Alert,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import VisibilityIcon from '@mui/icons-material/Visibility'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
@@ -84,11 +82,6 @@ export default function GestorTimelineDetailPage() {
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
       />
-
-      <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
-        Visão completa do fluxo: clínica solicitante, trilhas paralelas e pagamento.
-        Somente leitura no portal do gestor.
-      </Alert>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, lg: 7 }}>
