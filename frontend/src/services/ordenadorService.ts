@@ -13,6 +13,7 @@ import {
   PERFIS_SOLEMP,
   PERFIL_PARA_CHAVE_ETAPA,
   pedidoPendenteParaChave,
+  pedidoRelacionadoParaChave,
 } from '@/utils/perfilEtapa'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
@@ -35,6 +36,21 @@ function pedidoPendenteParaPerfil(
   const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
   if (!chave) return false
   return pedidoPendenteParaChave(
+    pedido,
+    data.workflowEtapas,
+    chave,
+    data.processosArquivados,
+  )
+}
+
+function pedidoRelacionadoParaPerfil(
+  pedido: ReturnType<typeof loadAppData>['pedidos'][0],
+  data: ReturnType<typeof loadAppData>,
+  perfil: UserRole,
+): boolean {
+  const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
+  if (!chave) return false
+  return pedidoRelacionadoParaChave(
     pedido,
     data.workflowEtapas,
     chave,
@@ -83,13 +99,27 @@ export const ordenadorService = {
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
   },
 
+  /** Pendentes e já tratados pelo setor (abas Em andamento / Todas / Concluídas). */
+  async listTimelines(usuarioId: string): Promise<PedidoComDetalhes[]> {
+    await delay(null)
+    const { data, usuario } = await resolveDataForSetor(usuarioId)
+    if (!usuario) return []
+
+    const ctx = getContext(data)
+    return data.pedidos
+      .filter((p) => pedidoRelacionadoParaPerfil(p, data, usuario.perfil))
+      .map((p) => enrichPedido(p, ctx))
+      .filter((p): p is PedidoComDetalhes => p !== null)
+      .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
+  },
+
   async getById(pedidoId: string, usuarioId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
     const { data, usuario } = await resolveDataForSetor(usuarioId)
     if (!usuario) return null
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || !pedidoPendenteParaPerfil(pedido, data, usuario.perfil)) return null
+    if (!pedido || !pedidoRelacionadoParaPerfil(pedido, data, usuario.perfil)) return null
     return enrichPedido(pedido, getContext(data))
   },
 

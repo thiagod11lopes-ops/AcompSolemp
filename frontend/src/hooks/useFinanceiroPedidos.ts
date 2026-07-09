@@ -5,7 +5,7 @@ import { useFinanceiroAuth } from '@/contexts/AuthContext'
 export function useFinanceiroPedidos() {
   return useQuery({
     queryKey: ['financeiro-pedidos'],
-    queryFn: () => financeiroService.listPagamentosPendentes(),
+    queryFn: () => financeiroService.listTimelines(),
   })
 }
 

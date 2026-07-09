@@ -6,7 +6,7 @@ export function useOrdenadorPedidos() {
   const { user } = useOrdenadorAuth()
   return useQuery({
     queryKey: ['ordenador-pedidos', user?.id],
-    queryFn: () => ordenadorService.listPendentesAssinatura(user!.id),
+    queryFn: () => ordenadorService.listTimelines(user!.id),
     enabled: Boolean(user?.id),
     staleTime: 0,
     refetchOnMount: 'always',

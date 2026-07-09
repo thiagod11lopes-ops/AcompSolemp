@@ -32,6 +32,31 @@ export function getEtapasAtivasIds(pedido: Pedido): string[] {
   return pedido.etapaAtualId ? [pedido.etapaAtualId] : []
 }
 
+export function pedidoEtapaConcluidaParaChave(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  chave: string,
+  processosArquivados?: ProcessoArquivado[],
+): boolean {
+  if (
+    processosArquivados?.some(
+      (arquivo) => arquivo.pedidoId === pedido.id && arquivo.etapaChave === chave,
+    )
+  ) {
+    return true
+  }
+
+  const etapaAlvo = etapas.find((item) => item.chave === chave)
+  if (!etapaAlvo) return false
+
+  return pedido.etapasHistorico.some((historico) => {
+    if (!historico.dataConclusao) return false
+    const etapa = etapas.find((item) => item.id === historico.etapaId)
+    if (etapa?.chave === chave) return true
+    return historico.etapaNome === etapaAlvo.nome
+  })
+}
+
 export function pedidoPendenteParaChave(
   pedido: Pedido,
   etapas: WorkflowEtapa[],
@@ -40,11 +65,7 @@ export function pedidoPendenteParaChave(
 ): boolean {
   if (pedido.concluido) return false
 
-  if (
-    processosArquivados?.some(
-      (arquivo) => arquivo.pedidoId === pedido.id && arquivo.etapaChave === chave,
-    )
-  ) {
+  if (pedidoEtapaConcluidaParaChave(pedido, etapas, chave, processosArquivados)) {
     return false
   }
 
@@ -65,4 +86,17 @@ export function pedidoPendenteParaChave(
   })
 
   return ativaPorIds || pedido.etapaAtualId === etapaAlvo.id || ativaPorHistorico
+}
+
+/** Pedido pendente ou já tratado pelo setor (para abas Em andamento / Todas / Concluídas). */
+export function pedidoRelacionadoParaChave(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  chave: string,
+  processosArquivados?: ProcessoArquivado[],
+): boolean {
+  return (
+    pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados) ||
+    pedidoEtapaConcluidaParaChave(pedido, etapas, chave, processosArquivados)
+  )
 }

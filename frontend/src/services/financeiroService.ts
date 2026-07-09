@@ -77,6 +77,19 @@ export const financeiroService = {
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
   },
 
+  /** Pendentes e já pagos/arquivados (abas Em andamento / Todas / Concluídas). */
+  async listTimelines(): Promise<PedidoComDetalhes[]> {
+    await delay(null)
+    const data = loadAppData()
+    const ctx = getContext(data)
+
+    return data.pedidos
+      .filter((p) => isPedidoFinanceiroAcessivel(p, data))
+      .map((p) => enrichPedido(p, ctx))
+      .filter((p): p is PedidoComDetalhes => p !== null)
+      .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
+  },
+
   async getById(pedidoId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
     const data = loadAppData()
