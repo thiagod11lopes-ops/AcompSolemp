@@ -24,7 +24,7 @@ import {
   ETAPAS_AGUARDANDO_SETOR,
   clinicaPodeAvancar,
 } from '@/utils/portal'
-import { buildTimelineBlocos } from '@/utils/timelineFlow'
+import { buildTimelineBlocos, filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
 
@@ -50,13 +50,14 @@ export function ClinicaInteractiveTimeline({
   revertendo = false,
   somenteLeitura = false,
 }: ClinicaInteractiveTimelineProps) {
+  const etapasVisiveis = filtrarEtapasParaTimeline(etapas)
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0
       ? pedido.etapasAtivasIds
       : [pedido.etapaAtualId]
-  const etapasAtivas = etapas.filter((e) => etapasAtivasIds.includes(e.id))
+  const etapasAtivas = etapasVisiveis.filter((e) => etapasAtivasIds.includes(e.id))
   const podeEditar = !somenteLeitura && Boolean(onAvancar)
-  const blocos = buildTimelineBlocos(etapas)
+  const blocos = buildTimelineBlocos(etapasVisiveis)
 
   const renderEtapa = (etapa: WorkflowEtapa, indent = false) => {
     const historico =
@@ -202,7 +203,7 @@ export function ClinicaInteractiveTimeline({
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {somenteLeitura
-          ? 'Acompanhe todas as etapas do processo — Div. de Material, Finanças e Finanças Pagamento — até a conclusão.'
+          ? 'Acompanhe todas as etapas do processo — Div. de Material e Finanças Pagamento — até a conclusão.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
       </Typography>
 

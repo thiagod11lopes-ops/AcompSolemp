@@ -29,15 +29,10 @@ import {
   archiveActivePedidosAsFinalized,
   removePedidosFromAppData,
 } from '@/utils/pedidoCleanup'
+import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
 
 const SEED_VERSION = 'v15'
-
-const ETAPAS_REMOVIDAS = new Set([
-  'DIV_MAT_ASSINATURA_1',
-  'DIV_MAT_ASSINATURA_2',
-  'DIV_MAT_SDA',
-])
 
 const PERFIS_REMOVIDOS = new Set<UserRole>([
   'ASSINATURA_1_SOLEMP',
@@ -432,6 +427,7 @@ function ensureBootstrapGoogleEmails(data: AppData): boolean {
 
 function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const { data, changed } = normalizeClinicas(raw)
+  const workflowChanged = ensureWorkflowSemEtapasRemovidas(data)
   if (!data.reversoes) data.reversoes = []
   if (!data.credenciais) data.credenciais = {}
   if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
@@ -465,12 +461,41 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
-  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged }
+  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged || workflowChanged }
+}
+
+function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
+  let changed = false
+
+  for (const etapa of data.workflowEtapas) {
+    if (ETAPAS_REMOVIDAS_SET.has(etapa.chave) && etapa.ativo) {
+      etapa.ativo = false
+      changed = true
+    }
+  }
+
+  const financasDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_FINANCAS')
+  const confeccaoDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
+  for (const etapa of data.workflowEtapas) {
+    if (etapa.chave === 'DIV_MAT_FINANCAS' && financasDef) {
+      if (etapa.ordem !== financasDef.ordem || !etapa.ativo) {
+        etapa.ordem = financasDef.ordem
+        etapa.ativo = true
+        changed = true
+      }
+    }
+    if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' && confeccaoDef && etapa.ordem !== confeccaoDef.ordem) {
+      etapa.ordem = confeccaoDef.ordem
+      changed = true
+    }
+  }
+
+  return changed
 }
 
 function migrateSimplifyFluxoFinancas(data: AppData): AppData {
   for (const etapa of data.workflowEtapas) {
-    if (ETAPAS_REMOVIDAS.has(etapa.chave)) {
+    if (ETAPAS_REMOVIDAS_SET.has(etapa.chave)) {
       etapa.ativo = false
     }
   }
@@ -507,14 +532,14 @@ function migrateSimplifyFluxoFinancas(data: AppData): AppData {
       ? pedido.etapasAtivasIds
       : [pedido.etapaAtualId]
     const temRemovida = ativasIds.some((id) =>
-      ETAPAS_REMOVIDAS.has(etapaChaveById.get(id) ?? ''),
+      ETAPAS_REMOVIDAS_SET.has(etapaChaveById.get(id) ?? ''),
     )
     if (!temRemovida) continue
 
     for (const historico of pedido.etapasHistorico) {
       if (historico.dataConclusao) continue
       const chave = etapaChaveById.get(historico.etapaId) ?? ''
-      if (!ETAPAS_REMOVIDAS.has(chave)) continue
+      if (!ETAPAS_REMOVIDAS_SET.has(chave)) continue
       historico.dataConclusao = new Date().toISOString()
       historico.observacao =
         'Etapa descontinuada — processo encaminhado para Finanças Pagamento.'

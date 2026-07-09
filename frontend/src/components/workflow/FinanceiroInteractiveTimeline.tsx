@@ -22,6 +22,7 @@ import {
 } from '@/utils/portal'
 import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
 import { resolveEtapaFromRef } from '@/utils/workflow'
+import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 
 interface FinanceiroInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -38,7 +39,7 @@ export function FinanceiroInteractiveTimeline({
   registrando = false,
   mensagemFluxoEncerrado = null,
 }: FinanceiroInteractiveTimelineProps) {
-  const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
+  const ordenadas = filtrarEtapasParaTimeline(etapas)
   const pagamentoConcluido = financeiroPagamentoConcluido(pedido, ordenadas)
   const acaoFinancas = FINANCEIRO_ETAPA_ACOES.DIV_MAT_FINANCAS
   const podeRegistrar =

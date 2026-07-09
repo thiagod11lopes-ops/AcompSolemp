@@ -1,5 +1,22 @@
 import type { WorkflowEtapa } from '@/types'
 
+/** Etapas retiradas do fluxo — não devem aparecer na timeline */
+export const ETAPAS_REMOVIDAS = [
+  'DIV_MAT_ASSINATURA_1',
+  'DIV_MAT_ASSINATURA_2',
+  'DIV_MAT_SDA',
+] as const
+
+export const ETAPAS_REMOVIDAS_SET = new Set<string>(ETAPAS_REMOVIDAS)
+
+export function etapaVisivelNaTimeline(etapa: WorkflowEtapa): boolean {
+  return etapa.ativo && !ETAPAS_REMOVIDAS_SET.has(etapa.chave)
+}
+
+export function filtrarEtapasParaTimeline(etapas: WorkflowEtapa[]): WorkflowEtapa[] {
+  return [...etapas].filter(etapaVisivelNaTimeline).sort((a, b) => a.ordem - b.ordem)
+}
+
 /** Metadados de agrupamento visual da timeline */
 export const TIMELINE_ETAPA_META: Record<
   string,
@@ -95,7 +112,7 @@ export type TimelineBloco =
     }
 
 export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
-  const ordenadas = [...etapas].filter((e) => e.ativo).sort((a, b) => a.ordem - b.ordem)
+  const ordenadas = filtrarEtapasParaTimeline(etapas)
   const blocos: TimelineBloco[] = []
   let grupoAtual: Extract<TimelineBloco, { tipo: 'grupo' }> | null = null
   let trilhaAtual: string | null = null

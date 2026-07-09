@@ -193,11 +193,13 @@ export function enrichPedido(
   }
 }
 
+import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
+
 export function getProximaEtapa(
   etapaAtual: WorkflowEtapa,
   etapas: WorkflowEtapa[],
 ): WorkflowEtapa | null {
-  const ordenadas = [...etapas].filter((e) => e.ativo).sort((a, b) => a.ordem - b.ordem)
+  const ordenadas = filtrarEtapasParaTimeline(etapas)
   const index = ordenadas.findIndex((e) => e.id === etapaAtual.id)
   return ordenadas[index + 1] ?? null
 }

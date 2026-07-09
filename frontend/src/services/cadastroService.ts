@@ -8,6 +8,7 @@ import type {
   WorkflowEtapa,
 } from '@/types'
 import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
+import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -122,7 +123,7 @@ export const workflowService = {
   async listEtapas(): Promise<WorkflowEtapa[]> {
     await delay(null)
     const data = await loadFreshAppData()
-    return [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    return filtrarEtapasParaTimeline(data.workflowEtapas)
   },
 
   async saveEtapas(etapas: WorkflowEtapa[]): Promise<WorkflowEtapa[]> {

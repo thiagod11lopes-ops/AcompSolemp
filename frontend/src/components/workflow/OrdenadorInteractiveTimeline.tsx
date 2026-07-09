@@ -23,6 +23,7 @@ import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import {
   filtrarEtapasTrilhaAuditoria,
   filtrarEtapasTrilhaConfeccao,
+  filtrarEtapasParaTimeline,
   usaTrilhaAuditoriaOrdenador,
   usaTrilhaConfeccaoOrdenador,
 } from '@/utils/timelineFlow'
@@ -61,10 +62,10 @@ export function OrdenadorInteractiveTimeline({
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
   const trilhaConfeccao = usaTrilhaConfeccaoOrdenador(chavePerfil)
   const ordenadas = useMemo(() => {
-    const sorted = [...etapas].sort((a, b) => a.ordem - b.ordem)
-    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(sorted)
-    if (trilhaConfeccao) return filtrarEtapasTrilhaConfeccao(sorted)
-    return sorted
+    const visiveis = filtrarEtapasParaTimeline(etapas)
+    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(visiveis)
+    if (trilhaConfeccao) return filtrarEtapasTrilhaConfeccao(visiveis)
+    return visiveis
   }, [etapas, trilhaAuditoria, trilhaConfeccao])
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0

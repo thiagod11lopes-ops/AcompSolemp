@@ -7,6 +7,7 @@ import {
   workflowService,
 } from '@/services/cadastroService'
 import { peekDemoAppData, subscribeDemoAppDataChanged } from '@/mocks/seed'
+import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 
 export function useClinicas() {
   return useQuery({
@@ -67,7 +68,7 @@ export function useDemoWorkflowEtapas() {
     queryFn: async () => {
       const data = peekDemoAppData()
       if (!data) return []
-      return [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+      return filtrarEtapasParaTimeline(data.workflowEtapas)
     },
     staleTime: 0,
     refetchOnMount: 'always',
