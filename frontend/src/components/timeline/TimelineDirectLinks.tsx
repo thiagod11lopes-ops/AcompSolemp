@@ -7,6 +7,8 @@ interface DirectLinkDef {
   fromAnchor: string
   toAnchor: string
   state: TimelineEdgeState
+  /** Linha opaca sólida quando ainda não houve envio (sem laranja). */
+  mutedWhenWaiting?: boolean
 }
 
 interface LineCoords {
@@ -16,6 +18,7 @@ interface LineCoords {
   x2: number
   y2: number
   state: TimelineEdgeState
+  mutedWhenWaiting: boolean
 }
 
 interface TimelineDirectLinksProps {
@@ -52,6 +55,7 @@ export const TimelineDirectLinks = memo(function TimelineDirectLinks({
           x2: to.left + to.width / 2 - bounds.left,
           y2: to.top - bounds.top,
           state: link.state,
+          mutedWhenWaiting: link.mutedWhenWaiting ?? true,
         })
       }
 
@@ -88,7 +92,15 @@ export const TimelineDirectLinks = memo(function TimelineDirectLinks({
     >
       {lines.map((line) => {
         const traveled = isTraveledEdgeState(line.state)
-        const color = TIMELINE_EDGE_COLORS[line.state]
+        const muted = !traveled && line.mutedWhenWaiting
+        const color = traveled ? TIMELINE_EDGE_COLORS[line.state] : TIMELINE_EDGE_COLORS.waiting
+        const className = [
+          traveled ? 'timeline-direct-link__line--traveled' : '',
+          muted ? 'timeline-direct-link__line--muted' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+
         return (
           <line
             key={line.id}
@@ -99,8 +111,8 @@ export const TimelineDirectLinks = memo(function TimelineDirectLinks({
             stroke={color}
             strokeWidth={3}
             strokeLinecap="round"
-            strokeDasharray={traveled ? undefined : '8 6'}
-            className={traveled ? 'timeline-direct-link__line--traveled' : undefined}
+            strokeDasharray={!traveled && !muted ? '8 6' : undefined}
+            className={className || undefined}
           />
         )
       })}

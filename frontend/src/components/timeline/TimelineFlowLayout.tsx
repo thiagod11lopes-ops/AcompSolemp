@@ -105,6 +105,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
       fromAnchor: string
       toAnchor: string
       state: TimelineEdgeState
+      mutedWhenWaiting?: boolean
     }[] = []
 
     if (auditoriaNode) {
@@ -112,6 +113,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
         id: 'clinic-auditoria',
         fromAnchor: 'clinic',
         toAnchor: 'auditoria',
+        mutedWhenWaiting: true,
         state: resolvePlanilhaEdgeState(
           'SOLICITACAO',
           'DIV_MAT_AUDITORIA',
@@ -127,6 +129,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
         id: 'clinic-imh',
         fromAnchor: 'clinic',
         toAnchor: 'contabilidade-imh',
+        mutedWhenWaiting: true,
         state: resolvePlanilhaEdgeState(
           'SOLICITACAO',
           'DIV_MAT_CONTABILIDADE_IMH',
