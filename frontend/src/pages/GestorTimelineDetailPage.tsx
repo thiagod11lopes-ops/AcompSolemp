@@ -21,6 +21,7 @@ import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInterac
 import { useDemoPedido, usePedido } from '@/hooks/usePedidos'
 import { useDemoHistorico, useDemoWorkflowEtapas, useHistorico, useWorkflowEtapas } from '@/hooks/useCadastros'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency, formatDate, formatDateTime, formatNip } from '@/utils/format'
 
 export default function GestorTimelineDetailPage() {
@@ -85,7 +86,7 @@ export default function GestorTimelineDetailPage() {
       />
 
       <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
-        Visão completa do fluxo: Solicitação da Clínica, Div. de Material (trilhas paralelas),
+        Visão completa do fluxo: clínica solicitante, Div. de Material (trilhas paralelas),
         Finanças e Finanças Pagamento. Somente leitura no portal do gestor.
       </Alert>
 
@@ -158,7 +159,7 @@ export default function GestorTimelineDetailPage() {
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
                 {etapasAtivas.map((etapa) => (
-                  <Chip key={etapa.id} label={etapa.nome} color="primary" size="small" />
+                  <Chip key={etapa.id} label={resolveEtapaNomeExibicao(etapa, pedido)} color="primary" size="small" />
                 ))}
               </Box>
             </Box>

@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { clinicaPodeAvancar, CLINICA_ETAPA_ACOES, ETAPAS_AGUARDANDO_SETOR } from '@/utils/portal'
-import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
+import { filtrarEtapasParaTimeline, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import {
   Timeline,
   buildSectionedTimeline,
@@ -92,7 +92,7 @@ export function ClinicaInteractiveTimeline({
               <strong>
                 {etapasAtivas.length > 1 ? 'Etapas ativas em paralelo:' : 'Etapa atual:'}
               </strong>{' '}
-              {etapasAtivas.map((e) => e.nome).join(' · ')}
+              {etapasAtivas.map((e) => resolveEtapaNomeExibicao(e, pedido)).join(' · ')}
             </div>
           )}
           {pedido.concluido && (

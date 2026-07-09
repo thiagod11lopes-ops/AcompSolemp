@@ -11,7 +11,7 @@ import type {
   TimelineNodeStatus,
   TimelineSection,
 } from './types'
-import { buildTimelineBlocos, filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
+import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -100,6 +100,7 @@ export function buildTimelineNode(
   return {
     id: etapa.id,
     etapa,
+    displayName: resolveEtapaNomeExibicao(etapa, pedido),
     status,
     historico,
     numeroPedido: pedido.numero,

@@ -8,6 +8,7 @@ export type TimelineEdgeState = 'completed' | 'active' | 'waiting' | 'error'
 export interface TimelineNodeData {
   id: string
   etapa: WorkflowEtapa
+  displayName: string
   status: TimelineNodeStatus
   historico: PedidoEtapaHistorico | null
   numeroPedido: string

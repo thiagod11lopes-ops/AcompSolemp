@@ -21,6 +21,7 @@ import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
 import { useClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
+import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import {
   asStringArray,
   formatCurrency,
@@ -192,7 +193,7 @@ export default function ClinicaTimelineDetailPage() {
               ).map((etapa) => (
                 <Chip
                   key={etapa.id}
-                  label={etapa.nome}
+                  label={resolveEtapaNomeExibicao(etapa, pedido)}
                   color="primary"
                   size="small"
                   sx={{ width: 'fit-content', mt: 1, mr: 1 }}

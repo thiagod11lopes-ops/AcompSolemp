@@ -1,4 +1,4 @@
-import type { WorkflowEtapa } from '@/types'
+import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 
 /** Etapas retiradas do fluxo — não devem aparecer na timeline */
 export const ETAPAS_REMOVIDAS = [
@@ -15,6 +15,15 @@ export function etapaVisivelNaTimeline(etapa: WorkflowEtapa): boolean {
 
 export function filtrarEtapasParaTimeline(etapas: WorkflowEtapa[]): WorkflowEtapa[] {
   return [...etapas].filter(etapaVisivelNaTimeline).sort((a, b) => a.ordem - b.ordem)
+}
+
+/** Nome exibido no card da timeline (primeira etapa usa o nome da clínica). */
+export function resolveEtapaNomeExibicao(
+  etapa: WorkflowEtapa,
+  pedido: Pick<PedidoComDetalhes, 'clinica'>,
+): string {
+  if (etapa.chave === 'SOLICITACAO') return pedido.clinica.nome
+  return etapa.nome
 }
 
 /** Metadados de agrupamento visual da timeline */

@@ -31,19 +31,14 @@ import { useDeleteGestorPedido, useDemoPedidos, usePedidos } from '@/hooks/usePe
 import { useDemoWorkflowEtapas, useWorkflowEtapas } from '@/hooks/useCadastros'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { calcularProgressoTimeline } from '@/utils/portal'
-import { TIMELINE_ETAPA_META } from '@/utils/timelineFlow'
+import { TIMELINE_ETAPA_META, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 
 type FiltroStatus = 'TODAS' | 'EM_ANDAMENTO' | 'CONCLUIDAS' | 'ATRASADAS'
 type FonteTimeline = 'organizacao' | 'demonstracao'
 
-const FASE_ORDEM = [
-  'Solicitação da Clínica',
-  'Div. de Material',
-  'Finanças Pagamento',
-  'Concluído',
-] as const
+const FASES_FIXAS = ['Div. de Material', 'Finanças Pagamento', 'Concluído'] as const
 
 function getEtapasAtivas(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): WorkflowEtapa[] {
   if (pedido.etapasAtivasIds?.length) {
@@ -59,7 +54,7 @@ function getFasePedido(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): stri
     const grupo = TIMELINE_ETAPA_META[etapa.chave]?.grupo
     if (grupo) return grupo
   }
-  return 'Solicitação da Clínica'
+  return pedido.clinica.nome
 }
 
 function passaFiltro(pedido: PedidoComDetalhes, filtro: FiltroStatus): boolean {
@@ -133,16 +128,21 @@ export default function GestorTimelinesPage() {
 
   const porFase = useMemo(() => {
     const mapa = new Map<string, PedidoComDetalhes[]>()
-    for (const fase of FASE_ORDEM) mapa.set(fase, [])
     for (const pedido of filtrados) {
       const fase = getFasePedido(pedido, etapas)
       if (!mapa.has(fase)) mapa.set(fase, [])
       mapa.get(fase)!.push(pedido)
     }
-    return FASE_ORDEM.map((fase) => ({
-      fase,
-      itens: mapa.get(fase) ?? [],
-    })).filter((g) => g.itens.length > 0)
+    const clinicas = [...mapa.keys()]
+      .filter((fase) => !FASES_FIXAS.includes(fase as (typeof FASES_FIXAS)[number]))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    const ordenacao = [...clinicas, ...FASES_FIXAS.filter((fase) => mapa.has(fase))]
+    return ordenacao
+      .map((fase) => ({
+        fase,
+        itens: mapa.get(fase) ?? [],
+      }))
+      .filter((g) => g.itens.length > 0)
   }, [filtrados, etapas])
 
   const handleConfirmarExclusao = async () => {
@@ -329,7 +329,7 @@ export default function GestorTimelinesPage() {
                               {ativas.map((etapa) => (
                                 <Chip
                                   key={etapa.id}
-                                  label={etapa.nome}
+                                  label={resolveEtapaNomeExibicao(etapa, pedido)}
                                   size="small"
                                   color="primary"
                                   variant="outlined"

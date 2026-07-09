@@ -70,7 +70,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   Detalhes da etapa
                 </p>
                 <h2 style={{ margin: '6px 0 10px', fontSize: '1.15rem', fontWeight: 700 }}>
-                  {detail.node.etapa.nome}
+                  {detail.node.displayName}
                 </h2>
                 <TimelineStatus status={detail.node.status} />
               </div>

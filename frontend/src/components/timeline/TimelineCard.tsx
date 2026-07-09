@@ -72,7 +72,7 @@ export const TimelineCard = memo(function TimelineCard({
           letterSpacing: '-0.01em',
         }}
       >
-        {node.etapa.nome}
+        {node.displayName}
       </h3>
 
       <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: timelineTheme.blue, fontWeight: 600 }}>
