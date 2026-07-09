@@ -5,12 +5,12 @@ alwaysApply: true
 
 # Commit e push após alterações
 
-Ao concluir implementações, correções ou refatorações neste repositório:
+Ao concluir implementações, correções ou refatorações neste repositório, **sempre** faça commit e push automaticamente — sem esperar o usuário pedir.
 
 1. Execute `git status` e `git diff` para revisar o que mudou.
-2. Crie um commit com mensagem concisa no estilo do projeto (`feat:`, `fix:`, etc.).
-3. Faça `git push` para o remote após o commit bem-sucedido.
+2. Crie um commit com mensagem concisa em português, no estilo do projeto (frase descritiva; corpo opcional com o "porquê").
+3. Faça `git push` para o remote logo após o commit bem-sucedido.
 4. Não inclua arquivos sensíveis (`.env`, credenciais).
 5. Não faça push forçado em `main`/`master` sem pedido explícito do usuário.
 
-Faça isso automaticamente ao final de cada tarefa que alterou arquivos, sem esperar o usuário pedir.
+Se o push falhar por proteção do branch, solicite aprovação e tente novamente.
