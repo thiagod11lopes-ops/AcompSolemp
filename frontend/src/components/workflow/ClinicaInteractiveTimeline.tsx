@@ -45,13 +45,8 @@ export function ClinicaInteractiveTimeline({
   )
   const allNodes = useMemo(() => flattenSections(sections), [sections])
   const header = useMemo(
-    () =>
-      buildTimelineHeader(pedido, allNodes, {
-        subtitle: somenteLeitura
-          ? 'Acompanhe todas as etapas do processo até a conclusão.'
-          : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.',
-      }),
-    [pedido, allNodes, somenteLeitura],
+    () => buildTimelineHeader(pedido, allNodes),
+    [pedido, allNodes],
   )
 
   const renderNodeActions = (node: TimelineNodeData) => {

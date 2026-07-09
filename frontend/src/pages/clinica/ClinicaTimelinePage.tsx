@@ -6,7 +6,6 @@ import {
   CardContent,
   Chip,
   Grid,
-  LinearProgress,
   Typography,
 } from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
@@ -14,16 +13,11 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { StatusChip } from '@/components/common/StatusChip'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
-import { useWorkflowEtapas } from '@/hooks/useCadastros'
-import { calcularProgressoTimeline } from '@/utils/portal'
 import { formatDate, formatNip } from '@/utils/format'
 
 export default function ClinicaTimelinePage() {
   const { navigatePortal } = usePortalPaths()
   const { data: pedidos = [], isLoading } = useClinicaPedidos()
-  const { data: etapas = [] } = useWorkflowEtapas()
-
-  const ordenadas = [...etapas].sort((a, b) => a.ordem - b.ordem)
 
   if (isLoading) return <LoadingSpinner />
 
@@ -43,14 +37,7 @@ export default function ClinicaTimelinePage() {
         </Card>
       ) : (
         <Grid container spacing={2}>
-          {pedidos.map((pedido) => {
-            const etapaIndex = ordenadas.findIndex((e) => e.id === pedido.etapaAtualId)
-            const progresso = calcularProgressoTimeline(
-              pedido.concluido ? ordenadas.length - 1 : etapaIndex,
-              ordenadas.length,
-            )
-
-            return (
+          {pedidos.map((pedido) => (
               <Grid key={pedido.id} size={{ xs: 12, md: 6 }}>
                 <Card
                   variant="outlined"
@@ -92,22 +79,11 @@ export default function ClinicaTimelinePage() {
                           variant="outlined"
                         />
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={progresso}
-                          sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          {progresso}%
-                        </Typography>
-                      </Box>
                     </CardContent>
                   </CardActionArea>
                 </Card>
               </Grid>
-            )
-          })}
+          ))}
         </Grid>
       )}
     </>

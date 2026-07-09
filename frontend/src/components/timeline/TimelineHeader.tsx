@@ -2,7 +2,6 @@ import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Clock3 } from 'lucide-react'
 import type { TimelineHeaderModel } from './types'
-import { TimelineProgress } from './TimelineProgress'
 import { TimelineStatus } from './TimelineStatus'
 import { timelineTheme } from './theme'
 
@@ -33,18 +32,6 @@ export const TimelineHeader = memo(function TimelineHeader({ model }: TimelineHe
         }}
       >
         <div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.72rem',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              color: timelineTheme.textSecondary,
-              fontWeight: 600,
-            }}
-          >
-            Processo {model.numero}
-          </p>
           <h2
             style={{
               margin: '6px 0 0',
@@ -53,7 +40,7 @@ export const TimelineHeader = memo(function TimelineHeader({ model }: TimelineHe
               letterSpacing: '-0.02em',
             }}
           >
-            {model.processName}
+            Processo {model.numero}
           </h2>
           {model.subtitle && (
             <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: timelineTheme.textSecondary }}>
@@ -78,10 +65,6 @@ export const TimelineHeader = memo(function TimelineHeader({ model }: TimelineHe
           </div>
         </div>
       </div>
-      <TimelineProgress
-        percent={model.progressPercent}
-        completed={model.statusVariant === 'completed'}
-      />
     </motion.header>
   )
 })
