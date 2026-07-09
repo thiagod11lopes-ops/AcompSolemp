@@ -98,6 +98,7 @@ export const TimelineCard = memo(function TimelineCard({
     return (
       <div
         className={shellClass}
+        data-timeline-node-id={node.id}
         data-timeline-anchor={getTimelineNodeAnchor(node)}
       >
         {cardBody}
@@ -106,7 +107,7 @@ export const TimelineCard = memo(function TimelineCard({
   }
 
   return (
-    <div className={shellClass} data-timeline-anchor={getTimelineNodeAnchor(node)}>
+    <div className={shellClass} data-timeline-node-id={node.id} data-timeline-anchor={getTimelineNodeAnchor(node)}>
       <div className="timeline-card-rotate-ring" aria-hidden />
       {cardBody}
     </div>

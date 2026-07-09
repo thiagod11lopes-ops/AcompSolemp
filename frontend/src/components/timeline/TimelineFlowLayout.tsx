@@ -133,14 +133,6 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
 
   return (
     <div className="timeline-flow timeline-flow--with-direct-imh" ref={flowRef}>
-      {contabilidadeImhNode && (
-        <TimelineDirectClinicImhLink
-          containerRef={flowRef}
-          pedido={pedido}
-          etapas={etapas}
-          planilhaEnvio={planilhaEnvio}
-        />
-      )}
       <div className="timeline-flow-clinic">
         <TimelineNode
           node={clinicNode}
@@ -201,6 +193,17 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
           </div>
         )
       })}
+
+      {contabilidadeImhNode && (
+        <TimelineDirectClinicImhLink
+          containerRef={flowRef}
+          clinicNodeId={clinicNode.id}
+          imhNodeId={contabilidadeImhNode.id}
+          pedido={pedido}
+          etapas={etapas}
+          planilhaEnvio={planilhaEnvio}
+        />
+      )}
     </div>
   )
 })
