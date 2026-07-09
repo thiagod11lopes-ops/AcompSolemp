@@ -357,30 +357,30 @@
 }
 
 .timeline-card-shell--dispensavel .timeline-card-inner {
-  opacity: 0.62;
-  filter: grayscale(0.12) saturate(0.82);
-  border-color: rgba(59, 130, 246, 0.28) !important;
+  opacity: 0.68;
+  filter: grayscale(0.12) saturate(0.85);
+  border-color: rgba(59, 130, 246, 0.22) !important;
+  box-shadow: none !important;
 }
 
 .timeline-card-shell--dispensavel:hover .timeline-card-inner {
   opacity: 0.68;
 }
 
-.timeline-card-dispensavel-band {
+.timeline-card-shell--dispensavel .timeline-card-dispensavel-band {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
   width: 34px;
-  z-index: 4;
+  z-index: 5;
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #1d4ed8;
-  opacity: 1;
-  border-top-right-radius: inherit;
-  border-bottom-right-radius: inherit;
+  border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 

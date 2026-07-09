@@ -38,13 +38,15 @@ export const TimelineCard = memo(function TimelineCard({
     .filter(Boolean)
     .join(' ')
 
+  const contentOpacity = isDispensavel ? 0.68 : 1
+
   const cardBody = (
     <motion.article
       layout
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      animate={{ opacity: contentOpacity, y: 0, scale: 1 }}
       whileHover={{
-        y: showRotateRing ? -2 : -4,
+        y: showRotateRing ? -2 : isDispensavel ? 0 : -4,
       }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="timeline-card-inner timeline-card-inner--compact"
@@ -77,12 +79,6 @@ export const TimelineCard = memo(function TimelineCard({
         />
       )}
 
-      {isDispensavel && (
-        <div className="timeline-card-dispensavel-band" aria-hidden>
-          <span>Dispensável</span>
-        </div>
-      )}
-
       {isCompleted && (
         <div className="timeline-card-concluido-band" aria-hidden>
           <span>Concluído</span>
@@ -112,6 +108,12 @@ export const TimelineCard = memo(function TimelineCard({
     </motion.article>
   )
 
+  const dispensavelBand = isDispensavel ? (
+    <div className="timeline-card-dispensavel-band" aria-hidden>
+      <span>Dispensável</span>
+    </div>
+  ) : null
+
   if (!showRotateRing) {
     return (
       <div
@@ -120,6 +122,7 @@ export const TimelineCard = memo(function TimelineCard({
         data-timeline-anchor={getTimelineNodeAnchor(node)}
       >
         {cardBody}
+        {dispensavelBand}
       </div>
     )
   }
@@ -128,6 +131,7 @@ export const TimelineCard = memo(function TimelineCard({
     <div className={shellClass} data-timeline-node-id={node.id} data-timeline-anchor={getTimelineNodeAnchor(node)}>
       <div className="timeline-card-rotate-ring" aria-hidden />
       {cardBody}
+      {dispensavelBand}
     </div>
   )
 })
