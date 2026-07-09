@@ -11,7 +11,7 @@ import type {
   TimelineNodeStatus,
   TimelineSection,
 } from './types'
-import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
+import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, tituloGrupoOcultoNaTimeline } from '@/utils/timelineFlow'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -163,10 +163,10 @@ export function buildSectionedTimeline(
 
     sections.push({
       id: `section-${bloco.nome}-${index}`,
-      title: bloco.nome === 'Div. de Material' ? undefined : bloco.nome,
+      title: tituloGrupoOcultoNaTimeline(bloco.nome) ? undefined : bloco.nome,
       lanes: bloco.divisoes.map((divisao) => ({
         id: `${bloco.nome}-${divisao.trilha}`,
-        title: bloco.nome === 'Div. de Material' ? undefined : divisao.nome,
+        title: tituloGrupoOcultoNaTimeline(bloco.nome) ? undefined : divisao.nome,
         nodes: divisao.etapas.map(({ etapa }) =>
           buildTimelineNode(pedido, etapa, visiveis, etapasAtivasIds),
         ),

@@ -86,8 +86,8 @@ export default function GestorTimelineDetailPage() {
       />
 
       <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
-        Visão completa do fluxo: clínica solicitante, trilhas paralelas,
-        Finanças e Finanças Pagamento. Somente leitura no portal do gestor.
+        Visão completa do fluxo: clínica solicitante, trilhas paralelas e pagamento.
+        Somente leitura no portal do gestor.
       </Alert>
 
       <Grid container spacing={3}>

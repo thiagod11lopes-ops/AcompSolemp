@@ -26,6 +26,13 @@ export function resolveEtapaNomeExibicao(
   return etapa.nome
 }
 
+/** Grupos da timeline cujo título de seção não deve aparecer (apenas os cards). */
+export const TIMELINE_GRUPOS_TITULO_OCULTO = new Set(['Div. de Material', 'Finanças Pagamento'])
+
+export function tituloGrupoOcultoNaTimeline(grupo: string): boolean {
+  return TIMELINE_GRUPOS_TITULO_OCULTO.has(grupo)
+}
+
 /** Metadados de agrupamento visual da timeline */
 export const TIMELINE_ETAPA_META: Record<
   string,
