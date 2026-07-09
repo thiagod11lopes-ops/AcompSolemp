@@ -329,11 +329,10 @@
 
 .timeline-card-concluido-band {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 220%;
-  height: 40px;
-  transform: translate(-50%, -50%) rotate(-32deg);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 34px;
   z-index: 4;
   pointer-events: none;
   display: flex;
@@ -341,15 +340,20 @@
   justify-content: center;
   background: #14532d;
   opacity: 1;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
 .timeline-card-concluido-band span {
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
 }
 
 /* Layout em fluxo: clínica centralizada + ramificações */

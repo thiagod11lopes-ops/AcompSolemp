@@ -4,49 +4,43 @@ interface ConcluidoDiagonalOverlayProps {
   label?: string
 }
 
-/** Faixa diagonal verde opaca — usada em cards de processo concluído */
+/** Faixa verde opaca na lateral direita do card — do topo à base */
 export function ConcluidoDiagonalOverlay({ label = 'Concluído' }: ConcluidoDiagonalOverlayProps) {
   return (
     <Box
       aria-hidden
       sx={{
         position: 'absolute',
-        inset: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: 40,
         pointerEvents: 'none',
-        overflow: 'hidden',
-        borderRadius: 'inherit',
         zIndex: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: '#14532d',
+        borderTopRightRadius: 'inherit',
+        borderBottomRightRadius: 'inherit',
+        boxShadow: 'inset 1px 0 0 rgba(255,255,255,0.12)',
       }}
     >
-      <Box
+      <Typography
+        component="span"
         sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: '220%',
-          height: 44,
-          transform: 'translate(-50%, -50%) rotate(-32deg)',
-          bgcolor: '#14532d',
-          opacity: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 14px rgba(0,0,0,0.28)',
+          color: '#fff',
+          fontWeight: 700,
+          fontSize: '0.65rem',
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          writingMode: 'vertical-rl',
+          transform: 'rotate(180deg)',
+          whiteSpace: 'nowrap',
         }}
       >
-        <Typography
-          component="span"
-          sx={{
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {label}
-        </Typography>
-      </Box>
+        {label}
+      </Typography>
     </Box>
   )
 }

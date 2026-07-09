@@ -280,7 +280,6 @@ export default function GestorTimelinesPage() {
                           '&:hover': { boxShadow: pedido.concluido ? 2 : 4 },
                         }}
                       >
-                        {pedido.concluido && <ConcluidoDiagonalOverlay />}
                         <CardActionArea
                           onClick={() => abrirTimeline(pedido.id)}
                           sx={{
@@ -378,6 +377,7 @@ export default function GestorTimelinesPage() {
                             </Box>
                           </CardContent>
                         </CardActionArea>
+                        {pedido.concluido && <ConcluidoDiagonalOverlay />}
                       </Card>
                     </Grid>
                   )
