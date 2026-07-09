@@ -357,14 +357,14 @@
 }
 
 .timeline-card-shell--dispensavel .timeline-card-inner {
-  opacity: 0.5;
+  opacity: 0.3;
   filter: grayscale(0.12) saturate(0.85);
   border-color: rgba(59, 130, 246, 0.22) !important;
   box-shadow: none !important;
 }
 
 .timeline-card-shell--dispensavel:hover .timeline-card-inner {
-  opacity: 0.5;
+  opacity: 0.3;
 }
 
 .timeline-card-dispensavel-band {
