@@ -79,6 +79,12 @@ export const TimelineCard = memo(function TimelineCard({
         />
       )}
 
+      {isDispensavel && (
+        <div className="timeline-card-dispensavel-band" aria-hidden>
+          <span>Dispensável</span>
+        </div>
+      )}
+
       {isCompleted && (
         <div className="timeline-card-concluido-band" aria-hidden>
           <span>Concluído</span>
@@ -108,12 +114,6 @@ export const TimelineCard = memo(function TimelineCard({
     </motion.article>
   )
 
-  const dispensavelBand = isDispensavel ? (
-    <div className="timeline-card-dispensavel-band" aria-hidden>
-      <span>Dispensável</span>
-    </div>
-  ) : null
-
   if (!showRotateRing) {
     return (
       <div
@@ -122,7 +122,6 @@ export const TimelineCard = memo(function TimelineCard({
         data-timeline-anchor={getTimelineNodeAnchor(node)}
       >
         {cardBody}
-        {dispensavelBand}
       </div>
     )
   }
@@ -131,7 +130,6 @@ export const TimelineCard = memo(function TimelineCard({
     <div className={shellClass} data-timeline-node-id={node.id} data-timeline-anchor={getTimelineNodeAnchor(node)}>
       <div className="timeline-card-rotate-ring" aria-hidden />
       {cardBody}
-      {dispensavelBand}
     </div>
   )
 })

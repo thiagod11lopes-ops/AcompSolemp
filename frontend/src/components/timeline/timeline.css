@@ -367,20 +367,20 @@
   opacity: 0.68;
 }
 
-.timeline-card-shell--dispensavel .timeline-card-dispensavel-band {
+.timeline-card-dispensavel-band {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  bottom: 2px;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: 34px;
-  z-index: 5;
+  z-index: 4;
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #1d4ed8;
-  border-top-right-radius: 16px;
-  border-bottom-right-radius: 16px;
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
