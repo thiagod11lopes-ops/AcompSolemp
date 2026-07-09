@@ -206,6 +206,7 @@ export default function OrdenadorTimelineDetailPage() {
 
       <PageHeader
         title={`${perfilLabel} — ${pedido.numero}`}
+        titleVariant="h6"
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
       />
 

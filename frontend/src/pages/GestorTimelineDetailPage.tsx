@@ -79,6 +79,7 @@ export default function GestorTimelineDetailPage() {
 
       <PageHeader
         title={`Timeline — ${pedido.numero}`}
+        titleVariant="h6"
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
       />

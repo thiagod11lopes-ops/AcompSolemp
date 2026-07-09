@@ -7,9 +7,17 @@ interface PageHeaderProps {
   subtitle?: string
   action?: ReactNode
   titleAdornment?: ReactNode
+  /** h6 alinha ao título do TopBar (ex.: Portal do Gestor — SOLEMP) */
+  titleVariant?: 'h4' | 'h6'
 }
 
-export function PageHeader({ title, subtitle, action, titleAdornment }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+  titleAdornment,
+  titleVariant = 'h4',
+}: PageHeaderProps) {
   return (
     <Box
       sx={{
@@ -26,9 +34,12 @@ export function PageHeader({ title, subtitle, action, titleAdornment }: PageHead
       <Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: subtitle ? 0.5 : 0 }}>
           <Typography
-            variant="h4"
+            variant={titleVariant}
             component="h1"
-            sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
+            sx={{
+              fontWeight: titleVariant === 'h6' ? 600 : 700,
+              letterSpacing: titleVariant === 'h6' ? undefined : '-0.02em',
+            }}
           >
             {title}
           </Typography>

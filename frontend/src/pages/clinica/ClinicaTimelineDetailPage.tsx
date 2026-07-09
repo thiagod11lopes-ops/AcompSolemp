@@ -63,6 +63,7 @@ export default function ClinicaTimelineDetailPage() {
 
       <PageHeader
         title={`Timeline — ${pedido.numero}`}
+        titleVariant="h6"
         subtitle={
           pedido.paciente
             ? `${pedido.paciente.nome} · NIP ${formatNip(pedido.paciente.nip)}`
