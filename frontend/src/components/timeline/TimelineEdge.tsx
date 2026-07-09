@@ -1,26 +1,20 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 import type { TimelineEdgeState } from './types'
-import { timelineTheme } from './theme'
+import { isTraveledEdgeState, TIMELINE_EDGE_COLORS } from './timelineEdgeColors'
 
 interface TimelineEdgeProps {
   state: TimelineEdgeState
   vertical?: boolean
 }
 
-const EDGE_COLORS: Record<TimelineEdgeState, string> = {
-  completed: timelineTheme.green,
-  active: timelineTheme.blue,
-  waiting: timelineTheme.line,
-  error: timelineTheme.red,
-}
-
 export const TimelineEdge = memo(function TimelineEdge({
   state,
   vertical = false,
 }: TimelineEdgeProps) {
-  const color = EDGE_COLORS[state]
+  const color = TIMELINE_EDGE_COLORS[state]
   const animated = state === 'active'
+  const traveled = isTraveledEdgeState(state)
 
   if (vertical) {
     return (
@@ -87,7 +81,7 @@ export const TimelineEdge = memo(function TimelineEdge({
             pathLength: { duration: 0.6 },
             opacity: animated ? { duration: 2, repeat: Infinity } : { duration: 0.3 },
           }}
-          style={animated ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
+          style={animated || traveled ? { filter: `drop-shadow(0 0 4px ${color})` } : undefined}
         />
       </svg>
     </div>

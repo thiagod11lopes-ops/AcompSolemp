@@ -10,6 +10,7 @@ export const timelineTheme = {
   line: premiumTokens.line,
   blue: premiumTokens.primary,
   green: premiumTokens.green,
+  orange: premiumTokens.orange,
   yellow: premiumTokens.yellow,
   red: premiumTokens.red,
   purple: premiumTokens.purple,

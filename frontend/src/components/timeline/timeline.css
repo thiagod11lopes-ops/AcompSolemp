@@ -8,6 +8,7 @@
   --tl-line: #334155;
   --tl-blue: var(--premium-primary);
   --tl-green: #22c55e;
+  --tl-orange: #f97316;
   --tl-yellow: #f59e0b;
   --tl-red: #ef4444;
   --tl-purple: #8b5cf6;
@@ -397,6 +398,10 @@
 
 .timeline-flow-connector-line--drop {
   height: 22px;
+}
+
+.timeline-flow-connector-line--traveled {
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.45);
 }
 
 .timeline-flow-branch-rail {

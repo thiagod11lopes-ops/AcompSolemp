@@ -13,6 +13,7 @@ export const premiumTokens = {
   primaryLight: '#60A5FA',
   primaryDark: '#2563EB',
   green: '#22C55E',
+  orange: '#F97316',
   yellow: '#F59E0B',
   red: '#EF4444',
   purple: '#8B5CF6',
