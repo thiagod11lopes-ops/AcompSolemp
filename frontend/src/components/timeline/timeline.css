@@ -325,28 +325,6 @@
   width: 100%;
 }
 
-.timeline-flow--with-direct-links {
-  position: relative;
-}
-
-.timeline-flow--with-direct-links .timeline-flow-clinic,
-.timeline-flow--with-direct-links .timeline-flow-segment,
-.timeline-flow--with-direct-links .timeline-flow-stage,
-.timeline-flow--with-direct-links .timeline-flow-lane {
-  position: relative;
-  z-index: 1;
-}
-
-.timeline-direct-link__line--traveled {
-  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.55));
-}
-
-/* Rota futura / sem envio direto — linha opaca sempre visível entre os cards */
-.timeline-direct-link__line--muted {
-  opacity: 0.42;
-  stroke: #94a3b8;
-}
-
 .timeline-flow-clinic {
   display: flex;
   justify-content: center;
@@ -395,12 +373,40 @@
   align-items: center;
 }
 
-.timeline-flow-branch-split {
+.timeline-flow-lane-column {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(100%, 720px);
-  margin: 0 auto;
+  width: 100%;
+}
+
+.timeline-flow-branch-entry {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-flow-branch-entry-tee {
+  height: 3px;
+  width: 50%;
+  border-radius: 999px;
+}
+
+.timeline-flow-branch-entry--left .timeline-flow-branch-entry-tee {
+  align-self: flex-end;
+}
+
+.timeline-flow-branch-entry--right .timeline-flow-branch-entry-tee {
+  align-self: flex-start;
+}
+
+.timeline-flow-branch-entry--middle .timeline-flow-branch-entry-tee {
+  width: 100%;
+}
+
+.timeline-flow-connector--stem {
+  padding: 2px 0;
 }
 
 .timeline-flow-connector-line {
@@ -424,29 +430,6 @@
 
 .timeline-flow-connector-line--traveled {
   box-shadow: 0 0 8px rgba(249, 115, 22, 0.45);
-}
-
-.timeline-flow-branch-rail {
-  position: relative;
-  width: 100%;
-  padding-top: 0;
-}
-
-.timeline-flow-connector-line--horizontal {
-  height: 3px;
-  width: 100%;
-}
-
-.timeline-flow-branch-drops {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  width: 100%;
-  gap: 24px;
-}
-
-.timeline-flow-branch-drop {
-  display: flex;
-  justify-content: center;
 }
 
 @media (max-width: 900px) {

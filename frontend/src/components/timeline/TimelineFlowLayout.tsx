@@ -1,20 +1,16 @@
-import { memo, useMemo, useRef } from 'react'
+import { memo } from 'react'
 import type { PedidoComDetalhes, PedidoPlanilhaEnvioState, WorkflowEtapa } from '@/types'
 import type { TimelineEdgeState, TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
-import { TimelineBranchSplit } from './TimelineBranchSplit'
-import { TimelineDirectLinks } from './TimelineDirectLinks'
+import { TimelineBranchEntryConnector, TimelineBranchStem } from './TimelineBranchEntryConnector'
 import {
-  findAuditoriaNode,
-  findContabilidadeImhNode,
   getSectionEntryNodes,
   getSectionExitNodes,
   isClinicSection,
   resolvePlanilhaBranchStates,
   resolvePlanilhaConnectorState,
 } from './timelineFlowUtils'
-import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
 interface TimelineFlowLayoutProps {
   sections: TimelineSection[]
@@ -23,6 +19,16 @@ interface TimelineFlowLayoutProps {
   planilhaEnvio?: PedidoPlanilhaEnvioState | null
   isMobile: boolean
   onOpenDetails: (node: TimelineNodeData) => void
+}
+
+function resolveBranchSide(
+  index: number,
+  total: number,
+): 'left' | 'right' | 'middle' {
+  if (total <= 1) return 'middle'
+  if (index === 0) return 'left'
+  if (index === total - 1) return 'right'
+  return 'middle'
 }
 
 function LaneColumn({
@@ -54,11 +60,13 @@ function FlowSection({
   isMobile,
   onOpenDetails,
   showTitle,
+  branchStates,
 }: {
   section: TimelineSection
   isMobile: boolean
   onOpenDetails: (node: TimelineNodeData) => void
   showTitle: boolean
+  branchStates?: TimelineEdgeState[]
 }) {
   const isParallel = section.lanes.length > 1
 
@@ -71,13 +79,20 @@ function FlowSection({
           isParallel ? 'timeline-flow-parallel-grid' : 'timeline-flow-sequential-grid'
         }
       >
-        {section.lanes.map((lane) => (
-          <LaneColumn
-            key={lane.id}
-            lane={lane}
-            vertical={isMobile || isParallel}
-            onOpenDetails={onOpenDetails}
-          />
+        {section.lanes.map((lane, laneIndex) => (
+          <div key={lane.id} className="timeline-flow-lane-column">
+            {branchStates && (
+              <TimelineBranchEntryConnector
+                state={branchStates[laneIndex] ?? 'waiting'}
+                side={resolveBranchSide(laneIndex, section.lanes.length)}
+              />
+            )}
+            <LaneColumn
+              lane={lane}
+              vertical={isMobile || isParallel}
+              onOpenDetails={onOpenDetails}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -95,53 +110,6 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   const clinicSection = sections[0] && isClinicSection(sections[0]) ? sections[0] : null
   const flowSections = clinicSection ? sections.slice(1) : sections
   const clinicNode = clinicSection?.lanes[0]?.nodes[0]
-  const auditoriaNode = findAuditoriaNode(sections)
-  const contabilidadeNode = findContabilidadeImhNode(sections)
-  const flowRef = useRef<HTMLDivElement>(null)
-
-  const directLinks = useMemo(() => {
-    const links: {
-      id: string
-      fromAnchor: string
-      toAnchor: string
-      state: TimelineEdgeState
-      mutedWhenWaiting?: boolean
-    }[] = []
-
-    if (auditoriaNode) {
-      links.push({
-        id: 'clinic-auditoria',
-        fromAnchor: 'clinic',
-        toAnchor: 'auditoria',
-        mutedWhenWaiting: true,
-        state: resolvePlanilhaEdgeState(
-          'SOLICITACAO',
-          'DIV_MAT_AUDITORIA',
-          pedido,
-          etapas,
-          planilhaEnvio,
-        ),
-      })
-    }
-
-    if (contabilidadeNode) {
-      links.push({
-        id: 'clinic-imh',
-        fromAnchor: 'clinic',
-        toAnchor: 'contabilidade-imh',
-        mutedWhenWaiting: true,
-        state: resolvePlanilhaEdgeState(
-          'SOLICITACAO',
-          'DIV_MAT_CONTABILIDADE_IMH',
-          pedido,
-          etapas,
-          planilhaEnvio,
-        ),
-      })
-    }
-
-    return links
-  }, [auditoriaNode, contabilidadeNode, pedido, etapas, planilhaEnvio])
 
   if (!clinicSection || !clinicNode) {
     return (
@@ -160,10 +128,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   }
 
   return (
-    <div className="timeline-flow timeline-flow--with-direct-links" ref={flowRef}>
-      {directLinks.length > 0 && (
-        <TimelineDirectLinks containerRef={flowRef} links={directLinks} />
-      )}
+    <div className="timeline-flow">
       <div className="timeline-flow-clinic">
         <TimelineNode
           node={clinicNode}
@@ -177,6 +142,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
         const prevSection = index === 0 ? clinicSection : flowSections[index - 1]
         const prevExitNodes = getSectionExitNodes(prevSection)
         const entryNodes = getSectionEntryNodes(section)
+        const isBranchSplit = index === 0 && section.lanes.length > 1
         const connectorState = resolvePlanilhaConnectorState(
           index === 0 ? [clinicNode] : prevExitNodes,
           entryNodes,
@@ -184,15 +150,14 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
           etapas,
           planilhaEnvio,
         )
-        const branchStates =
-          index === 0 && section.lanes.length > 1
-            ? resolvePlanilhaBranchStates(clinicNode, entryNodes, pedido, etapas, planilhaEnvio)
-            : [connectorState]
+        const branchStates = isBranchSplit
+          ? resolvePlanilhaBranchStates(clinicNode, entryNodes, pedido, etapas, planilhaEnvio)
+          : undefined
 
         return (
           <div key={section.id} className="timeline-flow-segment">
-            {index === 0 && section.lanes.length > 1 ? (
-              <TimelineBranchSplit branchStates={branchStates} />
+            {isBranchSplit ? (
+              <TimelineBranchStem />
             ) : (
               <div className="timeline-flow-connector">
                 <TimelineEdge state={connectorState} vertical />
@@ -204,6 +169,7 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
               isMobile={isMobile}
               onOpenDetails={onOpenDetails}
               showTitle={Boolean(section.title)}
+              branchStates={branchStates}
             />
 
             {index < flowSections.length - 1 && (
