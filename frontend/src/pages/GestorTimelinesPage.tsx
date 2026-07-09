@@ -94,7 +94,7 @@ export default function GestorTimelinesPage() {
   const deletePedido = useDeleteGestorPedido()
   const { data: etapasOrg = [] } = useWorkflowEtapas()
   const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
-  const [filtro, setFiltro] = useState<FiltroStatus>('TODAS')
+  const [filtro, setFiltro] = useState<FiltroStatus>('EM_ANDAMENTO')
   const [busca, setBusca] = useState('')
   const [pedidoExcluir, setPedidoExcluir] = useState<PedidoComDetalhes | null>(null)
   const [erroExclusao, setErroExclusao] = useState<string | null>(null)
