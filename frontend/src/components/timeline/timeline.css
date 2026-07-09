@@ -325,6 +325,28 @@
   width: 100%;
 }
 
+.timeline-flow--with-direct-imh {
+  position: relative;
+}
+
+.timeline-flow--with-direct-imh .timeline-flow-clinic,
+.timeline-flow--with-direct-imh .timeline-flow-segment,
+.timeline-flow--with-direct-imh .timeline-flow-stage,
+.timeline-flow--with-direct-imh .timeline-flow-lane,
+.timeline-flow--with-direct-imh .timeline-flow-lane-column {
+  position: relative;
+  z-index: 1;
+}
+
+.timeline-direct-clinic-imh__line--traveled {
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.55));
+}
+
+.timeline-direct-clinic-imh__line--muted {
+  opacity: 0.42;
+  stroke: #94a3b8;
+}
+
 .timeline-flow-clinic {
   display: flex;
   justify-content: center;

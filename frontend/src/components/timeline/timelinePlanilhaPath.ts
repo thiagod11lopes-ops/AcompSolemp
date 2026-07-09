@@ -43,6 +43,19 @@ export function planilhaEnviadaEntre(
         Boolean(historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')?.dataInicio)
       )
 
+    case 'SOLICITACAO->DIV_MAT_CONTABILIDADE_IMH': {
+      const contabilidade = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
+      const auditoria = historicoDaEtapa(pedido, etapas, 'DIV_MAT_AUDITORIA')
+      const diretoImh =
+        solicitacaoConcluida(pedido, etapas) &&
+        Boolean(contabilidade?.dataInicio) &&
+        !auditoria?.dataInicio
+      const planilhaDiretaImh = Boolean(
+        planilhaEnvio?.recebidaImhEm && !planilhaEnvio?.recebidaEm,
+      )
+      return diretoImh || planilhaDiretaImh
+    }
+
     case 'DIV_MAT_AUDITORIA->DIV_MAT_CONTABILIDADE_IMH': {
       const contabilidade = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
       if (planilhaEnvio?.encaminhadaImhEm || planilhaEnvio?.recebidaImhEm) return true
