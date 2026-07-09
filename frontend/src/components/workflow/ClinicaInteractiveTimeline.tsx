@@ -48,7 +48,7 @@ export function ClinicaInteractiveTimeline({
     () =>
       buildTimelineHeader(pedido, allNodes, {
         subtitle: somenteLeitura
-          ? 'Acompanhe todas as etapas do processo — Div. de Material e Finanças Pagamento — até a conclusão.'
+          ? 'Acompanhe todas as etapas do processo até a conclusão.'
           : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.',
       }),
     [pedido, allNodes, somenteLeitura],

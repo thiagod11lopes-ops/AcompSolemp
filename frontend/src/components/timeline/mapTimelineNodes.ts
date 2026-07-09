@@ -163,10 +163,10 @@ export function buildSectionedTimeline(
 
     sections.push({
       id: `section-${bloco.nome}-${index}`,
-      title: bloco.nome,
+      title: bloco.nome === 'Div. de Material' ? undefined : bloco.nome,
       lanes: bloco.divisoes.map((divisao) => ({
         id: `${bloco.nome}-${divisao.trilha}`,
-        title: divisao.nome,
+        title: bloco.nome === 'Div. de Material' ? undefined : divisao.nome,
         nodes: divisao.etapas.map(({ etapa }) =>
           buildTimelineNode(pedido, etapa, visiveis, etapasAtivasIds),
         ),
