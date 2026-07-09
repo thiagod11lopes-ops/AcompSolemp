@@ -25,7 +25,7 @@ import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadast
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { CADASTRO_PERFIS, isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
-import { DEMO_CLINICA_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
+import { DEMO_CLINICA_EXEMPLO_ID, DEMO_MEDICAMENTO_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
 
 interface RegistroCadastro {
   id: string
@@ -61,6 +61,7 @@ export function UsuariosTab() {
         .filter(
           (clinica) =>
             clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
+            clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
             (clinica.tipo ?? 'clinica') === tipoEntidade,
         )
         .map((c) => {

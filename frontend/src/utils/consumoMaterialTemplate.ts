@@ -36,6 +36,11 @@ export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
   return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
 }
 
+/** Dez linhas de exemplo para a planilha demo de medicamento. */
+export function getConsumoMaterialDemoMedicamento(): ConsumoMaterialRow[] {
+  return getConsumoMaterialInicial().slice(0, 10)
+}
+
 /** Estado inicial da planilha de consumo para a clínica de demonstração. */
 export function createDemoPlanilhaExemploState(): ConsumoPlanilhaClinicaState {
   return {
@@ -43,6 +48,16 @@ export function createDemoPlanilhaExemploState(): ConsumoPlanilhaClinicaState {
     finalizedAuditoriaRowIds: [],
     finalizedMaterialRowIds: [],
     extraRows: getConsumoMaterialInicial(),
+  }
+}
+
+/** Estado inicial da planilha de consumo para o medicamento de demonstração. */
+export function createDemoMedicamentoPlanilhaExemploState(): ConsumoPlanilhaClinicaState {
+  return {
+    finalizedRowIds: [],
+    finalizedAuditoriaRowIds: [],
+    finalizedMaterialRowIds: [],
+    extraRows: getConsumoMaterialDemoMedicamento(),
   }
 }
 

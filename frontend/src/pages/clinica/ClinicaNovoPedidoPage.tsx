@@ -37,6 +37,7 @@ import {
   createPedidoLoteId,
   CONSUMO_PLANILHA_NOME_PADRAO,
   getConsumoMaterialInicial,
+  getConsumoMaterialDemoMedicamento,
   rowPodeSerEnviadaAuditoria,
   rowPodeSerEnviadaMaterial,
   getMesAtualModelo,
@@ -47,7 +48,12 @@ import {
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
-import { DEMO_CLINICA_EXEMPLO_ID, ensureDemoExamplePlanilha } from '@/services/demoCadastrosService'
+import {
+  DEMO_CLINICA_EXEMPLO_ID,
+  DEMO_MEDICAMENTO_EXEMPLO_ID,
+  ensureDemoExampleMedicamentoPlanilha,
+  ensureDemoExamplePlanilha,
+} from '@/services/demoCadastrosService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { loadAppData } from '@/mocks/seed'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
@@ -109,21 +115,27 @@ export default function ClinicaNovoPedidoPage() {
     if (isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID) {
       ensureDemoExamplePlanilha()
     }
+    if (isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID) {
+      ensureDemoExampleMedicamentoPlanilha()
+    }
 
     const persisted = consumoPlanilhaService.getState(clinicaId)
     const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
+    const isDemoMedicamento = isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
     const rowsToLoad =
       persisted.extraRows.length > 0
         ? persisted.extraRows
         : isDemoClinica
           ? getConsumoMaterialInicial()
-          : []
+          : isDemoMedicamento
+            ? getConsumoMaterialDemoMedicamento()
+            : []
 
     planilhaHydrated.current = true
 
     if (rowsToLoad.length > 0) {
       setExtraRows(rowsToLoad)
-      if (persisted.extraRows.length === 0 && isDemoClinica) {
+      if (persisted.extraRows.length === 0 && (isDemoClinica || isDemoMedicamento)) {
         consumoPlanilhaService.saveState(clinicaId, {
           finalizedRowIds: [],
           finalizedAuditoriaRowIds: [],

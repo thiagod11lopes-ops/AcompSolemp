@@ -7,15 +7,17 @@ import {
   reloadAppDataFromStorage,
   saveAppData,
 } from '@/mocks/seed'
-import { createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
+import { createDemoMedicamentoPlanilhaExemploState, createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
 export const DEMO_CLINICA_EXEMPLO_ID = 'demo-clinica-exemplo'
+export const DEMO_MEDICAMENTO_EXEMPLO_ID = 'demo-medicamento-exemplo'
 export const DEMO_GESTOR_OVERVIEW_USER_ID = '__gestor_demo_overview__'
 
 const DEMO_NOMES: Record<string, string> = {
   clinica: 'Clínica Exemplo',
+  medicamento: 'Medicamento Exemplo',
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
@@ -35,9 +37,9 @@ export function formatDemoTabTitle(item: Pick<DemoCadastroItem, 'label' | 'nome'
   return `${item.label} — ${item.nome} | AcompSolemp`
 }
 
-function demoExampleUserId(opcaoId: string, clinicaId?: string): string {
-  if (opcaoId === 'clinica' && clinicaId) {
-    return `${DEMO_EXEMPLO_USER_PREFIX}clinica-${clinicaId}`
+function demoExampleUserId(opcaoId: string, entidadeId?: string): string {
+  if ((opcaoId === 'clinica' || opcaoId === 'medicamento') && entidadeId) {
+    return `${DEMO_EXEMPLO_USER_PREFIX}${opcaoId}-${entidadeId}`
   }
   return `${DEMO_EXEMPLO_USER_PREFIX}${opcaoId}`
 }
@@ -63,6 +65,24 @@ function createExampleClinicaUser(clinica: Clinica, data: ReturnType<typeof load
     login,
     perfil: 'CLINICA',
     clinicaId: clinica.id,
+    ativo: true,
+  }
+}
+
+function createExampleMedicamentoUser(
+  medicamento: Clinica,
+  data: ReturnType<typeof loadAppData>,
+): User {
+  const logins = getExistingLogins(data)
+  const login = ensureUniqueLogin(slugLogin(`demo-${medicamento.nome}`), logins)
+  return {
+    id: demoExampleUserId('medicamento', medicamento.id),
+    nome: medicamento.nome,
+    posto: '',
+    graduacao: 'Medicamento',
+    login,
+    perfil: 'MEDICAMENTO',
+    clinicaId: medicamento.id,
     ativo: true,
   }
 }
@@ -94,6 +114,45 @@ function ensureDefaultClinica(data: ReturnType<typeof loadAppData>): Clinica {
   }
   data.clinicas.push(clinica)
   return clinica
+}
+
+function ensureDefaultMedicamento(data: ReturnType<typeof loadAppData>): Clinica {
+  const existente = data.clinicas.find((clinica) => clinica.id === DEMO_MEDICAMENTO_EXEMPLO_ID)
+  if (existente) return existente
+
+  const medicamento: Clinica = {
+    id: DEMO_MEDICAMENTO_EXEMPLO_ID,
+    nome: DEMO_NOMES.medicamento,
+    responsavel: 'Demonstração',
+    telefone: '',
+    tipo: 'medicamento',
+  }
+  data.clinicas.push(medicamento)
+  return medicamento
+}
+
+function findOrEnsureMedicamentoUser(
+  medicamento: Clinica,
+  data: ReturnType<typeof loadAppData>,
+): User {
+  const existing = data.usuarios.find(
+    (user) => user.clinicaId === medicamento.id && user.perfil === 'MEDICAMENTO' && user.ativo,
+  )
+  if (existing) return existing
+
+  const exampleId = demoExampleUserId('medicamento', medicamento.id)
+  const storedExample = data.usuarios.find((user) => user.id === exampleId)
+  if (storedExample) {
+    storedExample.ativo = true
+    storedExample.nome = medicamento.nome
+    storedExample.clinicaId = medicamento.id
+    storedExample.perfil = 'MEDICAMENTO'
+    return storedExample
+  }
+
+  const user = createExampleMedicamentoUser(medicamento, data)
+  data.usuarios.push(user)
+  return user
 }
 
 function findOrEnsureClinicaUser(clinica: Clinica, data: ReturnType<typeof loadAppData>): User {
@@ -133,10 +192,36 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
   const clinica = ensureDefaultClinica(data)
   findOrEnsureClinicaUser(clinica, data)
 
+  const medicamento = ensureDefaultMedicamento(data)
+  findOrEnsureMedicamentoUser(medicamento, data)
+
   for (const opcao of CADASTRO_PERFIS) {
-    if (opcao.isClinica) continue
+    if (opcao.isClinica || opcao.isMedicamento) continue
     findOrEnsureSetorUser(opcao, data)
   }
+}
+
+/** Garante planilha de exemplo fixa (código) para o medicamento demo quando ainda vazia. */
+export function seedDemoExampleMedicamentoPlanilha(data: ReturnType<typeof loadAppData>): boolean {
+  if (!data.consumoPlanilha) data.consumoPlanilha = {}
+
+  const current = data.consumoPlanilha[DEMO_MEDICAMENTO_EXEMPLO_ID]
+  if (current?.extraRows?.length) return false
+
+  data.consumoPlanilha[DEMO_MEDICAMENTO_EXEMPLO_ID] = createDemoMedicamentoPlanilhaExemploState()
+  return true
+}
+
+/** Recarrega planilha de exemplo do medicamento no IndexedDB demo se estiver vazia. */
+export function ensureDemoExampleMedicamentoPlanilha(): boolean {
+  if (!isDemoDataSession()) return false
+
+  const data = loadAppData()
+  const seeded = seedDemoExampleMedicamentoPlanilha(data)
+  if (!seeded) return false
+
+  saveAppData(data)
+  return true
 }
 
 /** Garante planilha de exemplo fixa (código) para a clínica demo quando ainda vazia. */
@@ -173,7 +258,8 @@ export async function initDemoAppData(): Promise<void> {
   const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
 
   seedDemoExampleCadastros(data)
-  const planilhaSeeded = seedDemoExamplePlanilha(data)
+  const planilhaSeeded =
+    seedDemoExamplePlanilha(data) || seedDemoExampleMedicamentoPlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
   if (before !== after || data.clinicas.length === 0 || planilhaSeeded) {
@@ -189,7 +275,8 @@ export async function ensureDemoExampleCadastros(): Promise<void> {
   const before = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
 
   seedDemoExampleCadastros(data)
-  const planilhaSeeded = seedDemoExamplePlanilha(data)
+  const planilhaSeeded =
+    seedDemoExamplePlanilha(data) || seedDemoExampleMedicamentoPlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
   if (before !== after || planilhaSeeded) {
@@ -222,8 +309,20 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     })
   }
 
+  const opcaoMedicamento = CADASTRO_PERFIS.find((opcao) => opcao.isMedicamento)
+  if (opcaoMedicamento) {
+    resultado.push({
+      id: `medicamento-${DEMO_MEDICAMENTO_EXEMPLO_ID}`,
+      userId: demoExampleUserId('medicamento', DEMO_MEDICAMENTO_EXEMPLO_ID),
+      label: opcaoMedicamento.label,
+      nome: DEMO_NOMES.medicamento,
+      subtitulo: 'Planilha de exemplo com 10 lançamentos',
+      isExemplo: true,
+    })
+  }
+
   for (const opcao of CADASTRO_PERFIS) {
-    if (opcao.isClinica) continue
+    if (opcao.isClinica || opcao.isMedicamento) continue
     resultado.push({
       id: opcao.id,
       userId: demoExampleUserId(opcao.id),

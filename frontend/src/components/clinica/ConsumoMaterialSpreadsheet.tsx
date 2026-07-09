@@ -360,7 +360,7 @@ function ConsumoMaterialSpreadsheetInner({
   const createEnvioSelectColumn = useCallback(
     (
       columnId: 'select-a' | 'select-s',
-      headerLabel: 'A' | 'S' | 'IMH',
+      headerLabel: 'A' | 'S',
       canal: ConsumoEnvioCanal,
       selection: RowSelectionState,
       onSelectionChange: (next: RowSelectionState) => void,
@@ -513,7 +513,7 @@ function ConsumoMaterialSpreadsheetInner({
     return [
       createEnvioSelectColumn(
         'select-a',
-        modoMedicamento ? 'IMH' : 'A',
+        'A',
         'auditoria',
         rowSelectionAuditoria,
         onRowSelectionAuditoriaChange,
@@ -521,20 +521,16 @@ function ConsumoMaterialSpreadsheetInner({
         podeSelecionarAuditoria,
         isFinalizadoAuditoria,
       ),
-      ...(modoMedicamento
-        ? []
-        : [
-            createEnvioSelectColumn(
-              'select-s',
-              'S',
-              'material',
-              rowSelectionMaterial,
-              onRowSelectionMaterialChange,
-              finalizedMaterialRowIds,
-              podeSelecionarMaterial,
-              isFinalizadoMaterial,
-            ),
-          ]),
+      createEnvioSelectColumn(
+        'select-s',
+        'S',
+        'material',
+        rowSelectionMaterial,
+        onRowSelectionMaterialChange,
+        finalizedMaterialRowIds,
+        podeSelecionarMaterial,
+        isFinalizadoMaterial,
+      ),
       ...dataColumns,
     ]
   }, [
@@ -543,7 +539,6 @@ function ConsumoMaterialSpreadsheetInner({
     handleDraftChange,
     handleContextMenu,
     createEnvioSelectColumn,
-    modoMedicamento,
     rowSelectionAuditoria,
     onRowSelectionAuditoriaChange,
     finalizedAuditoriaRowIds,
