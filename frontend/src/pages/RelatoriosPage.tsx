@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { formatCurrency } from '@/utils/format'
+import { premiumTokens } from '@/theme/tokens'
 import {
   Bar,
   BarChart,
@@ -59,8 +60,8 @@ export default function RelatoriosPage() {
                 <XAxis dataKey="etapa" tick={{ fontSize: 10 }} />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="mediaDias" name="Média dias" fill="#0B3D91" />
-                <Bar dataKey="atrasados" name="Atrasados" fill="#D32F2F" />
+                <Bar dataKey="mediaDias" name="Média dias" fill={premiumTokens.primary} />
+                <Bar dataKey="atrasados" name="Atrasados" fill={premiumTokens.red} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>

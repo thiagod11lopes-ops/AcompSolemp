@@ -21,7 +21,8 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function readInitialMode(): ThemeMode {
   const stored = storageGet(STORAGE_KEYS.THEME)
-  return stored === 'dark' ? 'dark' : 'light'
+  if (stored === 'light') return 'light'
+  return 'dark'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

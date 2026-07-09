@@ -17,7 +17,16 @@ import {
 import type { DashboardMetrics } from '@/types'
 import { formatCurrency } from '@/utils/format'
 
-const COLORS = ['#0B3D91', '#C9A227', '#2E7D32', '#ED6C02', '#D32F2F', '#5B9BD5']
+import { premiumTokens } from '@/theme/tokens'
+
+const COLORS = [
+  premiumTokens.primary,
+  premiumTokens.yellow,
+  premiumTokens.green,
+  premiumTokens.purple,
+  premiumTokens.red,
+  premiumTokens.primaryLight,
+]
 
 interface DashboardChartsProps {
   metrics: DashboardMetrics
@@ -39,7 +48,7 @@ export function DashboardCharts({ metrics }: DashboardChartsProps) {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="total" name="Total" stroke="#0B3D91" strokeWidth={2} />
+                <Line type="monotone" dataKey="total" name="Total" stroke={premiumTokens.primary} strokeWidth={2} />
                 <Line
                   type="monotone"
                   dataKey="concluidos"
@@ -93,7 +102,7 @@ export function DashboardCharts({ metrics }: DashboardChartsProps) {
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="etapa" width={140} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="dias" fill="#0B3D91" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="dias" fill={premiumTokens.primary} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

@@ -1,16 +1,19 @@
+import { premiumTokens } from '@/theme/tokens'
+
+/** @deprecated use premiumTokens from @/theme/tokens */
 export const timelineTheme = {
-  bg: '#0B1220',
-  card: '#111827',
-  border: 'rgba(255,255,255,0.08)',
-  text: '#FFFFFF',
-  textSecondary: '#94A3B8',
-  line: '#334155',
-  blue: '#3B82F6',
-  green: '#22C55E',
-  yellow: '#F59E0B',
-  red: '#EF4444',
-  purple: '#8B5CF6',
-  radius: 16,
-  shadow: '0 8px 32px rgba(0,0,0,0.35)',
-  glass: 'rgba(17,24,39,0.72)',
+  bg: premiumTokens.bg,
+  card: premiumTokens.card,
+  border: premiumTokens.border,
+  text: premiumTokens.text,
+  textSecondary: premiumTokens.textSecondary,
+  line: premiumTokens.line,
+  blue: premiumTokens.primary,
+  green: premiumTokens.green,
+  yellow: premiumTokens.yellow,
+  red: premiumTokens.red,
+  purple: premiumTokens.purple,
+  radius: premiumTokens.radius,
+  shadow: premiumTokens.shadow,
+  glass: premiumTokens.glass,
 } as const

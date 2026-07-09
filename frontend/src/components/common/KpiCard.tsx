@@ -1,5 +1,6 @@
 import { Card, CardContent, Typography, Box, alpha, useTheme } from '@mui/material'
 import type { ReactNode } from 'react'
+import { premiumTokens } from '@/theme/tokens'
 
 interface KpiCardProps {
   title: string
@@ -18,16 +19,21 @@ export function KpiCard({ title, value, subtitle, icon, color, trend }: KpiCardP
     <Card
       sx={{
         height: '100%',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: theme.shadows[8],
+          boxShadow: premiumTokens.shadow,
+          borderColor: premiumTokens.borderStrong,
         },
       }}
     >
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
+          >
             {title}
           </Typography>
           {icon && (
@@ -35,19 +41,20 @@ export function KpiCard({ title, value, subtitle, icon, color, trend }: KpiCardP
               sx={{
                 width: 40,
                 height: 40,
-                borderRadius: 2,
+                borderRadius: `${premiumTokens.radiusSm}px`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: alpha(accent, 0.12),
                 color: accent,
+                border: `1px solid ${alpha(accent, 0.2)}`,
               }}
             >
               {icon}
             </Box>
           )}
         </Box>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, letterSpacing: '-0.02em' }}>
           {value}
         </Typography>
         {subtitle && (

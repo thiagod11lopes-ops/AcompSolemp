@@ -1,10 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 * {
   box-sizing: border-box;
+}
+
+:root {
+  --premium-bg: #0b1220;
+  --premium-card: #111827;
+  --premium-border: rgba(255, 255, 255, 0.08);
+  --premium-text: #ffffff;
+  --premium-muted: #94a3b8;
+  --premium-primary: #3b82f6;
+  --premium-radius: 16px;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {

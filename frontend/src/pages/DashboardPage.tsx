@@ -12,6 +12,7 @@ import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { formatCurrency } from '@/utils/format'
+import { premiumTokens } from '@/theme/tokens'
 
 export default function DashboardPage() {
   const { data: metrics, isLoading } = useDashboardMetrics()
@@ -34,7 +35,7 @@ export default function DashboardPage() {
             title="Em andamento"
             value={metrics.emAndamento}
             icon={<PendingActionsIcon />}
-            color="#ED6C02"
+            color={premiumTokens.yellow}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
@@ -42,7 +43,7 @@ export default function DashboardPage() {
             title="Concluídos"
             value={metrics.concluidos}
             icon={<CheckCircleIcon />}
-            color="#2E7D32"
+            color={premiumTokens.green}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
@@ -50,7 +51,7 @@ export default function DashboardPage() {
             title="Atrasados"
             value={metrics.atrasados}
             icon={<WarningIcon />}
-            color="#D32F2F"
+            color={premiumTokens.red}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
@@ -58,7 +59,7 @@ export default function DashboardPage() {
             title="Próx. vencimento"
             value={metrics.proximosVencimento}
             icon={<ScheduleIcon />}
-            color="#C9A227"
+            color={premiumTokens.purple}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
@@ -75,13 +76,13 @@ export default function DashboardPage() {
           <KpiCard title="Valor em aberto" value={formatCurrency(metrics.valorTotalAberto)} icon={<AttachMoneyIcon />} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <KpiCard title="Pago no mês" value={formatCurrency(metrics.valorPagoMes)} icon={<AttachMoneyIcon />} color="#2E7D32" />
+          <KpiCard title="Pago no mês" value={formatCurrency(metrics.valorPagoMes)} icon={<AttachMoneyIcon />} color={premiumTokens.green} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <KpiCard title="Aguard. assinatura" value={formatCurrency(metrics.valorAguardandoAssinatura)} icon={<AttachMoneyIcon />} color="#C9A227" />
+          <KpiCard title="Aguard. assinatura" value={formatCurrency(metrics.valorAguardandoAssinatura)} icon={<AttachMoneyIcon />} color={premiumTokens.purple} />
         </Grid>
         <Grid size={{ xs: 12, md: 3 }}>
-          <KpiCard title="Aguard. financeiro" value={formatCurrency(metrics.valorAguardandoFinanceiro)} icon={<AttachMoneyIcon />} color="#ED6C02" />
+          <KpiCard title="Aguard. financeiro" value={formatCurrency(metrics.valorAguardandoFinanceiro)} icon={<AttachMoneyIcon />} color={premiumTokens.yellow} />
         </Grid>
       </Grid>
 

@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useFirebaseDataSource } from '@/config/dataSource'
+import { premiumTokens } from '@/theme/tokens'
 
 /**
  * Portão de acesso à Timeline — login com Google (e-mail cadastrado pelo gestor).
@@ -81,7 +82,8 @@ export default function TimelineEntryPage() {
         alignItems: 'center',
         justifyContent: 'center',
         px: 2,
-        background: `linear-gradient(160deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${theme.palette.background.default} 50%)`,
+        background: premiumTokens.gradientAuth,
+        backgroundAttachment: 'fixed',
       }}
     >
       <Box
@@ -89,9 +91,11 @@ export default function TimelineEntryPage() {
           width: '100%',
           maxWidth: 420,
           p: 4,
-          borderRadius: 4,
+          borderRadius: `${premiumTokens.radius}px`,
           bgcolor: 'background.paper',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.12)',
+          border: `1px solid ${premiumTokens.border}`,
+          boxShadow: premiumTokens.shadow,
+          backdropFilter: 'blur(16px)',
           textAlign: 'center',
         }}
       >

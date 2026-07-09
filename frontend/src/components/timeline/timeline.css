@@ -1,20 +1,19 @@
 .timeline-root {
-  --tl-bg: #0b1220;
-  --tl-card: #111827;
-  --tl-border: rgba(255, 255, 255, 0.08);
-  --tl-text: #ffffff;
-  --tl-muted: #94a3b8;
+  --tl-bg: var(--premium-bg);
+  --tl-card: var(--premium-card);
+  --tl-border: var(--premium-border);
+  --tl-text: var(--premium-text);
+  --tl-muted: var(--premium-muted);
   --tl-line: #334155;
-  --tl-blue: #3b82f6;
+  --tl-blue: var(--premium-primary);
   --tl-green: #22c55e;
   --tl-yellow: #f59e0b;
   --tl-red: #ef4444;
   --tl-purple: #8b5cf6;
-  background: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(59, 130, 246, 0.12), transparent),
-    var(--tl-bg);
-  border: 1px solid var(--tl-border);
+  background: rgba(17, 24, 39, 0.55);
+  border: 1px solid var(--premium-border);
   border-radius: 20px;
-  color: var(--tl-text);
+  color: var(--premium-text);
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
 }
