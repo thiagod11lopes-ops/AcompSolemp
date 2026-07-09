@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useMediaQuery } from '@mui/material'
-import type { PedidoComDetalhes } from '@/types'
+import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import type { TimelineDrawerDetail, TimelineHeaderModel, TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineHeader } from './TimelineHeader'
 import { TimelineDrawer } from './TimelineDrawer'
@@ -8,6 +9,12 @@ import { TimelineFlowLayout } from './TimelineFlowLayout'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
 import { isClinicNode } from './timelineFlowUtils'
+import {
+  applyPlanilhaEdgesToNodes,
+  applyPlanilhaEdgesToSections,
+  flattenSections,
+  sectionsToLanes,
+} from './mapTimelineNodes'
 import './timeline.css'
 
 export interface TimelineProps {
@@ -34,20 +41,50 @@ export const Timeline = memo(function Timeline({
   const isMobile = useMediaQuery('(max-width:900px)')
   const [drawerDetail, setDrawerDetail] = useState<TimelineDrawerDetail | null>(null)
 
+  const planilhaEnvio = useMemo(
+    () => pedidoPlanilhaEnvioService.getForPedido(pedido.id),
+    [pedido.id],
+  )
+
+  const etapasFromTimeline = useMemo(() => {
+    const allNodes = [
+      ...(sections ? flattenSections(sections) : []),
+      ...(nodes ?? []),
+      ...(lanes?.flatMap((lane) => lane.nodes) ?? []),
+    ]
+    const map = new Map<string, WorkflowEtapa>()
+    allNodes.forEach((node) => map.set(node.etapa.id, node.etapa))
+    return Array.from(map.values())
+  }, [sections, nodes, lanes])
+
+  const resolvedSections = useMemo(() => {
+    if (!sections?.length) return sections
+    return applyPlanilhaEdgesToSections(sections, pedido, etapasFromTimeline, planilhaEnvio)
+  }, [sections, pedido, etapasFromTimeline, planilhaEnvio])
+
+  const resolvedNodes = useMemo(() => {
+    if (!nodes?.length) return nodes
+    return applyPlanilhaEdgesToNodes(nodes, pedido, etapasFromTimeline, planilhaEnvio)
+  }, [nodes, pedido, etapasFromTimeline, planilhaEnvio])
+
   const resolvedLanes = useMemo(() => {
-    if (lanes?.length) return lanes
-    if (sections?.length) {
-      return sections.flatMap((section) =>
-        section.lanes.map((lane) => ({
-          ...lane,
-          title: lane.title ?? section.title,
-          subtitle: lane.subtitle ?? section.subtitle,
-        })),
-      )
+    if (lanes?.length) {
+      return lanes.map((lane) => ({
+        ...lane,
+        nodes: applyPlanilhaEdgesToNodes(
+          lane.nodes,
+          pedido,
+          etapasFromTimeline,
+          planilhaEnvio,
+        ),
+      }))
     }
-    if (nodes?.length) return [{ id: 'main', nodes }]
+    if (resolvedSections?.length) {
+      return sectionsToLanes(resolvedSections)
+    }
+    if (resolvedNodes?.length) return [{ id: 'main', nodes: resolvedNodes }]
     return []
-  }, [lanes, sections, nodes])
+  }, [lanes, resolvedSections, resolvedNodes, pedido, etapasFromTimeline, planilhaEnvio])
 
   const openDrawer = useCallback(
     (node: TimelineNodeData) => {
@@ -63,14 +100,17 @@ export const Timeline = memo(function Timeline({
       <div className="timeline-inner">
         <TimelineHeader model={header} />
         {alerts}
-        {sections?.length ? (
+        {resolvedSections?.length ? (
           <TimelineFlowLayout
-            sections={sections}
+            sections={resolvedSections}
+            pedido={pedido}
+            etapas={etapasFromTimeline}
+            planilhaEnvio={planilhaEnvio}
             isMobile={isMobile}
             onOpenDetails={openDrawer}
           />
-        ) : nodes?.length && isClinicNode(nodes[0]) ? (
-          <LinearFlowLayout nodes={nodes} isMobile={isMobile} onOpenDetails={openDrawer} />
+        ) : resolvedNodes?.length && isClinicNode(resolvedNodes[0]) ? (
+          <LinearFlowLayout nodes={resolvedNodes} isMobile={isMobile} onOpenDetails={openDrawer} />
         ) : (
           resolvedLanes.map((lane) => (
               <div key={lane.id} className="timeline-section">

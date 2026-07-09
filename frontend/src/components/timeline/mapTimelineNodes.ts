@@ -12,6 +12,8 @@ import type {
   TimelineSection,
 } from './types'
 import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, tituloGrupoOcultoNaTimeline } from '@/utils/timelineFlow'
+import type { PedidoPlanilhaEnvioState } from '@/types'
+import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -78,13 +80,6 @@ function resolveNodeStatus(
   return 'waiting'
 }
 
-function resolveEdgeAfter(status: TimelineNodeStatus): TimelineEdgeState {
-  if (status === 'completed') return 'completed'
-  if (status === 'active') return 'active'
-  if (status === 'error') return 'error'
-  return 'waiting'
-}
-
 export function buildTimelineNode(
   pedido: PedidoComDetalhes,
   etapa: WorkflowEtapa,
@@ -110,7 +105,7 @@ export function buildTimelineNode(
     tempoNaEtapa: formatTempoNaEtapa(pedido, historico, atual),
     processoNumero: resolveProcessoNumero(pedido, etapa),
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
-    edgeAfter: resolveEdgeAfter(status),
+    edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? atual,
     icon: getEtapaIcon(etapa.chave),
   }
@@ -223,6 +218,67 @@ export function buildTimelineHeader(
 
 export function flattenSections(sections: TimelineSection[]): TimelineNodeData[] {
   return sections.flatMap((section) => section.lanes.flatMap((lane) => lane.nodes))
+}
+
+function etapasFromNodes(nodes: TimelineNodeData[]): WorkflowEtapa[] {
+  const map = new Map<string, WorkflowEtapa>()
+  nodes.forEach((node) => map.set(node.etapa.id, node.etapa))
+  return Array.from(map.values())
+}
+
+export function applyPlanilhaEdgesToSections(
+  sections: TimelineSection[],
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null,
+): TimelineSection[] {
+  return sections.map((section) => ({
+    ...section,
+    lanes: section.lanes.map((lane) => ({
+      ...lane,
+      nodes: lane.nodes.map((node, index) => {
+        if (index >= lane.nodes.length - 1) {
+          return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
+        }
+        const next = lane.nodes[index + 1]
+        return {
+          ...node,
+          edgeAfter: resolvePlanilhaEdgeState(
+            node.etapa.chave,
+            next.etapa.chave,
+            pedido,
+            etapas,
+            planilhaEnvio,
+          ),
+        }
+      }),
+    })),
+  }))
+}
+
+export function applyPlanilhaEdgesToNodes(
+  nodes: TimelineNodeData[],
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null,
+): TimelineNodeData[] {
+  const resolvedEtapas = etapas.length > 0 ? etapas : etapasFromNodes(nodes)
+  return nodes.map((node, index) => {
+    if (index >= nodes.length - 1) {
+      return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
+    }
+    const next = nodes[index + 1]
+    return {
+      ...node,
+      edgeAfter: resolvePlanilhaEdgeState(
+        node.etapa.chave,
+        next.etapa.chave,
+        pedido,
+        resolvedEtapas,
+        planilhaEnvio,
+      ),
+    }
+  })
 }
 
 export function sectionsToLanes(sections: TimelineSection[]): TimelineLane[] {

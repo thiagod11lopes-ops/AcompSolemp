@@ -1,4 +1,5 @@
 import { memo, useRef } from 'react'
+import type { PedidoComDetalhes, PedidoPlanilhaEnvioState, WorkflowEtapa } from '@/types'
 import type { TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
@@ -9,12 +10,15 @@ import {
   getSectionEntryNodes,
   getSectionExitNodes,
   isClinicSection,
-  resolveBranchStates,
-  resolveConnectorState,
+  resolvePlanilhaBranchStates,
+  resolvePlanilhaConnectorState,
 } from './timelineFlowUtils'
 
 interface TimelineFlowLayoutProps {
   sections: TimelineSection[]
+  pedido: PedidoComDetalhes
+  etapas: WorkflowEtapa[]
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null
   isMobile: boolean
   onOpenDetails: (node: TimelineNodeData) => void
 }
@@ -80,6 +84,9 @@ function FlowSection({
 
 export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   sections,
+  pedido,
+  etapas,
+  planilhaEnvio,
   isMobile,
   onOpenDetails,
 }: TimelineFlowLayoutProps) {
@@ -112,6 +119,9 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
           containerRef={flowRef}
           clinicNode={clinicNode}
           contabilidadeNode={contabilidadeNode}
+          pedido={pedido}
+          etapas={etapas}
+          planilhaEnvio={planilhaEnvio}
         />
       )}
       <div className="timeline-flow-clinic">
@@ -127,13 +137,16 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
         const prevSection = index === 0 ? clinicSection : flowSections[index - 1]
         const prevExitNodes = getSectionExitNodes(prevSection)
         const entryNodes = getSectionEntryNodes(section)
-        const connectorState = resolveConnectorState(
+        const connectorState = resolvePlanilhaConnectorState(
           index === 0 ? [clinicNode] : prevExitNodes,
           entryNodes,
+          pedido,
+          etapas,
+          planilhaEnvio,
         )
         const branchStates =
           index === 0 && section.lanes.length > 1
-            ? resolveBranchStates(clinicNode, entryNodes)
+            ? resolvePlanilhaBranchStates(clinicNode, entryNodes, pedido, etapas, planilhaEnvio)
             : [connectorState]
 
         return (
@@ -156,7 +169,13 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
             {index < flowSections.length - 1 && (
               <div className="timeline-flow-connector">
                 <TimelineEdge
-                  state={resolveConnectorState(getSectionExitNodes(section), getSectionEntryNodes(flowSections[index + 1]))}
+                  state={resolvePlanilhaConnectorState(
+                    getSectionExitNodes(section),
+                    getSectionEntryNodes(flowSections[index + 1]),
+                    pedido,
+                    etapas,
+                    planilhaEnvio,
+                  )}
                   vertical
                 />
               </div>

@@ -1,4 +1,6 @@
+import type { PedidoComDetalhes, PedidoPlanilhaEnvioState, WorkflowEtapa } from '@/types'
 import type { TimelineEdgeState, TimelineNodeData, TimelineSection } from './types'
+import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
 export function isClinicNode(node: TimelineNodeData): boolean {
   return node.etapa.chave === 'SOLICITACAO'
@@ -75,4 +77,53 @@ export function resolveBranchStates(
     if (sourceNode.status === 'active' || sourceNode.status === 'review') return 'active'
     return 'waiting'
   })
+}
+
+export function resolvePlanilhaBranchStates(
+  sourceNode: TimelineNodeData,
+  targetNodes: TimelineNodeData[],
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null,
+): TimelineEdgeState[] {
+  return targetNodes.map((target) =>
+    resolvePlanilhaEdgeState(
+      sourceNode.etapa.chave,
+      target.etapa.chave,
+      pedido,
+      etapas,
+      planilhaEnvio,
+    ),
+  )
+}
+
+export function resolvePlanilhaConnectorState(
+  sourceNodes: TimelineNodeData[],
+  targetNodes: TimelineNodeData[],
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null,
+): TimelineEdgeState {
+  if (sourceNodes.length === 0 || targetNodes.length === 0) return 'waiting'
+  if (sourceNodes.length === 1 && targetNodes.length === 1) {
+    return resolvePlanilhaEdgeState(
+      sourceNodes[0].etapa.chave,
+      targetNodes[0].etapa.chave,
+      pedido,
+      etapas,
+      planilhaEnvio,
+    )
+  }
+  const states = sourceNodes.flatMap((source) =>
+    targetNodes.map((target) =>
+      resolvePlanilhaEdgeState(
+        source.etapa.chave,
+        target.etapa.chave,
+        pedido,
+        etapas,
+        planilhaEnvio,
+      ),
+    ),
+  )
+  return states.some((state) => state === 'completed') ? 'completed' : 'waiting'
 }

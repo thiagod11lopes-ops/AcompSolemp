@@ -1,7 +1,8 @@
 import { memo, useLayoutEffect, useState, type RefObject } from 'react'
+import type { PedidoComDetalhes, PedidoPlanilhaEnvioState, WorkflowEtapa } from '@/types'
 import type { TimelineEdgeState, TimelineNodeData } from './types'
 import { isTraveledEdgeState, TIMELINE_EDGE_COLORS } from './timelineEdgeColors'
-import { resolveConnectorState } from './timelineFlowUtils'
+import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
 interface LineCoords {
   x1: number
@@ -14,15 +15,27 @@ interface TimelineDirectClinicImhLinkProps {
   containerRef: RefObject<HTMLDivElement | null>
   clinicNode: TimelineNodeData
   contabilidadeNode: TimelineNodeData
+  pedido: PedidoComDetalhes
+  etapas: WorkflowEtapa[]
+  planilhaEnvio?: PedidoPlanilhaEnvioState | null
 }
 
 export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImhLink({
   containerRef,
   clinicNode,
   contabilidadeNode,
+  pedido,
+  etapas,
+  planilhaEnvio,
 }: TimelineDirectClinicImhLinkProps) {
   const [coords, setCoords] = useState<LineCoords | null>(null)
-  const state: TimelineEdgeState = resolveConnectorState([clinicNode], [contabilidadeNode])
+  const state: TimelineEdgeState = resolvePlanilhaEdgeState(
+    clinicNode.etapa.chave,
+    contabilidadeNode.etapa.chave,
+    pedido,
+    etapas,
+    planilhaEnvio,
+  )
   const traveled = isTraveledEdgeState(state)
   const color = TIMELINE_EDGE_COLORS[state]
 
