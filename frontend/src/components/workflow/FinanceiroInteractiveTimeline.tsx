@@ -9,8 +9,9 @@ import {
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import {
   Timeline,
-  buildLinearTimelineNodes,
+  buildSectionedTimeline,
   buildTimelineHeader,
+  flattenSections,
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
@@ -30,11 +31,15 @@ export function FinanceiroInteractiveTimeline({
   registrando = false,
   mensagemFluxoEncerrado = null,
 }: FinanceiroInteractiveTimelineProps) {
-  const ordenadas = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
-  const nodes = useMemo(() => buildLinearTimelineNodes(pedido, ordenadas), [pedido, ordenadas])
-  const header = useMemo(() => buildTimelineHeader(pedido, nodes), [pedido, nodes])
+  const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
+  const sections = useMemo(
+    () => buildSectionedTimeline(pedido, visiveis),
+    [pedido, visiveis],
+  )
+  const allNodes = useMemo(() => flattenSections(sections), [sections])
+  const header = useMemo(() => buildTimelineHeader(pedido, allNodes), [pedido, allNodes])
 
-  const pagamentoConcluido = financeiroPagamentoConcluido(pedido, ordenadas)
+  const pagamentoConcluido = financeiroPagamentoConcluido(pedido, visiveis)
   const acaoFinancas = FINANCEIRO_ETAPA_ACOES.DIV_MAT_FINANCAS
   const podeRegistrar =
     !pagamentoConcluido && financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
@@ -66,7 +71,7 @@ export function FinanceiroInteractiveTimeline({
     <Timeline
       pedido={pedido}
       header={header}
-      nodes={nodes}
+      sections={sections}
       renderNodeActions={renderNodeActions}
       alerts={
         <>

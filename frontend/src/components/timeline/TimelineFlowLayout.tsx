@@ -80,6 +80,13 @@ function FlowSection({
             {branchStates && (
               <TimelineBranchEntryConnector
                 state={branchStates[laneIndex] ?? 'waiting'}
+                align={
+                  section.lanes.length > 1
+                    ? laneIndex === 0
+                      ? 'left'
+                      : 'right'
+                    : 'center'
+                }
               />
             )}
             <LaneColumn

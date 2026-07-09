@@ -4,16 +4,30 @@ import { isTraveledEdgeState, TIMELINE_EDGE_COLORS } from './timelineEdgeColors'
 
 interface TimelineBranchEntryConnectorProps {
   state: TimelineEdgeState
+  align?: 'left' | 'right' | 'center'
 }
 
 export const TimelineBranchEntryConnector = memo(function TimelineBranchEntryConnector({
   state,
+  align = 'center',
 }: TimelineBranchEntryConnectorProps) {
   const color = TIMELINE_EDGE_COLORS[state]
   const traveled = isTraveledEdgeState(state)
+  const alignClass =
+    align === 'left'
+      ? 'timeline-flow-branch-entry--left'
+      : align === 'right'
+        ? 'timeline-flow-branch-entry--right'
+        : 'timeline-flow-branch-entry--centered'
 
   return (
-    <div className="timeline-flow-branch-entry timeline-flow-branch-entry--centered" aria-hidden>
+    <div className={`timeline-flow-branch-entry ${alignClass}`} aria-hidden>
+      {align !== 'center' && (
+        <div
+          className={`timeline-flow-branch-entry-tee${traveled ? ' timeline-flow-connector-line--traveled' : ''}`}
+          style={{ backgroundColor: color }}
+        />
+      )}
       <div
         className={`timeline-flow-connector-line timeline-flow-connector-line--drop${traveled ? ' timeline-flow-connector-line--traveled' : ''}`}
         style={{ backgroundColor: color }}

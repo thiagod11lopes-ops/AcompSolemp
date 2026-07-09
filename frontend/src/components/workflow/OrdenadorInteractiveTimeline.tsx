@@ -5,16 +5,14 @@ import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import {
-  filtrarEtapasTrilhaAuditoria,
-  filtrarEtapasTrilhaConfeccao,
   filtrarEtapasParaTimeline,
   usaTrilhaAuditoriaOrdenador,
-  usaTrilhaConfeccaoOrdenador,
 } from '@/utils/timelineFlow'
 import {
   Timeline,
-  buildLinearTimelineNodes,
+  buildSectionedTimeline,
   buildTimelineHeader,
+  flattenSections,
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
@@ -53,26 +51,18 @@ export function OrdenadorInteractiveTimeline({
   const { user } = useOrdenadorAuth()
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
-  const trilhaConfeccao = usaTrilhaConfeccaoOrdenador(chavePerfil)
 
-  const ordenadas = useMemo(() => {
-    const visiveis = filtrarEtapasParaTimeline(etapas)
-    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(visiveis)
-    if (trilhaConfeccao) return filtrarEtapasTrilhaConfeccao(visiveis)
-    return visiveis
-  }, [etapas, trilhaAuditoria, trilhaConfeccao])
-
-  const nodes = useMemo(
-    () =>
-      buildLinearTimelineNodes(pedido, ordenadas, chavePerfil, { useProvidedOrder: true }),
-    [pedido, ordenadas, chavePerfil],
+  const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
+  const sections = useMemo(
+    () => buildSectionedTimeline(pedido, visiveis),
+    [pedido, visiveis],
   )
-
-  const header = useMemo(() => buildTimelineHeader(pedido, nodes), [pedido, nodes])
+  const allNodes = useMemo(() => flattenSections(sections), [sections])
+  const header = useMemo(() => buildTimelineHeader(pedido, allNodes), [pedido, allNodes])
 
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
-  const etapaDoPerfil = ordenadas.find(
+  const etapaDoPerfil = visiveis.find(
     (e) => etapasAtivasIds.includes(e.id) && e.chave === chavePerfil,
   )
   const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
@@ -155,7 +145,7 @@ export function OrdenadorInteractiveTimeline({
     <Timeline
       pedido={pedido}
       header={header}
-      nodes={nodes}
+      sections={sections}
       renderNodeActions={renderNodeActions}
       alerts={
         <>

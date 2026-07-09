@@ -39,22 +39,22 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Div. de Material — mesma coluna (trilha única)
-  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'material' },
-  DIV_MAT_CONTABILIDADE_IMH: {
-    grupo: 'Div. de Material',
-    divisao: 'Material',
-    trilha: 'material',
-  },
+  // Esquerda: Confecção → Finanças | Direita: Auditoria → Contabilidade/IMH
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'material',
+    trilha: 'confeccao',
   },
   DIV_MAT_FINANCAS: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'material',
+    trilha: 'confeccao',
+  },
+  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
+  DIV_MAT_CONTABILIDADE_IMH: {
+    grupo: 'Div. de Material',
+    divisao: 'Auditoria',
+    trilha: 'auditoria',
   },
 }
 
@@ -96,6 +96,21 @@ export function usaTrilhaConfeccaoOrdenador(chavePerfil: string | null | undefin
 }
 
 export const DIV_MATERIAL_CHAVES = [...DIVISAO_1_CHAVES, ...DIVISAO_2_CHAVES] as const
+
+/** Ordem visual das colunas na timeline (esquerda → direita). */
+export const TIMELINE_TRILHA_ORDER = ['confeccao', 'auditoria'] as const
+
+export function ordenarDivisoesTimeline<T extends { trilha: string }>(divisoes: T[]): T[] {
+  const ordem = TIMELINE_TRILHA_ORDER as readonly string[]
+  return [...divisoes].sort((a, b) => {
+    const ia = ordem.indexOf(a.trilha)
+    const ib = ordem.indexOf(b.trilha)
+    if (ia < 0 && ib < 0) return 0
+    if (ia < 0) return 1
+    if (ib < 0) return -1
+    return ia - ib
+  })
+}
 
 export function timelineConnectorVisivel(fromChave: string, toChave: string): boolean {
   return (
@@ -171,5 +186,8 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
     ultimaDivisao.etapas.push({ etapa, index })
   })
 
-  return blocos
+  return blocos.map((bloco) => {
+    if (bloco.tipo !== 'grupo') return bloco
+    return { ...bloco, divisoes: ordenarDivisoesTimeline(bloco.divisoes) }
+  })
 }
