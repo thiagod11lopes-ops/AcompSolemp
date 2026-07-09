@@ -1,11 +1,12 @@
-import { memo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import type { PedidoComDetalhes, PedidoPlanilhaEnvioState, WorkflowEtapa } from '@/types'
-import type { TimelineLane, TimelineNodeData, TimelineSection } from './types'
+import type { TimelineEdgeState, TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
 import { TimelineBranchSplit } from './TimelineBranchSplit'
-import { TimelineDirectClinicImhLink } from './TimelineDirectClinicImhLink'
+import { TimelineDirectLinks } from './TimelineDirectLinks'
 import {
+  findAuditoriaNode,
   findContabilidadeImhNode,
   getSectionEntryNodes,
   getSectionExitNodes,
@@ -13,6 +14,7 @@ import {
   resolvePlanilhaBranchStates,
   resolvePlanilhaConnectorState,
 } from './timelineFlowUtils'
+import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
 interface TimelineFlowLayoutProps {
   sections: TimelineSection[]
@@ -93,8 +95,50 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   const clinicSection = sections[0] && isClinicSection(sections[0]) ? sections[0] : null
   const flowSections = clinicSection ? sections.slice(1) : sections
   const clinicNode = clinicSection?.lanes[0]?.nodes[0]
+  const auditoriaNode = findAuditoriaNode(sections)
   const contabilidadeNode = findContabilidadeImhNode(sections)
   const flowRef = useRef<HTMLDivElement>(null)
+
+  const directLinks = useMemo(() => {
+    const links: {
+      id: string
+      fromAnchor: string
+      toAnchor: string
+      state: TimelineEdgeState
+    }[] = []
+
+    if (auditoriaNode) {
+      links.push({
+        id: 'clinic-auditoria',
+        fromAnchor: 'clinic',
+        toAnchor: 'auditoria',
+        state: resolvePlanilhaEdgeState(
+          'SOLICITACAO',
+          'DIV_MAT_AUDITORIA',
+          pedido,
+          etapas,
+          planilhaEnvio,
+        ),
+      })
+    }
+
+    if (contabilidadeNode) {
+      links.push({
+        id: 'clinic-imh',
+        fromAnchor: 'clinic',
+        toAnchor: 'contabilidade-imh',
+        state: resolvePlanilhaEdgeState(
+          'SOLICITACAO',
+          'DIV_MAT_CONTABILIDADE_IMH',
+          pedido,
+          etapas,
+          planilhaEnvio,
+        ),
+      })
+    }
+
+    return links
+  }, [auditoriaNode, contabilidadeNode, pedido, etapas, planilhaEnvio])
 
   if (!clinicSection || !clinicNode) {
     return (
@@ -113,16 +157,9 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   }
 
   return (
-    <div className="timeline-flow timeline-flow--with-direct-imh" ref={flowRef}>
-      {clinicNode && contabilidadeNode && (
-        <TimelineDirectClinicImhLink
-          containerRef={flowRef}
-          clinicNode={clinicNode}
-          contabilidadeNode={contabilidadeNode}
-          pedido={pedido}
-          etapas={etapas}
-          planilhaEnvio={planilhaEnvio}
-        />
+    <div className="timeline-flow timeline-flow--with-direct-links" ref={flowRef}>
+      {directLinks.length > 0 && (
+        <TimelineDirectLinks containerRef={flowRef} links={directLinks} />
       )}
       <div className="timeline-flow-clinic">
         <TimelineNode
