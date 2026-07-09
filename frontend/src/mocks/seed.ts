@@ -31,7 +31,19 @@ import {
 } from '@/utils/pedidoCleanup'
 import { env } from '@/config/env'
 
-const SEED_VERSION = 'v14'
+const SEED_VERSION = 'v15'
+
+const ETAPAS_REMOVIDAS = new Set([
+  'DIV_MAT_ASSINATURA_1',
+  'DIV_MAT_ASSINATURA_2',
+  'DIV_MAT_SDA',
+])
+
+const PERFIS_REMOVIDOS = new Set<UserRole>([
+  'ASSINATURA_1_SOLEMP',
+  'ASSINATURA_2_SOLEMP',
+  'SDA',
+])
 export const USUARIO_CONFECCAO_SOLEMP_ID = 'user-confeccao-solemp'
 
 let appDataCache: AppData | null = null
@@ -100,33 +112,9 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ativo: true,
   },
   {
-    chave: 'DIV_MAT_ASSINATURA_1',
-    nome: 'Assinatura 1 Solemp',
-    ordem: 5,
-    prazoDias: 5,
-    perfilResponsavel: 'ASSINATURA_1_SOLEMP',
-    ativo: true,
-  },
-  {
-    chave: 'DIV_MAT_ASSINATURA_2',
-    nome: 'Assinatura 2 Solemp',
-    ordem: 6,
-    prazoDias: 5,
-    perfilResponsavel: 'ASSINATURA_2_SOLEMP',
-    ativo: true,
-  },
-  {
-    chave: 'DIV_MAT_SDA',
-    nome: 'SDA',
-    ordem: 7,
-    prazoDias: 3,
-    perfilResponsavel: 'SDA',
-    ativo: true,
-  },
-  {
     chave: 'DIV_MAT_FINANCAS',
     nome: 'Finanças Pagamento',
-    ordem: 8,
+    ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
     ativo: true,
@@ -480,6 +468,81 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged }
 }
 
+function migrateSimplifyFluxoFinancas(data: AppData): AppData {
+  for (const etapa of data.workflowEtapas) {
+    if (ETAPAS_REMOVIDAS.has(etapa.chave)) {
+      etapa.ativo = false
+    }
+  }
+
+  const financasDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_FINANCAS')
+  const confeccaoDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
+  for (const etapa of data.workflowEtapas) {
+    if (etapa.chave === 'DIV_MAT_FINANCAS' && financasDef) {
+      etapa.ordem = financasDef.ordem
+      etapa.ativo = true
+    }
+    if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' && confeccaoDef) {
+      etapa.ordem = confeccaoDef.ordem
+    }
+  }
+
+  for (const user of data.usuarios) {
+    if (PERFIS_REMOVIDOS.has(user.perfil)) {
+      user.ativo = false
+    }
+  }
+
+  const financasEtapa = data.workflowEtapas.find(
+    (e) => e.chave === 'DIV_MAT_FINANCAS' && e.ativo,
+  )
+  if (!financasEtapa) return data
+
+  const etapaChaveById = new Map(data.workflowEtapas.map((e) => [e.id, e.chave]))
+
+  for (const pedido of data.pedidos) {
+    if (pedido.concluido) continue
+
+    const ativasIds = pedido.etapasAtivasIds?.length
+      ? pedido.etapasAtivasIds
+      : [pedido.etapaAtualId]
+    const temRemovida = ativasIds.some((id) =>
+      ETAPAS_REMOVIDAS.has(etapaChaveById.get(id) ?? ''),
+    )
+    if (!temRemovida) continue
+
+    for (const historico of pedido.etapasHistorico) {
+      if (historico.dataConclusao) continue
+      const chave = etapaChaveById.get(historico.etapaId) ?? ''
+      if (!ETAPAS_REMOVIDAS.has(chave)) continue
+      historico.dataConclusao = new Date().toISOString()
+      historico.observacao =
+        'Etapa descontinuada — processo encaminhado para Finanças Pagamento.'
+    }
+
+    pedido.etapaAtualId = financasEtapa.id
+    pedido.etapasAtivasIds = [financasEtapa.id]
+
+    const jaTemFinancas = pedido.etapasHistorico.some(
+      (historico) => historico.etapaId === financasEtapa.id && !historico.dataConclusao,
+    )
+    if (!jaTemFinancas) {
+      pedido.etapasHistorico.push({
+        etapaId: financasEtapa.id,
+        etapaNome: financasEtapa.nome,
+        responsavelId: null,
+        responsavelNome: 'Sistema',
+        dataInicio: new Date().toISOString(),
+        dataConclusao: null,
+        observacao: 'Encaminhado automaticamente após simplificação do fluxo.',
+        arquivos: [],
+      })
+    }
+  }
+
+  return data
+}
+
 function migrateRemoveActiveTimelines(data: AppData): AppData {
   const activePedidos = data.pedidos.filter((pedido) => !pedido.concluido)
   if (activePedidos.length === 0) return data
@@ -514,6 +577,14 @@ export function initAppData(): AppData {
         appDataCache = data
         if (changed) persistAppData(data)
         return cloneData(data)
+      }
+      if (parsed._version === 'v14') {
+        const { _version: _, ...raw } = parsed
+        let data = migrateSimplifyFluxoFinancas(raw as AppData)
+        const { data: normalized } = normalizeAppData(data)
+        appDataCache = normalized
+        persistAppData(normalized)
+        return cloneData(normalized)
       }
       if (parsed._version === 'v13') {
         const { _version: _, ...raw } = parsed

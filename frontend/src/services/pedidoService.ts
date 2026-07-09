@@ -183,7 +183,7 @@ export const pedidoService = {
           (h) =>
             ids.includes(h.etapaId) &&
             !h.dataConclusao &&
-            (h.etapaNome.includes('Assinatura') || h.etapaNome.includes('Confecção')),
+            (h.etapaNome.includes('Confecção')),
         )
       })
       .reduce((acc, p) => acc + p.valor, 0)

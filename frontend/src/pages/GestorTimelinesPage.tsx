@@ -41,7 +41,6 @@ type FonteTimeline = 'organizacao' | 'demonstracao'
 const FASE_ORDEM = [
   'Solicitação da Clínica',
   'Div. de Material',
-  'Finanças',
   'Finanças Pagamento',
   'Concluído',
 ] as const

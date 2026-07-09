@@ -16,8 +16,6 @@ import {
 } from '@/utils/timelineFlow'
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
-import { validateNomeAssinante } from '@/utils/format'
-
 function nowIso(): string {
   return new Date().toISOString()
 }
@@ -322,11 +320,7 @@ export function createNotaFiscalForPedido(
 }
 
 function cleanupAoSairEtapa(data: AppData, pedidoId: string, chaveEtapa: string): void {
-  if (
-    chaveEtapa === 'DIV_MAT_CONFECCAO_SOLEMP' ||
-    chaveEtapa === 'DIV_MAT_ASSINATURA_1' ||
-    chaveEtapa === 'DIV_MAT_ASSINATURA_2'
-  ) {
+  if (chaveEtapa === 'DIV_MAT_CONFECCAO_SOLEMP') {
     data.solemp = data.solemp.filter((s) => s.pedidoId !== pedidoId)
   }
 }
@@ -438,9 +432,6 @@ function getEtapaAtivaPorChaves(
 
 const PERFIL_PARA_ETAPA_SOLEMP: Partial<Record<User['perfil'], string>> = {
   CONFECCAO_SOLEMP: 'DIV_MAT_CONFECCAO_SOLEMP',
-  ASSINATURA_1_SOLEMP: 'DIV_MAT_ASSINATURA_1',
-  ASSINATURA_2_SOLEMP: 'DIV_MAT_ASSINATURA_2',
-  ASSINANTE: 'DIV_MAT_ASSINATURA_1',
 }
 
 export interface AssinarSolempOptions {
@@ -461,11 +452,7 @@ export function assinarSolempForPedido(
   const chavePerfil = PERFIL_PARA_ETAPA_SOLEMP[usuario.perfil]
   const etapa = chavePerfil
     ? getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [chavePerfil])
-    : getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [
-        'DIV_MAT_CONFECCAO_SOLEMP',
-        'DIV_MAT_ASSINATURA_1',
-        'DIV_MAT_ASSINATURA_2',
-      ])
+    : getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_CONFECCAO_SOLEMP'])
   if (!etapa) {
     throw new Error('Nenhuma etapa ativa correspondente ao seu perfil neste processo')
   }
@@ -482,12 +469,13 @@ export function assinarSolempForPedido(
 
     data = createSolempForPedido(data, pedidoId, numero, valor)
     const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)!
+    solemp.assinada = true
 
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Assinatura 1 Solemp.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Finanças Pagamento.`,
       etapa.id,
     )
 
@@ -495,7 +483,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
       titulo: `SOLEMP confeccionada — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Assinatura 1 Solemp.`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Finanças Pagamento.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -507,103 +495,7 @@ export function assinarSolempForPedido(
     return data
   }
 
-  if (etapa.chave === 'DIV_MAT_ASSINATURA_1') {
-    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-    if (!solemp) throw new Error('SOLEMP não encontrada. Conclua a Confecção de Solemp primeiro.')
-
-    const numero = options?.numero?.trim()
-    const valor = options?.valor
-    const assinanteNome = options?.assinanteNome?.trim()
-    if (!numero) throw new Error('Informe o número da SOLEMP')
-    const numeroErro = validateSolempNumero(numero)
-    if (numeroErro) throw new Error(numeroErro)
-    if (valor == null || Number.isNaN(valor) || valor <= 0) {
-      throw new Error('Informe o valor da SOLEMP')
-    }
-    const nomeErro = validateNomeAssinante(assinanteNome ?? '')
-    if (nomeErro) throw new Error(nomeErro)
-
-    solemp.numero = numero
-    solemp.valor = valor
-    solemp.assinatura1Nome = assinanteNome
-    solemp.arquivoPDF = `solemp-${numero.replace(/\//g, '-')}.pdf`
-
-    const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Assinatura 1 Solemp registrada — SOLEMP ${solemp.numero} (${valorFmt}), assinada por ${assinanteNome}. Enviado para Assinatura 2 Solemp.`,
-      etapa.id,
-    )
-
-    data.notificacoes.push({
-      id: `notif-${Date.now()}`,
-      tipo: 'ASSINATURA_REALIZADA',
-      titulo: `Assinatura 1 Solemp — ${pedido.numero}`,
-      mensagem: `${usuario.nome} registrou a Assinatura 1 da SOLEMP ${solemp.numero} (assinante: ${assinanteNome}) e enviou para Assinatura 2 Solemp.`,
-      pedidoId,
-      reversaoId: null,
-      perfilDestino: null,
-      etapaChave: etapa.chave,
-      lida: false,
-      data: nowIso(),
-    })
-
-    return data
-  }
-
-  if (etapa.chave === 'DIV_MAT_ASSINATURA_2') {
-    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-    if (!solemp) throw new Error('SOLEMP não encontrada para este pedido')
-
-    const numero = options?.numero?.trim()
-    const valor = options?.valor
-    const assinanteNome = options?.assinanteNome?.trim()
-    if (!numero) throw new Error('Informe o número da SOLEMP')
-    const numeroErro = validateSolempNumero(numero)
-    if (numeroErro) throw new Error(numeroErro)
-    if (valor == null || Number.isNaN(valor) || valor <= 0) {
-      throw new Error('Informe o valor da SOLEMP')
-    }
-    const nomeErro = validateNomeAssinante(assinanteNome ?? '')
-    if (nomeErro) throw new Error(nomeErro)
-
-    solemp.numero = numero
-    solemp.valor = valor
-    solemp.assinatura2Nome = assinanteNome
-    solemp.assinada = true
-    solemp.data = nowIso()
-    solemp.arquivoPDF = `solemp-${numero.replace(/\//g, '-')}.pdf`
-
-    const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Assinatura 2 Solemp registrada — SOLEMP ${solemp.numero} (${valorFmt}), assinada por ${assinanteNome}. Enviado para SDA.`,
-      etapa.id,
-    )
-
-    data.notificacoes.push({
-      id: `notif-${Date.now()}`,
-      tipo: 'ASSINATURA_REALIZADA',
-      titulo: `Assinatura 2 Solemp — ${pedido.numero}`,
-      mensagem: `${usuario.nome} registrou a Assinatura 2 da SOLEMP ${solemp.numero} (assinante: ${assinanteNome}) e enviou para SDA.`,
-      pedidoId,
-      reversaoId: null,
-      perfilDestino: null,
-      etapaChave: etapa.chave,
-      lida: false,
-      data: nowIso(),
-    })
-
-    return data
-  }
-
-  throw new Error('Este processo não está aguardando assinatura da SOLEMP')
+  throw new Error('Este processo não está aguardando confecção da SOLEMP')
 }
 
 export function registrarPagamentoForPedido(

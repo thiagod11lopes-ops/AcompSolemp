@@ -7,12 +7,7 @@ interface SolempEtapaBadgeProps {
 }
 
 export function SolempEtapaBadge({ etapaChave, numero }: SolempEtapaBadgeProps) {
-  if (
-    (etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
-      etapaChave === 'DIV_MAT_ASSINATURA_1' ||
-      etapaChave === 'DIV_MAT_ASSINATURA_2') &&
-    numero
-  ) {
+  if ((etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP') && numero) {
     return (
       <Chip
         label={numero}

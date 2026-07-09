@@ -49,9 +49,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   AUDITORIA: PROCESSO_PERMISSIONS,
   CONTABILIDADE_IMH: PROCESSO_PERMISSIONS,
   CONFECCAO_SOLEMP: PROCESSO_PERMISSIONS,
-  ASSINATURA_1_SOLEMP: PROCESSO_PERMISSIONS,
-  ASSINATURA_2_SOLEMP: PROCESSO_PERMISSIONS,
-  SDA: PROCESSO_PERMISSIONS,
+  ASSINATURA_1_SOLEMP: [],
+  ASSINATURA_2_SOLEMP: [],
+  SDA: [],
   CONSULTA: [],
 }
 
@@ -67,11 +67,8 @@ export function canAccessOrdenadorRoute(role: UserRole): boolean {
   return (
     role === 'ASSINANTE' ||
     role === 'CONFECCAO_SOLEMP' ||
-    role === 'ASSINATURA_1_SOLEMP' ||
-    role === 'ASSINATURA_2_SOLEMP' ||
     role === 'AUDITORIA' ||
-    role === 'CONTABILIDADE_IMH' ||
-    role === 'SDA'
+    role === 'CONTABILIDADE_IMH'
   )
 }
 

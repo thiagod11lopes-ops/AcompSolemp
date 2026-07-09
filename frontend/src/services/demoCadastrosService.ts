@@ -19,9 +19,6 @@ const DEMO_NOMES: Record<string, string> = {
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
-  assinatura1: 'CF João Oliveira',
-  assinatura2: 'CMG Pedro Alves',
-  sda: '1º Ten. Carla Dias',
   financas: 'Ten. Santos',
 }
 

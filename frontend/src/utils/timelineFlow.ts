@@ -19,10 +19,6 @@ export const TIMELINE_ETAPA_META: Record<
     divisao: 'Material',
     trilha: 'confeccao',
   },
-  // Timeline Finanças (separada do Material)
-  DIV_MAT_ASSINATURA_1: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
-  DIV_MAT_ASSINATURA_2: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
-  DIV_MAT_SDA: { grupo: 'Finanças', divisao: 'Finanças', trilha: 'financas' },
   // Card próprio
   DIV_MAT_FINANCAS: {
     grupo: 'Finanças Pagamento',
@@ -51,12 +47,9 @@ export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowE
     .sort((a, b) => a.ordem - b.ordem)
 }
 
-/** Confecção (Material) → Assinaturas/SDA (Finanças) → Pagamento */
+/** Confecção (Material) → Finanças Pagamento */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
-  'DIV_MAT_ASSINATURA_1',
-  'DIV_MAT_ASSINATURA_2',
-  'DIV_MAT_SDA',
   'DIV_MAT_FINANCAS',
 ] as const
 

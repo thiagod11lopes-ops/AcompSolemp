@@ -4,19 +4,13 @@ const ETAPAS_ARQUIVAVEIS = new Set([
   'DIV_MAT_AUDITORIA',
   'DIV_MAT_CONTABILIDADE_IMH',
   'DIV_MAT_CONFECCAO_SOLEMP',
-  'DIV_MAT_ASSINATURA_1',
-  'DIV_MAT_ASSINATURA_2',
-  'DIV_MAT_SDA',
   'DIV_MAT_FINANCAS',
 ])
 
 export const MENSAGENS_ARQUIVAMENTO: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Planilha encaminhada ao IMH. Fluxo da Auditoria encerrado.',
   DIV_MAT_CONTABILIDADE_IMH: 'Planilha arquivada. Fluxo da Contabilidade/IMH encerrado.',
-  DIV_MAT_CONFECCAO_SOLEMP: 'SOLEMP encaminhada para a próxima etapa.',
-  DIV_MAT_ASSINATURA_1: 'Assinatura 1 registrada e documento encaminhado.',
-  DIV_MAT_ASSINATURA_2: 'Assinatura 2 registrada e documento encaminhado.',
-  DIV_MAT_SDA: 'Assinatura confirmada e processo encaminhado ao Financeiro.',
+  DIV_MAT_CONFECCAO_SOLEMP: 'SOLEMP encaminhada para Finanças Pagamento.',
   DIV_MAT_FINANCAS: 'Pagamento registrado. Processo arquivado.',
 }
 

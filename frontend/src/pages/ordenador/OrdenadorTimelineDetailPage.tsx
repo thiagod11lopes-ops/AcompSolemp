@@ -10,8 +10,6 @@ import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
 import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
-import { AssinaturaSolempModal } from '@/components/ordenador/Assinatura1SolempModal'
-import { SdaConfirmacaoModal } from '@/components/ordenador/SdaConfirmacaoModal'
 import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
@@ -39,9 +37,6 @@ export default function OrdenadorTimelineDetailPage() {
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
-  const [assinatura1Open, setAssinatura1Open] = useState(false)
-  const [assinatura2Open, setAssinatura2Open] = useState(false)
-  const [sdaOpen, setSdaOpen] = useState(false)
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
@@ -50,9 +45,6 @@ export default function OrdenadorTimelineDetailPage() {
   const isAuditoria = chavePerfil === 'DIV_MAT_AUDITORIA'
   const isContabilidade = chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
-  const isAssinatura1 = chavePerfil === 'DIV_MAT_ASSINATURA_1'
-  const isAssinatura2 = chavePerfil === 'DIV_MAT_ASSINATURA_2'
-  const isSda = chavePerfil === 'DIV_MAT_SDA'
 
   const solempDefaults = useMemo(() => {
     if (!pedido) {
@@ -118,9 +110,6 @@ export default function OrdenadorTimelineDetailPage() {
     setAuditoriaOpen(false)
     setContabilidadeOpen(false)
     setConfeccaoOpen(false)
-    setAssinatura1Open(false)
-    setAssinatura2Open(false)
-    setSdaOpen(false)
     navigatePortal('/ordenador/arquivados')
   }
 
@@ -134,18 +123,6 @@ export default function OrdenadorTimelineDetailPage() {
     if (isConfeccao) {
       if (!planilhaRecebida) return
       setConfeccaoOpen(true)
-      return
-    }
-    if (isAssinatura1) {
-      setAssinatura1Open(true)
-      return
-    }
-    if (isAssinatura2) {
-      setAssinatura2Open(true)
-      return
-    }
-    if (isSda) {
-      setSdaOpen(true)
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
@@ -199,38 +176,8 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
-  const handleEnviarAssinatura = ({
-    numero,
-    valor,
-    assinanteNome,
-  }: {
-    numero: string
-    valor: number
-    assinanteNome: string
-  }) => {
-    assinar.mutate(
-      {
-        pedidoId: pedido.id,
-        solempNumero: numero,
-        solempValor: valor,
-        assinanteNome,
-      },
-      { onSuccess: concluirComSucesso },
-    )
-  }
-
-  const handleConfirmarSda = () => {
-    assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
-  }
-
   const modalAberto =
-    auditoriaOpen ||
-    planilhaOpen ||
-    contabilidadeOpen ||
-    confeccaoOpen ||
-    assinatura1Open ||
-    assinatura2Open ||
-    sdaOpen
+    auditoriaOpen || planilhaOpen || contabilidadeOpen || confeccaoOpen
 
   return (
     <>
@@ -315,16 +262,6 @@ export default function OrdenadorTimelineDetailPage() {
                   {formatCurrency(pedido.solemp.valor)}
                 </Typography>
               )}
-              {pedido.solemp.assinatura1Nome && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  <strong>Assinatura 1:</strong> {pedido.solemp.assinatura1Nome}
-                </Typography>
-              )}
-              {pedido.solemp.assinatura2Nome && (
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  <strong>Assinatura 2:</strong> {pedido.solemp.assinatura2Nome}
-                </Typography>
-              )}
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Conclua a etapa <strong>{etapaPerfil?.nome ?? perfilLabel}</strong> para avançar o
                 processo.
@@ -373,39 +310,6 @@ export default function OrdenadorTimelineDetailPage() {
         pedidoNumero={pedido.numero}
         defaults={solempDefaults}
         valorSugerido={pedido.valor}
-      />
-
-      <AssinaturaSolempModal
-        open={assinatura1Open}
-        variante="assinatura1"
-        onClose={() => setAssinatura1Open(false)}
-        onEnviar={handleEnviarAssinatura}
-        loading={assinar.isPending}
-        pedidoNumero={pedido.numero}
-        defaults={solempDefaults}
-        valorSugerido={pedido.solemp?.valor ?? pedido.valor}
-        assinanteSugerido={user?.nome ?? ''}
-      />
-
-      <AssinaturaSolempModal
-        open={assinatura2Open}
-        variante="assinatura2"
-        onClose={() => setAssinatura2Open(false)}
-        onEnviar={handleEnviarAssinatura}
-        loading={assinar.isPending}
-        pedidoNumero={pedido.numero}
-        defaults={solempDefaults}
-        valorSugerido={pedido.solemp?.valor ?? pedido.valor}
-        assinanteSugerido={user?.nome ?? ''}
-      />
-
-      <SdaConfirmacaoModal
-        open={sdaOpen}
-        onClose={() => setSdaOpen(false)}
-        onConfirmar={handleConfirmarSda}
-        loading={assinar.isPending}
-        pedidoNumero={pedido.numero}
-        solempNumero={pedido.solemp?.numero ?? 'Não informada'}
       />
     </>
   )

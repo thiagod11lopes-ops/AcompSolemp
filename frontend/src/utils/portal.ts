@@ -82,20 +82,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',
-    descricao: 'Informe o número e o valor da SOLEMP e envie para Assinatura 1 Solemp.',
-  },
-  DIV_MAT_ASSINATURA_1: {
-    label: 'Registrar Assinatura 1 Solemp',
-    descricao:
-      'Informe número, valor e nome do assinante e envie para Assinatura 2 Solemp.',
-  },
-  DIV_MAT_ASSINATURA_2: {
-    label: 'Registrar Assinatura 2 Solemp',
-    descricao: 'Informe número, valor e nome do assinante e envie para SDA.',
-  },
-  DIV_MAT_SDA: {
-    label: 'Assinatura Realizada',
-    descricao: 'Confirme a assinatura da SOLEMP e envie para Finanças Pagamento.',
+    descricao: 'Informe o número e o valor da SOLEMP e envie para Finanças Pagamento.',
   },
 }
 
@@ -104,9 +91,6 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
-  DIV_MAT_ASSINATURA_1: 'Aguardando Assinatura 1 Solemp na timeline Finanças.',
-  DIV_MAT_ASSINATURA_2: 'Aguardando Assinatura 2 Solemp na timeline Finanças.',
-  DIV_MAT_SDA: 'Aguardando SDA na timeline Finanças.',
   DIV_MAT_FINANCAS: 'Aguardando Finanças Pagamento.',
 }
 
