@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import type { TimelineNodeData } from './types'
 import { timelineTheme } from './theme'
-import { nodeNaoIniciada } from './timelineFlowUtils'
+import { nodeNaoIniciada, getTimelineNodeAnchor } from './timelineFlowUtils'
 
 interface TimelineCardProps {
   node: TimelineNodeData
@@ -95,11 +95,18 @@ export const TimelineCard = memo(function TimelineCard({
   )
 
   if (!showRotateRing) {
-    return <div className={shellClass}>{cardBody}</div>
+    return (
+      <div
+        className={shellClass}
+        data-timeline-anchor={getTimelineNodeAnchor(node)}
+      >
+        {cardBody}
+      </div>
+    )
   }
 
   return (
-    <div className={shellClass}>
+    <div className={shellClass} data-timeline-anchor={getTimelineNodeAnchor(node)}>
       <div className="timeline-card-rotate-ring" aria-hidden />
       {cardBody}
     </div>

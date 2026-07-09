@@ -4,6 +4,27 @@ export function isClinicNode(node: TimelineNodeData): boolean {
   return node.etapa.chave === 'SOLICITACAO'
 }
 
+export function isContabilidadeImhNode(node: TimelineNodeData): boolean {
+  return node.etapa.chave === 'DIV_MAT_CONTABILIDADE_IMH'
+}
+
+export function getTimelineNodeAnchor(node: TimelineNodeData): string | undefined {
+  if (isClinicNode(node)) return 'clinic'
+  if (isContabilidadeImhNode(node)) return 'contabilidade-imh'
+  return undefined
+}
+
+export function findContabilidadeImhNode(sections: TimelineSection[]): TimelineNodeData | null {
+  for (const section of sections) {
+    for (const lane of section.lanes) {
+      for (const node of lane.nodes) {
+        if (isContabilidadeImhNode(node)) return node
+      }
+    }
+  }
+  return null
+}
+
 export function isClinicSection(section: TimelineSection): boolean {
   const node = section.lanes[0]?.nodes[0]
   return section.lanes.length === 1 && section.lanes[0].nodes.length === 1 && Boolean(node && isClinicNode(node))

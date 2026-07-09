@@ -27,7 +27,7 @@ export function resolveEtapaNomeExibicao(
 }
 
 /** Grupos da timeline cujo título de seção não deve aparecer (apenas os cards). */
-export const TIMELINE_GRUPOS_TITULO_OCULTO = new Set(['Div. de Material', 'Finanças Pagamento'])
+export const TIMELINE_GRUPOS_TITULO_OCULTO = new Set(['Div. de Material'])
 
 export function tituloGrupoOcultoNaTimeline(grupo: string): boolean {
   return TIMELINE_GRUPOS_TITULO_OCULTO.has(grupo)
@@ -46,17 +46,16 @@ export const TIMELINE_ETAPA_META: Record<
     divisao: 'Material',
     trilha: 'auditoria',
   },
-  // Div. de Material — Confecção de Solemp
+  // Div. de Material — Confecção de Solemp → Finanças Pagamento (mesma trilha)
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
     trilha: 'confeccao',
   },
-  // Card próprio
   DIV_MAT_FINANCAS: {
-    grupo: 'Finanças Pagamento',
-    divisao: 'Finanças Pagamento',
-    trilha: 'pagamento',
+    grupo: 'Div. de Material',
+    divisao: 'Material',
+    trilha: 'confeccao',
   },
 }
 

@@ -1,9 +1,11 @@
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import type { TimelineLane, TimelineNodeData, TimelineSection } from './types'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
 import { TimelineBranchSplit } from './TimelineBranchSplit'
+import { TimelineDirectClinicImhLink } from './TimelineDirectClinicImhLink'
 import {
+  findContabilidadeImhNode,
   getSectionEntryNodes,
   getSectionExitNodes,
   isClinicSection,
@@ -84,6 +86,8 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   const clinicSection = sections[0] && isClinicSection(sections[0]) ? sections[0] : null
   const flowSections = clinicSection ? sections.slice(1) : sections
   const clinicNode = clinicSection?.lanes[0]?.nodes[0]
+  const contabilidadeNode = findContabilidadeImhNode(sections)
+  const flowRef = useRef<HTMLDivElement>(null)
 
   if (!clinicSection || !clinicNode) {
     return (
@@ -102,7 +106,14 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   }
 
   return (
-    <div className="timeline-flow">
+    <div className="timeline-flow timeline-flow--with-direct-imh" ref={flowRef}>
+      {clinicNode && contabilidadeNode && (
+        <TimelineDirectClinicImhLink
+          containerRef={flowRef}
+          clinicNode={clinicNode}
+          contabilidadeNode={contabilidadeNode}
+        />
+      )}
       <div className="timeline-flow-clinic">
         <TimelineNode
           node={clinicNode}

@@ -51,6 +51,7 @@ function getFasePedido(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): stri
   if (pedido.concluido) return 'Concluído'
   const ativas = getEtapasAtivas(pedido, etapas)
   for (const etapa of ativas) {
+    if (etapa.chave === 'DIV_MAT_FINANCAS') return 'Finanças Pagamento'
     const grupo = TIMELINE_ETAPA_META[etapa.chave]?.grupo
     if (grupo) return grupo
   }
