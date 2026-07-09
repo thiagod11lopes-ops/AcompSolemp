@@ -26,6 +26,7 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatusChip } from '@/components/common/StatusChip'
+import { ConcluidoDiagonalOverlay } from '@/components/common/ConcluidoDiagonalOverlay'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useDeleteGestorPedido, useDemoPedidos, usePedidos } from '@/hooks/usePedidos'
 import { useDemoWorkflowEtapas, useWorkflowEtapas } from '@/hooks/useCadastros'
@@ -273,10 +274,15 @@ export default function GestorTimelinesPage() {
                         variant="outlined"
                         sx={{
                           height: '100%',
+                          position: 'relative',
+                          overflow: 'hidden',
                           transition: 'box-shadow 0.2s',
-                          '&:hover': { boxShadow: 4 },
+                          opacity: pedido.concluido ? 0.68 : 1,
+                          filter: pedido.concluido ? 'grayscale(0.12) saturate(0.85)' : 'none',
+                          '&:hover': { boxShadow: pedido.concluido ? 2 : 4 },
                         }}
                       >
+                        {pedido.concluido && <ConcluidoDiagonalOverlay />}
                         <CardActionArea
                           onClick={() => abrirTimeline(pedido.id)}
                           sx={{ height: '100%' }}

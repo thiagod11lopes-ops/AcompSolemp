@@ -10,7 +10,6 @@ import type {
 } from '@/types'
 import { getResponsavelParaEtapa } from '@/utils/workflow'
 import {
-  DIV_MATERIAL_CHAVES,
   getEtapaByChave,
   getProximaChaveNaDivisao,
 } from '@/utils/timelineFlow'
@@ -35,12 +34,12 @@ function completeEtapaById(
 }
 
 function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
-  return DIV_MATERIAL_CHAVES.every((chave) => {
-    const etapa = etapas.find((e) => e.chave === chave)
-    if (!etapa) return false
-    const hist = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
-    return Boolean(hist?.dataConclusao)
-  })
+  const financas = etapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
+  if (!financas) return false
+
+  return pedido.etapasHistorico.some(
+    (h) => h.etapaId === financas.id && Boolean(h.dataConclusao),
+  )
 }
 
 function startNovaEtapa(

@@ -24,10 +24,12 @@ export const TimelineCard = memo(function TimelineCard({
   const isActive = node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review'
   const showRotateRing = isActive && node.status !== 'completed'
   const isPending = nodeNaoIniciada(node)
+  const isCompleted = node.status === 'completed'
 
   const shellClass = [
     activeShellClass(node.status, isActive),
     isPending ? 'timeline-card-shell--pending' : '',
+    isCompleted ? 'timeline-card-shell--completed' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -69,6 +71,12 @@ export const TimelineCard = memo(function TimelineCard({
             pointerEvents: 'none',
           }}
         />
+      )}
+
+      {isCompleted && (
+        <div className="timeline-card-concluido-band" aria-hidden>
+          <span>Concluído</span>
+        </div>
       )}
 
       <h3 className="timeline-card-title">{node.displayName}</h3>

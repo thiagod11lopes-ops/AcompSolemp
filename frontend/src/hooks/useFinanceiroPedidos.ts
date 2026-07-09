@@ -44,9 +44,13 @@ export function useRegistrarPagamento() {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
