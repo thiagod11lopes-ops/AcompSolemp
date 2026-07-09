@@ -9,9 +9,14 @@ import { formatDateTime } from '@/utils/format'
 interface TimelineDrawerProps {
   detail: TimelineDrawerDetail | null
   onClose: () => void
+  actions?: React.ReactNode
 }
 
-export const TimelineDrawer = memo(function TimelineDrawer({ detail, onClose }: TimelineDrawerProps) {
+export const TimelineDrawer = memo(function TimelineDrawer({
+  detail,
+  onClose,
+  actions,
+}: TimelineDrawerProps) {
   const historico = detail?.node.historico
 
   return (
@@ -90,6 +95,16 @@ export const TimelineDrawer = memo(function TimelineDrawer({ detail, onClose }: 
             </header>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+              <Section title="Pedido" icon={FileText}>
+                PED {detail.node.numeroPedido}
+              </Section>
+
+              {actions && (
+                <section style={{ marginBottom: 22 }}>
+                  <div className="timeline-actions-slot">{actions}</div>
+                </section>
+              )}
+
               <Section title="Responsável" icon={User}>
                 {historico?.responsavelNome ?? 'Não atribuído'}
               </Section>
@@ -100,6 +115,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({ detail, onClose }: 
                     <Row label="Início" value={formatDateTime(historico.dataInicio)} />
                     {historico.dataConclusao && (
                       <Row label="Conclusão" value={formatDateTime(historico.dataConclusao)} />
+                    )}
+                    {detail.node.tempoNaEtapa && (
+                      <Row label="Tempo na etapa" value={detail.node.tempoNaEtapa} />
                     )}
                   </>
                 ) : (
@@ -150,7 +168,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({ detail, onClose }: 
               </Section>
 
               <Section title="Auditoria" icon={ShieldCheck}>
-                <Row label="Pedido" value={detail.pedido.numero} />
+                <Row label="Pedido" value={detail.node.numeroPedido} />
                 <Row label="Clínica" value={detail.pedido.clinica.nome} />
                 <Row label="Empresa" value={detail.pedido.empresa.nomeFantasia} />
                 <Row label="Prazo da etapa" value={`${detail.node.etapa.prazoDias} dias`} />

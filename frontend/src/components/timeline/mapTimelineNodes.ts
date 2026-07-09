@@ -102,6 +102,7 @@ export function buildTimelineNode(
     etapa,
     status,
     historico,
+    numeroPedido: pedido.numero,
     responsavel: historico?.responsavelNome ?? null,
     dataInicio: historico?.dataInicio ?? null,
     dataConclusao: historico?.dataConclusao ?? null,
@@ -162,10 +163,6 @@ export function buildSectionedTimeline(
     sections.push({
       id: `section-${bloco.nome}-${index}`,
       title: bloco.nome,
-      subtitle:
-        bloco.nome === 'Div. de Material'
-          ? 'Fluxo duplo em paralelo — Confecção de Solemp e Auditoria ao mesmo tempo.'
-          : undefined,
       lanes: bloco.divisoes.map((divisao) => ({
         id: `${bloco.nome}-${divisao.trilha}`,
         title: divisao.nome,

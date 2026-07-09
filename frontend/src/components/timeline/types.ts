@@ -10,6 +10,7 @@ export interface TimelineNodeData {
   etapa: WorkflowEtapa
   status: TimelineNodeStatus
   historico: PedidoEtapaHistorico | null
+  numeroPedido: string
   responsavel: string | null
   dataInicio: string | null
   dataConclusao: string | null

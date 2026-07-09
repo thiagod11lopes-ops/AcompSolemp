@@ -73,7 +73,6 @@ export const Timeline = memo(function Timeline({
                       key={lane.id}
                       lane={lane}
                       vertical={isMobile || section.lanes.length > 1}
-                      renderNodeActions={renderNodeActions}
                       onOpenDetails={openDrawer}
                     />
                   ))}
@@ -89,14 +88,17 @@ export const Timeline = memo(function Timeline({
                 <LaneRow
                   lane={lane}
                   vertical={isMobile}
-                  renderNodeActions={renderNodeActions}
                   onOpenDetails={openDrawer}
                 />
               </div>
             ))}
         {footer && <div className="timeline-footer">{footer}</div>}
       </div>
-      <TimelineDrawer detail={drawerDetail} onClose={closeDrawer} />
+      <TimelineDrawer
+        detail={drawerDetail}
+        onClose={closeDrawer}
+        actions={drawerDetail ? renderNodeActions?.(drawerDetail.node) : undefined}
+      />
     </div>
   )
 })
@@ -105,14 +107,12 @@ interface LaneRowProps {
   lane: TimelineLane
   vertical: boolean
   onOpenDetails: (node: TimelineNodeData) => void
-  renderNodeActions?: (node: TimelineNodeData) => React.ReactNode
 }
 
 const LaneRow = memo(function LaneRow({
   lane,
   vertical,
   onOpenDetails,
-  renderNodeActions,
 }: LaneRowProps) {
   return (
     <div className="timeline-lane-wrap">
@@ -124,7 +124,6 @@ const LaneRow = memo(function LaneRow({
             vertical={vertical}
             showEdgeAfter={index < lane.nodes.length - 1}
             onOpenDetails={() => onOpenDetails(node)}
-            actions={renderNodeActions?.(node)}
           />
         ))}
       </div>
