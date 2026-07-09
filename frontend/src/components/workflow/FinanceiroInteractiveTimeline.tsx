@@ -1,28 +1,19 @@
-import {
-  Box,
-  Step,
-  StepContent,
-  StepLabel,
-  Stepper,
-  Typography,
-  Chip,
-  Paper,
-  Button,
-  Alert,
-} from '@mui/material'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import PaymentsIcon from '@mui/icons-material/Payments'
+import { useMemo } from 'react'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import {
   FINANCEIRO_ETAPA_ACOES,
   financeiroPagamentoConcluido,
   financeiroPodeRegistrarPagamento,
 } from '@/utils/portal'
-import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
-import { resolveEtapaFromRef } from '@/utils/workflow'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
+import {
+  Timeline,
+  buildLinearTimelineNodes,
+  buildTimelineHeader,
+  type TimelineNodeData,
+} from '@/components/timeline'
+import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
 
 interface FinanceiroInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -39,146 +30,73 @@ export function FinanceiroInteractiveTimeline({
   registrando = false,
   mensagemFluxoEncerrado = null,
 }: FinanceiroInteractiveTimelineProps) {
-  const ordenadas = filtrarEtapasParaTimeline(etapas)
+  const ordenadas = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
+  const nodes = useMemo(() => buildLinearTimelineNodes(pedido, ordenadas), [pedido, ordenadas])
+  const header = useMemo(() => buildTimelineHeader(pedido, nodes), [pedido, nodes])
+
   const pagamentoConcluido = financeiroPagamentoConcluido(pedido, ordenadas)
   const acaoFinancas = FINANCEIRO_ETAPA_ACOES.DIV_MAT_FINANCAS
   const podeRegistrar =
     !pagamentoConcluido && financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
-  const etapasAtivasIds =
-    pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
+
+  const renderNodeActions = (node: TimelineNodeData) => {
+    if (node.etapa.chave !== 'DIV_MAT_FINANCAS') return null
+
+    return (
+      <TimelineActionButton
+        onClick={pagamentoConcluido ? undefined : onPagamento}
+        disabled={pagamentoConcluido || registrando || !onPagamento}
+        variant={pagamentoConcluido ? 'ghost' : 'primary'}
+        style={
+          pagamentoConcluido
+            ? { borderColor: '#22C55E55', color: '#22C55E' }
+            : { background: '#22C55E' }
+        }
+      >
+        {pagamentoConcluido
+          ? (acaoFinancas.labelConcluido ?? 'Concluído')
+          : registrando
+            ? 'Registrando...'
+            : acaoFinancas.label}
+      </TimelineActionButton>
+    )
+  }
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Timeline do Processo
-      </Typography>
-
-      {pagamentoConcluido && mensagemFluxoEncerrado && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {mensagemFluxoEncerrado}
-        </Alert>
-      )}
-
-      {acaoFinancas && podeRegistrar && (
-        <Alert
-          severity="info"
-          icon={<PaymentsIcon />}
-          sx={{ mb: 2 }}
-          action={
-            onPagamento && (
-              <Button
-                color="inherit"
-                size="small"
-                variant="outlined"
-                onClick={onPagamento}
-                disabled={registrando}
-              >
-                {registrando ? 'Registrando...' : acaoFinancas.label}
-              </Button>
-            )
-          }
-        >
-          <strong>Pagamento pendente:</strong> {acaoFinancas.descricao}
-          {pedido.solemp && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              SOLEMP: <strong>{pedido.solemp.numero}</strong>
-            </Typography>
+    <Timeline
+      pedido={pedido}
+      header={header}
+      nodes={nodes}
+      renderNodeActions={renderNodeActions}
+      alerts={
+        <>
+          {pagamentoConcluido && mensagemFluxoEncerrado && (
+            <div className="timeline-alert timeline-alert-success">{mensagemFluxoEncerrado}</div>
           )}
-        </Alert>
-      )}
-
-      <Stepper orientation="vertical" nonLinear activeStep={-1}>
-        {ordenadas.map((etapa) => {
-          const historico = pedido.etapasHistorico.find(
-            (item) =>
-              item.etapaId === etapa.id ||
-              resolveEtapaFromRef(item.etapaId, item.etapaNome, ordenadas)?.id === etapa.id,
-          )
-          const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
-          const atual =
-            etapasAtivasIds.includes(etapa.id) &&
-            !pedido.concluido &&
-            !historico?.dataConclusao
-          const etapaFinancas = etapa.chave === 'DIV_MAT_FINANCAS'
-
-          return (
-            <Step key={etapa.id} completed={concluida} active={atual} expanded>
-              <StepLabel
-                slots={{
-                  stepIcon: () =>
-                    concluida ? (
-                      <CheckCircleIcon color="success" />
-                    ) : (
-                      <RadioButtonUncheckedIcon color={atual ? 'info' : 'disabled'} />
-                    ),
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography sx={{ fontWeight: atual ? 700 : 500 }}>{etapa.nome}</Typography>
-                  <SolempEtapaBadge
-                    etapaChave={etapa.chave}
-                    numero={pedido.solemp?.numero}
-                    notaFiscalNumero={pedido.notaFiscal?.numero}
-                  />
-                  {atual && etapaFinancas && (
-                    <Chip label="Pagamento pendente" size="small" color="info" variant="outlined" />
-                  )}
-                  {concluida && etapaFinancas && pagamentoConcluido && (
-                    <Chip label="Concluída" size="small" color="success" />
-                  )}
-                  {concluida && !etapaFinancas && (
-                    <Chip label="Concluída" size="small" color="success" />
-                  )}
-                </Box>
-              </StepLabel>
-              <StepContent>
-                {historico ? (
-                  <Box sx={{ pb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Início: {formatDateTime(historico.dataInicio)}
-                    </Typography>
-                    {historico.dataConclusao && (
-                      <Typography variant="body2" color="text.secondary">
-                        Conclusão: {formatDateTime(historico.dataConclusao)}
-                      </Typography>
-                    )}
-                    {historico.observacao && (
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {historico.observacao}
-                      </Typography>
-                    )}
-                    {etapaFinancas && (
-                      <Button
-                        variant={pagamentoConcluido ? 'outlined' : 'contained'}
-                        color={pagamentoConcluido ? 'success' : 'success'}
-                        size="small"
-                        sx={{ mt: 2 }}
-                        onClick={pagamentoConcluido ? undefined : onPagamento}
-                        disabled={pagamentoConcluido || registrando || !onPagamento}
-                        startIcon={pagamentoConcluido ? <CheckCircleIcon /> : <PaymentsIcon />}
-                      >
-                        {pagamentoConcluido
-                          ? (acaoFinancas.labelConcluido ?? 'Concluído')
-                          : registrando
-                            ? 'Registrando...'
-                            : acaoFinancas.label}
-                      </Button>
-                    )}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ pb: 2 }}>
-                    Etapa ainda não iniciada
-                  </Typography>
-                )}
-              </StepContent>
-            </Step>
-          )
-        })}
-      </Stepper>
-
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-        Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
-      </Typography>
-    </Paper>
+          {acaoFinancas && podeRegistrar && (
+            <div className="timeline-alert">
+              <strong>Pagamento pendente:</strong> {acaoFinancas.descricao}
+              {pedido.solemp && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.85rem' }}>
+                  SOLEMP: <strong>{pedido.solemp.numero}</strong>
+                </p>
+              )}
+              {onPagamento && (
+                <div style={{ marginTop: 12 }}>
+                  <TimelineActionButton onClick={onPagamento} disabled={registrando}>
+                    {registrando ? 'Registrando...' : acaoFinancas.label}
+                  </TimelineActionButton>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      }
+      footer={
+        <span>
+          Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
+        </span>
+      }
+    />
   )
 }

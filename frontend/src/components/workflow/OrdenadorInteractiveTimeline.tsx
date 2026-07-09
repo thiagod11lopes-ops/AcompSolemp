@@ -1,23 +1,7 @@
 import { useMemo } from 'react'
-import {
-  Box,
-  Step,
-  StepContent,
-  StepLabel,
-  Stepper,
-  Typography,
-  Chip,
-  Paper,
-  Button,
-  Alert,
-} from '@mui/material'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import DrawIcon from '@mui/icons-material/Draw'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
-import { formatDate, formatDateTime } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
-import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 import {
@@ -27,6 +11,13 @@ import {
   usaTrilhaAuditoriaOrdenador,
   usaTrilhaConfeccaoOrdenador,
 } from '@/utils/timelineFlow'
+import {
+  Timeline,
+  buildLinearTimelineNodes,
+  buildTimelineHeader,
+  type TimelineNodeData,
+} from '@/components/timeline'
+import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
 
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -61,304 +52,158 @@ export function OrdenadorInteractiveTimeline({
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
   const trilhaConfeccao = usaTrilhaConfeccaoOrdenador(chavePerfil)
+
   const ordenadas = useMemo(() => {
     const visiveis = filtrarEtapasParaTimeline(etapas)
     if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(visiveis)
     if (trilhaConfeccao) return filtrarEtapasTrilhaConfeccao(visiveis)
     return visiveis
   }, [etapas, trilhaAuditoria, trilhaConfeccao])
-  const etapasAtivasIds =
-    pedido.etapasAtivasIds?.length > 0
-      ? pedido.etapasAtivasIds
-      : [pedido.etapaAtualId]
 
+  const nodes = useMemo(
+    () =>
+      buildLinearTimelineNodes(pedido, ordenadas, chavePerfil, { useProvidedOrder: true }),
+    [pedido, ordenadas, chavePerfil],
+  )
+
+  const header = useMemo(() => buildTimelineHeader(pedido, nodes), [pedido, nodes])
+
+  const etapasAtivasIds =
+    pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
   const etapaDoPerfil = ordenadas.find(
     (e) => etapasAtivasIds.includes(e.id) && e.chave === chavePerfil,
   )
-  const acaoAtual = etapaDoPerfil
-    ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave]
-    : undefined
+  const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
   const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
   const usaFluxoPlanilha = isAuditoriaAtiva || isContabilidadeAtiva || isConfeccaoAtiva
 
+  const renderNodeActions = (node: TimelineNodeData) => {
+    const minhaEtapa = etapaDoPerfil?.id === node.etapa.id
+
+    if (!minhaEtapa || fluxoEncerrado) return null
+
+    if (!usaFluxoPlanilha && onAssinar) {
+      return (
+        <TimelineActionButton onClick={onAssinar} disabled={assinando}>
+          {assinando ? 'Processando...' : acaoAtual?.label ?? 'Concluir etapa'}
+        </TimelineActionButton>
+      )
+    }
+
+    if (isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh) {
+      return (
+        <>
+          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
+            Receber Planilha
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onEncaminharImh}
+            disabled={assinando || !planilhaRecebida}
+          >
+            Encaminhar ao IMH
+          </TimelineActionButton>
+        </>
+      )
+    }
+
+    if (isContabilidadeAtiva && onReceberPlanilhaImh && onAssinar) {
+      return (
+        <>
+          <TimelineActionButton
+            onClick={onReceberPlanilhaImh}
+            disabled={assinando || !planilhaEncaminhadaImh}
+          >
+            Receber Planilha
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaImh}
+          >
+            {acaoAtual?.label ?? 'Concluir Contabilidade/IMH'}
+          </TimelineActionButton>
+        </>
+      )
+    }
+
+    if (isConfeccaoAtiva && onReceberPlanilha && onAssinar) {
+      return (
+        <>
+          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
+            Receber Planilha
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebida}
+          >
+            {acaoAtual?.label ?? 'Confeccionar Solemp'}
+          </TimelineActionButton>
+        </>
+      )
+    }
+
+    return null
+  }
+
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Timeline do Processo
-      </Typography>
-
-      {fluxoEncerrado && mensagemFluxoEncerrado && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {mensagemFluxoEncerrado}
-        </Alert>
-      )}
-
-      {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
-        <Alert
-          severity="warning"
-          icon={<DrawIcon />}
-          sx={{ mb: 2 }}
-          action={
-            !usaFluxoPlanilha && onAssinar ? (
-              <Button
-                color="inherit"
-                size="small"
-                variant="outlined"
-                onClick={onAssinar}
-                disabled={assinando}
-              >
-                {assinando ? 'Processando...' : acaoAtual.label}
-              </Button>
-            ) : undefined
-          }
-        >
-          <strong>Ação necessária:</strong> {acaoAtual.descricao}
-          {isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
-            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={onReceberPlanilha}
-                disabled={assinando}
-              >
-                Receber Planilha
-              </Button>
-              <Button
-                variant="outlined"
-                color="warning"
-                size="small"
-                onClick={onEncaminharImh}
-                disabled={assinando || !planilhaRecebida}
-              >
-                Encaminhar ao IMH
-              </Button>
-              {!planilhaRecebida && (
-                <Typography variant="caption" color="text.secondary">
+    <Timeline
+      pedido={pedido}
+      header={header}
+      nodes={nodes}
+      renderNodeActions={renderNodeActions}
+      alerts={
+        <>
+          {fluxoEncerrado && mensagemFluxoEncerrado && (
+            <div className="timeline-alert timeline-alert-success">{mensagemFluxoEncerrado}</div>
+          )}
+          {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
+            <div className="timeline-alert timeline-alert-warning">
+              <strong>Ação necessária:</strong> {acaoAtual.descricao}
+              {isAuditoriaAtiva && !planilhaRecebida && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Abra a planilha antes de encaminhar ao IMH.
-                </Typography>
+                </p>
               )}
-            </Box>
-          )}
-          {isContabilidadeAtiva && onReceberPlanilhaImh && onAssinar && (
-            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={onReceberPlanilhaImh}
-                disabled={assinando || !planilhaEncaminhadaImh}
-              >
-                Receber Planilha
-              </Button>
-              <Button
-                variant="outlined"
-                color="warning"
-                size="small"
-                onClick={onAssinar}
-                disabled={assinando || !planilhaRecebidaImh}
-              >
-                {acaoAtual.label}
-              </Button>
-              {!planilhaEncaminhadaImh && (
-                <Typography variant="caption" color="text.secondary">
+              {isContabilidadeAtiva && !planilhaEncaminhadaImh && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Aguardando encaminhamento pela Auditoria.
-                </Typography>
+                </p>
               )}
-              {planilhaEncaminhadaImh && !planilhaRecebidaImh && (
-                <Typography variant="caption" color="text.secondary">
+              {isContabilidadeAtiva && planilhaEncaminhadaImh && !planilhaRecebidaImh && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Abra a planilha antes de concluir a Contabilidade/IMH.
-                </Typography>
+                </p>
               )}
-            </Box>
-          )}
-          {isConfeccaoAtiva && onReceberPlanilha && onAssinar && (
-            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={onReceberPlanilha}
-                disabled={assinando}
-              >
-                Receber Planilha
-              </Button>
-              <Button
-                variant="outlined"
-                color="warning"
-                size="small"
-                onClick={onAssinar}
-                disabled={assinando || !planilhaRecebida}
-              >
-                {acaoAtual.label}
-              </Button>
-              {!planilhaRecebida && (
-                <Typography variant="caption" color="text.secondary">
+              {isConfeccaoAtiva && !planilhaRecebida && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
-                </Typography>
+                </p>
               )}
-            </Box>
+              {pedido.solemp && !trilhaAuditoria && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.85rem' }}>
+                  SOLEMP: <strong>{pedido.solemp.numero}</strong>
+                </p>
+              )}
+              {!usaFluxoPlanilha && onAssinar && (
+                <div style={{ marginTop: 12 }}>
+                  <TimelineActionButton onClick={onAssinar} disabled={assinando}>
+                    {assinando ? 'Processando...' : acaoAtual.label}
+                  </TimelineActionButton>
+                </div>
+              )}
+            </div>
           )}
-          {pedido.solemp && !trilhaAuditoria && (
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              SOLEMP: <strong>{pedido.solemp.numero}</strong>
-            </Typography>
-          )}
-        </Alert>
-      )}
-
-      <Stepper orientation="vertical" nonLinear activeStep={-1}>
-        {ordenadas.map((etapa) => {
-          const historico = pedido.etapasHistorico.find((h) => h.etapaId === etapa.id)
-          const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
-          const atual =
-            etapasAtivasIds.includes(etapa.id) &&
-            !pedido.concluido &&
-            !historico?.dataConclusao
-          const minhaEtapa = etapaDoPerfil?.id === etapa.id
-
-          return (
-            <Step key={etapa.id} completed={concluida} active={atual} expanded>
-              <StepLabel
-                slots={{
-                  stepIcon: () =>
-                    concluida ? (
-                      <CheckCircleIcon color="success" />
-                    ) : (
-                      <RadioButtonUncheckedIcon color={atual ? 'warning' : 'disabled'} />
-                    ),
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  <Typography sx={{ fontWeight: atual ? 700 : 500 }}>{etapa.nome}</Typography>
-                  <SolempEtapaBadge
-                    etapaChave={etapa.chave}
-                    numero={pedido.solemp?.numero}
-                    notaFiscalNumero={pedido.notaFiscal?.numero}
-                  />
-                  {atual && (
-                    <Chip
-                      label={minhaEtapa ? 'Sua etapa' : 'Etapa ativa'}
-                      size="small"
-                      color="warning"
-                      variant="outlined"
-                    />
-                  )}
-                  {concluida && <Chip label="Concluída" size="small" color="success" />}
-                </Box>
-              </StepLabel>
-              <StepContent>
-                {historico ? (
-                  <Box sx={{ pb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Início: {formatDateTime(historico.dataInicio)}
-                    </Typography>
-                    {historico.dataConclusao && (
-                      <Typography variant="body2" color="text.secondary">
-                        Conclusão: {formatDateTime(historico.dataConclusao)}
-                      </Typography>
-                    )}
-                    {historico.observacao && (
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {historico.observacao}
-                      </Typography>
-                    )}
-                    {minhaEtapa && !usaFluxoPlanilha && onAssinar && (
-                      <Button
-                        variant="contained"
-                        color="warning"
-                        size="small"
-                        sx={{ mt: 2 }}
-                        onClick={onAssinar}
-                        disabled={assinando}
-                        startIcon={<DrawIcon />}
-                      >
-                        {assinando ? 'Processando...' : acaoAtual?.label ?? 'Concluir etapa'}
-                      </Button>
-                    )}
-                    {minhaEtapa && isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
-                      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="small"
-                          onClick={onReceberPlanilha}
-                          disabled={assinando}
-                        >
-                          Receber Planilha
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="warning"
-                          size="small"
-                          onClick={onEncaminharImh}
-                          disabled={assinando || !planilhaRecebida}
-                        >
-                          Encaminhar ao IMH
-                        </Button>
-                      </Box>
-                    )}
-                    {minhaEtapa && isContabilidadeAtiva && onReceberPlanilhaImh && onAssinar && (
-                      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="small"
-                          onClick={onReceberPlanilhaImh}
-                          disabled={assinando || !planilhaEncaminhadaImh}
-                        >
-                          Receber Planilha
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="warning"
-                          size="small"
-                          onClick={onAssinar}
-                          disabled={assinando || !planilhaRecebidaImh}
-                        >
-                          {acaoAtual?.label ?? 'Concluir Contabilidade/IMH'}
-                        </Button>
-                      </Box>
-                    )}
-                    {minhaEtapa && isConfeccaoAtiva && onReceberPlanilha && onAssinar && (
-                      <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          size="small"
-                          onClick={onReceberPlanilha}
-                          disabled={assinando}
-                        >
-                          Receber Planilha
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="warning"
-                          size="small"
-                          onClick={onAssinar}
-                          disabled={assinando || !planilhaRecebida}
-                        >
-                          {acaoAtual?.label ?? 'Confeccionar Solemp'}
-                        </Button>
-                      </Box>
-                    )}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ pb: 2 }}>
-                    Etapa ainda não iniciada
-                  </Typography>
-                )}
-              </StepContent>
-            </Step>
-          )
-        })}
-      </Stepper>
-
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-        Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
-      </Typography>
-    </Paper>
+        </>
+      }
+      footer={
+        <span>
+          Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
+        </span>
+      }
+    />
   )
 }

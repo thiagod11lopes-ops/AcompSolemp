@@ -1,32 +1,16 @@
-import {
-  Box,
-  Grid,
-  Step,
-  StepContent,
-  StepLabel,
-  Stepper,
-  Typography,
-  Chip,
-  Paper,
-  Button,
-  Alert,
-} from '@mui/material'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
-import TouchAppIcon from '@mui/icons-material/TouchApp'
-import UndoIcon from '@mui/icons-material/Undo'
+import { useMemo } from 'react'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
-import { formatDate, formatDateTime } from '@/utils/format'
-import { calcularDiasNaEtapa, getPrazoStatusColor } from '@/utils/workflow'
+import { formatDate } from '@/utils/format'
+import { clinicaPodeAvancar, CLINICA_ETAPA_ACOES, ETAPAS_AGUARDANDO_SETOR } from '@/utils/portal'
+import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import {
-  CLINICA_ETAPA_ACOES,
-  ETAPAS_AGUARDANDO_SETOR,
-  clinicaPodeAvancar,
-} from '@/utils/portal'
-import { buildTimelineBlocos, filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
-import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
-import { SolempEtapaBadge } from '@/components/workflow/SolempEtapaBadge'
+  Timeline,
+  buildSectionedTimeline,
+  buildTimelineHeader,
+  flattenSections,
+  type TimelineNodeData,
+} from '@/components/timeline'
+import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
 
 interface ClinicaInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -36,7 +20,6 @@ interface ClinicaInteractiveTimelineProps {
   podeReverter?: boolean
   avancando?: boolean
   revertendo?: boolean
-  /** Clínica só visualiza após envio para Div. de Material */
   somenteLeitura?: boolean
 }
 
@@ -52,258 +35,91 @@ export function ClinicaInteractiveTimeline({
 }: ClinicaInteractiveTimelineProps) {
   const etapasVisiveis = filtrarEtapasParaTimeline(etapas)
   const etapasAtivasIds =
-    pedido.etapasAtivasIds?.length > 0
-      ? pedido.etapasAtivasIds
-      : [pedido.etapaAtualId]
+    pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
   const etapasAtivas = etapasVisiveis.filter((e) => etapasAtivasIds.includes(e.id))
   const podeEditar = !somenteLeitura && Boolean(onAvancar)
-  const blocos = buildTimelineBlocos(etapasVisiveis)
 
-  const renderEtapa = (etapa: WorkflowEtapa, indent = false) => {
-    const historico =
-      pedido.etapasHistorico.find(
-        (h) => h.etapaId === etapa.id || h.etapaNome === etapa.nome,
-      ) ?? null
-    const concluida = Boolean(historico?.dataConclusao) || pedido.concluido
-    const atual = etapasAtivasIds.includes(etapa.id) && !pedido.concluido && !historico?.dataConclusao
-    const podeClicar = podeEditar && atual && clinicaPodeAvancar(etapa.chave)
+  const sections = useMemo(
+    () => buildSectionedTimeline(pedido, etapas),
+    [pedido, etapas],
+  )
+  const allNodes = useMemo(() => flattenSections(sections), [sections])
+  const header = useMemo(
+    () =>
+      buildTimelineHeader(pedido, allNodes, {
+        subtitle: somenteLeitura
+          ? 'Acompanhe todas as etapas do processo — Div. de Material e Finanças Pagamento — até a conclusão.'
+          : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.',
+      }),
+    [pedido, allNodes, somenteLeitura],
+  )
 
-    let dias = 0
-    let prazoStatus: 'success' | 'warning' | 'error' | 'default' = 'default'
-
-    if (historico) {
-      if (historico.dataConclusao) {
-        const fim = parseISO(historico.dataConclusao)
-        const inicio = parseISO(historico.dataInicio)
-        if (isValid(fim) && isValid(inicio)) {
-          dias = differenceInCalendarDays(fim, inicio)
-        }
-      } else if (atual) {
-        dias = calcularDiasNaEtapa(pedido)
-        prazoStatus = getPrazoStatusColor(pedido.prazoStatus)
-      }
-    }
-
-    const acaoEtapa = CLINICA_ETAPA_ACOES[etapa.chave]
+  const renderNodeActions = (node: TimelineNodeData) => {
+    const historico = node.historico
+    const atual =
+      etapasAtivasIds.includes(node.etapa.id) &&
+      !pedido.concluido &&
+      !historico?.dataConclusao
+    const podeClicar = podeEditar && atual && clinicaPodeAvancar(node.etapa.chave)
+    const acaoEtapa = CLINICA_ETAPA_ACOES[node.etapa.chave]
 
     return (
-      <Step
-        key={etapa.id}
-        completed={concluida}
-        active={atual}
-        expanded
-        sx={indent ? { ml: 1 } : undefined}
-      >
-        <StepLabel
-          slots={{
-            stepIcon: () =>
-              concluida ? (
-                <CheckCircleIcon color="success" />
-              ) : (
-                <RadioButtonUncheckedIcon color={atual ? 'primary' : 'disabled'} />
-              ),
-          }}
-          onClick={
-            podeClicar && onAvancar ? () => onAvancar() : undefined
-          }
-          sx={
-            podeClicar && onAvancar
-              ? { cursor: 'pointer', '&:hover .MuiTypography-root': { color: 'primary.main' } }
-              : undefined
-          }
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography sx={{ fontWeight: atual ? 700 : 500 }}>{etapa.nome}</Typography>
-            <SolempEtapaBadge
-              etapaChave={etapa.chave}
-              numero={pedido.solemp?.numero}
-              notaFiscalNumero={pedido.notaFiscal?.numero}
-            />
-            {atual && (
-              <Chip
-                label={somenteLeitura ? 'Etapa atual' : 'Você está aqui'}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
-            )}
-            {concluida && <Chip label="Concluída" size="small" color="success" />}
-          </Box>
-        </StepLabel>
-        <StepContent>
-          {historico ? (
-            <Box sx={{ pb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                Responsável: {historico.responsavelNome ?? 'Não atribuído'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Início: {formatDateTime(historico.dataInicio)}
-              </Typography>
-              {historico.dataConclusao && (
-                <Typography variant="body2" color="text.secondary">
-                  Conclusão: {formatDateTime(historico.dataConclusao)}
-                </Typography>
-              )}
-              {etapa.prazoDias > 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  Dias na etapa: {dias} | Prazo: {etapa.prazoDias} dias
-                </Typography>
-              )}
-              {atual && etapa.prazoDias > 0 && (
-                <Chip
-                  label={
-                    pedido.diasRestantes >= 0
-                      ? `${pedido.diasRestantes} dias restantes`
-                      : `${Math.abs(pedido.diasRestantes)} dias de atraso`
-                  }
-                  color={prazoStatus === 'default' ? 'default' : prazoStatus}
-                  size="small"
-                  sx={{ mt: 1 }}
-                />
-              )}
-              {historico.observacao && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  {historico.observacao}
-                </Typography>
-              )}
-
-              {podeClicar && acaoEtapa && onAvancar && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  sx={{ mt: 2 }}
-                  onClick={onAvancar}
-                  disabled={avancando}
-                  startIcon={<TouchAppIcon />}
-                >
-                  {avancando ? 'Registrando...' : acaoEtapa.label}
-                </Button>
-              )}
-
-              {atual && ETAPAS_AGUARDANDO_SETOR[etapa.chave] && (
-                <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
-                  {ETAPAS_AGUARDANDO_SETOR[etapa.chave]}
-                </Typography>
-              )}
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ pb: 2 }}>
-              Etapa ainda não iniciada
-            </Typography>
-          )}
-        </StepContent>
-      </Step>
+      <>
+        {podeClicar && acaoEtapa && onAvancar && (
+          <TimelineActionButton onClick={onAvancar} disabled={avancando}>
+            {avancando ? 'Registrando...' : acaoEtapa.label}
+          </TimelineActionButton>
+        )}
+        {atual && ETAPAS_AGUARDANDO_SETOR[node.etapa.chave] && (
+          <span style={{ fontSize: '0.75rem', color: '#F59E0B' }}>
+            {ETAPAS_AGUARDANDO_SETOR[node.etapa.chave]}
+          </span>
+        )}
+      </>
     )
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Timeline do Processo
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {somenteLeitura
-          ? 'Acompanhe todas as etapas do processo — Div. de Material e Finanças Pagamento — até a conclusão.'
-          : 'Acompanhe cada etapa e clique para registrar o avanço quando sua clínica concluir a ação.'}
-      </Typography>
-
-      {etapasAtivas.length > 0 && !pedido.concluido && (
-        <Alert
-          severity="info"
-          icon={somenteLeitura ? <HourglassEmptyIcon /> : <TouchAppIcon />}
-          sx={{ mb: 2 }}
-        >
-          <strong>
-            {etapasAtivas.length > 1 ? 'Etapas ativas em paralelo:' : 'Etapa atual:'}
-          </strong>{' '}
-          {etapasAtivas.map((e) => e.nome).join(' · ')}
-        </Alert>
-      )}
-
-      {pedido.concluido && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          Processo concluído — todas as etapas foram finalizadas.
-        </Alert>
-      )}
-
-      {blocos.map((bloco) => {
-        if (bloco.tipo === 'etapa') {
-          return (
-            <Stepper key={bloco.etapa.id} orientation="vertical" nonLinear activeStep={-1}>
-              {renderEtapa(bloco.etapa)}
-            </Stepper>
-          )
-        }
-
-        return (
-          <Box key={bloco.nome} sx={{ mb: 1 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 800,
-                color: 'primary.main',
-                mt: 1,
-                mb: 1.5,
-                px: 1,
-              }}
-            >
-              {bloco.nome}
-            </Typography>
-            {bloco.nome === 'Div. de Material' && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, mb: 2 }}>
-                Fluxo duplo em paralelo — Confecção de Solemp e Auditoria ao mesmo tempo.
-              </Typography>
-            )}
-            <Grid container spacing={2}>
-              {bloco.divisoes.map((divisao) => (
-                <Grid
-                  key={`${bloco.nome}-${divisao.trilha}`}
-                  size={{ xs: 12, md: bloco.divisoes.length > 1 ? 6 : 12 }}
-                >
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      border: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'action.hover',
-                      height: '100%',
-                    }}
-                  >
-                    <Typography
-                      variant="subtitle2"
-                      sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}
-                    >
-                      {divisao.nome}
-                    </Typography>
-                    <Stepper orientation="vertical" nonLinear activeStep={-1}>
-                      {divisao.etapas.map(({ etapa }) => renderEtapa(etapa, true))}
-                    </Stepper>
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        )
-      })}
-
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-        Timeline iniciada em {formatDate(pedido.dataSolicitacao)} · Pedido {pedido.numero}
-      </Typography>
-
-      {!somenteLeitura && podeReverter && onReverter && !pedido.concluido && (
-        <Button
-          variant="outlined"
-          color="warning"
-          size="small"
-          startIcon={<UndoIcon />}
-          onClick={onReverter}
-          disabled={revertendo || avancando}
-          sx={{ mt: 2 }}
-        >
-          {revertendo ? 'Revertendo...' : 'Voltar uma etapa'}
-        </Button>
-      )}
-    </Paper>
+    <Timeline
+      pedido={pedido}
+      header={header}
+      sections={sections}
+      renderNodeActions={renderNodeActions}
+      alerts={
+        <>
+          {etapasAtivas.length > 0 && !pedido.concluido && (
+            <div className="timeline-alert">
+              <strong>
+                {etapasAtivas.length > 1 ? 'Etapas ativas em paralelo:' : 'Etapa atual:'}
+              </strong>{' '}
+              {etapasAtivas.map((e) => e.nome).join(' · ')}
+            </div>
+          )}
+          {pedido.concluido && (
+            <div className="timeline-alert timeline-alert-success">
+              Processo concluído — todas as etapas foram finalizadas.
+            </div>
+          )}
+        </>
+      }
+      footer={
+        <>
+          <span>
+            Timeline iniciada em {formatDate(pedido.dataSolicitacao)} · Pedido {pedido.numero}
+          </span>
+          {!somenteLeitura && podeReverter && onReverter && !pedido.concluido && (
+            <div style={{ marginTop: 12 }}>
+              <TimelineActionButton
+                variant="warning"
+                onClick={onReverter}
+                disabled={revertendo || avancando}
+              >
+                {revertendo ? 'Revertendo...' : 'Voltar uma etapa'}
+              </TimelineActionButton>
+            </div>
+          )}
+        </>
+      }
+    />
   )
 }
