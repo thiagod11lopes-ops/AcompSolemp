@@ -43,7 +43,6 @@ export const TimelineCard = memo(function TimelineCard({
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="timeline-card-inner timeline-card-inner--compact"
       style={{
-        padding: '18px 20px',
         background: `linear-gradient(145deg, ${timelineTheme.card} 0%, rgba(17,24,39,0.92) 100%)`,
         border: showRotateRing
           ? '1px solid rgba(255,255,255,0.1)'
@@ -72,42 +71,21 @@ export const TimelineCard = memo(function TimelineCard({
         />
       )}
 
-      <h3
-        style={{
-          margin: 0,
-          fontSize: '0.95rem',
-          fontWeight: 700,
-          lineHeight: 1.3,
-          letterSpacing: '-0.01em',
-        }}
-      >
-        {node.displayName}
-      </h3>
+      <h3 className="timeline-card-title">{node.displayName}</h3>
 
-      <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: timelineTheme.blue, fontWeight: 600 }}>
+      <p className="timeline-card-pedido" style={{ color: timelineTheme.blue }}>
         PED {node.numeroPedido}
       </p>
 
       <motion.button
         type="button"
+        className="timeline-card-details-btn"
         whileHover={{ x: 2 }}
         onClick={(e) => {
           e.stopPropagation()
           onOpenDetails()
         }}
-        style={{
-          marginTop: 14,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          color: timelineTheme.blue,
-          fontSize: '0.78rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
+        style={{ color: timelineTheme.blue }}
         title="Ver detalhes da etapa"
       >
         Ver detalhes
@@ -117,11 +95,7 @@ export const TimelineCard = memo(function TimelineCard({
   )
 
   if (!showRotateRing) {
-    return (
-      <div className={shellClass} style={{ width: '100%', minWidth: 200, maxWidth: 260 }}>
-        {cardBody}
-      </div>
-    )
+    return <div className={shellClass}>{cardBody}</div>
   }
 
   return (
