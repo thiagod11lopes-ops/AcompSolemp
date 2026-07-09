@@ -277,15 +277,19 @@ export default function GestorTimelinesPage() {
                           position: 'relative',
                           overflow: 'hidden',
                           transition: 'box-shadow 0.2s',
-                          opacity: pedido.concluido ? 0.68 : 1,
-                          filter: pedido.concluido ? 'grayscale(0.12) saturate(0.85)' : 'none',
                           '&:hover': { boxShadow: pedido.concluido ? 2 : 4 },
                         }}
                       >
                         {pedido.concluido && <ConcluidoDiagonalOverlay />}
                         <CardActionArea
                           onClick={() => abrirTimeline(pedido.id)}
-                          sx={{ height: '100%' }}
+                          sx={{
+                            height: '100%',
+                            opacity: pedido.concluido ? 0.68 : 1,
+                            filter: pedido.concluido
+                              ? 'grayscale(0.12) saturate(0.85)'
+                              : 'none',
+                          }}
                         >
                           <CardContent>
                             <Box
