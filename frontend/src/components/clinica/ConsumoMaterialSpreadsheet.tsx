@@ -19,7 +19,6 @@ import {
   TextField,
   Typography,
   alpha,
-  type Theme,
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
@@ -68,33 +67,29 @@ import {
   mergeRowsForColumnMeasure,
   resolveColumnWidths,
 } from '@/utils/spreadsheetColumnWidth'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
+import './spreadsheet-excel.css'
 
-const DEFAULT_ROW_MIN_HEIGHT = 40
+const DEFAULT_ROW_MIN_HEIGHT = 21
 
 const GROUP_LABELS: Record<string, string> = {
-  paciente: 'Paciente',
+  paciente: 'Dados do paciente',
   clinico: 'Dados clínicos',
   financeiro: 'Financeiro',
 }
 
-const GROUP_COLORS: Record<string, string> = {
-  paciente: '#0B3D91',
-  clinico: '#1565C0',
-  financeiro: '#2E7D32',
-}
-
-const FINALIZED_CHECKBOX_OPACITY = 0.42
+const FINALIZED_CHECKBOX_OPACITY = 0.55
 
 const finalizedCheckboxSx = {
-  color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+  color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
   '&.Mui-checked': {
-    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
   },
   '&.Mui-disabled': {
-    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
   },
   '&.Mui-disabled.Mui-checked': {
-    color: (theme: Theme) => alpha(theme.palette.success.main, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
   },
 } as const
 
@@ -258,27 +253,6 @@ function ConsumoMaterialSpreadsheetInner({
 
   const showPlanilhaActions = lancamentosPreenchidos !== undefined && onExcluirTudo && onAdicionarPlanilha
 
-  const headerActionSx = {
-    fontWeight: 600,
-    color: 'white',
-    borderColor: alpha('#fff', 0.4),
-    '&:hover': {
-      borderColor: 'white',
-      bgcolor: alpha('#fff', 0.1),
-    },
-  } as const
-
-  const headerContainedSx = {
-    fontWeight: 700,
-    bgcolor: alpha('#fff', 0.2),
-    color: 'white',
-    boxShadow: 'none',
-    '&:hover': {
-      bgcolor: alpha('#fff', 0.3),
-      boxShadow: 'none',
-    },
-  } as const
-
   const handleExcluirConfirm = async () => {
     if (!onExcluirTudo) return
     await onExcluirTudo()
@@ -404,8 +378,13 @@ function ConsumoMaterialSpreadsheetInner({
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
             <Typography
               component="span"
-              variant="caption"
-              sx={{ fontWeight: 800, lineHeight: 1, color: 'white', letterSpacing: 0.6 }}
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1,
+                fontSize: '10px',
+                color: EXCEL_SHEET.text,
+                letterSpacing: 0.4,
+              }}
             >
               {headerLabel}
             </Typography>
@@ -425,7 +404,7 @@ function ConsumoMaterialSpreadsheetInner({
                 }
                 onSelectionChange(next)
               }}
-              sx={{ color: 'white', p: 0, '&.Mui-checked': { color: 'white' } }}
+              sx={{ p: 0 }}
             />
           </Box>
         )
@@ -490,51 +469,39 @@ function ConsumoMaterialSpreadsheetInner({
           if (col.key === 'valor') {
             const num = row.original.valorNumerico
             if (!isLinhaPreenchida(row.original) && !num) {
-              return (
-                <Box
-                  sx={{
-                    minHeight: 20,
-                    borderBottom: '1px dashed',
-                    borderColor: 'divider',
-                  }}
-                />
-              )
+              return <span>&nbsp;</span>
             }
             return (
               <Typography
                 component="span"
-                variant="body2"
+                className="excel-cell-number"
                 sx={{
-                  fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
-                  fontWeight: 600,
-                  color: num > 0 ? 'success.dark' : 'text.secondary',
+                  fontFamily: EXCEL_SHEET.fontFamily,
+                  fontSize: EXCEL_SHEET.fontSize,
+                  fontWeight: 400,
+                  color: EXCEL_SHEET.text,
                   ...cellContentSx,
                 }}
               >
-                {num > 0 ? formatValorBrasileiro(num) : toSingleLine(value) || '—'}
+                {num > 0 ? formatValorBrasileiro(num) : toSingleLine(value) || ''}
               </Typography>
             )
           }
           if (!isLinhaPreenchida(row.original) && !value) {
-            return (
-              <Box
-                sx={{
-                  minHeight: 20,
-                  borderBottom: '1px dashed',
-                  borderColor: 'divider',
-                }}
-              />
-            )
+            return <span>&nbsp;</span>
           }
           return (
             <Typography
               component="span"
-              variant="body2"
               sx={{
+                fontFamily: EXCEL_SHEET.fontFamily,
+                fontSize: EXCEL_SHEET.fontSize,
+                fontWeight: 400,
+                color: EXCEL_SHEET.text,
                 ...cellContentSx,
               }}
             >
-              {toSingleLine(value) || '—'}
+              {toSingleLine(value) || ''}
             </Typography>
           )
         },
@@ -694,22 +661,15 @@ function ConsumoMaterialSpreadsheetInner({
     <>
     <Paper
       elevation={0}
-      sx={(theme) => ({
-        border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
-        borderRadius: 3,
+      className="excel-sheet"
+      sx={{
+        border: EXCEL_SHEET.border,
+        borderRadius: 0,
         overflow: 'hidden',
-        bgcolor: 'background.paper',
-        boxShadow: '0 8px 32px rgba(11, 61, 145, 0.08)',
-      })}
+        bgcolor: EXCEL_SHEET.sheetBg,
+      }}
     >
-      <Box
-        sx={(theme) => ({
-          px: 2,
-          py: 1.25,
-          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 55%, ${theme.palette.primary.light} 100%)`,
-          color: 'white',
-        })}
-      >
+      <Box className="excel-sheet-toolbar" sx={{ px: 2, py: 1.25 }}>
         <Box
           sx={{
             display: 'flex',
@@ -720,30 +680,33 @@ function ConsumoMaterialSpreadsheetInner({
           }}
         >
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: EXCEL_SHEET.text }}>
               Consumo Material Consignado
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
               <Chip
                 label={fileName}
                 size="small"
+                variant="outlined"
                 sx={{
-                  bgcolor: alpha('#fff', 0.15),
-                  color: 'white',
                   fontWeight: 600,
                   maxWidth: 280,
+                  borderColor: EXCEL_SHEET.borderColor,
+                  bgcolor: '#fff',
                 }}
               />
               <Chip
                 label={`${linhasPreenchidas} lançamentos`}
                 size="small"
-                sx={{ bgcolor: alpha('#fff', 0.12), color: 'white' }}
+                variant="outlined"
+                sx={{ borderColor: EXCEL_SHEET.borderColor, bgcolor: '#fff' }}
               />
               {mesReferencia && (
                 <Chip
                   label={mesReferencia}
                   size="small"
-                  sx={{ bgcolor: alpha('#fff', 0.1), color: 'white' }}
+                  variant="outlined"
+                  sx={{ borderColor: EXCEL_SHEET.borderColor, bgcolor: '#fff' }}
                 />
               )}
               {lancamentosPreenchidos !== undefined && (
@@ -764,7 +727,6 @@ function ConsumoMaterialSpreadsheetInner({
                         startIcon={<DeleteSweepIcon />}
                         onClick={() => setExcluirOpen(true)}
                         disabled={isExcluindo || isAdicionando || isEnviando}
-                        sx={headerActionSx}
                       >
                         Excluir tudo
                       </Button>
@@ -774,7 +736,6 @@ function ConsumoMaterialSpreadsheetInner({
                         startIcon={<PostAddIcon />}
                         onClick={openAdicionarModal}
                         disabled={isExcluindo || isAdicionando || isEnviando}
-                        sx={headerContainedSx}
                       >
                         Adicionar planilha
                       </Button>
@@ -785,7 +746,6 @@ function ConsumoMaterialSpreadsheetInner({
                           startIcon={<RefreshIcon />}
                           onClick={onLimparRascunho}
                           disabled={isExcluindo || isAdicionando || isEnviando}
-                          sx={headerActionSx}
                         >
                           Limpar rascunho
                         </Button>
@@ -797,7 +757,6 @@ function ConsumoMaterialSpreadsheetInner({
                           startIcon={<SendIcon />}
                           onClick={onEnviarImh}
                           disabled={isEnviando || enviavelAuditoriaCount === 0}
-                          sx={headerContainedSx}
                         >
                           {isEnviando ? 'Enviando para Auditoria...' : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
                         </Button>
@@ -806,14 +765,10 @@ function ConsumoMaterialSpreadsheetInner({
                         <Button
                           size="small"
                           variant="contained"
+                          color="secondary"
                           startIcon={<InventoryIcon />}
                           onClick={onEnviarMaterial}
                           disabled={isEnviando || enviavelMaterialCount === 0}
-                          sx={{
-                            ...headerContainedSx,
-                            bgcolor: alpha('#fff', 0.28),
-                            '&:hover': { bgcolor: alpha('#fff', 0.38), boxShadow: 'none' },
-                          }}
                         >
                           Enviar para Material ({enviavelMaterialCount})
                         </Button>
@@ -867,17 +822,13 @@ function ConsumoMaterialSpreadsheetInner({
               input: {
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: alpha('#fff', 0.8) }} />
+                    <SearchIcon fontSize="small" />
                   </InputAdornment>
                 ),
                 sx: {
-                  bgcolor: alpha('#fff', 0.12),
-                  borderRadius: 2,
-                  color: 'white',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.25) },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.45) },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
-                  '& input::placeholder': { color: alpha('#fff', 0.7), opacity: 1 },
+                  bgcolor: '#fff',
+                  fontSize: '11px',
+                  fontFamily: EXCEL_SHEET.fontFamily,
                 },
               },
             }}
@@ -890,26 +841,27 @@ function ConsumoMaterialSpreadsheetInner({
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
-        sx={{ px: 2, py: 1, bgcolor: 'background.default', borderBottom: 1, borderColor: 'divider' }}
+        className="excel-sheet-summary"
+        sx={{ px: 2, py: 0.75 }}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography sx={{ fontSize: '11px', color: EXCEL_SHEET.mutedText }}>
           Total filtrado:{' '}
-          <strong>{formatValorBrasileiro(totalValorFiltrado)}</strong>
+          <strong style={{ color: EXCEL_SHEET.text }}>{formatValorBrasileiro(totalValorFiltrado)}</strong>
         </Typography>
         {hasAnySelection && (
-          <Typography variant="body2" color="primary.main">
+          <Typography sx={{ fontSize: '11px', color: EXCEL_SHEET.mutedText }}>
             Selecionados:{' '}
-            <strong>{formatValorBrasileiro(selectedValor)}</strong>
+            <strong style={{ color: EXCEL_SHEET.text }}>{formatValorBrasileiro(selectedValor)}</strong>
           </Typography>
         )}
         {editable && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography sx={{ fontSize: '10px', color: EXCEL_SHEET.mutedText }}>
             Clique com o botão direito para adicionar ou excluir · Arraste as bordas para redimensionar
           </Typography>
         )}
       </Stack>
 
-      <TableContainer sx={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
+      <TableContainer className="excel-sheet-grid" sx={{ maxHeight: 'min(70vh, 720px)', overflow: 'auto' }}>
         <Table
           stickyHeader
           size="small"
@@ -921,20 +873,16 @@ function ConsumoMaterialSpreadsheetInner({
                 <TableCell
                   key={columnId}
                   rowSpan={2}
+                  className="excel-select-header"
                   sx={{
                     ...getColumnCellSx(
                       columnId === 'select-a' ? selectAColWidth : selectSColWidth,
                     ),
-                    bgcolor: '#072A66',
-                    borderBottom: 'none',
                     position: 'sticky',
                     left: index === 0 ? 0 : selectAColWidth,
                     zIndex: 4,
                     verticalAlign: 'middle',
                     textAlign: 'center',
-                    ...(index === 1
-                      ? { borderRight: 1, borderColor: alpha('#fff', 0.12) }
-                      : {}),
                   }}
                 >
                   {table.getHeaderGroups()[0]?.headers
@@ -962,16 +910,8 @@ function ConsumoMaterialSpreadsheetInner({
                   key={g.group}
                   colSpan={g.span}
                   align="center"
-                  sx={{
-                    bgcolor: GROUP_COLORS[g.group],
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.7rem',
-                    letterSpacing: 1,
-                    textTransform: 'uppercase',
-                    py: 0.75,
-                    borderRight: '1px solid rgba(255,255,255,0.15)',
-                  }}
+                  className="excel-group-header"
+                  sx={{ py: 0.5 }}
                 >
                   {GROUP_LABELS[g.group]}
                 </TableCell>
@@ -981,22 +921,14 @@ function ConsumoMaterialSpreadsheetInner({
               {table.getHeaderGroups()[0]?.headers
                 .filter((h) => !SELECT_COLUMN_IDS.includes(h.id as (typeof SELECT_COLUMN_IDS)[number]))
                 .map((header) => {
-                  const colDef = CONSUMO_MATERIAL_HEADERS.find((c) => c.key === header.id)
-                  const group = colDef?.group ?? 'paciente'
                   const colWidth = resolvedColumnWidths[header.id] ?? 100
                   return (
                     <TableCell
                       key={header.id}
+                      className="excel-col-header"
                       sx={{
                         ...getColumnCellSx(colWidth),
-                        bgcolor: alpha(GROUP_COLORS[group], 0.92),
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '0.68rem',
-                        letterSpacing: 0.4,
-                        whiteSpace: 'nowrap',
-                        py: 1,
-                        borderBottom: `2px solid ${GROUP_COLORS[group]}`,
+                        py: 0.5,
                       }}
                     >
                       {header.column.getCanSort() ? (
@@ -1004,10 +936,6 @@ function ConsumoMaterialSpreadsheetInner({
                           active={Boolean(header.column.getIsSorted())}
                           direction={header.column.getIsSorted() === 'desc' ? 'desc' : 'asc'}
                           onClick={header.column.getToggleSortingHandler()}
-                          sx={{
-                            color: 'white !important',
-                            '& .MuiTableSortLabel-icon': { color: 'white !important' },
-                          }}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                         </TableSortLabel>
@@ -1037,7 +965,7 @@ function ConsumoMaterialSpreadsheetInner({
                 </TableCell>
               </TableRow>
             ) : (
-              table.getRowModel().rows.map((row, index) => {
+              table.getRowModel().rows.map((row) => {
                 const vazia = !isLinhaPreenchida(row.original)
                 const customRowHeight = getRowHeight(row.id)
                 const rowSelected =
@@ -1045,27 +973,14 @@ function ConsumoMaterialSpreadsheetInner({
                 return (
                 <TableRow
                   key={row.id}
-                  hover
-                  selected={rowSelected}
+                  hover={false}
+                  className={`excel-data-row${vazia ? ' excel-row-empty' : ''}${rowSelected ? ' excel-row-selected' : ''}`}
                   onContextMenu={(e) => handleContextMenu(e, row.id)}
-                  sx={(theme) => ({
+                  sx={{
                     cursor: editable ? 'context-menu' : undefined,
                     height: customRowHeight,
                     minHeight: customRowHeight ?? DEFAULT_ROW_MIN_HEIGHT,
-                    bgcolor: vazia
-                      ? alpha(theme.palette.action.disabled, 0.06)
-                      : index % 2 === 0
-                        ? 'background.paper'
-                        : alpha(theme.palette.primary.main, 0.03),
-                    '&.Mui-selected': {
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    },
-                    '&:hover': {
-                      bgcolor: vazia
-                        ? alpha(theme.palette.action.disabled, 0.08)
-                        : alpha(theme.palette.primary.main, 0.06),
-                    },
-                  })}
+                  }}
                 >
                   {row.getVisibleCells().map((cell, cellIndex) => {
                     const colId = cell.column.id
@@ -1080,19 +995,14 @@ function ConsumoMaterialSpreadsheetInner({
                     <TableCell
                       key={cell.id}
                       onContextMenu={(e) => handleContextMenu(e, row.id)}
+                      className={cellIndex <= 1 ? 'excel-cell-sticky' : undefined}
                       sx={{
                         ...getColumnCellSx(colWidth),
-                        py: editable ? 0.5 : 0.75,
-                        verticalAlign: 'top',
+                        py: 0,
+                        verticalAlign: 'middle',
                         overflow: 'visible',
+                        textAlign: colId === 'valor' ? 'right' : 'left',
                         ...stickySx,
-                        ...(cellIndex <= 1
-                          ? {
-                              bgcolor: 'inherit',
-                              borderRight: 1,
-                              borderColor: 'divider',
-                            }
-                          : {}),
                       }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1118,6 +1028,7 @@ function ConsumoMaterialSpreadsheetInner({
       </TableContainer>
 
       <TablePagination
+        className="excel-sheet-pagination"
         component="div"
         count={table.getFilteredRowModel().rows.length}
         page={pagination.pageIndex}

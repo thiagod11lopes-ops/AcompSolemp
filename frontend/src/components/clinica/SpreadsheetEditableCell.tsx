@@ -1,4 +1,3 @@
-import { Box } from '@mui/material'
 import { memo, useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react'
 import type { ConsumoMaterialColunaKey } from '@/utils/consumoMaterialTemplate'
 
@@ -6,23 +5,6 @@ const COMMIT_DEBOUNCE_MS = 150
 
 function toSingleLine(value: string): string {
   return value.replace(/[\r\n]+/g, ' ').trim()
-}
-
-const inputSx = {
-  width: '100%',
-  minWidth: 0,
-  maxWidth: '100%',
-  fontSize: '0.78rem',
-  lineHeight: 1.4,
-  whiteSpace: 'nowrap' as const,
-  border: 'none',
-  outline: 'none',
-  background: 'transparent',
-  px: 0.75,
-  py: 0.5,
-  margin: 0,
-  display: 'block',
-  boxSizing: 'border-box' as const,
 }
 
 interface SpreadsheetEditableCellProps {
@@ -91,19 +73,14 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
   }
 
   return (
-    <Box
-      component="input"
+    <input
       type="text"
+      className={`excel-editable-input${field === 'valor' ? ' excel-cell-number' : ''}`}
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
       onContextMenu={(event) => onContextMenu(event, rowId)}
       aria-label={field}
-      sx={{
-        ...inputSx,
-        fontFamily:
-          field === 'valor' ? '"JetBrains Mono", "Roboto Mono", monospace' : 'inherit',
-      }}
     />
   )
 })

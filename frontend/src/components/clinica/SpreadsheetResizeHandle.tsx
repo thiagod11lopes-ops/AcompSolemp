@@ -1,4 +1,4 @@
-import { Box, alpha } from '@mui/material'
+import { Box } from '@mui/material'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 
 const resizeHandleBaseSx = {
@@ -29,7 +29,7 @@ export function ColumnResizeHandle({
         marginRight: '-4px',
         cursor: 'col-resize',
         '&:hover': {
-          bgcolor: alpha('#fff', 0.35),
+          bgcolor: 'rgba(33, 115, 70, 0.25)',
         },
       }}
     />
@@ -57,7 +57,7 @@ export function RowResizeHandle({
         marginBottom: '-4px',
         cursor: 'row-resize',
         '&:hover': {
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.2),
+          bgcolor: 'rgba(33, 115, 70, 0.2)',
         },
       }}
     />

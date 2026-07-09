@@ -3,7 +3,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  alpha,
 } from '@mui/material'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
@@ -184,12 +183,7 @@ function ConsumoMaterialConsignadoViewInner({
       onDesfinalizarLinha={onDesfinalizarLinha}
       headerExtra={
         <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-          <InputLabel
-            id="mes-consumo-label"
-            sx={{ color: alpha('#fff', 0.85), '&.Mui-focused': { color: 'white' } }}
-          >
-            Mês de referência
-          </InputLabel>
+          <InputLabel id="mes-consumo-label">Mês de referência</InputLabel>
           <Select
             labelId="mes-consumo-label"
             label="Mês de referência"
@@ -199,13 +193,9 @@ function ConsumoMaterialConsignadoViewInner({
               if (mes) setMesSelecionado(mes)
             }}
             sx={{
-              color: 'white',
-              bgcolor: alpha('#fff', 0.12),
-              borderRadius: 2,
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.25) },
-              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.45) },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
-              '& .MuiSvgIcon-root': { color: alpha('#fff', 0.85) },
+              bgcolor: '#fff',
+              fontSize: '11px',
+              fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
             }}
           >
             {CONSUMO_MESES_MODELO.map((m) => (
