@@ -13,6 +13,7 @@ import {
   resolvePlanilhaBranchStates,
   resolvePlanilhaConnectorState,
 } from './timelineFlowUtils'
+import { timelineConnectorVisivel } from '@/utils/timelineFlow'
 
 interface TimelineFlowLayoutProps {
   sections: TimelineSection[]
@@ -21,16 +22,6 @@ interface TimelineFlowLayoutProps {
   planilhaEnvio?: PedidoPlanilhaEnvioState | null
   isMobile: boolean
   onOpenDetails: (node: TimelineNodeData) => void
-}
-
-function resolveBranchSide(
-  index: number,
-  total: number,
-): 'left' | 'right' | 'middle' {
-  if (total <= 1) return 'middle'
-  if (index === 0) return 'left'
-  if (index === total - 1) return 'right'
-  return 'middle'
 }
 
 function LaneColumn({
@@ -49,7 +40,10 @@ function LaneColumn({
           key={node.id}
           node={node}
           vertical={vertical}
-          showEdgeAfter={index < lane.nodes.length - 1}
+          showEdgeAfter={
+            index < lane.nodes.length - 1 &&
+            timelineConnectorVisivel(node.etapa.chave, lane.nodes[index + 1].etapa.chave)
+          }
           onOpenDetails={() => onOpenDetails(node)}
         />
       ))}
@@ -86,7 +80,6 @@ function FlowSection({
             {branchStates && (
               <TimelineBranchEntryConnector
                 state={branchStates[laneIndex] ?? 'waiting'}
-                side={resolveBranchSide(laneIndex, section.lanes.length)}
               />
             )}
             <LaneColumn

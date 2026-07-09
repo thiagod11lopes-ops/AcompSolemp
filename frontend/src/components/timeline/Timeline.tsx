@@ -9,6 +9,7 @@ import { TimelineFlowLayout } from './TimelineFlowLayout'
 import { TimelineNode } from './TimelineNode'
 import { TimelineEdge } from './TimelineEdge'
 import { isClinicNode } from './timelineFlowUtils'
+import { timelineConnectorVisivel } from '@/utils/timelineFlow'
 import {
   applyPlanilhaEdgesToNodes,
   applyPlanilhaEdgesToSections,
@@ -208,7 +209,10 @@ const LinearFlowLayout = memo(function LinearFlowLayout({
                   key={node.id}
                   node={node}
                   vertical={isMobile}
-                  showEdgeAfter={index < restNodes.length - 1}
+                  showEdgeAfter={
+                    index < restNodes.length - 1 &&
+                    timelineConnectorVisivel(node.etapa.chave, restNodes[index + 1].etapa.chave)
+                  }
                   onOpenDetails={() => onOpenDetails(node)}
                 />
               ))}

@@ -11,7 +11,7 @@ import type {
   TimelineNodeStatus,
   TimelineSection,
 } from './types'
-import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, tituloGrupoOcultoNaTimeline } from '@/utils/timelineFlow'
+import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, timelineConnectorVisivel, tituloGrupoOcultoNaTimeline } from '@/utils/timelineFlow'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 
@@ -241,6 +241,9 @@ export function applyPlanilhaEdgesToSections(
           return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
         }
         const next = lane.nodes[index + 1]
+        if (!timelineConnectorVisivel(node.etapa.chave, next.etapa.chave)) {
+          return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
+        }
         return {
           ...node,
           edgeAfter: resolvePlanilhaEdgeState(
@@ -268,6 +271,9 @@ export function applyPlanilhaEdgesToNodes(
       return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
     }
     const next = nodes[index + 1]
+    if (!timelineConnectorVisivel(node.etapa.chave, next.etapa.chave)) {
+      return { ...node, edgeAfter: 'waiting' as TimelineEdgeState }
+    }
     return {
       ...node,
       edgeAfter: resolvePlanilhaEdgeState(

@@ -39,23 +39,22 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Div. de Material — trilha Auditoria/Contabilidade
-  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'auditoria' },
+  // Div. de Material — mesma coluna (trilha única)
+  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Material', trilha: 'material' },
   DIV_MAT_CONTABILIDADE_IMH: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'auditoria',
+    trilha: 'material',
   },
-  // Div. de Material — Confecção de Solemp → Finanças Pagamento (mesma trilha)
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'confeccao',
+    trilha: 'material',
   },
   DIV_MAT_FINANCAS: {
     grupo: 'Div. de Material',
     divisao: 'Material',
-    trilha: 'confeccao',
+    trilha: 'material',
   },
 }
 
@@ -97,6 +96,14 @@ export function usaTrilhaConfeccaoOrdenador(chavePerfil: string | null | undefin
 }
 
 export const DIV_MATERIAL_CHAVES = [...DIVISAO_1_CHAVES, ...DIVISAO_2_CHAVES] as const
+
+export function timelineConnectorVisivel(fromChave: string, toChave: string): boolean {
+  return (
+    fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONTABILIDADE_IMH'
+  ) || (
+    fromChave === 'DIV_MAT_CONFECCAO_SOLEMP' && toChave === 'DIV_MAT_FINANCAS'
+  )
+}
 
 export function getProximaChaveNaDivisao(chaveAtual: string): string | null {
   const trilhas = [DIVISAO_1_CHAVES, DIVISAO_2_CHAVES]
@@ -162,13 +169,6 @@ export function buildTimelineBlocos(etapas: WorkflowEtapa[]): TimelineBloco[] {
 
     const ultimaDivisao = grupoAtual.divisoes[grupoAtual.divisoes.length - 1]
     ultimaDivisao.etapas.push({ etapa, index })
-  })
-
-  // Em Div. de Material: Confecção à esquerda, Auditoria/Contabilidade à direita
-  blocos.forEach((bloco) => {
-    if (bloco.tipo === 'grupo' && bloco.nome === 'Div. de Material') {
-      bloco.divisoes.reverse()
-    }
   })
 
   return blocos
