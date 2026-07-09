@@ -94,12 +94,18 @@ export default function OrdenadorTimelineDetailPage() {
           ),
         )
       : false
+    const contabilidadeEtapa = etapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
+    const contabilidadeAberta = contabilidadeEtapa
+      ? pedido.etapasHistorico.some(
+          (h) => h.etapaId === contabilidadeEtapa.id && !h.dataConclusao,
+        )
+      : false
 
     setPlanilhaRecebida(Boolean(stored?.recebidaEm))
     setPlanilhaEncaminhadaImh(
       Boolean(stored?.encaminhadaImhEm) ||
         (auditoriaConcluida && Boolean(stored)) ||
-        (fluxoDiretoImh && Boolean(stored?.enviadoEm)),
+        (fluxoDiretoImh && (Boolean(stored?.enviadoEm) || contabilidadeAberta)),
     )
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
     setFluxoEncerrado(Boolean(stored?.arquivadaEm))

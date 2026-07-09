@@ -3,7 +3,7 @@ import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
-import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import { PERFIL_PARA_CHAVE_ETAPA, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
 import {
   filtrarEtapasParaTimeline,
   usaTrilhaAuditoriaOrdenador,
@@ -60,11 +60,14 @@ export function OrdenadorInteractiveTimeline({
   const allNodes = useMemo(() => flattenSections(sections), [sections])
   const header = useMemo(() => buildTimelineHeader(pedido, allNodes), [pedido, allNodes])
 
-  const etapasAtivasIds =
-    pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
-  const etapaDoPerfil = visiveis.find(
-    (e) => etapasAtivasIds.includes(e.id) && e.chave === chavePerfil,
-  )
+  const etapaDoPerfil = useMemo(() => {
+    if (!chavePerfil) return undefined
+    const etapa = visiveis.find((e) => e.chave === chavePerfil)
+    if (!etapa) return undefined
+    if (!pedidoPendenteParaChave(pedido, visiveis, chavePerfil)) return undefined
+    return etapa
+  }, [chavePerfil, visiveis, pedido])
+
   const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
   const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
@@ -72,7 +75,10 @@ export function OrdenadorInteractiveTimeline({
   const usaFluxoPlanilha = isAuditoriaAtiva || isContabilidadeAtiva || isConfeccaoAtiva
 
   const renderNodeActions = (node: TimelineNodeData) => {
-    const minhaEtapa = etapaDoPerfil?.id === node.etapa.id
+    const minhaEtapa =
+      Boolean(chavePerfil) &&
+      chavePerfil === node.etapa.chave &&
+      pedidoPendenteParaChave(pedido, visiveis, chavePerfil!)
 
     if (!minhaEtapa || fluxoEncerrado) return null
 
@@ -101,12 +107,18 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    if (isContabilidadeAtiva && onReceberPlanilhaImh && onAssinar) {
+    if (
+      node.etapa.chave === 'DIV_MAT_CONTABILIDADE_IMH' &&
+      chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH' &&
+      onReceberPlanilhaImh &&
+      onAssinar
+    ) {
+      const planilhaDisponivel = planilhaEncaminhadaImh || fluxoDiretoImh
       return (
         <>
           <TimelineActionButton
             onClick={onReceberPlanilhaImh}
-            disabled={assinando || !planilhaEncaminhadaImh}
+            disabled={assinando || !planilhaDisponivel}
           >
             Receber Planilha
           </TimelineActionButton>
