@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -17,7 +18,7 @@ import BadgeIcon from '@mui/icons-material/Badge'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import AddIcon from '@mui/icons-material/Add'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect, useMemo } from 'react'
@@ -27,11 +28,19 @@ import {
   CONSUMO_MATERIAL_HEADERS,
   CONSUMO_MEDICAMENTO_PME_HEADERS,
   EMPTY_MANUAL_ROW,
+  formatValorBrasileiro,
   MANUAL_ROW_EXAMPLE,
   MANUAL_ROW_EXAMPLE_MEDICAMENTO,
+  parseValorBrasileiro,
   type ConsumoMaterialRow,
   type ManualRowFormData,
 } from '@/utils/consumoMaterialOds'
+import {
+  findMedicamentoPrecoByNome,
+  formatPrecoReferenciaMedicamento,
+  getMedicamentosPrecosCatalog,
+  type MedicamentoPrecoRow,
+} from '@/utils/medicamentosPrecos'
 
 const DATA_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/
 
@@ -99,7 +108,7 @@ const manualSchemaMedicamento = z.object({
   danfe: z.string(),
   valor: z.string(),
   ata: z.string(),
-  itemPme: z.string().min(1, 'Informe o item (PME)'),
+  itemPme: z.string().min(1, 'Selecione o medicamento'),
   qtd: z.string().min(1, 'Informe a quantidade'),
   valorUnitario: z.string().min(1, 'Informe o valor unitário'),
   nipTitular: z.string(),
@@ -139,11 +148,17 @@ const MULTILINE_FIELDS = new Set([
   'procedimento',
   'materiais',
   'danfe',
-  'itemPme',
   'maneiraDispensacao',
 ])
 
 const NIP_FIELDS = new Set(['nip', 'nipTitular'])
+
+function calcTotalFromQtdAndUnit(qtdRaw: string, unitRaw: string): string {
+  const qtd = parseFloat(qtdRaw.replace(',', '.')) || 0
+  const unit = parseValorBrasileiro(unitRaw)
+  if (qtd <= 0 || unit <= 0) return ''
+  return formatValorBrasileiro(qtd * unit)
+}
 
 interface ConsumoMaterialManualFormProps {
   nextNumero: string
@@ -161,17 +176,26 @@ export function ConsumoMaterialManualForm({
   const groups = modoMedicamento ? GROUPS_MEDICAMENTO : GROUPS_CLINICA
   const example = modoMedicamento ? MANUAL_ROW_EXAMPLE_MEDICAMENTO : MANUAL_ROW_EXAMPLE
 
+  const medicamentosCatalog = useMemo(
+    () => (modoMedicamento ? getMedicamentosPrecosCatalog() : []),
+    [modoMedicamento],
+  )
+
   const {
     register,
     control,
     handleSubmit,
     reset,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<ManualRowFormData>({
     resolver: zodResolver(schema),
     defaultValues: { ...EMPTY_MANUAL_ROW, numero: nextNumero },
   })
+
+  const qtdWatch = useWatch({ control, name: 'qtd' })
+  const valorUnitarioWatch = useWatch({ control, name: 'valorUnitario' })
 
   useEffect(() => {
     setValue('numero', nextNumero)
@@ -181,6 +205,33 @@ export function ConsumoMaterialManualForm({
     reset({ ...EMPTY_MANUAL_ROW, numero: nextNumero })
   }, [modoMedicamento, nextNumero, reset])
 
+  useEffect(() => {
+    if (!modoMedicamento) return
+    const total = calcTotalFromQtdAndUnit(qtdWatch ?? '', valorUnitarioWatch ?? '')
+    if (total) {
+      setValue('valor', total, { shouldValidate: true })
+    }
+  }, [modoMedicamento, qtdWatch, valorUnitarioWatch, setValue])
+
+  const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
+    if (!row) {
+      setValue('itemPme', '', { shouldValidate: true })
+      return
+    }
+    const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
+    const qtdAtual = getValues('qtd') || '1'
+    setValue('itemPme', row.medicamento, { shouldValidate: true })
+    setValue('valorUnitario', unitario, { shouldValidate: true })
+    if (!getValues('qtd')) {
+      setValue('qtd', '1', { shouldValidate: true })
+    }
+    if (row.uf && !getValues('unidadeFornecimento')) {
+      setValue('unidadeFornecimento', row.uf)
+    }
+    const total = calcTotalFromQtdAndUnit(qtdAtual, unitario)
+    if (total) setValue('valor', total, { shouldValidate: true })
+  }
+
   const onSubmit = (data: ManualRowFormData) => {
     const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     onAddRow(buildConsumoRowFromManual(data, id))
@@ -189,7 +240,21 @@ export function ConsumoMaterialManualForm({
   }
 
   const preencherExemplo = () => {
-    reset({ ...example, numero: nextNumero })
+    const exemplo = { ...example, numero: nextNumero }
+    if (modoMedicamento) {
+      const match =
+        findMedicamentoPrecoByNome(exemplo.itemPme, medicamentosCatalog) ??
+        medicamentosCatalog[0]
+      if (match) {
+        exemplo.itemPme = match.medicamento
+        exemplo.valorUnitario = formatPrecoReferenciaMedicamento(match.precoReferencia)
+        exemplo.qtd = exemplo.qtd || '1'
+        exemplo.valor =
+          calcTotalFromQtdAndUnit(exemplo.qtd, exemplo.valorUnitario) || exemplo.valor
+        if (match.uf) exemplo.unidadeFornecimento = match.uf
+      }
+    }
+    reset(exemplo)
   }
 
   const fieldsByGroup = useMemo(
@@ -233,6 +298,7 @@ export function ConsumoMaterialManualForm({
                   {fields.map((col) => {
                     const fieldKey = col.key as keyof ManualRowFormData
                     const isNip = NIP_FIELDS.has(fieldKey)
+                    const isItemPme = modoMedicamento && fieldKey === 'itemPme'
                     const isMultiline = MULTILINE_FIELDS.has(fieldKey)
                     const wideField =
                       fieldKey === 'nome' ||
@@ -245,11 +311,76 @@ export function ConsumoMaterialManualForm({
                         key={col.key}
                         size={{
                           xs: 12,
-                          sm: isMultiline ? 12 : col.key === 'numero' || col.key === 'et' || col.key === 'qtd' ? 4 : 6,
-                          md: isMultiline ? 12 : wideField ? 8 : 4,
+                          sm: isMultiline || isItemPme
+                            ? 12
+                            : col.key === 'numero' || col.key === 'et' || col.key === 'qtd'
+                              ? 4
+                              : 6,
+                          md: isMultiline || isItemPme ? 12 : wideField ? 8 : 4,
                         }}
                       >
-                        {isNip ? (
+                        {isItemPme ? (
+                          <Controller
+                            name="itemPme"
+                            control={control}
+                            render={({ field }) => {
+                              const selected =
+                                findMedicamentoPrecoByNome(field.value, medicamentosCatalog) ??
+                                null
+                              return (
+                                <Autocomplete
+                                  options={medicamentosCatalog}
+                                  value={selected}
+                                  getOptionLabel={(option) =>
+                                    typeof option === 'string' ? option : option.medicamento
+                                  }
+                                  isOptionEqualToValue={(option, value) =>
+                                    option.id === value.id
+                                  }
+                                  filterOptions={(options, state) => {
+                                    const q = state.inputValue.trim().toLowerCase()
+                                    if (!q) return options
+                                    return options.filter(
+                                      (opt) =>
+                                        opt.medicamento.toLowerCase().includes(q) ||
+                                        opt.neb.toLowerCase().includes(q),
+                                    )
+                                  }}
+                                  onChange={(_, newValue) => {
+                                    applyMedicamentoSelection(newValue)
+                                    field.onBlur()
+                                  }}
+                                  onBlur={field.onBlur}
+                                  renderOption={(props, option) => (
+                                    <li {...props} key={option.id}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                                        <Typography variant="body2">{option.medicamento}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                          {option.neb}
+                                          {option.uf ? ` · ${option.uf}` : ''}
+                                          {' · '}
+                                          {formatPrecoReferenciaMedicamento(option.precoReferencia)}
+                                        </Typography>
+                                      </Box>
+                                    </li>
+                                  )}
+                                  renderInput={(params) => (
+                                    <TextField
+                                      {...params}
+                                      label={col.label}
+                                      placeholder="Busque pelo nome do medicamento"
+                                      error={Boolean(errors.itemPme)}
+                                      helperText={
+                                        errors.itemPme?.message ??
+                                        'Opções da aba Preço de Medicamentos'
+                                      }
+                                    />
+                                  )}
+                                />
+                              )
+                            }}
+                          />
+                        ) : isNip ? (
                           <Controller
                             name={fieldKey}
                             control={control}
@@ -279,7 +410,12 @@ export function ConsumoMaterialManualForm({
                             rows={isMultiline ? 2 : undefined}
                             {...register(fieldKey)}
                             error={Boolean(errors[fieldKey])}
-                            helperText={errors[fieldKey]?.message}
+                            helperText={
+                              errors[fieldKey]?.message ??
+                              (modoMedicamento && fieldKey === 'valorUnitario'
+                                ? 'Preenchido pelo preço referência da lista'
+                                : undefined)
+                            }
                             placeholder={
                               fieldKey === 'data'
                                 ? 'dd/mm/aa'
