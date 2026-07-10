@@ -65,6 +65,18 @@ function resolveProcessoNumero(
   return pedido.numero
 }
 
+function etapaIniciadaNoPedido(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  chave: string,
+): boolean {
+  const etapa = etapas.find((e) => e.chave === chave)
+  if (!etapa) return false
+  return pedido.etapasHistorico.some(
+    (h) => h.etapaId === etapa.id || h.etapaNome === etapa.nome,
+  )
+}
+
 function etapaConcluidaNoPedido(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
@@ -83,16 +95,24 @@ function resolveSolicitacaoStatus(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
 ): TimelineNodeStatus {
-  const imhConcluida = etapaConcluidaNoPedido(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
-  const financasConcluida = etapaConcluidaNoPedido(pedido, etapas, 'DIV_MAT_FINANCAS')
-
   // Medicamento: encerra só na Contabilidade/IMH (Finanças é dispensável).
   if (isPedidoTimelineMedicamento(pedido, etapas)) {
+    const imhConcluida = etapaConcluidaNoPedido(
+      pedido,
+      etapas,
+      'DIV_MAT_CONTABILIDADE_IMH',
+    )
     return imhConcluida || pedido.concluido ? 'completed' : 'active'
   }
 
-  // Clínica: tarja Concluído só quando IMH e Finanças Pagamento estiverem finalizados.
-  if (imhConcluida && financasConcluida) return 'completed'
+  // Clínica: tarja Concluído quando o mesmo PED já foi enviado à Auditoria e à Confecção.
+  const enviouAuditoria = etapaIniciadaNoPedido(pedido, etapas, 'DIV_MAT_AUDITORIA')
+  const enviouConfeccao = etapaIniciadaNoPedido(
+    pedido,
+    etapas,
+    'DIV_MAT_CONFECCAO_SOLEMP',
+  )
+  if (enviouAuditoria && enviouConfeccao) return 'completed'
   return 'active'
 }
 
