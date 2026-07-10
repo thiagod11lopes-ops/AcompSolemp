@@ -21,7 +21,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { maskNip, NIP_REGEX } from '@/utils/format'
 import {
   buildConsumoRowFromManual,
@@ -180,6 +180,8 @@ export function ConsumoMaterialManualForm({
     () => (modoMedicamento ? getMedicamentosPrecosCatalog() : []),
     [modoMedicamento],
   )
+  const [itemPmeInput, setItemPmeInput] = useState('')
+  const [itemPmeFocused, setItemPmeFocused] = useState(false)
 
   const {
     control,
@@ -203,6 +205,8 @@ export function ConsumoMaterialManualForm({
 
   useEffect(() => {
     reset({ ...EMPTY_MANUAL_ROW, numero: nextNumero })
+    setItemPmeInput('')
+    setItemPmeFocused(false)
   }, [modoMedicamento, nextNumero, reset])
 
   useEffect(() => {
@@ -216,11 +220,13 @@ export function ConsumoMaterialManualForm({
   const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
     if (!row) {
       setValue('itemPme', '', { shouldValidate: true, shouldDirty: true })
+      setItemPmeInput('')
       return
     }
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
     const qtdAtual = getValues('qtd') || '1'
     setValue('itemPme', row.medicamento, { shouldValidate: true, shouldDirty: true })
+    setItemPmeInput(row.medicamento)
     setValue('valorUnitario', unitario, { shouldValidate: true, shouldDirty: true })
     if (!getValues('qtd')) {
       setValue('qtd', '1', { shouldValidate: true, shouldDirty: true })
@@ -237,6 +243,8 @@ export function ConsumoMaterialManualForm({
     onAddRow(buildConsumoRowFromManual(data, id))
     const proximoNumero = String((parseInt(data.numero, 10) || 0) + 1)
     reset({ ...EMPTY_MANUAL_ROW, numero: proximoNumero })
+    setItemPmeInput('')
+    setItemPmeFocused(false)
   }
 
   const preencherExemplo = () => {
@@ -255,6 +263,7 @@ export function ConsumoMaterialManualForm({
       }
     }
     reset(exemplo)
+    setItemPmeInput(exemplo.itemPme)
   }
 
   const fieldsByGroup = useMemo(
@@ -327,10 +336,19 @@ export function ConsumoMaterialManualForm({
                               const selected =
                                 findMedicamentoPrecoByNome(field.value, medicamentosCatalog) ??
                                 null
+                              const labelShrink =
+                                Boolean(selected) ||
+                                Boolean(itemPmeInput.trim()) ||
+                                itemPmeFocused
                               return (
                                 <Autocomplete
+                                  fullWidth
                                   options={medicamentosCatalog}
                                   value={selected}
+                                  inputValue={itemPmeInput}
+                                  openOnFocus
+                                  autoHighlight
+                                  clearOnBlur={false}
                                   getOptionLabel={(option) =>
                                     typeof option === 'string' ? option : option.medicamento
                                   }
@@ -348,22 +366,48 @@ export function ConsumoMaterialManualForm({
                                   }}
                                   onChange={(_, newValue) => {
                                     applyMedicamentoSelection(newValue)
+                                    field.onChange(newValue?.medicamento ?? '')
+                                  }}
+                                  onInputChange={(_, newInput, reason) => {
+                                    setItemPmeInput(newInput)
+                                    if (reason === 'input' && !newInput.trim()) {
+                                      field.onChange('')
+                                    }
+                                  }}
+                                  onFocus={() => setItemPmeFocused(true)}
+                                  onBlur={() => {
+                                    setItemPmeFocused(false)
                                     field.onBlur()
                                   }}
-                                  onBlur={field.onBlur}
-                                  renderOption={(props, option) => (
-                                    <li {...props} key={option.id}>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
-                                        <Typography variant="body2">{option.medicamento}</Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                          {option.neb}
-                                          {option.uf ? ` · ${option.uf}` : ''}
-                                          {' · '}
-                                          {formatPrecoReferenciaMedicamento(option.precoReferencia)}
-                                        </Typography>
-                                      </Box>
-                                    </li>
-                                  )}
+                                  noOptionsText="Nenhum medicamento encontrado na lista de preços"
+                                  renderOption={(props, option) => {
+                                    const { key, ...optionProps } = props as typeof props & {
+                                      key?: string
+                                    }
+                                    return (
+                                      <li key={key ?? option.id} {...optionProps}>
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            py: 0.5,
+                                          }}
+                                        >
+                                          <Typography variant="body2">
+                                            {option.medicamento}
+                                          </Typography>
+                                          <Typography variant="caption" color="text.secondary">
+                                            {option.neb}
+                                            {option.uf ? ` · ${option.uf}` : ''}
+                                            {' · '}
+                                            {formatPrecoReferenciaMedicamento(
+                                              option.precoReferencia,
+                                            )}
+                                          </Typography>
+                                        </Box>
+                                      </li>
+                                    )
+                                  }}
                                   renderInput={(params) => (
                                     <TextField
                                       {...params}
@@ -375,7 +419,11 @@ export function ConsumoMaterialManualForm({
                                         'Opções da aba Preço de Medicamentos'
                                       }
                                       slotProps={{
-                                        inputLabel: { shrink: Boolean(selected) },
+                                        ...params.slotProps,
+                                        inputLabel: {
+                                          ...params.slotProps?.inputLabel,
+                                          shrink: labelShrink,
+                                        },
                                       }}
                                     />
                                   )}
@@ -387,24 +435,27 @@ export function ConsumoMaterialManualForm({
                           <Controller
                             name={fieldKey}
                             control={control}
-                            render={({ field }) => (
-                              <TextField
-                                fullWidth
-                                label={col.label}
-                                placeholder="00.0000.00"
-                                value={field.value}
-                                onChange={(e) => field.onChange(maskNip(e.target.value))}
-                                onBlur={field.onBlur}
-                                error={Boolean(errors[fieldKey])}
-                                helperText={
-                                  errors[fieldKey]?.message ?? 'Formato: 00.0000.00'
-                                }
-                                slotProps={{
-                                  htmlInput: { inputMode: 'numeric', maxLength: 10 },
-                                  inputLabel: { shrink: Boolean(String(field.value ?? '').trim()) },
-                                }}
-                              />
-                            )}
+                            render={({ field }) => {
+                              const hasValue = Boolean(String(field.value ?? '').trim())
+                              return (
+                                <TextField
+                                  fullWidth
+                                  label={col.label}
+                                  placeholder="00.0000.00"
+                                  value={field.value}
+                                  onChange={(e) => field.onChange(maskNip(e.target.value))}
+                                  onBlur={field.onBlur}
+                                  error={Boolean(errors[fieldKey])}
+                                  helperText={
+                                    errors[fieldKey]?.message ?? 'Formato: 00.0000.00'
+                                  }
+                                  slotProps={{
+                                    htmlInput: { inputMode: 'numeric', maxLength: 10 },
+                                    inputLabel: { shrink: hasValue || undefined },
+                                  }}
+                                />
+                              )
+                            }}
                           />
                         ) : (
                           <Controller
