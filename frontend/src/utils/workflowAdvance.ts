@@ -68,8 +68,9 @@ function etapaConcluidaNoHistorico(
 
 /** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
  * Medicamento: encerra só com Contabilidade/IMH.
- * Clínica: se Confecção nunca foi enviada, IMH não encerra o processo inteiro
- * (Confecção/Finanças permanecem abertas na timeline). */
+ * Clínica: exige Contabilidade/IMH e Finanças Pagamento para encerrar o PED;
+ * se uma trilha não foi iniciada, o processo ainda não fecha pelo card da clínica
+ * (mas a trilha iniciada pode ser concluída isoladamente). */
 function isDivMaterialConcluida(
   pedido: Pedido,
   etapas: WorkflowEtapa[],
@@ -80,17 +81,22 @@ function isDivMaterialConcluida(
 
   if (!imhIniciada && !materialIniciada) return false
 
-  const imhFinalizada =
-    !imhIniciada ||
-    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
-  const materialFinalizada =
-    !materialIniciada ||
-    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_FINANCAS')
+  const imhFinalizada = etapaConcluidaNoHistorico(
+    pedido,
+    etapas,
+    'DIV_MAT_CONTABILIDADE_IMH',
+  )
+  const materialFinalizada = etapaConcluidaNoHistorico(
+    pedido,
+    etapas,
+    'DIV_MAT_FINANCAS',
+  )
 
-  if (!isMedicamento && imhIniciada && !materialIniciada) {
-    return false
+  if (isMedicamento) {
+    return !imhIniciada || imhFinalizada
   }
 
+  // Clínica: PED só encerra com as duas pontas (IMH + Finanças).
   return imhFinalizada && materialFinalizada
 }
 

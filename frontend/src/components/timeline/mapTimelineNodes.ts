@@ -65,13 +65,44 @@ function resolveProcessoNumero(
   return pedido.numero
 }
 
+function etapaConcluidaNoPedido(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  chave: string,
+): boolean {
+  const etapa = etapas.find((e) => e.chave === chave)
+  if (!etapa) return false
+  return pedido.etapasHistorico.some(
+    (h) =>
+      Boolean(h.dataConclusao) &&
+      (h.etapaId === etapa.id || h.etapaNome === etapa.nome),
+  )
+}
+
+function resolveSolicitacaoStatus(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): TimelineNodeStatus {
+  const imhConcluida = etapaConcluidaNoPedido(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
+  const financasConcluida = etapaConcluidaNoPedido(pedido, etapas, 'DIV_MAT_FINANCAS')
+
+  // Medicamento: encerra só na Contabilidade/IMH (Finanças é dispensável).
+  if (isPedidoTimelineMedicamento(pedido, etapas)) {
+    return imhConcluida || pedido.concluido ? 'completed' : 'active'
+  }
+
+  // Clínica: tarja Concluído só quando IMH e Finanças Pagamento estiverem finalizados.
+  if (imhConcluida && financasConcluida) return 'completed'
+  return 'active'
+}
+
 function resolveNodeStatus(
   pedido: PedidoComDetalhes,
   historico: ReturnType<typeof resolveHistorico>,
   atual: boolean,
 ): TimelineNodeStatus {
   // Status por etapa: não usar pedido.concluido para pintar todos os cards.
-  // Na clínica, IMH pode encerrar a trilha auditoria sem concluir Confecção/Finanças.
+  // Na clínica, IMH/Finanças encerram só a própria trilha.
   if (historico?.dataConclusao) return 'completed'
   if (atual) {
     if (pedido.prazoStatus === 'ATRASADO') return 'error'
@@ -117,7 +148,10 @@ export function buildTimelineNode(
 
   const atual =
     etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao
-  const status = resolveNodeStatus(pedido, historico, atual)
+  const status =
+    etapa.chave === 'SOLICITACAO'
+      ? resolveSolicitacaoStatus(pedido, etapas)
+      : resolveNodeStatus(pedido, historico, atual)
 
   return {
     id: etapa.id,
@@ -128,12 +162,15 @@ export function buildTimelineNode(
     numeroPedido: pedido.numero,
     responsavel: historico?.responsavelNome ?? null,
     dataInicio: historico?.dataInicio ?? null,
-    dataConclusao: historico?.dataConclusao ?? null,
+    dataConclusao:
+      etapa.chave === 'SOLICITACAO' && status !== 'completed'
+        ? null
+        : (historico?.dataConclusao ?? null),
     tempoNaEtapa: formatTempoNaEtapa(pedido, historico, atual),
     processoNumero: resolveProcessoNumero(pedido, etapa),
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
-    isHighlighted: options?.isHighlighted ?? atual,
+    isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),
     icon: getEtapaIcon(etapa.chave),
   }
 }
