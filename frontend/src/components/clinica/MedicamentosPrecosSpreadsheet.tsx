@@ -1,8 +1,11 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import {
   Box,
+  Button,
   Chip,
   InputAdornment,
+  Menu,
+  MenuItem,
   Paper,
   Table,
   TableBody,
@@ -16,6 +19,8 @@ import {
   Typography,
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
+import AddIcon from '@mui/icons-material/Add'
+import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import {
   flexRender,
   getCoreRowModel,
@@ -27,30 +32,112 @@ import {
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table'
-import seedData from '@/data/medicamentosPrecosSeed.json'
-import {
-  MEDICAMENTOS_PRECOS_HEADERS,
-  type MedicamentoPrecoRow,
-} from '@/utils/medicamentosPrecos'
+import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
+import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
+import {
+  createMedicamentoPrecoVazio,
+  formatPrecoReferenciaMedicamento,
+  MEDICAMENTOS_PRECOS_HEADERS,
+  type MedicamentoPrecoColunaKey,
+  type MedicamentoPrecoRow,
+} from '@/utils/medicamentosPrecos'
 
-const ROWS = seedData as MedicamentoPrecoRow[]
-
-interface MedicamentosPrecosSpreadsheetProps {
-  /** No modo exemplo, destaca que a lista é o conteúdo fixo de demonstração. */
-  conteudoFixoDemo?: boolean
-}
-
-function MedicamentosPrecosSpreadsheetInner({
-  conteudoFixoDemo = false,
-}: MedicamentosPrecosSpreadsheetProps) {
+function MedicamentosPrecosSpreadsheetInner() {
+  const [rows, setRows] = useState<MedicamentoPrecoRow[]>(() => medicamentosPrecosService.getRows())
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 50,
   })
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number
+    mouseY: number
+    rowId: string
+  } | null>(null)
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+
+  useEffect(
+    () => () => {
+      if (persistTimer.current) clearTimeout(persistTimer.current)
+    },
+    [],
+  )
+
+  const persistRows = useCallback((next: MedicamentoPrecoRow[]) => {
+    if (persistTimer.current) clearTimeout(persistTimer.current)
+    persistTimer.current = setTimeout(() => {
+      persistTimer.current = null
+      medicamentosPrecosService.saveRows(next)
+    }, 250)
+  }, [])
+
+  const updateRows = useCallback(
+    (updater: (prev: MedicamentoPrecoRow[]) => MedicamentoPrecoRow[]) => {
+      setRows((prev) => {
+        const next = updater(prev)
+        persistRows(next)
+        return next
+      })
+    },
+    [persistRows],
+  )
+
+  const handleCellChange = useCallback(
+    (rowId: string, field: string, value: string) => {
+      const key = field as MedicamentoPrecoColunaKey
+      updateRows((prev) =>
+        prev.map((row) => {
+          if (row.id !== rowId) return row
+          const nextValue =
+            key === 'precoReferencia' ? formatPrecoReferenciaMedicamento(value) || value : value
+          return { ...row, [key]: nextValue }
+        }),
+      )
+    },
+    [updateRows],
+  )
+
+  const handleContextMenu = useCallback((event: MouseEvent, rowId: string) => {
+    event.preventDefault()
+    setContextMenu({ mouseX: event.clientX, mouseY: event.clientY, rowId })
+  }, [])
+
+  const handleAdicionarLinha = useCallback(
+    (position: 'above' | 'below' | 'end') => {
+      updateRows((prev) => {
+        const nova = createMedicamentoPrecoVazio()
+        if (position === 'end' || !contextMenu) return [...prev, nova]
+        const index = prev.findIndex((row) => row.id === contextMenu.rowId)
+        if (index < 0) return [...prev, nova]
+        const insertAt = position === 'above' ? index : index + 1
+        return [...prev.slice(0, insertAt), nova, ...prev.slice(insertAt)]
+      })
+      setContextMenu(null)
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    },
+    [contextMenu, updateRows],
+  )
+
+  const handleExcluirLinha = useCallback(() => {
+    if (!contextMenu) return
+    updateRows((prev) => {
+      if (prev.length <= 1) return prev
+      return prev.filter((row) => row.id !== contextMenu.rowId)
+    })
+    setContextMenu(null)
+  }, [contextMenu, updateRows])
+
+  const handleRestaurarSeed = useCallback(() => {
+    const restored = medicamentosPrecosService.resetToSeed()
+    setRows(restored)
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    setGlobalFilter('')
+  }, [])
 
   const columns = useMemo<ColumnDef<MedicamentoPrecoRow>[]>(
     () =>
@@ -59,32 +146,24 @@ function MedicamentosPrecosSpreadsheetInner({
         accessorKey: col.key,
         header: col.label,
         size: col.width,
-        cell: ({ getValue }) => {
+        cell: ({ getValue, row }) => {
           const value = String(getValue() ?? '')
-          const isPreco = col.key === 'precoReferencia'
           return (
-            <Typography
-              component="span"
-              className={isPreco ? 'excel-cell-number' : undefined}
-              sx={{
-                fontFamily: EXCEL_SHEET.fontFamily,
-                fontSize: EXCEL_SHEET.fontSize,
-                fontWeight: 400,
-                color: EXCEL_SHEET.text,
-                display: 'block',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {value || '\u00A0'}
-            </Typography>
+            <SpreadsheetEditableCell
+              rowId={row.original.id}
+              field={col.key}
+              value={value}
+              onCellChange={handleCellChange}
+              onContextMenu={handleContextMenu}
+            />
           )
         },
       })),
-    [],
+    [handleCellChange, handleContextMenu],
   )
 
   const table = useReactTable({
-    data: ROWS,
+    data: rows,
     columns,
     state: { sorting, globalFilter, pagination },
     onSortingChange: setSorting,
@@ -94,6 +173,7 @@ function MedicamentosPrecosSpreadsheetInner({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.id,
     globalFilterFn: (row, _columnId, filterValue) => {
       const q = String(filterValue ?? '')
         .trim()
@@ -134,9 +214,9 @@ function MedicamentosPrecosSpreadsheetInner({
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: EXCEL_SHEET.text }}>
               Lista de medicamentos com preços
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
               <Chip
-                label={`${ROWS.length} medicamentos`}
+                label={`${rows.length} medicamentos`}
                 size="small"
                 variant="outlined"
                 sx={{ borderColor: EXCEL_SHEET.borderColor, bgcolor: '#fff' }}
@@ -147,16 +227,34 @@ function MedicamentosPrecosSpreadsheetInner({
                 variant="outlined"
                 sx={{ borderColor: EXCEL_SHEET.borderColor, bgcolor: '#fff' }}
               />
-              {conteudoFixoDemo && (
-                <Chip
-                  label="Demonstração — conteúdo fixo"
-                  size="small"
-                  color="info"
-                  variant="outlined"
-                  sx={{ bgcolor: '#fff' }}
-                />
-              )}
+              <Chip
+                label="Editável"
+                size="small"
+                color="success"
+                variant="outlined"
+                sx={{ bgcolor: '#fff' }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => handleAdicionarLinha('end')}
+              >
+                Adicionar linha
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<RestartAltIcon />}
+                onClick={handleRestaurarSeed}
+              >
+                Restaurar lista original
+              </Button>
             </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+              Clique nas células para editar · Botão direito para inserir ou excluir · Alterações
+              salvas automaticamente
+            </Typography>
           </Box>
           <TextField
             size="small"
@@ -228,9 +326,11 @@ function MedicamentosPrecosSpreadsheetInner({
               <TableRow
                 key={row.id}
                 hover
+                onContextMenu={(event) => handleContextMenu(event, row.original.id)}
                 sx={{
                   bgcolor: EXCEL_SHEET.cellBg,
                   '&:hover': { bgcolor: EXCEL_SHEET.hoverBg },
+                  cursor: 'context-menu',
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -240,8 +340,8 @@ function MedicamentosPrecosSpreadsheetInner({
                       width: cell.column.getSize(),
                       minWidth: cell.column.getSize(),
                       borderColor: EXCEL_SHEET.borderColor,
-                      py: 0.5,
-                      px: 1,
+                      py: 0,
+                      px: 0.5,
                       fontFamily: EXCEL_SHEET.fontFamily,
                       fontSize: EXCEL_SHEET.fontSize,
                       color: EXCEL_SHEET.text,
@@ -274,6 +374,21 @@ function MedicamentosPrecosSpreadsheetInner({
           color: EXCEL_SHEET.text,
         }}
       />
+
+      <Menu
+        open={Boolean(contextMenu)}
+        onClose={() => setContextMenu(null)}
+        anchorReference="anchorPosition"
+        anchorPosition={
+          contextMenu ? { top: contextMenu.mouseY, left: contextMenu.mouseX } : undefined
+        }
+      >
+        <MenuItem onClick={() => handleAdicionarLinha('above')}>Inserir linha acima</MenuItem>
+        <MenuItem onClick={() => handleAdicionarLinha('below')}>Inserir linha abaixo</MenuItem>
+        <MenuItem onClick={handleExcluirLinha} disabled={rowsRef.current.length <= 1}>
+          Excluir linha
+        </MenuItem>
+      </Menu>
     </Paper>
   )
 }

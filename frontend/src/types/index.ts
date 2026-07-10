@@ -351,6 +351,8 @@ export interface AppData {
   reversoes: ReversaoTimeline[]
   credenciais: Record<string, CredencialUsuario>
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
+  /** Planilha editável da aba Preço de Medicamentos (persistida no IndexedDB). */
+  medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
   processosArquivados?: ProcessoArquivado[]
   /** Metadados da organização (multi-tenant) */

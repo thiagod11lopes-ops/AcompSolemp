@@ -473,8 +473,12 @@ function ConsumoMaterialSpreadsheetInner({
                 rowId={rowId}
                 field={field}
                 value={value}
-                onCellChange={onCellChange}
-                onDraftChange={handleDraftChange}
+                onCellChange={(id, f, v) =>
+                  onCellChange(id, f as ConsumoMaterialColunaKey, v)
+                }
+                onDraftChange={(id, f, draft) =>
+                  handleDraftChange(id, f as ConsumoMaterialColunaKey, draft)
+                }
                 onContextMenu={handleContextMenu}
               />
             )

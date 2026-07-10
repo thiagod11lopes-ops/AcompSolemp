@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react'
-import type { ConsumoMaterialColunaKey } from '@/utils/consumoMaterialTemplate'
 
 const COMMIT_DEBOUNCE_MS = 150
 
@@ -9,10 +8,10 @@ function toSingleLine(value: string): string {
 
 interface SpreadsheetEditableCellProps {
   rowId: string
-  field: ConsumoMaterialColunaKey
+  field: string
   value: string
-  onCellChange: (rowId: string, field: ConsumoMaterialColunaKey, value: string) => void
-  onDraftChange?: (rowId: string, field: ConsumoMaterialColunaKey, draft: string | null) => void
+  onCellChange: (rowId: string, field: string, value: string) => void
+  onDraftChange?: (rowId: string, field: string, draft: string | null) => void
   onContextMenu: (event: MouseEvent, rowId: string) => void
 }
 
@@ -72,10 +71,13 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
     onDraftChange?.(rowId, field, null)
   }
 
+  const isNumber =
+    field === 'valor' || field === 'valorUnitario' || field === 'precoReferencia'
+
   return (
     <input
       type="text"
-      className={`excel-editable-input${field === 'valor' || field === 'valorUnitario' ? ' excel-cell-number' : ''}`}
+      className={`excel-editable-input${isNumber ? ' excel-cell-number' : ''}`}
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
