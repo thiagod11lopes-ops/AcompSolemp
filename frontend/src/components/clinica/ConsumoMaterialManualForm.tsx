@@ -182,7 +182,6 @@ export function ConsumoMaterialManualForm({
   )
 
   const {
-    register,
     control,
     handleSubmit,
     reset,
@@ -194,8 +193,9 @@ export function ConsumoMaterialManualForm({
     defaultValues: { ...EMPTY_MANUAL_ROW, numero: nextNumero },
   })
 
-  const qtdWatch = useWatch({ control, name: 'qtd' })
-  const valorUnitarioWatch = useWatch({ control, name: 'valorUnitario' })
+  const formValues = useWatch({ control })
+  const qtdWatch = formValues.qtd
+  const valorUnitarioWatch = formValues.valorUnitario
 
   useEffect(() => {
     setValue('numero', nextNumero)
@@ -209,27 +209,27 @@ export function ConsumoMaterialManualForm({
     if (!modoMedicamento) return
     const total = calcTotalFromQtdAndUnit(qtdWatch ?? '', valorUnitarioWatch ?? '')
     if (total) {
-      setValue('valor', total, { shouldValidate: true })
+      setValue('valor', total, { shouldValidate: true, shouldDirty: true })
     }
   }, [modoMedicamento, qtdWatch, valorUnitarioWatch, setValue])
 
   const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
     if (!row) {
-      setValue('itemPme', '', { shouldValidate: true })
+      setValue('itemPme', '', { shouldValidate: true, shouldDirty: true })
       return
     }
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
     const qtdAtual = getValues('qtd') || '1'
-    setValue('itemPme', row.medicamento, { shouldValidate: true })
-    setValue('valorUnitario', unitario, { shouldValidate: true })
+    setValue('itemPme', row.medicamento, { shouldValidate: true, shouldDirty: true })
+    setValue('valorUnitario', unitario, { shouldValidate: true, shouldDirty: true })
     if (!getValues('qtd')) {
-      setValue('qtd', '1', { shouldValidate: true })
+      setValue('qtd', '1', { shouldValidate: true, shouldDirty: true })
     }
     if (row.uf && !getValues('unidadeFornecimento')) {
-      setValue('unidadeFornecimento', row.uf)
+      setValue('unidadeFornecimento', row.uf, { shouldValidate: true, shouldDirty: true })
     }
     const total = calcTotalFromQtdAndUnit(qtdAtual, unitario)
-    if (total) setValue('valor', total, { shouldValidate: true })
+    if (total) setValue('valor', total, { shouldValidate: true, shouldDirty: true })
   }
 
   const onSubmit = (data: ManualRowFormData) => {
@@ -374,6 +374,9 @@ export function ConsumoMaterialManualForm({
                                         errors.itemPme?.message ??
                                         'Opções da aba Preço de Medicamentos'
                                       }
+                                      slotProps={{
+                                        inputLabel: { shrink: Boolean(selected) },
+                                      }}
                                     />
                                   )}
                                 />
@@ -398,31 +401,48 @@ export function ConsumoMaterialManualForm({
                                 }
                                 slotProps={{
                                   htmlInput: { inputMode: 'numeric', maxLength: 10 },
+                                  inputLabel: { shrink: Boolean(String(field.value ?? '').trim()) },
                                 }}
                               />
                             )}
                           />
                         ) : (
-                          <TextField
-                            fullWidth
-                            label={col.label}
-                            multiline={isMultiline}
-                            rows={isMultiline ? 2 : undefined}
-                            {...register(fieldKey)}
-                            error={Boolean(errors[fieldKey])}
-                            helperText={
-                              errors[fieldKey]?.message ??
-                              (modoMedicamento && fieldKey === 'valorUnitario'
-                                ? 'Preenchido pelo preço referência da lista'
-                                : undefined)
-                            }
-                            placeholder={
-                              fieldKey === 'data'
-                                ? 'dd/mm/aa'
-                                : fieldKey === 'valor' || fieldKey === 'valorUnitario'
-                                  ? 'R$ 0,00'
-                                  : undefined
-                            }
+                          <Controller
+                            name={fieldKey}
+                            control={control}
+                            render={({ field }) => {
+                              const hasValue = Boolean(String(field.value ?? '').trim())
+                              return (
+                                <TextField
+                                  fullWidth
+                                  label={col.label}
+                                  multiline={isMultiline}
+                                  rows={isMultiline ? 2 : undefined}
+                                  name={field.name}
+                                  value={field.value ?? ''}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                  inputRef={field.ref}
+                                  error={Boolean(errors[fieldKey])}
+                                  helperText={
+                                    errors[fieldKey]?.message ??
+                                    (modoMedicamento && fieldKey === 'valorUnitario'
+                                      ? 'Preenchido pelo preço referência da lista'
+                                      : undefined)
+                                  }
+                                  placeholder={
+                                    fieldKey === 'data'
+                                      ? 'dd/mm/aa'
+                                      : fieldKey === 'valor' || fieldKey === 'valorUnitario'
+                                        ? 'R$ 0,00'
+                                        : undefined
+                                  }
+                                  slotProps={{
+                                    inputLabel: { shrink: hasValue || undefined },
+                                  }}
+                                />
+                              )
+                            }}
                           />
                         )}
                       </Grid>
