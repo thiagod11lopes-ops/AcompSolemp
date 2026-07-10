@@ -124,19 +124,20 @@ export default function ClinicaNovoPedidoPage() {
     const persisted = consumoPlanilhaService.getState(clinicaId)
     const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
     const isDemoMedicamento = isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
-    const rowsToLoad = isDemoMedicamento
-      ? getConsumoMaterialDemoMedicamento()
-      : persisted.extraRows.length > 0
+    const rowsToLoad =
+      persisted.extraRows.length > 0
         ? persisted.extraRows
         : isDemoClinica
           ? getConsumoMaterialInicial()
-          : []
+          : isDemoMedicamento
+            ? getConsumoMaterialDemoMedicamento()
+            : []
 
     planilhaHydrated.current = true
 
     if (rowsToLoad.length > 0) {
       setExtraRows(rowsToLoad)
-      if (isDemoClinica || isDemoMedicamento) {
+      if (persisted.extraRows.length === 0 && (isDemoClinica || isDemoMedicamento)) {
         consumoPlanilhaService.saveState(clinicaId, {
           finalizedRowIds: [],
           finalizedAuditoriaRowIds: [],
@@ -348,8 +349,26 @@ export default function ClinicaNovoPedidoPage() {
   }
 
   const handleAddManualRow = (row: ConsumoMaterialRow) => {
-    setExtraRows((prev) => [...prev, row])
-    setRowSelectionAuditoria((prev) => ({ ...prev, [row.id]: true }))
+    const dataNoMes = dataPertenceAoMes(row.data, mesSelecionado)
+      ? row.data
+      : (() => {
+          const match = row.data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+          const day = match?.[1]?.padStart(2, '0') ?? '01'
+          return `${day}/${String(mesSelecionado.mes).padStart(2, '0')}/${String(mesSelecionado.ano).slice(-2)}`
+        })()
+    const rowParaMes: ConsumoMaterialRow = { ...row, data: dataNoMes }
+
+    setExtraRows((prev) => {
+      const next = [...prev, rowParaMes]
+      persistPlanilhaState(next, finalizedAuditoriaRowIds, finalizedMaterialRowIds)
+      return next
+    })
+    setRowsByMes((prev) => {
+      const next = { ...prev }
+      delete next[mesSelecionado.id]
+      return next
+    })
+    setRowSelectionAuditoria((prev) => ({ ...prev, [rowParaMes.id]: true }))
     setBatchError(null)
     setAbaAtiva(1)
   }

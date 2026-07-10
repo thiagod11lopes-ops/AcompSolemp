@@ -201,28 +201,18 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
   }
 }
 
-/**
- * Sempre restaura a planilha PME do medicamento demo com o conteúdo fixo de demonstração.
- * Assim o modo exemplo não fica com edições/rascunhos persistidos.
- */
+/** Garante planilha de exemplo do medicamento quando ainda vazia (preserva linhas adicionadas no IndexedDB). */
 export function seedDemoExampleMedicamentoPlanilha(data: ReturnType<typeof loadAppData>): boolean {
   if (!data.consumoPlanilha) data.consumoPlanilha = {}
 
-  const next = createDemoMedicamentoPlanilhaExemploState()
   const current = data.consumoPlanilha[DEMO_MEDICAMENTO_EXEMPLO_ID]
-  const same =
-    current &&
-    JSON.stringify(current.extraRows) === JSON.stringify(next.extraRows) &&
-    (current.finalizedAuditoriaRowIds?.length ?? current.finalizedRowIds?.length ?? 0) === 0 &&
-    (current.finalizedMaterialRowIds?.length ?? 0) === 0
+  if (current?.extraRows?.length) return false
 
-  if (same) return false
-
-  data.consumoPlanilha[DEMO_MEDICAMENTO_EXEMPLO_ID] = next
+  data.consumoPlanilha[DEMO_MEDICAMENTO_EXEMPLO_ID] = createDemoMedicamentoPlanilhaExemploState()
   return true
 }
 
-/** Restaura a planilha PME fixa do medicamento no IndexedDB da sessão demo. */
+/** Garante a planilha PME do medicamento no IndexedDB da sessão demo (só se estiver vazia). */
 export function ensureDemoExampleMedicamentoPlanilha(): boolean {
   if (!isDemoDataSession()) return false
 
