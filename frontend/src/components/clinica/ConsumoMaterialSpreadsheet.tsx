@@ -41,7 +41,9 @@ import {
 import { memo, useEffect, useMemo, useState, useCallback, type MouseEvent, type ReactNode } from 'react'
 import {
   CONSUMO_MATERIAL_HEADERS,
+  CONSUMO_MEDICAMENTO_PME_HEADERS,
   formatValorBrasileiro,
+  type ConsumoMaterialHeader,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
 import { isLinhaPreenchida, rowPodeSerSelecionada, rowPodeSerEnviadaAuditoria, rowPodeSerEnviadaMaterial } from '@/utils/consumoMaterialTemplate'
@@ -76,6 +78,9 @@ const GROUP_LABELS: Record<string, string> = {
   paciente: 'Dados do paciente',
   clinico: 'Dados clínicos',
   financeiro: 'Financeiro',
+  medicamento: 'Medicamento (PME)',
+  titular: 'Titular',
+  imh: 'Calculado no setor de IMH',
 }
 
 const FINALIZED_CHECKBOX_OPACITY = 0.55
@@ -240,9 +245,14 @@ function ConsumoMaterialSpreadsheetInner({
     [filteredRowCount, pagination.pageSize],
   )
 
+  const planilhaHeaders = useMemo<readonly ConsumoMaterialHeader[]>(
+    () => (modoMedicamento ? CONSUMO_MEDICAMENTO_PME_HEADERS : CONSUMO_MATERIAL_HEADERS),
+    [modoMedicamento],
+  )
+
   const contentColumnWidths = useMemo(
-    () => measureColumnWidths(rowsForMeasurement, CONSUMO_MATERIAL_HEADERS, editable),
-    [rowsForMeasurement, editable],
+    () => measureColumnWidths(rowsForMeasurement, planilhaHeaders, editable),
+    [rowsForMeasurement, planilhaHeaders, editable],
   )
 
   const resolvedColumnWidths = useMemo(
@@ -447,7 +457,7 @@ function ConsumoMaterialSpreadsheetInner({
   )
 
   const columns = useMemo<ColumnDef<ConsumoMaterialRow>[]>(() => {
-    const dataColumns: ColumnDef<ConsumoMaterialRow>[] = CONSUMO_MATERIAL_HEADERS.map(
+    const dataColumns: ColumnDef<ConsumoMaterialRow>[] = planilhaHeaders.map(
       (col) => ({
         id: col.key,
         accessorKey: col.key,
@@ -470,8 +480,15 @@ function ConsumoMaterialSpreadsheetInner({
             )
           }
 
-          if (col.key === 'valor') {
-            const num = row.original.valorNumerico
+          if (col.key === 'valor' || col.key === 'valorUnitario') {
+            const num =
+              col.key === 'valor'
+                ? row.original.valorNumerico
+                : parseFloat(
+                    String(row.original.valorUnitario || '')
+                      .replace(/[R$\s.]/g, '')
+                      .replace(',', '.'),
+                  ) || 0
             if (!isLinhaPreenchida(row.original) && !num) {
               return <span>&nbsp;</span>
             }
@@ -551,6 +568,7 @@ function ConsumoMaterialSpreadsheetInner({
         ]
   }, [
     modoMedicamento,
+    planilhaHeaders,
     editable,
     onCellChange,
     handleDraftChange,
@@ -681,9 +699,9 @@ function ConsumoMaterialSpreadsheetInner({
 
   const groupSpans = useMemo(() => {
     const groups: { group: string; span: number }[] = []
-    let current: string = CONSUMO_MATERIAL_HEADERS[0]?.group ?? 'paciente'
+    let current: string = planilhaHeaders[0]?.group ?? 'paciente'
     let span = 0
-    for (const col of CONSUMO_MATERIAL_HEADERS) {
+    for (const col of planilhaHeaders) {
       if (col.group === current) {
         span++
       } else {
@@ -694,7 +712,7 @@ function ConsumoMaterialSpreadsheetInner({
     }
     groups.push({ group: current, span })
     return groups
-  }, [])
+  }, [planilhaHeaders])
 
   return (
     <>
@@ -720,7 +738,9 @@ function ConsumoMaterialSpreadsheetInner({
         >
           <Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, color: EXCEL_SHEET.text }}>
-              Consumo Material Consignado
+              {modoMedicamento
+                ? 'Modelo IHM — PME (Medicamento)'
+                : 'Consumo Material Consignado'}
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
               <Chip

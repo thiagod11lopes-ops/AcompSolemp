@@ -75,7 +75,7 @@ export const SpreadsheetEditableCell = memo(function SpreadsheetEditableCell({
   return (
     <input
       type="text"
-      className={`excel-editable-input${field === 'valor' ? ' excel-cell-number' : ''}`}
+      className={`excel-editable-input${field === 'valor' || field === 'valorUnitario' ? ' excel-cell-number' : ''}`}
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}

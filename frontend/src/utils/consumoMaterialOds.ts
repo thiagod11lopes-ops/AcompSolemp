@@ -28,9 +28,27 @@ export interface ConsumoMaterialRow {
   valor: string
   valorNumerico: number
   ata: string
+  /** Campos do modelo IHM PME (setor medicamento) */
+  itemPme: string
+  qtd: string
+  valorUnitario: string
+  nipTitular: string
+  vinculo: string
+  pctIndenizar: string
+  om: string
+  unidadeFornecimento: string
+  quantidadeAdquirida: string
+  maneiraDispensacao: string
 }
 
-export const CONSUMO_MATERIAL_HEADERS = [
+export type ConsumoMaterialHeader = {
+  key: keyof ConsumoMaterialRow
+  label: string
+  group: string
+  width: number
+}
+
+export const CONSUMO_MATERIAL_HEADERS: readonly ConsumoMaterialHeader[] = [
   { key: 'numero', label: 'Nº', group: 'paciente', width: 56 },
   { key: 'postoGrad', label: 'P/GRAD', group: 'paciente', width: 88 },
   { key: 'nip', label: 'NIP', group: 'paciente', width: 108 },
@@ -53,11 +71,56 @@ export const CONSUMO_MATERIAL_HEADERS = [
   { key: 'danfe', label: 'DANFE', group: 'financeiro', width: 120 },
   { key: 'valor', label: 'VALOR', group: 'financeiro', width: 110 },
   { key: 'ata', label: 'ATA', group: 'financeiro', width: 72 },
-] as const
+]
+
+/** Colunas do Modelo IHM — PME (Novo Lançamento do setor medicamento). */
+export const CONSUMO_MEDICAMENTO_PME_HEADERS: readonly ConsumoMaterialHeader[] = [
+  { key: 'data', label: 'DATA', group: 'paciente', width: 88 },
+  { key: 'nip', label: 'NIP', group: 'paciente', width: 108 },
+  { key: 'nome', label: 'NOME', group: 'paciente', width: 200 },
+  {
+    key: 'itemPme',
+    label: 'ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO',
+    group: 'medicamento',
+    width: 280,
+  },
+  { key: 'qtd', label: 'QTD', group: 'medicamento', width: 56 },
+  { key: 'valorUnitario', label: 'VALOR UNITÁRIO', group: 'medicamento', width: 110 },
+  { key: 'valor', label: 'TOTAL', group: 'medicamento', width: 110 },
+  { key: 'nipTitular', label: 'NIP TITULAR', group: 'titular', width: 108 },
+  { key: 'postoGrad', label: 'POSTO/GRAD', group: 'titular', width: 100 },
+  { key: 'vinculo', label: 'VINCULO', group: 'titular', width: 100 },
+  {
+    key: 'pctIndenizar',
+    label: '% A INDENIZAR',
+    group: 'imh',
+    width: 100,
+  },
+  { key: 'om', label: 'OM', group: 'imh', width: 80 },
+  {
+    key: 'unidadeFornecimento',
+    label: 'UNIDADE DE FORNECIMENTO',
+    group: 'imh',
+    width: 140,
+  },
+  {
+    key: 'quantidadeAdquirida',
+    label: 'QUANTIDADE ADQUIRIDA PELA OMH/OMFM',
+    group: 'imh',
+    width: 160,
+  },
+  {
+    key: 'maneiraDispensacao',
+    label: 'MANEIRA DE DISPENSAÇÃO (PELA OMH-OMFM/POR OSE)',
+    group: 'imh',
+    width: 200,
+  },
+]
 
 const HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = {
   'Nº': 'numero',
   'P/GRAD': 'postoGrad',
+  'POSTO/GRAD': 'postoGrad',
   NIP: 'nip',
   NOME: 'nome',
   INICIAIS: 'iniciais',
@@ -77,10 +140,26 @@ const HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = {
   EMPENHO: 'empenho',
   DANFE: 'danfe',
   VALOR: 'valor',
+  TOTAL: 'valor',
   ATA: 'ata',
+  'ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO': 'itemPme',
+  'ITEM (PME) - DESCRIÇÃO DO MEDICAMENTO': 'itemPme',
+  QTD: 'qtd',
+  'VALOR UNITÁRIO': 'valorUnitario',
+  'VALOR UNITARIO': 'valorUnitario',
+  'NIP TITULAR': 'nipTitular',
+  VINCULO: 'vinculo',
+  VÍNCULO: 'vinculo',
+  '% A INDENIZAR': 'pctIndenizar',
+  'CALCULADO NO SETOR DE IMH % A INDENIZAR': 'pctIndenizar',
+  OM: 'om',
+  'UNIDADE DE FORNECIMENTO': 'unidadeFornecimento',
+  'QUANTIDADE ADQUIRIDA PELA OMH/OMFM': 'quantidadeAdquirida',
+  'MANEIRA DE DISPENSAÇÃO (PELA OMH-OMFM/POR OSE)': 'maneiraDispensacao',
+  'MANEIRA DE DISPENSACAO (PELA OMH-OMFM/POR OSE)': 'maneiraDispensacao',
 }
 
-const MAX_COLS = 24
+const MAX_COLS = 30
 const NIP_PATTERN = /\d{1,2}\.\d{4}\.\d{1,2}/
 
 function decodeXmlText(value: string): string {
@@ -121,11 +200,28 @@ function normalizeHeader(value: string): string {
     .trim()
     .replace(/\s+/g, ' ')
     .replace(/N°/g, 'Nº')
+    .replace(/[–—−]/g, '-')
+    .replace(/Ã§/g, 'ç')
+    .replace(/Ã£/g, 'ã')
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ãº/g, 'ú')
+    .toUpperCase()
 }
 
 const NORMALIZED_HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = Object.fromEntries(
   Object.entries(HEADER_TO_FIELD).map(([header, field]) => [normalizeHeader(header), field]),
 ) as Record<string, keyof ConsumoMaterialRow>
+
+// Aliases do modelo PME (cabeçalhos longos / calculados)
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO')] = 'itemPme'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('ITEM (PME) - DESCRICAO DO MEDICAMENTO')] = 'itemPme'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('CALCULADO NO SETOR DE IMH % A INDENIZAR')] =
+  'pctIndenizar'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('Calculado no setor de IMH % A INDENIZAR')] =
+  'pctIndenizar'
 
 function normalizeSpreadsheetCell(value: string, field?: keyof ConsumoMaterialRow): string {
   const trimmed = value.trim()
@@ -226,6 +322,17 @@ function rowFromCells(
   }
 
   const valorRaw = get('valor')
+  const valorUnitarioRaw = get('valorUnitario')
+  const itemPme = get('itemPme')
+  const materiais = get('materiais') || itemPme
+  const valorNumerico =
+    parseValorBrasileiro(valorRaw) ||
+    (() => {
+      const qtd = parseInt(get('qtd') || '1', 10) || 1
+      const unit = parseValorBrasileiro(valorUnitarioRaw)
+      return unit * qtd
+    })()
+
   return {
     id: `row-${rowIndex}`,
     numero: get('numero'),
@@ -238,7 +345,7 @@ function rowFromCells(
     diagnostico: get('diagnostico'),
     cid: get('cid'),
     procedimento: get('procedimento'),
-    materiais: get('materiais'),
+    materiais,
     et: get('et'),
     fornecedor: get('fornecedor'),
     cirurgiao: get('cirurgiao'),
@@ -249,8 +356,18 @@ function rowFromCells(
     empenho: get('empenho'),
     danfe: get('danfe'),
     valor: valorRaw,
-    valorNumerico: parseValorBrasileiro(valorRaw),
+    valorNumerico,
     ata: get('ata'),
+    itemPme,
+    qtd: get('qtd'),
+    valorUnitario: valorUnitarioRaw,
+    nipTitular: get('nipTitular') || get('nip'),
+    vinculo: get('vinculo'),
+    pctIndenizar: get('pctIndenizar'),
+    om: get('om'),
+    unidadeFornecimento: get('unidadeFornecimento'),
+    quantidadeAdquirida: get('quantidadeAdquirida'),
+    maneiraDispensacao: get('maneiraDispensacao'),
   }
 }
 
@@ -545,6 +662,16 @@ export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): 
     valor: valorFormatado || data.valor.trim(),
     valorNumerico,
     ata: data.ata.trim(),
+    itemPme: data.materiais.trim(),
+    qtd: valorNumerico > 0 ? '1' : '',
+    valorUnitario: valorFormatado || data.valor.trim(),
+    nipTitular: formatNip(data.nip.trim()),
+    vinculo: '',
+    pctIndenizar: '',
+    om: '',
+    unidadeFornecimento: '',
+    quantidadeAdquirida: '',
+    maneiraDispensacao: '',
   }
 }
 

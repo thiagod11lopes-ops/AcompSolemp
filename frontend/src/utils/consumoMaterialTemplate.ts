@@ -23,7 +23,67 @@ export const CONSUMO_MESES_MODELO: MesConsumoModelo[] = [
   { id: '06-26', label: 'Junho/2026', mes: 6, ano: 2026, arquivo: '06-26 - JUNHO - DEFINITIVA.ods' },
 ]
 
-export const CONSUMO_MATERIAL_SEED: ConsumoMaterialRow[] = seedData as ConsumoMaterialRow[]
+export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow {
+  return {
+    id,
+    numero,
+    postoGrad: '',
+    nip: '',
+    nome: '',
+    iniciais: '',
+    data: '',
+    idade: '',
+    diagnostico: '',
+    cid: '',
+    procedimento: '',
+    materiais: '',
+    et: '',
+    fornecedor: '',
+    cirurgiao: '',
+    mapaSala: '',
+    mapa: '',
+    ref: '',
+    safin: '',
+    empenho: '',
+    danfe: '',
+    valor: '',
+    valorNumerico: 0,
+    ata: '',
+    itemPme: '',
+    qtd: '',
+    valorUnitario: '',
+    nipTitular: '',
+    vinculo: '',
+    pctIndenizar: '',
+    om: '',
+    unidadeFornecimento: '',
+    quantidadeAdquirida: '',
+    maneiraDispensacao: '',
+  }
+}
+
+function normalizeConsumoSeedRow(row: ConsumoMaterialRow): ConsumoMaterialRow {
+  return {
+    ...createLinhaVazia(row.id, row.numero),
+    ...row,
+    itemPme: row.itemPme ?? row.materiais ?? '',
+    qtd: row.qtd ?? (row.valorNumerico > 0 ? '1' : ''),
+    valorUnitario:
+      row.valorUnitario ??
+      (row.valorNumerico > 0 ? formatValorBrasileiro(row.valorNumerico) : ''),
+    nipTitular: row.nipTitular ?? row.nip ?? '',
+    vinculo: row.vinculo ?? '',
+    pctIndenizar: row.pctIndenizar ?? '',
+    om: row.om ?? '',
+    unidadeFornecimento: row.unidadeFornecimento ?? '',
+    quantidadeAdquirida: row.quantidadeAdquirida ?? '',
+    maneiraDispensacao: row.maneiraDispensacao ?? '',
+  }
+}
+
+export const CONSUMO_MATERIAL_SEED: ConsumoMaterialRow[] = (
+  seedData as ConsumoMaterialRow[]
+).map(normalizeConsumoSeedRow)
 
 export const CONSUMO_PLANILHA_NOME_PADRAO = 'Modelos OPME TRO — Jan-Jun/2026'
 
@@ -131,6 +191,21 @@ function buildRowFromPedido(pedido: Pedido): ConsumoMaterialRow {
     valor: valorNumerico > 0 ? formatValorBrasileiro(valorNumerico) : '',
     valorNumerico,
     ata: etiquetaParts[3] ?? '',
+    itemPme: dados?.materialUtilizado ?? '',
+    qtd: dados?.quantidade ? String(dados.quantidade) : valorNumerico > 0 ? '1' : '',
+    valorUnitario:
+      dados?.valorUnitario && dados.valorUnitario > 0
+        ? formatValorBrasileiro(dados.valorUnitario)
+        : valorNumerico > 0
+          ? formatValorBrasileiro(valorNumerico)
+          : '',
+    nipTitular: paciente?.nipTitular ?? paciente?.nip ?? '',
+    vinculo: paciente?.vinculo ?? '',
+    pctIndenizar: '',
+    om: '',
+    unidadeFornecimento: '',
+    quantidadeAdquirida: '',
+    maneiraDispensacao: '',
   }
 }
 
@@ -308,35 +383,6 @@ export function rowPodeSerEnviada(
   return rowPodeSerEnviadaAuditoria(row, rowIdsComPedido, finalizedRowIds)
 }
 
-export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow {
-  return {
-    id,
-    numero,
-    postoGrad: '',
-    nip: '',
-    nome: '',
-    iniciais: '',
-    data: '',
-    idade: '',
-    diagnostico: '',
-    cid: '',
-    procedimento: '',
-    materiais: '',
-    et: '',
-    fornecedor: '',
-    cirurgiao: '',
-    mapaSala: '',
-    mapa: '',
-    ref: '',
-    safin: '',
-    empenho: '',
-    danfe: '',
-    valor: '',
-    valorNumerico: 0,
-    ata: '',
-  }
-}
-
 export function montarLinhasPlanilhaFixa(
   lancamentos: ConsumoMaterialRow[],
   mesModelo: MesConsumoModelo,
@@ -413,12 +459,40 @@ export function atualizarCampoConsumo(
   field: ConsumoMaterialColunaKey,
   value: string,
 ): ConsumoMaterialRow {
-  if (field === 'valor') {
-    const valorNumerico = parseValorBrasileiro(value)
+  if (field === 'valor' || field === 'valorUnitario') {
+    const valorNumericoCampo = parseValorBrasileiro(value)
+    if (field === 'valor') {
+      return {
+        ...row,
+        valor: value,
+        valorNumerico: valorNumericoCampo,
+      }
+    }
+    const qtd = parseInt(row.qtd || '1', 10) || 1
+    const total = valorNumericoCampo * qtd
     return {
       ...row,
-      valor: value,
-      valorNumerico,
+      valorUnitario: value,
+      valor: total > 0 ? formatValorBrasileiro(total) : row.valor,
+      valorNumerico: total > 0 ? total : row.valorNumerico,
+    }
+  }
+  if (field === 'qtd') {
+    const qtd = parseInt(value || '1', 10) || 1
+    const unit = parseValorBrasileiro(row.valorUnitario)
+    const total = unit > 0 ? unit * qtd : row.valorNumerico
+    return {
+      ...row,
+      qtd: value,
+      valor: total > 0 && unit > 0 ? formatValorBrasileiro(total) : row.valor,
+      valorNumerico: unit > 0 ? total : row.valorNumerico,
+    }
+  }
+  if (field === 'itemPme') {
+    return {
+      ...row,
+      itemPme: value,
+      materiais: value || row.materiais,
     }
   }
   return { ...row, [field]: value }

@@ -9,6 +9,10 @@ import { usePlanilhaDraft } from '@/hooks/usePlanilhaDraft'
 import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModalShell'
 import { buildImhXlsxLinhas, getImhXlsxFileName } from '@/utils/imhXlsxLinha'
 import { downloadImhXlsx } from '@/utils/imhXlsxExport'
+import {
+  downloadMedicamentoPmeOds,
+  getMedicamentoPmeFileName,
+} from '@/utils/medicamentoPmeOdsExport'
 
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
@@ -51,10 +55,17 @@ export function ImhEnvioModal({
     setExportError(null)
     setIsGeneratingXlsx(true)
     try {
-      const linhasXlsx = buildImhXlsxLinhas(consumoRows, linhas)
-      await downloadImhXlsx(linhasXlsx, cabecalho, getImhXlsxFileName(cabecalho))
+      if (modoMedicamento) {
+        await downloadMedicamentoPmeOds(
+          consumoRows,
+          getMedicamentoPmeFileName(mesReferencia?.label),
+        )
+      } else {
+        const linhasXlsx = buildImhXlsxLinhas(consumoRows, linhas)
+        await downloadImhXlsx(linhasXlsx, cabecalho, getImhXlsxFileName(cabecalho))
+      }
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Erro ao gerar planilha Excel')
+      setExportError(err instanceof Error ? err.message : 'Erro ao gerar planilha')
     } finally {
       setIsGeneratingXlsx(false)
     }
@@ -65,7 +76,7 @@ export function ImhEnvioModal({
       open={open}
       title={
         modoMedicamento
-          ? 'Planilha IMH — Envio direto para Contabilidade/IMH'
+          ? 'Modelo IHM — PME · Envio direto para Contabilidade/IMH'
           : 'Planilha IMH — Envio para Contabilidade'
       }
       lancamentoCount={consumoRows.length}
@@ -94,7 +105,11 @@ export function ImhEnvioModal({
             onClick={handleGerarPlanilhaXlsx}
             disabled={busy || consumoRows.length === 0}
           >
-            {isGeneratingXlsx ? 'Gerando...' : 'Gerar .xlsx'}
+            {isGeneratingXlsx
+              ? 'Gerando...'
+              : modoMedicamento
+                ? 'Gerar .ods (PME)'
+                : 'Gerar .xlsx'}
           </Button>
           <Button
             variant="contained"
