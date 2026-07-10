@@ -70,7 +70,9 @@ function resolveNodeStatus(
   historico: ReturnType<typeof resolveHistorico>,
   atual: boolean,
 ): TimelineNodeStatus {
-  if (pedido.concluido || historico?.dataConclusao) return 'completed'
+  // Status por etapa: não usar pedido.concluido para pintar todos os cards.
+  // Na clínica, IMH pode encerrar a trilha auditoria sem concluir Confecção/Finanças.
+  if (historico?.dataConclusao) return 'completed'
   if (atual) {
     if (pedido.prazoStatus === 'ATRASADO') return 'error'
     if (pedido.prazoStatus === 'PROXIMO_VENCIMENTO') return 'review'
@@ -114,7 +116,7 @@ export function buildTimelineNode(
   }
 
   const atual =
-    etapasAtivasIds.includes(etapa.id) && !pedido.concluido && !historico?.dataConclusao
+    etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao
   const status = resolveNodeStatus(pedido, historico, atual)
 
   return {
@@ -202,9 +204,12 @@ export function buildTimelineHeader(
   nodes: TimelineNodeData[],
   options?: { processName?: string; subtitle?: string },
 ): TimelineHeaderModel {
-  const completed = nodes.filter((n) => n.status === 'completed').length
+  const actionable = nodes.filter((n) => !n.dispensavel)
+  const completed = actionable.filter((n) => n.status === 'completed').length
   const progressPercent =
-    nodes.length > 0 ? Math.round((completed / nodes.length) * 100) : 0
+    actionable.length > 0 ? Math.round((completed / actionable.length) * 100) : 0
+  const allActionableDone =
+    actionable.length > 0 && actionable.every((n) => n.status === 'completed')
 
   const inicio = parseISO(pedido.dataSolicitacao)
   let tempoTotal = '—'
@@ -216,7 +221,7 @@ export function buildTimelineHeader(
 
   let statusLabel = 'Em andamento'
   let statusVariant: TimelineNodeStatus = 'active'
-  if (pedido.concluido) {
+  if (pedido.concluido || allActionableDone) {
     statusLabel = 'Concluído'
     statusVariant = 'completed'
   } else if (nodes.some((n) => n.status === 'error')) {
@@ -225,7 +230,7 @@ export function buildTimelineHeader(
   } else if (nodes.some((n) => n.status === 'review')) {
     statusLabel = 'Em revisão'
     statusVariant = 'review'
-  } else if (nodes.every((n) => n.status === 'waiting')) {
+  } else if (actionable.every((n) => n.status === 'waiting')) {
     statusLabel = 'Aguardando'
     statusVariant = 'waiting'
   }
@@ -235,7 +240,7 @@ export function buildTimelineHeader(
     numero: pedido.numero,
     statusLabel,
     statusVariant,
-    progressPercent: pedido.concluido ? 100 : progressPercent,
+    progressPercent: pedido.concluido || allActionableDone ? 100 : progressPercent,
     tempoTotal,
     subtitle: options?.subtitle,
   }

@@ -12,6 +12,7 @@ import { getResponsavelParaEtapa } from '@/utils/workflow'
 import {
   getEtapaByChave,
   getProximaChaveNaDivisao,
+  isPedidoTimelineMedicamento,
 } from '@/utils/timelineFlow'
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
@@ -65,8 +66,15 @@ function etapaConcluidaNoHistorico(
   return Boolean(historicoDaEtapa(pedido, etapas, chave)?.dataConclusao)
 }
 
-/** Processo encerrado quando cada trilha de planilha iniciada atingir sua etapa final (IMH e/ou Finanças). */
-function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
+/** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
+ * Medicamento: encerra só com Contabilidade/IMH.
+ * Clínica: se Confecção nunca foi enviada, IMH não encerra o processo inteiro
+ * (Confecção/Finanças permanecem abertas na timeline). */
+function isDivMaterialConcluida(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  isMedicamento: boolean,
+): boolean {
   const imhIniciada = trilhaImhIniciada(pedido, etapas)
   const materialIniciada = trilhaMaterialIniciada(pedido, etapas)
 
@@ -78,6 +86,10 @@ function isDivMaterialConcluida(pedido: Pedido, etapas: WorkflowEtapa[]): boolea
   const materialFinalizada =
     !materialIniciada ||
     etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_FINANCAS')
+
+  if (!isMedicamento && imhIniciada && !materialIniciada) {
+    return false
+  }
 
   return imhFinalizada && materialFinalizada
 }
@@ -255,7 +267,21 @@ export function advancePedidoEtapa(
     etapasHistorico,
     etapasAtivasIds,
   }
-  const concluido = isDivMaterialConcluida(pedidoParcial, etapas)
+  const clinica = data.clinicas.find((c) => c.id === pedido.clinicaId)
+  const isMedicamento = isPedidoTimelineMedicamento(
+    {
+      ...pedidoParcial,
+      clinica: clinica ?? {
+        id: pedido.clinicaId,
+        nome: '',
+        responsavel: '',
+        telefone: '',
+        tipo: 'clinica',
+      },
+    },
+    etapas,
+  )
+  const concluido = isDivMaterialConcluida(pedidoParcial, etapas, isMedicamento)
   const etapaPrincipalId = etapasAtivasIds[0] ?? etapaAtual.id
   const responsavelAtual =
     etapasAtivasIds.length > 0
