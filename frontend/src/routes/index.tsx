@@ -35,6 +35,9 @@ const DemoEntryPage = lazy(() => import('@/pages/gestor/DemoEntryPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
+const ClinicaPrecosMedicamentosPage = lazy(
+  () => import('@/pages/clinica/ClinicaPrecosMedicamentosPage'),
+)
 const ClinicaTimelinePage = lazy(() => import('@/pages/clinica/ClinicaTimelinePage'))
 const ClinicaTimelineDetailPage = lazy(() => import('@/pages/clinica/ClinicaTimelineDetailPage'))
 const ClinicaPedidoDetailPage = lazy(() => import('@/pages/clinica/ClinicaPedidoDetailPage'))
@@ -155,6 +158,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/precos-medicamentos" element={<LazyPage><ClinicaPrecosMedicamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/:id" element={<LazyPage><ClinicaPedidoDetailPage /></LazyPage>} />
           </Route>
@@ -213,6 +217,7 @@ export function AppRoutes() {
           <Route path="/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
           <Route path="/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
           <Route path="/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
+          <Route path="/clinica/precos-medicamentos" element={<LazyPage><ClinicaPrecosMedicamentosPage /></LazyPage>} />
           <Route path="/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />
           <Route path="/clinica/pedidos/:id" element={<LazyPage><ClinicaPedidoDetailPage /></LazyPage>} />
         </Route>

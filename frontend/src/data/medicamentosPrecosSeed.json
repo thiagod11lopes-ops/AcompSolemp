@@ -1,0 +1,1591 @@
+[
+  {
+    "id": "med-1",
+    "neb": "BR3268550",
+    "medicamento": "ABATACEPTE 125MG/ML SERINGA",
+    "uf": "SE",
+    "precoReferencia": "R$ 1.029,46"
+  },
+  {
+    "id": "med-2",
+    "neb": "BR3325528",
+    "medicamento": "ABEMACICLIBE 150MG",
+    "uf": "CO",
+    "precoReferencia": "270,84"
+  },
+  {
+    "id": "med-3",
+    "neb": "BR3241167",
+    "medicamento": "ABIRATERONA 250MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 4,30"
+  },
+  {
+    "id": "med-4",
+    "neb": "BR3298328",
+    "medicamento": "ACALABRUTINIBE 100MG – CÁPSULA",
+    "uf": "CP",
+    "precoReferencia": "R$ 486,51"
+  },
+  {
+    "id": "med-5",
+    "neb": "190022031",
+    "medicamento": "ÁCIDO FOLÍNICO SOLUÇÃO INJETÁVEL 50MG (10MG/ML) FRASCO AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 27,74"
+  },
+  {
+    "id": "med-6",
+    "neb": "190011276",
+    "medicamento": "ÁCIDO ZOLEDRÔNICO SOLUÇÃO INJETÁVEL 4MG FRASCO AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 38,88"
+  },
+  {
+    "id": "med-7",
+    "neb": "999791974",
+    "medicamento": "ADALIMUMABE SOLUÇÃO INJETÁVEL 40MG (IV)",
+    "uf": "SER",
+    "precoReferencia": "R$ 398,00"
+  },
+  {
+    "id": "med-8",
+    "neb": "190054341",
+    "medicamento": "AFLIBERCEPT 40MG/ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.330,00"
+  },
+  {
+    "id": "med-9",
+    "neb": "190011704",
+    "medicamento": "ALFA-L-ASPARAGINASE 10.000 UI PÓ PARA SOLUÇÃO INJETÁVEL FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.400,10"
+  },
+  {
+    "id": "med-10",
+    "neb": "190020793",
+    "medicamento": "ANAGRELIDA 0,5MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 22,05"
+  },
+  {
+    "id": "med-11",
+    "neb": "BR3333284",
+    "medicamento": "ANIFROLUMABE 300MG",
+    "uf": "FR",
+    "precoReferencia": "R$ 5.916,45"
+  },
+  {
+    "id": "med-12",
+    "neb": "PI0040684",
+    "medicamento": "APALUTAMIDA 60MG COMPRIMIDO",
+    "uf": "CO",
+    "precoReferencia": "R$ 100,99"
+  },
+  {
+    "id": "med-13",
+    "neb": "015620097",
+    "medicamento": "AZACITIDINA SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 390,00"
+  },
+  {
+    "id": "med-14",
+    "neb": "190056056",
+    "medicamento": "BELIMUMABE 120MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.032,68"
+  },
+  {
+    "id": "med-15",
+    "neb": "190056127",
+    "medicamento": "BELIMUMABE 400MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 3.442,23"
+  },
+  {
+    "id": "med-16",
+    "neb": "BR3309983",
+    "medicamento": "BENDAMUSTINA 100MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.650,00"
+  },
+  {
+    "id": "med-17",
+    "neb": "BR3309972",
+    "medicamento": "BENDAMUSTINA 25MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 423,00"
+  },
+  {
+    "id": "med-18",
+    "neb": "15667532",
+    "medicamento": "BEVACIZUMABE 100MG SOLUÇÃO INJETÁVEL 25 MG/ML FRASCO-AMPOLA 4ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 214,00"
+  },
+  {
+    "id": "med-19",
+    "neb": "15667534",
+    "medicamento": "BEVACIZUMABE 400 MG SOLUÇÃO INJETÁVEL 25 MG/ML FRASCO-AMPOLA 16ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 978,99"
+  },
+  {
+    "id": "med-20",
+    "neb": "190012994",
+    "medicamento": "BICALUTAMIDA 50 MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 1,61"
+  },
+  {
+    "id": "med-21",
+    "neb": "190012542",
+    "medicamento": "BLEOMICINA PÓ PARA SOLUÇÃO INJETÁVEL 15MG (15U) FRASCO AMPOLA (IV, IM, INTRAPLEURAL)",
+    "uf": "FA",
+    "precoReferencia": "R$ 225,00"
+  },
+  {
+    "id": "med-22",
+    "neb": "BR3285643",
+    "medicamento": "BLINATUMUMAB 38,5MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 9.355,30"
+  },
+  {
+    "id": "med-23",
+    "neb": "015376376",
+    "medicamento": "BORTEZOMIBE PÓ PARA SOLUÇÃO INJETÁVEL 3,5 MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 30,00"
+  },
+  {
+    "id": "med-24",
+    "neb": "BR3265368",
+    "medicamento": "BRENTUXIMABE VEDOTINA 50MG SOLUÇÃO INJETÁVEL",
+    "uf": "FA",
+    "precoReferencia": "R$ 14.830,70"
+  },
+  {
+    "id": "med-25",
+    "neb": "BR3268053",
+    "medicamento": "BUSSULFANO 6MG/ML 10ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 950,00"
+  },
+  {
+    "id": "med-26",
+    "neb": "190051792",
+    "medicamento": "CABAZITAXEL 60 MG SOLUÇÃO INJETÁVEL FRASCO AMPOLA DE 1,5 ML (IV) + FRASCO AMPOLA DE DILUENTE DE 4,5 ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 970,00"
+  },
+  {
+    "id": "med-27",
+    "neb": "BR3307059",
+    "medicamento": "CANABIDIOL 200MG/ML (30ML)",
+    "uf": "FR",
+    "precoReferencia": "R$ 564,00"
+  },
+  {
+    "id": "med-28",
+    "neb": "NC",
+    "medicamento": "CANABIDIOL 5000MG (CHARLOTTES PREMIUM HEMP)",
+    "uf": "FR",
+    "precoReferencia": "R$ 2.268,00"
+  },
+  {
+    "id": "med-29",
+    "neb": "190009733",
+    "medicamento": "CAPECITABINA 500MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 2,20"
+  },
+  {
+    "id": "med-30",
+    "neb": "190011929",
+    "medicamento": "CARBOPLATINA SOLUÇÃO INJETÁVEL 150MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 123,79"
+  },
+  {
+    "id": "med-31",
+    "neb": "190030893",
+    "medicamento": "CARBOPLATINA SOLUÇÃO INJETÁVEL 450MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 215,00"
+  },
+  {
+    "id": "med-32",
+    "neb": "BR3276552",
+    "medicamento": "CARFILZOMIBE 60MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.760,00"
+  },
+  {
+    "id": "med-33",
+    "neb": "190009769",
+    "medicamento": "CARMUSTINA (BCNU) SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 307,02"
+  },
+  {
+    "id": "med-34",
+    "neb": "BR3267073",
+    "medicamento": "CERTOLIZUMABE 200MG/ML SERINGA",
+    "uf": "SE",
+    "precoReferencia": "R$ 929,20"
+  },
+  {
+    "id": "med-35",
+    "neb": "190030907",
+    "medicamento": "CETUXIMABE SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.063,16"
+  },
+  {
+    "id": "med-36",
+    "neb": "190044641",
+    "medicamento": "CETUXIMABE SOLUÇÃO INJETÁVEL 500MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 4.310,64"
+  },
+  {
+    "id": "med-37",
+    "neb": "190033167",
+    "medicamento": "CICLOFOSFAMIDA 50MG COMPRIMIDO",
+    "uf": "CO",
+    "precoReferencia": "R$ 0,93"
+  },
+  {
+    "id": "med-38",
+    "neb": "BR3244776",
+    "medicamento": "CICLOFOSFAMIDA SOLUÇÃO INJETÁVEL 1G FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 60,98"
+  },
+  {
+    "id": "med-39",
+    "neb": "190013129",
+    "medicamento": "CICLOSPORINA CÁPSULA 100MG (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 9,41"
+  },
+  {
+    "id": "med-40",
+    "neb": "190013130",
+    "medicamento": "CICLOSPORINA CÁPSULA 50MG (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 4,75"
+  },
+  {
+    "id": "med-41",
+    "neb": "190012978",
+    "medicamento": "CICLOSPORINA MICROEMULSÃO SOLUÇÃO ORAL 100MG/ML FRASCO 50ML (VO)",
+    "uf": "FR",
+    "precoReferencia": "R$ 320,00"
+  },
+  {
+    "id": "med-42",
+    "neb": "190011869",
+    "medicamento": "CISPLATINA SOLUÇÃO INJETÁVEL 10MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 28,61"
+  },
+  {
+    "id": "med-43",
+    "neb": "190011868",
+    "medicamento": "CISPLATINA SOLUÇÃO INJETÁVEL 50MG (1MG/ML) FRASCO AMPOLA 50ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 90,00"
+  },
+  {
+    "id": "med-44",
+    "neb": "190011726",
+    "medicamento": "CITARABINA SOLUÇÃO INJETÁVEL 1G FRASCO AMPOLA (IV, SC, INTRATECAL)",
+    "uf": "FA",
+    "precoReferencia": "R$ 80,00"
+  },
+  {
+    "id": "med-45",
+    "neb": "190011727",
+    "medicamento": "CITARABINA SOLUÇÃO INJETÁVEL 500MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 20,00"
+  },
+  {
+    "id": "med-46",
+    "neb": "190011728",
+    "medicamento": "CITARABINA SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV, SC, INTRATECAL)",
+    "uf": "FA",
+    "precoReferencia": "R$ 12,22"
+  },
+  {
+    "id": "med-47",
+    "neb": "BR3319610",
+    "medicamento": "CLADRIBINA 10MG COMPRIMIDO",
+    "uf": "CO",
+    "precoReferencia": "R$ 11.698,44"
+  },
+  {
+    "id": "med-48",
+    "neb": "190011912",
+    "medicamento": "CLADRIBINA SOLUÇÃO INJETÁVEL 10MG (1MG/ML) FRASCO AMPOLA 10ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.760,81"
+  },
+  {
+    "id": "med-49",
+    "neb": "190022990",
+    "medicamento": "CLORAMBUCIL 2MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 3,82"
+  },
+  {
+    "id": "med-50",
+    "neb": "NC",
+    "medicamento": "CLORETO DE RADIO 223",
+    "uf": "FA",
+    "precoReferencia": "R$ 21.364,70"
+  },
+  {
+    "id": "med-51",
+    "neb": "BR3274310",
+    "medicamento": "CRIZOTINIBE 250MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 556,32"
+  },
+  {
+    "id": "med-52",
+    "neb": "190011927",
+    "medicamento": "DACARBAZINA PÓ PARA SOLUÇÃO INJETÁVEL 200MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 30,99"
+  },
+  {
+    "id": "med-53",
+    "neb": "BR3277908",
+    "medicamento": "DARATUMUMABE 100MG FRASCO AMPOLA",
+    "uf": "FA",
+    "precoReferencia": "R$ 2.047,47"
+  },
+  {
+    "id": "med-54",
+    "neb": "BR3277907",
+    "medicamento": "DARATUMUMABE 400MG FRASCO AMPOLA",
+    "uf": "FA",
+    "precoReferencia": "R$ 8.189,93"
+  },
+  {
+    "id": "med-55",
+    "neb": "BR3307757",
+    "medicamento": "DAROLUTAMIDA 300MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 100,00"
+  },
+  {
+    "id": "med-56",
+    "neb": "BR3258074",
+    "medicamento": "DASATINIBE 100MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 99,45"
+  },
+  {
+    "id": "med-57",
+    "neb": "190044598",
+    "medicamento": "DASATINIBE 20MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 242,87"
+  },
+  {
+    "id": "med-58",
+    "neb": "190010248",
+    "medicamento": "DAUNORRUBICINA, CLORIDRATO PÓ PARA SOLUÇÃO INJETÁVEL 20MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 112,32"
+  },
+  {
+    "id": "med-59",
+    "neb": "190036456",
+    "medicamento": "DECITABINA SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 951,72"
+  },
+  {
+    "id": "med-60",
+    "neb": "BR3267995",
+    "medicamento": "DEGARELIX, ACETATO 120MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 528,01"
+  },
+  {
+    "id": "med-61",
+    "neb": "BR3267994",
+    "medicamento": "DEGARELIX, ACETATO 80MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 578,50"
+  },
+  {
+    "id": "med-62",
+    "neb": "190052008",
+    "medicamento": "DENOSUMABE 60MG SOLUÇÃO INJETÁVEL",
+    "uf": "SE",
+    "precoReferencia": "R$ 530,00"
+  },
+  {
+    "id": "med-63",
+    "neb": "190011436",
+    "medicamento": "DOCETAXEL SOLUÇÃO INJETÁVEL 20MG FRASCO AMPOLA 0,5ML + DILUENTE FRASCO AMPOLA 1,5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 34,82"
+  },
+  {
+    "id": "med-64",
+    "neb": "190011437",
+    "medicamento": "DOCETAXEL SOLUÇÃO INJETÁVEL 80MG FRASCO AMPOLA 2ML + DILUENTE FRASCO AMPOLA 6ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 52,00"
+  },
+  {
+    "id": "med-65",
+    "neb": "BR3267065",
+    "medicamento": "DOXORRUBICINA LIPOSSOMAL 2MG/ML",
+    "uf": "AM",
+    "precoReferencia": "R$ 880,00"
+  },
+  {
+    "id": "med-66",
+    "neb": "190007910",
+    "medicamento": "DOXORRUBICINA PÓ PARA SOLUÇÃO INJETÁVEL 10MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 32,00"
+  },
+  {
+    "id": "med-67",
+    "neb": "190010305",
+    "medicamento": "DOXORRUBICINA PÓ PARA SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 34,20"
+  },
+  {
+    "id": "med-68",
+    "neb": "BR3327531",
+    "medicamento": "DUPILUMABE 200MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 5.170,70"
+  },
+  {
+    "id": "med-69",
+    "neb": "BR3308101",
+    "medicamento": "DUPILUMABE 300MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 5.219,65"
+  },
+  {
+    "id": "med-70",
+    "neb": "145784626",
+    "medicamento": "ECULIZUMAB 10mg/ml 30ml",
+    "uf": "FR",
+    "precoReferencia": "R$ 13.316,28"
+  },
+  {
+    "id": "med-71",
+    "neb": "BR3315017",
+    "medicamento": "ELOTUZUMABE 300MG",
+    "uf": "FR",
+    "precoReferencia": "R$ 7.526,11"
+  },
+  {
+    "id": "med-72",
+    "neb": "NC",
+    "medicamento": "ELOTUZUMABE 400MG",
+    "uf": "FR",
+    "precoReferencia": "R$ 9.359,31"
+  },
+  {
+    "id": "med-73",
+    "neb": "991522405",
+    "medicamento": "ELTROMBOPAG 25MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 74,47"
+  },
+  {
+    "id": "med-74",
+    "neb": "993028145",
+    "medicamento": "ELTROMBOPAG 50MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 151,99"
+  },
+  {
+    "id": "med-75",
+    "neb": "BR3266526",
+    "medicamento": "ENZALUTAMIDA 40MG COMPRIMIDO",
+    "uf": "CO",
+    "precoReferencia": "R$ 100,94"
+  },
+  {
+    "id": "med-76",
+    "neb": "190011768",
+    "medicamento": "EPIRRUBICINA, CLORIDRATO PÓ PARA SOLUÇÃO INJETÁVEL 10MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 64,18"
+  },
+  {
+    "id": "med-77",
+    "neb": "190011773",
+    "medicamento": "EPIRRUBICINA, CLORIDRATO PÓ PARA SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 289,81"
+  },
+  {
+    "id": "med-78",
+    "neb": "190005033",
+    "medicamento": "ERITROPOETINA HUMANA RECOMBINANTE PÓ PARA SOLUÇÃO INJETÁVEL 10.000UI FRASCO AMPOLA (IV, SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 57,00"
+  },
+  {
+    "id": "med-79",
+    "neb": "190011815",
+    "medicamento": "ERITROPOETINA HUMANA RECOMBINANTE PÓ PARA SOLUÇÃO INJETÁVEL 4.000UI FRASCO AMPOLA (IV, SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 22,09"
+  },
+  {
+    "id": "med-80",
+    "neb": "190030976",
+    "medicamento": "ERITROPOETINA HUMANA RECOMBINANTE PÓ PARA SOLUÇÃO INJETÁVEL 40.000UI FRASCO AMPOLA (IV, SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 875,66"
+  },
+  {
+    "id": "med-81",
+    "neb": "190030942",
+    "medicamento": "ERLOTINIBE, CLORIDRATO 150MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 75,77"
+  },
+  {
+    "id": "med-82",
+    "neb": "996172876",
+    "medicamento": "ETANERCEPTE SOLUÇÃO INJETÁVEL 25MG FRASCO AMPOLA (IV)",
+    "uf": "SE",
+    "precoReferencia": "R$ 862,98"
+  },
+  {
+    "id": "med-83",
+    "neb": "998745232",
+    "medicamento": "ETANERCEPTE SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV) KIT APLICAÇÃO",
+    "uf": "SE",
+    "precoReferencia": "R$ 363,00"
+  },
+  {
+    "id": "med-84",
+    "neb": "190007927",
+    "medicamento": "ETOPOSIDO SOLUÇÃO INJETÁVEL 100MG (20MG/ML) AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 25,05"
+  },
+  {
+    "id": "med-85",
+    "neb": "190050492",
+    "medicamento": "EVEROLIMO 10MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 41,80"
+  },
+  {
+    "id": "med-86",
+    "neb": "BR3269455",
+    "medicamento": "EVEROLIMO 2,5MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 125,84"
+  },
+  {
+    "id": "med-87",
+    "neb": "190048880",
+    "medicamento": "EVEROLIMO 5MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 25,60"
+  },
+  {
+    "id": "med-88",
+    "neb": "NC",
+    "medicamento": "EVOLOCUMABE 140 MG/ML SOLUÇÃO INJETÁVEL - SERINGA PREENCHIDA + CANETA APLICADORA",
+    "uf": "SE",
+    "precoReferencia": "R$ 888,00"
+  },
+  {
+    "id": "med-89",
+    "neb": "190052369",
+    "medicamento": "EXEMESTANO 25MG DRÁGEA (VO)",
+    "uf": "DR",
+    "precoReferencia": "R$ 3,25"
+  },
+  {
+    "id": "med-90",
+    "neb": "190009794",
+    "medicamento": "FILGRASTIMA SOLUÇÃO INJETÁVEL 300MCG (30.000.000UI) FRASCO AMPOLA 1ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 32,00"
+  },
+  {
+    "id": "med-91",
+    "neb": "190012987",
+    "medicamento": "FLUDARABINA PÓ PARA SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 681,55"
+  },
+  {
+    "id": "med-92",
+    "neb": "BR3316914",
+    "medicamento": "FLUORURACILA SOLUÇÃO INJETÁVEL 2,5 G (50MG/ML) FRASCO AMPOLA 50 ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 81,59"
+  },
+  {
+    "id": "med-93",
+    "neb": "190020714",
+    "medicamento": "FLUORURACILA SOLUÇÃO INJETÁVEL 250MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 2,37"
+  },
+  {
+    "id": "med-94",
+    "neb": "190026358",
+    "medicamento": "FLUORURACILA SOLUÇÃO INJETÁVEL 500MG (50MG/ML) FRASCO AMPOLA 10ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 16,45"
+  },
+  {
+    "id": "med-95",
+    "neb": "BR3269925",
+    "medicamento": "FOLINATO DE CÁLCIO 300MG",
+    "uf": "AM",
+    "precoReferencia": "R$ 120,00"
+  },
+  {
+    "id": "med-96",
+    "neb": "190033873",
+    "medicamento": "FULVESTRANTO SOLUÇÃO INJETÁVEL 250MG (50MG/ML) SERINGA 5ML (IM)",
+    "uf": "SE",
+    "precoReferencia": "R$ 175,00"
+  },
+  {
+    "id": "med-97",
+    "neb": "BR3268475",
+    "medicamento": "GEFITINIBE 250 COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 11,98"
+  },
+  {
+    "id": "med-98",
+    "neb": "190034673",
+    "medicamento": "GENCITABINA PÓ PARA SOLUÇÃO INJETÁVEL 200MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 21,00"
+  },
+  {
+    "id": "med-99",
+    "neb": "190026100",
+    "medicamento": "GENCITABINA, CLORIDRATO PÓ PARA SOLUÇÃO INJETÁVEL 1G FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 45,00"
+  },
+  {
+    "id": "med-100",
+    "neb": "190054339",
+    "medicamento": "GOLIMUMABE 50MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 3.028,69"
+  },
+  {
+    "id": "med-101",
+    "neb": "190013548",
+    "medicamento": "GOSSERRELINA 10,8 MG DISPOSITIVO SÓLIDO PARA INJEÇÃO SUBCUTÂNEA SERINGA (SC)",
+    "uf": "SE",
+    "precoReferencia": "R$ 1.600,32"
+  },
+  {
+    "id": "med-102",
+    "neb": "BR3306969",
+    "medicamento": "GUSELCUMABE 100MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 15.691,75"
+  },
+  {
+    "id": "med-103",
+    "neb": "BR3268968",
+    "medicamento": "IBRUTINIBE 140MG COMPRIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 466,30"
+  },
+  {
+    "id": "med-104",
+    "neb": "190011774",
+    "medicamento": "IDARRUBICINA, CLORIDRATO PÓ PARA SOLUÇÃO INJETÁVEL 10MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 483,33"
+  },
+  {
+    "id": "med-105",
+    "neb": "190026148",
+    "medicamento": "IFOSFAMIDA PÓ PARA SOLUÇÃO INJETÁVEL 1G FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 41,23"
+  },
+  {
+    "id": "med-106",
+    "neb": "190023979",
+    "medicamento": "IMATINIB, MESILATO 100MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 4,95"
+  },
+  {
+    "id": "med-107",
+    "neb": "190023928",
+    "medicamento": "IMATINIB, MESILATO 400MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 7,22"
+  },
+  {
+    "id": "med-108",
+    "neb": "190026929",
+    "medicamento": "IMUNOGLOBULINA ANTI-TIMÓCITOS EM SORO COELHO 25 MG (Está na Lista PME como Globulina)",
+    "uf": "FR",
+    "precoReferencia": "R$ 787,87"
+  },
+  {
+    "id": "med-109",
+    "neb": "190027061",
+    "medicamento": "IMUNOGLOBULINA HUMANA PÓ PARA SOLUÇÃO INJETÁVEL 5G OU 6G FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.519,00"
+  },
+  {
+    "id": "med-110",
+    "neb": "993717482",
+    "medicamento": "INFLIXIMABE SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 648,08"
+  },
+  {
+    "id": "med-111",
+    "neb": "BR3302762",
+    "medicamento": "INOTUZUMABE OZOGAMICINA",
+    "uf": "FA",
+    "precoReferencia": "R$ 82.922,78"
+  },
+  {
+    "id": "med-112",
+    "neb": "BR3269254",
+    "medicamento": "INSULINA DEGLUDECA SOLUÇÃO INJETÁVEL 100UI/ML SERINGA",
+    "uf": "SE",
+    "precoReferencia": "R$ 105,00"
+  },
+  {
+    "id": "med-113",
+    "neb": "BR3268824",
+    "medicamento": "INSULINA GLARGINA 300U/ML CANETA COM 1,5ML",
+    "uf": "SE",
+    "precoReferencia": "R$ 186,20"
+  },
+  {
+    "id": "med-114",
+    "neb": "131205963",
+    "medicamento": "INSULINA GLARGINA SOLUÇÃO INJETÁVEL 100UI/ML AMPOLA C/ SIST. APLICADOR 3ML (SC)",
+    "uf": "UN",
+    "precoReferencia": "R$ 27,92"
+  },
+  {
+    "id": "med-115",
+    "neb": "190021857",
+    "medicamento": "INSULINA GLARGINA SOLUÇÃO INJETÁVEL 100UI/ML FRASCO-AMPOLA 10ML (SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 163,51"
+  },
+  {
+    "id": "med-116",
+    "neb": "145743474",
+    "medicamento": "IPILIMUMABE 50MG FRASCO-AMPOLA 10ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 17.800,95"
+  },
+  {
+    "id": "med-117",
+    "neb": "190011838",
+    "medicamento": "IRINOTECANO, CLORIDRATO SOLUÇÃO INJETÁVEL 100MG (20MG/ML) FRASCO AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 28,50"
+  },
+  {
+    "id": "med-118",
+    "neb": "BR3298420",
+    "medicamento": "IXAZOMIBE 4MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 6.771,25"
+  },
+  {
+    "id": "med-119",
+    "neb": "BR3270559",
+    "medicamento": "LANREOTIDE 120MG - SOLUÇÃO INJETÁVEL SC - AMPOLA",
+    "uf": "AMP",
+    "precoReferencia": "R$ 2.783,30"
+  },
+  {
+    "id": "med-120",
+    "neb": "BR3270558",
+    "medicamento": "LANREOTIDE 90MG - SOLUÇÃO INJETÁVEL SC - AMPOLA",
+    "uf": "AMP",
+    "precoReferencia": "R$ 2.595,96"
+  },
+  {
+    "id": "med-121",
+    "neb": "190054340",
+    "medicamento": "LAPATINIBE, DITOSILATO 250MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 77,97"
+  },
+  {
+    "id": "med-122",
+    "neb": "BR3298775",
+    "medicamento": "LENALIDOMIDA 10MG CAPSULAS",
+    "uf": "CP",
+    "precoReferencia": "R$ 197,80"
+  },
+  {
+    "id": "med-123",
+    "neb": "BR3298733",
+    "medicamento": "LENALIDOMIDA 15MG CAPSULAS",
+    "uf": "CP",
+    "precoReferencia": "R$ 488,00"
+  },
+  {
+    "id": "med-124",
+    "neb": "BR3298773",
+    "medicamento": "LENALIDOMIDA 25MG CAPSULAS",
+    "uf": "CP",
+    "precoReferencia": "R$ 508,00"
+  },
+  {
+    "id": "med-125",
+    "neb": "BR3298774",
+    "medicamento": "LENALIDOMIDA 5MG CAPSULAS",
+    "uf": "CP",
+    "precoReferencia": "R$ 644,15"
+  },
+  {
+    "id": "med-126",
+    "neb": "NC",
+    "medicamento": "LENVATINIBE 10MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 375,00"
+  },
+  {
+    "id": "med-127",
+    "neb": "NC",
+    "medicamento": "LENVATINIBE 4MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 158,00"
+  },
+  {
+    "id": "med-128",
+    "neb": "190052151",
+    "medicamento": "LEUPRORRELINA, ACETATO PÓ LIOFILIZADO 22,5MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 710,60"
+  },
+  {
+    "id": "med-129",
+    "neb": "190011422",
+    "medicamento": "MEGESTROL, ACETATO 160MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 5,18"
+  },
+  {
+    "id": "med-130",
+    "neb": "145620353",
+    "medicamento": "MELFALANO 50 MG PÓ LIOFILIZADO (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 238,68"
+  },
+  {
+    "id": "med-131",
+    "neb": "BR3308301",
+    "medicamento": "MEPOLIZUMABE 100MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 2.025,83"
+  },
+  {
+    "id": "med-132",
+    "neb": "002263662",
+    "medicamento": "MERCAPTOPURINA 50MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 4,75"
+  },
+  {
+    "id": "med-133",
+    "neb": "190028989",
+    "medicamento": "MESNA SOLUÇÃO INJETÁVEL 400MG (100MG/ML) AMPOLA 4ML (IV)",
+    "uf": "AM",
+    "precoReferencia": "R$ 9,60"
+  },
+  {
+    "id": "med-134",
+    "neb": "190012983",
+    "medicamento": "METOTREXATO SOLUÇÃO INJETÁVEL 500MG (25MG/ML) FRASCO AMPOLA 20ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 89,97"
+  },
+  {
+    "id": "med-135",
+    "neb": "190012984",
+    "medicamento": "METOTREXATO SOLUÇÃO INJETÁVEL 50MG (25MG/ML) FRASCO AMPOLA 2ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 21,66"
+  },
+  {
+    "id": "med-136",
+    "neb": "190027065",
+    "medicamento": "MITOXANTRONA, CLORIDRATO SOLUÇÃO INJETÁVEL 20MG (2MG/ML) FRASCO AMPOLA 10ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 998,00"
+  },
+  {
+    "id": "med-137",
+    "neb": "190036790",
+    "medicamento": "NILOTINIBE 200MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 153,74"
+  },
+  {
+    "id": "med-138",
+    "neb": "BR3268872",
+    "medicamento": "NINTEDANIBE 150MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 80,00"
+  },
+  {
+    "id": "med-139",
+    "neb": "BR3271711",
+    "medicamento": "NIVOLUMABE 10MG/ML 10ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 9.287,12"
+  },
+  {
+    "id": "med-140",
+    "neb": "BR3271710",
+    "medicamento": "NIVOLUMABE 4MG/ML 10ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 3.714,86"
+  },
+  {
+    "id": "med-141",
+    "neb": "BR3265301",
+    "medicamento": "OBINUTUZUMABE 1000MG/40ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 29.559,13"
+  },
+  {
+    "id": "med-142",
+    "neb": "BR3304883",
+    "medicamento": "OCRELIZUMABE 300MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 44.282,28"
+  },
+  {
+    "id": "med-143",
+    "neb": "190028991",
+    "medicamento": "OCTREOTIDA, ACETATO (LAR) PÓ PARA SOLUÇÃO INJETÁVEL 20MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 5.410,10"
+  },
+  {
+    "id": "med-144",
+    "neb": "190033871",
+    "medicamento": "OCTREOTIDA, ACETATO (LAR) PÓ PARA SOLUÇÃO INJETÁVEL 30MG FRASCO AMPOLA (IV)",
+    "uf": "SE",
+    "precoReferencia": "R$ 7.303,57"
+  },
+  {
+    "id": "med-145",
+    "neb": "nc",
+    "medicamento": "OFATUMUMABE 20MG/0,4ML",
+    "uf": "SE",
+    "precoReferencia": "R$ 12.770,34"
+  },
+  {
+    "id": "med-146",
+    "neb": "NC",
+    "medicamento": "OLAPARIBE 150MG COMPRIMIDO",
+    "uf": "CO",
+    "precoReferencia": "R$ 265,58"
+  },
+  {
+    "id": "med-147",
+    "neb": "BR3295233",
+    "medicamento": "OMALIZUMABE 150MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 726,00"
+  },
+  {
+    "id": "med-148",
+    "neb": "NC",
+    "medicamento": "OSIMERTINIBE 80MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 1.128,46"
+  },
+  {
+    "id": "med-149",
+    "neb": "332000370",
+    "medicamento": "OXALIPLATINA PÓ PARA SOLUÇÃO INJETÁVEL 100MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 54,00"
+  },
+  {
+    "id": "med-150",
+    "neb": "190026154",
+    "medicamento": "OXALIPLATINA PÓ PARA SOLUÇÃO INJETÁVEL 50MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 41,50"
+  },
+  {
+    "id": "med-151",
+    "neb": "190011916",
+    "medicamento": "PACLITAXEL SOLUÇÃO INJETÁVEL 300MG (6MG/ML) FRASCO AMPOLA 50ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 95,26"
+  },
+  {
+    "id": "med-152",
+    "neb": "190009643",
+    "medicamento": "PACLITAXEL SOLUÇÃO INJETÁVEL 30MG (6MG/ML) COM EQUIPO ESPECÍFICO PARA ADMINISTRAÇÃO FRASCO AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 16,80"
+  },
+  {
+    "id": "med-153",
+    "neb": "BR3315052",
+    "medicamento": "PALBOCICLIBE 125MG CAPSULA DURA",
+    "uf": "CP",
+    "precoReferencia": "R$ 50,00"
+  },
+  {
+    "id": "med-154",
+    "neb": "PALBOCICLIBE 100MG CAPSULA DURA",
+    "medicamento": "CP",
+    "uf": "R$ 458,77",
+    "precoReferencia": ""
+  },
+  {
+    "id": "med-155",
+    "neb": "BR3315050",
+    "medicamento": "PALBOCICLIBE 75MG CAPSULA DURA",
+    "uf": "CP",
+    "precoReferencia": "R$ 50,00"
+  },
+  {
+    "id": "med-156",
+    "neb": "190027656",
+    "medicamento": "PALIVIZUMABE PÓ LIOFILIZADO 100MG FRASCO-AMPOLA (IM)",
+    "uf": "FA",
+    "precoReferencia": "R$ 5.029,73"
+  },
+  {
+    "id": "med-157",
+    "neb": "190051373",
+    "medicamento": "PALONOSETRONA, CLORIDRATO SOLUÇÃO INJETÁVEL 0,25MG (0,05MG/ML) FRASCO AMPOLA 5ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 88,60"
+  },
+  {
+    "id": "med-158",
+    "neb": "16006026",
+    "medicamento": "PANITUMUMABE 20MG/ML, FA 5ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.707,00"
+  },
+  {
+    "id": "med-159",
+    "neb": "BR3266519",
+    "medicamento": "PAZOPANIBE 200MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 50,44"
+  },
+  {
+    "id": "med-160",
+    "neb": "BR3266535",
+    "medicamento": "PAZOPANIBE 400MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 143,09"
+  },
+  {
+    "id": "med-161",
+    "neb": "BR3298373",
+    "medicamento": "PEGASPARAGINASE 3750U/5ML FA",
+    "uf": "FA",
+    "precoReferencia": "R$ 5.927,33"
+  },
+  {
+    "id": "med-162",
+    "neb": "BR3298375",
+    "medicamento": "PEMBROLIZUMAB 100MG/4ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 16.313,04"
+  },
+  {
+    "id": "med-163",
+    "neb": "190023728",
+    "medicamento": "PEMETREXEDE DISSÓDICO PÓ PARA SOLUÇÃO INJETÁVEL 500MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 164,00"
+  },
+  {
+    "id": "med-164",
+    "neb": "190054120",
+    "medicamento": "PERTUZUMABE 420MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 12.625,10"
+  },
+  {
+    "id": "med-165",
+    "neb": "BR3261965",
+    "medicamento": "PLERIXAFOR SOLUÇÃO INJETÁVEL 20 MG/ML",
+    "uf": "FA",
+    "precoReferencia": "R$ 18.536,09"
+  },
+  {
+    "id": "med-166",
+    "neb": "NC",
+    "medicamento": "POLATUZUMABE 140MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 78.631,97"
+  },
+  {
+    "id": "med-167",
+    "neb": "NC",
+    "medicamento": "POLATUZUMABE 30MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 16.848,75"
+  },
+  {
+    "id": "med-168",
+    "neb": "NC",
+    "medicamento": "POMALIDOMIDA 4MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 1.032,81"
+  },
+  {
+    "id": "med-169",
+    "neb": "BR3302763",
+    "medicamento": "PONATINIBE 15MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 409,06"
+  },
+  {
+    "id": "med-170",
+    "neb": "190019226",
+    "medicamento": "PRAMIPEXOLE 0,25MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 1,26"
+  },
+  {
+    "id": "med-171",
+    "neb": "190035780",
+    "medicamento": "RANIBIZUMABE SOLUÇÃO OFTÁLMICA (10MG/ML) FRASCO AMPOLA 0,23ML (OFTÁLMICO)",
+    "uf": "FA",
+    "precoReferencia": "R$ 2.254,00"
+  },
+  {
+    "id": "med-172",
+    "neb": "BR3272558",
+    "medicamento": "REGORAFENIBE 40MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 183,89"
+  },
+  {
+    "id": "med-173",
+    "neb": "BR3308226",
+    "medicamento": "RISANQUIZUMABE 75MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 8.768,08"
+  },
+  {
+    "id": "med-174",
+    "neb": "NC",
+    "medicamento": "RISDIPLAM 0,75MG/ML X 80ML",
+    "uf": "FR",
+    "precoReferencia": "R$ 69.989,00"
+  },
+  {
+    "id": "med-175",
+    "neb": "190009645",
+    "medicamento": "RITUXIMAB SOLUÇÃO INJETÁVEL 100MG (10MG/ML) FRASCO AMPOLA 10ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 174,00"
+  },
+  {
+    "id": "med-176",
+    "neb": "BR3268969",
+    "medicamento": "RITUXIMAB SOLUÇÃO INJETÁVEL 1400MG SC",
+    "uf": "FA",
+    "precoReferencia": "R$ 12.037,57"
+  },
+  {
+    "id": "med-177",
+    "neb": "190025322",
+    "medicamento": "RITUXIMAB SOLUÇÃO INJETÁVEL 500MG (10MG/ML) FRASCO AMPOLA 50ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 749,00"
+  },
+  {
+    "id": "med-178",
+    "neb": "190051803",
+    "medicamento": "RIVASTIGMINA ADESIVO TRANSDÉRMICO COM 15CM COM PERCENTUAL DE LIBERAÇÃO DE 13,3MG/24H",
+    "uf": "UN",
+    "precoReferencia": "R$ 13,47"
+  },
+  {
+    "id": "med-179",
+    "neb": "BR 3309379",
+    "medicamento": "Romosozumabe 90mg/ml 1,17ml",
+    "uf": "SE",
+    "precoReferencia": "R$ 2.174,00"
+  },
+  {
+    "id": "med-180",
+    "neb": "BR3267924",
+    "medicamento": "RUXOLITINIBE 15MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 472,79"
+  },
+  {
+    "id": "med-181",
+    "neb": "BR3267925",
+    "medicamento": "RUXOLITINIBE 20MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 472,79"
+  },
+  {
+    "id": "med-182",
+    "neb": "BR3267923",
+    "medicamento": "RUXOLITINIBE 5MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 262,26"
+  },
+  {
+    "id": "med-183",
+    "neb": "BR3288549",
+    "medicamento": "SECUQUINUMABE 150MG",
+    "uf": "SE",
+    "precoReferencia": "R$ 3.737,64"
+  },
+  {
+    "id": "med-184",
+    "neb": "190011794",
+    "medicamento": "SOMATROPINA HUMANA RECOMBINANTE (HORMÔNIO DO CRESCIMENTO) PÓ PARA SOLUÇÃO INJETÁVEL 16UI (5,3MG) FRASCO AMPOLA (SC)",
+    "uf": "CN",
+    "precoReferencia": "R$ 620,50"
+  },
+  {
+    "id": "med-185",
+    "neb": "190036457",
+    "medicamento": "SORAFENIBE 200MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 9,60"
+  },
+  {
+    "id": "med-186",
+    "neb": "190030945",
+    "medicamento": "SUNITINIBE, MALEATO 12,5MG CÁPSULA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 36,00"
+  },
+  {
+    "id": "med-187",
+    "neb": "190030944",
+    "medicamento": "SUNITINIBE, MALEATO 25MG CÁPSULA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 48,60"
+  },
+  {
+    "id": "med-188",
+    "neb": "190030943",
+    "medicamento": "SUNITINIBE, MALEATO 50MG CÁPSULA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 81,00"
+  },
+  {
+    "id": "med-189",
+    "neb": "NC",
+    "medicamento": "TECLISTAMABE 153MG 90MG/ML",
+    "uf": "fa",
+    "precoReferencia": "R$ 35.514,00"
+  },
+  {
+    "id": "med-190",
+    "neb": "NC",
+    "medicamento": "TECLISTAMABE 30MG 10MG/ML",
+    "uf": "fa",
+    "precoReferencia": "R$ 6.963,00"
+  },
+  {
+    "id": "med-191",
+    "neb": "190020939",
+    "medicamento": "TEMOZOLOMIDA 20MG CÁPSULA GELATINOSA DURA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 8,00"
+  },
+  {
+    "id": "med-192",
+    "neb": "190020938",
+    "medicamento": "TEMOZOLOMIDA 100MG CÁPSULA GELATINOSA DURA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 27,00"
+  },
+  {
+    "id": "med-193",
+    "neb": "190029004",
+    "medicamento": "TEMOZOLOMIDA 250MG CÁPSULA GELATINOSA DURA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 50,00"
+  },
+  {
+    "id": "med-194",
+    "neb": "190020940",
+    "medicamento": "TEMOZOLOMIDA 5MG CÁPSULA GELATINOSA DURA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 12,00"
+  },
+  {
+    "id": "med-195",
+    "neb": "190035137",
+    "medicamento": "TERIPARATIDA SOLUÇÃO INJETÁVEL (250MCG/ML) CANETA 3ML (SC)",
+    "uf": "SE",
+    "precoReferencia": "R$ 3.219,42"
+  },
+  {
+    "id": "med-196",
+    "neb": "123783312",
+    "medicamento": "TESTOSTERONA, UNDECILATO 250MG/ML - AMPOLA 4ML",
+    "uf": "AM",
+    "precoReferencia": "R$ 278,00"
+  },
+  {
+    "id": "med-197",
+    "neb": "190026096",
+    "medicamento": "TIOGUANINA 40MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 9,02"
+  },
+  {
+    "id": "med-198",
+    "neb": "190047980",
+    "medicamento": "TIROTROPINA ALFA 0,9MG",
+    "uf": "FC",
+    "precoReferencia": "R$ 2.426,33"
+  },
+  {
+    "id": "med-199",
+    "neb": "BR3303612",
+    "medicamento": "TOCILIZUMABE 200mg",
+    "uf": "FR",
+    "precoReferencia": "R$ 1.875,12"
+  },
+  {
+    "id": "med-200",
+    "neb": "BR3303612",
+    "medicamento": "TOCILIZUMABE 80mg",
+    "uf": "FR",
+    "precoReferencia": "R$ 585,03"
+  },
+  {
+    "id": "med-201",
+    "neb": "BR3267064",
+    "medicamento": "TOFACITINIB 5MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 79,92"
+  },
+  {
+    "id": "med-202",
+    "neb": "190026160",
+    "medicamento": "TOPOTECANO, CLORIDRATO PÓ LIOFILIZADO 4MG FRASCO-AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 550,00"
+  },
+  {
+    "id": "med-203",
+    "neb": "BR3266857",
+    "medicamento": "TRASTUZUMABE - ENTASINA 100MG - SOLUÇÃO INJETÁVEL",
+    "uf": "FA",
+    "precoReferencia": "R$ 9.949,11"
+  },
+  {
+    "id": "med-204",
+    "neb": "BR3266818",
+    "medicamento": "TRASTUZUMABE - ENTASINA 160MG - SOLUÇÃO INJETÁVEL (SDM)",
+    "uf": "FA",
+    "precoReferencia": "R$ 15.769,28"
+  },
+  {
+    "id": "med-205",
+    "neb": "TRASTUZUMABE DERUXTECANA 100MG - SOLUÇÃO INJETÁVEL",
+    "medicamento": "FA",
+    "uf": "R$ 18.220,55",
+    "precoReferencia": ""
+  },
+  {
+    "id": "med-206",
+    "neb": "190026658",
+    "medicamento": "TRASTUZUMABE PÓ PARA SOLUÇÃO INJETÁVEL 440MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 1.550,00"
+  },
+  {
+    "id": "med-207",
+    "neb": "190012194",
+    "medicamento": "TRETINOÍNA 10MG CÁPSULA (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 16,70"
+  },
+  {
+    "id": "med-208",
+    "neb": "BR3314242",
+    "medicamento": "TRIFLURIDINA 20MG + TIPIRACILO 9,420MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 319,88"
+  },
+  {
+    "id": "med-209",
+    "neb": "145623154",
+    "medicamento": "TRIÓXIDO DE ARSÊNIO 1MG/ML, AMPOLA 10ML (IV)",
+    "uf": "AM",
+    "precoReferencia": "R$ 1.255,99"
+  },
+  {
+    "id": "med-210",
+    "neb": "NC",
+    "medicamento": "UPADACITINIBE 15MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 140,00"
+  },
+  {
+    "id": "med-211",
+    "neb": "190046220",
+    "medicamento": "USTEQUINUMABE SOLUÇÃO INJETÁVEL 130MG FRASCO-AMPOLA (SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 33.534,17"
+  },
+  {
+    "id": "med-212",
+    "neb": "190046220",
+    "medicamento": "USTEQUINUMABE SOLUÇÃO INJETÁVEL 45MG/0,5ML FRASCO-AMPOLA (SC)",
+    "uf": "FA",
+    "precoReferencia": "R$ 8.590,24"
+  },
+  {
+    "id": "med-213",
+    "neb": "BR3320812",
+    "medicamento": "VEDOLIZUMABE 300MG",
+    "uf": "FA",
+    "precoReferencia": "R$ 16.292,69"
+  },
+  {
+    "id": "med-214",
+    "neb": "190052034",
+    "medicamento": "VEMURAFENIBE 240MG COMPRIMIDO (VO)",
+    "uf": "CO",
+    "precoReferencia": "R$ 336,26"
+  },
+  {
+    "id": "med-215",
+    "neb": "BR3298777",
+    "medicamento": "VENETOCLAX 100MG",
+    "uf": "CO",
+    "precoReferencia": "R$ 427,18"
+  },
+  {
+    "id": "med-216",
+    "neb": "BR3315015",
+    "medicamento": "VENETOCLAX KIT START",
+    "uf": "CO",
+    "precoReferencia": "R$ 10.257,46"
+  },
+  {
+    "id": "med-217",
+    "neb": "190026678",
+    "medicamento": "VIMBLASTINA, SULFATO PÓ PARA SOLUÇÃO INJETÁVEL 10MG FRASCO AMPOLA (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 80,00"
+  },
+  {
+    "id": "med-218",
+    "neb": "190009802",
+    "medicamento": "VINCRISTINA, SULFATO SOLUÇÃO INJETÁVEL 1MG AMPOLA 1ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 27,40"
+  },
+  {
+    "id": "med-219",
+    "neb": "NC34",
+    "medicamento": "VINORELBINA, DITARTARATO 10MG SOLUÇÃO INJETÁVEL (10MG/ML) FRASCO AMPOLA 1ML (IV)",
+    "uf": "FA",
+    "precoReferencia": "R$ 187,00"
+  },
+  {
+    "id": "med-220",
+    "neb": "190052355",
+    "medicamento": "VINORELBINA, TARTARATO CÁPSULA 20MG (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 146,13"
+  },
+  {
+    "id": "med-221",
+    "neb": "190052356",
+    "medicamento": "VINORELBINA, TARTARATO CÁPSULA 30MG (VO)",
+    "uf": "CP",
+    "precoReferencia": "R$ 215,46"
+  },
+  {
+    "id": "med-222",
+    "neb": "NC",
+    "medicamento": "ZANUBRUTINIBE 80MG",
+    "uf": "CP",
+    "precoReferencia": "R$ 364,23"
+  },
+  {
+    "id": "med-223",
+    "neb": "190056618",
+    "medicamento": "CARBOXIMALTOSE FÉRRICA 500MG - SOLUÇÃO INJETÁVEL",
+    "uf": "FA",
+    "precoReferencia": "R$ 490,00"
+  },
+  {
+    "id": "med-224",
+    "neb": "190036453",
+    "medicamento": "LEVONORGESTREL (SISTEMA INTRA UTERINO - SIU)",
+    "uf": "UN",
+    "precoReferencia": "R$ 1.125,11"
+  },
+  {
+    "id": "med-225",
+    "neb": "190023932",
+    "medicamento": "LEUPRORRELINA, ACETATO PÓ LIOFILIZADO 3,75MG + DILUENTE + SERINGA + DUAS AGULHAS (IM)",
+    "uf": "FA",
+    "precoReferencia": "R$ 376,50"
+  },
+  {
+    "id": "med-226",
+    "neb": "190015083",
+    "medicamento": "TOXINA BOTULINICA PÓ LIOFILIZADO 100U FRASCO-AMPOLA (IM)",
+    "uf": "FA",
+    "precoReferencia": "R$ 473,72"
+  },
+  {
+    "id": "med-227",
+    "neb": "190036782",
+    "medicamento": "HIALURATO DE SÓDIO SOLUÇÃO INJETÁVEL 20MG/ML SERINGA (IA)",
+    "uf": "SE",
+    "precoReferencia": "R$ 139,50"
+  }
+]

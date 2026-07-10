@@ -14,6 +14,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import MedicationIcon from '@mui/icons-material/Medication'
 import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -25,11 +26,18 @@ import { stripDemoRouteBase } from '@/utils/portalPaths'
 const NAV_ITEMS = [
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon sx={{ fontSize: 18 }} /> },
   { path: '/clinica/pedidos/novo', label: 'Novo Lançamento', icon: <AddIcon sx={{ fontSize: 18 }} /> },
+  {
+    path: '/clinica/precos-medicamentos',
+    label: 'Preço de Medicamentos',
+    icon: <MedicationIcon sx={{ fontSize: 18 }} />,
+    medicamentoOnly: true,
+  },
   { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon sx={{ fontSize: 18 }} /> },
 ] as const
 
 function resolveActiveTab(pathname: string): string {
   const path = stripDemoRouteBase(pathname)
+  if (path.startsWith('/clinica/precos-medicamentos')) return '/clinica/precos-medicamentos'
   if (path.startsWith('/clinica/pedidos/novo')) return '/clinica/pedidos/novo'
   if (path.startsWith('/clinica/timeline')) return '/clinica/timelines'
   if (path.startsWith('/clinica/pedidos')) return '/clinica/pedidos'
@@ -46,7 +54,16 @@ export function ClinicaTopBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
+  const isMedicamento =
+    user?.perfil === 'MEDICAMENTO' || clinica?.tipo === 'medicamento'
   const activeTab = useMemo(() => resolveActiveTab(location.pathname), [location.pathname])
+  const navItems = useMemo(
+    () =>
+      NAV_ITEMS.filter((item) =>
+        'medicamentoOnly' in item && item.medicamentoOnly ? isMedicamento : true,
+      ),
+    [isMedicamento],
+  )
 
   const handleLogout = async () => {
     await logout()
@@ -124,7 +141,7 @@ export function ClinicaTopBar() {
           },
         }}
       >
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <Tab
             key={item.path}
             value={item.path}
