@@ -18,6 +18,8 @@ interface ImhEnvioModalProps {
   mesReferencia?: MesConsumoModelo
   isSubmitting?: boolean
   modoMedicamento?: boolean
+  /** Apenas visualização/exportação — sem botão de confirmar envio. */
+  previewOnly?: boolean
   onClose: () => void
   onConfirm: (planilha: ImhPlanilha) => void
 }
@@ -28,6 +30,7 @@ export function ImhEnvioModal({
   mesReferencia,
   isSubmitting = false,
   modoMedicamento = false,
+  previewOnly = false,
   onClose,
   onConfirm,
 }: ImhEnvioModalProps) {
@@ -75,7 +78,11 @@ export function ImhEnvioModal({
   return (
     <PlanilhaEnvioModalShell
       open={open}
-      title="Planilha IMH — Envio para Contabilidade"
+      title={
+        previewOnly
+          ? 'Planilha Auditoria — Visualização'
+          : 'Planilha IMH — Envio para Contabilidade'
+      }
       lancamentoCount={consumoRows.length}
       icon={<DescriptionIcon />}
       appBarColor="primary"
@@ -93,7 +100,7 @@ export function ImhEnvioModal({
       footerActions={
         <>
           <Button onClick={onClose} disabled={busy} color="inherit" size="small">
-            Cancelar
+            {previewOnly ? 'Voltar' : 'Cancelar'}
           </Button>
           <Button
             variant="outlined"
@@ -104,16 +111,18 @@ export function ImhEnvioModal({
           >
             {isGeneratingXlsx ? 'Gerando...' : 'Gerar .xlsx'}
           </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<SendIcon />}
-            onClick={() => onConfirm({ cabecalho, linhas })}
-            disabled={busy || linhas.length === 0}
-            sx={{ fontWeight: 700 }}
-          >
-            {isSubmitting ? 'Enviando...' : 'Confirmar envio Auditoria'}
-          </Button>
+          {!previewOnly && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<SendIcon />}
+              onClick={() => onConfirm({ cabecalho, linhas })}
+              disabled={busy || linhas.length === 0}
+              sx={{ fontWeight: 700 }}
+            >
+              {isSubmitting ? 'Enviando...' : 'Confirmar envio Auditoria'}
+            </Button>
+          )}
         </>
       }
     />

@@ -15,6 +15,8 @@ interface MaterialEnvioModalProps {
   consumoRows: ConsumoMaterialRow[]
   mesReferencia?: MesConsumoModelo
   isSubmitting?: boolean
+  /** Apenas visualização/exportação — sem botão de confirmar envio. */
+  previewOnly?: boolean
   onClose: () => void
   onConfirm: (planilha: ImhPlanilha) => void
 }
@@ -24,6 +26,7 @@ export function MaterialEnvioModal({
   consumoRows,
   mesReferencia,
   isSubmitting = false,
+  previewOnly = false,
   onClose,
   onConfirm,
 }: MaterialEnvioModalProps) {
@@ -58,7 +61,11 @@ export function MaterialEnvioModal({
   return (
     <PlanilhaEnvioModalShell
       open={open}
-      title="Planilha Material — Aba MODELO OPME TRO"
+      title={
+        previewOnly
+          ? 'Planilha Confecção de Solemp — Visualização'
+          : 'Planilha Material — Aba MODELO OPME TRO'
+      }
       lancamentoCount={consumoRows.length}
       icon={<InventoryIcon />}
       appBarColor="secondary"
@@ -76,7 +83,7 @@ export function MaterialEnvioModal({
       footerActions={
         <>
           <Button onClick={onClose} disabled={busy} color="inherit" size="small">
-            Cancelar
+            {previewOnly ? 'Voltar' : 'Cancelar'}
           </Button>
           <Button
             variant="outlined"
@@ -87,16 +94,18 @@ export function MaterialEnvioModal({
           >
             {isGenerating ? 'Gerando...' : 'Gerar .ods'}
           </Button>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<SendIcon />}
-            onClick={() => onConfirm({ cabecalho, linhas })}
-            disabled={busy || linhas.length === 0}
-            sx={{ fontWeight: 700 }}
-          >
-            {isSubmitting ? 'Enviando...' : 'Enviar para Conf. de Solemp'}
-          </Button>
+          {!previewOnly && (
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<SendIcon />}
+              onClick={() => onConfirm({ cabecalho, linhas })}
+              disabled={busy || linhas.length === 0}
+              sx={{ fontWeight: 700 }}
+            >
+              {isSubmitting ? 'Enviando...' : 'Enviar para Conf. de Solemp'}
+            </Button>
+          )}
         </>
       }
     />

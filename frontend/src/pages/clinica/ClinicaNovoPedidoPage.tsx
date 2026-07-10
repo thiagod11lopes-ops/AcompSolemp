@@ -16,6 +16,7 @@ import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMater
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
+import { ClinicaEnvioParaleloModal } from '@/components/clinica/ClinicaEnvioParaleloModal'
 import {
   useCreateClinicaPedido,
   useAdicionarFluxoParalelo,
@@ -57,6 +58,7 @@ import {
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { loadAppData } from '@/mocks/seed'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpreadsheet'
 
 export default function ClinicaNovoPedidoPage() {
@@ -88,6 +90,9 @@ export default function ClinicaNovoPedidoPage() {
   const [imhConsumoRows, setImhConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [materialModalOpen, setMaterialModalOpen] = useState(false)
   const [materialConsumoRows, setMaterialConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [paraleloModalOpen, setParaleloModalOpen] = useState(false)
+  const [paraleloConsumoRows, setParaleloConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [paraleloPreview, setParaleloPreview] = useState<'auditoria' | 'confeccao' | null>(null)
   const [rowsByMes, setRowsByMes] = useState<Record<string, ConsumoMaterialRow[]>>({})
   const [deletedRowIds, setDeletedRowIds] = useState<Set<string>>(new Set())
   const [finalizedAuditoriaRowIds, setFinalizedAuditoriaRowIds] = useState<Set<string>>(new Set())
@@ -396,21 +401,11 @@ export default function ClinicaNovoPedidoPage() {
     return sourceRows.filter((r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r))
   }, [rowsByMes, mesSelecionado, planilhaRows, rowSelectionAuditoria])
 
-  const getSelectedRowsMaterial = useCallback(() => {
+  const getSelectedRowsAs = useCallback(() => {
     const mesSheet = rowsByMes[mesSelecionado.id]
     const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
-    return sourceRows.filter(
-      (r) =>
-        rowSelectionMaterial[r.id] &&
-        rowPodeSerEnviadaMaterial(r, finalizedMaterialRowIds),
-    )
-  }, [
-    rowsByMes,
-    mesSelecionado,
-    planilhaRows,
-    rowSelectionMaterial,
-    finalizedMaterialRowIds,
-  ])
+    return sourceRows.filter((r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r))
+  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelectionAuditoria])
 
   const handleAbrirImhModal = () => {
     const selectedRows = isMedicamentoPortal
@@ -429,15 +424,49 @@ export default function ClinicaNovoPedidoPage() {
     setImhModalOpen(true)
   }
 
-  const handleAbrirMaterialModal = () => {
-    const selectedRows = getSelectedRowsMaterial()
+  const handleAbrirParaleloModal = () => {
+    const selectedRows = getSelectedRowsAs()
     if (selectedRows.length === 0) {
-      setBatchError('Selecione lançamentos novos preenchidos para enviar.')
+      setBatchError('Marque o checklist AS nos lançamentos que deseja enviar.')
       return
     }
     setBatchError(null)
-    setMaterialConsumoRows(selectedRows)
+    setParaleloConsumoRows(selectedRows)
+    setParaleloModalOpen(true)
+  }
+
+  const handleVisualizarAuditoriaParalelo = () => {
+    setImhConsumoRows(paraleloConsumoRows)
+    setParaleloPreview('auditoria')
+    setParaleloModalOpen(false)
+    setImhModalOpen(true)
+  }
+
+  const handleVisualizarConfeccaoParalelo = () => {
+    setMaterialConsumoRows(paraleloConsumoRows)
+    setParaleloPreview('confeccao')
+    setParaleloModalOpen(false)
     setMaterialModalOpen(true)
+  }
+
+  const handleFecharPreviewAuditoria = () => {
+    if (isBatchSending) return
+    setImhModalOpen(false)
+    setImhConsumoRows([])
+    if (paraleloPreview === 'auditoria') {
+      setParaleloPreview(null)
+      setParaleloModalOpen(true)
+    }
+  }
+
+  const handleFecharPreviewConfeccao = () => {
+    if (isBatchSending) return
+    setMaterialModalOpen(false)
+    setMaterialConsumoRows([])
+    if (paraleloPreview === 'confeccao') {
+      setParaleloPreview(null)
+      setParaleloModalOpen(true)
+    }
   }
 
   const handleConfirmarEnvioImh = async (planilha: ImhPlanilha) => {
@@ -586,6 +615,89 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
+  const handleEnviarAmbasParalelo = async () => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome) {
+      setBatchError('Clínica não identificada. Faça login novamente.')
+      return
+    }
+
+    const novos = paraleloConsumoRows.filter(
+      (r) =>
+        rowPodeSerEnviadaAuditoria(r, rowIdsComPedido, finalizedAuditoriaRowIds) ||
+        rowPodeSerEnviadaMaterial(r, finalizedMaterialRowIds),
+    )
+
+    setBatchError(null)
+    setIsBatchSending(true)
+    try {
+      if (novos.length === 0) {
+        setBatchError('Nenhum lançamento novo para enviar.')
+        return
+      }
+
+      const rowIds = novos.map((row) => row.id)
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
+      const planilha = buildImhPlanilhaFromConsumo(novos, mesSelecionado)
+      const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'auditoria'),
+          id: pedidoId,
+          fluxo: 'paralelo',
+          consumoRowIds: rowIds,
+        })
+      }
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+
+      const nextFinalizedAuditoria = new Set(finalizedAuditoriaRowIds)
+      const nextFinalizedMaterial = new Set(finalizedMaterialRowIds)
+      for (const row of novos) {
+        nextFinalizedAuditoria.add(row.id)
+        nextFinalizedMaterial.add(row.id)
+      }
+      setFinalizedAuditoriaRowIds(nextFinalizedAuditoria)
+      setFinalizedMaterialRowIds(nextFinalizedMaterial)
+      setRowSelectionAuditoria((prev) => {
+        const next = { ...prev }
+        for (const row of novos) next[row.id] = true
+        return next
+      })
+      setRowSelectionMaterial((prev) => {
+        const next = { ...prev }
+        for (const row of novos) next[row.id] = true
+        return next
+      })
+      setExtraRows((prev) => {
+        const merged = [...prev]
+        for (const row of novos) {
+          const index = merged.findIndex((item) => item.id === row.id)
+          if (index >= 0) merged[index] = row
+          else merged.push(row)
+        }
+        persistPlanilhaState(merged, nextFinalizedAuditoria, nextFinalizedMaterial)
+        return merged
+      })
+      consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
+      consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
+      setParaleloModalOpen(false)
+      setParaleloConsumoRows([])
+      setParaleloPreview(null)
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setBatchError('Erro ao enviar lançamentos para Confecção Solemp/Auditoria. Tente novamente.')
+    } finally {
+      setIsBatchSending(false)
+    }
+  }
+
   const totalPreenchidos = useMemo(
     () => planilhaRows.filter(isLinhaPreenchida).length,
     [planilhaRows],
@@ -677,8 +789,8 @@ export default function ClinicaNovoPedidoPage() {
           addPlanilhaError={addPlanilhaError}
           onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
           onLimparRascunho={isDemoMedicamentoFixo ? undefined : limparPlanilha}
-          onEnviarImh={handleAbrirImhModal}
-          onEnviarMaterial={isMedicamentoPortal ? undefined : handleAbrirMaterialModal}
+          onEnviarImh={isMedicamentoPortal ? handleAbrirImhModal : undefined}
+          onEnviarParalelo={isMedicamentoPortal ? undefined : handleAbrirParaleloModal}
           modoMedicamento={isMedicamentoPortal}
           planilhaFixaDemo={isDemoMedicamentoFixo}
           isEnviando={isBatchSending}
@@ -689,18 +801,39 @@ export default function ClinicaNovoPedidoPage() {
         />
       )}
 
+      <ClinicaEnvioParaleloModal
+        open={paraleloModalOpen}
+        rows={paraleloConsumoRows}
+        isSubmitting={isBatchSending}
+        onClose={() => {
+          if (!isBatchSending) {
+            setParaleloModalOpen(false)
+            setParaleloConsumoRows([])
+            setParaleloPreview(null)
+          }
+        }}
+        onVisualizarAuditoria={handleVisualizarAuditoriaParalelo}
+        onVisualizarConfeccao={handleVisualizarConfeccaoParalelo}
+        onEnviarAmbas={handleEnviarAmbasParalelo}
+      />
+
       <ImhEnvioModal
         open={imhModalOpen}
         consumoRows={imhConsumoRows}
         mesReferencia={mesSelecionado}
         isSubmitting={isBatchSending}
         modoMedicamento={isMedicamentoPortal}
-        onClose={() => {
-          if (!isBatchSending) {
-            setImhModalOpen(false)
-            setImhConsumoRows([])
-          }
-        }}
+        previewOnly={paraleloPreview === 'auditoria'}
+        onClose={
+          paraleloPreview === 'auditoria'
+            ? handleFecharPreviewAuditoria
+            : () => {
+                if (!isBatchSending) {
+                  setImhModalOpen(false)
+                  setImhConsumoRows([])
+                }
+              }
+        }
         onConfirm={handleConfirmarEnvioImh}
       />
 
@@ -709,12 +842,17 @@ export default function ClinicaNovoPedidoPage() {
         consumoRows={materialConsumoRows}
         mesReferencia={mesSelecionado}
         isSubmitting={isBatchSending}
-        onClose={() => {
-          if (!isBatchSending) {
-            setMaterialModalOpen(false)
-            setMaterialConsumoRows([])
-          }
-        }}
+        previewOnly={paraleloPreview === 'confeccao'}
+        onClose={
+          paraleloPreview === 'confeccao'
+            ? handleFecharPreviewConfeccao
+            : () => {
+                if (!isBatchSending) {
+                  setMaterialModalOpen(false)
+                  setMaterialConsumoRows([])
+                }
+              }
+        }
         onConfirm={handleConfirmarEnvioMaterial}
       />
     </>

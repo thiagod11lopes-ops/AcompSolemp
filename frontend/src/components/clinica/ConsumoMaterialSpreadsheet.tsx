@@ -25,7 +25,6 @@ import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import PostAddIcon from '@mui/icons-material/PostAdd'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SendIcon from '@mui/icons-material/Send'
-import InventoryIcon from '@mui/icons-material/Inventory'
 import {
   flexRender,
   getCoreRowModel,
@@ -115,8 +114,8 @@ interface ContextMenuState {
 
 export type ConsumoEnvioCanal = 'auditoria' | 'material'
 
-type SelectColumnId = 'select-a' | 'select-s' | 'select-imh'
-const SELECT_COLUMNS_CLINICA: SelectColumnId[] = ['select-a', 'select-s']
+type SelectColumnId = 'select-as' | 'select-imh'
+const SELECT_COLUMNS_CLINICA: SelectColumnId[] = ['select-as']
 const SELECT_COLUMNS_MEDICAMENTO: SelectColumnId[] = ['select-imh']
 
 interface ConsumoMaterialSpreadsheetProps {
@@ -141,7 +140,8 @@ interface ConsumoMaterialSpreadsheetProps {
   onAddPlanilhaErrorClear?: () => void
   onLimparRascunho?: () => void
   onEnviarImh?: () => void
-  onEnviarMaterial?: () => void
+  /** Clínica: abre o modal de envio paralelo (Confecção + Auditoria). */
+  onEnviarParalelo?: () => void
   modoMedicamento?: boolean
   isEnviando?: boolean
   editable?: boolean
@@ -174,7 +174,7 @@ function ConsumoMaterialSpreadsheetInner({
   onAddPlanilhaErrorClear,
   onLimparRascunho,
   onEnviarImh,
-  onEnviarMaterial,
+  onEnviarParalelo,
   modoMedicamento = false,
   isEnviando = false,
   editable = false,
@@ -324,12 +324,6 @@ function ConsumoMaterialSpreadsheetInner({
     setFinalizadoModalCanal(null)
   }, [])
 
-  const handleDesmarcarFinalizado = useCallback(() => {
-    if (!finalizadoModalRow || !finalizadoModalCanal || !onDesfinalizarLinha) return
-    onDesfinalizarLinha(finalizadoModalRow.id, finalizadoModalCanal)
-    closeFinalizadoModal()
-  }, [finalizadoModalRow, finalizadoModalCanal, onDesfinalizarLinha, closeFinalizadoModal])
-
   const isFinalizadoAuditoria = useCallback(
     (row: ConsumoMaterialRow) => Boolean(finalizedAuditoriaRowIds?.has(row.id)),
     [finalizedAuditoriaRowIds],
@@ -340,14 +334,51 @@ function ConsumoMaterialSpreadsheetInner({
     [finalizedMaterialRowIds],
   )
 
+  const handleDesmarcarFinalizado = useCallback(() => {
+    if (!finalizadoModalRow || !finalizadoModalCanal || !onDesfinalizarLinha) return
+    if (
+      !modoMedicamento &&
+      isFinalizadoAuditoria(finalizadoModalRow) &&
+      isFinalizadoMaterial(finalizadoModalRow)
+    ) {
+      onDesfinalizarLinha(finalizadoModalRow.id, 'auditoria')
+      onDesfinalizarLinha(finalizadoModalRow.id, 'material')
+    } else {
+      onDesfinalizarLinha(finalizadoModalRow.id, finalizadoModalCanal)
+    }
+    closeFinalizadoModal()
+  }, [
+    finalizadoModalRow,
+    finalizadoModalCanal,
+    onDesfinalizarLinha,
+    closeFinalizadoModal,
+    modoMedicamento,
+    isFinalizadoAuditoria,
+    isFinalizadoMaterial,
+  ])
+
   const podeSelecionarAuditoria = useCallback(
     (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizadoAuditoria(row),
     [isFinalizadoAuditoria],
   )
 
-  const podeSelecionarMaterial = useCallback(
-    (row: ConsumoMaterialRow) => rowPodeSerSelecionada(row) && !isFinalizadoMaterial(row),
-    [isFinalizadoMaterial],
+  const isFinalizadoAs = useCallback(
+    (row: ConsumoMaterialRow) => isFinalizadoAuditoria(row) && isFinalizadoMaterial(row),
+    [isFinalizadoAuditoria, isFinalizadoMaterial],
+  )
+
+  const podeSelecionarAs = useCallback(
+    (row: ConsumoMaterialRow) =>
+      rowPodeSerSelecionada(row) && (!isFinalizadoAuditoria(row) || !isFinalizadoMaterial(row)),
+    [isFinalizadoAuditoria, isFinalizadoMaterial],
+  )
+
+  const syncAsSelection = useCallback(
+    (next: RowSelectionState) => {
+      onRowSelectionAuditoriaChange(next)
+      onRowSelectionMaterialChange(next)
+    },
+    [onRowSelectionAuditoriaChange, onRowSelectionMaterialChange],
   )
 
   const toggleRowSelection = useCallback(
@@ -372,7 +403,7 @@ function ConsumoMaterialSpreadsheetInner({
   const createEnvioSelectColumn = useCallback(
     (
       columnId: SelectColumnId,
-      headerLabel: 'A' | 'S' | 'IMH',
+      headerLabel: 'AS' | 'IMH',
       canal: ConsumoEnvioCanal,
       selection: RowSelectionState,
       onSelectionChange: (next: RowSelectionState) => void,
@@ -381,7 +412,7 @@ function ConsumoMaterialSpreadsheetInner({
       isFinalizado: (row: ConsumoMaterialRow) => boolean,
     ): ColumnDef<ConsumoMaterialRow> => ({
       id: columnId,
-      size: 40,
+      size: columnId === 'select-as' ? 48 : 40,
       enableSorting: false,
       header: () => {
         const pageRows = rows.filter((row) => podeSelecionar(row))
@@ -549,24 +580,14 @@ function ConsumoMaterialSpreadsheetInner({
         ]
       : [
           createEnvioSelectColumn(
-            'select-a',
-            'A',
+            'select-as',
+            'AS',
             'auditoria',
             rowSelectionAuditoria,
-            onRowSelectionAuditoriaChange,
+            syncAsSelection,
             finalizedAuditoriaRowIds,
-            podeSelecionarAuditoria,
-            isFinalizadoAuditoria,
-          ),
-          createEnvioSelectColumn(
-            'select-s',
-            'S',
-            'material',
-            rowSelectionMaterial,
-            onRowSelectionMaterialChange,
-            finalizedMaterialRowIds,
-            podeSelecionarMaterial,
-            isFinalizadoMaterial,
+            podeSelecionarAs,
+            isFinalizadoAs,
           ),
           ...dataColumns,
         ]
@@ -583,11 +604,9 @@ function ConsumoMaterialSpreadsheetInner({
     finalizedAuditoriaRowIds,
     podeSelecionarAuditoria,
     isFinalizadoAuditoria,
-    rowSelectionMaterial,
-    onRowSelectionMaterialChange,
-    finalizedMaterialRowIds,
-    podeSelecionarMaterial,
-    isFinalizadoMaterial,
+    syncAsSelection,
+    podeSelecionarAs,
+    isFinalizadoAs,
   ])
 
   const table = useReactTable({
@@ -627,30 +646,27 @@ function ConsumoMaterialSpreadsheetInner({
     [rows, rowSelectionAuditoria, podeSelecionarAuditoria],
   )
 
-  const selectedMaterialCount = useMemo(
-    () => rows.filter((row) => rowSelectionMaterial[row.id] && podeSelecionarMaterial(row)).length,
-    [rows, rowSelectionMaterial, podeSelecionarMaterial],
+  const selectedAsCount = useMemo(
+    () => rows.filter((row) => rowSelectionAuditoria[row.id] && podeSelecionarAs(row)).length,
+    [rows, rowSelectionAuditoria, podeSelecionarAs],
   )
 
-  const enviavelAuditoriaCount = useMemo(
-    () =>
-      rows.filter(
-        (row) =>
-          rowSelectionAuditoria[row.id] &&
-          rowPodeSerEnviadaAuditoria(row, rowIdsComPedido ?? new Set(), finalizedAuditoriaRowIds),
-      ).length,
-    [rows, rowSelectionAuditoria, rowIdsComPedido, finalizedAuditoriaRowIds],
-  )
-
-  const enviavelMaterialCount = useMemo(
-    () =>
-      rows.filter(
-        (row) =>
-          rowSelectionMaterial[row.id] &&
-          rowPodeSerEnviadaMaterial(row, finalizedMaterialRowIds),
-      ).length,
-    [rows, rowSelectionMaterial, finalizedMaterialRowIds],
-  )
+  const enviavelParaleloCount = useMemo(() => {
+    if (modoMedicamento) return 0
+    return rows.filter(
+      (row) =>
+        rowSelectionAuditoria[row.id] &&
+        (rowPodeSerEnviadaAuditoria(row, rowIdsComPedido ?? new Set(), finalizedAuditoriaRowIds) ||
+          rowPodeSerEnviadaMaterial(row, finalizedMaterialRowIds)),
+    ).length
+  }, [
+    modoMedicamento,
+    rows,
+    rowSelectionAuditoria,
+    rowIdsComPedido,
+    finalizedAuditoriaRowIds,
+    finalizedMaterialRowIds,
+  ])
 
   const totalValorFiltrado = useMemo(() => {
     return table.getFilteredRowModel().rows.reduce(
@@ -674,13 +690,11 @@ function ConsumoMaterialSpreadsheetInner({
 
   const selectColumnIds = modoMedicamento ? SELECT_COLUMNS_MEDICAMENTO : SELECT_COLUMNS_CLINICA
   const selectImhColWidth = resolvedColumnWidths['select-imh'] ?? 52
-  const selectAColWidth = resolvedColumnWidths['select-a'] ?? 40
-  const selectSColWidth = resolvedColumnWidths['select-s'] ?? 40
+  const selectAsColWidth = resolvedColumnWidths['select-as'] ?? 48
 
   const resolveSelectColWidth = (columnId: SelectColumnId) => {
     if (columnId === 'select-imh') return selectImhColWidth
-    if (columnId === 'select-a') return selectAColWidth
-    return selectSColWidth
+    return selectAsColWidth
   }
 
   const stickySelectOffset = (columnIndex: number) => {
@@ -694,7 +708,7 @@ function ConsumoMaterialSpreadsheetInner({
 
   const hasAnySelection = modoMedicamento
     ? selectedAuditoriaCount > 0
-    : selectedAuditoriaCount > 0 || selectedMaterialCount > 0
+    : selectedAsCount > 0
 
   const linhasPreenchidas = useMemo(
     () => rows.filter((r) => isLinhaPreenchida(r)).length,
@@ -775,7 +789,8 @@ function ConsumoMaterialSpreadsheetInner({
               {lancamentosPreenchidos !== undefined && (
                 <>
                   {(showPlanilhaActions ||
-                    (modoMedicamento && onEnviarImh && selectedAuditoriaCount > 0)) && (
+                    (modoMedicamento && onEnviarImh && selectedAuditoriaCount > 0) ||
+                    (!modoMedicamento && onEnviarParalelo && selectedAsCount > 0)) && (
                     <Box
                       sx={{
                         display: 'flex',
@@ -819,44 +834,39 @@ function ConsumoMaterialSpreadsheetInner({
                         </>
                       )}
                       {onEnviarImh &&
-                        (modoMedicamento
-                          ? selectedAuditoriaCount > 0
-                          : showPlanilhaActions) && (
+                        modoMedicamento &&
+                        selectedAuditoriaCount > 0 && (
                           <Button
                             size="small"
                             variant="contained"
                             startIcon={<SendIcon />}
                             onClick={onEnviarImh}
-                            disabled={
-                              isEnviando ||
-                              (modoMedicamento
-                                ? selectedAuditoriaCount === 0
-                                : enviavelAuditoriaCount === 0)
-                            }
+                            disabled={isEnviando || selectedAuditoriaCount === 0}
                           >
                             {isEnviando
-                              ? modoMedicamento
-                                ? 'Enviando para IMH...'
-                                : 'Enviando para Auditoria...'
-                              : modoMedicamento
-                                ? selectedAuditoriaCount > 1
-                                  ? `Enviar para IMH (${selectedAuditoriaCount})`
-                                  : 'Enviar para IMH'
-                                : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
+                              ? 'Enviando para IMH...'
+                              : selectedAuditoriaCount > 1
+                                ? `Enviar para IMH (${selectedAuditoriaCount})`
+                                : 'Enviar para IMH'}
                           </Button>
                         )}
-                      {showPlanilhaActions && onEnviarMaterial && (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          color="secondary"
-                          startIcon={<InventoryIcon />}
-                          onClick={onEnviarMaterial}
-                          disabled={isEnviando || enviavelMaterialCount === 0}
-                        >
-                          Enviar para Material ({enviavelMaterialCount})
-                        </Button>
-                      )}
+                      {!modoMedicamento &&
+                        onEnviarParalelo &&
+                        selectedAsCount > 0 && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<SendIcon />}
+                            onClick={onEnviarParalelo}
+                            disabled={isEnviando || enviavelParaleloCount === 0}
+                          >
+                            {isEnviando
+                              ? 'Enviando...'
+                              : selectedAsCount > 1
+                                ? `Enviar para Confecção Solemp/Auditoria (${selectedAsCount})`
+                                : 'Enviar para Confecção Solemp/Auditoria'}
+                          </Button>
+                        )}
                     </Box>
                   )}
                 </>
@@ -871,19 +881,11 @@ function ConsumoMaterialSpreadsheetInner({
                       sx={{ fontWeight: 700 }}
                     />
                   )}
-                  {!modoMedicamento && selectedAuditoriaCount > 0 && (
+                  {!modoMedicamento && selectedAsCount > 0 && (
                     <Chip
-                      label={`A: ${selectedAuditoriaCount}`}
+                      label={`AS: ${selectedAsCount}`}
                       size="small"
                       color="primary"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  )}
-                  {!modoMedicamento && selectedMaterialCount > 0 && (
-                    <Chip
-                      label={`S: ${selectedMaterialCount}`}
-                      size="small"
-                      color="secondary"
                       sx={{ fontWeight: 700 }}
                     />
                   )}

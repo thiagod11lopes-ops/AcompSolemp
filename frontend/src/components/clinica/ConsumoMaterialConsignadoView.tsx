@@ -46,7 +46,7 @@ interface ConsumoMaterialConsignadoViewProps {
   onAddPlanilhaErrorClear?: () => void
   onLimparRascunho?: () => void
   onEnviarImh?: () => void
-  onEnviarMaterial?: () => void
+  onEnviarParalelo?: () => void
   modoMedicamento?: boolean
   /** No modo exemplo, a planilha PME fica fixa (somente leitura) com o conteúdo de demonstração. */
   planilhaFixaDemo?: boolean
@@ -78,7 +78,7 @@ function ConsumoMaterialConsignadoViewInner({
   onAddPlanilhaErrorClear,
   onLimparRascunho,
   onEnviarImh,
-  onEnviarMaterial,
+  onEnviarParalelo,
   modoMedicamento = false,
   planilhaFixaDemo = false,
   isEnviando,
@@ -179,7 +179,7 @@ function ConsumoMaterialConsignadoViewInner({
       onAddPlanilhaErrorClear={onAddPlanilhaErrorClear}
       onLimparRascunho={planilhaFixaDemo ? undefined : onLimparRascunho}
       onEnviarImh={onEnviarImh}
-      onEnviarMaterial={onEnviarMaterial}
+      onEnviarParalelo={onEnviarParalelo}
       modoMedicamento={modoMedicamento}
       isEnviando={isEnviando}
       editable={Boolean(onRowsChange) && !planilhaFixaDemo}
