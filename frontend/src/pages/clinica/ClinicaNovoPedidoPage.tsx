@@ -71,6 +71,8 @@ export default function ClinicaNovoPedidoPage() {
   const clinicaLogada = clinicas.find((c) => c.id === user?.clinicaId)
   const isMedicamentoPortal =
     user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
+  const isDemoMedicamentoFixo =
+    isDemo && isMedicamentoPortal && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
 
   const [abaAtiva, setAbaAtiva] = useState(1)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
@@ -122,20 +124,19 @@ export default function ClinicaNovoPedidoPage() {
     const persisted = consumoPlanilhaService.getState(clinicaId)
     const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
     const isDemoMedicamento = isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
-    const rowsToLoad =
-      persisted.extraRows.length > 0
+    const rowsToLoad = isDemoMedicamento
+      ? getConsumoMaterialDemoMedicamento()
+      : persisted.extraRows.length > 0
         ? persisted.extraRows
         : isDemoClinica
           ? getConsumoMaterialInicial()
-          : isDemoMedicamento
-            ? getConsumoMaterialDemoMedicamento()
-            : []
+          : []
 
     planilhaHydrated.current = true
 
     if (rowsToLoad.length > 0) {
       setExtraRows(rowsToLoad)
-      if (persisted.extraRows.length === 0 && (isDemoClinica || isDemoMedicamento)) {
+      if (isDemoClinica || isDemoMedicamento) {
         consumoPlanilhaService.saveState(clinicaId, {
           finalizedRowIds: [],
           finalizedAuditoriaRowIds: [],
@@ -623,7 +624,11 @@ export default function ClinicaNovoPedidoPage() {
       {abaAtiva === 1 && (
         <ConsumoMaterialConsignadoView
           lancamentos={planilhaRows}
-          fileName={planilhaNome || 'Consumo Material Consignado'}
+          fileName={
+            isDemoMedicamentoFixo
+              ? 'Modelo IHM — PME (demonstração)'
+              : planilhaNome || 'Consumo Material Consignado'
+          }
           rowSelectionAuditoria={rowSelectionAuditoria}
           onRowSelectionAuditoriaChange={handleRowSelectionAuditoriaChange}
           rowSelectionMaterial={rowSelectionMaterial}
@@ -634,20 +639,21 @@ export default function ClinicaNovoPedidoPage() {
           totalPedidos={pedidos.length}
           mesSelecionado={mesSelecionado}
           onMesSelecionadoChange={setMesSelecionado}
-          onExcluirTudo={handleExcluirTudo}
-          onAdicionarPlanilha={handleAdicionarPlanilha}
+          onExcluirTudo={isDemoMedicamentoFixo ? undefined : handleExcluirTudo}
+          onAdicionarPlanilha={isDemoMedicamentoFixo ? undefined : handleAdicionarPlanilha}
           isExcluindo={deleteAllPedidos.isPending}
           isAdicionando={isAdicionandoPlanilha}
           addPlanilhaError={addPlanilhaError}
           onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
-          onLimparRascunho={limparPlanilha}
+          onLimparRascunho={isDemoMedicamentoFixo ? undefined : limparPlanilha}
           onEnviarImh={handleAbrirImhModal}
           onEnviarMaterial={isMedicamentoPortal ? undefined : handleAbrirMaterialModal}
           modoMedicamento={isMedicamentoPortal}
+          planilhaFixaDemo={isDemoMedicamentoFixo}
           isEnviando={isBatchSending}
-          rowsByMes={rowsByMes[mesSelecionado.id]}
-          onRowsChange={handleMesRowsChange}
-          onExcluirLinhaRow={handleExcluirLinhaRow}
+          rowsByMes={isDemoMedicamentoFixo ? undefined : rowsByMes[mesSelecionado.id]}
+          onRowsChange={isDemoMedicamentoFixo ? undefined : handleMesRowsChange}
+          onExcluirLinhaRow={isDemoMedicamentoFixo ? undefined : handleExcluirLinhaRow}
           onDesfinalizarLinha={handleDesfinalizarLinha}
         />
       )}

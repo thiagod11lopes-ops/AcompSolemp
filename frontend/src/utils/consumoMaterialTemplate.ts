@@ -5,6 +5,10 @@ import {
   parseValorBrasileiro,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
+import {
+  formatPrecoReferenciaMedicamento,
+  getMedicamentosPrecosCatalog,
+} from '@/utils/medicamentosPrecos'
 
 export interface MesConsumoModelo {
   id: string
@@ -96,9 +100,64 @@ export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
   return CONSUMO_MATERIAL_SEED.map((row) => ({ ...row }))
 }
 
-/** Dez linhas de exemplo para a planilha demo de medicamento. */
+/**
+ * Linhas fixas do Modelo IHM — PME para o modo exemplo (medicamento).
+ * Montadas a partir da lista de Preço de Medicamentos (conteúdo de demonstração).
+ */
 export function getConsumoMaterialDemoMedicamento(): ConsumoMaterialRow[] {
-  return getConsumoMaterialInicial().slice(0, 10)
+  const catalog = getMedicamentosPrecosCatalog().slice(0, 10)
+  const datas = [
+    '03/01/26',
+    '05/01/26',
+    '08/01/26',
+    '10/01/26',
+    '12/01/26',
+    '15/01/26',
+    '18/01/26',
+    '20/01/26',
+    '22/01/26',
+    '25/01/26',
+  ]
+  const pacientes = [
+    { nip: '24.1118.21', nome: 'LUIZ PHILIPE SANTANA SILVA', postoGrad: 'MN', vinculo: 'TITULAR' },
+    { nip: '12.3456.78', nome: 'ANA BEATRIZ COSTA LIMA', postoGrad: 'CB', vinculo: 'DEPENDENTE' },
+    { nip: '98.7654.32', nome: 'CARLOS EDUARDO NUNES', postoGrad: '1T', vinculo: 'TITULAR' },
+    { nip: '11.2233.44', nome: 'MARIA FERNANDA ALVES', postoGrad: 'SG', vinculo: 'DEPENDENTE' },
+    { nip: '55.6677.88', nome: 'JOÃO PEDRO MARTINS', postoGrad: 'MN', vinculo: 'TITULAR' },
+    { nip: '33.4455.66', nome: 'PATRICIA HELENA SOUZA', postoGrad: 'CF', vinculo: 'TITULAR' },
+    { nip: '77.8899.00', nome: 'ROBERTO SILVA FREITAS', postoGrad: '2T', vinculo: 'TITULAR' },
+    { nip: '22.3344.55', nome: 'CAMILA RODRIGUES MELO', postoGrad: 'CB', vinculo: 'DEPENDENTE' },
+    { nip: '66.7788.99', nome: 'FELIPE AUGUSTO DIAS', postoGrad: 'MN', vinculo: 'TITULAR' },
+    { nip: '44.5566.77', nome: 'JULIANA CASTRO REIS', postoGrad: 'SG', vinculo: 'DEPENDENTE' },
+  ]
+
+  return catalog.map((med, index) => {
+    const paciente = pacientes[index] ?? pacientes[0]
+    const qtd = index % 3 === 0 ? 2 : 1
+    const unitario = formatPrecoReferenciaMedicamento(med.precoReferencia)
+    const unitValue = parseValorBrasileiro(unitario)
+    const total = unitValue * qtd
+    return {
+      ...createLinhaVazia(`demo-med-pme-${index + 1}`, String(index + 1)),
+      data: datas[index] ?? '03/01/26',
+      nip: paciente.nip,
+      nome: paciente.nome,
+      itemPme: med.medicamento,
+      materiais: med.medicamento,
+      qtd: String(qtd),
+      valorUnitario: unitario,
+      valor: total > 0 ? formatValorBrasileiro(total) : unitario,
+      valorNumerico: total,
+      nipTitular: paciente.nip,
+      postoGrad: paciente.postoGrad,
+      vinculo: paciente.vinculo,
+      pctIndenizar: paciente.vinculo === 'TITULAR' ? '100%' : '50%',
+      om: 'HNMD',
+      unidadeFornecimento: med.uf,
+      quantidadeAdquirida: String(100 + index * 10),
+      maneiraDispensacao: index % 2 === 0 ? 'PELA OMH' : 'POR OSE',
+    }
+  })
 }
 
 /** Estado inicial da planilha de consumo para a clínica de demonstração. */

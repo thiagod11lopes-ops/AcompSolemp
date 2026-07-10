@@ -37,7 +37,14 @@ import '@/components/clinica/spreadsheet-excel.css'
 
 const ROWS = seedData as MedicamentoPrecoRow[]
 
-function MedicamentosPrecosSpreadsheetInner() {
+interface MedicamentosPrecosSpreadsheetProps {
+  /** No modo exemplo, destaca que a lista é o conteúdo fixo de demonstração. */
+  conteudoFixoDemo?: boolean
+}
+
+function MedicamentosPrecosSpreadsheetInner({
+  conteudoFixoDemo = false,
+}: MedicamentosPrecosSpreadsheetProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [pagination, setPagination] = useState<PaginationState>({
@@ -140,6 +147,15 @@ function MedicamentosPrecosSpreadsheetInner() {
                 variant="outlined"
                 sx={{ borderColor: EXCEL_SHEET.borderColor, bgcolor: '#fff' }}
               />
+              {conteudoFixoDemo && (
+                <Chip
+                  label="Demonstração — conteúdo fixo"
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                  sx={{ bgcolor: '#fff' }}
+                />
+              )}
             </Box>
           </Box>
           <TextField

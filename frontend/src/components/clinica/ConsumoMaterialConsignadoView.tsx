@@ -48,6 +48,8 @@ interface ConsumoMaterialConsignadoViewProps {
   onEnviarImh?: () => void
   onEnviarMaterial?: () => void
   modoMedicamento?: boolean
+  /** No modo exemplo, a planilha PME fica fixa (somente leitura) com o conteúdo de demonstração. */
+  planilhaFixaDemo?: boolean
   isEnviando?: boolean
   rowsByMes?: ConsumoMaterialRow[]
   onRowsChange?: (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => void
@@ -78,6 +80,7 @@ function ConsumoMaterialConsignadoViewInner({
   onEnviarImh,
   onEnviarMaterial,
   modoMedicamento = false,
+  planilhaFixaDemo = false,
   isEnviando,
   rowsByMes,
   onRowsChange,
@@ -174,15 +177,15 @@ function ConsumoMaterialConsignadoViewInner({
       isAdicionando={isAdicionando}
       addPlanilhaError={addPlanilhaError}
       onAddPlanilhaErrorClear={onAddPlanilhaErrorClear}
-      onLimparRascunho={onLimparRascunho}
+      onLimparRascunho={planilhaFixaDemo ? undefined : onLimparRascunho}
       onEnviarImh={onEnviarImh}
       onEnviarMaterial={onEnviarMaterial}
       modoMedicamento={modoMedicamento}
       isEnviando={isEnviando}
-      editable={Boolean(onRowsChange)}
-      onCellChange={handleCellChange}
-      onInserirLinha={handleInserirLinha}
-      onExcluirLinha={handleExcluirLinha}
+      editable={Boolean(onRowsChange) && !planilhaFixaDemo}
+      onCellChange={planilhaFixaDemo ? undefined : handleCellChange}
+      onInserirLinha={planilhaFixaDemo ? undefined : handleInserirLinha}
+      onExcluirLinha={planilhaFixaDemo ? undefined : handleExcluirLinha}
       onDesfinalizarLinha={onDesfinalizarLinha}
       headerExtra={
         <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
