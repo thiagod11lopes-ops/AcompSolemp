@@ -390,6 +390,12 @@ export default function ClinicaNovoPedidoPage() {
     finalizedAuditoriaRowIds,
   ])
 
+  const getSelectedRowsImhChecklist = useCallback(() => {
+    const mesSheet = rowsByMes[mesSelecionado.id]
+    const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
+    return sourceRows.filter((r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r))
+  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelectionAuditoria])
+
   const getSelectedRowsMaterial = useCallback(() => {
     const mesSheet = rowsByMes[mesSelecionado.id]
     const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
@@ -407,9 +413,15 @@ export default function ClinicaNovoPedidoPage() {
   ])
 
   const handleAbrirImhModal = () => {
-    const selectedRows = getSelectedRowsAuditoria()
+    const selectedRows = isMedicamentoPortal
+      ? getSelectedRowsImhChecklist()
+      : getSelectedRowsAuditoria()
     if (selectedRows.length === 0) {
-      setBatchError('Selecione lançamentos novos preenchidos para enviar.')
+      setBatchError(
+        isMedicamentoPortal
+          ? 'Marque o checklist IMH nos lançamentos que deseja enviar.'
+          : 'Selecione lançamentos novos preenchidos para enviar.',
+      )
       return
     }
     setBatchError(null)

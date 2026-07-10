@@ -7,14 +7,10 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { MesConsumoModelo } from '@/utils/consumoMaterialTemplate'
 import { usePlanilhaDraft } from '@/hooks/usePlanilhaDraft'
 import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModalShell'
+import { MedicamentoPmeVerificacaoModal } from '@/components/clinica/MedicamentoPmeVerificacaoModal'
 import { buildImhXlsxLinhas, getImhXlsxFileName } from '@/utils/imhXlsxLinha'
 import { downloadImhXlsx } from '@/utils/imhXlsxExport'
-import {
-  downloadMedicamentoPmeOds,
-  getMedicamentoPmeFileName,
-} from '@/utils/medicamentoPmeOdsExport'
-
-import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+import { buildImhPlanilhaFromConsumo, type ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 interface ImhEnvioModalProps {
   open: boolean
@@ -47,23 +43,28 @@ export function ImhEnvioModal({
     updateLinha,
     inserirLinha,
     excluirLinha,
-  } = usePlanilhaDraft('imh', open, consumoRows, mesReferencia)
+  } = usePlanilhaDraft('imh', open && !modoMedicamento, consumoRows, mesReferencia)
 
   const busy = isSubmitting || isGeneratingXlsx
+
+  if (modoMedicamento) {
+    return (
+      <MedicamentoPmeVerificacaoModal
+        open={open}
+        rows={consumoRows}
+        isSubmitting={isSubmitting}
+        onClose={onClose}
+        onConfirm={() => onConfirm(buildImhPlanilhaFromConsumo(consumoRows, mesReferencia))}
+      />
+    )
+  }
 
   const handleGerarPlanilhaXlsx = async () => {
     setExportError(null)
     setIsGeneratingXlsx(true)
     try {
-      if (modoMedicamento) {
-        await downloadMedicamentoPmeOds(
-          consumoRows,
-          getMedicamentoPmeFileName(mesReferencia?.label),
-        )
-      } else {
-        const linhasXlsx = buildImhXlsxLinhas(consumoRows, linhas)
-        await downloadImhXlsx(linhasXlsx, cabecalho, getImhXlsxFileName(cabecalho))
-      }
+      const linhasXlsx = buildImhXlsxLinhas(consumoRows, linhas)
+      await downloadImhXlsx(linhasXlsx, cabecalho, getImhXlsxFileName(cabecalho))
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Erro ao gerar planilha')
     } finally {
@@ -74,11 +75,7 @@ export function ImhEnvioModal({
   return (
     <PlanilhaEnvioModalShell
       open={open}
-      title={
-        modoMedicamento
-          ? 'Modelo IHM — PME · Envio direto para Contabilidade/IMH'
-          : 'Planilha IMH — Envio para Contabilidade'
-      }
+      title="Planilha IMH — Envio para Contabilidade"
       lancamentoCount={consumoRows.length}
       icon={<DescriptionIcon />}
       appBarColor="primary"
@@ -105,11 +102,7 @@ export function ImhEnvioModal({
             onClick={handleGerarPlanilhaXlsx}
             disabled={busy || consumoRows.length === 0}
           >
-            {isGeneratingXlsx
-              ? 'Gerando...'
-              : modoMedicamento
-                ? 'Gerar .ods (PME)'
-                : 'Gerar .xlsx'}
+            {isGeneratingXlsx ? 'Gerando...' : 'Gerar .xlsx'}
           </Button>
           <Button
             variant="contained"
@@ -119,11 +112,7 @@ export function ImhEnvioModal({
             disabled={busy || linhas.length === 0}
             sx={{ fontWeight: 700 }}
           >
-            {isSubmitting
-              ? 'Enviando...'
-              : modoMedicamento
-                ? 'Confirmar Envio para o IMH'
-                : 'Confirmar envio Auditoria'}
+            {isSubmitting ? 'Enviando...' : 'Confirmar envio Auditoria'}
           </Button>
         </>
       }

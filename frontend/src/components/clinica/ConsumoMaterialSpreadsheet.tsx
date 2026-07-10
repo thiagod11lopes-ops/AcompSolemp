@@ -774,7 +774,8 @@ function ConsumoMaterialSpreadsheetInner({
               )}
               {lancamentosPreenchidos !== undefined && (
                 <>
-                  {showPlanilhaActions && (
+                  {(showPlanilhaActions ||
+                    (modoMedicamento && onEnviarImh && selectedAuditoriaCount > 0)) && (
                     <Box
                       sx={{
                         display: 'flex',
@@ -784,56 +785,67 @@ function ConsumoMaterialSpreadsheetInner({
                         width: { xs: '100%', sm: 'auto' },
                       }}
                     >
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<DeleteSweepIcon />}
-                        onClick={() => setExcluirOpen(true)}
-                        disabled={isExcluindo || isAdicionando || isEnviando}
-                      >
-                        Excluir tudo
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<PostAddIcon />}
-                        onClick={openAdicionarModal}
-                        disabled={isExcluindo || isAdicionando || isEnviando}
-                      >
-                        Adicionar planilha
-                      </Button>
-                      {onLimparRascunho && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<RefreshIcon />}
-                          onClick={onLimparRascunho}
-                          disabled={isExcluindo || isAdicionando || isEnviando}
-                        >
-                          Limpar rascunho
-                        </Button>
+                      {showPlanilhaActions && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<DeleteSweepIcon />}
+                            onClick={() => setExcluirOpen(true)}
+                            disabled={isExcluindo || isAdicionando || isEnviando}
+                          >
+                            Excluir tudo
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<PostAddIcon />}
+                            onClick={openAdicionarModal}
+                            disabled={isExcluindo || isAdicionando || isEnviando}
+                          >
+                            Adicionar planilha
+                          </Button>
+                          {onLimparRascunho && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<RefreshIcon />}
+                              onClick={onLimparRascunho}
+                              disabled={isExcluindo || isAdicionando || isEnviando}
+                            >
+                              Limpar rascunho
+                            </Button>
+                          )}
+                        </>
                       )}
                       {onEnviarImh &&
-                        (!modoMedicamento || enviavelAuditoriaCount > 0) && (
-                        <Button
-                          size="small"
-                          variant="contained"
-                          startIcon={<SendIcon />}
-                          onClick={onEnviarImh}
-                          disabled={isEnviando || enviavelAuditoriaCount === 0}
-                        >
-                          {isEnviando
-                            ? modoMedicamento
-                              ? 'Enviando para IMH...'
-                              : 'Enviando para Auditoria...'
-                            : modoMedicamento
-                              ? enviavelAuditoriaCount > 1
-                                ? `Enviar para IMH (${enviavelAuditoriaCount})`
-                                : 'Enviar para IMH'
-                              : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
-                        </Button>
-                      )}
-                      {onEnviarMaterial && (
+                        (modoMedicamento
+                          ? selectedAuditoriaCount > 0
+                          : showPlanilhaActions) && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<SendIcon />}
+                            onClick={onEnviarImh}
+                            disabled={
+                              isEnviando ||
+                              (modoMedicamento
+                                ? selectedAuditoriaCount === 0
+                                : enviavelAuditoriaCount === 0)
+                            }
+                          >
+                            {isEnviando
+                              ? modoMedicamento
+                                ? 'Enviando para IMH...'
+                                : 'Enviando para Auditoria...'
+                              : modoMedicamento
+                                ? selectedAuditoriaCount > 1
+                                  ? `Enviar para IMH (${selectedAuditoriaCount})`
+                                  : 'Enviar para IMH'
+                                : `Enviar para Auditoria (${enviavelAuditoriaCount})`}
+                          </Button>
+                        )}
+                      {showPlanilhaActions && onEnviarMaterial && (
                         <Button
                           size="small"
                           variant="contained"
