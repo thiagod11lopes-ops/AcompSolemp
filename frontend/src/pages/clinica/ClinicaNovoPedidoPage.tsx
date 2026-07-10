@@ -616,6 +616,7 @@ export default function ClinicaNovoPedidoPage() {
         <ConsumoMaterialManualForm
           nextNumero={String(totalPreenchidos + 1)}
           onAddRow={handleAddManualRow}
+          modoMedicamento={isMedicamentoPortal}
         />
       )}
 

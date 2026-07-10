@@ -603,6 +603,16 @@ export type ManualRowFormData = {
   danfe: string
   valor: string
   ata: string
+  itemPme: string
+  qtd: string
+  valorUnitario: string
+  nipTitular: string
+  vinculo: string
+  pctIndenizar: string
+  om: string
+  unidadeFornecimento: string
+  quantidadeAdquirida: string
+  maneiraDispensacao: string
 }
 
 export const EMPTY_MANUAL_ROW: ManualRowFormData = {
@@ -628,20 +638,46 @@ export const EMPTY_MANUAL_ROW: ManualRowFormData = {
   danfe: '',
   valor: '',
   ata: '',
+  itemPme: '',
+  qtd: '',
+  valorUnitario: '',
+  nipTitular: '',
+  vinculo: '',
+  pctIndenizar: '',
+  om: '',
+  unidadeFornecimento: '',
+  quantidadeAdquirida: '',
+  maneiraDispensacao: '',
 }
 
 export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): ConsumoMaterialRow {
-  const valorNumerico = parseValorBrasileiro(data.valor)
+  const qtd = parseInt(data.qtd.trim() || '1', 10) || 1
+  const unitRaw = data.valorUnitario.trim()
+  const totalRaw = data.valor.trim()
+  const unitValue = parseValorBrasileiro(unitRaw)
+  const totalFromField = parseValorBrasileiro(totalRaw)
+  const valorNumerico =
+    totalFromField > 0 ? totalFromField : unitValue > 0 ? unitValue * qtd : 0
   const valorFormatado =
-    data.valor.trim().startsWith('R$') || !valorNumerico
-      ? data.valor.trim()
+    totalRaw.startsWith('R$') || !valorNumerico
+      ? totalRaw || (valorNumerico > 0 ? formatValorBrasileiro(valorNumerico) : '')
       : formatValorBrasileiro(valorNumerico)
+  const valorUnitarioFormatado =
+    unitRaw.startsWith('R$') || !unitValue
+      ? unitRaw ||
+        (valorNumerico > 0 && qtd > 0
+          ? formatValorBrasileiro(valorNumerico / qtd)
+          : '')
+      : formatValorBrasileiro(unitValue)
+  const itemPme = data.itemPme.trim() || data.materiais.trim()
+  const nip = formatNip(data.nip.trim())
+  const nipTitular = formatNip(data.nipTitular.trim() || data.nip.trim())
 
   return {
     id,
     numero: data.numero.trim(),
     postoGrad: data.postoGrad.trim(),
-    nip: formatNip(data.nip.trim()),
+    nip,
     nome: data.nome.trim(),
     iniciais: data.iniciais.trim(),
     data: data.data.trim(),
@@ -649,7 +685,7 @@ export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): 
     diagnostico: data.diagnostico.trim(),
     cid: data.cid.trim(),
     procedimento: data.procedimento.trim(),
-    materiais: data.materiais.trim(),
+    materiais: data.materiais.trim() || itemPme,
     et: data.et.trim(),
     fornecedor: data.fornecedor.trim(),
     cirurgiao: data.cirurgiao.trim(),
@@ -662,16 +698,16 @@ export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): 
     valor: valorFormatado || data.valor.trim(),
     valorNumerico,
     ata: data.ata.trim(),
-    itemPme: data.materiais.trim(),
-    qtd: valorNumerico > 0 ? '1' : '',
-    valorUnitario: valorFormatado || data.valor.trim(),
-    nipTitular: formatNip(data.nip.trim()),
-    vinculo: '',
-    pctIndenizar: '',
-    om: '',
-    unidadeFornecimento: '',
-    quantidadeAdquirida: '',
-    maneiraDispensacao: '',
+    itemPme,
+    qtd: data.qtd.trim() || (valorNumerico > 0 ? '1' : ''),
+    valorUnitario: valorUnitarioFormatado,
+    nipTitular,
+    vinculo: data.vinculo.trim(),
+    pctIndenizar: data.pctIndenizar.trim(),
+    om: data.om.trim(),
+    unidadeFornecimento: data.unidadeFornecimento.trim(),
+    quantidadeAdquirida: data.quantidadeAdquirida.trim(),
+    maneiraDispensacao: data.maneiraDispensacao.trim(),
   }
 }
 
@@ -698,4 +734,34 @@ export const MANUAL_ROW_EXAMPLE: ManualRowFormData = {
   danfe: '211419/ 211417/ 211424/ 211457',
   valor: 'R$ 5.171,00',
   ata: '15/25',
+  itemPme: '',
+  qtd: '',
+  valorUnitario: '',
+  nipTitular: '',
+  vinculo: '',
+  pctIndenizar: '',
+  om: '',
+  unidadeFornecimento: '',
+  quantidadeAdquirida: '',
+  maneiraDispensacao: '',
+}
+
+/** Exemplo alinhado às colunas do Modelo IHM — PME (medicamento). */
+export const MANUAL_ROW_EXAMPLE_MEDICAMENTO: ManualRowFormData = {
+  ...EMPTY_MANUAL_ROW,
+  data: '03/01/26',
+  nip: '24.1118.21',
+  nome: 'LUIZ PHILIPE SANTANA SILVA',
+  itemPme: 'PARACETAMOL 500MG COMPRIMIDO',
+  qtd: '2',
+  valorUnitario: 'R$ 1,50',
+  valor: 'R$ 3,00',
+  nipTitular: '24.1118.21',
+  postoGrad: 'MN',
+  vinculo: 'TITULAR',
+  pctIndenizar: '100%',
+  om: 'HNMD',
+  unidadeFornecimento: 'COMPRIMIDO',
+  quantidadeAdquirida: '1000',
+  maneiraDispensacao: 'PELA OMH',
 }
