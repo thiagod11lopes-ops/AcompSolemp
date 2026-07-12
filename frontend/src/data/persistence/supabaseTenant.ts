@@ -32,7 +32,7 @@ export async function getProfileForCurrentUser(): Promise<ProfileRecord | null> 
     .eq('id', userId)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return data as ProfileRecord | null
 }
 
@@ -43,7 +43,7 @@ export async function getTenantById(tenantId: string): Promise<TenantRecord | nu
     .eq('id', tenantId)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return data as TenantRecord | null
 }
 
@@ -96,7 +96,7 @@ export async function provisionGestorTenant(input: {
     .select('id, org_code, owner_user_id, owner_email, created_at')
     .single()
 
-  if (tenantError) throw tenantError
+  if (tenantError) throw new Error(tenantError.message)
 
   const appUserId = `user-owner-${tenant.id}`
   const owner = {
@@ -123,7 +123,7 @@ export async function provisionGestorTenant(input: {
     .select('id, tenant_id, app_user_id, email, perfil')
     .single()
 
-  if (profileError) throw profileError
+  if (profileError) throw new Error(profileError.message)
 
   const appData: AppData = {
     ...input.initialAppData,
@@ -164,7 +164,7 @@ export async function upsertEmailAccess(input: {
     },
     { onConflict: 'email' },
   )
-  if (error) throw error
+  if (error) throw new Error(error.message)
 }
 
 export async function removeEmailAccess(email: string): Promise<void> {
@@ -172,7 +172,7 @@ export async function removeEmailAccess(email: string): Promise<void> {
     .from('email_access')
     .delete()
     .eq('email', email.trim().toLowerCase())
-  if (error) throw error
+  if (error) throw new Error(error.message)
 }
 
 export async function getEmailAccess(email: string): Promise<{
@@ -186,7 +186,7 @@ export async function getEmailAccess(email: string): Promise<{
   const { data, error } = await getSupabaseClient().rpc('lookup_email_access', {
     p_email: email.trim().toLowerCase(),
   })
-  if (error) throw error
+  if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
   return row ?? null
 }

@@ -165,3 +165,12 @@ as $$
 $$;
 
 grant execute on function public.lookup_email_access(text) to anon, authenticated;
+
+-- Privileges for Data API (necessário quando "Automatically expose new tables" está desligado)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.tenants to authenticated;
+grant select, insert, update, delete on table public.app_state to authenticated;
+grant select, insert, update, delete on table public.profiles to authenticated;
+grant select, insert, update, delete on table public.email_access to authenticated;
+grant select on table public.tenants to anon;
+grant select on table public.email_access to anon;

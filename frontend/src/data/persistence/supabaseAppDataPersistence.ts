@@ -21,7 +21,7 @@ export async function loadAppDataFromSupabase(
     .eq('tenant_id', id)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   if (!data) return null
 
   return {
@@ -55,7 +55,7 @@ export async function saveAppDataToSupabase(
     { onConflict: 'tenant_id' },
   )
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
 }
 
 export function createSupabaseAppDataPersistence(

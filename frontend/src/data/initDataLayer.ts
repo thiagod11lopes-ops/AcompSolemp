@@ -25,14 +25,18 @@ export async function initDataLayer(): Promise<void> {
 
   storageRemove(STORAGE_KEYS.APP_DATA)
   initAppData()
-  await supabaseAuthAdapter.waitForAuthReady()
 
-  const profile = await getProfileForCurrentUser()
-  if (profile) {
-    setTenantId(profile.tenant_id)
-    await hydrateLocalCacheFromSupabase((data: AppData) => {
-      applyRemoteAppData(data)
-    })
+  try {
+    await supabaseAuthAdapter.waitForAuthReady()
+    const profile = await getProfileForCurrentUser()
+    if (profile) {
+      setTenantId(profile.tenant_id)
+      await hydrateLocalCacheFromSupabase((data: AppData) => {
+        applyRemoteAppData(data)
+      })
+    }
+  } catch (error) {
+    console.warn('[AcompSolemp] Hidratação Supabase adiada:', error)
   }
 
   if (import.meta.env.DEV) {

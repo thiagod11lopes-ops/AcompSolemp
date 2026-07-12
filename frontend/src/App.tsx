@@ -42,7 +42,14 @@ function App() {
         if (!cancelled) setReady(true)
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Falha ao iniciar o armazenamento')
+          const message =
+            e instanceof Error
+              ? e.message
+              : typeof e === 'object' && e && 'message' in e
+                ? String((e as { message: unknown }).message)
+                : 'Falha ao iniciar o armazenamento'
+          console.error('[AcompSolemp] Bootstrap falhou:', e)
+          setError(message)
         }
       }
     }
