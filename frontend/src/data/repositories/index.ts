@@ -1,6 +1,4 @@
-import { useFirebaseDataSource } from '@/config/dataSource'
 import { LocalAppDataRepository } from '@/data/repositories/local/LocalAppDataRepository'
-import { FirebaseAppDataRepository } from '@/data/repositories/firebase/FirebaseAppDataRepository'
 import { LocalCadastroRepository } from '@/data/repositories/local/LocalCadastroRepository'
 import { LocalPedidoRepository } from '@/data/repositories/local/LocalPedidoRepository'
 import {
@@ -10,7 +8,6 @@ import {
   LocalProcessoArquivadoRepository,
   LocalReversaoRepository,
 } from '@/data/repositories/local/LocalSupportRepositories'
-import { FirebasePedidoRepository } from '@/data/repositories/firebase/FirebasePedidoRepository'
 import type { Repositories } from '@/data/repositories/types'
 
 let repositories: Repositories | null = null
@@ -28,20 +25,9 @@ function createLocalRepositories(): Repositories {
   }
 }
 
-function createFirebaseRepositories(): Repositories {
-  const local = createLocalRepositories()
-  return {
-    ...local,
-    appData: new FirebaseAppDataRepository(),
-    pedidos: new FirebasePedidoRepository(),
-  }
-}
-
 export function getRepositories(): Repositories {
   if (!repositories) {
-    repositories = useFirebaseDataSource()
-      ? createFirebaseRepositories()
-      : createLocalRepositories()
+    repositories = createLocalRepositories()
   }
   return repositories
 }

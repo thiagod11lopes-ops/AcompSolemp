@@ -1,6 +1,4 @@
 import type { DadosClinicaLancamento, PacientePedido, PedidoComDetalhes } from '@/types'
-import { useCloudAppDataSync } from '@/config/dataSource'
-import { flushFirebaseAppDataSync } from '@/data/persistence/firebaseSync'
 import {
   DEMO_EXEMPLO_USER_PREFIX,
   ensureDemoUserById,
@@ -287,9 +285,6 @@ export const clinicaPedidoService = {
 
     notifySetoresEtapasAtivas(data, pedido.id)
     saveAppData(data)
-    if (useCloudAppDataSync()) {
-      await flushFirebaseAppDataSync()
-    }
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao criar pedido')
     return enriched
@@ -389,9 +384,6 @@ export const clinicaPedidoService = {
 
     notifySetoresEtapasAtivas(data, pedidoId)
     saveAppData(data)
-    if (useCloudAppDataSync()) {
-      await flushFirebaseAppDataSync()
-    }
 
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao atualizar pedido')

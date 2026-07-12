@@ -10,25 +10,22 @@ import {
   useTheme,
 } from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
-import GoogleIcon from '@mui/icons-material/Google'
 import { useAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { useFirebaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
 
 /**
- * Portão de acesso à Timeline — login com Google (e-mail cadastrado pelo gestor).
+ * Portão de acesso à Timeline — e-mail cadastrado pelo gestor.
  */
 export default function TimelineEntryPage() {
   const theme = useTheme()
   const navigate = useNavigate()
-  const { loginWithGoogleTimeline, loginWithEmailTimeline } = useAuth()
-  const isFirebase = useFirebaseDataSource()
+  const { loginWithEmailTimeline } = useAuth()
   const [gateReady, setGateReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [devEmail, setDevEmail] = useState('')
+  const [email, setEmail] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -46,24 +43,11 @@ export default function TimelineEntryPage() {
     }
   }, [])
 
-  const handleGoogleLogin = async () => {
+  const handleEmailLogin = async () => {
     setLoading(true)
     setErro('')
     try {
-      const result = await loginWithGoogleTimeline()
-      navigate(result.route, { replace: true })
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao entrar')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDevEmailLogin = async () => {
-    setLoading(true)
-    setErro('')
-    try {
-      const result = await loginWithEmailTimeline(devEmail)
+      const result = await loginWithEmailTimeline(email)
       navigate(result.route, { replace: true })
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao entrar')
@@ -123,47 +107,26 @@ export default function TimelineEntryPage() {
           Timeline de Materiais Consignados
         </Typography>
 
-        {isFirebase ? (
-          <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Entre com o Google cadastrado pelo gestor da sua organização.
-            </Typography>
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              startIcon={<GoogleIcon />}
-              onClick={() => void handleGoogleLogin()}
-              disabled={loading}
-              sx={{ mb: 2 }}
-            >
-              {loading ? 'Entrando...' : 'Entrar com Google'}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Modo local — informe o e-mail cadastrado pelo gestor.
-            </Typography>
-            <TextField
-              fullWidth
-              type="email"
-              label="E-mail Google"
-              value={devEmail}
-              onChange={(e) => setDevEmail(e.target.value)}
-              sx={{ mb: 2 }}
-            />
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              onClick={() => void handleDevEmailLogin()}
-              disabled={loading || !devEmail.trim()}
-            >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </Button>
-          </>
-        )}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Informe o e-mail cadastrado pelo gestor.
+        </Typography>
+        <TextField
+          fullWidth
+          type="email"
+          label="E-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          sx={{ mb: 2 }}
+        />
+        <Button
+          fullWidth
+          variant="contained"
+          size="large"
+          onClick={() => void handleEmailLogin()}
+          disabled={loading || !email.trim()}
+        >
+          {loading ? 'Entrando...' : 'Entrar'}
+        </Button>
 
         {erro && (
           <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>

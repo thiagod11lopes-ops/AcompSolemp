@@ -1,19 +1,11 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { useFirebaseDataSource } from '@/config/dataSource'
-import { getEmailAccess, normalizeEmailKey } from '@/data/persistence/emailAccessPersistence'
-import { registerPortalUserMapping } from '@/data/persistence/portalUserPersistence'
-import { createUniqueOrgCode } from '@/data/persistence/tenantPersistence'
-import { firebaseAuthAdapter } from '@/firebase/authAdapter'
-import { initFirebase } from '@/firebase/app'
+import { normalizeEmailKey } from '@/utils/email'
 import {
-  createOwnerGestor,
   delay,
-  generateEmptyTenantData,
   loadAppData,
   MOCK_CREDENTIALS,
   reloadFreshAppData,
-  saveAppData,
 } from '@/mocks/seed'
 import {
   canAccessGestorRoute,
@@ -27,10 +19,7 @@ import { ensureDemoUserById, initDemoAppData } from '@/services/demoCadastrosSer
 import {
   getStoredOrgCode,
   getTenantId,
-  ownerUserId,
   resolveGestorTenantIdFromOwnerUserId,
-  setStoredOrgCode,
-  setTenantId,
 } from '@/services/tenantService'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 
@@ -127,35 +116,6 @@ function setSession(portal: Portal, authUser: AuthUser | null): void {
   writeStoredUser(sessionKey(portal), authUser)
 }
 
-async function provisionGestorTenant(uid: string, email: string): Promise<User> {
-  await reloadFreshAppData()
-  let data = loadAppData()
-  const ownerId = ownerUserId(uid)
-  let owner = data.usuarios.find((user) => user.id === ownerId)
-
-  if (!owner) {
-    if (!data.tenantMeta && data.usuarios.length === 0 && data.pedidos.length === 0) {
-      data = generateEmptyTenantData()
-    }
-
-    owner = createOwnerGestor(uid, email)
-    const orgCode = data.tenantMeta?.orgCode ?? (await createUniqueOrgCode(uid))
-    data.tenantMeta = data.tenantMeta ?? {
-      orgCode,
-      ownerEmail: email,
-      ownerUid: uid,
-      createdAt: new Date().toISOString(),
-    }
-    data.usuarios = [owner, ...data.usuarios.filter((user) => user.id !== ownerId)]
-    saveAppData(data)
-    setStoredOrgCode(data.tenantMeta.orgCode)
-  } else if (data.tenantMeta?.orgCode) {
-    setStoredOrgCode(data.tenantMeta.orgCode)
-  }
-
-  return owner
-}
-
 async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
   if (!validatePortalAccess(portal, user.perfil)) {
     throw new Error('Este usuário não tem acesso a este portal')
@@ -194,10 +154,6 @@ export const authService = {
     migrateLegacyAuth()
   },
 
-  requiresGoogleAuth(portal: Portal = 'gestor'): boolean {
-    return useFirebaseDataSource() && (portal === 'gestor' || portal === 'clinica')
-  },
-
   getOrgCode(): string | null {
     const data = loadAppData()
     return data.tenantMeta?.orgCode ?? getStoredOrgCode()
@@ -213,52 +169,7 @@ export const authService = {
     return resolveGestorTenantIdFromOwnerUserId(gestor.id) ?? getTenantId()
   },
 
-  async ensureGestorFirebaseSession(options?: { interactive?: boolean }): Promise<void> {
-    if (!useFirebaseDataSource()) return
-
-    const gestor = this.getGestorUser()
-    if (!gestor) return
-
-    const tenantId = this.resolveGestorTenantId()
-    if (!tenantId) {
-      throw new Error('Organização do gestor não encontrada. Faça login novamente.')
-    }
-
-    setTenantId(tenantId)
-    await firebaseAuthAdapter.ensureGestorFirebaseAuth(tenantId, options)
-  },
-
-  async syncRemoteDataIfAuthenticated(): Promise<void> {
-    if (!useFirebaseDataSource()) return
-    const { syncRemoteDataWhenAuthenticated } = await import('@/data/initDataLayer')
-    await syncRemoteDataWhenAuthenticated()
-  },
-
-  async loginWithGoogle(portal: Portal): Promise<AuthUser> {
-    if (!useFirebaseDataSource()) {
-      throw new Error('Login com Google disponível apenas com Firebase configurado')
-    }
-    if (portal !== 'gestor') {
-      throw new Error('Login com Google do gestor é exclusivo do Portal do Gestor')
-    }
-
-    const firebaseSession = await firebaseAuthAdapter.signInWithGoogle()
-    if (!firebaseSession.email) {
-      await firebaseAuthAdapter.signOut()
-      throw new Error('Conta Google sem e-mail. Use outra conta.')
-    }
-
-    setTenantId(firebaseSession.uid)
-    const owner = await provisionGestorTenant(firebaseSession.uid, firebaseSession.email)
-    return completePortalLogin('gestor', owner)
-  },
-
-  /** Login local (modo demo sem Firebase) */
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
-    if (useFirebaseDataSource()) {
-      throw new Error('Use o login com Google')
-    }
-
     await delay(null, 600)
     const cred = resolveCredential(credentials.login, credentials.senha)
     if (!cred) {
@@ -272,45 +183,6 @@ export const authService = {
     }
 
     return completePortalLogin(portal, user)
-  },
-
-  async loginWithGoogleTimeline(): Promise<TimelineLoginResult> {
-    if (useFirebaseDataSource()) {
-      const firebaseSession = await firebaseAuthAdapter.signInWithGoogle({ selectAccount: true })
-      if (!firebaseSession.email) {
-        await firebaseAuthAdapter.signOut()
-        throw new Error('Conta Google sem e-mail. Use outra conta.')
-      }
-
-      const email = normalizeEmailKey(firebaseSession.email)
-      const access = await getEmailAccess(email)
-      if (!access) {
-        await firebaseAuthAdapter.signOut()
-        throw new Error('Email não cadastrado')
-      }
-
-      setTenantId(access.tenantId)
-      await registerPortalUserMapping(firebaseSession.uid, access.tenantId)
-      await reloadFreshAppData()
-
-      const data = loadAppData()
-      const user = data.usuarios.find((item) => item.id === access.userId && item.ativo)
-      if (!user) {
-        await firebaseAuthAdapter.signOut()
-        throw new Error('Email não cadastrado')
-      }
-
-      const portal = portalForPerfil(user.perfil)
-      const authUser = await completePortalLogin(portal, user)
-      return {
-        authUser,
-        portal,
-        route: getHomeRouteForPerfil(user.perfil),
-      }
-    }
-
-    await delay(null, 300)
-    throw new Error('Configure Firebase para acesso à Timeline com Google')
   },
 
   async loginWithEmailTimeline(email: string): Promise<TimelineLoginResult> {
@@ -336,21 +208,6 @@ export const authService = {
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
     setSession(portal, null)
-
-    if (!useFirebaseDataSource()) return
-
-    if (portal === 'gestor') {
-      setTenantId(null)
-      setStoredOrgCode(null)
-      await firebaseAuthAdapter.signOut()
-      return
-    }
-
-    const hasGestor = Boolean(readStoredUser(GESTOR_AUTH_KEY))
-    await firebaseAuthAdapter.signOut()
-    if (!hasGestor) {
-      setTenantId(null)
-    }
   },
 
   getGestorUser(): AuthUser | null {
@@ -442,9 +299,5 @@ export const authService = {
 
   async prepareTimelineEntry(): Promise<void> {
     this.clearClinicaOrdenadorSessions()
-    if (useFirebaseDataSource()) {
-      initFirebase()
-      await firebaseAuthAdapter.signOut()
-    }
   },
 }

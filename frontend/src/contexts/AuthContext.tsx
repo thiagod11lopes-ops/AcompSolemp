@@ -19,10 +19,7 @@ interface AuthContextValue {
   financeiroUser: AuthUser | null
   demoMode: DemoModeState | null
   isLoading: boolean
-  requiresGoogleAuth: (portal: Portal) => boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
-  loginWithGoogle: (portal: Portal) => Promise<AuthUser>
-  loginWithGoogleTimeline: () => Promise<TimelineLoginResult>
   loginWithEmailTimeline: (email: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
@@ -81,18 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
-  const loginWithGoogle = useCallback(async (portal: Portal) => {
-    const authUser = await authService.loginWithGoogle(portal)
-    if (portal === 'gestor') setGestorUser(authUser)
-    return authUser
-  }, [])
-
-  const loginWithGoogleTimeline = useCallback(async () => {
-    const result = await authService.loginWithGoogleTimeline()
-    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
-    return result
-  }, [])
-
   const loginWithEmailTimeline = useCallback(async (email: string) => {
     const result = await authService.loginWithEmailTimeline(email)
     applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
@@ -132,10 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       financeiroUser,
       demoMode,
       isLoading,
-      requiresGoogleAuth: (portal: Portal) => authService.requiresGoogleAuth(portal),
       login,
-      loginWithGoogle,
-      loginWithGoogleTimeline,
       loginWithEmailTimeline,
       logout,
       startDemo,
@@ -150,8 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demoMode,
       isLoading,
       login,
-      loginWithGoogle,
-      loginWithGoogleTimeline,
       loginWithEmailTimeline,
       logout,
       startDemo,
@@ -170,13 +150,11 @@ export function useAuth() {
 }
 
 export function useGestorAuth() {
-  const { gestorUser, isLoading, login, loginWithGoogle, logout, requiresGoogleAuth } = useAuth()
+  const { gestorUser, isLoading, login, logout } = useAuth()
   return {
     user: gestorUser,
     isLoading,
-    requiresGoogleAuth: requiresGoogleAuth('gestor'),
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
-    loginWithGoogle: () => loginWithGoogle('gestor'),
     logout: () => logout('gestor'),
   }
 }
