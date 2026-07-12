@@ -13,6 +13,7 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import { useAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { useSupabaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
 
 /**
@@ -22,10 +23,12 @@ export default function TimelineEntryPage() {
   const theme = useTheme()
   const navigate = useNavigate()
   const { loginWithEmailTimeline } = useAuth()
+  const isSupabase = useSupabaseDataSource()
   const [gateReady, setGateReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -47,7 +50,10 @@ export default function TimelineEntryPage() {
     setLoading(true)
     setErro('')
     try {
-      const result = await loginWithEmailTimeline(email)
+      const result = await loginWithEmailTimeline(
+        email,
+        isSupabase ? password : undefined,
+      )
       navigate(result.route, { replace: true })
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao entrar')
@@ -108,7 +114,9 @@ export default function TimelineEntryPage() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Informe o e-mail cadastrado pelo gestor.
+          {isSupabase
+            ? 'E-mail cadastrado pelo gestor + senha (cria acesso no primeiro login).'
+            : 'Informe o e-mail cadastrado pelo gestor.'}
         </Typography>
         <TextField
           fullWidth
@@ -118,12 +126,22 @@ export default function TimelineEntryPage() {
           onChange={(e) => setEmail(e.target.value)}
           sx={{ mb: 2 }}
         />
+        {isSupabase && (
+          <TextField
+            fullWidth
+            type="password"
+            label="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+        )}
         <Button
           fullWidth
           variant="contained"
           size="large"
           onClick={() => void handleEmailLogin()}
-          disabled={loading || !email.trim()}
+          disabled={loading || !email.trim() || (isSupabase && password.length < 6)}
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>

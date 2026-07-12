@@ -14,6 +14,8 @@ import {
 } from '@/storage/indexedDb'
 import {
   isDemoDataSession,
+  useCloudAppDataSync,
+  usesIndexedDbAppData,
 } from '@/config/dataSource'
 import {
   buildPedidosConsumoMaterialSeed,
@@ -580,8 +582,15 @@ function cloneData(data: AppData): AppData {
   return JSON.parse(JSON.stringify(data)) as AppData
 }
 
-/** Carrega dados do IndexedDB (local/demo) */
+/** Carrega dados do IndexedDB (local/demo) ou cache em memória (Supabase) */
 export function initAppData(): AppData {
+  if (useCloudAppDataSync()) {
+    if (appDataCache) return cloneData(appDataCache)
+    const { data } = normalizeAppData(generateEmptyTenantData())
+    appDataCache = data
+    return cloneData(data)
+  }
+
   const storageKey = getAppDataStorageKey()
   const stored = storageGet(storageKey)
   if (stored) {
@@ -634,8 +643,12 @@ export function loadAppData(): AppData {
   return cloneData(appDataCache)
 }
 
-/** Recarrega dados do IndexedDB */
+/** Recarrega dados do IndexedDB ou cache em memória (Supabase) */
 export function reloadAppDataFromStorage(): AppData {
+  if (useCloudAppDataSync()) {
+    return loadAppData()
+  }
+
   const stored = storageGet(getAppDataStorageKey())
   if (!stored) {
     return loadAppData()
@@ -654,6 +667,13 @@ export function reloadAppDataFromStorage(): AppData {
 }
 
 function persistAppData(data: AppData): void {
+  if (useCloudAppDataSync()) {
+    void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
+      scheduleSupabaseAppDataSync(data, SEED_VERSION)
+    })
+    return
+  }
+
   storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
   if (getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
     notifyDemoAppDataChanged()
@@ -703,26 +723,58 @@ export function saveAppData(data: AppData): void {
   persistAppData(appDataCache)
 }
 
+/** Aplica dados vindos do Supabase no cache em memória */
+export function applyRemoteAppData(raw: AppData): AppData {
+  const { data, changed } = normalizeAppData(raw)
+  appDataCache = data
+  if (usesIndexedDbAppData() && !isDemoDataSession()) {
+    persistAppData(data)
+  }
+  if (changed && import.meta.env.DEV) {
+    console.info('[AcompSolemp] AppData normalizado após hidratação Supabase')
+  }
+  return cloneData(data)
+}
+
 export function resetAppData(): AppData {
-  storageRemove(getAppDataStorageKey())
+  if (usesIndexedDbAppData()) {
+    storageRemove(getAppDataStorageKey())
+  }
   appDataCache = null
   return initAppData()
 }
 
 /** Remove dados persistidos e sessões (mantém tema) */
 export function clearAllSystemData(): AppData {
-  Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
+  if (useCloudAppDataSync()) {
+    storageRemove(STORAGE_KEYS.AUTH_LEGACY)
+    storageRemove(STORAGE_KEYS.AUTH_GESTOR)
+    storageRemove(STORAGE_KEYS.AUTH_CLINICA)
+    storageRemove(STORAGE_KEYS.AUTH_ORDENADOR)
+    storageRemove(STORAGE_KEYS.AUTH_FINANCEIRO)
+  } else {
+    Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
+  }
   appDataCache = null
   return initAppData()
 }
 
-/** Recarrega do IndexedDB */
+/** Recarrega da fonte ativa — Supabase em nuvem, IndexedDB em local/demo */
 export async function reloadFreshAppData(): Promise<AppData> {
+  if (useCloudAppDataSync()) {
+    const { refreshAppDataFromCloud } = await import('@/data/persistence/supabaseSync')
+    const remote = await refreshAppDataFromCloud()
+    if (remote) return applyRemoteAppData(remote)
+    return loadAppData()
+  }
   return reloadAppDataFromStorage()
 }
 
 /** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
 export async function loadFreshAppData(): Promise<AppData> {
+  if (useCloudAppDataSync()) {
+    return reloadFreshAppData()
+  }
   return reloadAppDataFromStorage()
 }
 

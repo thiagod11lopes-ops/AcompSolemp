@@ -1,7 +1,14 @@
 import type { User, UserRole } from '@/types'
 import { normalizeEmailKey } from '@/utils/email'
+import { useSupabaseDataSource, useCloudAppDataSync } from '@/config/dataSource'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
+import { getTenantId } from '@/services/tenantService'
+import {
+  removeEmailAccess,
+  upsertEmailAccess,
+} from '@/data/persistence/supabaseTenant'
+import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
 
@@ -81,6 +88,11 @@ export const usuarioCadastroService = {
     const email = validateEmail(input.email)
     assertEmailAvailableLocal(email)
 
+    const tenantId = getTenantId()
+    if (useSupabaseDataSource() && !tenantId) {
+      throw new Error('Organização do gestor não encontrada. Faça login novamente.')
+    }
+
     await delay(null, 200)
 
     const data = loadAppData()
@@ -110,6 +122,9 @@ export const usuarioCadastroService = {
       )
       if (existingIdx >= 0) {
         const existing = data.usuarios[existingIdx]
+        if (useSupabaseDataSource() && existing.email && existing.email !== email) {
+          await removeEmailAccess(existing.email)
+        }
         existing.nome = nome
         existing.email = email
         existing.ativo = true
@@ -123,6 +138,21 @@ export const usuarioCadastroService = {
 
     saveAppData(data)
 
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
+
+    if (useSupabaseDataSource() && tenantId) {
+      await upsertEmailAccess({
+        email,
+        tenantId,
+        appUserId: user.id,
+        perfil: user.perfil,
+        clinicaId: user.clinicaId,
+        nome: user.nome,
+      })
+    }
+
     return { user, login }
   },
 
@@ -134,8 +164,18 @@ export const usuarioCadastroService = {
       const clinica = data.clinicas.find((c) => c.id === input.id)
       if (!clinica) throw new Error('Cadastro não encontrado')
 
+      const usersToRemove = data.usuarios.filter((u) => u.clinicaId === input.id)
+
       data.clinicas = data.clinicas.filter((c) => c.id !== input.id)
       data.usuarios = data.usuarios.filter((u) => u.clinicaId !== input.id)
+
+      if (useSupabaseDataSource()) {
+        await Promise.all(
+          usersToRemove
+            .filter((user) => user.email)
+            .map((user) => removeEmailAccess(user.email!)),
+        )
+      }
     } else {
       const user = data.usuarios.find((u) => u.id === input.id)
       if (!user) throw new Error('Usuário não encontrado')
@@ -143,9 +183,15 @@ export const usuarioCadastroService = {
         throw new Error('Este usuário não pode ser excluído')
       }
 
+      if (useSupabaseDataSource() && user.email) {
+        await removeEmailAccess(user.email)
+      }
       data.usuarios = data.usuarios.filter((u) => u.id !== input.id)
     }
 
     saveAppData(data)
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
   },
 }

@@ -20,6 +20,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
+import { useSupabaseDataSource } from '@/config/dataSource'
 
 const loginSchema = z.object({
   login: z.string().min(1, 'Informe o login'),
@@ -30,6 +31,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginGestorPage() {
   const { login, logout } = useGestorAuth()
+  const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo =
@@ -44,7 +46,9 @@ export default function LoginGestorPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { login: 'gestor', senha: 'gestor123' },
+    defaultValues: isSupabase
+      ? { login: '', senha: '' }
+      : { login: 'gestor', senha: 'gestor123' },
   })
 
   const finishLogin = async () => {
@@ -88,7 +92,8 @@ export default function LoginGestorPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <TextField
           fullWidth
-          label="Login"
+          label={isSupabase ? 'E-mail' : 'Login'}
+          type={isSupabase ? 'email' : 'text'}
           margin="normal"
           {...register('login')}
           error={Boolean(errors.login)}
@@ -122,7 +127,11 @@ export default function LoginGestorPage() {
           sx={{ mt: 3 }}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Entrando...' : 'Entrar como Gestor'}
+          {isSubmitting
+            ? 'Entrando...'
+            : isSupabase
+              ? 'Entrar / Criar organização'
+              : 'Entrar como Gestor'}
         </Button>
       </form>
 
@@ -136,7 +145,9 @@ export default function LoginGestorPage() {
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-        Demo: gestor / gestor123 ou admin / admin123
+        {isSupabase
+          ? 'No primeiro acesso com e-mail/senha sua organização é criada automaticamente.'
+          : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
     </Box>
   )

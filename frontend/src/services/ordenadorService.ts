@@ -1,4 +1,6 @@
 import type { PedidoComDetalhes, User, UserRole } from '@/types'
+import { useCloudAppDataSync } from '@/config/dataSource'
+import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import {
   DEMO_EXEMPLO_USER_PREFIX,
   ensureDemoUserById,
@@ -78,6 +80,9 @@ async function resolveDataForSetor(usuarioId: string): Promise<{
 
 async function persistSetorData(data: ReturnType<typeof loadAppData>): Promise<void> {
   saveAppData(data)
+  if (useCloudAppDataSync()) {
+    await flushSupabaseAppDataSync()
+  }
 }
 
 export const ordenadorService = {

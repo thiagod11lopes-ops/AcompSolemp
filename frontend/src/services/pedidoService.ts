@@ -12,6 +12,8 @@ import {
   saveAppData,
   saveDemoAppData,
 } from '@/mocks/seed'
+import { useCloudAppDataSync } from '@/config/dataSource'
+import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { canAccessGestorRoute } from '@/utils/permissions'
@@ -312,5 +314,8 @@ export const pedidoService = {
 
     removePedidosFromAppData(data, new Set([pedidoId]))
     saveAppData(data)
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
   },
 }

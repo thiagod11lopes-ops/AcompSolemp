@@ -1,8 +1,11 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { normalizeEmailKey } from '@/utils/email'
+import { useSupabaseDataSource } from '@/config/dataSource'
 import {
+  applyRemoteAppData,
   delay,
+  generateEmptyTenantData,
   loadAppData,
   MOCK_CREDENTIALS,
   reloadFreshAppData,
@@ -20,8 +23,18 @@ import {
   getStoredOrgCode,
   getTenantId,
   resolveGestorTenantIdFromOwnerUserId,
+  setStoredOrgCode,
+  setTenantId,
 } from '@/services/tenantService'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
+import { supabaseAuthAdapter } from '@/supabase/authAdapter'
+import {
+  getEmailAccess,
+  getProfileForCurrentUser,
+  provisionGestorTenant,
+} from '@/data/persistence/supabaseTenant'
+import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
+import { getSupabaseClient } from '@/supabase/client'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
 const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
@@ -154,6 +167,10 @@ export const authService = {
     migrateLegacyAuth()
   },
 
+  usesSupabaseAuth(): boolean {
+    return useSupabaseDataSource()
+  },
+
   getOrgCode(): string | null {
     const data = loadAppData()
     return data.tenantMeta?.orgCode ?? getStoredOrgCode()
@@ -170,6 +187,10 @@ export const authService = {
   },
 
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
+    if (useSupabaseDataSource() && portal === 'gestor') {
+      return this.loginGestorSupabase(credentials)
+    }
+
     await delay(null, 600)
     const cred = resolveCredential(credentials.login, credentials.senha)
     if (!cred) {
@@ -185,10 +206,109 @@ export const authService = {
     return completePortalLogin(portal, user)
   },
 
-  async loginWithEmailTimeline(email: string): Promise<TimelineLoginResult> {
+  async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
+    const email = normalizeEmailKey(credentials.login)
+    if (!email.includes('@')) {
+      throw new Error('Informe um e-mail válido')
+    }
+    if (credentials.senha.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+
+    const authSession = await supabaseAuthAdapter.signInOrSignUp(email, credentials.senha)
+    let profile = await getProfileForCurrentUser()
+
+    if (!profile) {
+      const { tenant, profile: created, owner } = await provisionGestorTenant({
+        authUserId: authSession.user.id,
+        email,
+        displayName: authSession.user.user_metadata?.full_name,
+        initialAppData: generateEmptyTenantData(),
+      })
+      profile = created
+      setTenantId(tenant.id)
+      setStoredOrgCode(tenant.org_code)
+      applyRemoteAppData({
+        ...generateEmptyTenantData(),
+        usuarios: [owner],
+        tenantMeta: {
+          orgCode: tenant.org_code,
+          ownerEmail: email,
+          ownerUid: tenant.id,
+          createdAt: tenant.created_at,
+        },
+      })
+      return completePortalLogin('gestor', owner)
+    }
+
+    setTenantId(profile.tenant_id)
+    await hydrateLocalCacheFromSupabase((data) => {
+      applyRemoteAppData(data)
+    })
+    setStoredOrgCode(loadAppData().tenantMeta?.orgCode ?? null)
+
+    const data = loadAppData()
+    const owner =
+      data.usuarios.find((u) => u.id === profile!.app_user_id && u.ativo) ??
+      data.usuarios.find((u) => u.perfil === 'GESTOR' && u.ativo)
+
+    if (!owner) {
+      throw new Error('Usuário gestor não encontrado na organização.')
+    }
+
+    return completePortalLogin('gestor', owner)
+  },
+
+  async loginWithEmailTimeline(
+    email: string,
+    password?: string,
+  ): Promise<TimelineLoginResult> {
     const normalized = normalizeEmailKey(email)
     if (!normalized.includes('@')) {
       throw new Error('Informe um e-mail válido')
+    }
+
+    if (useSupabaseDataSource()) {
+      if (!password || password.length < 6) {
+        throw new Error('Informe a senha (mínimo 6 caracteres)')
+      }
+
+      const access = await getEmailAccess(normalized)
+      if (!access) {
+        throw new Error('Email não cadastrado pelo gestor')
+      }
+
+      const authSession = await supabaseAuthAdapter.signInOrSignUp(normalized, password)
+      const existingProfile = await getProfileForCurrentUser()
+      if (!existingProfile) {
+        const { error } = await getSupabaseClient().from('profiles').insert({
+          id: authSession.user.id,
+          tenant_id: access.tenant_id,
+          app_user_id: access.app_user_id,
+          email: normalized,
+          perfil: access.perfil,
+        })
+        if (error) throw error
+      }
+
+      setTenantId(access.tenant_id)
+      await hydrateLocalCacheFromSupabase((data) => {
+        applyRemoteAppData(data)
+      })
+
+      const data = loadAppData()
+      const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
+      if (!user) {
+        throw new Error('Email não cadastrado')
+      }
+
+      const portal = portalForPerfil(user.perfil)
+      const authUser = await completePortalLogin(portal, user)
+      return {
+        authUser,
+        portal,
+        route: getHomeRouteForPerfil(user.perfil),
+      }
     }
 
     const user = findLocalUserByEmail(normalized)
@@ -208,6 +328,21 @@ export const authService = {
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
     setSession(portal, null)
+
+    if (!useSupabaseDataSource()) return
+
+    if (portal === 'gestor') {
+      setTenantId(null)
+      setStoredOrgCode(null)
+      await supabaseAuthAdapter.signOut()
+      return
+    }
+
+    const hasGestor = Boolean(readStoredUser(GESTOR_AUTH_KEY))
+    await supabaseAuthAdapter.signOut()
+    if (!hasGestor) {
+      setTenantId(null)
+    }
   },
 
   getGestorUser(): AuthUser | null {
@@ -299,5 +434,8 @@ export const authService = {
 
   async prepareTimelineEntry(): Promise<void> {
     this.clearClinicaOrdenadorSessions()
+    if (useSupabaseDataSource()) {
+      await supabaseAuthAdapter.signOut()
+    }
   },
 }

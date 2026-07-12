@@ -1,6 +1,6 @@
 import type { AppData } from '@/types'
 
-export const APP_DATA_SEED_VERSION = 'v14'
+export const APP_DATA_SEED_VERSION = 'v15'
 
 export interface AppDataSnapshot {
   version: string

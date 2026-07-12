@@ -30,7 +30,10 @@ jobs:
         working-directory: frontend
         env:
           GITHUB_PAGES: 'true'
+          VITE_DATA_SOURCE: ${{ secrets.VITE_DATA_SOURCE }}
           VITE_GESTOR_GOOGLE_EMAIL: ${{ secrets.VITE_GESTOR_GOOGLE_EMAIL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm ci
           npm run build

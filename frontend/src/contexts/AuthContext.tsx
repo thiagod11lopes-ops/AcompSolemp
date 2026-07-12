@@ -20,7 +20,7 @@ interface AuthContextValue {
   demoMode: DemoModeState | null
   isLoading: boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
-  loginWithEmailTimeline: (email: string) => Promise<TimelineLoginResult>
+  loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
@@ -78,8 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
-  const loginWithEmailTimeline = useCallback(async (email: string) => {
-    const result = await authService.loginWithEmailTimeline(email)
+  const loginWithEmailTimeline = useCallback(async (email: string, password?: string) => {
+    const result = await authService.loginWithEmailTimeline(email, password)
     applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
     return result
   }, [])
