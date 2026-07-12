@@ -31,3 +31,6 @@ Thumbs.db
 # Cache
 .cache/
 *.tsbuildinfo
+
+# Dumps locais de transferência (não versionar dados)
+Transferir para Servidor/*.sql
