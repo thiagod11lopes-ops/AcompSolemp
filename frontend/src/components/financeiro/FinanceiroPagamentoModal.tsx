@@ -124,7 +124,7 @@ export function FinanceiroPagamentoModal({
           </Box>
           <Box>
             <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
-              Finanças Pagamento
+              Solemp confeccionada
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
               Registrar pagamento

@@ -68,7 +68,7 @@ function etapaConcluidaNoHistorico(
 
 /** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
  * Medicamento: encerra só com Contabilidade/IMH.
- * Clínica: exige Contabilidade/IMH e Finanças Pagamento para encerrar o PED;
+ * Clínica: exige Contabilidade/IMH e Solemp confeccionada para encerrar o PED;
  * se uma trilha não foi iniciada, o processo ainda não fecha pelo card da clínica
  * (mas a trilha iniciada pode ser concluída isoladamente). */
 function isDivMaterialConcluida(
@@ -546,7 +546,7 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Finanças Pagamento.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Solemp confeccionada.`,
       etapa.id,
     )
 
@@ -554,7 +554,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
       titulo: `SOLEMP confeccionada — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Finanças Pagamento.`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Solemp confeccionada.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -581,7 +581,7 @@ export function registrarPagamentoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Finanças Pagamento')
+    throw new Error('Este processo não está na etapa Solemp confeccionada')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
@@ -601,7 +601,7 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Pagamento registrado em Finanças Pagamento — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Processo encerrado.`,
+    `Registro em Solemp confeccionada — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Processo encerrado.`,
     etapa.id,
   )
 
@@ -626,7 +626,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças Pagamento. NF ${notaFiscalNumero} — ${empresaNome}.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}.`,
   })
 
   return data

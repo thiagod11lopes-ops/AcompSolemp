@@ -108,7 +108,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Empenhado',
+    nome: 'Solemp confeccionada',
     ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
@@ -546,7 +546,7 @@ function migrateSimplifyFluxoFinancas(data: AppData): AppData {
       if (!ETAPAS_REMOVIDAS_SET.has(chave)) continue
       historico.dataConclusao = new Date().toISOString()
       historico.observacao =
-        'Etapa descontinuada — processo encaminhado para Finanças Pagamento.'
+        'Etapa descontinuada — processo encaminhado para Solemp confeccionada.'
     }
 
     pedido.etapaAtualId = financasEtapa.id
@@ -799,7 +799,7 @@ export function getRoleLabel(role: UserRole): string {
     MEDICAMENTO: 'Medicamento',
     EMPENHADO: 'Empenhado',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Empenhado',
+    FINANCEIRO: 'Solemp confeccionada',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',

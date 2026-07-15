@@ -23,7 +23,7 @@ const DEMO_NOMES: Record<string, string> = {
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
-  financas: 'Ten. Santos', // demo Empenhado (perfil FINANCEIRO)
+  financas: 'Ten. Santos', // demo Solemp confeccionada (perfil FINANCEIRO)
 }
 
 export interface DemoCadastroItem {
@@ -426,7 +426,7 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     })
   }
 
-  // Empenhado (clínica/setor com NE) — não incluir Finanças/Pagamento (FINANCEIRO)
+  // Empenhado (clínica/setor com NE) — não incluir Solemp confeccionada (FINANCEIRO) na demo de timeline
   resultado.push({
     id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
     userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
@@ -438,7 +438,7 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
-    // Excluir Finanças / Pagamento da Demonstração da Timeline
+    // Excluir Solemp confeccionada (FINANCEIRO) da Demonstração da Timeline
     if (opcao.id === 'financas' || opcao.perfil === 'FINANCEIRO') continue
     resultado.push({
       id: opcao.id,

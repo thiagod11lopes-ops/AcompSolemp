@@ -79,12 +79,11 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Empenhado',
+    label: 'Solemp confeccionada',
     perfil: 'FINANCEIRO',
-    graduacao: 'Empenhado',
+    graduacao: 'Solemp confeccionada',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao:
-      'Responsável pela etapa Empenhado. Nos cards, o número do empenho é exibido no formato NE (número).',
+    descricao: 'Responsável pela etapa Solemp confeccionada (após Confecção de Solemp).',
   },
 ]

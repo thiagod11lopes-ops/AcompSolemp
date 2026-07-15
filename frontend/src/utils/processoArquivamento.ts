@@ -10,8 +10,8 @@ const ETAPAS_ARQUIVAVEIS = new Set([
 export const MENSAGENS_ARQUIVAMENTO: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Planilha encaminhada ao IMH. Fluxo da Auditoria encerrado.',
   DIV_MAT_CONTABILIDADE_IMH: 'Planilha arquivada. Fluxo da Contabilidade/IMH encerrado.',
-  DIV_MAT_CONFECCAO_SOLEMP: 'SOLEMP encaminhada para Finanças Pagamento.',
-  DIV_MAT_FINANCAS: 'Pagamento registrado. Processo arquivado.',
+  DIV_MAT_CONFECCAO_SOLEMP: 'SOLEMP encaminhada para Solemp confeccionada.',
+  DIV_MAT_FINANCAS: 'Registro em Solemp confeccionada. Processo arquivado.',
 }
 
 function resolverNomeArquivo(

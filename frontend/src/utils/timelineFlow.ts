@@ -39,7 +39,7 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Confecção → Finanças | Direita: Auditoria → Contabilidade/IMH
+  // Esquerda: Confecção → Solemp confeccionada | Direita: Auditoria → Contabilidade/IMH
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
@@ -78,7 +78,7 @@ export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowE
     .sort((a, b) => a.ordem - b.ordem)
 }
 
-/** Confecção (Material) → Finanças Pagamento */
+/** Confecção (Material) → Solemp confeccionada */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_FINANCAS',

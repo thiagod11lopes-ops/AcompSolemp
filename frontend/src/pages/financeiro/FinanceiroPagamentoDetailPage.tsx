@@ -158,8 +158,8 @@ export default function FinanceiroPagamentoDetailPage() {
               <Chip
                 label={
                   pagamentoConcluido
-                    ? 'Empenhado — concluído'
-                    : 'Empenhado — pendente'
+                    ? 'Solemp confeccionada — concluído'
+                    : 'Solemp confeccionada — pendente'
                 }
                 color={pagamentoConcluido ? 'success' : 'info'}
                 size="small"

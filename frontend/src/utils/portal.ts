@@ -64,7 +64,7 @@ export const FINANCEIRO_ETAPA_ACOES: Record<
   DIV_MAT_FINANCAS: {
     label: 'Registrar pagamento',
     labelConcluido: 'Concluído',
-    descricao: 'Confirme o pagamento na etapa Finanças Pagamento.',
+    descricao: 'Confirme o pagamento na etapa Solemp confeccionada.',
   },
 }
 
@@ -82,7 +82,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
     label: 'Confeccionar Solemp',
-    descricao: 'Informe o número e o valor da SOLEMP e envie para Finanças Pagamento.',
+    descricao: 'Informe o número e o valor da SOLEMP e envie para Solemp confeccionada.',
   },
 }
 
@@ -91,7 +91,7 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
-  DIV_MAT_FINANCAS: 'Aguardando Finanças Pagamento.',
+  DIV_MAT_FINANCAS: 'Aguardando Solemp confeccionada.',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

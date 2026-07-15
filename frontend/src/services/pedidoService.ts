@@ -191,6 +191,8 @@ export const pedidoService = {
           (h) =>
             ids.includes(h.etapaId) &&
             !h.dataConclusao &&
+            h.etapaNome === 'Solemp confeccionada' ||
+            h.etapaNome === 'Empenhado' ||
             h.etapaNome === 'Finanças Pagamento',
         )
       })
