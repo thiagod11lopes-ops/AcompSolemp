@@ -34,6 +34,7 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { calcularProgressoTimeline } from '@/utils/portal'
 import { TIMELINE_ETAPA_META, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 
 type FiltroStatus = 'TODAS' | 'EM_ANDAMENTO' | 'CONCLUIDAS' | 'ATRASADAS'
@@ -267,6 +268,10 @@ export default function GestorTimelinesPage() {
                     pedido.concluido ? ordenadas.length - 1 : etapaIndex,
                     ordenadas.length,
                   )
+                  const empenhoLabel =
+                    pedido.clinica.tipo === 'empenhado'
+                      ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
+                      : null
 
                   return (
                     <Grid key={pedido.id} size={{ xs: 12, md: 6, lg: 4 }}>
@@ -369,6 +374,9 @@ export default function GestorTimelinesPage() {
                                   color="primary"
                                 />
                               )}
+                              {empenhoLabel ? (
+                                <Chip label={empenhoLabel} size="small" color="secondary" />
+                              ) : null}
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                               <Box sx={{ flexGrow: 1, minWidth: 0 }}>

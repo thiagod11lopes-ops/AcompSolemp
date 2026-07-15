@@ -48,6 +48,8 @@ export const TimelineCard = memo(function TimelineCard({
   const showSolempMeta =
     ETAPAS_COM_SOLEMP_NO_CARD.has(node.etapa.chave) &&
     Boolean(node.solempNumero || node.solempValor != null)
+  const showEmpenhoMeta = Boolean(node.empenhoExibicao)
+  const showExtraMeta = showSolempMeta || showEmpenhoMeta
 
   const cardBody = (
     <motion.article
@@ -61,7 +63,7 @@ export const TimelineCard = memo(function TimelineCard({
       className={[
         'timeline-card-inner',
         'timeline-card-inner--compact',
-        showSolempMeta ? 'timeline-card-inner--with-solemp' : '',
+        showExtraMeta ? 'timeline-card-inner--with-solemp' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -124,6 +126,14 @@ export const TimelineCard = memo(function TimelineCard({
               {formatCurrency(node.solempValor)}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {showEmpenhoMeta ? (
+        <div className="timeline-card-solemp-meta">
+          <p className="timeline-card-solemp-numero" style={{ color: timelineTheme.text }}>
+            {node.empenhoExibicao}
+          </p>
         </div>
       ) : null}
 

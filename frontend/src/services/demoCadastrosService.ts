@@ -13,11 +13,13 @@ import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
 export const DEMO_CLINICA_EXEMPLO_ID = 'demo-clinica-exemplo'
 export const DEMO_MEDICAMENTO_EXEMPLO_ID = 'demo-medicamento-exemplo'
+export const DEMO_EMPENHADO_EXEMPLO_ID = 'demo-empenhado-exemplo'
 export const DEMO_GESTOR_OVERVIEW_USER_ID = '__gestor_demo_overview__'
 
 const DEMO_NOMES: Record<string, string> = {
   clinica: 'Clínica Exemplo',
   medicamento: 'Medicamento Exemplo',
+  empenhado: 'Empenhado',
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
@@ -38,7 +40,7 @@ export function formatDemoTabTitle(item: Pick<DemoCadastroItem, 'label' | 'nome'
 }
 
 function demoExampleUserId(opcaoId: string, entidadeId?: string): string {
-  if ((opcaoId === 'clinica' || opcaoId === 'medicamento') && entidadeId) {
+  if ((opcaoId === 'clinica' || opcaoId === 'medicamento' || opcaoId === 'empenhado') && entidadeId) {
     return `${DEMO_EXEMPLO_USER_PREFIX}${opcaoId}-${entidadeId}`
   }
   return `${DEMO_EXEMPLO_USER_PREFIX}${opcaoId}`
@@ -114,6 +116,70 @@ function ensureDefaultClinica(data: ReturnType<typeof loadAppData>): Clinica {
   }
   data.clinicas.push(clinica)
   return clinica
+}
+
+function createExampleEmpenhadoUser(
+  empenhado: Clinica,
+  data: ReturnType<typeof loadAppData>,
+): User {
+  const logins = getExistingLogins(data)
+  const login = ensureUniqueLogin(slugLogin(`demo-${empenhado.nome}`), logins)
+  return {
+    id: demoExampleUserId('empenhado', empenhado.id),
+    nome: empenhado.nome,
+    posto: '',
+    graduacao: 'Empenhado',
+    login,
+    perfil: 'EMPENHADO',
+    clinicaId: empenhado.id,
+    ativo: true,
+  }
+}
+
+function ensureDefaultEmpenhado(data: ReturnType<typeof loadAppData>): Clinica {
+  const existente = data.clinicas.find((clinica) => clinica.id === DEMO_EMPENHADO_EXEMPLO_ID)
+  if (existente) {
+    existente.nome = DEMO_NOMES.empenhado
+    existente.tipo = 'empenhado'
+    return existente
+  }
+
+  const empenhado: Clinica = {
+    id: DEMO_EMPENHADO_EXEMPLO_ID,
+    nome: DEMO_NOMES.empenhado,
+    responsavel: 'Demonstração',
+    telefone: '',
+    tipo: 'empenhado',
+  }
+  data.clinicas.push(empenhado)
+  return empenhado
+}
+
+function findOrEnsureEmpenhadoUser(
+  empenhado: Clinica,
+  data: ReturnType<typeof loadAppData>,
+): User {
+  const existing = data.usuarios.find(
+    (user) => user.clinicaId === empenhado.id && user.perfil === 'EMPENHADO' && user.ativo,
+  )
+  if (existing) {
+    existing.nome = empenhado.nome
+    return existing
+  }
+
+  const exampleId = demoExampleUserId('empenhado', empenhado.id)
+  const storedExample = data.usuarios.find((user) => user.id === exampleId)
+  if (storedExample) {
+    storedExample.ativo = true
+    storedExample.nome = empenhado.nome
+    storedExample.clinicaId = empenhado.id
+    storedExample.perfil = 'EMPENHADO'
+    return storedExample
+  }
+
+  const user = createExampleEmpenhadoUser(empenhado, data)
+  data.usuarios.push(user)
+  return user
 }
 
 function ensureDefaultMedicamento(data: ReturnType<typeof loadAppData>): Clinica {
@@ -195,10 +261,31 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
   const medicamento = ensureDefaultMedicamento(data)
   findOrEnsureMedicamentoUser(medicamento, data)
 
+  const empenhado = ensureDefaultEmpenhado(data)
+  findOrEnsureEmpenhadoUser(empenhado, data)
+
   for (const opcao of CADASTRO_PERFIS) {
-    if (opcao.isClinica || opcao.isMedicamento) continue
+    if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
     findOrEnsureSetorUser(opcao, data)
   }
+}
+
+/** Garante planilha de exemplo do Empenhado quando ainda vazia. */
+export function seedDemoExampleEmpenhadoPlanilha(data: ReturnType<typeof loadAppData>): boolean {
+  if (!data.consumoPlanilha) data.consumoPlanilha = {}
+
+  const current = data.consumoPlanilha[DEMO_EMPENHADO_EXEMPLO_ID]
+  if (current?.extraRows?.length) return false
+
+  const state = createDemoPlanilhaExemploState()
+  // Garante EMPENHO preenchido nas primeiras linhas para o formato NE (número) nos cards
+  state.extraRows = state.extraRows.slice(0, 12).map((row, index) => ({
+    ...row,
+    id: `emp-demo-${index + 1}`,
+    empenho: row.empenho?.trim() || `2026NE${String(4401 + index).padStart(4, '0')}`,
+  }))
+  data.consumoPlanilha[DEMO_EMPENHADO_EXEMPLO_ID] = state
+  return true
 }
 
 /** Garante planilha de exemplo do medicamento quando ainda vazia (preserva linhas adicionadas no IndexedDB). */
@@ -247,6 +334,18 @@ export function ensureDemoExamplePlanilha(): boolean {
   return true
 }
 
+/** Garante a planilha OPME do Empenhado no IndexedDB da sessão demo (só se estiver vazia). */
+export function ensureDemoExampleEmpenhadoPlanilha(): boolean {
+  if (!isDemoDataSession()) return false
+
+  const data = loadAppData()
+  const seeded = seedDemoExampleEmpenhadoPlanilha(data)
+  if (!seeded) return false
+
+  saveAppData(data)
+  return true
+}
+
 /** Inicializa AppData de demonstração no IndexedDB (isolado da nuvem). */
 export async function initDemoAppData(): Promise<void> {
   if (!isDemoDataSession()) return
@@ -259,7 +358,9 @@ export async function initDemoAppData(): Promise<void> {
 
   seedDemoExampleCadastros(data)
   const planilhaSeeded =
-    seedDemoExamplePlanilha(data) || seedDemoExampleMedicamentoPlanilha(data)
+    seedDemoExamplePlanilha(data) ||
+    seedDemoExampleMedicamentoPlanilha(data) ||
+    seedDemoExampleEmpenhadoPlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
   if (before !== after || data.clinicas.length === 0 || planilhaSeeded) {
@@ -276,7 +377,9 @@ export async function ensureDemoExampleCadastros(): Promise<void> {
 
   seedDemoExampleCadastros(data)
   const planilhaSeeded =
-    seedDemoExamplePlanilha(data) || seedDemoExampleMedicamentoPlanilha(data)
+    seedDemoExamplePlanilha(data) ||
+    seedDemoExampleMedicamentoPlanilha(data) ||
+    seedDemoExampleEmpenhadoPlanilha(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
   if (before !== after || planilhaSeeded) {
@@ -321,8 +424,20 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     })
   }
 
+  const opcaoEmpenhado = CADASTRO_PERFIS.find((opcao) => opcao.isEmpenhado)
+  if (opcaoEmpenhado) {
+    resultado.push({
+      id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
+      userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
+      label: opcaoEmpenhado.label,
+      nome: DEMO_NOMES.empenhado,
+      subtitulo: 'Planilha OPME — empenho no formato NE (número)',
+      isExemplo: true,
+    })
+  }
+
   for (const opcao of CADASTRO_PERFIS) {
-    if (opcao.isClinica || opcao.isMedicamento) continue
+    if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
     resultado.push({
       id: opcao.id,
       userId: demoExampleUserId(opcao.id),

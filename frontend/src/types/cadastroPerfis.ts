@@ -5,16 +5,25 @@ export interface CadastroPerfilOpcao {
   label: string
   perfil: UserRole
   graduacao: string
-  /** Clínica / Medicamento usam nome da entidade; demais usam nome do usuário */
+  /** Clínica / Medicamento / Empenhado usam nome da entidade; demais usam nome do usuário */
   campoNomeLabel: string
   campoNomePlaceholder: string
   descricao: string
   isClinica?: boolean
   isMedicamento?: boolean
+  isEmpenhado?: boolean
 }
 
 export function isCadastroEntidadeClinica(opcao: CadastroPerfilOpcao): boolean {
-  return Boolean(opcao.isClinica || opcao.isMedicamento)
+  return Boolean(opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado)
+}
+
+export type ClinicaEntidadeTipo = 'clinica' | 'medicamento' | 'empenhado'
+
+export function resolveClinicaEntidadeTipo(opcao: CadastroPerfilOpcao): ClinicaEntidadeTipo {
+  if (opcao.isMedicamento) return 'medicamento'
+  if (opcao.isEmpenhado) return 'empenhado'
+  return 'clinica'
 }
 
 /** Opções de cadastro da aba Cadastros (nome + e-mail Google) */
@@ -39,6 +48,17 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     descricao:
       'Mesmo portal da clínica para lançamentos; a planilha é enviada diretamente para Contabilidade/IMH, sem passar pela Auditoria.',
     isMedicamento: true,
+  },
+  {
+    id: 'empenhado',
+    label: 'Empenhado',
+    perfil: 'EMPENHADO',
+    graduacao: 'Empenhado',
+    campoNomeLabel: 'Nome do setor',
+    campoNomePlaceholder: 'Ex.: Empenhado',
+    descricao:
+      'Mesmo portal da clínica para lançamentos OPME; nos cards o número do empenho é exibido no formato NE (número).',
+    isEmpenhado: true,
   },
   {
     id: 'auditoria',

@@ -14,6 +14,7 @@ import type {
 import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, timelineConnectorVisivel, tituloGrupoOcultoNaTimeline, isEtapaDispensavelMedicamento, isPedidoTimelineMedicamento } from '@/utils/timelineFlow'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -150,6 +151,10 @@ export function buildTimelineNode(
     typeof pedido.solemp?.valor === 'number' && Number.isFinite(pedido.solemp.valor)
       ? pedido.solemp.valor
       : null
+  const empenhoExibicao =
+    pedido.clinica.tipo === 'empenhado'
+      ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
+      : null
 
   if (dispensavel) {
     return {
@@ -166,6 +171,7 @@ export function buildTimelineNode(
       processoNumero: resolveProcessoNumero(pedido, etapa),
       solempNumero,
       solempValor,
+      empenhoExibicao,
       observacaoResumo: null,
       edgeAfter: 'waiting',
       isHighlighted: false,
@@ -198,6 +204,7 @@ export function buildTimelineNode(
     processoNumero: resolveProcessoNumero(pedido, etapa),
     solempNumero,
     solempValor,
+    empenhoExibicao,
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),

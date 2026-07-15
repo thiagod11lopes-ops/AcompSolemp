@@ -37,7 +37,7 @@ export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!user || (user.perfil !== 'CLINICA' && user.perfil !== 'MEDICAMENTO')) {
+  if (!user || (user.perfil !== 'CLINICA' && user.perfil !== 'MEDICAMENTO' && user.perfil !== 'EMPENHADO')) {
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 
@@ -94,7 +94,9 @@ export function GuestRoute({
   if (
     portal === 'clinica' &&
     clinicaUser &&
-    (clinicaUser.perfil === 'CLINICA' || clinicaUser.perfil === 'MEDICAMENTO')
+    (clinicaUser.perfil === 'CLINICA' ||
+      clinicaUser.perfil === 'MEDICAMENTO' ||
+      clinicaUser.perfil === 'EMPENHADO')
   ) {
     return <Navigate to="/clinica/timelines" replace />
   }

@@ -3,6 +3,7 @@ export type UserRole =
   | 'GESTOR'
   | 'CLINICA'
   | 'MEDICAMENTO'
+  | 'EMPENHADO'
   | 'ASSINANTE'
   | 'FINANCEIRO'
   | 'AUDITORIA'
@@ -64,8 +65,8 @@ export interface Clinica {
   nome: string
   responsavel: string
   telefone: string
-  /** medicamento = envio direto para Contabilidade/IMH */
-  tipo?: 'clinica' | 'medicamento'
+  /** medicamento = envio direto Contabilidade/IMH; empenhado = portal clínica com NE no card */
+  tipo?: 'clinica' | 'medicamento' | 'empenhado'
 }
 
 export interface Empresa {

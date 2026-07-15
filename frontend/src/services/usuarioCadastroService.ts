@@ -9,8 +9,8 @@ import {
   upsertEmailAccess,
 } from '@/data/persistence/supabaseTenant'
 import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
-import type { CadastroPerfilOpcao } from '@/types/cadastroPerfis'
-import { isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
+import type { CadastroPerfilOpcao, ClinicaEntidadeTipo } from '@/types/cadastroPerfis'
+import { isCadastroEntidadeClinica, resolveClinicaEntidadeTipo } from '@/types/cadastroPerfis'
 
 function validateEmail(email: string): string {
   const normalized = normalizeEmailKey(email)
@@ -40,7 +40,7 @@ function getExistingLogins(data: ReturnType<typeof loadAppData>): Set<string> {
 function findOrCreateEntidadeClinica(
   nomeEntidade: string,
   data: ReturnType<typeof loadAppData>,
-  tipo: 'clinica' | 'medicamento',
+  tipo: ClinicaEntidadeTipo,
 ): string {
   const nome = nomeEntidade.trim()
   const existente = data.clinicas.find(
@@ -50,7 +50,8 @@ function findOrCreateEntidadeClinica(
   )
   if (existente) return existente.id
 
-  const prefix = tipo === 'medicamento' ? 'medicamento' : 'clinica'
+  const prefix =
+    tipo === 'medicamento' ? 'medicamento' : tipo === 'empenhado' ? 'empenhado' : 'clinica'
   const entidade = {
     id: `${prefix}-custom-${Date.now()}`,
     nome,
@@ -99,7 +100,7 @@ export const usuarioCadastroService = {
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
     const perfil: UserRole = input.opcao.perfil
-    const tipoEntidade = input.opcao.isMedicamento ? 'medicamento' : 'clinica'
+    const tipoEntidade = resolveClinicaEntidadeTipo(input.opcao)
     const clinicaId = isEntidade
       ? findOrCreateEntidadeClinica(nome, data, tipoEntidade)
       : null

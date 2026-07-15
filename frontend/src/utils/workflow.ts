@@ -214,7 +214,13 @@ export function getResponsavelParaEtapa(
   )
 
   if (etapa.perfilResponsavel === 'CLINICA') {
-    return candidatos.find((u) => u.clinicaId === clinicaId) ?? candidatos[0] ?? null
+    const daClinica = usuarios.filter(
+      (u) =>
+        u.ativo &&
+        u.clinicaId === clinicaId &&
+        (u.perfil === 'CLINICA' || u.perfil === 'MEDICAMENTO' || u.perfil === 'EMPENHADO'),
+    )
+    return daClinica[0] ?? candidatos[0] ?? null
   }
 
   return candidatos[0] ?? null

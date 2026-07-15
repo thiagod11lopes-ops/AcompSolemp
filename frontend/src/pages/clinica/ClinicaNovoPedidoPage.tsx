@@ -52,7 +52,9 @@ import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
   DEMO_MEDICAMENTO_EXEMPLO_ID,
+  DEMO_EMPENHADO_EXEMPLO_ID,
   ensureDemoExampleMedicamentoPlanilha,
+  ensureDemoExampleEmpenhadoPlanilha,
   ensureDemoExamplePlanilha,
 } from '@/services/demoCadastrosService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
@@ -125,10 +127,14 @@ export default function ClinicaNovoPedidoPage() {
     if (isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID) {
       ensureDemoExampleMedicamentoPlanilha()
     }
+    if (isDemo && clinicaId === DEMO_EMPENHADO_EXEMPLO_ID) {
+      ensureDemoExampleEmpenhadoPlanilha()
+    }
 
     const persisted = consumoPlanilhaService.getState(clinicaId)
     const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
     const isDemoMedicamento = isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
+    const isDemoEmpenhado = isDemo && clinicaId === DEMO_EMPENHADO_EXEMPLO_ID
     const rowsToLoad =
       persisted.extraRows.length > 0
         ? persisted.extraRows
@@ -136,13 +142,24 @@ export default function ClinicaNovoPedidoPage() {
           ? getConsumoMaterialInicial()
           : isDemoMedicamento
             ? getConsumoMaterialDemoMedicamento()
-            : []
+            : isDemoEmpenhado
+              ? getConsumoMaterialInicial().slice(0, 12).map((row, index) => ({
+                  ...row,
+                  id: `emp-demo-${index + 1}`,
+                  empenho:
+                    row.empenho?.trim() ||
+                    `2026NE${String(4401 + index).padStart(4, '0')}`,
+                }))
+              : []
 
     planilhaHydrated.current = true
 
     if (rowsToLoad.length > 0) {
       setExtraRows(rowsToLoad)
-      if (persisted.extraRows.length === 0 && (isDemoClinica || isDemoMedicamento)) {
+      if (
+        persisted.extraRows.length === 0 &&
+        (isDemoClinica || isDemoMedicamento || isDemoEmpenhado)
+      ) {
         consumoPlanilhaService.saveState(clinicaId, {
           finalizedRowIds: [],
           finalizedAuditoriaRowIds: [],
