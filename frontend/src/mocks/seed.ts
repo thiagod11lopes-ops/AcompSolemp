@@ -108,7 +108,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Finanças Pagamento',
+    nome: 'Empenhado',
     ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
@@ -483,6 +483,10 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
         etapa.ativo = true
         changed = true
       }
+      if (etapa.nome !== financasDef.nome) {
+        etapa.nome = financasDef.nome
+        changed = true
+      }
     }
     if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' && confeccaoDef && etapa.ordem !== confeccaoDef.ordem) {
       etapa.ordem = confeccaoDef.ordem
@@ -795,7 +799,7 @@ export function getRoleLabel(role: UserRole): string {
     MEDICAMENTO: 'Medicamento',
     EMPENHADO: 'Empenhado',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Finanças Pagamento',
+    FINANCEIRO: 'Empenhado',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',

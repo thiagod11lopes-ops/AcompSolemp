@@ -158,8 +158,8 @@ export default function FinanceiroPagamentoDetailPage() {
               <Chip
                 label={
                   pagamentoConcluido
-                    ? 'Finanças Pagamento — concluído'
-                    : 'Finanças Pagamento — pendente'
+                    ? 'Empenhado — concluído'
+                    : 'Empenhado — pendente'
                 }
                 color={pagamentoConcluido ? 'success' : 'info'}
                 size="small"

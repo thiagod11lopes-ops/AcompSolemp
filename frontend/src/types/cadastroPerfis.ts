@@ -5,12 +5,13 @@ export interface CadastroPerfilOpcao {
   label: string
   perfil: UserRole
   graduacao: string
-  /** Clínica / Medicamento / Empenhado usam nome da entidade; demais usam nome do usuário */
+  /** Clínica / Medicamento usam nome da entidade; demais usam nome do usuário */
   campoNomeLabel: string
   campoNomePlaceholder: string
   descricao: string
   isClinica?: boolean
   isMedicamento?: boolean
+  /** @deprecated legado — Empenhado passou a ser o perfil FINANCEIRO na aba Cadastros */
   isEmpenhado?: boolean
 }
 
@@ -50,17 +51,6 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     isMedicamento: true,
   },
   {
-    id: 'empenhado',
-    label: 'Empenhado',
-    perfil: 'EMPENHADO',
-    graduacao: 'Empenhado',
-    campoNomeLabel: 'Nome do setor',
-    campoNomePlaceholder: 'Ex.: Empenhado',
-    descricao:
-      'Mesmo portal da clínica para lançamentos OPME; nos cards o número do empenho é exibido no formato NE (número).',
-    isEmpenhado: true,
-  },
-  {
     id: 'auditoria',
     label: 'Auditoria',
     perfil: 'AUDITORIA',
@@ -89,11 +79,12 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Finanças Pagamento',
+    label: 'Empenhado',
     perfil: 'FINANCEIRO',
-    graduacao: 'Finanças Pagamento',
+    graduacao: 'Empenhado',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao: 'Responsável pela etapa Finanças Pagamento.',
+    descricao:
+      'Responsável pela etapa Empenhado. Nos cards, o número do empenho é exibido no formato NE (número).',
   },
 ]

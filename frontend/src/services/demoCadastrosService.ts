@@ -23,7 +23,7 @@ const DEMO_NOMES: Record<string, string> = {
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
-  financas: 'Ten. Santos',
+  financas: 'Ten. Santos', // demo Empenhado (perfil FINANCEIRO)
 }
 
 export interface DemoCadastroItem {
