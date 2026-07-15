@@ -139,8 +139,8 @@ function createExampleEmpenhadoUser(
 function ensureDefaultEmpenhado(data: ReturnType<typeof loadAppData>): Clinica {
   const existente = data.clinicas.find((clinica) => clinica.id === DEMO_EMPENHADO_EXEMPLO_ID)
   if (existente) {
-    existente.nome = DEMO_NOMES.empenhado
-    existente.tipo = 'empenhado'
+    if (existente.nome !== DEMO_NOMES.empenhado) existente.nome = DEMO_NOMES.empenhado
+    if (existente.tipo !== 'empenhado') existente.tipo = 'empenhado'
     return existente
   }
 
@@ -163,7 +163,7 @@ function findOrEnsureEmpenhadoUser(
     (user) => user.clinicaId === empenhado.id && user.perfil === 'EMPENHADO' && user.ativo,
   )
   if (existing) {
-    existing.nome = empenhado.nome
+    if (existing.nome !== empenhado.nome) existing.nome = empenhado.nome
     return existing
   }
 

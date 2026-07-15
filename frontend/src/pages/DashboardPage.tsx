@@ -15,9 +15,10 @@ import { formatCurrency } from '@/utils/format'
 import { premiumTokens } from '@/theme/tokens'
 
 export default function DashboardPage() {
-  const { data: metrics, isLoading } = useDashboardMetrics()
+  const { data: metrics, isPending } = useDashboardMetrics()
 
-  if (isLoading || !metrics) return <LoadingSpinner />
+  if (isPending && !metrics) return <LoadingSpinner />
+  if (!metrics) return <LoadingSpinner />
 
   return (
     <>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cadastroService,
   historicoService,
@@ -36,21 +36,12 @@ export function useUsuarios() {
 }
 
 export function useWorkflowEtapas() {
-  const queryClient = useQueryClient()
-
-  useEffect(() => {
-    return subscribeDemoAppDataChanged(() => {
-      queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
-    })
-  }, [queryClient])
-
   return useQuery({
     queryKey: ['workflow-etapas'],
     queryFn: workflowService.listEtapas,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -70,9 +61,10 @@ export function useDemoWorkflowEtapas() {
       if (!data) return []
       return filtrarEtapasParaTimeline(data.workflowEtapas)
     },
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    staleTime: 30_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 }
 

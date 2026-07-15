@@ -89,7 +89,7 @@ function filterPedidos(pedidos: PedidoComDetalhes[], filters?: PedidoFilters) {
 
 export const pedidoService = {
   async list(filters?: PedidoFilters, clinicaId?: string | null): Promise<PedidoComDetalhes[]> {
-    await delay(null)
+    // Sem delay artificial: listagens do gestor precisam ser responsivas.
     const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 
@@ -101,7 +101,6 @@ export const pedidoService = {
   },
 
   async getById(id: string): Promise<PedidoComDetalhes | null> {
-    await delay(null)
     const data = await loadFreshAppData()
     const pedido = data.pedidos.find((p) => p.id === id)
     if (!pedido) return null
@@ -109,14 +108,12 @@ export const pedidoService = {
   },
 
   async listDemo(filters?: PedidoFilters): Promise<PedidoComDetalhes[]> {
-    await delay(null)
     const data = peekDemoAppData()
     if (!data) return []
     return filterPedidos(enrichAll(data), filters)
   },
 
   async getDemoById(id: string): Promise<PedidoComDetalhes | null> {
-    await delay(null)
     const data = peekDemoAppData()
     if (!data) return null
     const pedido = data.pedidos.find((p) => p.id === id)
@@ -125,7 +122,6 @@ export const pedidoService = {
   },
 
   async getDashboardMetrics(clinicaId?: string | null): Promise<DashboardMetrics> {
-    await delay(null, 500)
     const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 

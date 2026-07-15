@@ -600,7 +600,7 @@ export function initAppData(): AppData {
         const { _version: _, ...raw } = parsed
         const { data, changed } = normalizeAppData(raw as AppData)
         appDataCache = data
-        if (changed) persistAppData(data)
+        if (changed) persistAppData(data, { silent: true })
         return cloneData(data)
       }
       if (parsed._version === 'v14') {
@@ -659,14 +659,16 @@ export function reloadAppDataFromStorage(): AppData {
     const { _version: _, ...raw } = parsed
     const { data, changed } = normalizeAppData(raw as AppData)
     appDataCache = data
-    if (changed) persistAppData(data)
+    // Persistência silenciosa: evita notificar/invalidar queries a cada leitura+normalize
+    // (loop: normalize → persist → invalidate → refetch → normalize…).
+    if (changed) persistAppData(data, { silent: true })
     return cloneData(data)
   } catch {
     return loadAppData()
   }
 }
 
-function persistAppData(data: AppData): void {
+function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   if (useCloudAppDataSync()) {
     void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
       scheduleSupabaseAppDataSync(data, SEED_VERSION)
@@ -675,7 +677,7 @@ function persistAppData(data: AppData): void {
   }
 
   storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
-  if (getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
+  if (!options?.silent && getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
     notifyDemoAppDataChanged()
   }
 }
@@ -773,6 +775,9 @@ export async function reloadFreshAppData(): Promise<AppData> {
 /** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
 export async function loadFreshAppData(): Promise<AppData> {
   if (useCloudAppDataSync()) {
+    // Preferência: cache em memória já hidratado — evita refetch na nuvem a cada listagem,
+    // que deixava a UI do gestor "piscando" enquanto esperava a rede.
+    if (appDataCache) return cloneData(appDataCache)
     return reloadFreshAppData()
   }
   return reloadAppDataFromStorage()

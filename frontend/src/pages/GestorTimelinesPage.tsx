@@ -90,8 +90,8 @@ export default function GestorTimelinesPage() {
   const location = useLocation()
   const { isDemo, navigatePortal } = usePortalPaths()
   const [fonte, setFonte] = useState<FonteTimeline>(isDemo ? 'demonstracao' : 'organizacao')
-  const { data: pedidosOrg = [], isLoading: loadingOrg } = usePedidos()
-  const { data: pedidosDemo = [], isLoading: loadingDemo } = useDemoPedidos()
+  const { data: pedidosOrg = [], isPending: pendingOrg } = usePedidos()
+  const { data: pedidosDemo = [], isPending: pendingDemo } = useDemoPedidos()
   const deletePedido = useDeleteGestorPedido()
   const { data: etapasOrg = [] } = useWorkflowEtapas()
   const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
@@ -109,7 +109,7 @@ export default function GestorTimelinesPage() {
 
   const mostraDemo = isDemo || fonte === 'demonstracao'
   const pedidos = mostraDemo ? pedidosDemo : pedidosOrg
-  const isLoading = mostraDemo ? loadingDemo : loadingOrg
+  const isInitialLoading = mostraDemo ? pendingDemo : pendingOrg
   const etapas = mostraDemo ? etapasDemo : etapasOrg
 
   const ordenadas = useMemo(
@@ -163,7 +163,7 @@ export default function GestorTimelinesPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />
+  if (isInitialLoading) return <LoadingSpinner />
 
   const abrirTimeline = (pedidoId: string) => {
     if (isDemo) {
