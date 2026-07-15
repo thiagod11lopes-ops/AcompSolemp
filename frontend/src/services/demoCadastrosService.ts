@@ -19,11 +19,11 @@ export const DEMO_GESTOR_OVERVIEW_USER_ID = '__gestor_demo_overview__'
 const DEMO_NOMES: Record<string, string> = {
   clinica: 'Clínica Exemplo',
   medicamento: 'Medicamento Exemplo',
-  empenhado: 'Empenhado',
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
   financas: 'Ten. Santos', // demo Solemp confeccionada (perfil FINANCEIRO)
+  empenhado: 'Empenhado',
 }
 
 export interface DemoCadastroItem {
@@ -266,8 +266,6 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
-    // Não cria mais Finanças/Pagamento na demonstração
-    if (opcao.id === 'financas' || opcao.perfil === 'FINANCEIRO') continue
     findOrEnsureSetorUser(opcao, data)
   }
 }
@@ -402,44 +400,44 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     },
   ]
 
-  const opcaoClinica = CADASTRO_PERFIS.find((opcao) => opcao.isClinica)
-  if (opcaoClinica) {
-    resultado.push({
-      id: `clinica-${DEMO_CLINICA_EXEMPLO_ID}`,
-      userId: demoExampleUserId('clinica', DEMO_CLINICA_EXEMPLO_ID),
-      label: opcaoClinica.label,
-      nome: DEMO_NOMES.clinica,
-      subtitulo: 'Planilha de exemplo Jan–Jun/2026 (691 lançamentos)',
-      isExemplo: true,
-    })
-  }
-
-  const opcaoMedicamento = CADASTRO_PERFIS.find((opcao) => opcao.isMedicamento)
-  if (opcaoMedicamento) {
-    resultado.push({
-      id: `medicamento-${DEMO_MEDICAMENTO_EXEMPLO_ID}`,
-      userId: demoExampleUserId('medicamento', DEMO_MEDICAMENTO_EXEMPLO_ID),
-      label: opcaoMedicamento.label,
-      nome: DEMO_NOMES.medicamento,
-      subtitulo: 'Planilha de exemplo com 10 lançamentos',
-      isExemplo: true,
-    })
-  }
-
-  // Empenhado (clínica/setor com NE) — não incluir Solemp confeccionada (FINANCEIRO) na demo de timeline
-  resultado.push({
-    id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
-    userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
-    label: 'Empenhado',
-    nome: DEMO_NOMES.empenhado,
-    subtitulo: 'Planilha OPME — empenho no formato NE (número)',
-    isExemplo: true,
-  })
-
+  // Ordem = CADASTRO_PERFIS: … → Solemp confeccionada → Empenhado
   for (const opcao of CADASTRO_PERFIS) {
-    if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
-    // Excluir Solemp confeccionada (FINANCEIRO) da Demonstração da Timeline
-    if (opcao.id === 'financas' || opcao.perfil === 'FINANCEIRO') continue
+    if (opcao.isClinica) {
+      resultado.push({
+        id: `clinica-${DEMO_CLINICA_EXEMPLO_ID}`,
+        userId: demoExampleUserId('clinica', DEMO_CLINICA_EXEMPLO_ID),
+        label: opcao.label,
+        nome: DEMO_NOMES.clinica,
+        subtitulo: 'Planilha de exemplo Jan–Jun/2026 (691 lançamentos)',
+        isExemplo: true,
+      })
+      continue
+    }
+
+    if (opcao.isMedicamento) {
+      resultado.push({
+        id: `medicamento-${DEMO_MEDICAMENTO_EXEMPLO_ID}`,
+        userId: demoExampleUserId('medicamento', DEMO_MEDICAMENTO_EXEMPLO_ID),
+        label: opcao.label,
+        nome: DEMO_NOMES.medicamento,
+        subtitulo: 'Planilha de exemplo com 10 lançamentos',
+        isExemplo: true,
+      })
+      continue
+    }
+
+    if (opcao.isEmpenhado) {
+      resultado.push({
+        id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
+        userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
+        label: opcao.label,
+        nome: DEMO_NOMES.empenhado,
+        subtitulo: 'Planilha OPME — empenho no formato NE (número)',
+        isExemplo: true,
+      })
+      continue
+    }
+
     resultado.push({
       id: opcao.id,
       userId: demoExampleUserId(opcao.id),

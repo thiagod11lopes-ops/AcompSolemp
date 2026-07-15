@@ -11,7 +11,7 @@ export interface CadastroPerfilOpcao {
   descricao: string
   isClinica?: boolean
   isMedicamento?: boolean
-  /** @deprecated legado — Empenhado passou a ser o perfil FINANCEIRO na aba Cadastros */
+  /** Entidade Empenhado (portal clínica, empenho no formato NE) */
   isEmpenhado?: boolean
 }
 
@@ -85,5 +85,16 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
     descricao: 'Responsável pela etapa Solemp confeccionada (após Confecção de Solemp).',
+  },
+  {
+    id: 'empenhado',
+    label: 'Empenhado',
+    perfil: 'EMPENHADO',
+    graduacao: 'Empenhado',
+    campoNomeLabel: 'Nome do Empenhado',
+    campoNomePlaceholder: 'Ex.: Empenhado OPME',
+    descricao:
+      'Portal semelhante à clínica; nos cards o empenho aparece no formato NE (número).',
+    isEmpenhado: true,
   },
 ]
