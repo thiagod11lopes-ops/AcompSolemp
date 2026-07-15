@@ -254,6 +254,15 @@ export interface AguardandoEmpenhoItem {
   dataSolicitacao: string
 }
 
+export interface EmpenhadoMesTotal {
+  /** Chave YYYY-MM */
+  mesChave: string
+  /** Ex.: Julho/2026 */
+  mesLabel: string
+  valor: number
+  quantidade: number
+}
+
 export interface DashboardMetrics {
   totalProcessos: number
   emAndamento: number
@@ -266,10 +275,17 @@ export interface DashboardMetrics {
   valorPagoMes: number
   valorAguardandoAssinatura: number
   valorAguardandoFinanceiro: number
-  /** Solemps em Solemp confeccionada, aguardando Empenhado */
+  /** Solemps ativas só na etapa Solemp confeccionada (após Confecção) */
   valorAguardandoEmpenho: number
   quantidadeAguardandoEmpenho: number
   aguardandoEmpenhoItens: AguardandoEmpenhoItem[]
+  /** Soma de todos os processos que concluíram Empenhado */
+  valorTotalEmpenhado: number
+  quantidadeTotalEmpenhado: number
+  /** Data do primeiro empenho (ISO) */
+  dataPrimeiroEmpenho: string | null
+  /** Totais por mês (mais recente primeiro) */
+  totaisEmpenhadoPorMes: EmpenhadoMesTotal[]
   rankingClinicas: { nome: string; total: number; valor: number }[]
   rankingEmpresas: { nome: string; total: number; valor: number }[]
   rankingResponsaveis: { nome: string; total: number; atrasados: number }[]

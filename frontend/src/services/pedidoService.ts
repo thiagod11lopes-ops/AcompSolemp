@@ -2,8 +2,10 @@ import type {
   AppData,
   AguardandoEmpenhoItem,
   DashboardMetrics,
+  EmpenhadoMesTotal,
   PedidoComDetalhes,
   PedidoFilters,
+  WorkflowEtapa,
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
 import {
@@ -15,11 +17,12 @@ import {
 } from '@/mocks/seed'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
-import { pedidoPendenteParaChave } from '@/utils/perfilEtapa'
+import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
 
 function resolveSetorOrigem(pedido: PedidoComDetalhes): Pick<
   AguardandoEmpenhoItem,
@@ -33,6 +36,45 @@ function resolveSetorOrigem(pedido: PedidoComDetalhes): Pick<
     return { setorTipo: 'empenhado', setorLabel: 'Empenhado', setorNome: pedido.clinica.nome }
   }
   return { setorTipo: 'clinica', setorLabel: 'Clínica', setorNome: pedido.clinica.nome }
+}
+
+function resolveValorSolemp(pedido: PedidoComDetalhes): number {
+  if (typeof pedido.solemp?.valor === 'number' && Number.isFinite(pedido.solemp.valor)) {
+    return pedido.solemp.valor
+  }
+  return pedido.valor
+}
+
+/** Ativo só em Solemp confeccionada (após Confecção concluída; ainda não Empenhado). */
+function isAguardandoEmpenhoNaSolempConfeccionada(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): boolean {
+  if (pedido.concluido || !pedido.solemp?.numero) return false
+
+  // Não contar se ainda estiver em Confecção (antes da Solemp confeccionada)
+  if (pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
+  if (!pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
+
+  // Já passou pelo Empenhado — não está mais aguardando
+  if (pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')) return false
+  if (pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')) return false
+
+  return pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_FINANCAS')
+}
+
+function dataEmpenhadoDoPedido(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): string | null {
+  const etapa = etapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
+  if (!etapa) return null
+  const historico = pedido.etapasHistorico.find(
+    (h) =>
+      Boolean(h.dataConclusao) &&
+      (h.etapaId === etapa.id || h.etapaNome === etapa.nome || h.etapaNome === 'Empenhado'),
+  )
+  return historico?.dataConclusao ?? null
 }
 
 function getContext(data: AppData) {
@@ -215,23 +257,17 @@ export const pedidoService = {
       .reduce((acc, p) => acc + p.valor, 0)
 
     const etapas = data.workflowEtapas
-    const aguardandoEmpenhoPedidos = emAndamento.filter(
-      (p) =>
-        Boolean(p.solemp?.numero) &&
-        pedidoPendenteParaChave(p, etapas, 'DIV_MAT_FINANCAS'),
+    const aguardandoEmpenhoPedidos = emAndamento.filter((p) =>
+      isAguardandoEmpenhoNaSolempConfeccionada(p, etapas),
     )
     const aguardandoEmpenhoItens: AguardandoEmpenhoItem[] = aguardandoEmpenhoPedidos
       .map((p) => {
         const setor = resolveSetorOrigem(p)
-        const valor =
-          typeof p.solemp?.valor === 'number' && Number.isFinite(p.solemp.valor)
-            ? p.solemp.valor
-            : p.valor
         return {
           pedidoId: p.id,
           pedidoNumero: p.numero,
           solempNumero: p.solemp!.numero,
-          valor,
+          valor: resolveValorSolemp(p),
           ...setor,
           diasNaEtapa: p.diasNaEtapa,
           dataSolicitacao: p.dataSolicitacao,
@@ -240,6 +276,59 @@ export const pedidoService = {
       .sort((a, b) => b.valor - a.valor)
     const valorAguardandoEmpenho = aguardandoEmpenhoItens.reduce((acc, item) => acc + item.valor, 0)
     const quantidadeAguardandoEmpenho = aguardandoEmpenhoItens.length
+
+    const empenhados = pedidos
+      .map((p) => {
+        const dataEmpenho = dataEmpenhadoDoPedido(p, etapas)
+        if (!dataEmpenho) return null
+        const dataParsed = parseISO(dataEmpenho)
+        if (!isValid(dataParsed)) return null
+        return {
+          valor: resolveValorSolemp(p),
+          dataEmpenho,
+          mesChave: format(dataParsed, 'yyyy-MM'),
+          mesLabel: format(dataParsed, 'MMMM/yyyy', { locale: ptBR }),
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+
+    const valorTotalEmpenhado = empenhados.reduce((acc, item) => acc + item.valor, 0)
+    const quantidadeTotalEmpenhado = empenhados.length
+    const dataPrimeiroEmpenho =
+      empenhados.length === 0
+        ? null
+        : empenhados.reduce(
+            (min, item) => (item.dataEmpenho < min ? item.dataEmpenho : min),
+            empenhados[0].dataEmpenho,
+          )
+
+    const mesMap = new Map<string, EmpenhadoMesTotal>()
+    for (const item of empenhados) {
+      const current = mesMap.get(item.mesChave) ?? {
+        mesChave: item.mesChave,
+        mesLabel: item.mesLabel.charAt(0).toUpperCase() + item.mesLabel.slice(1),
+        valor: 0,
+        quantidade: 0,
+      }
+      current.valor += item.valor
+      current.quantidade += 1
+      mesMap.set(item.mesChave, current)
+    }
+    const totaisEmpenhadoPorMes = Array.from(mesMap.values()).sort((a, b) =>
+      a.mesChave < b.mesChave ? 1 : -1,
+    )
+
+    // Garante o mês corrente na lista (mesmo zerado) para o filtro
+    const mesAtualChave = format(new Date(), 'yyyy-MM')
+    if (!mesMap.has(mesAtualChave)) {
+      const mesAtualLabel = format(new Date(), 'MMMM/yyyy', { locale: ptBR })
+      totaisEmpenhadoPorMes.unshift({
+        mesChave: mesAtualChave,
+        mesLabel: mesAtualLabel.charAt(0).toUpperCase() + mesAtualLabel.slice(1),
+        valor: 0,
+        quantidade: 0,
+      })
+    }
 
     const clinicaRanking = new Map<string, { total: number; valor: number }>()
     pedidos.forEach((p) => {
@@ -307,6 +396,10 @@ export const pedidoService = {
       valorAguardandoEmpenho,
       quantidadeAguardandoEmpenho,
       aguardandoEmpenhoItens,
+      valorTotalEmpenhado,
+      quantidadeTotalEmpenhado,
+      dataPrimeiroEmpenho,
+      totaisEmpenhadoPorMes,
       rankingClinicas: Array.from(clinicaRanking.entries())
         .map(([nome, v]) => ({ nome, ...v }))
         .sort((a, b) => b.valor - a.valor)
