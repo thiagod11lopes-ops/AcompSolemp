@@ -54,7 +54,8 @@ function trilhaImhIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
 function trilhaMaterialIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
   return (
     historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP') !== null ||
-    historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS') !== null
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS') !== null ||
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_EMPENHADO') !== null
   )
 }
 
@@ -68,7 +69,7 @@ function etapaConcluidaNoHistorico(
 
 /** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
  * Medicamento: encerra só com Contabilidade/IMH.
- * Clínica: exige Contabilidade/IMH e Solemp confeccionada para encerrar o PED;
+ * Clínica: exige Contabilidade/IMH e Empenhado para encerrar o PED;
  * se uma trilha não foi iniciada, o processo ainda não fecha pelo card da clínica
  * (mas a trilha iniciada pode ser concluída isoladamente). */
 function isDivMaterialConcluida(
@@ -89,14 +90,14 @@ function isDivMaterialConcluida(
   const materialFinalizada = etapaConcluidaNoHistorico(
     pedido,
     etapas,
-    'DIV_MAT_FINANCAS',
+    'DIV_MAT_EMPENHADO',
   )
 
   if (isMedicamento) {
     return !imhIniciada || imhFinalizada
   }
 
-  // Clínica: PED só encerra com as duas pontas (IMH + Finanças).
+  // Clínica: PED só encerra com as duas pontas (IMH + Empenhado).
   return imhFinalizada && materialFinalizada
 }
 
@@ -601,15 +602,29 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Registro em Solemp confeccionada — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Processo encerrado.`,
+    `Registro em Solemp confeccionada — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Enviado para Empenhado.`,
     etapa.id,
   )
+
+  const pedidoAtualizado = data.pedidos.find((p) => p.id === pedidoId)
+  const empenhadoAtiva = pedidoAtualizado
+    ? getEtapaAtivaPorChaves(pedidoAtualizado, data.workflowEtapas, ['DIV_MAT_EMPENHADO'])
+    : null
+  if (empenhadoAtiva) {
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Empenhado registrado — SOLEMP ${solemp.numero}. Processo encerrado.`,
+      empenhadoAtiva.id,
+    )
+  }
 
   data.notificacoes.push({
     id: `notif-${Date.now()}`,
     tipo: 'PAGAMENTO_REALIZADO',
     titulo: `Pagamento realizado — ${pedido.numero}`,
-    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}).`,
+    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}) e encerrou Empenhado.`,
     pedidoId,
     reversaoId: null,
     perfilDestino: null,
@@ -626,7 +641,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
   })
 
   return data

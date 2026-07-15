@@ -92,6 +92,7 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
   DIV_MAT_FINANCAS: 'Aguardando Solemp confeccionada.',
+  DIV_MAT_EMPENHADO: 'Aguardando Empenhado.',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

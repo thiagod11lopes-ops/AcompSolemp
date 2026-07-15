@@ -152,7 +152,7 @@ export function buildTimelineNode(
       ? pedido.solemp.valor
       : null
   const empenhoExibicao =
-    pedido.clinica.tipo === 'empenhado'
+    etapa.chave === 'DIV_MAT_EMPENHADO' || pedido.clinica.tipo === 'empenhado'
       ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
       : null
 

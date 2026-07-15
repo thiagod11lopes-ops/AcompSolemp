@@ -39,13 +39,18 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Confecção → Solemp confeccionada | Direita: Auditoria → Contabilidade/IMH
+  // Esquerda: Confecção → Solemp confeccionada → Empenhado | Direita: Auditoria → Contabilidade/IMH
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
     trilha: 'confeccao',
   },
   DIV_MAT_FINANCAS: {
+    grupo: 'Div. de Material',
+    divisao: 'Material',
+    trilha: 'confeccao',
+  },
+  DIV_MAT_EMPENHADO: {
     grupo: 'Div. de Material',
     divisao: 'Material',
     trilha: 'confeccao',
@@ -78,10 +83,11 @@ export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowE
     .sort((a, b) => a.ordem - b.ordem)
 }
 
-/** Confecção (Material) → Solemp confeccionada */
+/** Confecção (Material) → Solemp confeccionada → Empenhado */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
 ] as const
 
 export function filtrarEtapasTrilhaConfeccao(etapas: WorkflowEtapa[]): WorkflowEtapa[] {
@@ -117,6 +123,8 @@ export function timelineConnectorVisivel(fromChave: string, toChave: string): bo
     fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONTABILIDADE_IMH'
   ) || (
     fromChave === 'DIV_MAT_CONFECCAO_SOLEMP' && toChave === 'DIV_MAT_FINANCAS'
+  ) || (
+    fromChave === 'DIV_MAT_FINANCAS' && toChave === 'DIV_MAT_EMPENHADO'
   )
 }
 
@@ -141,6 +149,7 @@ export const ETAPAS_DISPENSAVEIS_MEDICAMENTO = new Set([
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_AUDITORIA',
   'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
 ])
 
 export function isEtapaDispensavelMedicamento(chave: string): boolean {

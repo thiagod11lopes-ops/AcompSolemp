@@ -71,6 +71,12 @@ export function planilhaEnviadaEntre(
       )
     }
 
+    case 'DIV_MAT_FINANCAS->DIV_MAT_EMPENHADO': {
+      const financas = historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS')
+      const empenhado = historicoDaEtapa(pedido, etapas, 'DIV_MAT_EMPENHADO')
+      return Boolean(financas?.dataConclusao && empenhado?.dataInicio)
+    }
+
     default:
       return false
   }

@@ -16,6 +16,7 @@ const ETAPA_ICON_MAP: Record<string, LucideIcon> = {
   DIV_MAT_CONTABILIDADE_IMH: FileText,
   DIV_MAT_CONFECCAO_SOLEMP: Package,
   DIV_MAT_FINANCAS: BadgeCheck,
+  DIV_MAT_EMPENHADO: FolderOpen,
 }
 
 export function getEtapaIcon(chave: string): LucideIcon {

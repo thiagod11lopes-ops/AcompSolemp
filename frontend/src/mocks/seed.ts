@@ -32,7 +32,7 @@ import {
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
 
-const SEED_VERSION = 'v15'
+const SEED_VERSION = 'v16'
 
 const PERFIS_REMOVIDOS = new Set<UserRole>([
   'ASSINATURA_1_SOLEMP',
@@ -112,6 +112,14 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
+    ativo: true,
+  },
+  {
+    chave: 'DIV_MAT_EMPENHADO',
+    nome: 'Empenhado',
+    ordem: 6,
+    prazoDias: 4,
+    perfilResponsavel: 'EMPENHADO',
     ativo: true,
   },
 ]
@@ -474,26 +482,81 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
     }
   }
 
-  const financasDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_FINANCAS')
-  const confeccaoDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
-  for (const etapa of data.workflowEtapas) {
-    if (etapa.chave === 'DIV_MAT_FINANCAS' && financasDef) {
-      if (etapa.ordem !== financasDef.ordem || !etapa.ativo) {
-        etapa.ordem = financasDef.ordem
-        etapa.ativo = true
-        changed = true
-      }
-      if (etapa.nome !== financasDef.nome) {
-        etapa.nome = financasDef.nome
-        changed = true
-      }
+  const defByChave = new Map(DEFAULT_WORKFLOW_ETAPAS.map((e) => [e.chave, e]))
+  for (const def of DEFAULT_WORKFLOW_ETAPAS) {
+    const existente = data.workflowEtapas.find((e) => e.chave === def.chave)
+    if (!existente) {
+      data.workflowEtapas.push({
+        id: `etapa-${def.chave.toLowerCase().replace(/_/g, '-')}`,
+        ...def,
+      })
+      changed = true
+      continue
     }
-    if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' && confeccaoDef && etapa.ordem !== confeccaoDef.ordem) {
-      etapa.ordem = confeccaoDef.ordem
+    if (existente.ordem !== def.ordem || !existente.ativo) {
+      existente.ordem = def.ordem
+      existente.ativo = true
+      changed = true
+    }
+    if (existente.nome !== def.nome) {
+      existente.nome = def.nome
+      changed = true
+    }
+    if (existente.perfilResponsavel !== def.perfilResponsavel) {
+      existente.perfilResponsavel = def.perfilResponsavel
       changed = true
     }
   }
 
+  // Garante sincronização mesmo se chave já existir com nome legado
+  for (const etapa of data.workflowEtapas) {
+    const def = defByChave.get(etapa.chave)
+    if (!def) continue
+    if (etapa.nome !== def.nome) {
+      etapa.nome = def.nome
+      changed = true
+    }
+  }
+
+  if (backfillEmpenhadoHistorico(data)) changed = true
+
+  return changed
+}
+
+/** Pedidos que já passaram por Solemp confeccionada passam a ter Empenhado no histórico. */
+function backfillEmpenhadoHistorico(data: AppData): boolean {
+  const financas = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
+  const empenhado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
+  if (!financas || !empenhado) return false
+
+  let changed = false
+  for (const pedido of data.pedidos) {
+    const financasHist = pedido.etapasHistorico.find((h) => h.etapaId === financas.id)
+    if (!financasHist?.dataConclusao) continue
+
+    const empenhadoHist = pedido.etapasHistorico.find((h) => h.etapaId === empenhado.id)
+    if (empenhadoHist) {
+      if (!empenhadoHist.dataConclusao && (pedido.concluido || financasHist.dataConclusao)) {
+        empenhadoHist.dataConclusao = financasHist.dataConclusao
+        empenhadoHist.observacao =
+          empenhadoHist.observacao || 'Empenhado registrado com a Solemp confeccionada.'
+        changed = true
+      }
+      continue
+    }
+
+    pedido.etapasHistorico.push({
+      etapaId: empenhado.id,
+      etapaNome: empenhado.nome,
+      responsavelId: financasHist.responsavelId,
+      responsavelNome: financasHist.responsavelNome,
+      dataInicio: financasHist.dataConclusao,
+      dataConclusao: financasHist.dataConclusao,
+      observacao: 'Empenhado registrado com a Solemp confeccionada.',
+      arquivos: [],
+    })
+    changed = true
+  }
   return changed
 }
 

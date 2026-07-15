@@ -14,6 +14,7 @@ interface TimelineCardProps {
 const ETAPAS_COM_SOLEMP_NO_CARD = new Set([
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
 ])
 
 function activeShellClass(status: TimelineNodeData['status'], isActive: boolean): string {
