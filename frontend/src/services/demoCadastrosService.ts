@@ -266,6 +266,8 @@ function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
+    // Não cria mais Finanças/Pagamento na demonstração
+    if (opcao.id === 'financas' || opcao.perfil === 'FINANCEIRO') continue
     findOrEnsureSetorUser(opcao, data)
   }
 }
@@ -424,20 +426,20 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     })
   }
 
-  const opcaoEmpenhado = CADASTRO_PERFIS.find((opcao) => opcao.isEmpenhado)
-  if (opcaoEmpenhado) {
-    resultado.push({
-      id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
-      userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
-      label: opcaoEmpenhado.label,
-      nome: DEMO_NOMES.empenhado,
-      subtitulo: 'Planilha OPME — empenho no formato NE (número)',
-      isExemplo: true,
-    })
-  }
+  // Empenhado (clínica/setor com NE) — não incluir Finanças/Pagamento (FINANCEIRO)
+  resultado.push({
+    id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
+    userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
+    label: 'Empenhado',
+    nome: DEMO_NOMES.empenhado,
+    subtitulo: 'Planilha OPME — empenho no formato NE (número)',
+    isExemplo: true,
+  })
 
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) continue
+    // Excluir Finanças / Pagamento da Demonstração da Timeline
+    if (opcao.id === 'financas' || opcao.perfil === 'FINANCEIRO') continue
     resultado.push({
       id: opcao.id,
       userId: demoExampleUserId(opcao.id),
