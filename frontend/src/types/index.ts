@@ -242,6 +242,18 @@ export interface PedidoFilters {
   busca?: string
 }
 
+export interface AguardandoEmpenhoItem {
+  pedidoId: string
+  pedidoNumero: string
+  solempNumero: string
+  valor: number
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  diasNaEtapa: number
+  dataSolicitacao: string
+}
+
 export interface DashboardMetrics {
   totalProcessos: number
   emAndamento: number
@@ -254,6 +266,10 @@ export interface DashboardMetrics {
   valorPagoMes: number
   valorAguardandoAssinatura: number
   valorAguardandoFinanceiro: number
+  /** Solemps em Solemp confeccionada, aguardando Empenhado */
+  valorAguardandoEmpenho: number
+  quantidadeAguardandoEmpenho: number
+  aguardandoEmpenhoItens: AguardandoEmpenhoItem[]
   rankingClinicas: { nome: string; total: number; valor: number }[]
   rankingEmpresas: { nome: string; total: number; valor: number }[]
   rankingResponsaveis: { nome: string; total: number; atrasados: number }[]
