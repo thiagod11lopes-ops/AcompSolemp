@@ -269,6 +269,17 @@
   padding: 18px 20px;
 }
 
+.timeline-card-inner--with-solemp {
+  height: 168px;
+  min-height: 168px;
+  max-height: 168px;
+}
+
+.timeline-card-inner--with-solemp .timeline-card-title {
+  -webkit-line-clamp: 1;
+  min-height: 1.3em;
+}
+
 .timeline-card-title {
   margin: 0;
   font-size: 0.95rem;
@@ -287,6 +298,27 @@
   font-size: 0.82rem;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.timeline-card-solemp-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.timeline-card-solemp-numero,
+.timeline-card-solemp-valor {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.timeline-card-solemp-valor {
+  font-variant-numeric: tabular-nums;
 }
 
 .timeline-card-details-btn {

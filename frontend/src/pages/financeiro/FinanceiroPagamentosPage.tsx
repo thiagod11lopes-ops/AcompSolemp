@@ -124,7 +124,11 @@ export default function FinanceiroPagamentosPage() {
                         sx={{ mb: 1 }}
                       />
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip label={formatCurrency(pedido.valor)} size="small" variant="outlined" />
+                        <Chip
+                          label={formatCurrency(pedido.solemp?.valor ?? pedido.valor)}
+                          size="small"
+                          variant="outlined"
+                        />
                         <Chip
                           label={`Solicitação: ${formatDate(pedido.dataSolicitacao)}`}
                           size="small"

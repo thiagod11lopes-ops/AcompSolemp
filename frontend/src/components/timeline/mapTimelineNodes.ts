@@ -145,6 +145,12 @@ export function buildTimelineNode(
     isPedidoTimelineMedicamento(pedido, etapas) &&
     isEtapaDispensavelMedicamento(etapa.chave)
 
+  const solempNumero = pedido.solemp?.numero?.trim() || null
+  const solempValor =
+    typeof pedido.solemp?.valor === 'number' && Number.isFinite(pedido.solemp.valor)
+      ? pedido.solemp.valor
+      : null
+
   if (dispensavel) {
     return {
       id: etapa.id,
@@ -158,6 +164,8 @@ export function buildTimelineNode(
       dataConclusao: null,
       tempoNaEtapa: null,
       processoNumero: resolveProcessoNumero(pedido, etapa),
+      solempNumero,
+      solempValor,
       observacaoResumo: null,
       edgeAfter: 'waiting',
       isHighlighted: false,
@@ -188,6 +196,8 @@ export function buildTimelineNode(
         : (historico?.dataConclusao ?? null),
     tempoNaEtapa: formatTempoNaEtapa(pedido, historico, atual),
     processoNumero: resolveProcessoNumero(pedido, etapa),
+    solempNumero,
+    solempValor,
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),

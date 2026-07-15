@@ -141,7 +141,11 @@ export default function OrdenadorTimelinesPage() {
                         {etapaChave ? ` (${perfilLabel})` : ''}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip label={formatCurrency(pedido.valor)} size="small" variant="outlined" />
+                        <Chip
+                          label={formatCurrency(pedido.solemp?.valor ?? pedido.valor)}
+                          size="small"
+                          variant="outlined"
+                        />
                         <Chip
                           label={`Solicitação: ${formatDate(pedido.dataSolicitacao)}`}
                           size="small"

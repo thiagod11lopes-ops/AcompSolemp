@@ -4,11 +4,17 @@ import { ChevronRight } from 'lucide-react'
 import type { TimelineNodeData } from './types'
 import { timelineTheme } from './theme'
 import { nodeNaoIniciada, getTimelineNodeAnchor } from './timelineFlowUtils'
+import { formatCurrency } from '@/utils/format'
 
 interface TimelineCardProps {
   node: TimelineNodeData
   onOpenDetails: () => void
 }
+
+const ETAPAS_COM_SOLEMP_NO_CARD = new Set([
+  'DIV_MAT_CONFECCAO_SOLEMP',
+  'DIV_MAT_FINANCAS',
+])
 
 function activeShellClass(status: TimelineNodeData['status'], isActive: boolean): string {
   if (!isActive) return 'timeline-card-shell'
@@ -39,6 +45,9 @@ export const TimelineCard = memo(function TimelineCard({
     .join(' ')
 
   const contentOpacity = isDispensavel ? 0.3 : 1
+  const showSolempMeta =
+    ETAPAS_COM_SOLEMP_NO_CARD.has(node.etapa.chave) &&
+    Boolean(node.solempNumero || node.solempValor != null)
 
   const cardBody = (
     <motion.article
@@ -49,7 +58,13 @@ export const TimelineCard = memo(function TimelineCard({
         y: showRotateRing ? -2 : isDispensavel ? 0 : -4,
       }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="timeline-card-inner timeline-card-inner--compact"
+      className={[
+        'timeline-card-inner',
+        'timeline-card-inner--compact',
+        showSolempMeta ? 'timeline-card-inner--with-solemp' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={{
         background: `linear-gradient(145deg, ${timelineTheme.card} 0%, rgba(17,24,39,0.92) 100%)`,
         border: showRotateRing
@@ -96,6 +111,21 @@ export const TimelineCard = memo(function TimelineCard({
       <p className="timeline-card-pedido" style={{ color: timelineTheme.blue }}>
         PED {node.numeroPedido}
       </p>
+
+      {showSolempMeta ? (
+        <div className="timeline-card-solemp-meta">
+          {node.solempNumero ? (
+            <p className="timeline-card-solemp-numero" style={{ color: timelineTheme.text }}>
+              SOLEMP {node.solempNumero}
+            </p>
+          ) : null}
+          {node.solempValor != null ? (
+            <p className="timeline-card-solemp-valor" style={{ color: timelineTheme.blue }}>
+              {formatCurrency(node.solempValor)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <motion.button
         type="button"

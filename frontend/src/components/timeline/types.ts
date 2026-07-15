@@ -17,6 +17,10 @@ export interface TimelineNodeData {
   dataConclusao: string | null
   tempoNaEtapa: string | null
   processoNumero: string | null
+  /** Número da SOLEMP (quando já confeccionada). */
+  solempNumero: string | null
+  /** Valor da SOLEMP (quando já confeccionada). */
+  solempValor: number | null
   observacaoResumo: string | null
   edgeAfter: TimelineEdgeState
   isHighlighted?: boolean
