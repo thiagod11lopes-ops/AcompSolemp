@@ -33,6 +33,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
+import { getColumnCellSx } from '@/components/clinica/SpreadsheetResizeHandle'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
 import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
@@ -43,6 +44,7 @@ import {
   type MedicamentoPrecoColunaKey,
   type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
+import { measurePlainColumnWidths } from '@/utils/spreadsheetColumnWidth'
 
 function MedicamentosPrecosSpreadsheetInner() {
   const [rows, setRows] = useState<MedicamentoPrecoRow[]>(() => medicamentosPrecosService.getRows())
@@ -145,7 +147,6 @@ function MedicamentosPrecosSpreadsheetInner() {
         id: col.key,
         accessorKey: col.key,
         header: col.label,
-        size: col.width,
         cell: ({ getValue, row }) => {
           const value = String(getValue() ?? '')
           return (
@@ -160,6 +161,25 @@ function MedicamentosPrecosSpreadsheetInner() {
         },
       })),
     [handleCellChange, handleContextMenu],
+  )
+
+  const contentColumnWidths = useMemo(
+    () =>
+      measurePlainColumnWidths(
+        rows as unknown as Array<Record<string, unknown>>,
+        MEDICAMENTOS_PRECOS_HEADERS,
+        true,
+      ),
+    [rows],
+  )
+
+  const tableMinWidth = useMemo(
+    () =>
+      MEDICAMENTOS_PRECOS_HEADERS.reduce(
+        (sum, col) => sum + (contentColumnWidths[col.key] ?? col.width),
+        0,
+      ),
+    [contentColumnWidths],
   )
 
   const table = useReactTable({
@@ -186,8 +206,6 @@ function MedicamentosPrecosSpreadsheetInner() {
         .includes(q)
     },
   })
-
-  const tableMinWidth = MEDICAMENTOS_PRECOS_HEADERS.reduce((sum, col) => sum + col.width, 0)
 
   return (
     <Paper
@@ -283,41 +301,68 @@ function MedicamentosPrecosSpreadsheetInner() {
         </Box>
       </Box>
 
-      <TableContainer sx={{ maxHeight: 'calc(100vh - 260px)' }}>
-        <Table stickyHeader size="small" sx={{ minWidth: tableMinWidth }}>
+      <TableContainer className="excel-sheet-grid" sx={{ maxHeight: 'calc(100vh - 260px)' }}>
+        <Table
+          stickyHeader
+          size="small"
+          sx={{
+            tableLayout: 'fixed',
+            width: tableMinWidth,
+            minWidth: tableMinWidth,
+            maxWidth: tableMinWidth,
+          }}
+        >
+          <colgroup>
+            {MEDICAMENTOS_PRECOS_HEADERS.map((header) => {
+              const width = contentColumnWidths[header.key] ?? header.width
+              return (
+                <col
+                  key={header.key}
+                  style={{
+                    width,
+                    minWidth: width,
+                  }}
+                />
+              )
+            })}
+          </colgroup>
           <TableHead>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    className="excel-header-cell"
-                    sx={{
-                      width: header.column.getSize(),
-                      minWidth: header.column.getSize(),
-                      bgcolor: EXCEL_SHEET.headerBg,
-                      color: EXCEL_SHEET.text,
-                      fontFamily: EXCEL_SHEET.fontFamily,
-                      fontSize: EXCEL_SHEET.fontSize,
-                      fontWeight: 700,
-                      borderColor: EXCEL_SHEET.borderColor,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <TableSortLabel
-                        active={header.column.getIsSorted() !== false}
-                        direction={
-                          header.column.getIsSorted() === 'desc' ? 'desc' : 'asc'
-                        }
-                        onClick={header.column.getToggleSortingHandler()}
-                        sx={{ color: 'inherit !important' }}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableSortLabel>
-                    )}
-                  </TableCell>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const colWidth =
+                    contentColumnWidths[header.id] ??
+                    MEDICAMENTOS_PRECOS_HEADERS.find((h) => h.key === header.id)?.width ??
+                    100
+                  return (
+                    <TableCell
+                      key={header.id}
+                      className="excel-col-header"
+                      sx={{
+                        ...getColumnCellSx(colWidth),
+                        bgcolor: EXCEL_SHEET.headerBg,
+                        color: EXCEL_SHEET.text,
+                        fontFamily: EXCEL_SHEET.fontFamily,
+                        fontSize: EXCEL_SHEET.fontSize,
+                        fontWeight: 700,
+                        borderColor: EXCEL_SHEET.borderColor,
+                      }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <TableSortLabel
+                          active={header.column.getIsSorted() !== false}
+                          direction={
+                            header.column.getIsSorted() === 'desc' ? 'desc' : 'asc'
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                          sx={{ color: 'inherit !important' }}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableSortLabel>
+                      )}
+                    </TableCell>
+                  )
+                })}
               </TableRow>
             ))}
           </TableHead>
@@ -325,32 +370,35 @@ function MedicamentosPrecosSpreadsheetInner() {
             {table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                hover
+                hover={false}
+                className="excel-data-row"
                 onContextMenu={(event) => handleContextMenu(event, row.original.id)}
                 sx={{
-                  bgcolor: EXCEL_SHEET.cellBg,
-                  '&:hover': { bgcolor: EXCEL_SHEET.hoverBg },
                   cursor: 'context-menu',
                 }}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    sx={{
-                      width: cell.column.getSize(),
-                      minWidth: cell.column.getSize(),
-                      borderColor: EXCEL_SHEET.borderColor,
-                      py: 0,
-                      px: 0.5,
-                      fontFamily: EXCEL_SHEET.fontFamily,
-                      fontSize: EXCEL_SHEET.fontSize,
-                      color: EXCEL_SHEET.text,
-                      bgcolor: 'inherit',
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const colWidth =
+                    contentColumnWidths[cell.column.id] ??
+                    MEDICAMENTOS_PRECOS_HEADERS.find((h) => h.key === cell.column.id)?.width ??
+                    100
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      sx={{
+                        ...getColumnCellSx(colWidth),
+                        py: 0,
+                        borderColor: EXCEL_SHEET.borderColor,
+                        fontFamily: EXCEL_SHEET.fontFamily,
+                        fontSize: EXCEL_SHEET.fontSize,
+                        color: EXCEL_SHEET.text,
+                        textAlign: cell.column.id === 'precoReferencia' ? 'right' : 'left',
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  )
+                })}
               </TableRow>
             ))}
           </TableBody>
@@ -359,6 +407,7 @@ function MedicamentosPrecosSpreadsheetInner() {
 
       <TablePagination
         component="div"
+        className="excel-sheet-pagination"
         count={table.getFilteredRowModel().rows.length}
         page={pagination.pageIndex}
         onPageChange={(_, page) => setPagination((prev) => ({ ...prev, pageIndex: page }))}

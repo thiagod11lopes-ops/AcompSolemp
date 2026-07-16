@@ -168,6 +168,38 @@ export function measureColumnWidths(
   return widths
 }
 
+/**
+ * Mede larguras fit-to-content para planilhas genéricas (ex.: Preço de Medicamentos).
+ * Cada coluna usa o maior entre o rótulo e o texto das células.
+ */
+export function measurePlainColumnWidths(
+  rows: Array<Record<string, unknown>>,
+  headers: ReadonlyArray<{ key: string; label: string }>,
+  editable = false,
+): Record<string, number> {
+  const widths: Record<string, number> = {}
+  const cellPad = editable ? TABLE_CELL_H_PAD + INPUT_H_PAD : TABLE_CELL_H_PAD
+
+  for (const col of headers) {
+    const isPreco = /preco|valor|preço/i.test(col.key) || /preço|valor/i.test(col.label)
+    const bodyVariant: MeasureVariant = isPreco ? 'valor' : 'body'
+    const inputVariant: MeasureVariant = isPreco ? 'valorInput' : 'input'
+
+    let maxContent = measureInDom(col.label, 'header') + SORT_ICON_EXTRA
+    for (const row of rows) {
+      const text = toSingleLine(String(row[col.key] ?? ''))
+      if (!text) continue
+      maxContent = Math.max(maxContent, measureInDom(text, bodyVariant))
+      if (editable) {
+        maxContent = Math.max(maxContent, measureInDom(text, inputVariant))
+      }
+    }
+    widths[col.key] = Math.max(MIN_COL_WIDTH, maxContent + cellPad + RESIZE_GUTTER)
+  }
+
+  return widths
+}
+
 export function resolveColumnWidths(
   contentWidths: Record<string, number>,
   manualOverrides: Record<string, number>,
