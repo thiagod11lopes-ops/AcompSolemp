@@ -26,7 +26,6 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const ProcessosPage = lazy(() => import('@/pages/ProcessosPage'))
 const ProcessoDetailPage = lazy(() => import('@/pages/ProcessoDetailPage'))
 const CadastrosPage = lazy(() => import('@/pages/CadastrosPage'))
-const HistoricoPage = lazy(() => import('@/pages/HistoricoPage'))
 const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
@@ -125,7 +124,6 @@ export function AppRoutes() {
           <Route path="/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
           <Route path="/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
           <Route path="/gestor/workflow" element={<Navigate to="/gestor/dashboard" replace />} />
-          <Route path="/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
           <Route path="/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
           <Route path="/gestor/configuracao" element={<LazyPage><ConfiguracaoPage /></LazyPage>} />
           <Route path="/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
@@ -198,7 +196,6 @@ export function AppRoutes() {
             <Route path="/gestor/demo/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/workflow" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
-            <Route path="/gestor/demo/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/configuracao" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
             <Route path="/gestor/demo/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
