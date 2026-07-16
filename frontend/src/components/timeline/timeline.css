@@ -427,6 +427,40 @@
   white-space: nowrap;
 }
 
+.timeline-card-shell--aguardando .timeline-card-inner {
+  opacity: 0.92;
+  border-color: rgba(249, 115, 22, 0.45) !important;
+}
+
+.timeline-card-aguardando-band {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 34px;
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #c2410c;
+  opacity: 1;
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.timeline-card-aguardando-band span {
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
 /* Layout em fluxo: clínica centralizada + ramificações */
 .timeline-flow {
   display: flex;

@@ -20,7 +20,9 @@ interface FinanceiroInteractiveTimelineProps {
   pedido: PedidoComDetalhes
   etapas: WorkflowEtapa[]
   onPagamento?: () => void
+  onAguardandoEmpenhar?: () => void
   registrando?: boolean
+  marcandoAguardando?: boolean
   mensagemFluxoEncerrado?: string | null
 }
 
@@ -28,7 +30,9 @@ export function FinanceiroInteractiveTimeline({
   pedido,
   etapas,
   onPagamento,
+  onAguardandoEmpenhar,
   registrando = false,
+  marcandoAguardando = false,
   mensagemFluxoEncerrado = null,
 }: FinanceiroInteractiveTimelineProps) {
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
@@ -43,27 +47,49 @@ export function FinanceiroInteractiveTimeline({
   const acaoFinancas = FINANCEIRO_ETAPA_ACOES.DIV_MAT_FINANCAS
   const podeRegistrar =
     !pagamentoConcluido && financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
+  const jaAguardando = Boolean(pedido.aguardandoEmpenho)
+  const podeMarcarAguardando = podeRegistrar && !jaAguardando && Boolean(onAguardandoEmpenhar)
 
   const renderNodeActions = (node: TimelineNodeData) => {
     if (node.etapa.chave !== 'DIV_MAT_FINANCAS') return null
 
     return (
-      <TimelineActionButton
-        onClick={pagamentoConcluido ? undefined : onPagamento}
-        disabled={pagamentoConcluido || registrando || !onPagamento}
-        variant={pagamentoConcluido ? 'ghost' : 'primary'}
-        style={
-          pagamentoConcluido
-            ? { borderColor: '#22C55E55', color: '#22C55E' }
-            : { background: '#22C55E' }
-        }
-      >
-        {pagamentoConcluido
-          ? (acaoFinancas.labelConcluido ?? 'Concluído')
-          : registrando
-            ? 'Registrando...'
-            : acaoFinancas.label}
-      </TimelineActionButton>
+      <>
+        {!pagamentoConcluido && (
+          <TimelineActionButton
+            onClick={podeMarcarAguardando ? onAguardandoEmpenhar : undefined}
+            disabled={!podeMarcarAguardando || marcandoAguardando || registrando}
+            variant="warning"
+            style={
+              jaAguardando
+                ? { borderColor: '#F9731655', color: '#F97316', background: 'rgba(249,115,22,0.12)' }
+                : { borderColor: '#F9731688', color: '#F97316' }
+            }
+          >
+            {jaAguardando
+              ? 'Aguardando'
+              : marcandoAguardando
+                ? 'Marcando...'
+                : 'Aguardando Empenhar'}
+          </TimelineActionButton>
+        )}
+        <TimelineActionButton
+          onClick={pagamentoConcluido ? undefined : onPagamento}
+          disabled={pagamentoConcluido || registrando || marcandoAguardando || !onPagamento}
+          variant={pagamentoConcluido ? 'ghost' : 'primary'}
+          style={
+            pagamentoConcluido
+              ? { borderColor: '#22C55E55', color: '#22C55E' }
+              : { background: '#22C55E' }
+          }
+        >
+          {pagamentoConcluido
+            ? (acaoFinancas.labelConcluido ?? 'Concluído')
+            : registrando
+              ? 'Registrando...'
+              : acaoFinancas.label}
+        </TimelineActionButton>
+      </>
     )
   }
 
@@ -78,6 +104,12 @@ export function FinanceiroInteractiveTimeline({
           {pagamentoConcluido && mensagemFluxoEncerrado && (
             <div className="timeline-alert timeline-alert-success">{mensagemFluxoEncerrado}</div>
           )}
+          {jaAguardando && !pagamentoConcluido && (
+            <div className="timeline-alert" style={{ borderColor: '#F9731655' }}>
+              <strong style={{ color: '#F97316' }}>Aguardando empenho:</strong> o card Solemp
+              confeccionada permanece com a tarja laranja. O processo não avançou para Empenhado.
+            </div>
+          )}
           {acaoFinancas && podeRegistrar && (
             <div className="timeline-alert">
               <strong>Pagamento pendente:</strong> {acaoFinancas.descricao}
@@ -86,13 +118,38 @@ export function FinanceiroInteractiveTimeline({
                   SOLEMP: <strong>{pedido.solemp.numero}</strong>
                 </p>
               )}
-              {onPagamento && (
-                <div style={{ marginTop: 12 }}>
-                  <TimelineActionButton onClick={onPagamento} disabled={registrando}>
+              <div
+                className="timeline-actions-slot"
+                style={{ marginTop: 12, width: '100%' }}
+              >
+                {onAguardandoEmpenhar && (
+                  <TimelineActionButton
+                    onClick={podeMarcarAguardando ? onAguardandoEmpenhar : undefined}
+                    disabled={!podeMarcarAguardando || marcandoAguardando || registrando}
+                    variant="warning"
+                    style={
+                      jaAguardando
+                        ? {
+                            borderColor: '#F9731655',
+                            color: '#F97316',
+                            background: 'rgba(249,115,22,0.12)',
+                          }
+                        : { borderColor: '#F9731688', color: '#F97316' }
+                    }
+                  >
+                    {jaAguardando
+                      ? 'Aguardando'
+                      : marcandoAguardando
+                        ? 'Marcando...'
+                        : 'Aguardando Empenhar'}
+                  </TimelineActionButton>
+                )}
+                {onPagamento && (
+                  <TimelineActionButton onClick={onPagamento} disabled={registrando || marcandoAguardando}>
                     {registrando ? 'Registrando...' : acaoFinancas.label}
                   </TimelineActionButton>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </>

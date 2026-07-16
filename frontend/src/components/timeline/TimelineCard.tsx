@@ -29,18 +29,21 @@ export const TimelineCard = memo(function TimelineCard({
   onOpenDetails,
 }: TimelineCardProps) {
   const isDispensavel = node.dispensavel === true
+  const isAguardando = !isDispensavel && node.statusBand === 'aguardando'
   const isActive =
     !isDispensavel &&
+    !isAguardando &&
     (node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review')
   const showRotateRing = isActive && node.status !== 'completed'
   const isPending = !isDispensavel && nodeNaoIniciada(node)
-  const isCompleted = !isDispensavel && node.status === 'completed'
+  const isCompleted = !isDispensavel && (node.statusBand === 'concluido' || node.status === 'completed')
 
   const shellClass = [
     activeShellClass(node.status, isActive),
     isDispensavel ? 'timeline-card-shell--dispensavel' : '',
     isPending ? 'timeline-card-shell--pending' : '',
     isCompleted ? 'timeline-card-shell--completed' : '',
+    isAguardando ? 'timeline-card-shell--aguardando' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -72,20 +75,28 @@ export const TimelineCard = memo(function TimelineCard({
         background: `linear-gradient(145deg, ${timelineTheme.card} 0%, rgba(17,24,39,0.92) 100%)`,
         border: showRotateRing
           ? '1px solid rgba(255,255,255,0.1)'
-          : `1px solid ${isActive ? `${timelineTheme.blue}66` : timelineTheme.border}`,
+          : `1px solid ${
+              isAguardando
+                ? `${timelineTheme.orange}88`
+                : isActive
+                  ? `${timelineTheme.blue}66`
+                  : timelineTheme.border
+            }`,
         backdropFilter: 'blur(12px)',
         boxShadow: showRotateRing
           ? `0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)`
-          : isActive
-            ? `0 0 24px ${timelineTheme.blue}22, ${timelineTheme.shadow}`
-            : timelineTheme.shadow,
+          : isAguardando
+            ? `0 0 24px ${timelineTheme.orange}28, ${timelineTheme.shadow}`
+            : isActive
+              ? `0 0 24px ${timelineTheme.blue}22, ${timelineTheme.shadow}`
+              : timelineTheme.shadow,
         cursor: 'pointer',
         position: 'relative',
         overflow: 'hidden',
       }}
       onClick={onOpenDetails}
     >
-      {isActive && !showRotateRing && (
+      {isActive && !showRotateRing && !isAguardando && (
         <motion.div
           layoutId={`glow-${node.id}`}
           style={{
@@ -106,6 +117,12 @@ export const TimelineCard = memo(function TimelineCard({
       {isCompleted && (
         <div className="timeline-card-concluido-band" aria-hidden>
           <span>Concluído</span>
+        </div>
+      )}
+
+      {isAguardando && (
+        <div className="timeline-card-aguardando-band" aria-hidden>
+          <span>Aguardando</span>
         </div>
       )}
 

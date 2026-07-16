@@ -598,6 +598,15 @@ export function registrarPagamentoForPedido(
     valor: solemp.valor ?? pedido.valor,
   })
 
+  data = {
+    ...data,
+    pedidos: data.pedidos.map((p) =>
+      p.id === pedidoId
+        ? { ...p, aguardandoEmpenho: false, aguardandoEmpenhoEm: undefined }
+        : p,
+    ),
+  }
+
   data = advancePedidoEtapa(
     data,
     pedidoId,
@@ -643,6 +652,86 @@ export function registrarPagamentoForPedido(
     data: nowIso(),
     observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
   })
+
+  return data
+}
+
+/**
+ * Marca Solemp confeccionada como "Aguardando Empenhar".
+ * Não avança o workflow nem abre o card Empenhado — só persiste a tarja.
+ */
+export function marcarAguardandoEmpenhoForPedido(
+  data: AppData,
+  pedidoId: string,
+  usuario: User,
+): AppData {
+  const pedido = data.pedidos.find((p) => p.id === pedidoId)
+  if (!pedido) throw new Error('Pedido não encontrado')
+
+  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
+  if (!etapa) {
+    throw new Error('Este processo não está na etapa Solemp confeccionada')
+  }
+
+  if (pedido.aguardandoEmpenho) {
+    return data
+  }
+
+  const now = nowIso()
+  const pedidos = data.pedidos.map((p) => {
+    if (p.id !== pedidoId) return p
+
+    const historico = p.etapasHistorico.map((h) => {
+      if (h.etapaId !== etapa.id && h.etapaNome !== etapa.nome) return h
+      return {
+        ...h,
+        observacao: h.observacao
+          ? `${h.observacao} · Aguardando Empenhar.`
+          : 'Aguardando Empenhar — processo marcado sem avançar para Empenhado.',
+      }
+    })
+
+    return {
+      ...p,
+      aguardandoEmpenho: true,
+      aguardandoEmpenhoEm: now,
+      etapasHistorico: historico,
+    }
+  })
+
+  data = {
+    ...data,
+    pedidos,
+    historico: [
+      ...data.historico,
+      {
+        id: `hist-${Date.now()}-aguardando-empenho`,
+        pedidoId,
+        etapaId: etapa.id,
+        etapaNome: etapa.nome,
+        usuarioId: usuario.id,
+        usuarioNome: usuario.nome,
+        data: now,
+        observacao:
+          'Marcado como Aguardando Empenhar. Timeline permanece em Solemp confeccionada.',
+      },
+    ],
+    notificacoes: [
+      ...data.notificacoes,
+      {
+        id: `notif-${Date.now()}-aguardando-empenho`,
+        tipo: 'ETAPA_PENDENTE' as const,
+        titulo: `Aguardando Empenhar — ${pedido.numero}`,
+        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Solemp confeccionada.`,
+        pedidoId,
+        reversaoId: null,
+        perfilDestino: null,
+        etapaChave: etapa.chave,
+        lida: false,
+        data: now,
+      },
+    ],
+  }
 
   return data
 }

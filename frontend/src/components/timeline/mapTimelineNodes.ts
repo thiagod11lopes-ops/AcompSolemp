@@ -176,16 +176,33 @@ export function buildTimelineNode(
       edgeAfter: 'waiting',
       isHighlighted: false,
       dispensavel: true,
+      statusBand: 'dispensavel',
       icon: getEtapaIcon(etapa.chave),
     }
   }
 
   const atual =
     etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao
-  const status =
+  let status =
     etapa.chave === 'SOLICITACAO'
       ? resolveSolicitacaoStatus(pedido, etapas)
       : resolveNodeStatus(pedido, historico, atual)
+
+  const aguardandoEmpenhar =
+    etapa.chave === 'DIV_MAT_FINANCAS' &&
+    Boolean(pedido.aguardandoEmpenho) &&
+    status !== 'completed'
+
+  if (aguardandoEmpenhar) {
+    status = 'waiting'
+  }
+
+  const statusBand =
+    status === 'completed'
+      ? 'concluido'
+      : aguardandoEmpenhar
+        ? 'aguardando'
+        : undefined
 
   return {
     id: etapa.id,
@@ -208,6 +225,7 @@ export function buildTimelineNode(
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),
+    statusBand,
     icon: getEtapaIcon(etapa.chave),
   }
 }

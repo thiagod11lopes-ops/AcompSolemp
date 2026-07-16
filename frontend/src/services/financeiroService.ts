@@ -1,7 +1,10 @@
 import type { PedidoComDetalhes } from '@/types'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
-import { registrarPagamentoForPedido } from '@/utils/workflowAdvance'
+import {
+  marcarAguardandoEmpenhoForPedido,
+  registrarPagamentoForPedido,
+} from '@/utils/workflowAdvance'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -110,6 +113,24 @@ export const financeiroService = {
     if (!usuario) throw new Error('Usuário não autorizado')
 
     data = registrarPagamentoForPedido(data, pedidoId, solempId, usuario, options)
+    saveAppData(data)
+
+    const pedido = data.pedidos.find((p) => p.id === pedidoId)!
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao atualizar pedido')
+    return enriched
+  },
+
+  async marcarAguardandoEmpenho(
+    pedidoId: string,
+    usuarioId: string,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 300)
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.perfil === 'FINANCEIRO')
+    if (!usuario) throw new Error('Usuário não autorizado')
+
+    data = marcarAguardandoEmpenhoForPedido(data, pedidoId, usuario)
     saveAppData(data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)!

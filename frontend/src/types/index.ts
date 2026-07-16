@@ -212,6 +212,13 @@ export interface Pedido {
   etapasHistorico: PedidoEtapaHistorico[]
   /** IDs das linhas da planilha de consumo incluídas neste envio (lote) */
   consumoRowIds?: string[]
+  /**
+   * Marcado em Solemp confeccionada via "Aguardando Empenhar".
+   * Não avança para Empenhado — só aplica a tarja "Aguardando" no card.
+   */
+  aguardandoEmpenho?: boolean
+  /** ISO da marcação aguardando empenho */
+  aguardandoEmpenhoEm?: string
 }
 
 export interface Notification {

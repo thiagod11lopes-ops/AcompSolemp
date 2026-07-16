@@ -10,6 +10,7 @@ import { FinanceiroInteractiveTimeline } from '@/components/workflow/FinanceiroI
 import { FinanceiroPagamentoModal } from '@/components/financeiro/FinanceiroPagamentoModal'
 import {
   useFinanceiroPedido,
+  useMarcarAguardandoEmpenho,
   useRegistrarPagamento,
 } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
@@ -23,6 +24,7 @@ export default function FinanceiroPagamentoDetailPage() {
   const { data: pedido, isLoading } = useFinanceiroPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const registrar = useRegistrarPagamento()
+  const marcarAguardando = useMarcarAguardandoEmpenho()
   const [modalOpen, setModalOpen] = useState(false)
   const [erro, setErro] = useState('')
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
@@ -53,6 +55,15 @@ export default function FinanceiroPagamentoDetailPage() {
       return
     }
     setModalOpen(true)
+  }
+
+  const handleAguardandoEmpenhar = () => {
+    if (pagamentoConcluido || pedido.aguardandoEmpenho) return
+    setErro('')
+    marcarAguardando.mutate(pedido.id, {
+      onError: (e) =>
+        setErro(e instanceof Error ? e.message : 'Erro ao marcar Aguardando Empenhar'),
+    })
   }
 
   const handleRegistrar = ({
@@ -117,7 +128,9 @@ export default function FinanceiroPagamentoDetailPage() {
             pedido={pedido}
             etapas={etapas}
             onPagamento={pagamentoConcluido ? undefined : abrirModal}
+            onAguardandoEmpenhar={pagamentoConcluido ? undefined : handleAguardandoEmpenhar}
             registrando={registrar.isPending && !modalOpen}
+            marcandoAguardando={marcarAguardando.isPending}
             mensagemFluxoEncerrado={
               pagamentoConcluido
                 ? MENSAGENS_ARQUIVAMENTO.DIV_MAT_FINANCAS
@@ -159,9 +172,13 @@ export default function FinanceiroPagamentoDetailPage() {
                 label={
                   pagamentoConcluido
                     ? 'Solemp confeccionada — concluído'
-                    : 'Solemp confeccionada — pendente'
+                    : pedido.aguardandoEmpenho
+                      ? 'Aguardando Empenhar'
+                      : 'Solemp confeccionada — pendente'
                 }
-                color={pagamentoConcluido ? 'success' : 'info'}
+                color={
+                  pagamentoConcluido ? 'success' : pedido.aguardandoEmpenho ? 'warning' : 'info'
+                }
                 size="small"
                 sx={{ width: 'fit-content', mt: 1 }}
               />
@@ -189,7 +206,9 @@ export default function FinanceiroPagamentoDetailPage() {
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 {pagamentoConcluido
                   ? 'Pagamento registrado e processo arquivado pelo Financeiro.'
-                  : 'Clique em Registrar pagamento para informar a nota fiscal e a empresa e finalizar a timeline.'}
+                  : pedido.aguardandoEmpenho
+                    ? 'Processo marcado como Aguardando Empenhar. A timeline permanece em Solemp confeccionada até o registro do pagamento.'
+                    : 'Use Aguardando Empenhar para marcar o card com a tarja laranja, ou Registrar pagamento para informar a nota fiscal e avançar.'}
               </Typography>
             </Paper>
           )}
