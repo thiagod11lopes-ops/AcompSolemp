@@ -154,9 +154,14 @@ export function MedicamentoPrecoEditModal({
                 fullWidth
                 size="medium"
                 autoFocus={field.key === 'medicamento'}
-                inputProps={
+                slotProps={
                   field.key === 'uf'
-                    ? { maxLength: 4, style: { textTransform: 'uppercase' } }
+                    ? {
+                        htmlInput: {
+                          maxLength: 4,
+                          style: { textTransform: 'uppercase' },
+                        },
+                      }
                     : undefined
                 }
               />
