@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   InputAdornment,
   Menu,
   MenuItem,
@@ -16,11 +17,14 @@ import {
   TableRow,
   TableSortLabel,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import {
   flexRender,
   getCoreRowModel,
@@ -33,6 +37,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
+import { MedicamentoPrecoEditModal } from '@/components/clinica/MedicamentoPrecoEditModal'
 import { getColumnCellSx } from '@/components/clinica/SpreadsheetResizeHandle'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
@@ -45,6 +50,8 @@ import {
   type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
 import { measurePlainColumnWidths } from '@/utils/spreadsheetColumnWidth'
+
+const ACOES_COL_WIDTH = 88
 
 function MedicamentosPrecosSpreadsheetInner() {
   const [rows, setRows] = useState<MedicamentoPrecoRow[]>(() => medicamentosPrecosService.getRows())
@@ -59,6 +66,7 @@ function MedicamentosPrecosSpreadsheetInner() {
     mouseY: number
     rowId: string
   } | null>(null)
+  const [editRow, setEditRow] = useState<MedicamentoPrecoRow | null>(null)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rowsRef = useRef(rows)
   rowsRef.current = rows
@@ -125,14 +133,22 @@ function MedicamentosPrecosSpreadsheetInner() {
     [contextMenu, updateRows],
   )
 
+  const handleExcluirLinhaById = useCallback(
+    (rowId: string) => {
+      updateRows((prev) => {
+        if (prev.length <= 1) return prev
+        return prev.filter((row) => row.id !== rowId)
+      })
+      setContextMenu(null)
+      setEditRow((current) => (current?.id === rowId ? null : current))
+    },
+    [updateRows],
+  )
+
   const handleExcluirLinha = useCallback(() => {
     if (!contextMenu) return
-    updateRows((prev) => {
-      if (prev.length <= 1) return prev
-      return prev.filter((row) => row.id !== contextMenu.rowId)
-    })
-    setContextMenu(null)
-  }, [contextMenu, updateRows])
+    handleExcluirLinhaById(contextMenu.rowId)
+  }, [contextMenu, handleExcluirLinhaById])
 
   const handleRestaurarSeed = useCallback(() => {
     const restored = medicamentosPrecosService.resetToSeed()
@@ -141,13 +157,21 @@ function MedicamentosPrecosSpreadsheetInner() {
     setGlobalFilter('')
   }, [])
 
+  const handleSaveEdit = useCallback(
+    (updated: MedicamentoPrecoRow) => {
+      updateRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+      setEditRow(null)
+    },
+    [updateRows],
+  )
+
   const columns = useMemo<ColumnDef<MedicamentoPrecoRow>[]>(
-    () =>
-      MEDICAMENTOS_PRECOS_HEADERS.map((col) => ({
+    () => [
+      ...MEDICAMENTOS_PRECOS_HEADERS.map((col) => ({
         id: col.key,
         accessorKey: col.key,
         header: col.label,
-        cell: ({ getValue, row }) => {
+        cell: ({ getValue, row }: { getValue: () => unknown; row: { original: MedicamentoPrecoRow } }) => {
           const value = String(getValue() ?? '')
           return (
             <SpreadsheetEditableCell
@@ -160,7 +184,49 @@ function MedicamentosPrecosSpreadsheetInner() {
           )
         },
       })),
-    [handleCellChange, handleContextMenu],
+      {
+        id: 'acoes',
+        header: 'Ações',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 0.25,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.stopPropagation()}
+          >
+            <Tooltip title="Editar">
+              <IconButton
+                size="small"
+                aria-label="Editar linha"
+                onClick={() => setEditRow(row.original)}
+                sx={{ color: 'primary.main' }}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Excluir">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Excluir linha"
+                  disabled={rowsRef.current.length <= 1}
+                  onClick={() => handleExcluirLinhaById(row.original.id)}
+                  sx={{ color: 'error.main' }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [handleCellChange, handleContextMenu, handleExcluirLinhaById],
   )
 
   const contentColumnWidths = useMemo(
@@ -178,7 +244,7 @@ function MedicamentosPrecosSpreadsheetInner() {
       MEDICAMENTOS_PRECOS_HEADERS.reduce(
         (sum, col) => sum + (contentColumnWidths[col.key] ?? col.width),
         0,
-      ),
+      ) + ACOES_COL_WIDTH,
     [contentColumnWidths],
   )
 
@@ -206,6 +272,15 @@ function MedicamentosPrecosSpreadsheetInner() {
         .includes(q)
     },
   })
+
+  const resolveColWidth = (columnId: string) => {
+    if (columnId === 'acoes') return ACOES_COL_WIDTH
+    return (
+      contentColumnWidths[columnId] ??
+      MEDICAMENTOS_PRECOS_HEADERS.find((h) => h.key === columnId)?.width ??
+      100
+    )
+  }
 
   return (
     <Paper
@@ -270,8 +345,8 @@ function MedicamentosPrecosSpreadsheetInner() {
               </Button>
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              Clique nas células para editar · Botão direito para inserir ou excluir · Alterações
-              salvas automaticamente
+              Use a coluna Ações para editar ou excluir · Botão direito para inserir linhas ·
+              Alterações salvas automaticamente
             </Typography>
           </Box>
           <TextField
@@ -325,15 +400,14 @@ function MedicamentosPrecosSpreadsheetInner() {
                 />
               )
             })}
+            <col style={{ width: ACOES_COL_WIDTH, minWidth: ACOES_COL_WIDTH }} />
           </colgroup>
           <TableHead>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const colWidth =
-                    contentColumnWidths[header.id] ??
-                    MEDICAMENTOS_PRECOS_HEADERS.find((h) => h.key === header.id)?.width ??
-                    100
+                  const colWidth = resolveColWidth(header.id)
+                  const canSort = header.column.getCanSort()
                   return (
                     <TableCell
                       key={header.id}
@@ -346,9 +420,10 @@ function MedicamentosPrecosSpreadsheetInner() {
                         fontSize: EXCEL_SHEET.fontSize,
                         fontWeight: 700,
                         borderColor: EXCEL_SHEET.borderColor,
+                        textAlign: header.id === 'acoes' ? 'center' : 'left',
                       }}
                     >
-                      {header.isPlaceholder ? null : (
+                      {header.isPlaceholder ? null : canSort ? (
                         <TableSortLabel
                           active={header.column.getIsSorted() !== false}
                           direction={
@@ -359,6 +434,8 @@ function MedicamentosPrecosSpreadsheetInner() {
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                         </TableSortLabel>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
                       )}
                     </TableCell>
                   )
@@ -378,21 +455,22 @@ function MedicamentosPrecosSpreadsheetInner() {
                 }}
               >
                 {row.getVisibleCells().map((cell) => {
-                  const colWidth =
-                    contentColumnWidths[cell.column.id] ??
-                    MEDICAMENTOS_PRECOS_HEADERS.find((h) => h.key === cell.column.id)?.width ??
-                    100
+                  const colWidth = resolveColWidth(cell.column.id)
                   return (
                     <TableCell
                       key={cell.id}
                       sx={{
                         ...getColumnCellSx(colWidth),
-                        py: 0,
+                        py: cell.column.id === 'acoes' ? 0.25 : 0,
                         borderColor: EXCEL_SHEET.borderColor,
                         fontFamily: EXCEL_SHEET.fontFamily,
                         fontSize: EXCEL_SHEET.fontSize,
                         color: EXCEL_SHEET.text,
-                        textAlign: cell.column.id === 'precoReferencia' ? 'right' : 'left',
+                        textAlign:
+                          cell.column.id === 'precoReferencia' || cell.column.id === 'acoes'
+                            ? 'right'
+                            : 'left',
+                        ...(cell.column.id === 'acoes' ? { textAlign: 'center' } : null),
                       }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -434,10 +512,26 @@ function MedicamentosPrecosSpreadsheetInner() {
       >
         <MenuItem onClick={() => handleAdicionarLinha('above')}>Inserir linha acima</MenuItem>
         <MenuItem onClick={() => handleAdicionarLinha('below')}>Inserir linha abaixo</MenuItem>
+        <MenuItem
+          onClick={() => {
+            const row = rowsRef.current.find((item) => item.id === contextMenu?.rowId)
+            if (row) setEditRow(row)
+            setContextMenu(null)
+          }}
+        >
+          Editar linha
+        </MenuItem>
         <MenuItem onClick={handleExcluirLinha} disabled={rowsRef.current.length <= 1}>
           Excluir linha
         </MenuItem>
       </Menu>
+
+      <MedicamentoPrecoEditModal
+        open={Boolean(editRow)}
+        row={editRow}
+        onClose={() => setEditRow(null)}
+        onSave={handleSaveEdit}
+      />
     </Paper>
   )
 }
