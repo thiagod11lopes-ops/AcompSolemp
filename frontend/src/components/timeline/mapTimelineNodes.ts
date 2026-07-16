@@ -96,14 +96,14 @@ function resolveSolicitacaoStatus(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
 ): TimelineNodeStatus {
-  // Medicamento: encerra só na Contabilidade/IMH (Finanças é dispensável).
+  // Medicamento: tarja Concluído assim que a planilha é enviada ao IMH.
   if (isPedidoTimelineMedicamento(pedido, etapas)) {
-    const imhConcluida = etapaConcluidaNoPedido(
+    const enviouImh = etapaIniciadaNoPedido(
       pedido,
       etapas,
       'DIV_MAT_CONTABILIDADE_IMH',
     )
-    return imhConcluida || pedido.concluido ? 'completed' : 'active'
+    return enviouImh || pedido.concluido ? 'completed' : 'active'
   }
 
   // Clínica: tarja Concluído quando o mesmo PED já foi enviado à Auditoria e à Confecção.
