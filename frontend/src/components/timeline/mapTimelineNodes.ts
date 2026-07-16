@@ -78,20 +78,6 @@ function etapaIniciadaNoPedido(
   )
 }
 
-function etapaConcluidaNoPedido(
-  pedido: PedidoComDetalhes,
-  etapas: WorkflowEtapa[],
-  chave: string,
-): boolean {
-  const etapa = etapas.find((e) => e.chave === chave)
-  if (!etapa) return false
-  return pedido.etapasHistorico.some(
-    (h) =>
-      Boolean(h.dataConclusao) &&
-      (h.etapaId === etapa.id || h.etapaNome === etapa.nome),
-  )
-}
-
 function resolveSolicitacaoStatus(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
