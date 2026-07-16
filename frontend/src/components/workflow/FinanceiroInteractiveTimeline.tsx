@@ -48,31 +48,35 @@ export function FinanceiroInteractiveTimeline({
   const podeRegistrar =
     !pagamentoConcluido && financeiroPodeRegistrarPagamento(pedido.etapaAtual.chave)
   const jaAguardando = Boolean(pedido.aguardandoEmpenho)
-  const podeMarcarAguardando = podeRegistrar && !jaAguardando && Boolean(onAguardandoEmpenhar)
+  const botaoAguardandoDisponivel =
+    !pagamentoConcluido && Boolean(onAguardandoEmpenhar) && !marcandoAguardando && !registrando
+
+  const botaoAguardando = !pagamentoConcluido ? (
+    <TimelineActionButton
+      onClick={botaoAguardandoDisponivel ? onAguardandoEmpenhar : undefined}
+      disabled={!botaoAguardandoDisponivel}
+      variant="warning"
+      style={
+        jaAguardando
+          ? {
+              borderColor: '#F9731655',
+              color: '#F97316',
+              background: 'rgba(249,115,22,0.12)',
+              cursor: botaoAguardandoDisponivel ? 'pointer' : undefined,
+            }
+          : { borderColor: '#F9731688', color: '#F97316' }
+      }
+    >
+      {marcandoAguardando ? 'Marcando...' : 'Aguardando Empenhar'}
+    </TimelineActionButton>
+  ) : null
 
   const renderNodeActions = (node: TimelineNodeData) => {
     if (node.etapa.chave !== 'DIV_MAT_FINANCAS') return null
 
     return (
       <>
-        {!pagamentoConcluido && (
-          <TimelineActionButton
-            onClick={podeMarcarAguardando ? onAguardandoEmpenhar : undefined}
-            disabled={!podeMarcarAguardando || marcandoAguardando || registrando}
-            variant="warning"
-            style={
-              jaAguardando
-                ? { borderColor: '#F9731655', color: '#F97316', background: 'rgba(249,115,22,0.12)' }
-                : { borderColor: '#F9731688', color: '#F97316' }
-            }
-          >
-            {jaAguardando
-              ? 'Aguardando'
-              : marcandoAguardando
-                ? 'Marcando...'
-                : 'Aguardando Empenhar'}
-          </TimelineActionButton>
-        )}
+        {botaoAguardando}
         <TimelineActionButton
           onClick={pagamentoConcluido ? undefined : onPagamento}
           disabled={pagamentoConcluido || registrando || marcandoAguardando || !onPagamento}
@@ -122,28 +126,7 @@ export function FinanceiroInteractiveTimeline({
                 className="timeline-actions-slot"
                 style={{ marginTop: 12, width: '100%' }}
               >
-                {onAguardandoEmpenhar && (
-                  <TimelineActionButton
-                    onClick={podeMarcarAguardando ? onAguardandoEmpenhar : undefined}
-                    disabled={!podeMarcarAguardando || marcandoAguardando || registrando}
-                    variant="warning"
-                    style={
-                      jaAguardando
-                        ? {
-                            borderColor: '#F9731655',
-                            color: '#F97316',
-                            background: 'rgba(249,115,22,0.12)',
-                          }
-                        : { borderColor: '#F9731688', color: '#F97316' }
-                    }
-                  >
-                    {jaAguardando
-                      ? 'Aguardando'
-                      : marcandoAguardando
-                        ? 'Marcando...'
-                        : 'Aguardando Empenhar'}
-                  </TimelineActionButton>
-                )}
+                {botaoAguardando}
                 {onPagamento && (
                   <TimelineActionButton onClick={onPagamento} disabled={registrando || marcandoAguardando}>
                     {registrando ? 'Registrando...' : acaoFinancas.label}

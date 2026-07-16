@@ -58,7 +58,7 @@ export default function FinanceiroPagamentoDetailPage() {
   }
 
   const handleAguardandoEmpenhar = () => {
-    if (pagamentoConcluido || pedido.aguardandoEmpenho) return
+    if (pagamentoConcluido) return
     setErro('')
     marcarAguardando.mutate(pedido.id, {
       onError: (e) =>
