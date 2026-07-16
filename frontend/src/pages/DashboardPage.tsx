@@ -452,22 +452,22 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <KpiCard
-            title="Total Empenhado"
-            value={formatCurrency(metrics.valorTotalEmpenhado)}
-            subtitle={subtitleTotalEmpenhado}
-            icon={<AccountBalanceIcon />}
-            color={premiumTokens.green}
-            onClick={() => setKpiAberto('totalEmpenhado')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-          <KpiCard
             title="Total empenhado do mês"
             value={formatCurrency(mesFiltrado.valor)}
             subtitle={subtitleMes}
             icon={<CalendarMonthIcon />}
             color={premiumTokens.primary}
             onClick={() => setKpiAberto('empenhadoMes')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+          <KpiCard
+            title="Total Empenhado"
+            value={formatCurrency(metrics.valorTotalEmpenhado)}
+            subtitle={subtitleTotalEmpenhado}
+            icon={<AccountBalanceIcon />}
+            color={premiumTokens.green}
+            onClick={() => setKpiAberto('totalEmpenhado')}
           />
         </Grid>
       </Grid>
