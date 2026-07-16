@@ -25,7 +25,6 @@ export default function RelatoriosPage() {
     { indicador: 'Concluídos', valor: metrics.concluidos },
     { indicador: 'Atrasados', valor: metrics.atrasados },
     { indicador: 'Tempo médio (dias)', valor: metrics.tempoMedioPagamento },
-    { indicador: 'Valor em aberto', valor: formatCurrency(metrics.valorTotalAberto) },
     { indicador: 'Pago no mês', valor: formatCurrency(metrics.valorPagoMes) },
   ]
 

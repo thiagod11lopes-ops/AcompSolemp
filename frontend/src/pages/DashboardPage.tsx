@@ -117,14 +117,7 @@ export default function DashboardPage() {
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-          <KpiCard
-            title="Valor em aberto"
-            value={formatCurrency(metrics.valorTotalAberto)}
-            icon={<AttachMoneyIcon />}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <KpiCard
             title="Pago no mês"
             value={formatCurrency(metrics.valorPagoMes)}
@@ -132,23 +125,7 @@ export default function DashboardPage() {
             color={premiumTokens.green}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-          <KpiCard
-            title="Aguard. assinatura"
-            value={formatCurrency(metrics.valorAguardandoAssinatura)}
-            icon={<AttachMoneyIcon />}
-            color={premiumTokens.purple}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
-          <KpiCard
-            title="Aguard. financeiro"
-            value={formatCurrency(metrics.valorAguardandoFinanceiro)}
-            icon={<AttachMoneyIcon />}
-            color={premiumTokens.yellow}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <KpiCard
             title="Aguardando Empenho"
             value={formatCurrency(metrics.valorAguardandoEmpenho)}
@@ -158,7 +135,7 @@ export default function DashboardPage() {
             onClick={() => setDetalheEmpenhoAberto(true)}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <KpiCard
             title="Total Empenhado"
             value={formatCurrency(metrics.valorTotalEmpenhado)}
@@ -167,7 +144,7 @@ export default function DashboardPage() {
             color={premiumTokens.green}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <KpiCard
             title="Total empenhado do mês"
             value={formatCurrency(mesFiltrado.valor)}

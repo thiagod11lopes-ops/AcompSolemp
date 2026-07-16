@@ -225,35 +225,8 @@ export const pedidoService = {
       dias: dias.reduce((a, b) => a + b, 0) / dias.length,
     }))
 
-    const valorTotalAberto = emAndamento.reduce((acc, p) => acc + p.valor, 0)
     const valorPagoMes = concluidos
       .filter((p) => differenceInCalendarDays(new Date(), parseISO(p.dataSolicitacao)) <= 30)
-      .reduce((acc, p) => acc + p.valor, 0)
-
-    const valorAguardandoAssinatura = emAndamento
-      .filter((p) => {
-        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
-        return p.etapasHistorico.some(
-          (h) =>
-            ids.includes(h.etapaId) &&
-            !h.dataConclusao &&
-            (h.etapaNome.includes('Confecção')),
-        )
-      })
-      .reduce((acc, p) => acc + p.valor, 0)
-
-    const valorAguardandoFinanceiro = emAndamento
-      .filter((p) => {
-        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
-        return p.etapasHistorico.some(
-          (h) =>
-            ids.includes(h.etapaId) &&
-            !h.dataConclusao &&
-            (h.etapaNome === 'Solemp confeccionada' ||
-              h.etapaNome === 'Empenhado' ||
-              h.etapaNome === 'Finanças Pagamento'),
-        )
-      })
       .reduce((acc, p) => acc + p.valor, 0)
 
     const etapas = data.workflowEtapas
@@ -389,10 +362,7 @@ export const pedidoService = {
       proximosVencimento: proximosVencimento.length,
       tempoMedioPagamento: Math.round(tempoMedioPagamento),
       tempoMedioPorEtapa,
-      valorTotalAberto,
       valorPagoMes,
-      valorAguardandoAssinatura,
-      valorAguardandoFinanceiro,
       valorAguardandoEmpenho,
       quantidadeAguardandoEmpenho,
       aguardandoEmpenhoItens,

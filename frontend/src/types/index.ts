@@ -271,10 +271,7 @@ export interface DashboardMetrics {
   proximosVencimento: number
   tempoMedioPagamento: number
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
-  valorTotalAberto: number
   valorPagoMes: number
-  valorAguardandoAssinatura: number
-  valorAguardandoFinanceiro: number
   /** Solemps ativas só na etapa Solemp confeccionada (após Confecção) */
   valorAguardandoEmpenho: number
   quantidadeAguardandoEmpenho: number
