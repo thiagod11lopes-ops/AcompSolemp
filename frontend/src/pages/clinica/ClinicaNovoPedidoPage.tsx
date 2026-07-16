@@ -176,7 +176,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedAuditoriaRowIds(finalizedAuditoria)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const rowId of finalizedAuditoria) next[rowId] = true
+        for (const rowId of finalizedAuditoria) delete next[rowId]
         return next
       })
     }
@@ -185,7 +185,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(finalizedMaterial)
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const rowId of finalizedMaterial) next[rowId] = true
+        for (const rowId of finalizedMaterial) delete next[rowId]
         return next
       })
     }
@@ -229,8 +229,9 @@ export default function ClinicaNovoPedidoPage() {
   const handleRowSelectionAuditoriaChange = useCallback(
     (selection: RowSelectionState) => {
       const next = { ...selection }
+      // Enviados ficam só na tarja cinza (finalized), fora da seleção verde.
       for (const rowId of finalizedAuditoriaRowIds) {
-        next[rowId] = true
+        delete next[rowId]
       }
       setRowSelectionAuditoria(next)
     },
@@ -241,7 +242,7 @@ export default function ClinicaNovoPedidoPage() {
     (selection: RowSelectionState) => {
       const next = { ...selection }
       for (const rowId of finalizedMaterialRowIds) {
-        next[rowId] = true
+        delete next[rowId]
       }
       setRowSelectionMaterial(next)
     },
@@ -541,7 +542,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedAuditoriaRowIds(nextFinalizedAuditoria)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {
@@ -608,7 +609,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(nextFinalizedMaterial)
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {
@@ -684,12 +685,12 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(nextFinalizedMaterial)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {

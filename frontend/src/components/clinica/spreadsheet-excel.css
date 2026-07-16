@@ -124,6 +124,15 @@
   color: #217346;
 }
 
+/* Linhas já enviadas: cinza opaco, nunca verde */
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-checked,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-disabled,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-disabled.Mui-checked {
+  color: #9e9e9e !important;
+  opacity: 0.55;
+}
+
 .excel-sheet-pagination {
   border-top: var(--excel-border);
   background: #f3f3f3;

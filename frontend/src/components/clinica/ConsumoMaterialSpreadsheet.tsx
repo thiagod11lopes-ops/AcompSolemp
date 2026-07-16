@@ -86,14 +86,15 @@ const FINALIZED_CHECKBOX_OPACITY = 0.55
 
 const finalizedCheckboxSx = {
   color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
+  opacity: FINALIZED_CHECKBOX_OPACITY,
   '&.Mui-checked': {
-    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, 1),
   },
   '&.Mui-disabled': {
-    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, 1),
   },
   '&.Mui-disabled.Mui-checked': {
-    color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
+    color: alpha(EXCEL_SHEET.finalizedCheck, 1),
   },
 } as const
 
@@ -382,23 +383,19 @@ function ConsumoMaterialSpreadsheetInner({
   )
 
   const toggleRowSelection = useCallback(
-  (
-    rowId: string,
-    checked: boolean,
-    selection: RowSelectionState,
-    onChange: (next: RowSelectionState) => void,
-    finalizedIds?: Set<string>,
-  ) => {
-    const next = { ...selection }
-    if (checked) next[rowId] = true
-    else delete next[rowId]
-    if (finalizedIds?.size) {
-      for (const id of finalizedIds) next[id] = true
-    }
-    onChange(next)
-  },
-  [],
-)
+    (
+      rowId: string,
+      checked: boolean,
+      selection: RowSelectionState,
+      onChange: (next: RowSelectionState) => void,
+    ) => {
+      const next = { ...selection }
+      if (checked) next[rowId] = true
+      else delete next[rowId]
+      onChange(next)
+    },
+    [],
+  )
 
   const createEnvioSelectColumn = useCallback(
     (
@@ -407,7 +404,7 @@ function ConsumoMaterialSpreadsheetInner({
       canal: ConsumoEnvioCanal,
       selection: RowSelectionState,
       onSelectionChange: (next: RowSelectionState) => void,
-      finalizedIds: Set<string> | undefined,
+      _finalizedIds: Set<string> | undefined,
       podeSelecionar: (row: ConsumoMaterialRow) => boolean,
       isFinalizado: (row: ConsumoMaterialRow) => boolean,
     ): ColumnDef<ConsumoMaterialRow> => ({
@@ -415,10 +412,12 @@ function ConsumoMaterialSpreadsheetInner({
       size: columnId === 'select-as' ? 48 : 40,
       enableSorting: false,
       header: () => {
-        const pageRows = rows.filter((row) => podeSelecionar(row))
+        // Apenas linhas ainda não enviadas (ou desmarcadas) entram no “marcar todos”.
+        const selecionaveis = rows.filter((row) => podeSelecionar(row) && !isFinalizado(row))
         const allSelected =
-          pageRows.length > 0 && pageRows.every((row) => Boolean(selection[row.id]))
-        const someSelected = pageRows.some((row) => Boolean(selection[row.id]))
+          selecionaveis.length > 0 &&
+          selecionaveis.every((row) => Boolean(selection[row.id]))
+        const someSelected = selecionaveis.some((row) => Boolean(selection[row.id]))
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
             <Typography
@@ -437,15 +436,17 @@ function ConsumoMaterialSpreadsheetInner({
               size="small"
               checked={allSelected}
               indeterminate={someSelected && !allSelected}
+              disabled={selecionaveis.length === 0}
               onClick={(e) => e.stopPropagation()}
               onChange={(_, checked) => {
                 const next = { ...selection }
-                for (const row of pageRows) {
+                for (const row of selecionaveis) {
                   if (checked) next[row.id] = true
                   else delete next[row.id]
                 }
-                if (finalizedIds?.size) {
-                  for (const rowId of finalizedIds) next[rowId] = true
+                // Remove da seleção verde quaisquer ids já finalizados (ficam só cinza).
+                for (const row of rows) {
+                  if (isFinalizado(row)) delete next[row.id]
                 }
                 onSelectionChange(next)
               }}
@@ -456,11 +457,12 @@ function ConsumoMaterialSpreadsheetInner({
       },
       cell: ({ row }) => {
         const finalizado = isFinalizado(row.original)
-        const selecionavel = podeSelecionar(row.original)
+        const selecionavel = podeSelecionar(row.original) && !finalizado
         const checked = finalizado || Boolean(selection[row.original.id])
         return (
           <Checkbox
             size="small"
+            className={finalizado ? 'excel-checkbox-finalizado' : undefined}
             checked={checked}
             disabled={!selecionavel && !finalizado}
             onClick={(e) => {
@@ -473,7 +475,6 @@ function ConsumoMaterialSpreadsheetInner({
                 nextChecked,
                 selection,
                 onSelectionChange,
-                finalizedIds,
               )
             }}
             sx={{
