@@ -6,42 +6,43 @@ import {
 
 export const MIN_COL_WIDTH = 48
 
-/** MUI TableCell default horizontal padding (16px × 2). */
-const TABLE_CELL_H_PAD = 32
-/** SpreadsheetEditableCell input px: 0.75 × 2. */
-const INPUT_H_PAD = 12
-const RESIZE_GUTTER = 4
-const SORT_ICON_EXTRA = 22
+/** Padding real das células (.excel-sheet-grid: 2px 6px → 12px horizontal). */
+const TABLE_CELL_H_PAD = 12
+/** Padding do input editável (.excel-editable-input: 1px 4px → 8px). */
+const INPUT_H_PAD = 8
+const RESIZE_GUTTER = 6
+const SORT_ICON_EXTRA = 18
 
+/** Fontes alinhadas a spreadsheet-excel.css (Calibri 11px). */
 const MEASURE_STYLES = {
   header: {
-    fontSize: '0.68rem',
+    fontSize: '10px',
     fontWeight: '700',
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
-    letterSpacing: '0.4px',
+    fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
+    letterSpacing: '0.04em',
   },
   body: {
-    fontSize: '0.875rem',
+    fontSize: '11px',
     fontWeight: '400',
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+    fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
     letterSpacing: 'normal',
   },
   input: {
-    fontSize: '0.78rem',
+    fontSize: '11px',
     fontWeight: '400',
-    fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+    fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
     letterSpacing: 'normal',
   },
   valor: {
-    fontSize: '0.875rem',
+    fontSize: '11px',
     fontWeight: '600',
-    fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
+    fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
     letterSpacing: 'normal',
   },
   valorInput: {
-    fontSize: '0.78rem',
+    fontSize: '11px',
     fontWeight: '400',
-    fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
+    fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
     letterSpacing: 'normal',
   },
 } as const
@@ -58,11 +59,15 @@ function cellTextForMeasure(row: ConsumoMaterialRow, key: string): string {
   if (key === 'valor' && row.valorNumerico > 0) {
     return formatValorBrasileiro(row.valorNumerico)
   }
+  if (key === 'valorUnitario') {
+    const raw = String(row.valorUnitario ?? '').trim()
+    if (raw) return toSingleLine(raw)
+  }
   return toSingleLine(String(row[key as keyof ConsumoMaterialRow] ?? ''))
 }
 
 function measureInDom(text: string, variant: MeasureVariant): number {
-  if (typeof document === 'undefined') return text.length * 8
+  if (typeof document === 'undefined') return text.length * 7
 
   if (!measureNode) {
     measureNode = document.createElement('span')
@@ -127,10 +132,10 @@ export function applyEditingDrafts(
 
 function measureColumnContent(
   rows: ConsumoMaterialRow[],
-  col: { key: string; label: string },
+  col: { key: string; label: string; width?: number },
   editable: boolean,
 ): number {
-  const isValor = col.key === 'valor'
+  const isValor = col.key === 'valor' || col.key === 'valorUnitario'
   const bodyVariant: MeasureVariant = isValor ? 'valor' : 'body'
   const inputVariant: MeasureVariant = isValor ? 'valorInput' : 'input'
   const cellPad = editable ? TABLE_CELL_H_PAD + INPUT_H_PAD : TABLE_CELL_H_PAD
@@ -147,12 +152,13 @@ function measureColumnContent(
     }
   }
 
+  // Fit-to-content: mede o maior texto da coluna (rótulo + células).
   return Math.max(MIN_COL_WIDTH, maxContent + cellPad + RESIZE_GUTTER)
 }
 
 export function measureColumnWidths(
   rows: ConsumoMaterialRow[],
-  headers: ReadonlyArray<{ key: string; label: string }>,
+  headers: ReadonlyArray<{ key: string; label: string; width?: number }>,
   editable = false,
 ): Record<string, number> {
   const widths: Record<string, number> = {}
@@ -170,6 +176,11 @@ export function resolveColumnWidths(
   const resolved: Record<string, number> = {
     'select-a': Math.max(selectWidth, manualOverrides['select-a'] ?? manualOverrides.select ?? 0),
     'select-s': Math.max(selectWidth, manualOverrides['select-s'] ?? manualOverrides.select ?? 0),
+    'select-as': Math.max(selectWidth, manualOverrides['select-as'] ?? manualOverrides.select ?? 0),
+    'select-imh': Math.max(
+      selectWidth,
+      manualOverrides['select-imh'] ?? manualOverrides.select ?? 0,
+    ),
   }
 
   for (const [key, contentWidth] of Object.entries(contentWidths)) {

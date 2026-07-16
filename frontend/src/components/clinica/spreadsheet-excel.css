@@ -28,6 +28,8 @@
 
 .excel-sheet-grid .MuiTable-root {
   border-collapse: collapse;
+  table-layout: fixed;
+  width: max-content;
 }
 
 .excel-sheet-grid .MuiTableCell-root {
@@ -38,6 +40,9 @@
   line-height: 1.25;
   color: #000;
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .excel-sheet-grid .MuiTableHead .MuiTableCell-root {

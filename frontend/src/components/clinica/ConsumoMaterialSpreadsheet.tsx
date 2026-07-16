@@ -959,8 +959,36 @@ function ConsumoMaterialSpreadsheetInner({
         <Table
           stickyHeader
           size="small"
-          sx={{ tableLayout: 'fixed', width: tableMinWidth, minWidth: tableMinWidth }}
+          sx={{
+            tableLayout: 'fixed',
+            width: tableMinWidth,
+            minWidth: tableMinWidth,
+            maxWidth: tableMinWidth,
+          }}
         >
+          <colgroup>
+            {selectColumnIds.map((columnId) => (
+              <col
+                key={columnId}
+                style={{
+                  width: resolveSelectColWidth(columnId),
+                  minWidth: resolveSelectColWidth(columnId),
+                }}
+              />
+            ))}
+            {planilhaHeaders.map((header) => {
+              const width = resolvedColumnWidths[header.key] ?? header.width ?? 100
+              return (
+                <col
+                  key={header.key}
+                  style={{
+                    width,
+                    minWidth: width,
+                  }}
+                />
+              )
+            })}
+          </colgroup>
           <TableHead>
             <TableRow>
               {selectColumnIds.map((columnId, index) => (
@@ -1094,7 +1122,6 @@ function ConsumoMaterialSpreadsheetInner({
                         ...getColumnCellSx(colWidth),
                         py: 0,
                         verticalAlign: 'middle',
-                        overflow: 'visible',
                         textAlign: colId === 'valor' ? 'right' : 'left',
                         ...stickySx,
                       }}
