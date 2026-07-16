@@ -80,6 +80,27 @@ export const financeiroService = {
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
   },
 
+  /** Processos marcados com tarja Aguardando Empenhar (sem avançar para Empenhado). */
+  async listAguardandoEmpenho(): Promise<PedidoComDetalhes[]> {
+    await delay(null)
+    const data = loadAppData()
+    const ctx = getContext(data)
+
+    return data.pedidos
+      .filter(
+        (p) =>
+          Boolean(p.aguardandoEmpenho) &&
+          isPedidoPagamentoPendente(p, data),
+      )
+      .map((p) => enrichPedido(p, ctx))
+      .filter((p): p is PedidoComDetalhes => p !== null)
+      .sort((a, b) => {
+        const aEm = a.aguardandoEmpenhoEm ?? a.dataSolicitacao
+        const bEm = b.aguardandoEmpenhoEm ?? b.dataSolicitacao
+        return new Date(bEm).getTime() - new Date(aEm).getTime()
+      })
+  },
+
   /** Pendentes e já pagos/arquivados (abas Em andamento / Todas / Concluídas). */
   async listTimelines(): Promise<PedidoComDetalhes[]> {
     await delay(null)

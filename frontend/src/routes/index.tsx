@@ -46,6 +46,9 @@ const OrdenadorTimelineDetailPage = lazy(() => import('@/pages/ordenador/Ordenad
 const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetailPage'))
 const OrdenadorArquivadosPage = lazy(() => import('@/pages/ordenador/OrdenadorArquivadosPage'))
 const FinanceiroArquivadosPage = lazy(() => import('@/pages/financeiro/FinanceiroArquivadosPage'))
+const FinanceiroAguardandoEmpenhoPage = lazy(
+  () => import('@/pages/financeiro/FinanceiroAguardandoEmpenhoPage'),
+)
 const FinanceiroPagamentosPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentosPage'))
 const FinanceiroPagamentoDetailPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentoDetailPage'))
 
@@ -184,6 +187,7 @@ export function AppRoutes() {
           >
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
           </Route>
 
@@ -247,6 +251,7 @@ export function AppRoutes() {
           <Route path="/financeiro" element={<Navigate to="/financeiro/pagamentos" replace />} />
           <Route path="/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+          <Route path="/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
           <Route path="/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
         </Route>
 

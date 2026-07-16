@@ -14,6 +14,7 @@ import {
 import ArchiveIcon from '@mui/icons-material/Archive'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import { NavLink } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -22,6 +23,11 @@ const DRAWER_WIDTH = 240
 
 const menuItems = [
   { path: '/financeiro/pagamentos', label: 'Pagamentos pendentes', icon: <PaymentsIcon /> },
+  {
+    path: '/financeiro/aguardando-empenho',
+    label: 'Aguardando Empenho',
+    icon: <HourglassTopIcon />,
+  },
   { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 

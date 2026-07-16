@@ -9,6 +9,13 @@ export function useFinanceiroPedidos() {
   })
 }
 
+export function useFinanceiroAguardandoEmpenho() {
+  return useQuery({
+    queryKey: ['financeiro-aguardando-empenho'],
+    queryFn: () => financeiroService.listAguardandoEmpenho(),
+  })
+}
+
 export function useFinanceiroPedido(id: string) {
   return useQuery({
     queryKey: ['financeiro-pedido', id],
@@ -42,6 +49,7 @@ export function useRegistrarPagamento() {
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-aguardando-empenho'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedido', pedidoId] })
@@ -65,6 +73,7 @@ export function useMarcarAguardandoEmpenho() {
     onSuccess: (_, pedidoId) => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-aguardando-empenho'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedido', pedidoId] })
