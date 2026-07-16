@@ -254,6 +254,45 @@ export interface AguardandoEmpenhoItem {
   dataSolicitacao: string
 }
 
+/** Resumo de processo para modais de detalhe do dashboard */
+export interface DashboardPedidoItem {
+  pedidoId: string
+  pedidoNumero: string
+  clinicaNome: string
+  empresaNome: string
+  materialDescricao: string
+  etapaAtual: string
+  valor: number
+  solempNumero: string | null
+  prazoStatus: PrazoStatus
+  diasNaEtapa: number
+  diasRestantes: number
+  dataSolicitacao: string
+  concluido: boolean
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  /** Dias até conclusão (apenas processos concluídos) */
+  diasAteConclusao?: number
+}
+
+export interface DashboardEmpenhadoItem {
+  pedidoId: string
+  pedidoNumero: string
+  solempNumero: string | null
+  empenhoNumero: string | null
+  valor: number
+  dataEmpenho: string
+  mesChave: string
+  mesLabel: string
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  clinicaNome: string
+  empresaNome: string
+  dataSolicitacao: string
+}
+
 export interface EmpenhadoMesTotal {
   /** Chave YYYY-MM */
   mesChave: string
@@ -272,6 +311,7 @@ export interface DashboardMetrics {
   tempoMedioPagamento: number
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
   valorPagoMes: number
+  quantidadePagoMes: number
   /** Solemps ativas só na etapa Solemp confeccionada (após Confecção) */
   valorAguardandoEmpenho: number
   quantidadeAguardandoEmpenho: number
@@ -283,6 +323,14 @@ export interface DashboardMetrics {
   dataPrimeiroEmpenho: string | null
   /** Totais por mês (mais recente primeiro) */
   totaisEmpenhadoPorMes: EmpenhadoMesTotal[]
+  /** Listas detalhadas para modais dos cards */
+  todosItens: DashboardPedidoItem[]
+  emAndamentoItens: DashboardPedidoItem[]
+  concluidosItens: DashboardPedidoItem[]
+  atrasadosItens: DashboardPedidoItem[]
+  proximosVencimentoItens: DashboardPedidoItem[]
+  pagoMesItens: DashboardPedidoItem[]
+  empenhadoItens: DashboardEmpenhadoItem[]
   rankingClinicas: { nome: string; total: number; valor: number }[]
   rankingEmpresas: { nome: string; total: number; valor: number }[]
   rankingResponsaveis: { nome: string; total: number; atrasados: number }[]
