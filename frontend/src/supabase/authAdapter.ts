@@ -75,4 +75,44 @@ export const supabaseAuthAdapter = {
     const { error } = await getSupabaseClient().auth.signOut()
     if (error) throw error
   },
+
+  async resetPasswordForEmail(email: string, redirectTo: string): Promise<void> {
+    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo },
+    )
+    if (error) throw error
+  },
+
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await getSupabaseClient().auth.updateUser({
+      password: newPassword,
+    })
+    if (error) throw error
+  },
+
+  /** Aguarda sessão de recovery (link do e-mail) ou sessão já ativa. */
+  async waitForPasswordRecoverySession(timeoutMs = 8000): Promise<Session | null> {
+    if (!useSupabaseDataSource()) return null
+    const client = getSupabaseClient()
+    const existing = (await client.auth.getSession()).data.session
+    if (existing) return existing
+
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(() => {
+        subscription.unsubscribe()
+        void client.auth.getSession().then(({ data }) => resolve(data.session))
+      }, timeoutMs)
+
+      const {
+        data: { subscription },
+      } = client.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+          window.clearTimeout(timer)
+          subscription.unsubscribe()
+          resolve(session)
+        }
+      })
+    })
+  },
 }

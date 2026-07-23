@@ -1,5 +1,5 @@
 import type { User, UserRole } from '@/types'
-import { normalizeEmailKey } from '@/utils/email'
+import { assertMarinhaEmail } from '@/utils/email'
 import { useSupabaseDataSource, useCloudAppDataSync } from '@/config/dataSource'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
@@ -13,11 +13,7 @@ import type { CadastroPerfilOpcao, ClinicaEntidadeTipo } from '@/types/cadastroP
 import { isCadastroEntidadeClinica, resolveClinicaEntidadeTipo } from '@/types/cadastroPerfis'
 
 function validateEmail(email: string): string {
-  const normalized = normalizeEmailKey(email)
-  if (!normalized || !normalized.includes('@')) {
-    throw new Error('Informe um e-mail válido')
-  }
-  return normalized
+  return assertMarinhaEmail(email)
 }
 
 export interface CreatePortalUserInput {

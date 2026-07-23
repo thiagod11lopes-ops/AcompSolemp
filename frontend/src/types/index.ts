@@ -53,7 +53,7 @@ export interface User {
   posto: string
   graduacao: string
   login: string
-  /** E-mail Google autorizado (obrigatório em produção com Firebase Auth) */
+  /** E-mail institucional @marinha.mil.br autorizado para login */
   email?: string | null
   perfil: UserRole
   clinicaId: string | null

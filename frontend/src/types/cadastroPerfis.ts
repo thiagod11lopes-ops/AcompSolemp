@@ -27,7 +27,7 @@ export function resolveClinicaEntidadeTipo(opcao: CadastroPerfilOpcao): ClinicaE
   return 'clinica'
 }
 
-/** Opções de cadastro da aba Cadastros (nome + e-mail Google) */
+/** Opções de cadastro da aba Cadastros (nome + e-mail @marinha.mil.br) */
 export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   {
     id: 'clinica',

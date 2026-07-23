@@ -15,9 +15,11 @@ import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
+import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import { ForgotPasswordLink } from '@/components/auth/ForgotPasswordLink'
 
 /**
- * Portão de acesso à Timeline — e-mail cadastrado pelo gestor.
+ * Portão de acesso à Timeline — e-mail institucional cadastrado pelo gestor.
  */
 export default function TimelineEntryPage() {
   const theme = useTheme()
@@ -115,26 +117,33 @@ export default function TimelineEntryPage() {
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {isSupabase
-            ? 'E-mail cadastrado pelo gestor + senha (cria acesso no primeiro login).'
-            : 'Informe o e-mail cadastrado pelo gestor.'}
+            ? 'E-mail @marinha.mil.br cadastrado pelo gestor + senha (cria acesso no primeiro login).'
+            : 'Informe o e-mail @marinha.mil.br cadastrado pelo gestor.'}
         </Typography>
         <TextField
           fullWidth
           type="email"
-          label="E-mail"
+          label="E-mail institucional"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="seuemail@marinha.mil.br"
+          helperText={MARINHA_EMAIL_HINT}
           sx={{ mb: 2 }}
         />
         {isSupabase && (
-          <TextField
-            fullWidth
-            type="password"
-            label="Senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            sx={{ mb: 2 }}
-          />
+          <>
+            <TextField
+              fullWidth
+              type="password"
+              label="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ mb: 0.5 }}
+            />
+            <Box sx={{ textAlign: 'left', mb: 2 }}>
+              <ForgotPasswordLink emailHint={email} />
+            </Box>
+          </>
         )}
         <Button
           fullWidth

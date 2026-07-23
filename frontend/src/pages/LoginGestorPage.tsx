@@ -21,13 +21,23 @@ import { useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
+import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
+import { ForgotPasswordLink } from '@/components/auth/ForgotPasswordLink'
 
-const loginSchema = z.object({
+const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o login'),
   senha: z.string().min(1, 'Informe a senha'),
 })
 
-type LoginForm = z.infer<typeof loginSchema>
+const supabaseLoginSchema = z.object({
+  login: z
+    .string()
+    .min(1, 'Informe o e-mail')
+    .refine(isMarinhaEmail, MARINHA_EMAIL_HINT),
+  senha: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+})
+
+type LoginForm = z.infer<typeof localLoginSchema>
 
 export default function LoginGestorPage() {
   const { login, logout } = useGestorAuth()
@@ -43,13 +53,16 @@ export default function LoginGestorPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(isSupabase ? supabaseLoginSchema : localLoginSchema),
     defaultValues: isSupabase
       ? { login: '', senha: '' }
       : { login: 'gestor', senha: 'gestor123' },
   })
+
+  const emailHint = watch('login')
 
   const finishLogin = async () => {
     const authUser = authService.getGestorUser()
@@ -92,12 +105,16 @@ export default function LoginGestorPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <TextField
           fullWidth
-          label={isSupabase ? 'E-mail' : 'Login'}
+          label={isSupabase ? 'E-mail institucional' : 'Login'}
           type={isSupabase ? 'email' : 'text'}
           margin="normal"
+          placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
+          helperText={
+            errors.login?.message ??
+            (isSupabase ? MARINHA_EMAIL_HINT : undefined)
+          }
           {...register('login')}
           error={Boolean(errors.login)}
-          helperText={errors.login?.message}
         />
         <TextField
           fullWidth
@@ -119,6 +136,7 @@ export default function LoginGestorPage() {
             },
           }}
         />
+        {isSupabase && <ForgotPasswordLink emailHint={emailHint} />}
         <Button
           fullWidth
           type="submit"
@@ -146,7 +164,7 @@ export default function LoginGestorPage() {
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
         {isSupabase
-          ? 'No primeiro acesso com e-mail/senha sua organização é criada automaticamente.'
+          ? 'No primeiro acesso com e-mail @marinha.mil.br / senha sua organização é criada automaticamente.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
     </Box>

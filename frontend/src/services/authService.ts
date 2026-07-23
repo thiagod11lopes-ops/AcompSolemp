@@ -1,6 +1,6 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { normalizeEmailKey } from '@/utils/email'
+import { assertMarinhaEmail, normalizeEmailKey, passwordResetRedirectUrl } from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import {
   applyRemoteAppData,
@@ -207,10 +207,7 @@ export const authService = {
   },
 
   async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
-    const email = normalizeEmailKey(credentials.login)
-    if (!email.includes('@')) {
-      throw new Error('Informe um e-mail válido')
-    }
+    const email = assertMarinhaEmail(credentials.login)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
@@ -263,10 +260,7 @@ export const authService = {
     email: string,
     password?: string,
   ): Promise<TimelineLoginResult> {
-    const normalized = normalizeEmailKey(email)
-    if (!normalized.includes('@')) {
-      throw new Error('Informe um e-mail válido')
-    }
+    const normalized = assertMarinhaEmail(email)
 
     if (useSupabaseDataSource()) {
       if (!password || password.length < 6) {
@@ -437,5 +431,35 @@ export const authService = {
     if (useSupabaseDataSource()) {
       await supabaseAuthAdapter.signOut()
     }
+  },
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const normalized = assertMarinhaEmail(email)
+    if (!useSupabaseDataSource()) {
+      throw new Error(
+        'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
+      )
+    }
+    await supabaseAuthAdapter.resetPasswordForEmail(
+      normalized,
+      passwordResetRedirectUrl(),
+    )
+  },
+
+  async completePasswordReset(newPassword: string): Promise<void> {
+    if (!useSupabaseDataSource()) {
+      throw new Error(
+        'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
+      )
+    }
+    if (newPassword.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+    await supabaseAuthAdapter.updatePassword(newPassword)
+    await supabaseAuthAdapter.signOut()
+  },
+
+  async waitForPasswordRecoverySession() {
+    return supabaseAuthAdapter.waitForPasswordRecoverySession()
   },
 }

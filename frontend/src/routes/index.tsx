@@ -21,6 +21,7 @@ function HomeRedirect() {
 }
 
 const LoginGestorPage = lazy(() => import('@/pages/LoginGestorPage'))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
 const TimelineEntryPage = lazy(() => import('@/pages/clinica/TimelineEntryPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const ProcessosPage = lazy(() => import('@/pages/ProcessosPage'))
@@ -76,6 +77,14 @@ export function AppRoutes() {
                   <LoginGestorPage />
                 </LazyPage>
               </GuestRoute>
+            }
+          />
+          <Route
+            path="/redefinir-senha"
+            element={
+              <LazyPage>
+                <ResetPasswordPage />
+              </LazyPage>
             }
           />
           <Route

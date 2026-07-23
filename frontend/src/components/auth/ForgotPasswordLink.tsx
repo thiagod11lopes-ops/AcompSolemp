@@ -1,0 +1,112 @@
+import { useState } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Link,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { authService } from '@/services/authService'
+import { useSupabaseDataSource } from '@/config/dataSource'
+import { MARINHA_EMAIL_HINT } from '@/utils/email'
+
+interface ForgotPasswordLinkProps {
+  /** Prefill e-mail from the login form when available */
+  emailHint?: string
+}
+
+export function ForgotPasswordLink({ emailHint = '' }: ForgotPasswordLinkProps) {
+  const isSupabase = useSupabaseDataSource()
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState(emailHint)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [sent, setSent] = useState(false)
+
+  const openDialog = () => {
+    setEmail(emailHint)
+    setError('')
+    setSent(false)
+    setOpen(true)
+  }
+
+  const handleSend = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      if (!isSupabase) {
+        throw new Error(
+          'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
+        )
+      }
+      await authService.requestPasswordReset(email)
+      setSent(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível enviar o link')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Typography variant="body2" sx={{ textAlign: 'right', mt: 0.5 }}>
+        <Link component="button" type="button" onClick={openDialog} underline="hover">
+          Esqueci a senha
+        </Link>
+      </Typography>
+
+      <Dialog open={open} onClose={() => !loading && setOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Recuperar senha</DialogTitle>
+        <DialogContent>
+          {sent ? (
+            <Alert severity="success" sx={{ mt: 1 }}>
+              Se o e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique a
+              caixa de entrada (e o spam).
+            </Alert>
+          ) : (
+            <Box sx={{ pt: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Informe o e-mail institucional. Enviaremos um link de redefinição.
+              </Typography>
+              <TextField
+                fullWidth
+                type="email"
+                label="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seuemail@marinha.mil.br"
+                helperText={MARINHA_EMAIL_HINT}
+                autoFocus
+              />
+              {error && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {error}
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpen(false)} disabled={loading}>
+            {sent ? 'Fechar' : 'Cancelar'}
+          </Button>
+          {!sent && (
+            <Button
+              variant="contained"
+              onClick={() => void handleSend()}
+              disabled={loading || !email.trim()}
+            >
+              {loading ? 'Enviando...' : 'Enviar link'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
+  )
+}

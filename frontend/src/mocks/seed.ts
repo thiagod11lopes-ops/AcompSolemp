@@ -31,6 +31,7 @@ import {
 } from '@/utils/pedidoCleanup'
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
+import { isMarinhaEmail } from '@/utils/email'
 
 const SEED_VERSION = 'v16'
 
@@ -417,7 +418,7 @@ function ensureDefaultConfeccaoUser(data: AppData): boolean {
 function ensureBootstrapGoogleEmails(data: AppData): boolean {
   if (data.tenantMeta) return false
   const email = env.gestorGoogleEmail
-  if (!email) return false
+  if (!email || !isMarinhaEmail(email)) return false
 
   let changed = false
   for (const user of data.usuarios) {
