@@ -86,9 +86,13 @@ export default function LoginGestorPage() {
     }
   }
 
-  const handleSignUp = async (values: { email: string; senha: string }) => {
+  const handleSignUp = async (values: {
+    email: string
+    recoveryEmail: string
+    senha: string
+  }) => {
     setError('')
-    await register({ login: values.email, senha: values.senha })
+    await register({ login: values.email, senha: values.senha }, values.recoveryEmail)
     await finishLogin()
   }
 
@@ -164,7 +168,7 @@ export default function LoginGestorPage() {
         <Stack spacing={1.5} sx={{ mt: 1.5 }}>
           <SignUpButton
             emailHint={emailHint}
-            helperText="Crie a organização do gestor com e-mail @marinha.mil.br e senha."
+            helperText="Conta com e-mail @marinha.mil.br. O Gmail recebe apenas o link de recuperação de senha."
             onSubmit={handleSignUp}
           />
         </Stack>

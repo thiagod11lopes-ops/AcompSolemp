@@ -90,13 +90,14 @@ export function ForgotPasswordButton({
         <DialogContent>
           {sent ? (
             <Alert severity="success" sx={{ mt: 1 }}>
-              Se o e-mail estiver cadastrado, enviamos um link para redefinir a senha. Verifique a
-              caixa de entrada (e o spam).
+              Se a conta existir, enviamos o link de redefinição para o Gmail de recuperação
+              cadastrado. Verifique a caixa de entrada (e o spam).
             </Alert>
           ) : (
             <Box sx={{ pt: 1 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Informe o e-mail institucional. Enviaremos um link de redefinição.
+                Informe o e-mail @marinha.mil.br da conta. O link de redefinição será enviado ao
+                Gmail de recuperação cadastrado.
               </Typography>
               <TextField
                 fullWidth

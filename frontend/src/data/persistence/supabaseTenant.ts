@@ -17,6 +17,7 @@ export interface ProfileRecord {
   tenant_id: string
   app_user_id: string
   email: string
+  recovery_email: string | null
   perfil: string
 }
 
@@ -28,7 +29,7 @@ export async function getProfileForCurrentUser(): Promise<ProfileRecord | null> 
 
   const { data, error } = await client
     .from('profiles')
-    .select('id, tenant_id, app_user_id, email, perfil')
+    .select('id, tenant_id, app_user_id, email, recovery_email, perfil')
     .eq('id', userId)
     .maybeSingle()
 
@@ -60,6 +61,7 @@ async function createUniqueOrgCode(): Promise<string> {
 export async function provisionGestorTenant(input: {
   authUserId: string
   email: string
+  recoveryEmail?: string | null
   displayName?: string | null
   initialAppData: AppData
 }): Promise<{ tenant: TenantRecord; profile: ProfileRecord; owner: import('@/types').User }> {
@@ -111,6 +113,7 @@ export async function provisionGestorTenant(input: {
     ativo: true,
   }
 
+  const recoveryEmail = input.recoveryEmail?.trim().toLowerCase() || null
   const { data: profile, error: profileError } = await client
     .from('profiles')
     .insert({
@@ -118,9 +121,10 @@ export async function provisionGestorTenant(input: {
       tenant_id: tenant.id,
       app_user_id: appUserId,
       email: input.email,
+      recovery_email: recoveryEmail,
       perfil: 'GESTOR',
     })
-    .select('id, tenant_id, app_user_id, email, perfil')
+    .select('id, tenant_id, app_user_id, email, recovery_email, perfil')
     .single()
 
   if (profileError) throw new Error(profileError.message)
@@ -190,3 +194,15 @@ export async function getEmailAccess(email: string): Promise<{
   const row = Array.isArray(data) ? data[0] : data
   return row ?? null
 }
+
+/** E-mail Auth (Gmail de recuperação) a partir do e-mail @marinha.mil.br. */
+export async function lookupAuthEmailByMarinha(marinhaEmail: string): Promise<string | null> {
+  const { data, error } = await getSupabaseClient().rpc('lookup_auth_email_by_marinha', {
+    p_marinha: marinhaEmail.trim().toLowerCase(),
+  })
+  if (error) throw new Error(error.message)
+  const row = Array.isArray(data) ? data[0] : data
+  const authEmail = row?.auth_email
+  return typeof authEmail === 'string' && authEmail.trim() ? authEmail.trim().toLowerCase() : null
+}
+

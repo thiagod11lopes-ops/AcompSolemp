@@ -66,9 +66,17 @@ export default function TimelineEntryPage() {
     }
   }
 
-  const handleSignUp = async (values: { email: string; senha: string }) => {
+  const handleSignUp = async (values: {
+    email: string
+    recoveryEmail: string
+    senha: string
+  }) => {
     setErro('')
-    const result = await registerWithEmailTimeline(values.email, values.senha)
+    const result = await registerWithEmailTimeline(
+      values.email,
+      values.senha,
+      values.recoveryEmail,
+    )
     navigate(result.route, { replace: true })
   }
 
@@ -167,7 +175,7 @@ export default function TimelineEntryPage() {
           <Stack spacing={1.5} sx={{ mt: 1.5 }}>
             <SignUpButton
               emailHint={email}
-              helperText="O gestor precisa ter liberado seu e-mail em Cadastros. Depois crie sua senha aqui."
+              helperText="O gestor libera o e-mail @marinha.mil.br. Informe também um Gmail para receber a recuperação de senha."
               onSubmit={handleSignUp}
             />
           </Stack>

@@ -10,10 +10,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import { GMAIL_RECOVERY_HINT, MARINHA_EMAIL_HINT } from '@/utils/email'
 
 export interface SignUpFormValues {
   email: string
+  recoveryEmail: string
   senha: string
 }
 
@@ -29,11 +30,12 @@ export function SignUpButton({
   emailHint = '',
   fullWidth = true,
   disabled = false,
-  helperText = 'Crie sua conta com e-mail @marinha.mil.br e senha (mínimo 6 caracteres).',
+  helperText = 'Use o e-mail @marinha.mil.br para a conta e um Gmail para receber a recuperação de senha.',
   onSubmit,
 }: SignUpButtonProps) {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState(emailHint)
+  const [recoveryEmail, setRecoveryEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,6 +47,7 @@ export function SignUpButton({
 
   const openDialog = () => {
     setEmail(emailHint)
+    setRecoveryEmail('')
     setSenha('')
     setConfirm('')
     setError('')
@@ -63,7 +66,7 @@ export function SignUpButton({
     }
     setLoading(true)
     try {
-      await onSubmit({ email, senha })
+      await onSubmit({ email, recoveryEmail, senha })
       setOpen(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível cadastrar')
@@ -104,6 +107,16 @@ export function SignUpButton({
             />
             <TextField
               fullWidth
+              type="email"
+              label="Gmail para recuperação de senha"
+              value={recoveryEmail}
+              onChange={(e) => setRecoveryEmail(e.target.value)}
+              placeholder="seuemail@gmail.com"
+              helperText={GMAIL_RECOVERY_HINT}
+              margin="dense"
+            />
+            <TextField
+              fullWidth
               type="password"
               label="Senha"
               value={senha}
@@ -133,7 +146,7 @@ export function SignUpButton({
           <Button
             variant="contained"
             onClick={() => void handleRegister()}
-            disabled={loading || !email.trim() || !senha}
+            disabled={loading || !email.trim() || !recoveryEmail.trim() || !senha}
           >
             {loading ? 'Cadastrando...' : 'Criar conta'}
           </Button>

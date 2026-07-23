@@ -20,9 +20,13 @@ interface AuthContextValue {
   demoMode: DemoModeState | null
   isLoading: boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
-  registerGestor: (credentials: LoginCredentials) => Promise<AuthUser>
+  registerGestor: (credentials: LoginCredentials, recoveryEmail: string) => Promise<AuthUser>
   loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
-  registerWithEmailTimeline: (email: string, password: string) => Promise<TimelineLoginResult>
+  registerWithEmailTimeline: (
+    email: string,
+    password: string,
+    recoveryEmail: string,
+  ) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
@@ -80,14 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
-  const registerGestor = useCallback(async (credentials: LoginCredentials) => {
-    if (!authService.usesSupabaseAuth()) {
-      throw new Error('O cadastro está disponível apenas com autenticação em nuvem (Supabase).')
-    }
-    const authUser = await authService.registerGestorSupabase(credentials)
-    setGestorUser(authUser)
-    return authUser
-  }, [])
+  const registerGestor = useCallback(
+    async (credentials: LoginCredentials, recoveryEmail: string) => {
+      if (!authService.usesSupabaseAuth()) {
+        throw new Error('O cadastro está disponível apenas com autenticação em nuvem (Supabase).')
+      }
+      const authUser = await authService.registerGestorSupabase(credentials, recoveryEmail)
+      setGestorUser(authUser)
+      return authUser
+    },
+    [],
+  )
 
   const loginWithEmailTimeline = useCallback(async (email: string, password?: string) => {
     const result = await authService.loginWithEmailTimeline(email, password)
@@ -95,11 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result
   }, [])
 
-  const registerWithEmailTimeline = useCallback(async (email: string, password: string) => {
-    const result = await authService.registerWithEmailTimeline(email, password)
-    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
-    return result
-  }, [])
+  const registerWithEmailTimeline = useCallback(
+    async (email: string, password: string, recoveryEmail: string) => {
+      const result = await authService.registerWithEmailTimeline(email, password, recoveryEmail)
+      applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+      return result
+    },
+    [],
+  )
 
   const logout = useCallback(async (portal: Portal) => {
     await authService.logout(portal)
@@ -176,7 +186,8 @@ export function useGestorAuth() {
     user: gestorUser,
     isLoading,
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
-    register: registerGestor,
+    register: (credentials: LoginCredentials, recoveryEmail: string) =>
+      registerGestor(credentials, recoveryEmail),
     logout: () => logout('gestor'),
   }
 }

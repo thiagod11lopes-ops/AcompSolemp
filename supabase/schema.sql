@@ -30,12 +30,18 @@ create table if not exists public.profiles (
   tenant_id uuid not null references public.tenants (id) on delete cascade,
   app_user_id text not null,
   email text not null,
+  recovery_email text,
   perfil text not null default 'GESTOR',
   created_at timestamptz not null default now()
 );
 
 create index if not exists profiles_tenant_id_idx on public.profiles (tenant_id);
 create index if not exists profiles_email_idx on public.profiles (lower(email));
+create index if not exists profiles_email_lower_idx on public.profiles (lower(email));
+create index if not exists profiles_recovery_email_lower_idx on public.profiles (lower(recovery_email));
+
+-- Compatível com bancos que já tinham profiles sem a coluna
+alter table public.profiles add column if not exists recovery_email text;
 
 -- Acesso Timeline por e-mail (usuários cadastrados pelo gestor)
 create table if not exists public.email_access (
@@ -180,6 +186,26 @@ as $$
 $$;
 
 grant execute on function public.lookup_email_access(text) to anon, authenticated;
+
+-- Resolve o e-mail Auth (Gmail) a partir do e-mail institucional Marinha
+create or replace function public.lookup_auth_email_by_marinha(p_marinha text)
+returns table (
+  marinha_email text,
+  auth_email text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    p.email,
+    coalesce(nullif(trim(p.recovery_email), ''), p.email) as auth_email
+  from public.profiles p
+  where lower(p.email) = lower(trim(p_marinha))
+  limit 1
+$$;
+
+grant execute on function public.lookup_auth_email_by_marinha(text) to anon, authenticated;
 
 -- Privileges for Data API (necessário quando "Automatically expose new tables" está desligado)
 grant usage on schema public to anon, authenticated;
