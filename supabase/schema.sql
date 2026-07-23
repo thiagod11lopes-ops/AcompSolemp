@@ -1,5 +1,5 @@
 -- AcompSolemp — schema inicial (Fase 1: snapshot AppData em JSONB)
--- Execute no SQL Editor do Supabase Dashboard (projeto novo).
+-- Execute no SQL Editor do Supabase Dashboard (idempotente: pode rodar de novo).
 
 -- Extensões
 create extension if not exists "pgcrypto";
@@ -66,6 +66,21 @@ set search_path = public
 as $$
   select tenant_id from public.profiles where id = auth.uid()
 $$;
+
+-- Recria policies (seguro em reexecução)
+drop policy if exists "tenants_select_own" on public.tenants;
+drop policy if exists "tenants_insert_authenticated" on public.tenants;
+drop policy if exists "tenants_update_own" on public.tenants;
+drop policy if exists "app_state_select_own" on public.app_state;
+drop policy if exists "app_state_insert_own" on public.app_state;
+drop policy if exists "app_state_update_own" on public.app_state;
+drop policy if exists "profiles_select_own" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+drop policy if exists "email_access_select" on public.email_access;
+drop policy if exists "email_access_insert_tenant" on public.email_access;
+drop policy if exists "email_access_update_tenant" on public.email_access;
+drop policy if exists "email_access_delete_tenant" on public.email_access;
 
 -- tenants: dono lê/atualiza; insert no bootstrap do gestor
 create policy "tenants_select_own"
