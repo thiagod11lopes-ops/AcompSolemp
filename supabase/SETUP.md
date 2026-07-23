@@ -41,10 +41,17 @@ Com `VITE_DATA_SOURCE=local` (padrão), o app continua só em IndexedDB.
 | Timeline | E-mail cadastrado em Cadastros (`email_access`) + login Supabase quando vinculado |
 | Demo | Sempre IndexedDB local |
 
-## 6. GitHub Pages
+# 6. GitHub Pages
 
-Secrets sugeridos:
+Secrets obrigatórios no repositório (Settings → Secrets and variables → Actions):
 
 - `VITE_DATA_SOURCE=supabase`
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_URL=https://xxxx.supabase.co` (**URL pública do projeto**, não `http://127.0.0.1`)
+- `VITE_SUPABASE_ANON_KEY=eyJ...`
+
+Se o cadastro/login mostrar **Failed to fetch**, em geral a URL do Secret aponta para localhost,
+o projeto Supabase está pausado, ou a anon key está errada. Após corrigir os Secrets, rode
+**Actions → Deploy GitHub Pages → Run workflow** para gerar um build novo.
+
+No painel Supabase → Authentication → URL Configuration, inclua o site Pages em Redirect URLs
+(ex.: `https://<user>.github.io/AcompSolemp/redefinir-senha`).

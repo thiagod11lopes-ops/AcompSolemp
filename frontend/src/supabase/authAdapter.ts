@@ -1,6 +1,7 @@
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { getSupabaseClient } from '@/supabase/client'
+import { withSupabaseAuthError } from '@/supabase/authErrors'
 
 export interface SupabaseAuthSession {
   user: SupabaseUser
@@ -27,32 +28,36 @@ export const supabaseAuthAdapter = {
   },
 
   async signInWithPassword(email: string, password: string): Promise<SupabaseAuthSession> {
-    const { data, error } = await getSupabaseClient().auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
+    return withSupabaseAuthError(async () => {
+      const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      if (error) throw error
+      if (!data.session || !data.user) {
+        throw new Error('Falha ao autenticar no Supabase.')
+      }
+      return { user: data.user, session: data.session }
     })
-    if (error) throw error
-    if (!data.session || !data.user) {
-      throw new Error('Falha ao autenticar no Supabase.')
-    }
-    return { user: data.user, session: data.session }
   },
 
   async signUpWithPassword(
     email: string,
     password: string,
   ): Promise<SupabaseAuthSession> {
-    const { data, error } = await getSupabaseClient().auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
+    return withSupabaseAuthError(async () => {
+      const { data, error } = await getSupabaseClient().auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+      })
+      if (error) throw error
+      if (!data.session || !data.user) {
+        throw new Error(
+          'Conta criada. Confirme o e-mail (se exigido) e faça login novamente.',
+        )
+      }
+      return { user: data.user, session: data.session }
     })
-    if (error) throw error
-    if (!data.session || !data.user) {
-      throw new Error(
-        'Conta criada. Confirme o e-mail (se exigido) e faça login novamente.',
-      )
-    }
-    return { user: data.user, session: data.session }
   },
 
   /** Entra ou cria conta com e-mail/senha (gestor). */
@@ -64,6 +69,7 @@ export const supabaseAuthAdapter = {
       const invalid =
         message.includes('invalid login') ||
         message.includes('invalid credentials') ||
+        message.includes('e-mail ou senha inválidos') ||
         message.includes('user not found')
       if (!invalid) throw error
       return this.signUpWithPassword(email, password)
@@ -77,18 +83,22 @@ export const supabaseAuthAdapter = {
   },
 
   async resetPasswordForEmail(email: string, redirectTo: string): Promise<void> {
-    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
-      email.trim().toLowerCase(),
-      { redirectTo },
-    )
-    if (error) throw error
+    return withSupabaseAuthError(async () => {
+      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        { redirectTo },
+      )
+      if (error) throw error
+    })
   },
 
   async updatePassword(newPassword: string): Promise<void> {
-    const { error } = await getSupabaseClient().auth.updateUser({
-      password: newPassword,
+    return withSupabaseAuthError(async () => {
+      const { error } = await getSupabaseClient().auth.updateUser({
+        password: newPassword,
+      })
+      if (error) throw error
     })
-    if (error) throw error
   },
 
   /** Aguarda sessão de recovery (link do e-mail) ou sessão já ativa. */
