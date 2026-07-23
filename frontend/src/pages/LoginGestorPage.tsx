@@ -143,12 +143,17 @@ export default function LoginGestorPage() {
             },
           }}
         />
+        {isSupabase && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5, mb: 1 }}>
+            <ForgotPasswordButton emailHint={emailHint} variant="link" fullWidth={false} />
+          </Box>
+        )}
         <Button
           fullWidth
           type="submit"
           variant="contained"
           size="large"
-          sx={{ mt: 3 }}
+          sx={{ mt: isSupabase ? 1 : 3 }}
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Entrando...' : 'Entrar'}
@@ -162,7 +167,6 @@ export default function LoginGestorPage() {
             helperText="Crie a organização do gestor com e-mail @marinha.mil.br e senha."
             onSubmit={handleSignUp}
           />
-          <ForgotPasswordButton emailHint={emailHint} />
         </Stack>
       )}
 

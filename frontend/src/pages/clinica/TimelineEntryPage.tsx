@@ -145,8 +145,13 @@ export default function TimelineEntryPage() {
             label="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            sx={{ mb: 2 }}
+            sx={{ mb: 0.5 }}
           />
+        )}
+        {isSupabase && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <ForgotPasswordButton emailHint={email} variant="link" fullWidth={false} />
+          </Box>
         )}
         <Button
           fullWidth
@@ -165,7 +170,6 @@ export default function TimelineEntryPage() {
               helperText="O gestor precisa ter liberado seu e-mail em Cadastros. Depois crie sua senha aqui."
               onSubmit={handleSignUp}
             />
-            <ForgotPasswordButton emailHint={email} />
           </Stack>
         )}
 
