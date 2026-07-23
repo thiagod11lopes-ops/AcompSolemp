@@ -497,10 +497,14 @@ export const authService = {
         'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
       )
     }
-    await supabaseAuthAdapter.resetPasswordForEmail(
-      normalized,
-      passwordResetRedirectUrl(),
-    )
+    try {
+      await supabaseAuthAdapter.resetPasswordForEmail(
+        normalized,
+        passwordResetRedirectUrl(),
+      )
+    } catch (error) {
+      throw mapSupabaseAuthError(error)
+    }
   },
 
   async completePasswordReset(newPassword: string): Promise<void> {

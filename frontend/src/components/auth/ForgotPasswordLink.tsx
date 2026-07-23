@@ -13,6 +13,7 @@ import {
 import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
 
 interface ForgotPasswordButtonProps {
   emailHint?: string
@@ -52,7 +53,13 @@ export function ForgotPasswordButton({
       await authService.requestPasswordReset(email)
       setSent(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível enviar o link')
+      const mapped = mapSupabaseAuthError(e)
+      const text = getAuthErrorMessage(mapped) || mapped.message
+      setError(
+        text && text !== '{}'
+          ? text
+          : 'Não foi possível enviar o link. Confira SMTP e Redirect URLs no Supabase.',
+      )
     } finally {
       setLoading(false)
     }
