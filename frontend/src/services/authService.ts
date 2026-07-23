@@ -212,7 +212,24 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    const authSession = await supabaseAuthAdapter.signInOrSignUp(email, credentials.senha)
+    const authSession = await supabaseAuthAdapter.signInWithPassword(email, credentials.senha)
+    return this.completeGestorSupabaseSession(authSession, email)
+  },
+
+  async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
+    const email = assertMarinhaEmail(credentials.login)
+    if (credentials.senha.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+
+    const authSession = await supabaseAuthAdapter.signUpWithPassword(email, credentials.senha)
+    return this.completeGestorSupabaseSession(authSession, email)
+  },
+
+  async completeGestorSupabaseSession(
+    authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
+    email: string,
+  ): Promise<AuthUser> {
     let profile = await getProfileForCurrentUser()
 
     if (!profile) {
@@ -272,40 +289,71 @@ export const authService = {
         throw new Error('Email não cadastrado pelo gestor')
       }
 
-      const authSession = await supabaseAuthAdapter.signInOrSignUp(normalized, password)
-      const existingProfile = await getProfileForCurrentUser()
-      if (!existingProfile) {
-        const { error } = await getSupabaseClient().from('profiles').insert({
-          id: authSession.user.id,
-          tenant_id: access.tenant_id,
-          app_user_id: access.app_user_id,
-          email: normalized,
-          perfil: access.perfil,
-        })
-        if (error) throw error
-      }
-
-      setTenantId(access.tenant_id)
-      await hydrateLocalCacheFromSupabase((data) => {
-        applyRemoteAppData(data)
-      })
-
-      const data = loadAppData()
-      const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
-      if (!user) {
-        throw new Error('Email não cadastrado')
-      }
-
-      const portal = portalForPerfil(user.perfil)
-      const authUser = await completePortalLogin(portal, user)
-      return {
-        authUser,
-        portal,
-        route: getHomeRouteForPerfil(user.perfil),
-      }
+      const authSession = await supabaseAuthAdapter.signInWithPassword(normalized, password)
+      return this.completeTimelineSupabaseSession(authSession, access, normalized)
     }
 
     const user = findLocalUserByEmail(normalized)
+    if (!user) {
+      throw new Error('Email não cadastrado')
+    }
+
+    const portal = portalForPerfil(user.perfil)
+    const authUser = await completePortalLogin(portal, user)
+    return {
+      authUser,
+      portal,
+      route: getHomeRouteForPerfil(user.perfil),
+    }
+  },
+
+  async registerWithEmailTimeline(
+    email: string,
+    password: string,
+  ): Promise<TimelineLoginResult> {
+    const normalized = assertMarinhaEmail(email)
+    if (!useSupabaseDataSource()) {
+      throw new Error('O cadastro com senha está disponível apenas com autenticação em nuvem.')
+    }
+    if (password.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+
+    const access = await getEmailAccess(normalized)
+    if (!access) {
+      throw new Error(
+        'E-mail não liberado. Peça ao gestor para cadastrá-lo em Cadastros antes de criar a senha.',
+      )
+    }
+
+    const authSession = await supabaseAuthAdapter.signUpWithPassword(normalized, password)
+    return this.completeTimelineSupabaseSession(authSession, access, normalized)
+  },
+
+  async completeTimelineSupabaseSession(
+    authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
+    access: NonNullable<Awaited<ReturnType<typeof getEmailAccess>>>,
+    normalized: string,
+  ): Promise<TimelineLoginResult> {
+    const existingProfile = await getProfileForCurrentUser()
+    if (!existingProfile) {
+      const { error } = await getSupabaseClient().from('profiles').insert({
+        id: authSession.user.id,
+        tenant_id: access.tenant_id,
+        app_user_id: access.app_user_id,
+        email: normalized,
+        perfil: access.perfil,
+      })
+      if (error) throw error
+    }
+
+    setTenantId(access.tenant_id)
+    await hydrateLocalCacheFromSupabase((data) => {
+      applyRemoteAppData(data)
+    })
+
+    const data = loadAppData()
+    const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
     if (!user) {
       throw new Error('Email não cadastrado')
     }

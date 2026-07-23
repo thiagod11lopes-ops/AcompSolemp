@@ -7,7 +7,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Link,
   TextField,
   Typography,
 } from '@mui/material'
@@ -15,12 +14,18 @@ import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { MARINHA_EMAIL_HINT } from '@/utils/email'
 
-interface ForgotPasswordLinkProps {
-  /** Prefill e-mail from the login form when available */
+interface ForgotPasswordButtonProps {
   emailHint?: string
+  /** Botão destacado (padrão) ou link de texto */
+  variant?: 'button' | 'link'
+  fullWidth?: boolean
 }
 
-export function ForgotPasswordLink({ emailHint = '' }: ForgotPasswordLinkProps) {
+export function ForgotPasswordButton({
+  emailHint = '',
+  variant = 'button',
+  fullWidth = true,
+}: ForgotPasswordButtonProps) {
   const isSupabase = useSupabaseDataSource()
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState(emailHint)
@@ -55,11 +60,23 @@ export function ForgotPasswordLink({ emailHint = '' }: ForgotPasswordLinkProps) 
 
   return (
     <>
-      <Typography variant="body2" sx={{ textAlign: 'right', mt: 0.5 }}>
-        <Link component="button" type="button" onClick={openDialog} underline="hover">
+      {variant === 'link' ? (
+        <Typography variant="body2" sx={{ textAlign: 'right', mt: 0.5 }}>
+          <Button variant="text" size="small" onClick={openDialog} sx={{ textTransform: 'none' }}>
+            Esqueci a senha
+          </Button>
+        </Typography>
+      ) : (
+        <Button
+          fullWidth={fullWidth}
+          variant="outlined"
+          color="inherit"
+          onClick={openDialog}
+          disabled={!isSupabase}
+        >
           Esqueci a senha
-        </Link>
-      </Typography>
+        </Button>
+      )}
 
       <Dialog open={open} onClose={() => !loading && setOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Recuperar senha</DialogTitle>
@@ -110,3 +127,6 @@ export function ForgotPasswordLink({ emailHint = '' }: ForgotPasswordLinkProps) 
     </>
   )
 }
+
+/** @deprecated use ForgotPasswordButton */
+export const ForgotPasswordLink = ForgotPasswordButton

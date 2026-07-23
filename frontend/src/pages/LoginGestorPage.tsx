@@ -8,6 +8,7 @@ import {
   IconButton,
   Link,
   Divider,
+  Stack,
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
@@ -22,7 +23,8 @@ import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
-import { ForgotPasswordLink } from '@/components/auth/ForgotPasswordLink'
+import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
+import { SignUpButton } from '@/components/auth/SignUpButton'
 
 const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o login'),
@@ -40,7 +42,7 @@ const supabaseLoginSchema = z.object({
 type LoginForm = z.infer<typeof localLoginSchema>
 
 export default function LoginGestorPage() {
-  const { login, logout } = useGestorAuth()
+  const { login, register, logout } = useGestorAuth()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const location = useLocation()
@@ -51,7 +53,7 @@ export default function LoginGestorPage() {
   const [error, setError] = useState('')
 
   const {
-    register,
+    register: registerField,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
@@ -84,6 +86,12 @@ export default function LoginGestorPage() {
     }
   }
 
+  const handleSignUp = async (values: { email: string; senha: string }) => {
+    setError('')
+    await register({ login: values.email, senha: values.senha })
+    await finishLogin()
+  }
+
   return (
     <Box>
       <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -110,10 +118,9 @@ export default function LoginGestorPage() {
           margin="normal"
           placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
           helperText={
-            errors.login?.message ??
-            (isSupabase ? MARINHA_EMAIL_HINT : undefined)
+            errors.login?.message ?? (isSupabase ? MARINHA_EMAIL_HINT : undefined)
           }
-          {...register('login')}
+          {...registerField('login')}
           error={Boolean(errors.login)}
         />
         <TextField
@@ -121,7 +128,7 @@ export default function LoginGestorPage() {
           label="Senha"
           type={showPassword ? 'text' : 'password'}
           margin="normal"
-          {...register('senha')}
+          {...registerField('senha')}
           error={Boolean(errors.senha)}
           helperText={errors.senha?.message}
           slotProps={{
@@ -136,7 +143,6 @@ export default function LoginGestorPage() {
             },
           }}
         />
-        {isSupabase && <ForgotPasswordLink emailHint={emailHint} />}
         <Button
           fullWidth
           type="submit"
@@ -145,13 +151,20 @@ export default function LoginGestorPage() {
           sx={{ mt: 3 }}
           disabled={isSubmitting}
         >
-          {isSubmitting
-            ? 'Entrando...'
-            : isSupabase
-              ? 'Entrar / Criar organização'
-              : 'Entrar como Gestor'}
+          {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
+
+      {isSupabase && (
+        <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+          <SignUpButton
+            emailHint={emailHint}
+            helperText="Crie a organização do gestor com e-mail @marinha.mil.br e senha."
+            onSubmit={handleSignUp}
+          />
+          <ForgotPasswordButton emailHint={emailHint} />
+        </Stack>
+      )}
 
       <Divider sx={{ my: 2 }} />
 
@@ -164,7 +177,7 @@ export default function LoginGestorPage() {
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
         {isSupabase
-          ? 'No primeiro acesso com e-mail @marinha.mil.br / senha sua organização é criada automaticamente.'
+          ? 'Use Entrar se já tem conta, ou Cadastrar-se no primeiro acesso com @marinha.mil.br.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
     </Box>

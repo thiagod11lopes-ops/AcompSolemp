@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Stack,
   TextField,
   Typography,
   alpha,
@@ -16,7 +17,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
 import { MARINHA_EMAIL_HINT } from '@/utils/email'
-import { ForgotPasswordLink } from '@/components/auth/ForgotPasswordLink'
+import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
+import { SignUpButton } from '@/components/auth/SignUpButton'
 
 /**
  * Portão de acesso à Timeline — e-mail institucional cadastrado pelo gestor.
@@ -24,7 +26,7 @@ import { ForgotPasswordLink } from '@/components/auth/ForgotPasswordLink'
 export default function TimelineEntryPage() {
   const theme = useTheme()
   const navigate = useNavigate()
-  const { loginWithEmailTimeline } = useAuth()
+  const { loginWithEmailTimeline, registerWithEmailTimeline } = useAuth()
   const isSupabase = useSupabaseDataSource()
   const [gateReady, setGateReady] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -62,6 +64,12 @@ export default function TimelineEntryPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSignUp = async (values: { email: string; senha: string }) => {
+    setErro('')
+    const result = await registerWithEmailTimeline(values.email, values.senha)
+    navigate(result.route, { replace: true })
   }
 
   if (!gateReady) return <LoadingSpinner />
@@ -117,7 +125,7 @@ export default function TimelineEntryPage() {
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {isSupabase
-            ? 'E-mail @marinha.mil.br cadastrado pelo gestor + senha (cria acesso no primeiro login).'
+            ? 'E-mail @marinha.mil.br liberado pelo gestor. Use Entrar ou Cadastrar-se no primeiro acesso.'
             : 'Informe o e-mail @marinha.mil.br cadastrado pelo gestor.'}
         </Typography>
         <TextField
@@ -131,19 +139,14 @@ export default function TimelineEntryPage() {
           sx={{ mb: 2 }}
         />
         {isSupabase && (
-          <>
-            <TextField
-              fullWidth
-              type="password"
-              label="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 0.5 }}
-            />
-            <Box sx={{ textAlign: 'left', mb: 2 }}>
-              <ForgotPasswordLink emailHint={email} />
-            </Box>
-          </>
+          <TextField
+            fullWidth
+            type="password"
+            label="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            sx={{ mb: 2 }}
+          />
         )}
         <Button
           fullWidth
@@ -154,6 +157,17 @@ export default function TimelineEntryPage() {
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>
+
+        {isSupabase && (
+          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+            <SignUpButton
+              emailHint={email}
+              helperText="O gestor precisa ter liberado seu e-mail em Cadastros. Depois crie sua senha aqui."
+              onSubmit={handleSignUp}
+            />
+            <ForgotPasswordButton emailHint={email} />
+          </Stack>
+        )}
 
         {erro && (
           <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>
