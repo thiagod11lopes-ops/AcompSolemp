@@ -10,9 +10,16 @@ Persistência remota do `AppData` em JSONB + Auth e-mail/senha.
    - Project URL
    - anon public key
 
-## 2. Schema
+## 2. Schema (obrigatório antes do primeiro cadastro)
 
-No **SQL Editor**, execute o arquivo [`schema.sql`](./schema.sql).
+No Supabase → **SQL Editor** → **New query**:
+
+1. Abra o arquivo [`schema.sql`](./schema.sql) do repositório
+2. Cole o conteúdo inteiro no editor
+3. Clique em **Run**
+
+Sem isso, o cadastro autenticará mas falhará com *Invalid path specified in request URL*
+(as tabelas `tenants`, `profiles`, `app_state`, `email_access` ainda não existem).
 
 ## 3. Auth
 

@@ -64,6 +64,14 @@ export function mapSupabaseAuthError(error: unknown): Error {
     return new Error('Muitas tentativas. Aguarde alguns minutos e tente novamente.')
   }
 
+  if (lower.includes('invalid path') || lower.includes('pgrst125')) {
+    return new Error(
+      'As tabelas do AcompSolemp não foram encontradas no Supabase. ' +
+        'Abra o SQL Editor e execute o arquivo supabase/schema.sql do repositório. ' +
+        'Também confira se VITE_SUPABASE_URL é só https://xxxx.supabase.co (sem /rest/v1).',
+    )
+  }
+
   return error
 }
 

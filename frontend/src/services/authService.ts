@@ -35,6 +35,7 @@ import {
 } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
+import { mapSupabaseAuthError } from '@/supabase/authErrors'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
 const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
@@ -212,8 +213,12 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    const authSession = await supabaseAuthAdapter.signInWithPassword(email, credentials.senha)
-    return this.completeGestorSupabaseSession(authSession, email)
+    try {
+      const authSession = await supabaseAuthAdapter.signInWithPassword(email, credentials.senha)
+      return await this.completeGestorSupabaseSession(authSession, email)
+    } catch (error) {
+      throw mapSupabaseAuthError(error)
+    }
   },
 
   async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
@@ -222,8 +227,12 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    const authSession = await supabaseAuthAdapter.signUpWithPassword(email, credentials.senha)
-    return this.completeGestorSupabaseSession(authSession, email)
+    try {
+      const authSession = await supabaseAuthAdapter.signUpWithPassword(email, credentials.senha)
+      return await this.completeGestorSupabaseSession(authSession, email)
+    } catch (error) {
+      throw mapSupabaseAuthError(error)
+    }
   },
 
   async completeGestorSupabaseSession(

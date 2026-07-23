@@ -3,6 +3,21 @@ import { env, isSupabaseConfigured } from '@/config/env'
 
 let client: SupabaseClient | null = null
 
+/** Garante só a origem do projeto (sem /rest/v1 nem barra final). */
+export function normalizeSupabaseUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, '')
+  try {
+    const url = new URL(trimmed)
+    // Se colaram a API URL com path (/rest/v1 etc.), remove o path.
+    url.pathname = ''
+    url.search = ''
+    url.hash = ''
+    return url.toString().replace(/\/+$/, '')
+  } catch {
+    return trimmed.replace(/\/rest\/v1$/i, '').replace(/\/+$/, '')
+  }
+}
+
 export function getSupabaseClient(): SupabaseClient {
   if (!isSupabaseConfigured()) {
     throw new Error(
@@ -11,7 +26,7 @@ export function getSupabaseClient(): SupabaseClient {
   }
 
   if (!client) {
-    client = createClient(env.supabase.url, env.supabase.anonKey, {
+    client = createClient(normalizeSupabaseUrl(env.supabase.url), env.supabase.anonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
