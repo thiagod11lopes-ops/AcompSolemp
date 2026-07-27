@@ -88,7 +88,14 @@ export const supabaseAuthAdapter = {
         email.trim().toLowerCase(),
         { redirectTo },
       )
-      if (error) throw error
+      if (error) {
+        const enriched = Object.assign(new Error(error.message || 'reset_password_failed'), {
+          code: (error as { code?: string }).code,
+          status: (error as { status?: number }).status,
+          redirectTo,
+        })
+        throw enriched
+      }
     })
   },
 

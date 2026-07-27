@@ -1,5 +1,15 @@
 import { env } from '@/config/env'
 
+function passwordResetRedirectUrlSafe(): string {
+  try {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+    const path = `${base}redefinir-senha`.replace(/\/{2,}/g, '/')
+    return new URL(path, window.location.origin).toString().replace(/\/$/, '')
+  } catch {
+    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
+  }
+}
+
 /** Valida a URL do Supabase antes de chamar a API (evita "Failed to fetch" opaco). */
 export function assertSupabaseUrlConfig(): void {
   const raw = env.supabase.url?.trim()
@@ -107,19 +117,18 @@ export function mapSupabaseAuthError(error: unknown): Error {
   }
 
   if (
-    lower.includes('redirect') ||
+    lower.includes('redirect url') ||
     lower.includes('redirect_to') ||
-    lower.includes('not allowed')
+    lower.includes('redirect uri') ||
+    (lower.includes('redirect') && lower.includes('allow'))
   ) {
+    const redirectHint =
+      typeof window !== 'undefined' ? passwordResetRedirectUrlSafe() : '/redefinir-senha'
     return new Error(
-      'URL de redirecionamento não autorizada. Em Authentication → URL Configuration, ' +
-        'adicione: ' +
-        (typeof window !== 'undefined'
-          ? `${window.location.origin}${import.meta.env.BASE_URL}redefinir-senha`.replace(
-              /([^:]\/)\/+/g,
-              '$1',
-            )
-          : '/redefinir-senha'),
+      'URL de redirecionamento não autorizada no Supabase. ' +
+        'Em Authentication → URL Configuration → Redirect URLs, adicione exatamente: ' +
+        redirectHint +
+        ' — depois clique em Save.',
     )
   }
 

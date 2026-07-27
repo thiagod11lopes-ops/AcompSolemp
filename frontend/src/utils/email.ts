@@ -51,7 +51,8 @@ export function assertGmailEmail(email: string): string {
 }
 
 export function passwordResetRedirectUrl(): string {
-  const base = import.meta.env.BASE_URL || '/'
-  const path = `${base.replace(/\/?$/, '/') }redefinir-senha`
-  return new URL(path, window.location.origin).toString()
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+  const path = `${base}redefinir-senha`.replace(/\/{2,}/g, '/')
+  // Sempre absoluto e sem barra final (bate com Redirect URLs do Supabase)
+  return new URL(path, window.location.origin).toString().replace(/\/$/, '')
 }
