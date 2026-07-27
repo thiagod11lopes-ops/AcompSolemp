@@ -91,7 +91,7 @@ export function ForgotPasswordButton({
           {sent ? (
             <Alert severity="success" sx={{ mt: 1 }}>
               Se a conta existir, enviamos o link de redefinição para o Gmail de recuperação
-              cadastrado. Verifique a caixa de entrada (e o spam).
+              cadastrado. Abra o link no e-mail (ele leva ao AcompSOLEMP para definir a nova senha).
             </Alert>
           ) : (
             <Box sx={{ pt: 1 }}>

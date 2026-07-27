@@ -51,8 +51,16 @@ export function assertGmailEmail(email: string): string {
 }
 
 export function passwordResetRedirectUrl(): string {
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
-  const path = `${base}redefinir-senha`.replace(/\/{2,}/g, '/')
-  // Sempre absoluto e sem barra final (bate com Redirect URLs do Supabase)
-  return new URL(path, window.location.origin).toString().replace(/\/$/, '')
+  /**
+   * Usa a Site URL (origem + base do Pages), sem /redefinir-senha.
+   * Essa URL é a configurada em Authentication → Site URL e sempre é aceita.
+   * PasswordRecoveryGate redireciona para /redefinir-senha ao detectar o link.
+   */
+  if (typeof window === 'undefined') {
+    return 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+  }
+
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
+  const url = `${window.location.origin}${base === '/' ? '' : base}`
+  return url.replace(/\/$/, '') || window.location.origin
 }

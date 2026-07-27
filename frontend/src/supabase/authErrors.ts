@@ -2,11 +2,10 @@ import { env } from '@/config/env'
 
 function passwordResetRedirectUrlSafe(): string {
   try {
-    const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
-    const path = `${base}redefinir-senha`.replace(/\/{2,}/g, '/')
-    return new URL(path, window.location.origin).toString().replace(/\/$/, '')
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
+    return `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
   } catch {
-    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
+    return 'https://thiagod11lopes-ops.github.io/AcompSolemp'
   }
 }
 

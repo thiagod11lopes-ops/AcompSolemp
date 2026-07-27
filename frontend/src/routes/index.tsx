@@ -9,6 +9,7 @@ import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
+import { PasswordRecoveryGate } from '@/components/auth/PasswordRecoveryGate'
 import { useAuth } from '@/contexts/AuthContext'
 
 function HomeRedirect() {
@@ -65,6 +66,7 @@ export function AppRoutes() {
 
   return (
     <BrowserRouter basename={basename}>
+      <PasswordRecoveryGate />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
 
