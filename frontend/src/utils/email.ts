@@ -52,15 +52,19 @@ export function assertGmailEmail(email: string): string {
 
 export function passwordResetRedirectUrl(): string {
   /**
-   * Usa a Site URL (origem + base do Pages), sem /redefinir-senha.
-   * Essa URL é a configurada em Authentication → Site URL e sempre é aceita.
-   * PasswordRecoveryGate redireciona para /redefinir-senha ao detectar o link.
+   * Deve ser uma URL EXATA da allow list do Supabase.
+   * O padrão `.../AcompSolemp/**` NÃO cobre `.../AcompSolemp` sem path extra.
    */
-  if (typeof window === 'undefined') {
-    return 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')) {
+    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
   }
 
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
-  const url = `${window.location.origin}${base === '/' ? '' : base}`
-  return url.replace(/\/$/, '') || window.location.origin
+  if (typeof window === 'undefined') {
+    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
+  }
+
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
+  return new URL(`${base}redefinir-senha`.replace(/\/{2,}/g, '/'), window.location.origin)
+    .toString()
+    .replace(/\/$/, '')
 }

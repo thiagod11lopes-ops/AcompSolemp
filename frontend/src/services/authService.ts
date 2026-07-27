@@ -1,6 +1,6 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { assertGmailEmail, assertMarinhaEmail, normalizeEmailKey } from '@/utils/email'
+import { assertGmailEmail, assertMarinhaEmail, normalizeEmailKey, passwordResetRedirectUrl } from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import {
   applyRemoteAppData,
@@ -36,7 +36,7 @@ import {
 } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
-import { mapSupabaseAuthError } from '@/supabase/authErrors'
+import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
 const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
@@ -527,9 +527,12 @@ export const authService = {
           'Não encontramos Gmail de recuperação para este e-mail Marinha. Cadastre-se novamente informando o Gmail.',
         )
       }
-      // Sem redirectTo: o Supabase usa a Site URL configurada (evita "redirect not allowed").
-      await supabaseAuthAdapter.resetPasswordForEmail(authEmail)
+      const redirectTo = passwordResetRedirectUrl()
+      await supabaseAuthAdapter.resetPasswordForEmail(authEmail, redirectTo)
     } catch (error) {
+      // Mostra a mensagem original do Supabase (evita diagnóstico genérico enganoso)
+      const raw = getAuthErrorMessage(error)
+      if (raw) throw new Error(raw)
       throw mapSupabaseAuthError(error)
     }
   },
