@@ -16,15 +16,16 @@ import AnchorIcon from '@mui/icons-material/Anchor'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
+import { isMarinhaEmail, MARINHA_EMAIL_HINT, normalizeEmailKey } from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
+import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 
 const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o login'),
@@ -52,6 +53,9 @@ export default function LoginGestorPage() {
     '/gestor/dashboard'
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [teamModalOpen, setTeamModalOpen] = useState(false)
+  const [recognizedEmail, setRecognizedEmail] = useState('')
+  const lastAnnouncedEmail = useRef('')
 
   const {
     register: registerField,
@@ -66,6 +70,33 @@ export default function LoginGestorPage() {
   })
 
   const emailHint = watch('login')
+
+  useEffect(() => {
+    if (!isSupabase) return
+
+    const raw = emailHint?.trim() ?? ''
+    if (!isMarinhaEmail(raw)) {
+      return
+    }
+
+    const normalized = normalizeEmailKey(raw)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const access = await authService.getTeamEmailAccess(normalized)
+          if (!access) return
+          if (lastAnnouncedEmail.current === normalized) return
+          lastAnnouncedEmail.current = normalized
+          setRecognizedEmail(normalized)
+          setTeamModalOpen(true)
+        } catch {
+          // Silencioso: falha de rede não deve bloquear o login
+        }
+      })()
+    }, 450)
+
+    return () => window.clearTimeout(timer)
+  }, [emailHint, isSupabase])
 
   const finishGestorLogin = async () => {
     const authUser = authService.getGestorUser()
@@ -206,6 +237,12 @@ export default function LoginGestorPage() {
           ? 'E-mail liberado pelo gestor → Timeline. Novo gestor → Cadastrar-se só se o e-mail ainda não estiver em Cadastros.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
+
+      <TeamEmailRecognizedModal
+        open={teamModalOpen}
+        email={recognizedEmail}
+        onClose={() => setTeamModalOpen(false)}
+      />
     </Box>
   )
 }
