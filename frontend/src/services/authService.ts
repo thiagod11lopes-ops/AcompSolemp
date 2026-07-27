@@ -217,6 +217,13 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail foi cadastrado pelo gestor para a Timeline. Use Entrar na Timeline (não no Portal do Gestor).',
+      )
+    }
+
     try {
       const authSession = await supabaseAuthAdapter.signInWithPassword(
         marinhaEmail,
@@ -234,6 +241,13 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail foi cadastrado pelo gestor. Use Cadastrar-se na Timeline para criar a senha — não cria Portal do Gestor.',
+      )
+    }
+
     try {
       const authSession = await supabaseAuthAdapter.signUpWithPassword(
         marinhaEmail,
@@ -249,6 +263,14 @@ export const authService = {
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
     marinhaEmail: string,
   ): Promise<AuthUser> {
+    // Trava de segurança: e-mail liberado em Cadastros nunca provisiona tenant de gestor.
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail pertence à equipe do gestor (Timeline). Não é possível usá-lo no Portal do Gestor.',
+      )
+    }
+
     let profile = await getProfileForCurrentUser()
 
     if (!profile) {
@@ -274,6 +296,13 @@ export const authService = {
       return completePortalLogin('gestor', owner)
     }
 
+    // Perfil de equipe (não gestor) que chegou aqui por engano
+    if (profile.perfil !== 'GESTOR' && profile.perfil !== 'ADMINISTRADOR') {
+      throw new Error(
+        'Este e-mail está vinculado à Timeline da organização. Use a tela da Timeline para entrar.',
+      )
+    }
+
     setTenantId(profile.tenant_id)
     await hydrateLocalCacheFromSupabase((data) => {
       applyRemoteAppData(data)
@@ -290,6 +319,12 @@ export const authService = {
     }
 
     return completePortalLogin('gestor', owner)
+  },
+
+  /** Se o e-mail foi liberado em Cadastros pelo gestor, retorna o acesso da Timeline. */
+  async getTeamEmailAccess(email: string) {
+    if (!useSupabaseDataSource()) return null
+    return getEmailAccess(assertMarinhaEmail(email))
   },
 
   async loginWithEmailTimeline(

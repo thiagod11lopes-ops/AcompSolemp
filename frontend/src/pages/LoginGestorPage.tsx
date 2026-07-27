@@ -18,7 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { useGestorAuth } from '@/contexts/AuthContext'
+import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
@@ -43,6 +43,7 @@ type LoginForm = z.infer<typeof localLoginSchema>
 
 export default function LoginGestorPage() {
   const { login, register, logout } = useGestorAuth()
+  const { loginWithEmailTimeline, registerWithEmailTimeline } = useAuth()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const location = useLocation()
@@ -66,11 +67,11 @@ export default function LoginGestorPage() {
 
   const emailHint = watch('login')
 
-  const finishLogin = async () => {
+  const finishGestorLogin = async () => {
     const authUser = authService.getGestorUser()
     if (!authUser || !canAccessGestorRoute(authUser.perfil)) {
       await logout()
-      setError('Este login é exclusivo do Portal do Gestor. Use o Portal da Clínica.')
+      setError('Este login é exclusivo do Portal do Gestor. Use a Timeline.')
       return
     }
     navigate(redirectTo)
@@ -79,8 +80,19 @@ export default function LoginGestorPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setError('')
+
+      // E-mail liberado em Cadastros → Timeline da organização do gestor (nunca novo gestor)
+      if (isSupabase) {
+        const teamAccess = await authService.getTeamEmailAccess(data.login)
+        if (teamAccess) {
+          const result = await loginWithEmailTimeline(data.login, data.senha)
+          navigate(result.route, { replace: true })
+          return
+        }
+      }
+
       await login(data)
-      await finishLogin()
+      await finishGestorLogin()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao autenticar')
     }
@@ -88,8 +100,18 @@ export default function LoginGestorPage() {
 
   const handleSignUp = async (values: { email: string; senha: string }) => {
     setError('')
+
+    if (isSupabase) {
+      const teamAccess = await authService.getTeamEmailAccess(values.email)
+      if (teamAccess) {
+        const result = await registerWithEmailTimeline(values.email, values.senha)
+        navigate(result.route, { replace: true })
+        return
+      }
+    }
+
     await register({ login: values.email, senha: values.senha })
-    await finishLogin()
+    await finishGestorLogin()
   }
 
   return (
@@ -164,7 +186,7 @@ export default function LoginGestorPage() {
         <Stack spacing={1.5} sx={{ mt: 1.5 }}>
           <SignUpButton
             emailHint={emailHint}
-            helperText="Conta com e-mail @marinha.mil.br. O link de recuperação de senha é enviado para este mesmo e-mail."
+            helperText="Se o gestor já cadastrou seu e-mail, você entra na Timeline da organização. Só vira gestor quem ainda não foi liberado em Cadastros."
             onSubmit={handleSignUp}
           />
         </Stack>
@@ -173,15 +195,15 @@ export default function LoginGestorPage() {
       <Divider sx={{ my: 2 }} />
 
       <Typography variant="body2" sx={{ textAlign: 'center' }}>
-        É da clínica?{' '}
+        É da clínica / equipe?{' '}
         <Link component={RouterLink} to="/clinica/timeline">
-          Acessar Timeline (Clínica / Ordenador)
+          Acessar Timeline
         </Link>
       </Typography>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
         {isSupabase
-          ? 'Use Entrar se já tem conta, ou Cadastrar-se no primeiro acesso com @marinha.mil.br.'
+          ? 'E-mail liberado pelo gestor → Timeline. Novo gestor → Cadastrar-se só se o e-mail ainda não estiver em Cadastros.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
     </Box>
