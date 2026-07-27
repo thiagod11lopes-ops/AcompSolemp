@@ -1,6 +1,11 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { assertGmailEmail, assertMarinhaEmail, normalizeEmailKey, passwordResetRedirectUrl } from '@/utils/email'
+import {
+  assertGmailEmail,
+  assertMarinhaEmail,
+  normalizeEmailKey,
+  passwordResetRedirectUrl,
+} from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import {
   applyRemoteAppData,
@@ -527,10 +532,10 @@ export const authService = {
           'Não encontramos Gmail de recuperação para este e-mail Marinha. Cadastre-se novamente informando o Gmail.',
         )
       }
-      const redirectTo = passwordResetRedirectUrl()
-      await supabaseAuthAdapter.resetPasswordForEmail(authEmail, redirectTo)
+      // Site URL explícita (sempre permitida). Evita /redefinir-senha na allow list.
+      await supabaseAuthAdapter.resetPasswordForEmail(authEmail, passwordResetRedirectUrl())
     } catch (error) {
-      // Mostra a mensagem original do Supabase (evita diagnóstico genérico enganoso)
+      // Já vem mapeado pelo adapter; não remapeia de novo.
       const raw = getAuthErrorMessage(error)
       if (raw) throw new Error(raw)
       throw mapSupabaseAuthError(error)

@@ -1,12 +1,19 @@
 import { env } from '@/config/env'
 
-function passwordResetRedirectUrlSafe(): string {
+/** URLs que devem existir em Authentication → URL Configuration. */
+function passwordResetUrlHints(): string {
+  const site = 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+  const reset = `${site}/redefinir-senha`
   try {
-    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
-    return `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
+    if (typeof window !== 'undefined' && !window.location.hostname.endsWith('github.io')) {
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
+      const localSite = `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
+      return `${localSite} e ${localSite}/redefinir-senha`
+    }
   } catch {
-    return 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+    // fallback abaixo
   }
+  return `${site} (Site URL) e ${reset} (Redirect URLs)`
 }
 
 /** Valida a URL do Supabase antes de chamar a API (evita "Failed to fetch" opaco). */
@@ -117,17 +124,22 @@ export function mapSupabaseAuthError(error: unknown): Error {
 
   if (
     lower.includes('redirect url') ||
-    lower.includes('redirect_to') ||
-    lower.includes('redirect uri') ||
-    (lower.includes('redirect') && lower.includes('allow'))
+    lower.includes('redirect_uri') ||
+    lower.includes('invalid redirect') ||
+    (lower.includes('redirect') && (lower.includes('not allowed') || lower.includes('não autoriz')))
   ) {
-    const redirectHint =
-      typeof window !== 'undefined' ? passwordResetRedirectUrlSafe() : '/redefinir-senha'
+    const attempted =
+      error && typeof error === 'object' && 'redirectTo' in error
+        ? String((error as { redirectTo?: unknown }).redirectTo ?? '')
+        : ''
     return new Error(
       'URL de redirecionamento não autorizada no Supabase. ' +
-        'Em Authentication → URL Configuration → Redirect URLs, adicione exatamente: ' +
-        redirectHint +
-        ' — depois clique em Save.',
+        (attempted ? `Enviada: ${attempted}. ` : '') +
+        'Em Authentication → URL Configuration, Site URL deve ser exatamente a URL do Pages ' +
+        '(sem /redefinir-senha). Redirect URLs pode incluir: ' +
+        passwordResetUrlHints() +
+        '. Erro original: ' +
+        message,
     )
   }
 

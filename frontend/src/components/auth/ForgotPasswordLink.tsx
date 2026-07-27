@@ -13,7 +13,7 @@ import {
 import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { MARINHA_EMAIL_HINT } from '@/utils/email'
-import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
+import { getAuthErrorMessage } from '@/supabase/authErrors'
 
 interface ForgotPasswordButtonProps {
   emailHint?: string
@@ -53,8 +53,7 @@ export function ForgotPasswordButton({
       await authService.requestPasswordReset(email)
       setSent(true)
     } catch (e) {
-      const mapped = mapSupabaseAuthError(e)
-      const text = getAuthErrorMessage(mapped) || mapped.message
+      const text = getAuthErrorMessage(e)
       setError(
         text && text !== '{}'
           ? text

@@ -12,8 +12,24 @@ import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
 import { PasswordRecoveryGate } from '@/components/auth/PasswordRecoveryGate'
 import { useAuth } from '@/contexts/AuthContext'
 
+function looksLikePasswordRecoveryLanding(): boolean {
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash.toLowerCase()
+  const search = window.location.search.toLowerCase()
+  return (
+    hash.includes('type=recovery') ||
+    search.includes('type=recovery') ||
+    hash.includes('type%3drecovery') ||
+    search.includes('type%3drecovery')
+  )
+}
+
 function HomeRedirect() {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
+  // Mantém a home ocupada até o PasswordRecoveryGate processar o hash do e-mail.
+  if (looksLikePasswordRecoveryLanding()) {
+    return <LoadingSpinner />
+  }
   if (gestorUser) return <Navigate to="/gestor/dashboard" replace />
   if (financeiroUser) return <Navigate to="/financeiro/pagamentos" replace />
   if (ordenadorUser) return <Navigate to="/ordenador/timelines" replace />

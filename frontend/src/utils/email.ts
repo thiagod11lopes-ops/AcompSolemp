@@ -50,21 +50,20 @@ export function assertGmailEmail(email: string): string {
   return normalized
 }
 
+/**
+ * Redirect após clicar no link do e-mail.
+ * Usa a Site URL (sem /redefinir-senha): ela é sempre permitida no Supabase.
+ * PasswordRecoveryGate encaminha para /redefinir-senha.
+ */
 export function passwordResetRedirectUrl(): string {
-  /**
-   * Deve ser uma URL EXATA da allow list do Supabase.
-   * O padrão `.../AcompSolemp/**` NÃO cobre `.../AcompSolemp` sem path extra.
-   */
-  if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')) {
-    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
+  const productionSite = 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+
+  if (typeof window === 'undefined') return productionSite
+
+  if (window.location.hostname.endsWith('github.io')) {
+    return productionSite
   }
 
-  if (typeof window === 'undefined') {
-    return 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
-  }
-
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/')
-  return new URL(`${base}redefinir-senha`.replace(/\/{2,}/g, '/'), window.location.origin)
-    .toString()
-    .replace(/\/$/, '')
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
+  return `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
 }
