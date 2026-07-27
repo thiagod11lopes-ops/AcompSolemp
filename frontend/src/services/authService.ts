@@ -1,7 +1,6 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
 import {
-  assertGmailEmail,
   assertMarinhaEmail,
   normalizeEmailKey,
   passwordResetRedirectUrl,
@@ -36,7 +35,6 @@ import { supabaseAuthAdapter } from '@/supabase/authAdapter'
 import {
   getEmailAccess,
   getProfileForCurrentUser,
-  lookupAuthEmailByMarinha,
   provisionGestorTenant,
 } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
@@ -220,10 +218,8 @@ export const authService = {
     }
 
     try {
-      const authEmail =
-        (await lookupAuthEmailByMarinha(marinhaEmail)) ?? marinhaEmail
       const authSession = await supabaseAuthAdapter.signInWithPassword(
-        authEmail,
+        marinhaEmail,
         credentials.senha,
       )
       return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
@@ -232,20 +228,18 @@ export const authService = {
     }
   },
 
-  async registerGestorSupabase(
-    credentials: LoginCredentials,
-    recoveryEmail: string,
-  ): Promise<AuthUser> {
+  async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
     const marinhaEmail = assertMarinhaEmail(credentials.login)
-    const gmail = assertGmailEmail(recoveryEmail)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
     try {
-      // Conta Auth no Gmail para o link de recuperação chegar; identidade no app = Marinha
-      const authSession = await supabaseAuthAdapter.signUpWithPassword(gmail, credentials.senha)
-      return await this.completeGestorSupabaseSession(authSession, marinhaEmail, gmail)
+      const authSession = await supabaseAuthAdapter.signUpWithPassword(
+        marinhaEmail,
+        credentials.senha,
+      )
+      return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
     } catch (error) {
       throw mapSupabaseAuthError(error)
     }
@@ -254,7 +248,6 @@ export const authService = {
   async completeGestorSupabaseSession(
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
     marinhaEmail: string,
-    recoveryEmail?: string,
   ): Promise<AuthUser> {
     let profile = await getProfileForCurrentUser()
 
@@ -262,7 +255,6 @@ export const authService = {
       const { tenant, profile: created, owner } = await provisionGestorTenant({
         authUserId: authSession.user.id,
         email: marinhaEmail,
-        recoveryEmail: recoveryEmail ?? null,
         displayName: authSession.user.user_metadata?.full_name,
         initialAppData: generateEmptyTenantData(),
       })
@@ -316,14 +308,8 @@ export const authService = {
         throw new Error('Email não cadastrado pelo gestor')
       }
 
-      const authEmail =
-        (await lookupAuthEmailByMarinha(marinhaEmail)) ?? marinhaEmail
-      const authSession = await supabaseAuthAdapter.signInWithPassword(authEmail, password)
-      return this.completeTimelineSupabaseSession(
-        authSession,
-        access,
-        marinhaEmail,
-      )
+      const authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
+      return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
     }
 
     const user = findLocalUserByEmail(marinhaEmail)
@@ -340,13 +326,8 @@ export const authService = {
     }
   },
 
-  async registerWithEmailTimeline(
-    email: string,
-    password: string,
-    recoveryEmail: string,
-  ): Promise<TimelineLoginResult> {
+  async registerWithEmailTimeline(email: string, password: string): Promise<TimelineLoginResult> {
     const marinhaEmail = assertMarinhaEmail(email)
-    const gmail = assertGmailEmail(recoveryEmail)
     if (!useSupabaseDataSource()) {
       throw new Error('O cadastro com senha está disponível apenas com autenticação em nuvem.')
     }
@@ -361,15 +342,14 @@ export const authService = {
       )
     }
 
-    const authSession = await supabaseAuthAdapter.signUpWithPassword(gmail, password)
-    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, gmail)
+    const authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
+    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
   },
 
   async completeTimelineSupabaseSession(
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
     access: NonNullable<Awaited<ReturnType<typeof getEmailAccess>>>,
     marinhaEmail: string,
-    recoveryEmail?: string,
   ): Promise<TimelineLoginResult> {
     const existingProfile = await getProfileForCurrentUser()
     if (!existingProfile) {
@@ -378,7 +358,6 @@ export const authService = {
         tenant_id: access.tenant_id,
         app_user_id: access.app_user_id,
         email: marinhaEmail,
-        recovery_email: recoveryEmail ?? null,
         perfil: access.perfil,
       })
       if (error) throw error
@@ -526,14 +505,10 @@ export const authService = {
       )
     }
     try {
-      const authEmail = await lookupAuthEmailByMarinha(marinhaEmail)
-      if (!authEmail) {
-        throw new Error(
-          'Não encontramos Gmail de recuperação para este e-mail Marinha. Cadastre-se novamente informando o Gmail.',
-        )
-      }
-      // Site URL explícita (sempre permitida). Evita /redefinir-senha na allow list.
-      await supabaseAuthAdapter.resetPasswordForEmail(authEmail, passwordResetRedirectUrl())
+      await supabaseAuthAdapter.resetPasswordForEmail(
+        marinhaEmail,
+        passwordResetRedirectUrl(),
+      )
     } catch (error) {
       // Já vem mapeado pelo adapter; não remapeia de novo.
       const raw = getAuthErrorMessage(error)

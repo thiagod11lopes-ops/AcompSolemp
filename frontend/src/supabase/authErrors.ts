@@ -153,7 +153,7 @@ export function mapSupabaseAuthError(error: unknown): Error {
 
   if (lower.includes('error sending') || lower.includes('smtp') || lower.includes('mail')) {
     return new Error(
-      'Falha ao enviar e-mail. Confira Authentication → Emails → SMTP (Gmail: smtp.gmail.com, senha de app).',
+      'Falha ao enviar e-mail. Confira Authentication → Emails → SMTP e se o destino @marinha.mil.br recebe mensagens.',
     )
   }
 

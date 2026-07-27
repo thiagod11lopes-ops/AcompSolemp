@@ -89,14 +89,14 @@ export function ForgotPasswordButton({
         <DialogContent>
           {sent ? (
             <Alert severity="success" sx={{ mt: 1 }}>
-              Se a conta existir, enviamos o link de redefinição para o Gmail de recuperação
-              cadastrado. Abra o link no e-mail (ele leva ao AcompSOLEMP para definir a nova senha).
+              Se a conta existir, enviamos o link de redefinição para o e-mail @marinha.mil.br
+              informado. Abra o link no e-mail (ele leva ao AcompSOLEMP para definir a nova senha).
             </Alert>
           ) : (
             <Box sx={{ pt: 1 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Informe o e-mail @marinha.mil.br da conta. O link de redefinição será enviado ao
-                Gmail de recuperação cadastrado.
+                Informe o e-mail @marinha.mil.br da conta. O link de redefinição será enviado para
+                este mesmo e-mail.
               </Typography>
               <TextField
                 fullWidth
