@@ -82,17 +82,19 @@ export const supabaseAuthAdapter = {
     if (error) throw error
   },
 
-  async resetPasswordForEmail(email: string, redirectTo: string): Promise<void> {
+  async resetPasswordForEmail(email: string, redirectTo?: string): Promise<void> {
     return withSupabaseAuthError(async () => {
-      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo },
-      )
+      // Sem redirectTo customizado o Supabase usa a Site URL (sempre permitida).
+      const { error } = redirectTo
+        ? await getSupabaseClient().auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+            redirectTo,
+          })
+        : await getSupabaseClient().auth.resetPasswordForEmail(email.trim().toLowerCase())
       if (error) {
         const enriched = Object.assign(new Error(error.message || 'reset_password_failed'), {
           code: (error as { code?: string }).code,
           status: (error as { status?: number }).status,
-          redirectTo,
+          redirectTo: redirectTo ?? '(Site URL padrão)',
         })
         throw enriched
       }
