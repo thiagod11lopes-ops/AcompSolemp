@@ -28,28 +28,28 @@ export function TeamEmailRecognizedModal({
     <Dialog
       open={open}
       onClose={onClose}
-      TransitionComponent={Fade}
-      transitionDuration={320}
-      PaperProps={{
-        sx: {
-          m: 2,
-          maxWidth: 420,
-          width: '100%',
-          overflow: 'hidden',
-          borderRadius: 4,
-          border: '1px solid rgba(34, 197, 94, 0.35)',
-          background:
-            'linear-gradient(165deg, #064E3B 0%, #047857 42%, #10B981 100%)',
-          boxShadow:
-            '0 24px 64px rgba(4, 120, 87, 0.45), 0 0 0 1px rgba(255,255,255,0.08) inset',
-          animation: `${floatIn} 0.4s cubic-bezier(0.22, 1, 0.36, 1)`,
-        },
-      }}
+      slots={{ transition: Fade }}
       slotProps={{
+        transition: { timeout: 320 },
         backdrop: {
           sx: {
             backgroundColor: 'rgba(6, 24, 18, 0.55)',
             backdropFilter: 'blur(8px)',
+          },
+        },
+        paper: {
+          sx: {
+            m: 2,
+            maxWidth: 420,
+            width: '100%',
+            overflow: 'hidden',
+            borderRadius: 4,
+            border: '1px solid rgba(34, 197, 94, 0.35)',
+            background:
+              'linear-gradient(165deg, #064E3B 0%, #047857 42%, #10B981 100%)',
+            boxShadow:
+              '0 24px 64px rgba(4, 120, 87, 0.45), 0 0 0 1px rgba(255,255,255,0.08) inset',
+            animation: `${floatIn} 0.4s cubic-bezier(0.22, 1, 0.36, 1)`,
           },
         },
       }}
