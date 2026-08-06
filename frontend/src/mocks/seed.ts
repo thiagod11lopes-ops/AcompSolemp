@@ -752,6 +752,7 @@ export function clearAllSystemData(): AppData {
     storageRemove(STORAGE_KEYS.AUTH_CLINICA)
     storageRemove(STORAGE_KEYS.AUTH_ORDENADOR)
     storageRemove(STORAGE_KEYS.AUTH_FINANCEIRO)
+    storageRemove(STORAGE_KEYS.AUTH_OPEN_ACCESS)
   } else {
     Object.values(STORAGE_KEYS).forEach((key) => storageRemove(key))
   }

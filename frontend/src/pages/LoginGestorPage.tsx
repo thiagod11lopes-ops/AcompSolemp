@@ -30,7 +30,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginGestorPage() {
-  const { login, logout } = useGestorAuth()
+  const { login, loginSemSenha, logout } = useGestorAuth()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,6 +39,7 @@ export default function LoginGestorPage() {
     '/gestor/dashboard'
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [openAccessLoading, setOpenAccessLoading] = useState(false)
 
   const {
     register,
@@ -70,6 +71,21 @@ export default function LoginGestorPage() {
       setError(e instanceof Error ? e.message : 'Erro ao autenticar')
     }
   }
+
+  const onEntrarSemSenha = async () => {
+    try {
+      setError('')
+      setOpenAccessLoading(true)
+      await loginSemSenha()
+      await finishLogin()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao entrar sem senha')
+    } finally {
+      setOpenAccessLoading(false)
+    }
+  }
+
+  const busy = isSubmitting || openAccessLoading
 
   return (
     <Box>
@@ -125,7 +141,7 @@ export default function LoginGestorPage() {
           variant="contained"
           size="large"
           sx={{ mt: 3 }}
-          disabled={isSubmitting}
+          disabled={busy}
         >
           {isSubmitting
             ? 'Entrando...'
@@ -134,6 +150,17 @@ export default function LoginGestorPage() {
               : 'Entrar como Gestor'}
         </Button>
       </form>
+
+      <Button
+        fullWidth
+        variant="outlined"
+        size="large"
+        sx={{ mt: 1.5 }}
+        disabled={busy}
+        onClick={() => void onEntrarSemSenha()}
+      >
+        {openAccessLoading ? 'Entrando...' : 'Entrar sem senha'}
+      </Button>
 
       <Divider sx={{ my: 2 }} />
 
@@ -146,7 +173,7 @@ export default function LoginGestorPage() {
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
         {isSupabase
-          ? 'No primeiro acesso com e-mail/senha sua organização é criada automaticamente.'
+          ? 'No primeiro acesso com e-mail/senha sua organização é criada automaticamente. “Entrar sem senha” usa dados locais neste navegador.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
     </Box>

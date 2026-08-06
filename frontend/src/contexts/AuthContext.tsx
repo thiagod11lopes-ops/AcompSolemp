@@ -20,6 +20,7 @@ interface AuthContextValue {
   demoMode: DemoModeState | null
   isLoading: boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
+  loginGestorSemSenha: () => Promise<AuthUser>
   loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
@@ -78,6 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
+  const loginGestorSemSenha = useCallback(async () => {
+    const authUser = await authService.loginGestorSemSenha()
+    setGestorUser(authUser)
+    return authUser
+  }, [])
+
   const loginWithEmailTimeline = useCallback(async (email: string, password?: string) => {
     const result = await authService.loginWithEmailTimeline(email, password)
     applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
@@ -118,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demoMode,
       isLoading,
       login,
+      loginGestorSemSenha,
       loginWithEmailTimeline,
       logout,
       startDemo,
@@ -132,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demoMode,
       isLoading,
       login,
+      loginGestorSemSenha,
       loginWithEmailTimeline,
       logout,
       startDemo,
@@ -150,11 +159,12 @@ export function useAuth() {
 }
 
 export function useGestorAuth() {
-  const { gestorUser, isLoading, login, logout } = useAuth()
+  const { gestorUser, isLoading, login, loginGestorSemSenha, logout } = useAuth()
   return {
     user: gestorUser,
     isLoading,
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
+    loginSemSenha: loginGestorSemSenha,
     logout: () => logout('gestor'),
   }
 }
