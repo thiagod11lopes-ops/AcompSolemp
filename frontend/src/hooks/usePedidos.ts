@@ -1,18 +1,23 @@
 import { useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PedidoFilters } from '@/types'
 import { pedidoService } from '@/services/pedidoService'
 import { notificationService } from '@/services/cadastroService'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 
+const PEDIDOS_QUERY_OPTS = {
+  staleTime: 30_000,
+  refetchOnMount: false as const,
+  refetchOnWindowFocus: false as const,
+  placeholderData: keepPreviousData,
+}
+
 export function usePedidos(filters?: PedidoFilters) {
   return useQuery({
     queryKey: ['pedidos', filters],
     queryFn: () => pedidoService.list(filters),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    ...PEDIDOS_QUERY_OPTS,
   })
 }
 
@@ -31,9 +36,7 @@ export function useDemoPedidos(filters?: PedidoFilters) {
   return useQuery({
     queryKey: ['demo-pedidos', filters],
     queryFn: () => pedidoService.listDemo(filters),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    ...PEDIDOS_QUERY_OPTS,
   })
 }
 
@@ -42,8 +45,7 @@ export function usePedido(id: string) {
     queryKey: ['pedido', id],
     queryFn: () => pedidoService.getById(id),
     enabled: Boolean(id),
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...PEDIDOS_QUERY_OPTS,
   })
 }
 
@@ -60,9 +62,7 @@ export function useDemoPedido(id: string) {
     queryKey: ['demo-pedido', id],
     queryFn: () => pedidoService.getDemoById(id),
     enabled: Boolean(id),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    ...PEDIDOS_QUERY_OPTS,
   })
 }
 
@@ -70,6 +70,8 @@ export function useDashboardMetrics() {
   return useQuery({
     queryKey: ['dashboard'],
     queryFn: () => pedidoService.getDashboardMetrics(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   })
 }
 

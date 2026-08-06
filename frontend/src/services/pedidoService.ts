@@ -1,8 +1,13 @@
 import type {
   AppData,
+  AguardandoEmpenhoItem,
+  DashboardEmpenhadoItem,
   DashboardMetrics,
+  DashboardPedidoItem,
+  EmpenhadoMesTotal,
   PedidoComDetalhes,
   PedidoFilters,
+  WorkflowEtapa,
 } from '@/types'
 import { enrichPedido } from '@/utils/workflow'
 import {
@@ -14,10 +19,101 @@ import {
 } from '@/mocks/seed'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
+import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
+
+function resolveSetorOrigem(pedido: PedidoComDetalhes): Pick<
+  AguardandoEmpenhoItem,
+  'setorTipo' | 'setorLabel' | 'setorNome'
+> {
+  const tipo = pedido.clinica.tipo ?? 'clinica'
+  if (tipo === 'medicamento') {
+    return { setorTipo: 'medicamento', setorLabel: 'Farmácia', setorNome: pedido.clinica.nome }
+  }
+  if (tipo === 'empenhado') {
+    return { setorTipo: 'empenhado', setorLabel: 'Empenhado', setorNome: pedido.clinica.nome }
+  }
+  return { setorTipo: 'clinica', setorLabel: 'Clínica', setorNome: pedido.clinica.nome }
+}
+
+function resolveValorSolemp(pedido: PedidoComDetalhes): number {
+  if (typeof pedido.solemp?.valor === 'number' && Number.isFinite(pedido.solemp.valor)) {
+    return pedido.solemp.valor
+  }
+  return pedido.valor
+}
+
+function dataConclusaoPedido(pedido: PedidoComDetalhes): string | null {
+  const datas = pedido.etapasHistorico
+    .map((h) => h.dataConclusao)
+    .filter((d): d is string => Boolean(d))
+  if (datas.length === 0) return null
+  return datas.reduce((max, d) => (d > max ? d : max), datas[0])
+}
+
+function toDashboardPedidoItem(pedido: PedidoComDetalhes): DashboardPedidoItem {
+  const setor = resolveSetorOrigem(pedido)
+  const dataConclusao = pedido.concluido ? dataConclusaoPedido(pedido) : null
+  const diasAteConclusao =
+    dataConclusao != null
+      ? differenceInCalendarDays(parseISO(dataConclusao), parseISO(pedido.dataSolicitacao))
+      : undefined
+
+  return {
+    pedidoId: pedido.id,
+    pedidoNumero: pedido.numero,
+    clinicaNome: pedido.clinica.nome,
+    empresaNome: pedido.empresa.nomeFantasia,
+    materialDescricao: pedido.material.descricao,
+    etapaAtual: pedido.etapaAtual.nome,
+    valor: pedido.valor,
+    solempNumero: pedido.solemp?.numero ?? null,
+    prazoStatus: pedido.prazoStatus,
+    diasNaEtapa: pedido.diasNaEtapa,
+    diasRestantes: pedido.diasRestantes,
+    dataSolicitacao: pedido.dataSolicitacao,
+    concluido: pedido.concluido,
+    ...setor,
+    ...(diasAteConclusao !== undefined ? { diasAteConclusao } : {}),
+  }
+}
+
+/** Ativo só em Solemp confeccionada (após Confecção concluída; ainda não Empenhado). */
+function isAguardandoEmpenhoNaSolempConfeccionada(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): boolean {
+  if (pedido.concluido || !pedido.solemp?.numero) return false
+
+  // Não contar se ainda estiver em Confecção (antes da Solemp confeccionada)
+  if (pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
+  if (!pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
+
+  // Já passou pelo Empenhado — não está mais aguardando
+  if (pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')) return false
+  if (pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')) return false
+
+  return pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_FINANCAS')
+}
+
+function dataEmpenhadoDoPedido(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): string | null {
+  const etapa = etapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
+  if (!etapa) return null
+  const historico = pedido.etapasHistorico.find(
+    (h) =>
+      Boolean(h.dataConclusao) &&
+      (h.etapaId === etapa.id || h.etapaNome === etapa.nome || h.etapaNome === 'Empenhado'),
+  )
+  return historico?.dataConclusao ?? null
+}
 
 function getContext(data: AppData) {
   return {
@@ -89,7 +185,7 @@ function filterPedidos(pedidos: PedidoComDetalhes[], filters?: PedidoFilters) {
 
 export const pedidoService = {
   async list(filters?: PedidoFilters, clinicaId?: string | null): Promise<PedidoComDetalhes[]> {
-    await delay(null)
+    // Sem delay artificial: listagens do gestor precisam ser responsivas.
     const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 
@@ -101,7 +197,6 @@ export const pedidoService = {
   },
 
   async getById(id: string): Promise<PedidoComDetalhes | null> {
-    await delay(null)
     const data = await loadFreshAppData()
     const pedido = data.pedidos.find((p) => p.id === id)
     if (!pedido) return null
@@ -109,14 +204,12 @@ export const pedidoService = {
   },
 
   async listDemo(filters?: PedidoFilters): Promise<PedidoComDetalhes[]> {
-    await delay(null)
     const data = peekDemoAppData()
     if (!data) return []
     return filterPedidos(enrichAll(data), filters)
   },
 
   async getDemoById(id: string): Promise<PedidoComDetalhes | null> {
-    await delay(null)
     const data = peekDemoAppData()
     if (!data) return null
     const pedido = data.pedidos.find((p) => p.id === id)
@@ -125,7 +218,6 @@ export const pedidoService = {
   },
 
   async getDashboardMetrics(clinicaId?: string | null): Promise<DashboardMetrics> {
-    await delay(null, 500)
     const data = await loadFreshAppData()
     let pedidos = enrichAll(data)
 
@@ -171,34 +263,105 @@ export const pedidoService = {
       dias: dias.reduce((a, b) => a + b, 0) / dias.length,
     }))
 
-    const valorTotalAberto = emAndamento.reduce((acc, p) => acc + p.valor, 0)
-    const valorPagoMes = concluidos
-      .filter((p) => differenceInCalendarDays(new Date(), parseISO(p.dataSolicitacao)) <= 30)
-      .reduce((acc, p) => acc + p.valor, 0)
+    const valorPagoMesPedidos = concluidos.filter(
+      (p) => differenceInCalendarDays(new Date(), parseISO(p.dataSolicitacao)) <= 30,
+    )
+    const valorPagoMes = valorPagoMesPedidos.reduce((acc, p) => acc + p.valor, 0)
+    const quantidadePagoMes = valorPagoMesPedidos.length
 
-    const valorAguardandoAssinatura = emAndamento
-      .filter((p) => {
-        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
-        return p.etapasHistorico.some(
-          (h) =>
-            ids.includes(h.etapaId) &&
-            !h.dataConclusao &&
-            (h.etapaNome.includes('Confecção')),
-        )
+    const etapas = data.workflowEtapas
+    const aguardandoEmpenhoPedidos = emAndamento.filter((p) =>
+      isAguardandoEmpenhoNaSolempConfeccionada(p, etapas),
+    )
+    const aguardandoEmpenhoItens: AguardandoEmpenhoItem[] = aguardandoEmpenhoPedidos
+      .map((p) => {
+        const setor = resolveSetorOrigem(p)
+        return {
+          pedidoId: p.id,
+          pedidoNumero: p.numero,
+          solempNumero: p.solemp!.numero,
+          valor: resolveValorSolemp(p),
+          ...setor,
+          diasNaEtapa: p.diasNaEtapa,
+          dataSolicitacao: p.dataSolicitacao,
+        }
       })
-      .reduce((acc, p) => acc + p.valor, 0)
+      .sort((a, b) => b.valor - a.valor)
+    const valorAguardandoEmpenho = aguardandoEmpenhoItens.reduce((acc, item) => acc + item.valor, 0)
+    const quantidadeAguardandoEmpenho = aguardandoEmpenhoItens.length
 
-    const valorAguardandoFinanceiro = emAndamento
-      .filter((p) => {
-        const ids = p.etapasAtivasIds?.length ? p.etapasAtivasIds : [p.etapaAtualId]
-        return p.etapasHistorico.some(
-          (h) =>
-            ids.includes(h.etapaId) &&
-            !h.dataConclusao &&
-            h.etapaNome === 'Finanças Pagamento',
-        )
+    const empenhadoItens: DashboardEmpenhadoItem[] = pedidos
+      .map((p) => {
+        const dataEmpenho = dataEmpenhadoDoPedido(p, etapas)
+        if (!dataEmpenho) return null
+        const dataParsed = parseISO(dataEmpenho)
+        if (!isValid(dataParsed)) return null
+        const setor = resolveSetorOrigem(p)
+        const mesLabelRaw = format(dataParsed, 'MMMM/yyyy', { locale: ptBR })
+        return {
+          pedidoId: p.id,
+          pedidoNumero: p.numero,
+          solempNumero: p.solemp?.numero ?? null,
+          empenhoNumero: resolveEmpenhoExibicao({
+            etiquetas: p.dadosClinica?.etiquetas,
+          }),
+          valor: resolveValorSolemp(p),
+          dataEmpenho,
+          mesChave: format(dataParsed, 'yyyy-MM'),
+          mesLabel: mesLabelRaw.charAt(0).toUpperCase() + mesLabelRaw.slice(1),
+          ...setor,
+          clinicaNome: p.clinica.nome,
+          empresaNome: p.empresa.nomeFantasia,
+          dataSolicitacao: p.dataSolicitacao,
+        }
       })
-      .reduce((acc, p) => acc + p.valor, 0)
+      .filter((item): item is DashboardEmpenhadoItem => item !== null)
+      .sort((a, b) => (a.dataEmpenho < b.dataEmpenho ? 1 : -1))
+
+    const valorTotalEmpenhado = empenhadoItens.reduce((acc, item) => acc + item.valor, 0)
+    const quantidadeTotalEmpenhado = empenhadoItens.length
+    const dataPrimeiroEmpenho =
+      empenhadoItens.length === 0
+        ? null
+        : empenhadoItens.reduce(
+            (min, item) => (item.dataEmpenho < min ? item.dataEmpenho : min),
+            empenhadoItens[0].dataEmpenho,
+          )
+
+    const mesMap = new Map<string, EmpenhadoMesTotal>()
+    for (const item of empenhadoItens) {
+      const current = mesMap.get(item.mesChave) ?? {
+        mesChave: item.mesChave,
+        mesLabel: item.mesLabel,
+        valor: 0,
+        quantidade: 0,
+      }
+      current.valor += item.valor
+      current.quantidade += 1
+      mesMap.set(item.mesChave, current)
+    }
+    const totaisEmpenhadoPorMes = Array.from(mesMap.values()).sort((a, b) =>
+      a.mesChave < b.mesChave ? 1 : -1,
+    )
+
+    // Garante o mês corrente na lista (mesmo zerado) para o filtro
+    const mesAtualChave = format(new Date(), 'yyyy-MM')
+    if (!mesMap.has(mesAtualChave)) {
+      const mesAtualLabel = format(new Date(), 'MMMM/yyyy', { locale: ptBR })
+      totaisEmpenhadoPorMes.unshift({
+        mesChave: mesAtualChave,
+        mesLabel: mesAtualLabel.charAt(0).toUpperCase() + mesAtualLabel.slice(1),
+        valor: 0,
+        quantidade: 0,
+      })
+    }
+
+    const todosItens = pedidos.map(toDashboardPedidoItem)
+    const emAndamentoItens = emAndamento.map(toDashboardPedidoItem)
+    const concluidosItens = concluidos.map(toDashboardPedidoItem)
+    const atrasadosItens = atrasados.map(toDashboardPedidoItem)
+    const proximosVencimentoItens = proximosVencimento.map(toDashboardPedidoItem)
+    const pagoMesItens = valorPagoMesPedidos.map(toDashboardPedidoItem)
 
     const clinicaRanking = new Map<string, { total: number; valor: number }>()
     pedidos.forEach((p) => {
@@ -259,10 +422,22 @@ export const pedidoService = {
       proximosVencimento: proximosVencimento.length,
       tempoMedioPagamento: Math.round(tempoMedioPagamento),
       tempoMedioPorEtapa,
-      valorTotalAberto,
       valorPagoMes,
-      valorAguardandoAssinatura,
-      valorAguardandoFinanceiro,
+      quantidadePagoMes,
+      valorAguardandoEmpenho,
+      quantidadeAguardandoEmpenho,
+      aguardandoEmpenhoItens,
+      valorTotalEmpenhado,
+      quantidadeTotalEmpenhado,
+      dataPrimeiroEmpenho,
+      totaisEmpenhadoPorMes,
+      todosItens,
+      emAndamentoItens,
+      concluidosItens,
+      atrasadosItens,
+      proximosVencimentoItens,
+      pagoMesItens,
+      empenhadoItens,
       rankingClinicas: Array.from(clinicaRanking.entries())
         .map(([nome, v]) => ({ nome, ...v }))
         .sort((a, b) => b.valor - a.valor)

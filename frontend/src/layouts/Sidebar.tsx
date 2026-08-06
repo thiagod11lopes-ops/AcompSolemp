@@ -15,7 +15,6 @@ import ArchiveIcon from '@mui/icons-material/Archive'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import PeopleIcon from '@mui/icons-material/People'
-import HistoryIcon from '@mui/icons-material/History'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import UndoIcon from '@mui/icons-material/Undo'
 import TimelineIcon from '@mui/icons-material/Timeline'
@@ -30,7 +29,6 @@ const menuItems = [
   { path: '/gestor/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/gestor/processos', label: 'Processos', icon: <AssignmentIcon /> },
   { path: '/gestor/cadastros', label: 'Cadastros', icon: <PeopleIcon /> },
-  { path: '/gestor/historico', label: 'Histórico', icon: <HistoryIcon /> },
   { path: '/gestor/relatorios', label: 'Relatórios', icon: <AssessmentIcon /> },
   { path: '/gestor/reversoes', label: 'Reversões', icon: <UndoIcon /> },
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },

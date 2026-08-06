@@ -134,12 +134,25 @@ export const clinicaPedidoService = {
       const clinicaUsuario = data.usuarios.find(
         (item) =>
           item.clinicaId === clinicaId &&
-          (item.perfil === 'CLINICA' || item.perfil === 'MEDICAMENTO'),
+          (item.perfil === 'CLINICA' ||
+            item.perfil === 'MEDICAMENTO' ||
+            item.perfil === 'EMPENHADO'),
       )
-      const tipoEntidade = clinicaUsuario?.perfil === 'MEDICAMENTO' ? 'medicamento' : 'clinica'
+      const tipoEntidade =
+        clinicaUsuario?.perfil === 'MEDICAMENTO'
+          ? 'medicamento'
+          : clinicaUsuario?.perfil === 'EMPENHADO'
+            ? 'empenhado'
+            : 'clinica'
       data.clinicas.push({
         id: clinicaId,
-        nome: clinicaUsuario?.nome ?? (tipoEntidade === 'medicamento' ? 'Medicamento' : 'Clínica'),
+        nome:
+          clinicaUsuario?.nome ??
+          (tipoEntidade === 'medicamento'
+            ? 'Medicamento'
+            : tipoEntidade === 'empenhado'
+              ? 'Empenhado'
+              : 'Clínica'),
         responsavel: clinicaUsuario?.nome ?? '—',
         telefone: '',
         tipo: tipoEntidade,
@@ -406,7 +419,11 @@ export const clinicaPedidoService = {
       (p) => p.id === input.pedidoId && p.clinicaId === input.clinicaId,
     )
     if (!usuario || !pedido) throw new Error('Pedido não encontrado')
-    if (usuario.perfil === 'CLINICA' || usuario.perfil === 'MEDICAMENTO') {
+    if (
+      usuario.perfil === 'CLINICA' ||
+      usuario.perfil === 'MEDICAMENTO' ||
+      usuario.perfil === 'EMPENHADO'
+    ) {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',
       )
@@ -483,7 +500,11 @@ export const clinicaPedidoService = {
     const pedido = data.pedidos.find((p) => p.id === pedidoId && p.clinicaId === clinicaId)
     const clinica = data.clinicas.find((c) => c.id === clinicaId)
     if (!usuario || !pedido || !clinica) throw new Error('Pedido não encontrado')
-    if (usuario.perfil === 'CLINICA' || usuario.perfil === 'MEDICAMENTO') {
+    if (
+      usuario.perfil === 'CLINICA' ||
+      usuario.perfil === 'MEDICAMENTO' ||
+      usuario.perfil === 'EMPENHADO'
+    ) {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',
       )

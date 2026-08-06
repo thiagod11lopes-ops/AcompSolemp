@@ -54,7 +54,8 @@ function trilhaImhIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
 function trilhaMaterialIniciada(pedido: Pedido, etapas: WorkflowEtapa[]): boolean {
   return (
     historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP') !== null ||
-    historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS') !== null
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS') !== null ||
+    historicoDaEtapa(pedido, etapas, 'DIV_MAT_EMPENHADO') !== null
   )
 }
 
@@ -68,7 +69,7 @@ function etapaConcluidaNoHistorico(
 
 /** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
  * Medicamento: encerra só com Contabilidade/IMH.
- * Clínica: exige Contabilidade/IMH e Finanças Pagamento para encerrar o PED;
+ * Clínica: exige Contabilidade/IMH e Empenhado para encerrar o PED;
  * se uma trilha não foi iniciada, o processo ainda não fecha pelo card da clínica
  * (mas a trilha iniciada pode ser concluída isoladamente). */
 function isDivMaterialConcluida(
@@ -89,14 +90,14 @@ function isDivMaterialConcluida(
   const materialFinalizada = etapaConcluidaNoHistorico(
     pedido,
     etapas,
-    'DIV_MAT_FINANCAS',
+    'DIV_MAT_EMPENHADO',
   )
 
   if (isMedicamento) {
     return !imhIniciada || imhFinalizada
   }
 
-  // Clínica: PED só encerra com as duas pontas (IMH + Finanças).
+  // Clínica: PED só encerra com as duas pontas (IMH + Empenhado).
   return imhFinalizada && materialFinalizada
 }
 
@@ -546,7 +547,7 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Finanças Pagamento.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Solemp confeccionada.`,
       etapa.id,
     )
 
@@ -554,7 +555,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
       titulo: `SOLEMP confeccionada — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Finanças Pagamento.`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Solemp confeccionada.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -581,7 +582,7 @@ export function registrarPagamentoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Finanças Pagamento')
+    throw new Error('Este processo não está na etapa Solemp confeccionada')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
@@ -597,19 +598,42 @@ export function registrarPagamentoForPedido(
     valor: solemp.valor ?? pedido.valor,
   })
 
+  data = {
+    ...data,
+    pedidos: data.pedidos.map((p) =>
+      p.id === pedidoId
+        ? { ...p, aguardandoEmpenho: false, aguardandoEmpenhoEm: undefined }
+        : p,
+    ),
+  }
+
   data = advancePedidoEtapa(
     data,
     pedidoId,
     usuario,
-    `Pagamento registrado em Finanças Pagamento — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Processo encerrado.`,
+    `Registro em Solemp confeccionada — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Enviado para Empenhado.`,
     etapa.id,
   )
+
+  const pedidoAtualizado = data.pedidos.find((p) => p.id === pedidoId)
+  const empenhadoAtiva = pedidoAtualizado
+    ? getEtapaAtivaPorChaves(pedidoAtualizado, data.workflowEtapas, ['DIV_MAT_EMPENHADO'])
+    : null
+  if (empenhadoAtiva) {
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Empenhado registrado — SOLEMP ${solemp.numero}. Processo encerrado.`,
+      empenhadoAtiva.id,
+    )
+  }
 
   data.notificacoes.push({
     id: `notif-${Date.now()}`,
     tipo: 'PAGAMENTO_REALIZADO',
     titulo: `Pagamento realizado — ${pedido.numero}`,
-    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}).`,
+    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}) e encerrou Empenhado.`,
     pedidoId,
     reversaoId: null,
     perfilDestino: null,
@@ -626,8 +650,88 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Finanças Pagamento. NF ${notaFiscalNumero} — ${empresaNome}.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
   })
+
+  return data
+}
+
+/**
+ * Marca Solemp confeccionada como "Aguardando Empenhar".
+ * Não avança o workflow nem abre o card Empenhado — só persiste a tarja.
+ */
+export function marcarAguardandoEmpenhoForPedido(
+  data: AppData,
+  pedidoId: string,
+  usuario: User,
+): AppData {
+  const pedido = data.pedidos.find((p) => p.id === pedidoId)
+  if (!pedido) throw new Error('Pedido não encontrado')
+
+  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
+  if (!etapa) {
+    throw new Error('Este processo não está na etapa Solemp confeccionada')
+  }
+
+  if (pedido.aguardandoEmpenho) {
+    return data
+  }
+
+  const now = nowIso()
+  const pedidos = data.pedidos.map((p) => {
+    if (p.id !== pedidoId) return p
+
+    const historico = p.etapasHistorico.map((h) => {
+      if (h.etapaId !== etapa.id && h.etapaNome !== etapa.nome) return h
+      return {
+        ...h,
+        observacao: h.observacao
+          ? `${h.observacao} · Aguardando Empenhar.`
+          : 'Aguardando Empenhar — processo marcado sem avançar para Empenhado.',
+      }
+    })
+
+    return {
+      ...p,
+      aguardandoEmpenho: true,
+      aguardandoEmpenhoEm: now,
+      etapasHistorico: historico,
+    }
+  })
+
+  data = {
+    ...data,
+    pedidos,
+    historico: [
+      ...data.historico,
+      {
+        id: `hist-${Date.now()}-aguardando-empenho`,
+        pedidoId,
+        etapaId: etapa.id,
+        etapaNome: etapa.nome,
+        usuarioId: usuario.id,
+        usuarioNome: usuario.nome,
+        data: now,
+        observacao:
+          'Marcado como Aguardando Empenhar. Timeline permanece em Solemp confeccionada.',
+      },
+    ],
+    notificacoes: [
+      ...data.notificacoes,
+      {
+        id: `notif-${Date.now()}-aguardando-empenho`,
+        tipo: 'ETAPA_PENDENTE' as const,
+        titulo: `Aguardando Empenhar — ${pedido.numero}`,
+        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Solemp confeccionada.`,
+        pedidoId,
+        reversaoId: null,
+        perfilDestino: null,
+        etapaChave: etapa.chave,
+        lida: false,
+        data: now,
+      },
+    ],
+  }
 
   return data
 }

@@ -157,7 +157,7 @@ export function ConfeccaoSolempModal({
               Confecção de Solemp
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Enviar para Finanças Pagamento
+              Enviar para Solemp confeccionada
             </Typography>
             {pedidoNumero && (
               <Chip
@@ -191,7 +191,7 @@ export function ConfeccaoSolempModal({
         >
           <Chip label="Confecção de Solemp" size="small" color="info" />
           <ArrowForwardIcon fontSize="small" color="action" />
-          <Chip label="Finanças Pagamento" size="small" color="primary" />
+          <Chip label="Solemp confeccionada" size="small" color="primary" />
         </Box>
 
         <Box
@@ -221,7 +221,7 @@ export function ConfeccaoSolempModal({
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Informe o número e o valor da SOLEMP para concluir a confecção e enviar a Finanças Pagamento.
+          Informe o número e o valor da SOLEMP para concluir a confecção e enviar a Solemp confeccionada.
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexWrap: 'wrap', mb: 2 }}>
@@ -335,7 +335,7 @@ export function ConfeccaoSolempModal({
               },
             }}
           >
-            {loading ? 'Enviando...' : 'Enviar para Finanças Pagamento'}
+            {loading ? 'Enviando...' : 'Enviar para Solemp confeccionada'}
           </Button>
         </Box>
       </DialogContent>

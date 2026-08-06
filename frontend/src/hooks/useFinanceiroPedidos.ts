@@ -9,6 +9,13 @@ export function useFinanceiroPedidos() {
   })
 }
 
+export function useFinanceiroAguardandoEmpenho() {
+  return useQuery({
+    queryKey: ['financeiro-aguardando-empenho'],
+    queryFn: () => financeiroService.listAguardandoEmpenho(),
+  })
+}
+
 export function useFinanceiroPedido(id: string) {
   return useQuery({
     queryKey: ['financeiro-pedido', id],
@@ -42,6 +49,7 @@ export function useRegistrarPagamento() {
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-aguardando-empenho'] })
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['pedido', pedidoId] })
@@ -50,6 +58,29 @@ export function useRegistrarPagamento() {
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useMarcarAguardandoEmpenho() {
+  const { user } = useFinanceiroAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (pedidoId: string) =>
+      financeiroService.marcarAguardandoEmpenho(pedidoId, user!.id),
+    onSuccess: (_, pedidoId) => {
+      queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['financeiro-aguardando-empenho'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['demo-pedido', pedidoId] })
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })

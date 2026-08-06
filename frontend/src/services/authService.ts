@@ -1,6 +1,10 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
 import type { Portal } from '@/utils/portal'
-import { normalizeEmailKey } from '@/utils/email'
+import {
+  assertMarinhaEmail,
+  normalizeEmailKey,
+  passwordResetRedirectUrl,
+} from '@/utils/email'
 import { setOpenAccessSession, useSupabaseDataSource } from '@/config/dataSource'
 import {
   applyRemoteAppData,
@@ -37,6 +41,7 @@ import {
 } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
+import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
 
 const LEGACY_AUTH_KEY = STORAGE_KEYS.AUTH_LEGACY
 const GESTOR_AUTH_KEY = STORAGE_KEYS.AUTH_GESTOR
@@ -114,7 +119,7 @@ function migrateLegacyAuth(): void {
 
 function validatePortalAccess(portal: Portal, perfil: AuthUser['perfil']): boolean {
   if (portal === 'gestor') return canAccessGestorRoute(perfil)
-  if (portal === 'clinica') return perfil === 'CLINICA' || perfil === 'MEDICAMENTO'
+  if (portal === 'clinica') return perfil === 'CLINICA' || perfil === 'MEDICAMENTO' || perfil === 'EMPENHADO'
   if (portal === 'ordenador') return canAccessOrdenadorRoute(perfil)
   if (portal === 'financeiro') return canAccessFinanceiroRoute(perfil)
   return false
@@ -236,21 +241,72 @@ export const authService = {
   },
 
   async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
-    const email = normalizeEmailKey(credentials.login)
-    if (!email.includes('@')) {
-      throw new Error('Informe um e-mail válido')
-    }
+    const marinhaEmail = assertMarinhaEmail(credentials.login)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    const authSession = await supabaseAuthAdapter.signInOrSignUp(email, credentials.senha)
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail foi cadastrado pelo gestor para a Timeline. Use Entrar na Timeline (não no Portal do Gestor).',
+      )
+    }
+
+    try {
+      const authSession = await supabaseAuthAdapter.signInWithPassword(
+        marinhaEmail,
+        credentials.senha,
+      )
+      return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+    } catch (error) {
+      throw mapSupabaseAuthError(error)
+    }
+  },
+
+  async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
+    setOpenAccessSession(false)
+    const marinhaEmail = assertMarinhaEmail(credentials.login)
+    if (credentials.senha.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail foi cadastrado pelo gestor. Use Cadastrar-se na Timeline para criar a senha — não cria Portal do Gestor.',
+      )
+    }
+
+    try {
+      const authSession = await supabaseAuthAdapter.signUpWithPassword(
+        marinhaEmail,
+        credentials.senha,
+      )
+      return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+    } catch (error) {
+      throw mapSupabaseAuthError(error)
+    }
+  },
+
+  async completeGestorSupabaseSession(
+    authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
+    marinhaEmail: string,
+  ): Promise<AuthUser> {
+    // Trava de segurança: e-mail liberado em Cadastros nunca provisiona tenant de gestor.
+    const teamAccess = await getEmailAccess(marinhaEmail)
+    if (teamAccess) {
+      throw new Error(
+        'Este e-mail pertence à equipe do gestor (Timeline). Não é possível usá-lo no Portal do Gestor.',
+      )
+    }
+
     let profile = await getProfileForCurrentUser()
 
     if (!profile) {
       const { tenant, profile: created, owner } = await provisionGestorTenant({
         authUserId: authSession.user.id,
-        email,
+        email: marinhaEmail,
         displayName: authSession.user.user_metadata?.full_name,
         initialAppData: generateEmptyTenantData(),
       })
@@ -262,12 +318,19 @@ export const authService = {
         usuarios: [owner],
         tenantMeta: {
           orgCode: tenant.org_code,
-          ownerEmail: email,
+          ownerEmail: marinhaEmail,
           ownerUid: tenant.id,
           createdAt: tenant.created_at,
         },
       })
       return completePortalLogin('gestor', owner)
+    }
+
+    // Perfil de equipe (não gestor) que chegou aqui por engano
+    if (profile.perfil !== 'GESTOR' && profile.perfil !== 'ADMINISTRADOR') {
+      throw new Error(
+        'Este e-mail está vinculado à Timeline da organização. Use a tela da Timeline para entrar.',
+      )
     }
 
     setTenantId(profile.tenant_id)
@@ -288,59 +351,90 @@ export const authService = {
     return completePortalLogin('gestor', owner)
   },
 
+  /** Se o e-mail foi liberado em Cadastros pelo gestor, retorna o acesso da Timeline. */
+  async getTeamEmailAccess(email: string) {
+    if (!useSupabaseDataSource()) return null
+    return getEmailAccess(assertMarinhaEmail(email))
+  },
+
   async loginWithEmailTimeline(
     email: string,
     password?: string,
   ): Promise<TimelineLoginResult> {
-    const normalized = normalizeEmailKey(email)
-    if (!normalized.includes('@')) {
-      throw new Error('Informe um e-mail válido')
-    }
+    const marinhaEmail = assertMarinhaEmail(email)
 
     if (useSupabaseDataSource()) {
       if (!password || password.length < 6) {
         throw new Error('Informe a senha (mínimo 6 caracteres)')
       }
 
-      const access = await getEmailAccess(normalized)
+      const access = await getEmailAccess(marinhaEmail)
       if (!access) {
         throw new Error('Email não cadastrado pelo gestor')
       }
 
-      const authSession = await supabaseAuthAdapter.signInOrSignUp(normalized, password)
-      const existingProfile = await getProfileForCurrentUser()
-      if (!existingProfile) {
-        const { error } = await getSupabaseClient().from('profiles').insert({
-          id: authSession.user.id,
-          tenant_id: access.tenant_id,
-          app_user_id: access.app_user_id,
-          email: normalized,
-          perfil: access.perfil,
-        })
-        if (error) throw error
-      }
-
-      setTenantId(access.tenant_id)
-      await hydrateLocalCacheFromSupabase((data) => {
-        applyRemoteAppData(data)
-      })
-
-      const data = loadAppData()
-      const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
-      if (!user) {
-        throw new Error('Email não cadastrado')
-      }
-
-      const portal = portalForPerfil(user.perfil)
-      const authUser = await completePortalLogin(portal, user)
-      return {
-        authUser,
-        portal,
-        route: getHomeRouteForPerfil(user.perfil),
-      }
+      const authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
+      return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
     }
 
-    const user = findLocalUserByEmail(normalized)
+    const user = findLocalUserByEmail(marinhaEmail)
+    if (!user) {
+      throw new Error('Email não cadastrado')
+    }
+
+    const portal = portalForPerfil(user.perfil)
+    const authUser = await completePortalLogin(portal, user)
+    return {
+      authUser,
+      portal,
+      route: getHomeRouteForPerfil(user.perfil),
+    }
+  },
+
+  async registerWithEmailTimeline(email: string, password: string): Promise<TimelineLoginResult> {
+    const marinhaEmail = assertMarinhaEmail(email)
+    if (!useSupabaseDataSource()) {
+      throw new Error('O cadastro com senha está disponível apenas com autenticação em nuvem.')
+    }
+    if (password.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+
+    const access = await getEmailAccess(marinhaEmail)
+    if (!access) {
+      throw new Error(
+        'E-mail não liberado. Peça ao gestor para cadastrá-lo em Cadastros antes de criar a senha.',
+      )
+    }
+
+    const authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
+    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
+  },
+
+  async completeTimelineSupabaseSession(
+    authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
+    access: NonNullable<Awaited<ReturnType<typeof getEmailAccess>>>,
+    marinhaEmail: string,
+  ): Promise<TimelineLoginResult> {
+    const existingProfile = await getProfileForCurrentUser()
+    if (!existingProfile) {
+      const { error } = await getSupabaseClient().from('profiles').insert({
+        id: authSession.user.id,
+        tenant_id: access.tenant_id,
+        app_user_id: access.app_user_id,
+        email: marinhaEmail,
+        perfil: access.perfil,
+      })
+      if (error) throw error
+    }
+
+    setTenantId(access.tenant_id)
+    await hydrateLocalCacheFromSupabase((data) => {
+      applyRemoteAppData(data)
+    })
+
+    const data = loadAppData()
+    const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
     if (!user) {
       throw new Error('Email não cadastrado')
     }
@@ -470,5 +564,42 @@ export const authService = {
     if (useSupabaseDataSource()) {
       await supabaseAuthAdapter.signOut()
     }
+  },
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const marinhaEmail = assertMarinhaEmail(email)
+    if (!useSupabaseDataSource()) {
+      throw new Error(
+        'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
+      )
+    }
+    try {
+      await supabaseAuthAdapter.resetPasswordForEmail(
+        marinhaEmail,
+        passwordResetRedirectUrl(),
+      )
+    } catch (error) {
+      // Já vem mapeado pelo adapter; não remapeia de novo.
+      const raw = getAuthErrorMessage(error)
+      if (raw) throw new Error(raw)
+      throw mapSupabaseAuthError(error)
+    }
+  },
+
+  async completePasswordReset(newPassword: string): Promise<void> {
+    if (!useSupabaseDataSource()) {
+      throw new Error(
+        'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
+      )
+    }
+    if (newPassword.length < 6) {
+      throw new Error('A senha deve ter pelo menos 6 caracteres')
+    }
+    await supabaseAuthAdapter.updatePassword(newPassword)
+    await supabaseAuthAdapter.signOut()
+  },
+
+  async waitForPasswordRecoverySession() {
+    return supabaseAuthAdapter.waitForPasswordRecoverySession()
   },
 }

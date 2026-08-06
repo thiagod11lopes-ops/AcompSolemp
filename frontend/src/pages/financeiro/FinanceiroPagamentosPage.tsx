@@ -17,6 +17,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useFinanceiroPedidos } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { pedidoEtapaConcluidaParaChave } from '@/utils/perfilEtapa'
 import {
   contarTimelineList,
@@ -54,8 +55,8 @@ export default function FinanceiroPagamentosPage() {
   return (
     <>
       <PageHeader
-        title="Timelines — Finanças"
-        subtitle="Processos em Finanças Pagamento — em andamento, todas ou concluídas"
+        title="Timelines — Solemp confeccionada"
+        subtitle="Processos em Solemp confeccionada — em andamento, todas ou concluídas"
       />
 
       <Tabs
@@ -75,7 +76,7 @@ export default function FinanceiroPagamentosPage() {
           <PaymentsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
             {pedidos.length === 0
-              ? 'Nenhum processo de Finanças no momento.'
+              ? 'Nenhum processo de Solemp confeccionada no momento.'
               : 'Nenhuma timeline encontrada com o filtro atual.'}
           </Typography>
         </Card>
@@ -83,6 +84,9 @@ export default function FinanceiroPagamentosPage() {
         <Grid container spacing={2}>
           {filtrados.map((pedido) => {
             const concluido = isConcluidoFinanceiro(pedido)
+            const empenhoLabel = resolveEmpenhoExibicao({
+              etiquetas: pedido.dadosClinica?.etiquetas,
+            })
             return (
               <Grid key={pedido.id} size={{ xs: 12, md: 6 }}>
                 <Card
@@ -105,6 +109,9 @@ export default function FinanceiroPagamentosPage() {
                           {concluido && (
                             <Chip label="Concluída" color="success" size="small" />
                           )}
+                          {empenhoLabel ? (
+                            <Chip label={empenhoLabel} color="secondary" size="small" />
+                          ) : null}
                           {pedido.solemp && (
                             <Chip label={pedido.solemp.numero} color="primary" size="small" />
                           )}
@@ -116,15 +123,19 @@ export default function FinanceiroPagamentosPage() {
                       <Chip
                         label={
                           concluido
-                            ? 'Finanças Pagamento — concluído'
-                            : 'Finanças Pagamento — pendente'
+                            ? 'Solemp confeccionada — concluído'
+                            : 'Solemp confeccionada — pendente'
                         }
                         color={concluido ? 'success' : 'info'}
                         size="small"
                         sx={{ mb: 1 }}
                       />
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip label={formatCurrency(pedido.valor)} size="small" variant="outlined" />
+                        <Chip
+                          label={formatCurrency(pedido.solemp?.valor ?? pedido.valor)}
+                          size="small"
+                          variant="outlined"
+                        />
                         <Chip
                           label={`Solicitação: ${formatDate(pedido.dataSolicitacao)}`}
                           size="small"

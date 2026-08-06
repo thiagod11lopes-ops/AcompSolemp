@@ -17,11 +17,19 @@ export interface TimelineNodeData {
   dataConclusao: string | null
   tempoNaEtapa: string | null
   processoNumero: string | null
+  /** Número da SOLEMP (quando já confeccionada). */
+  solempNumero: string | null
+  /** Valor da SOLEMP (quando já confeccionada). */
+  solempValor: number | null
+  /** Empenho formatado como `NE (número)` — setor Empenhado. */
+  empenhoExibicao: string | null
   observacaoResumo: string | null
   edgeAfter: TimelineEdgeState
   isHighlighted?: boolean
   /** Etapa não usada em timeline de medicamento (fluxo direto IMH). */
   dispensavel?: boolean
+  /** Tarja lateral no card (ex.: Aguardando empenho). */
+  statusBand?: 'concluido' | 'aguardando' | 'dispensavel'
   icon?: LucideIcon
 }
 

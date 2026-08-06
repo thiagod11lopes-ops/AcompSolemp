@@ -52,7 +52,9 @@ import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
   DEMO_MEDICAMENTO_EXEMPLO_ID,
+  DEMO_EMPENHADO_EXEMPLO_ID,
   ensureDemoExampleMedicamentoPlanilha,
+  ensureDemoExampleEmpenhadoPlanilha,
   ensureDemoExamplePlanilha,
 } from '@/services/demoCadastrosService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
@@ -125,10 +127,14 @@ export default function ClinicaNovoPedidoPage() {
     if (isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID) {
       ensureDemoExampleMedicamentoPlanilha()
     }
+    if (isDemo && clinicaId === DEMO_EMPENHADO_EXEMPLO_ID) {
+      ensureDemoExampleEmpenhadoPlanilha()
+    }
 
     const persisted = consumoPlanilhaService.getState(clinicaId)
     const isDemoClinica = isDemo && clinicaId === DEMO_CLINICA_EXEMPLO_ID
     const isDemoMedicamento = isDemo && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
+    const isDemoEmpenhado = isDemo && clinicaId === DEMO_EMPENHADO_EXEMPLO_ID
     const rowsToLoad =
       persisted.extraRows.length > 0
         ? persisted.extraRows
@@ -136,13 +142,24 @@ export default function ClinicaNovoPedidoPage() {
           ? getConsumoMaterialInicial()
           : isDemoMedicamento
             ? getConsumoMaterialDemoMedicamento()
-            : []
+            : isDemoEmpenhado
+              ? getConsumoMaterialInicial().slice(0, 12).map((row, index) => ({
+                  ...row,
+                  id: `emp-demo-${index + 1}`,
+                  empenho:
+                    row.empenho?.trim() ||
+                    `2026NE${String(4401 + index).padStart(4, '0')}`,
+                }))
+              : []
 
     planilhaHydrated.current = true
 
     if (rowsToLoad.length > 0) {
       setExtraRows(rowsToLoad)
-      if (persisted.extraRows.length === 0 && (isDemoClinica || isDemoMedicamento)) {
+      if (
+        persisted.extraRows.length === 0 &&
+        (isDemoClinica || isDemoMedicamento || isDemoEmpenhado)
+      ) {
         consumoPlanilhaService.saveState(clinicaId, {
           finalizedRowIds: [],
           finalizedAuditoriaRowIds: [],
@@ -159,7 +176,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedAuditoriaRowIds(finalizedAuditoria)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const rowId of finalizedAuditoria) next[rowId] = true
+        for (const rowId of finalizedAuditoria) delete next[rowId]
         return next
       })
     }
@@ -168,7 +185,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(finalizedMaterial)
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const rowId of finalizedMaterial) next[rowId] = true
+        for (const rowId of finalizedMaterial) delete next[rowId]
         return next
       })
     }
@@ -212,8 +229,9 @@ export default function ClinicaNovoPedidoPage() {
   const handleRowSelectionAuditoriaChange = useCallback(
     (selection: RowSelectionState) => {
       const next = { ...selection }
+      // Enviados ficam só na tarja cinza (finalized), fora da seleção verde.
       for (const rowId of finalizedAuditoriaRowIds) {
-        next[rowId] = true
+        delete next[rowId]
       }
       setRowSelectionAuditoria(next)
     },
@@ -224,7 +242,7 @@ export default function ClinicaNovoPedidoPage() {
     (selection: RowSelectionState) => {
       const next = { ...selection }
       for (const rowId of finalizedMaterialRowIds) {
-        next[rowId] = true
+        delete next[rowId]
       }
       setRowSelectionMaterial(next)
     },
@@ -524,7 +542,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedAuditoriaRowIds(nextFinalizedAuditoria)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {
@@ -591,7 +609,7 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(nextFinalizedMaterial)
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {
@@ -667,12 +685,12 @@ export default function ClinicaNovoPedidoPage() {
       setFinalizedMaterialRowIds(nextFinalizedMaterial)
       setRowSelectionAuditoria((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setRowSelectionMaterial((prev) => {
         const next = { ...prev }
-        for (const row of novos) next[row.id] = true
+        for (const row of novos) delete next[row.id]
         return next
       })
       setExtraRows((prev) => {

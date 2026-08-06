@@ -10,9 +10,16 @@ Persistência remota do `AppData` em JSONB + Auth e-mail/senha.
    - Project URL
    - anon public key
 
-## 2. Schema
+## 2. Schema (obrigatório antes do primeiro cadastro)
 
-No **SQL Editor**, execute o arquivo [`schema.sql`](./schema.sql).
+No Supabase → **SQL Editor** → **New query**:
+
+1. Abra o arquivo [`schema.sql`](./schema.sql) do repositório
+2. Cole o conteúdo inteiro no editor
+3. Clique em **Run**
+
+Sem isso, o cadastro autenticará mas falhará com *Invalid path specified in request URL*
+(as tabelas `tenants`, `profiles`, `app_state`, `email_access` ainda não existem).
 
 ## 3. Auth
 
@@ -41,10 +48,17 @@ Com `VITE_DATA_SOURCE=local` (padrão), o app continua só em IndexedDB.
 | Timeline | E-mail cadastrado em Cadastros (`email_access`) + login Supabase quando vinculado |
 | Demo | Sempre IndexedDB local |
 
-## 6. GitHub Pages
+# 6. GitHub Pages
 
-Secrets sugeridos:
+Secrets obrigatórios no repositório (Settings → Secrets and variables → Actions):
 
 - `VITE_DATA_SOURCE=supabase`
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+- `VITE_SUPABASE_URL=https://xxxx.supabase.co` (**URL pública do projeto**, não `http://127.0.0.1`)
+- `VITE_SUPABASE_ANON_KEY=eyJ...`
+
+Se o cadastro/login mostrar **Failed to fetch**, em geral a URL do Secret aponta para localhost,
+o projeto Supabase está pausado, ou a anon key está errada. Após corrigir os Secrets, rode
+**Actions → Deploy GitHub Pages → Run workflow** para gerar um build novo.
+
+No painel Supabase → Authentication → URL Configuration, inclua o site Pages em Redirect URLs
+(ex.: `https://<user>.github.io/AcompSolemp/redefinir-senha`).

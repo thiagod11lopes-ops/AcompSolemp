@@ -8,7 +8,7 @@ function readDataSource(): DataSource {
 export const env = {
   dataSource: readDataSource(),
   isSupabase: readDataSource() === 'supabase',
-  /** E-mail opcional aplicado ao bootstrap de gestor/admin no seed local */
+  /** E-mail opcional do gestor no bootstrap local (deve ser @marinha.mil.br) */
   gestorGoogleEmail: (import.meta.env.VITE_GESTOR_GOOGLE_EMAIL ?? '').trim().toLowerCase(),
   supabase: {
     url: (import.meta.env.VITE_SUPABASE_URL ?? '').trim(),

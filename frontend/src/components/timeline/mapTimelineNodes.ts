@@ -14,6 +14,7 @@ import type {
 import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibicao, timelineConnectorVisivel, tituloGrupoOcultoNaTimeline, isEtapaDispensavelMedicamento, isPedidoTimelineMedicamento } from '@/utils/timelineFlow'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -77,32 +78,18 @@ function etapaIniciadaNoPedido(
   )
 }
 
-function etapaConcluidaNoPedido(
-  pedido: PedidoComDetalhes,
-  etapas: WorkflowEtapa[],
-  chave: string,
-): boolean {
-  const etapa = etapas.find((e) => e.chave === chave)
-  if (!etapa) return false
-  return pedido.etapasHistorico.some(
-    (h) =>
-      Boolean(h.dataConclusao) &&
-      (h.etapaId === etapa.id || h.etapaNome === etapa.nome),
-  )
-}
-
 function resolveSolicitacaoStatus(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
 ): TimelineNodeStatus {
-  // Medicamento: encerra só na Contabilidade/IMH (Finanças é dispensável).
+  // Medicamento: tarja Concluído assim que a planilha é enviada ao IMH.
   if (isPedidoTimelineMedicamento(pedido, etapas)) {
-    const imhConcluida = etapaConcluidaNoPedido(
+    const enviouImh = etapaIniciadaNoPedido(
       pedido,
       etapas,
       'DIV_MAT_CONTABILIDADE_IMH',
     )
-    return imhConcluida || pedido.concluido ? 'completed' : 'active'
+    return enviouImh || pedido.concluido ? 'completed' : 'active'
   }
 
   // Clínica: tarja Concluído quando o mesmo PED já foi enviado à Auditoria e à Confecção.
@@ -145,6 +132,16 @@ export function buildTimelineNode(
     isPedidoTimelineMedicamento(pedido, etapas) &&
     isEtapaDispensavelMedicamento(etapa.chave)
 
+  const solempNumero = pedido.solemp?.numero?.trim() || null
+  const solempValor =
+    typeof pedido.solemp?.valor === 'number' && Number.isFinite(pedido.solemp.valor)
+      ? pedido.solemp.valor
+      : null
+  const empenhoExibicao =
+    etapa.chave === 'DIV_MAT_EMPENHADO' || pedido.clinica.tipo === 'empenhado'
+      ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
+      : null
+
   if (dispensavel) {
     return {
       id: etapa.id,
@@ -158,20 +155,40 @@ export function buildTimelineNode(
       dataConclusao: null,
       tempoNaEtapa: null,
       processoNumero: resolveProcessoNumero(pedido, etapa),
+      solempNumero,
+      solempValor,
+      empenhoExibicao,
       observacaoResumo: null,
       edgeAfter: 'waiting',
       isHighlighted: false,
       dispensavel: true,
+      statusBand: 'dispensavel',
       icon: getEtapaIcon(etapa.chave),
     }
   }
 
   const atual =
     etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao
-  const status =
+  let status =
     etapa.chave === 'SOLICITACAO'
       ? resolveSolicitacaoStatus(pedido, etapas)
       : resolveNodeStatus(pedido, historico, atual)
+
+  const aguardandoEmpenhar =
+    etapa.chave === 'DIV_MAT_FINANCAS' &&
+    Boolean(pedido.aguardandoEmpenho) &&
+    status !== 'completed'
+
+  if (aguardandoEmpenhar) {
+    status = 'waiting'
+  }
+
+  const statusBand =
+    status === 'completed'
+      ? 'concluido'
+      : aguardandoEmpenhar
+        ? 'aguardando'
+        : undefined
 
   return {
     id: etapa.id,
@@ -188,9 +205,13 @@ export function buildTimelineNode(
         : (historico?.dataConclusao ?? null),
     tempoNaEtapa: formatTempoNaEtapa(pedido, historico, atual),
     processoNumero: resolveProcessoNumero(pedido, etapa),
+    solempNumero,
+    solempValor,
+    empenhoExibicao,
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),
+    statusBand,
     icon: getEtapaIcon(etapa.chave),
   }
 }

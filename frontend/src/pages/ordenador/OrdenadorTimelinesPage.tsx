@@ -18,6 +18,7 @@ import { useOrdenadorPedidos } from '@/hooks/useOrdenadorPedidos'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { getRoleLabel } from '@/mocks/seed'
 import {
   PERFIL_PARA_CHAVE_ETAPA,
@@ -141,12 +142,28 @@ export default function OrdenadorTimelinesPage() {
                         {etapaChave ? ` (${perfilLabel})` : ''}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip label={formatCurrency(pedido.valor)} size="small" variant="outlined" />
+                        <Chip
+                          label={formatCurrency(pedido.solemp?.valor ?? pedido.valor)}
+                          size="small"
+                          variant="outlined"
+                        />
                         <Chip
                           label={`Solicitação: ${formatDate(pedido.dataSolicitacao)}`}
                           size="small"
                           variant="outlined"
                         />
+                        {pedido.clinica.tipo === 'empenhado' &&
+                          resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas }) && (
+                            <Chip
+                              label={
+                                resolveEmpenhoExibicao({
+                                  etiquetas: pedido.dadosClinica?.etiquetas,
+                                })!
+                              }
+                              size="small"
+                              color="secondary"
+                            />
+                          )}
                       </Box>
                     </CardContent>
                   </CardActionArea>

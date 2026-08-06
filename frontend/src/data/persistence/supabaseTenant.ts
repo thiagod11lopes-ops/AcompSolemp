@@ -190,3 +190,4 @@ export async function getEmailAccess(email: string): Promise<{
   const row = Array.isArray(data) ? data[0] : data
   return row ?? null
 }
+

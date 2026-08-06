@@ -21,7 +21,9 @@ interface AuthContextValue {
   isLoading: boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
   loginGestorSemSenha: () => Promise<AuthUser>
+  registerGestor: (credentials: LoginCredentials) => Promise<AuthUser>
   loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
+  registerWithEmailTimeline: (email: string, password: string) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
@@ -85,8 +87,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
+  const registerGestor = useCallback(async (credentials: LoginCredentials) => {
+    if (!authService.usesSupabaseAuth()) {
+      throw new Error('O cadastro está disponível apenas com autenticação em nuvem (Supabase).')
+    }
+    const authUser = await authService.registerGestorSupabase(credentials)
+    setGestorUser(authUser)
+    return authUser
+  }, [])
+
   const loginWithEmailTimeline = useCallback(async (email: string, password?: string) => {
     const result = await authService.loginWithEmailTimeline(email, password)
+    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+    return result
+  }, [])
+
+  const registerWithEmailTimeline = useCallback(async (email: string, password: string) => {
+    const result = await authService.registerWithEmailTimeline(email, password)
     applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
     return result
   }, [])
@@ -126,7 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginGestorSemSenha,
+      registerGestor,
       loginWithEmailTimeline,
+      registerWithEmailTimeline,
       logout,
       startDemo,
       startDemoGestorOverview,
@@ -141,7 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       loginGestorSemSenha,
+      registerGestor,
       loginWithEmailTimeline,
+      registerWithEmailTimeline,
       logout,
       startDemo,
       startDemoGestorOverview,
@@ -159,12 +180,13 @@ export function useAuth() {
 }
 
 export function useGestorAuth() {
-  const { gestorUser, isLoading, login, loginGestorSemSenha, logout } = useAuth()
+  const { gestorUser, isLoading, login, loginGestorSemSenha, registerGestor, logout } = useAuth()
   return {
     user: gestorUser,
     isLoading,
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
     loginSemSenha: loginGestorSemSenha,
+    register: (credentials: LoginCredentials) => registerGestor(credentials),
     logout: () => logout('gestor'),
   }
 }

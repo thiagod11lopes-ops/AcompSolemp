@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Stack,
   TextField,
   Typography,
   alpha,
@@ -15,14 +16,17 @@ import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
+import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
+import { SignUpButton } from '@/components/auth/SignUpButton'
 
 /**
- * Portão de acesso à Timeline — e-mail cadastrado pelo gestor.
+ * Portão de acesso à Timeline — e-mail institucional cadastrado pelo gestor.
  */
 export default function TimelineEntryPage() {
   const theme = useTheme()
   const navigate = useNavigate()
-  const { loginWithEmailTimeline } = useAuth()
+  const { loginWithEmailTimeline, registerWithEmailTimeline } = useAuth()
   const isSupabase = useSupabaseDataSource()
   const [gateReady, setGateReady] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -60,6 +64,12 @@ export default function TimelineEntryPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSignUp = async (values: { email: string; senha: string }) => {
+    setErro('')
+    const result = await registerWithEmailTimeline(values.email, values.senha)
+    navigate(result.route, { replace: true })
   }
 
   if (!gateReady) return <LoadingSpinner />
@@ -115,15 +125,17 @@ export default function TimelineEntryPage() {
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {isSupabase
-            ? 'E-mail cadastrado pelo gestor + senha (cria acesso no primeiro login).'
-            : 'Informe o e-mail cadastrado pelo gestor.'}
+            ? 'E-mail @marinha.mil.br liberado pelo gestor. Use Entrar ou Cadastrar-se no primeiro acesso.'
+            : 'Informe o e-mail @marinha.mil.br cadastrado pelo gestor.'}
         </Typography>
         <TextField
           fullWidth
           type="email"
-          label="E-mail"
+          label="E-mail institucional"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="seuemail@marinha.mil.br"
+          helperText={MARINHA_EMAIL_HINT}
           sx={{ mb: 2 }}
         />
         {isSupabase && (
@@ -133,8 +145,13 @@ export default function TimelineEntryPage() {
             label="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            sx={{ mb: 2 }}
+            sx={{ mb: 0.5 }}
           />
+        )}
+        {isSupabase && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <ForgotPasswordButton emailHint={email} variant="link" fullWidth={false} />
+          </Box>
         )}
         <Button
           fullWidth
@@ -145,6 +162,16 @@ export default function TimelineEntryPage() {
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>
+
+        {isSupabase && (
+          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+            <SignUpButton
+              emailHint={email}
+              helperText="O gestor libera o e-mail @marinha.mil.br. O link de recuperação de senha é enviado para este mesmo e-mail."
+              onSubmit={handleSignUp}
+            />
+          </Stack>
+        )}
 
         {erro && (
           <Alert severity="error" sx={{ mt: 2, textAlign: 'left' }}>

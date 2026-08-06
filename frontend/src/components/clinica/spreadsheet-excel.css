@@ -28,6 +28,8 @@
 
 .excel-sheet-grid .MuiTable-root {
   border-collapse: collapse;
+  table-layout: fixed;
+  width: max-content;
 }
 
 .excel-sheet-grid .MuiTableCell-root {
@@ -38,6 +40,9 @@
   line-height: 1.25;
   color: #000;
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .excel-sheet-grid .MuiTableHead .MuiTableCell-root {
@@ -117,6 +122,15 @@
 .excel-sheet-grid .excel-select-header .MuiCheckbox-root.Mui-checked,
 .excel-sheet-grid .excel-data-row .MuiCheckbox-root.Mui-checked {
   color: #217346;
+}
+
+/* Linhas já enviadas: cinza opaco, nunca verde */
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-checked,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-disabled,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-finalizado.Mui-disabled.Mui-checked {
+  color: #9e9e9e !important;
+  opacity: 0.55;
 }
 
 .excel-sheet-pagination {

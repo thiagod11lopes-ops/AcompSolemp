@@ -34,12 +34,13 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { calcularProgressoTimeline } from '@/utils/portal'
 import { TIMELINE_ETAPA_META, resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
+import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 
 type FiltroStatus = 'TODAS' | 'EM_ANDAMENTO' | 'CONCLUIDAS' | 'ATRASADAS'
 type FonteTimeline = 'organizacao' | 'demonstracao'
 
-const FASES_FIXAS = ['Div. de Material', 'Finanças Pagamento', 'Concluído'] as const
+const FASES_FIXAS = ['Div. de Material', 'Solemp confeccionada', 'Empenhado', 'Concluído'] as const
 
 function getEtapasAtivas(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): WorkflowEtapa[] {
   if (pedido.etapasAtivasIds?.length) {
@@ -52,7 +53,8 @@ function getFasePedido(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): stri
   if (pedido.concluido) return 'Concluído'
   const ativas = getEtapasAtivas(pedido, etapas)
   for (const etapa of ativas) {
-    if (etapa.chave === 'DIV_MAT_FINANCAS') return 'Finanças Pagamento'
+    if (etapa.chave === 'DIV_MAT_EMPENHADO') return 'Empenhado'
+    if (etapa.chave === 'DIV_MAT_FINANCAS') return 'Solemp confeccionada'
     const grupo = TIMELINE_ETAPA_META[etapa.chave]?.grupo
     if (grupo) return grupo
   }
@@ -89,8 +91,8 @@ export default function GestorTimelinesPage() {
   const location = useLocation()
   const { isDemo, navigatePortal } = usePortalPaths()
   const [fonte, setFonte] = useState<FonteTimeline>(isDemo ? 'demonstracao' : 'organizacao')
-  const { data: pedidosOrg = [], isLoading: loadingOrg } = usePedidos()
-  const { data: pedidosDemo = [], isLoading: loadingDemo } = useDemoPedidos()
+  const { data: pedidosOrg = [], isPending: pendingOrg } = usePedidos()
+  const { data: pedidosDemo = [], isPending: pendingDemo } = useDemoPedidos()
   const deletePedido = useDeleteGestorPedido()
   const { data: etapasOrg = [] } = useWorkflowEtapas()
   const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
@@ -108,7 +110,7 @@ export default function GestorTimelinesPage() {
 
   const mostraDemo = isDemo || fonte === 'demonstracao'
   const pedidos = mostraDemo ? pedidosDemo : pedidosOrg
-  const isLoading = mostraDemo ? loadingDemo : loadingOrg
+  const isInitialLoading = mostraDemo ? pendingDemo : pendingOrg
   const etapas = mostraDemo ? etapasDemo : etapasOrg
 
   const ordenadas = useMemo(
@@ -162,7 +164,7 @@ export default function GestorTimelinesPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />
+  if (isInitialLoading) return <LoadingSpinner />
 
   const abrirTimeline = (pedidoId: string) => {
     if (isDemo) {
@@ -267,6 +269,10 @@ export default function GestorTimelinesPage() {
                     pedido.concluido ? ordenadas.length - 1 : etapaIndex,
                     ordenadas.length,
                   )
+                  const empenhoLabel =
+                    pedido.clinica.tipo === 'empenhado'
+                      ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
+                      : null
 
                   return (
                     <Grid key={pedido.id} size={{ xs: 12, md: 6, lg: 4 }}>
@@ -369,6 +375,9 @@ export default function GestorTimelinesPage() {
                                   color="primary"
                                 />
                               )}
+                              {empenhoLabel ? (
+                                <Chip label={empenhoLabel} size="small" color="secondary" />
+                              ) : null}
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                               <Box sx={{ flexGrow: 1, minWidth: 0 }}>

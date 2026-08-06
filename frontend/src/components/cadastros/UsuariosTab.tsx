@@ -25,7 +25,7 @@ import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadast
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { CADASTRO_PERFIS, isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
-import { DEMO_CLINICA_EXEMPLO_ID, DEMO_MEDICAMENTO_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
+import { DEMO_CLINICA_EXEMPLO_ID, DEMO_MEDICAMENTO_EXEMPLO_ID, DEMO_EMPENHADO_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
 
 interface RegistroCadastro {
   id: string
@@ -51,9 +51,17 @@ export function UsuariosTab() {
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
   const registros = useMemo<RegistroCadastro[]>(() => {
-    if (opcao.isClinica || opcao.isMedicamento) {
-      const perfilEntidade = opcao.isMedicamento ? 'MEDICAMENTO' : 'CLINICA'
-      const tipoEntidade = opcao.isMedicamento ? 'medicamento' : 'clinica'
+    if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) {
+      const perfilEntidade = opcao.isMedicamento
+        ? 'MEDICAMENTO'
+        : opcao.isEmpenhado
+          ? 'EMPENHADO'
+          : 'CLINICA'
+      const tipoEntidade = opcao.isMedicamento
+        ? 'medicamento'
+        : opcao.isEmpenhado
+          ? 'empenhado'
+          : 'clinica'
       const usuariosEntidade = usuarios.filter(
         (u) => u.perfil === perfilEntidade && !isDemoExampleUser(u),
       )
@@ -62,6 +70,7 @@ export function UsuariosTab() {
           (clinica) =>
             clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
             clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
+            clinica.id !== DEMO_EMPENHADO_EXEMPLO_ID &&
             (clinica.tipo ?? 'clinica') === tipoEntidade,
         )
         .map((c) => {
@@ -91,7 +100,7 @@ export function UsuariosTab() {
       { accessorKey: 'nome', header: 'Nome' },
       {
         accessorKey: 'email',
-        header: 'E-mail Google',
+        header: 'E-mail institucional',
         cell: ({ row }) => row.original.email,
       },
       {
@@ -129,7 +138,7 @@ export function UsuariosTab() {
         opcao,
       })
       setSucesso(
-        `${opcao.label} cadastrado(a)! O usuário deve acessar a Timeline com este e-mail Google.`,
+        `${opcao.label} cadastrado(a)! O usuário deve acessar a Timeline com este e-mail @marinha.mil.br.`,
       )
       setNome('')
       setEmail('')
@@ -159,7 +168,7 @@ export function UsuariosTab() {
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
         Compartilhe o link da Timeline com clínicas e setores:{' '}
-        <strong>/clinica/timeline</strong>. Cada cadastro usa o e-mail Google autorizado para entrar.
+        <strong>/clinica/timeline</strong>. Cada cadastro usa e-mail institucional @marinha.mil.br.
       </Alert>
 
       <Tabs
@@ -222,10 +231,11 @@ export function UsuariosTab() {
                 <TextField
                   fullWidth
                   type="email"
-                  label="E-mail Google"
+                  label="E-mail institucional"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  helperText="Conta Google que o usuário usará em /clinica/timeline"
+                  placeholder="seuemail@marinha.mil.br"
+                  helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>

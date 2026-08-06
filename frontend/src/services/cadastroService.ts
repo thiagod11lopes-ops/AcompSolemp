@@ -161,7 +161,9 @@ export const notificationService = {
     return all.filter(
       (n) =>
         n.perfilDestino === perfil ||
-        (n.perfilDestino == null && perfil === 'CLINICA' && n.tipo === 'RESPOSTA_GESTOR'),
+        (n.perfilDestino == null &&
+          (perfil === 'CLINICA' || perfil === 'EMPENHADO') &&
+          n.tipo === 'RESPOSTA_GESTOR'),
     )
   },
 
@@ -183,7 +185,9 @@ export const notificationService = {
       }
       if (
         n.perfilDestino === perfil ||
-        (n.perfilDestino == null && perfil === 'CLINICA' && n.tipo === 'RESPOSTA_GESTOR')
+        (n.perfilDestino == null &&
+          (perfil === 'CLINICA' || perfil === 'EMPENHADO') &&
+          n.tipo === 'RESPOSTA_GESTOR')
       ) {
         n.lida = true
       }

@@ -9,10 +9,27 @@ import { OrdenadorLayout } from '@/layouts/OrdenadorLayout'
 import { FinanceiroLayout } from '@/layouts/FinanceiroLayout'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
+import { PasswordRecoveryGate } from '@/components/auth/PasswordRecoveryGate'
 import { useAuth } from '@/contexts/AuthContext'
+
+function looksLikePasswordRecoveryLanding(): boolean {
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash.toLowerCase()
+  const search = window.location.search.toLowerCase()
+  return (
+    hash.includes('type=recovery') ||
+    search.includes('type=recovery') ||
+    hash.includes('type%3drecovery') ||
+    search.includes('type%3drecovery')
+  )
+}
 
 function HomeRedirect() {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
+  // Mantém a home ocupada até o PasswordRecoveryGate processar o hash do e-mail.
+  if (looksLikePasswordRecoveryLanding()) {
+    return <LoadingSpinner />
+  }
   if (gestorUser) return <Navigate to="/gestor/dashboard" replace />
   if (financeiroUser) return <Navigate to="/financeiro/pagamentos" replace />
   if (ordenadorUser) return <Navigate to="/ordenador/timelines" replace />
@@ -21,12 +38,12 @@ function HomeRedirect() {
 }
 
 const LoginGestorPage = lazy(() => import('@/pages/LoginGestorPage'))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
 const TimelineEntryPage = lazy(() => import('@/pages/clinica/TimelineEntryPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const ProcessosPage = lazy(() => import('@/pages/ProcessosPage'))
 const ProcessoDetailPage = lazy(() => import('@/pages/ProcessoDetailPage'))
 const CadastrosPage = lazy(() => import('@/pages/CadastrosPage'))
-const HistoricoPage = lazy(() => import('@/pages/HistoricoPage'))
 const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
@@ -46,6 +63,9 @@ const OrdenadorTimelineDetailPage = lazy(() => import('@/pages/ordenador/Ordenad
 const GestorTimelineDetailPage = lazy(() => import('@/pages/GestorTimelineDetailPage'))
 const OrdenadorArquivadosPage = lazy(() => import('@/pages/ordenador/OrdenadorArquivadosPage'))
 const FinanceiroArquivadosPage = lazy(() => import('@/pages/financeiro/FinanceiroArquivadosPage'))
+const FinanceiroAguardandoEmpenhoPage = lazy(
+  () => import('@/pages/financeiro/FinanceiroAguardandoEmpenhoPage'),
+)
 const FinanceiroPagamentosPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentosPage'))
 const FinanceiroPagamentoDetailPage = lazy(() => import('@/pages/financeiro/FinanceiroPagamentoDetailPage'))
 
@@ -62,6 +82,7 @@ export function AppRoutes() {
 
   return (
     <BrowserRouter basename={basename}>
+      <PasswordRecoveryGate />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
 
@@ -74,6 +95,14 @@ export function AppRoutes() {
                   <LoginGestorPage />
                 </LazyPage>
               </GuestRoute>
+            }
+          />
+          <Route
+            path="/redefinir-senha"
+            element={
+              <LazyPage>
+                <ResetPasswordPage />
+              </LazyPage>
             }
           />
           <Route
@@ -122,7 +151,6 @@ export function AppRoutes() {
           <Route path="/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
           <Route path="/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
           <Route path="/gestor/workflow" element={<Navigate to="/gestor/dashboard" replace />} />
-          <Route path="/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
           <Route path="/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
           <Route path="/gestor/configuracao" element={<LazyPage><ConfiguracaoPage /></LazyPage>} />
           <Route path="/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
@@ -184,6 +212,7 @@ export function AppRoutes() {
           >
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
           </Route>
 
@@ -194,7 +223,6 @@ export function AppRoutes() {
             <Route path="/gestor/demo/gestor/processos/:id" element={<LazyPage><ProcessoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/cadastros" element={<LazyPage><CadastrosPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/workflow" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
-            <Route path="/gestor/demo/gestor/historico" element={<LazyPage><HistoricoPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/relatorios" element={<LazyPage><RelatoriosPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/configuracao" element={<Navigate to="/gestor/demo/gestor/dashboard" replace />} />
             <Route path="/gestor/demo/gestor/reversoes" element={<LazyPage><GestorReversoesPage /></LazyPage>} />
@@ -247,6 +275,7 @@ export function AppRoutes() {
           <Route path="/financeiro" element={<Navigate to="/financeiro/pagamentos" replace />} />
           <Route path="/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
+          <Route path="/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
           <Route path="/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
         </Route>
 

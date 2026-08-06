@@ -3,6 +3,7 @@ export type UserRole =
   | 'GESTOR'
   | 'CLINICA'
   | 'MEDICAMENTO'
+  | 'EMPENHADO'
   | 'ASSINANTE'
   | 'FINANCEIRO'
   | 'AUDITORIA'
@@ -52,7 +53,7 @@ export interface User {
   posto: string
   graduacao: string
   login: string
-  /** E-mail Google autorizado (obrigatório em produção com Firebase Auth) */
+  /** E-mail institucional @marinha.mil.br autorizado para login */
   email?: string | null
   perfil: UserRole
   clinicaId: string | null
@@ -64,8 +65,8 @@ export interface Clinica {
   nome: string
   responsavel: string
   telefone: string
-  /** medicamento = envio direto para Contabilidade/IMH */
-  tipo?: 'clinica' | 'medicamento'
+  /** medicamento = envio direto Contabilidade/IMH; empenhado = portal clínica com NE no card */
+  tipo?: 'clinica' | 'medicamento' | 'empenhado'
 }
 
 export interface Empresa {
@@ -211,6 +212,13 @@ export interface Pedido {
   etapasHistorico: PedidoEtapaHistorico[]
   /** IDs das linhas da planilha de consumo incluídas neste envio (lote) */
   consumoRowIds?: string[]
+  /**
+   * Marcado em Solemp confeccionada via "Aguardando Empenhar".
+   * Não avança para Empenhado — só aplica a tarja "Aguardando" no card.
+   */
+  aguardandoEmpenho?: boolean
+  /** ISO da marcação aguardando empenho */
+  aguardandoEmpenhoEm?: string
 }
 
 export interface Notification {
@@ -241,6 +249,66 @@ export interface PedidoFilters {
   busca?: string
 }
 
+export interface AguardandoEmpenhoItem {
+  pedidoId: string
+  pedidoNumero: string
+  solempNumero: string
+  valor: number
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  diasNaEtapa: number
+  dataSolicitacao: string
+}
+
+/** Resumo de processo para modais de detalhe do dashboard */
+export interface DashboardPedidoItem {
+  pedidoId: string
+  pedidoNumero: string
+  clinicaNome: string
+  empresaNome: string
+  materialDescricao: string
+  etapaAtual: string
+  valor: number
+  solempNumero: string | null
+  prazoStatus: PrazoStatus
+  diasNaEtapa: number
+  diasRestantes: number
+  dataSolicitacao: string
+  concluido: boolean
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  /** Dias até conclusão (apenas processos concluídos) */
+  diasAteConclusao?: number
+}
+
+export interface DashboardEmpenhadoItem {
+  pedidoId: string
+  pedidoNumero: string
+  solempNumero: string | null
+  empenhoNumero: string | null
+  valor: number
+  dataEmpenho: string
+  mesChave: string
+  mesLabel: string
+  setorTipo: 'clinica' | 'medicamento' | 'empenhado'
+  setorLabel: string
+  setorNome: string
+  clinicaNome: string
+  empresaNome: string
+  dataSolicitacao: string
+}
+
+export interface EmpenhadoMesTotal {
+  /** Chave YYYY-MM */
+  mesChave: string
+  /** Ex.: Julho/2026 */
+  mesLabel: string
+  valor: number
+  quantidade: number
+}
+
 export interface DashboardMetrics {
   totalProcessos: number
   emAndamento: number
@@ -249,10 +317,27 @@ export interface DashboardMetrics {
   proximosVencimento: number
   tempoMedioPagamento: number
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
-  valorTotalAberto: number
   valorPagoMes: number
-  valorAguardandoAssinatura: number
-  valorAguardandoFinanceiro: number
+  quantidadePagoMes: number
+  /** Solemps ativas só na etapa Solemp confeccionada (após Confecção) */
+  valorAguardandoEmpenho: number
+  quantidadeAguardandoEmpenho: number
+  aguardandoEmpenhoItens: AguardandoEmpenhoItem[]
+  /** Soma de todos os processos que concluíram Empenhado */
+  valorTotalEmpenhado: number
+  quantidadeTotalEmpenhado: number
+  /** Data do primeiro empenho (ISO) */
+  dataPrimeiroEmpenho: string | null
+  /** Totais por mês (mais recente primeiro) */
+  totaisEmpenhadoPorMes: EmpenhadoMesTotal[]
+  /** Listas detalhadas para modais dos cards */
+  todosItens: DashboardPedidoItem[]
+  emAndamentoItens: DashboardPedidoItem[]
+  concluidosItens: DashboardPedidoItem[]
+  atrasadosItens: DashboardPedidoItem[]
+  proximosVencimentoItens: DashboardPedidoItem[]
+  pagoMesItens: DashboardPedidoItem[]
+  empenhadoItens: DashboardEmpenhadoItem[]
   rankingClinicas: { nome: string; total: number; valor: number }[]
   rankingEmpresas: { nome: string; total: number; valor: number }[]
   rankingResponsaveis: { nome: string; total: number; atrasados: number }[]

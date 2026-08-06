@@ -11,13 +11,23 @@ export interface CadastroPerfilOpcao {
   descricao: string
   isClinica?: boolean
   isMedicamento?: boolean
+  /** Entidade Empenhado (portal clínica, empenho no formato NE) */
+  isEmpenhado?: boolean
 }
 
 export function isCadastroEntidadeClinica(opcao: CadastroPerfilOpcao): boolean {
-  return Boolean(opcao.isClinica || opcao.isMedicamento)
+  return Boolean(opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado)
 }
 
-/** Opções de cadastro da aba Cadastros (nome + e-mail Google) */
+export type ClinicaEntidadeTipo = 'clinica' | 'medicamento' | 'empenhado'
+
+export function resolveClinicaEntidadeTipo(opcao: CadastroPerfilOpcao): ClinicaEntidadeTipo {
+  if (opcao.isMedicamento) return 'medicamento'
+  if (opcao.isEmpenhado) return 'empenhado'
+  return 'clinica'
+}
+
+/** Opções de cadastro da aba Cadastros (nome + e-mail @marinha.mil.br) */
 export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   {
     id: 'clinica',
@@ -69,11 +79,22 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Finanças Pagamento',
+    label: 'Solemp confeccionada',
     perfil: 'FINANCEIRO',
-    graduacao: 'Finanças Pagamento',
+    graduacao: 'Solemp confeccionada',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao: 'Responsável pela etapa Finanças Pagamento.',
+    descricao: 'Responsável pela etapa Solemp confeccionada (após Confecção de Solemp).',
+  },
+  {
+    id: 'empenhado',
+    label: 'Empenhado',
+    perfil: 'EMPENHADO',
+    graduacao: 'Empenhado',
+    campoNomeLabel: 'Nome do Empenhado',
+    campoNomePlaceholder: 'Ex.: Empenhado OPME',
+    descricao:
+      'Portal semelhante à clínica; nos cards o empenho aparece no formato NE (número).',
+    isEmpenhado: true,
   },
 ]

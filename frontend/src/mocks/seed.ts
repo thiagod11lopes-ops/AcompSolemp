@@ -31,8 +31,9 @@ import {
 } from '@/utils/pedidoCleanup'
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
+import { isMarinhaEmail } from '@/utils/email'
 
-const SEED_VERSION = 'v15'
+const SEED_VERSION = 'v16'
 
 const PERFIS_REMOVIDOS = new Set<UserRole>([
   'ASSINATURA_1_SOLEMP',
@@ -108,10 +109,18 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Finanças Pagamento',
+    nome: 'Solemp confeccionada',
     ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
+    ativo: true,
+  },
+  {
+    chave: 'DIV_MAT_EMPENHADO',
+    nome: 'Empenhado',
+    ordem: 6,
+    prazoDias: 4,
+    perfilResponsavel: 'EMPENHADO',
     ativo: true,
   },
 ]
@@ -409,7 +418,7 @@ function ensureDefaultConfeccaoUser(data: AppData): boolean {
 function ensureBootstrapGoogleEmails(data: AppData): boolean {
   if (data.tenantMeta) return false
   const email = env.gestorGoogleEmail
-  if (!email) return false
+  if (!email || !isMarinhaEmail(email)) return false
 
   let changed = false
   for (const user of data.usuarios) {
@@ -474,22 +483,81 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
     }
   }
 
-  const financasDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_FINANCAS')
-  const confeccaoDef = DEFAULT_WORKFLOW_ETAPAS.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
-  for (const etapa of data.workflowEtapas) {
-    if (etapa.chave === 'DIV_MAT_FINANCAS' && financasDef) {
-      if (etapa.ordem !== financasDef.ordem || !etapa.ativo) {
-        etapa.ordem = financasDef.ordem
-        etapa.ativo = true
-        changed = true
-      }
+  const defByChave = new Map(DEFAULT_WORKFLOW_ETAPAS.map((e) => [e.chave, e]))
+  for (const def of DEFAULT_WORKFLOW_ETAPAS) {
+    const existente = data.workflowEtapas.find((e) => e.chave === def.chave)
+    if (!existente) {
+      data.workflowEtapas.push({
+        id: `etapa-${def.chave.toLowerCase().replace(/_/g, '-')}`,
+        ...def,
+      })
+      changed = true
+      continue
     }
-    if (etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' && confeccaoDef && etapa.ordem !== confeccaoDef.ordem) {
-      etapa.ordem = confeccaoDef.ordem
+    if (existente.ordem !== def.ordem || !existente.ativo) {
+      existente.ordem = def.ordem
+      existente.ativo = true
+      changed = true
+    }
+    if (existente.nome !== def.nome) {
+      existente.nome = def.nome
+      changed = true
+    }
+    if (existente.perfilResponsavel !== def.perfilResponsavel) {
+      existente.perfilResponsavel = def.perfilResponsavel
       changed = true
     }
   }
 
+  // Garante sincronização mesmo se chave já existir com nome legado
+  for (const etapa of data.workflowEtapas) {
+    const def = defByChave.get(etapa.chave)
+    if (!def) continue
+    if (etapa.nome !== def.nome) {
+      etapa.nome = def.nome
+      changed = true
+    }
+  }
+
+  if (backfillEmpenhadoHistorico(data)) changed = true
+
+  return changed
+}
+
+/** Pedidos que já passaram por Solemp confeccionada passam a ter Empenhado no histórico. */
+function backfillEmpenhadoHistorico(data: AppData): boolean {
+  const financas = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
+  const empenhado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
+  if (!financas || !empenhado) return false
+
+  let changed = false
+  for (const pedido of data.pedidos) {
+    const financasHist = pedido.etapasHistorico.find((h) => h.etapaId === financas.id)
+    if (!financasHist?.dataConclusao) continue
+
+    const empenhadoHist = pedido.etapasHistorico.find((h) => h.etapaId === empenhado.id)
+    if (empenhadoHist) {
+      if (!empenhadoHist.dataConclusao && (pedido.concluido || financasHist.dataConclusao)) {
+        empenhadoHist.dataConclusao = financasHist.dataConclusao
+        empenhadoHist.observacao =
+          empenhadoHist.observacao || 'Empenhado registrado com a Solemp confeccionada.'
+        changed = true
+      }
+      continue
+    }
+
+    pedido.etapasHistorico.push({
+      etapaId: empenhado.id,
+      etapaNome: empenhado.nome,
+      responsavelId: financasHist.responsavelId,
+      responsavelNome: financasHist.responsavelNome,
+      dataInicio: financasHist.dataConclusao,
+      dataConclusao: financasHist.dataConclusao,
+      observacao: 'Empenhado registrado com a Solemp confeccionada.',
+      arquivos: [],
+    })
+    changed = true
+  }
   return changed
 }
 
@@ -542,7 +610,7 @@ function migrateSimplifyFluxoFinancas(data: AppData): AppData {
       if (!ETAPAS_REMOVIDAS_SET.has(chave)) continue
       historico.dataConclusao = new Date().toISOString()
       historico.observacao =
-        'Etapa descontinuada — processo encaminhado para Finanças Pagamento.'
+        'Etapa descontinuada — processo encaminhado para Solemp confeccionada.'
     }
 
     pedido.etapaAtualId = financasEtapa.id
@@ -600,7 +668,7 @@ export function initAppData(): AppData {
         const { _version: _, ...raw } = parsed
         const { data, changed } = normalizeAppData(raw as AppData)
         appDataCache = data
-        if (changed) persistAppData(data)
+        if (changed) persistAppData(data, { silent: true })
         return cloneData(data)
       }
       if (parsed._version === 'v14') {
@@ -659,14 +727,16 @@ export function reloadAppDataFromStorage(): AppData {
     const { _version: _, ...raw } = parsed
     const { data, changed } = normalizeAppData(raw as AppData)
     appDataCache = data
-    if (changed) persistAppData(data)
+    // Persistência silenciosa: evita notificar/invalidar queries a cada leitura+normalize
+    // (loop: normalize → persist → invalidate → refetch → normalize…).
+    if (changed) persistAppData(data, { silent: true })
     return cloneData(data)
   } catch {
     return loadAppData()
   }
 }
 
-function persistAppData(data: AppData): void {
+function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   if (useCloudAppDataSync()) {
     void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
       scheduleSupabaseAppDataSync(data, SEED_VERSION)
@@ -675,7 +745,7 @@ function persistAppData(data: AppData): void {
   }
 
   storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
-  if (getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
+  if (!options?.silent && getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
     notifyDemoAppDataChanged()
   }
 }
@@ -774,6 +844,9 @@ export async function reloadFreshAppData(): Promise<AppData> {
 /** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
 export async function loadFreshAppData(): Promise<AppData> {
   if (useCloudAppDataSync()) {
+    // Preferência: cache em memória já hidratado — evita refetch na nuvem a cada listagem,
+    // que deixava a UI do gestor "piscando" enquanto esperava a rede.
+    if (appDataCache) return cloneData(appDataCache)
     return reloadFreshAppData()
   }
   return reloadAppDataFromStorage()
@@ -789,8 +862,9 @@ export function getRoleLabel(role: UserRole): string {
     GESTOR: 'Gestor',
     CLINICA: 'Clínica',
     MEDICAMENTO: 'Medicamento',
+    EMPENHADO: 'Empenhado',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Finanças Pagamento',
+    FINANCEIRO: 'Solemp confeccionada',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',
