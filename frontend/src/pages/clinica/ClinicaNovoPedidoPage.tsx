@@ -18,12 +18,15 @@ import {
   type NovaPlanilhaInput,
 } from '@/components/clinica/NovaPlanilhaModal'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
-import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
-import type { PlanilhaLivreAba } from '@/types'
-import { parseSpreadsheetSheetsFile } from '@/utils/consumoMaterialOds'
 import {
-  createEmptySpreadsheetGrid,
-  gridFromImportedRows,
+  clinicaPlanilhasLivresService,
+  resolveAbaSheet,
+} from '@/services/clinicaPlanilhasLivresService'
+import type { PlanilhaLivreAba } from '@/types'
+import { parseSpreadsheetRichSheetsFile } from '@/utils/parseSpreadsheetRich'
+import {
+  createEmptySheetData,
+  type PlanilhaSheetData,
 } from '@/utils/planilhaBrancaGrid'
 
 export default function ClinicaNovoPedidoPage() {
@@ -75,20 +78,20 @@ export default function ClinicaNovoPedidoPage() {
           setError('Selecione um arquivo .ods ou .xlsx.')
           throw new Error('no file')
         }
-        const sheets = await parseSpreadsheetSheetsFile(input.file)
+        const sheets = await parseSpreadsheetRichSheetsFile(input.file)
         if (sheets.length === 0) {
           setError('Nenhuma aba encontrada no arquivo.')
           throw new Error('empty')
         }
         const baseNome = input.nome.trim()
         const stamp = Date.now()
-        const novas: PlanilhaLivreAba[] = sheets.map((sheet, index) => ({
+        const novas: PlanilhaLivreAba[] = sheets.map((item, index) => ({
           id: `plan-${stamp}-${index}-${Math.random().toString(36).slice(2, 8)}`,
           nome:
             sheets.length === 1
-              ? baseNome || sheet.nome
-              : `${baseNome ? `${baseNome} — ` : ''}${sheet.nome}`,
-          grid: gridFromImportedRows(sheet.rows),
+              ? baseNome || item.nome
+              : `${baseNome ? `${baseNome} — ` : ''}${item.nome}`,
+          sheet: item.sheet,
         }))
         const ativaId = novas[0]?.id ?? null
         setAbas((prev) => {
@@ -104,7 +107,7 @@ export default function ClinicaNovoPedidoPage() {
       const nova: PlanilhaLivreAba = {
         id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         nome: input.nome.trim() || 'Planilha',
-        grid: createEmptySpreadsheetGrid(),
+        sheet: createEmptySheetData(),
       }
       setAbas((prev) => {
         const next = [...prev, nova]
@@ -126,12 +129,14 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const handleGridChange = useCallback(
-    (grid: string[][]) => {
+  const handleSheetChange = useCallback(
+    (sheet: PlanilhaSheetData) => {
       const ativaId = abaAtivaIdRef.current
       if (!ativaId) return
       setAbas((prev) => {
-        const next = prev.map((aba) => (aba.id === ativaId ? { ...aba, grid } : aba))
+        const next = prev.map((aba) =>
+          aba.id === ativaId ? { ...aba, sheet, grid: undefined } : aba,
+        )
         persist(next, ativaId)
         return next
       })
@@ -244,8 +249,8 @@ export default function ClinicaNovoPedidoPage() {
       {abaAtiva ? (
         <PlanilhaBrancaSpreadsheet
           nome={abaAtiva.nome}
-          grid={abaAtiva.grid}
-          onGridChange={handleGridChange}
+          sheet={resolveAbaSheet(abaAtiva)}
+          onSheetChange={handleSheetChange}
         />
       ) : (
         <Box

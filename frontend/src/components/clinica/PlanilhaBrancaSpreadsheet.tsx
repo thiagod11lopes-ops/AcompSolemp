@@ -6,40 +6,71 @@ import {
   PLANILHA_BRANCA_ROW_HEADER_WIDTH,
   PLANILHA_BRANCA_ROW_HEIGHT,
   colIndexToLetter,
-  normalizeSpreadsheetGrid,
+  isCellCoveredByMerge,
+  isMergeOrigin,
+  normalizeSheetData,
+  type PlanilhaCellStyle,
+  type PlanilhaSheetData,
 } from '@/utils/planilhaBrancaGrid'
 
 interface PlanilhaBrancaSpreadsheetProps {
   nome: string
-  grid: string[][]
-  onGridChange: (grid: string[][]) => void
+  sheet: PlanilhaSheetData
+  onSheetChange: (sheet: PlanilhaSheetData) => void
+}
+
+function cellSx(style?: PlanilhaCellStyle) {
+  return {
+    fontFamily: style?.fontFamily || EXCEL_SHEET.fontFamily,
+    fontSize: style?.fontSize ? `${style.fontSize}pt` : EXCEL_SHEET.fontSize,
+    fontWeight: style?.bold ? 700 : 400,
+    fontStyle: style?.italic ? 'italic' : 'normal',
+    textDecoration: style?.underline ? 'underline' : 'none',
+    color: style?.color || EXCEL_SHEET.text,
+    bgcolor: style?.backgroundColor || EXCEL_SHEET.cellBg,
+    textAlign: style?.horizontalAlign || 'left',
+    verticalAlign:
+      style?.verticalAlign === 'top'
+        ? 'top'
+        : style?.verticalAlign === 'bottom'
+          ? 'bottom'
+          : 'middle',
+    whiteSpace: style?.wrapText ? 'pre-wrap' : 'pre',
+    wordBreak: style?.wrapText ? 'break-word' : 'normal',
+    borderTop: style?.borderTop ? `1px solid ${style.borderTop}` : EXCEL_SHEET.border,
+    borderRight: style?.borderRight ? `1px solid ${style.borderRight}` : EXCEL_SHEET.border,
+    borderBottom: style?.borderBottom ? `1px solid ${style.borderBottom}` : EXCEL_SHEET.border,
+    borderLeft: style?.borderLeft ? `1px solid ${style.borderLeft}` : EXCEL_SHEET.border,
+  } as const
 }
 
 function PlanilhaBrancaSpreadsheetInner({
   nome,
-  grid,
-  onGridChange,
+  sheet,
+  onSheetChange,
 }: PlanilhaBrancaSpreadsheetProps) {
-  const cells = useMemo(() => normalizeSpreadsheetGrid(grid), [grid])
-  const rowCount = cells.length
-  const colCount = cells[0]?.length ?? 0
+  const data = useMemo(() => normalizeSheetData(sheet), [sheet])
+  const rowCount = data.cells.length
+  const colCount = data.cells[0]?.length ?? 0
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null)
   const [draft, setDraft] = useState('')
 
   const commitCell = useCallback(() => {
     if (!editing) return
     const { row, col } = editing
-    const next = cells.map((r, ri) =>
-      r.map((value, ci) => (ri === row && ci === col ? draft : value)),
+    const nextCells = data.cells.map((r, ri) =>
+      r.map((cell, ci) =>
+        ri === row && ci === col ? { ...cell, value: draft } : cell,
+      ),
     )
-    onGridChange(next)
+    onSheetChange({ ...data, cells: nextCells })
     setEditing(null)
     setDraft('')
-  }, [editing, draft, cells, onGridChange])
+  }, [editing, draft, data, onSheetChange])
 
   const startEdit = (row: number, col: number) => {
     setEditing({ row, col })
-    setDraft(cells[row]?.[col] ?? '')
+    setDraft(data.cells[row]?.[col]?.value ?? '')
   }
 
   const colLetters = useMemo(
@@ -73,18 +104,20 @@ function PlanilhaBrancaSpreadsheetInner({
           {nome}
         </Typography>
         <Typography sx={{ fontSize: '11px', color: EXCEL_SHEET.mutedText }}>
-          Planilha
+          Planilha (estilos preservados)
         </Typography>
       </Box>
 
-      <Box sx={{ overflow: 'auto', maxHeight: 'min(70vh, 720px)' }}>
+      <Box sx={{ overflow: 'auto', maxHeight: 'min(75vh, 820px)' }}>
         <Box
           component="table"
           sx={{
             borderCollapse: 'collapse',
             tableLayout: 'fixed',
             minWidth:
-              PLANILHA_BRANCA_ROW_HEADER_WIDTH + colCount * PLANILHA_BRANCA_CELL_WIDTH,
+              PLANILHA_BRANCA_ROW_HEADER_WIDTH +
+              (data.colWidths?.reduce((s, w) => s + (w || PLANILHA_BRANCA_CELL_WIDTH), 0) ??
+                colCount * PLANILHA_BRANCA_CELL_WIDTH),
           }}
         >
           <thead>
@@ -104,7 +137,7 @@ function PlanilhaBrancaSpreadsheetInner({
                   borderColor: EXCEL_SHEET.borderColor,
                 }}
               />
-              {colLetters.map((letter) => (
+              {colLetters.map((letter, colIndex) => (
                 <Box
                   component="th"
                   key={letter}
@@ -112,8 +145,8 @@ function PlanilhaBrancaSpreadsheetInner({
                     position: 'sticky',
                     top: 0,
                     zIndex: 2,
-                    width: PLANILHA_BRANCA_CELL_WIDTH,
-                    minWidth: PLANILHA_BRANCA_CELL_WIDTH,
+                    width: data.colWidths?.[colIndex] ?? PLANILHA_BRANCA_CELL_WIDTH,
+                    minWidth: data.colWidths?.[colIndex] ?? PLANILHA_BRANCA_CELL_WIDTH,
                     height: PLANILHA_BRANCA_ROW_HEIGHT,
                     bgcolor: EXCEL_SHEET.headerBg,
                     border: EXCEL_SHEET.border,
@@ -142,7 +175,7 @@ function PlanilhaBrancaSpreadsheetInner({
                     zIndex: 1,
                     width: PLANILHA_BRANCA_ROW_HEADER_WIDTH,
                     minWidth: PLANILHA_BRANCA_ROW_HEADER_WIDTH,
-                    height: PLANILHA_BRANCA_ROW_HEIGHT,
+                    height: data.rowHeights?.[rowIndex] ?? PLANILHA_BRANCA_ROW_HEIGHT,
                     bgcolor: EXCEL_SHEET.headerBg,
                     border: EXCEL_SHEET.border,
                     borderColor: EXCEL_SHEET.borderColor,
@@ -157,37 +190,61 @@ function PlanilhaBrancaSpreadsheetInner({
                   {rowIndex + 1}
                 </Box>
                 {Array.from({ length: colCount }, (_, colIndex) => {
-                  const value = cells[rowIndex]?.[colIndex] ?? ''
+                  const merge = isCellCoveredByMerge(rowIndex, colIndex, data.merges)
+                  if (merge && !isMergeOrigin(rowIndex, colIndex, merge)) {
+                    return null
+                  }
+                  const cell = data.cells[rowIndex]?.[colIndex]
+                  const style = cell?.style
                   const isEditing =
                     editing?.row === rowIndex && editing?.col === colIndex
+                  const colSpan = merge ? merge.endCol - merge.startCol + 1 : 1
+                  const rowSpan = merge ? merge.endRow - merge.startRow + 1 : 1
+                  const width =
+                    colSpan > 1
+                      ? Array.from({ length: colSpan }, (_, i) =>
+                          data.colWidths?.[colIndex + i] ?? PLANILHA_BRANCA_CELL_WIDTH,
+                        ).reduce((a, b) => a + b, 0)
+                      : (data.colWidths?.[colIndex] ?? PLANILHA_BRANCA_CELL_WIDTH)
+                  const height =
+                    rowSpan > 1
+                      ? Array.from({ length: rowSpan }, (_, i) =>
+                          data.rowHeights?.[rowIndex + i] ?? PLANILHA_BRANCA_ROW_HEIGHT,
+                        ).reduce((a, b) => a + b, 0)
+                      : (data.rowHeights?.[rowIndex] ?? PLANILHA_BRANCA_ROW_HEIGHT)
+
                   return (
                     <Box
                       component="td"
                       key={colIndex}
+                      colSpan={colSpan}
+                      rowSpan={rowSpan}
                       onClick={() => startEdit(rowIndex, colIndex)}
                       sx={{
-                        width: PLANILHA_BRANCA_CELL_WIDTH,
-                        minWidth: PLANILHA_BRANCA_CELL_WIDTH,
-                        height: PLANILHA_BRANCA_ROW_HEIGHT,
+                        width,
+                        minWidth: width,
+                        height,
+                        minHeight: height,
                         p: 0,
-                        border: EXCEL_SHEET.border,
-                        borderColor: EXCEL_SHEET.borderColor,
-                        bgcolor: EXCEL_SHEET.cellBg,
                         cursor: 'cell',
-                        '&:hover': { bgcolor: EXCEL_SHEET.hoverBg },
+                        ...cellSx(style),
+                        '&:hover': {
+                          outline: '1px solid #217346',
+                          outlineOffset: -1,
+                        },
                       }}
                     >
                       {isEditing ? (
                         <Box
-                          component="input"
+                          component="textarea"
                           autoFocus
                           value={draft}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                             setDraft(e.target.value)
                           }
                           onBlur={commitCell}
-                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                            if (e.key === 'Enter') {
+                          onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault()
                               commitCell()
                             }
@@ -202,29 +259,45 @@ function PlanilhaBrancaSpreadsheetInner({
                             border: '2px solid #217346',
                             outline: 'none',
                             px: 0.5,
+                            py: 0.25,
                             boxSizing: 'border-box',
-                            fontFamily: EXCEL_SHEET.fontFamily,
-                            fontSize: EXCEL_SHEET.fontSize,
-                            color: EXCEL_SHEET.text,
+                            resize: 'none',
+                            fontFamily: style?.fontFamily || EXCEL_SHEET.fontFamily,
+                            fontSize: style?.fontSize
+                              ? `${style.fontSize}pt`
+                              : EXCEL_SHEET.fontSize,
+                            fontWeight: style?.bold ? 700 : 400,
+                            fontStyle: style?.italic ? 'italic' : 'normal',
+                            color: style?.color || EXCEL_SHEET.text,
                             bgcolor: '#fff',
+                            whiteSpace: 'pre-wrap',
                           }}
                         />
                       ) : (
                         <Box
                           sx={{
                             px: 0.5,
+                            py: 0.25,
                             height: '100%',
+                            width: '100%',
+                            boxSizing: 'border-box',
                             display: 'flex',
-                            alignItems: 'center',
-                            fontFamily: EXCEL_SHEET.fontFamily,
-                            fontSize: EXCEL_SHEET.fontSize,
-                            color: EXCEL_SHEET.text,
+                            alignItems:
+                              style?.verticalAlign === 'top'
+                                ? 'flex-start'
+                                : style?.verticalAlign === 'bottom'
+                                  ? 'flex-end'
+                                  : 'center',
+                            justifyContent:
+                              style?.horizontalAlign === 'center'
+                                ? 'center'
+                                : style?.horizontalAlign === 'right'
+                                  ? 'flex-end'
+                                  : 'flex-start',
                             overflow: 'hidden',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
                           }}
                         >
-                          {value}
+                          {cell?.value}
                         </Box>
                       )}
                     </Box>

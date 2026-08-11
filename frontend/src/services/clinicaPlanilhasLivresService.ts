@@ -1,18 +1,33 @@
 import { loadAppData, saveAppData } from '@/mocks/seed'
 import type { ClinicaPlanilhasLivresState, PlanilhaLivreAba } from '@/types'
+import {
+  normalizeSheetData,
+  sheetFromPlainGrid,
+  type PlanilhaSheetData,
+} from '@/utils/planilhaBrancaGrid'
 
 const EMPTY_STATE: ClinicaPlanilhasLivresState = {
   abas: [],
   abaAtivaId: null,
 }
 
-function normalizeState(state: ClinicaPlanilhasLivresState | undefined): ClinicaPlanilhasLivresState {
-  if (!state) return { ...EMPTY_STATE, abas: [] }
-  const abas: PlanilhaLivreAba[] = (state.abas ?? []).map((aba) => ({
+export function resolveAbaSheet(aba: PlanilhaLivreAba): PlanilhaSheetData {
+  if (aba.sheet) return normalizeSheetData(aba.sheet)
+  return sheetFromPlainGrid(aba.grid)
+}
+
+function normalizeAba(aba: PlanilhaLivreAba): PlanilhaLivreAba {
+  const sheet = resolveAbaSheet(aba)
+  return {
     id: aba.id,
     nome: aba.nome,
-    grid: (aba.grid ?? []).map((row) => [...(row ?? [])]),
-  }))
+    sheet,
+  }
+}
+
+function normalizeState(state: ClinicaPlanilhasLivresState | undefined): ClinicaPlanilhasLivresState {
+  if (!state) return { ...EMPTY_STATE, abas: [] }
+  const abas: PlanilhaLivreAba[] = (state.abas ?? []).map(normalizeAba)
   const abaAtivaId =
     state.abaAtivaId && abas.some((aba) => aba.id === state.abaAtivaId)
       ? state.abaAtivaId

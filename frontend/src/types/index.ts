@@ -402,7 +402,10 @@ export interface ConsumoPlanilhaClinicaState {
 export interface PlanilhaLivreAba {
   id: string
   nome: string
-  grid: string[][]
+  /** @deprecated legado — preferir `sheet` */
+  grid?: string[][]
+  /** Grade rica com estilos e mesclas */
+  sheet?: import('@/utils/planilhaBrancaGrid').PlanilhaSheetData
 }
 
 export interface ClinicaPlanilhasLivresState {
