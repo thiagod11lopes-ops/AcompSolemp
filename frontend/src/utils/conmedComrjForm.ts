@@ -1,4 +1,22 @@
-import type { ConmedComrjFormData } from '@/types'
+import type { ConmedComrjFormData, ConmedComrjMaterialItem } from '@/types'
+import {
+  formatValorBrasileiro,
+  parseValorBrasileiro,
+} from '@/utils/consumoMaterialOds'
+
+export function createEmptyConmedMaterialItem(): ConmedComrjMaterialItem {
+  return {
+    id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    mapaDaSala: '',
+    danfe: '',
+    item: '',
+    nebPi: '',
+    descricao: '',
+    qt: '',
+    valorUnit: '',
+    valorTotal: '',
+  }
+}
 
 export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   numero: '',
@@ -11,11 +29,36 @@ export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   pacienteIniciais: '',
   pacienteData: '',
   pacienteProcedimento: '',
+  materiais: [createEmptyConmedMaterialItem()],
+  valorPorPaciente: '',
+}
+
+function normalizeMaterialItem(
+  value: Partial<ConmedComrjMaterialItem> | undefined,
+): ConmedComrjMaterialItem {
+  const item: ConmedComrjMaterialItem = {
+    id: value?.id || createEmptyConmedMaterialItem().id,
+    mapaDaSala: value?.mapaDaSala ?? '',
+    danfe: value?.danfe ?? '',
+    item: value?.item ?? '',
+    nebPi: value?.nebPi ?? '',
+    descricao: value?.descricao ?? '',
+    qt: value?.qt ?? '',
+    valorUnit: value?.valorUnit ?? '',
+    valorTotal: value?.valorTotal ?? '',
+  }
+  return withRecalculatedMaterialTotal(item)
 }
 
 export function normalizeConmedComrjForm(
   value: ConmedComrjFormData | undefined,
 ): ConmedComrjFormData {
+  const materiaisRaw = Array.isArray(value?.materiais) ? value.materiais : []
+  const materiais =
+    materiaisRaw.length > 0
+      ? materiaisRaw.map((item) => normalizeMaterialItem(item))
+      : [createEmptyConmedMaterialItem()]
+
   return {
     numero: value?.numero ?? '',
     data: value?.data ?? '',
@@ -27,6 +70,8 @@ export function normalizeConmedComrjForm(
     pacienteIniciais: value?.pacienteIniciais ?? '',
     pacienteData: value?.pacienteData ?? '',
     pacienteProcedimento: value?.pacienteProcedimento ?? '',
+    materiais,
+    valorPorPaciente: calcValorPorPaciente(materiais),
   }
 }
 
@@ -64,7 +109,78 @@ export function formatConmedPacienteNip(raw: string): string {
   return `${digits.slice(0, 2)}.${digits.slice(2, 6)}.${digits.slice(6)}`
 }
 
-/** Iniciais / procedimento em letras maiúsculas */
+/** Iniciais / procedimento / descrição em letras maiúsculas */
 export function formatConmedUppercase(raw: string): string {
   return raw.toUpperCase()
+}
+
+/** Campos numéricos (só dígitos) */
+export function formatConmedNumerico(raw: string): string {
+  return raw.replace(/\D/g, '')
+}
+
+/** QT: dígitos com vírgula decimal opcional */
+export function formatConmedQuantidade(raw: string): string {
+  const cleaned = raw.replace(/[^\d,]/g, '')
+  const firstComma = cleaned.indexOf(',')
+  if (firstComma === -1) return cleaned.slice(0, 12)
+  const intPart = cleaned.slice(0, firstComma).replace(/,/g, '').slice(0, 9)
+  const decPart = cleaned
+    .slice(firstComma + 1)
+    .replace(/,/g, '')
+    .slice(0, 3)
+  return `${intPart},${decPart}`
+}
+
+/** NEB/PI: números ou letras maiúsculas */
+export function formatConmedNebPi(raw: string): string {
+  return raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+}
+
+/** Moeda BRL a partir dos dígitos (centavos) */
+export function formatConmedMoeda(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 15)
+  if (!digits) return ''
+  const cents = Number.parseInt(digits, 10)
+  if (!Number.isFinite(cents)) return ''
+  return formatValorBrasileiro(cents / 100)
+}
+
+export function parseConmedQuantidade(raw: string): number {
+  const n = Number.parseFloat(raw.replace(/\./g, '').replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
+export function calcMaterialValorTotal(qtRaw: string, valorUnitRaw: string): string {
+  const qtd = parseConmedQuantidade(qtRaw)
+  const unit = parseValorBrasileiro(valorUnitRaw)
+  if (qtd <= 0 || unit <= 0) return ''
+  return formatValorBrasileiro(qtd * unit)
+}
+
+export function withRecalculatedMaterialTotal(
+  item: ConmedComrjMaterialItem,
+): ConmedComrjMaterialItem {
+  return {
+    ...item,
+    valorTotal: calcMaterialValorTotal(item.qt, item.valorUnit),
+  }
+}
+
+export function calcValorPorPaciente(materiais: ConmedComrjMaterialItem[]): string {
+  const total = materiais.reduce((sum, item) => {
+    const line = parseValorBrasileiro(item.valorTotal)
+    return sum + (Number.isFinite(line) ? line : 0)
+  }, 0)
+  return total > 0 ? formatValorBrasileiro(total) : ''
+}
+
+export function withRecalculatedMateriais(
+  materiais: ConmedComrjMaterialItem[],
+): Pick<ConmedComrjFormData, 'materiais' | 'valorPorPaciente'> {
+  const next = materiais.map(withRecalculatedMaterialTotal)
+  return {
+    materiais: next,
+    valorPorPaciente: calcValorPorPaciente(next),
+  }
 }

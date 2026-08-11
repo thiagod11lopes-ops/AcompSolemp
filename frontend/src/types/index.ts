@@ -408,6 +408,20 @@ export interface PlanilhaLivreAba {
   sheet?: import('@/utils/planilhaBrancaGrid').PlanilhaSheetData
 }
 
+/** Linha de material do formulário CONMED COMRJ */
+export interface ConmedComrjMaterialItem {
+  id: string
+  mapaDaSala: string
+  danfe: string
+  item: string
+  nebPi: string
+  descricao: string
+  qt: string
+  valorUnit: string
+  /** Calculado: QT × VALOR UNIT */
+  valorTotal: string
+}
+
 /** Formulário da aba CONMED COMRJ (não é planilha) */
 export interface ConmedComrjFormData {
   numero: string
@@ -421,6 +435,10 @@ export interface ConmedComrjFormData {
   pacienteIniciais: string
   pacienteData: string
   pacienteProcedimento: string
+  /** Dados do material (várias linhas) */
+  materiais: ConmedComrjMaterialItem[]
+  /** Soma automática dos VALOR TOTAL das linhas */
+  valorPorPaciente: string
 }
 
 export interface ClinicaPlanilhasLivresState {
