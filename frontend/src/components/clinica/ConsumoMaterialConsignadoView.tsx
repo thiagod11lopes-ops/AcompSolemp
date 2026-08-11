@@ -32,6 +32,7 @@ import {
   type ConsumoMaterialColunaKey,
   type InserirLinhaConsumoPosicao,
 } from '@/utils/consumoMaterialTemplate'
+import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import { CONSUMO_ABA_PRINCIPAL_ID } from '@/services/consumoPlanilhaService'
 
 export interface ConsumoPlanilhaAbaTab {
@@ -73,6 +74,10 @@ interface ConsumoMaterialConsignadoViewProps {
   abaPlanilhaAtivaId?: string
   onAbaPlanilhaChange?: (abaId: string) => void
   onFecharAbaPlanilha?: (abaId: string) => void
+  /** Exibe grade Excel em branco (sem colunas de Consumo) */
+  modoPlanilhaBranca?: boolean
+  planilhaBrancaGrid?: string[][]
+  onPlanilhaBrancaGridChange?: (grid: string[][]) => void
 }
 
 function ConsumoMaterialConsignadoViewInner({
@@ -108,6 +113,9 @@ function ConsumoMaterialConsignadoViewInner({
   abaPlanilhaAtivaId = CONSUMO_ABA_PRINCIPAL_ID,
   onAbaPlanilhaChange,
   onFecharAbaPlanilha,
+  modoPlanilhaBranca = false,
+  planilhaBrancaGrid,
+  onPlanilhaBrancaGridChange,
 }: ConsumoMaterialConsignadoViewProps) {
   const [mesInterno, setMesInterno] = useState<MesConsumoModelo>(getMesAtualModelo)
   const mesSelecionado = mesControlado ?? mesInterno
@@ -243,6 +251,13 @@ function ConsumoMaterialConsignadoViewInner({
         </Box>
       )}
 
+      {modoPlanilhaBranca ? (
+        <PlanilhaBrancaSpreadsheet
+          nome={fileName || 'Planilha'}
+          grid={planilhaBrancaGrid ?? []}
+          onGridChange={(next) => onPlanilhaBrancaGridChange?.(next)}
+        />
+      ) : (
       <ConsumoMaterialSpreadsheet
         measureRows={lancamentos}
         rows={linhasExibidas}
@@ -316,6 +331,7 @@ function ConsumoMaterialConsignadoViewInner({
           </FormControl>
         }
       />
+      )}
     </Box>
   )
 }

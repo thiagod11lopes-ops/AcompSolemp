@@ -20,6 +20,11 @@ function normalizeAbas(abas: ConsumoPlanilhaAba[] | undefined): ConsumoPlanilhaA
     mes: aba.mes,
     ano: aba.ano,
     extraRows: (aba.extraRows ?? []).map((row) => ({ ...row })),
+    tipo: aba.tipo === 'branca' ? 'branca' : 'consumo',
+    grid:
+      aba.tipo === 'branca'
+        ? (aba.grid ?? []).map((row) => [...(row ?? [])])
+        : undefined,
   }))
 }
 
