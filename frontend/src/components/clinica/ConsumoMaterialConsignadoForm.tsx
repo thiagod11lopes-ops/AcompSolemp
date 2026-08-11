@@ -31,7 +31,9 @@ export function ConsumoMaterialConsignadoForm({
 
   const handleAddOrUpdate = (row: ConsumoMaterialRow) => {
     if (editingRowId) {
-      const next = value.map((item) => (item.id === editingRowId ? { ...row, id: editingRowId } : item))
+      const next = value.map((item) =>
+        item.id === editingRowId ? { ...row, id: editingRowId } : item,
+      )
       onChange(renumerarLinhasConsumo(next))
       setEditingRowId(null)
       return
@@ -53,25 +55,30 @@ export function ConsumoMaterialConsignadoForm({
     <Box
       sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', lg: 'minmax(320px, 420px) minmax(0, 1fr)' },
-        gap: 2,
+        gridTemplateColumns: { xs: '1fr', lg: 'minmax(300px, 380px) minmax(0, 1fr)' },
+        gap: 1.5,
         alignItems: 'start',
       }}
     >
       <Paper
         elevation={0}
         sx={(theme) => ({
-          p: 2,
-          borderRadius: 2,
+          p: 1,
+          borderRadius: 1.5,
           border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
           bgcolor: alpha(theme.palette.background.paper, 0.95),
           position: { lg: 'sticky' },
-          top: { lg: 12 },
-          maxHeight: { lg: 'calc(100vh - 120px)' },
+          top: { lg: 8 },
+          maxHeight: { lg: 'calc(100vh - 88px)' },
           overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
         })}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5 }}>
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 800, mb: 0.5, display: 'block', letterSpacing: 0.2 }}
+        >
           {editingRow ? 'Editando lançamento' : 'Novo lançamento'}
         </Typography>
         <ConsumoMaterialManualForm
@@ -87,7 +94,7 @@ export function ConsumoMaterialConsignadoForm({
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="subtitle2"
-          sx={{ fontWeight: 700, mb: 1, color: 'text.secondary', fontSize: '0.8rem' }}
+          sx={{ fontWeight: 700, mb: 0.75, color: 'text.secondary', fontSize: '0.75rem' }}
         >
           Planilha (ao vivo)
         </Typography>

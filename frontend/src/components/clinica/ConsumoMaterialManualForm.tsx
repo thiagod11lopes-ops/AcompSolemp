@@ -297,6 +297,16 @@ export function ConsumoMaterialManualForm({
     [groups, headers],
   )
 
+  const fieldSize = compact ? ('small' as const) : ('medium' as const)
+  const denseFieldSx = compact
+    ? {
+        '& .MuiInputBase-root': { fontSize: '0.72rem', minHeight: 30 },
+        '& .MuiInputBase-input': { fontSize: '0.72rem', py: 0.45 },
+        '& .MuiInputLabel-root': { fontSize: '0.72rem' },
+        '& .MuiFormHelperText-root': { fontSize: '0.65rem', mx: 0.5, mt: 0.15 },
+      }
+    : undefined
+
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
       {!compact ? (
@@ -313,257 +323,319 @@ export function ConsumoMaterialManualForm({
           </Tooltip>
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5 }}>
           <Tooltip title="Preencher com dados de exemplo">
             <IconButton
               color="primary"
               size="small"
               onClick={preencherExemplo}
               aria-label="Preencher exemplo"
+              sx={{ p: 0.35 }}
             >
-              <AutoAwesomeIcon fontSize="small" />
+              <AutoAwesomeIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Tooltip>
         </Box>
       )}
 
-      <Box sx={{ display: 'grid', gap: compact ? 1.5 : 3 }}>
+      <Box sx={{ display: 'grid', gap: compact ? 0.75 : 3 }}>
         {fieldsByGroup.map(({ group, fields }) => {
           const Icon = GROUP_ICONS[group]
-          return (
-            <Card key={group} variant="outlined" sx={{ borderRadius: compact ? 2 : 3 }}>
-              <CardContent sx={{ p: compact ? 1.5 : 3, '&:last-child': { pb: compact ? 1.5 : 3 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: compact ? 1.5 : 3 }}>
-                  <Icon color="primary" fontSize={compact ? 'small' : 'medium'} />
-                  <Typography variant={compact ? 'subtitle2' : 'h6'} sx={{ fontWeight: 700 }}>
-                    {GROUP_TITLES[group]}
-                  </Typography>
-                </Box>
+          const groupHeader = (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                mb: compact ? 0.5 : 3,
+              }}
+            >
+              <Icon color="primary" sx={{ fontSize: compact ? 14 : 24 }} />
+              <Typography
+                variant={compact ? 'caption' : 'h6'}
+                sx={{ fontWeight: 700, letterSpacing: compact ? 0.3 : undefined }}
+              >
+                {GROUP_TITLES[group]}
+              </Typography>
+            </Box>
+          )
 
-                <Grid container spacing={compact ? 1.25 : 2}>
-                  {fields.map((col) => {
-                    const fieldKey = col.key as keyof ManualRowFormData
-                    const isNip = NIP_FIELDS.has(fieldKey)
-                    const isItemPme = modoMedicamento && fieldKey === 'itemPme'
-                    const isMultiline = MULTILINE_FIELDS.has(fieldKey)
-                    const wideField =
-                      fieldKey === 'nome' ||
-                      fieldKey === 'procedimento' ||
-                      fieldKey === 'itemPme' ||
-                      fieldKey === 'maneiraDispensacao'
+          const fieldsGrid = (
+            <Grid container spacing={compact ? 0.75 : 2}>
+              {fields.map((col) => {
+                const fieldKey = col.key as keyof ManualRowFormData
+                const isNip = NIP_FIELDS.has(fieldKey)
+                const isItemPme = modoMedicamento && fieldKey === 'itemPme'
+                const isMultiline = MULTILINE_FIELDS.has(fieldKey)
+                const wideField =
+                  fieldKey === 'nome' ||
+                  fieldKey === 'procedimento' ||
+                  fieldKey === 'itemPme' ||
+                  fieldKey === 'maneiraDispensacao'
+                const tinyField =
+                  fieldKey === 'numero' ||
+                  fieldKey === 'et' ||
+                  fieldKey === 'qtd' ||
+                  fieldKey === 'idade' ||
+                  fieldKey === 'cid' ||
+                  fieldKey === 'iniciais' ||
+                  fieldKey === 'data' ||
+                  fieldKey === 'mapa'
 
-                    return (
-                      <Grid
-                        key={col.key}
-                        size={{
-                          xs: 12,
-                          sm: compact
-                            ? 12
-                            : isMultiline || isItemPme
-                              ? 12
-                              : col.key === 'numero' || col.key === 'et' || col.key === 'qtd'
-                                ? 4
-                                : 6,
-                          md: compact
-                            ? 12
-                            : isMultiline || isItemPme
-                              ? 12
-                              : wideField
-                                ? 8
-                                : 4,
-                        }}
-                      >
-                        {isItemPme ? (
-                          <Controller
-                            name="itemPme"
-                            control={control}
-                            render={({ field }) => {
-                              const selected =
-                                findMedicamentoPrecoByNome(field.value, medicamentosCatalog) ??
-                                null
-                              const labelShrink =
-                                Boolean(selected) ||
-                                Boolean(itemPmeInput.trim()) ||
-                                itemPmeFocused
-                              return (
-                                <Autocomplete
-                                  fullWidth
-                                  options={medicamentosCatalog}
-                                  value={selected}
-                                  inputValue={itemPmeInput}
-                                  openOnFocus
-                                  autoHighlight
-                                  clearOnBlur={false}
-                                  getOptionLabel={(option) =>
-                                    typeof option === 'string' ? option : option.medicamento
-                                  }
-                                  isOptionEqualToValue={(option, value) =>
-                                    option.id === value.id
-                                  }
-                                  filterOptions={(options, state) => {
-                                    const q = state.inputValue.trim().toLowerCase()
-                                    if (!q) return options
-                                    return options.filter(
-                                      (opt) =>
-                                        opt.medicamento.toLowerCase().includes(q) ||
-                                        opt.neb.toLowerCase().includes(q),
-                                    )
-                                  }}
-                                  onChange={(_, newValue) => {
-                                    applyMedicamentoSelection(newValue)
-                                    field.onChange(newValue?.medicamento ?? '')
-                                  }}
-                                  onInputChange={(_, newInput, reason) => {
-                                    setItemPmeInput(newInput)
-                                    if (reason === 'input' && !newInput.trim()) {
-                                      field.onChange('')
-                                    }
-                                  }}
-                                  onFocus={() => setItemPmeFocused(true)}
-                                  onBlur={() => {
-                                    setItemPmeFocused(false)
-                                    field.onBlur()
-                                  }}
-                                  noOptionsText="Nenhum medicamento encontrado na lista de preços"
-                                  renderOption={(props, option) => {
-                                    const { key, ...optionProps } = props as typeof props & {
-                                      key?: string
-                                    }
-                                    return (
-                                      <li key={key ?? option.id} {...optionProps}>
-                                        <Box
-                                          sx={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            py: 0.5,
-                                          }}
-                                        >
-                                          <Typography variant="body2">
-                                            {option.medicamento}
-                                          </Typography>
-                                          <Typography variant="caption" color="text.secondary">
-                                            {option.neb}
-                                            {option.uf ? ` · ${option.uf}` : ''}
-                                            {' · '}
-                                            {formatPrecoReferenciaMedicamento(
-                                              option.precoReferencia,
-                                            )}
-                                          </Typography>
-                                        </Box>
-                                      </li>
-                                    )
-                                  }}
-                                  renderInput={(params) => (
-                                    <TextField
-                                      {...params}
-                                      label={col.label}
-                                      placeholder="Busque pelo nome do medicamento"
-                                      error={Boolean(errors.itemPme)}
-                                      helperText={
-                                        errors.itemPme?.message ??
-                                        'Opções da aba Preço de Medicamentos'
-                                      }
-                                      slotProps={{
-                                        ...params.slotProps,
-                                        inputLabel: {
-                                          ...params.slotProps?.inputLabel,
-                                          shrink: labelShrink,
-                                        },
+                return (
+                  <Grid
+                    key={col.key}
+                    size={
+                      compact
+                        ? {
+                            xs: isMultiline || wideField ? 12 : tinyField ? 4 : 6,
+                          }
+                        : {
+                            xs: 12,
+                            sm:
+                              isMultiline || isItemPme
+                                ? 12
+                                : col.key === 'numero' || col.key === 'et' || col.key === 'qtd'
+                                  ? 4
+                                  : 6,
+                            md: isMultiline || isItemPme ? 12 : wideField ? 8 : 4,
+                          }
+                    }
+                  >
+                    {isItemPme ? (
+                      <Controller
+                        name="itemPme"
+                        control={control}
+                        render={({ field }) => {
+                          const selected =
+                            findMedicamentoPrecoByNome(field.value, medicamentosCatalog) ?? null
+                          const labelShrink =
+                            Boolean(selected) ||
+                            Boolean(itemPmeInput.trim()) ||
+                            itemPmeFocused
+                          return (
+                            <Autocomplete
+                              fullWidth
+                              size={fieldSize}
+                              options={medicamentosCatalog}
+                              value={selected}
+                              inputValue={itemPmeInput}
+                              openOnFocus
+                              autoHighlight
+                              clearOnBlur={false}
+                              getOptionLabel={(option) =>
+                                typeof option === 'string' ? option : option.medicamento
+                              }
+                              isOptionEqualToValue={(option, value) => option.id === value.id}
+                              filterOptions={(options, state) => {
+                                const q = state.inputValue.trim().toLowerCase()
+                                if (!q) return options
+                                return options.filter(
+                                  (opt) =>
+                                    opt.medicamento.toLowerCase().includes(q) ||
+                                    opt.neb.toLowerCase().includes(q),
+                                )
+                              }}
+                              onChange={(_, newValue) => {
+                                applyMedicamentoSelection(newValue)
+                                field.onChange(newValue?.medicamento ?? '')
+                              }}
+                              onInputChange={(_, newInput, reason) => {
+                                setItemPmeInput(newInput)
+                                if (reason === 'input' && !newInput.trim()) {
+                                  field.onChange('')
+                                }
+                              }}
+                              onFocus={() => setItemPmeFocused(true)}
+                              onBlur={() => {
+                                setItemPmeFocused(false)
+                                field.onBlur()
+                              }}
+                              noOptionsText="Nenhum medicamento encontrado na lista de preços"
+                              renderOption={(props, option) => {
+                                const { key, ...optionProps } = props as typeof props & {
+                                  key?: string
+                                }
+                                return (
+                                  <li key={key ?? option.id} {...optionProps}>
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        py: 0.5,
                                       }}
-                                    />
-                                  )}
-                                />
-                              )
-                            }}
-                          />
-                        ) : isNip ? (
-                          <Controller
-                            name={fieldKey}
-                            control={control}
-                            render={({ field }) => {
-                              const hasValue = Boolean(String(field.value ?? '').trim())
-                              return (
+                                    >
+                                      <Typography variant="body2">{option.medicamento}</Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {option.neb}
+                                        {option.uf ? ` · ${option.uf}` : ''}
+                                        {' · '}
+                                        {formatPrecoReferenciaMedicamento(option.precoReferencia)}
+                                      </Typography>
+                                    </Box>
+                                  </li>
+                                )
+                              }}
+                              renderInput={(params) => (
                                 <TextField
-                                  fullWidth
+                                  {...params}
                                   label={col.label}
-                                  placeholder="00.0000.00"
-                                  value={field.value}
-                                  onChange={(e) => field.onChange(maskNip(e.target.value))}
-                                  onBlur={field.onBlur}
-                                  error={Boolean(errors[fieldKey])}
+                                  size={fieldSize}
+                                  placeholder="Busque pelo nome do medicamento"
+                                  error={Boolean(errors.itemPme)}
                                   helperText={
-                                    errors[fieldKey]?.message ?? 'Formato: 00.0000.00'
+                                    errors.itemPme?.message ??
+                                    (compact ? undefined : 'Opções da aba Preço de Medicamentos')
                                   }
+                                  sx={denseFieldSx}
                                   slotProps={{
-                                    htmlInput: { inputMode: 'numeric', maxLength: 10 },
-                                    inputLabel: { shrink: hasValue || undefined },
+                                    ...params.slotProps,
+                                    inputLabel: {
+                                      ...params.slotProps?.inputLabel,
+                                      shrink: labelShrink,
+                                    },
                                   }}
                                 />
-                              )
-                            }}
-                          />
-                        ) : (
-                          <Controller
-                            name={fieldKey}
-                            control={control}
-                            render={({ field }) => {
-                              const hasValue = Boolean(String(field.value ?? '').trim())
-                              return (
-                                <TextField
-                                  fullWidth
-                                  label={col.label}
-                                  multiline={isMultiline}
-                                  rows={isMultiline ? 2 : undefined}
-                                  name={field.name}
-                                  value={field.value ?? ''}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                  inputRef={field.ref}
-                                  error={Boolean(errors[fieldKey])}
-                                  helperText={
-                                    errors[fieldKey]?.message ??
-                                    (modoMedicamento && fieldKey === 'valorUnitario'
-                                      ? 'Preenchido pelo preço referência da lista'
-                                      : undefined)
-                                  }
-                                  placeholder={
-                                    fieldKey === 'data'
-                                      ? 'dd/mm/aa'
-                                      : fieldKey === 'valor' || fieldKey === 'valorUnitario'
-                                        ? 'R$ 0,00'
-                                        : undefined
-                                  }
-                                  slotProps={{
-                                    inputLabel: { shrink: hasValue || undefined },
-                                  }}
-                                />
-                              )
-                            }}
-                          />
-                        )}
-                      </Grid>
-                    )
-                  })}
-                </Grid>
+                              )}
+                            />
+                          )
+                        }}
+                      />
+                    ) : isNip ? (
+                      <Controller
+                        name={fieldKey}
+                        control={control}
+                        render={({ field }) => {
+                          const hasValue = Boolean(String(field.value ?? '').trim())
+                          return (
+                            <TextField
+                              fullWidth
+                              size={fieldSize}
+                              label={col.label}
+                              placeholder="00.0000.00"
+                              value={field.value}
+                              onChange={(e) => field.onChange(maskNip(e.target.value))}
+                              onBlur={field.onBlur}
+                              error={Boolean(errors[fieldKey])}
+                              helperText={
+                                errors[fieldKey]?.message ??
+                                (compact ? undefined : 'Formato: 00.0000.00')
+                              }
+                              sx={denseFieldSx}
+                              slotProps={{
+                                htmlInput: { inputMode: 'numeric', maxLength: 10 },
+                                inputLabel: { shrink: hasValue || undefined },
+                              }}
+                            />
+                          )
+                        }}
+                      />
+                    ) : (
+                      <Controller
+                        name={fieldKey}
+                        control={control}
+                        render={({ field }) => {
+                          const hasValue = Boolean(String(field.value ?? '').trim())
+                          return (
+                            <TextField
+                              fullWidth
+                              size={fieldSize}
+                              label={col.label}
+                              multiline={isMultiline}
+                              minRows={isMultiline ? (compact ? 1 : 2) : undefined}
+                              maxRows={isMultiline ? (compact ? 2 : undefined) : undefined}
+                              name={field.name}
+                              value={field.value ?? ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              inputRef={field.ref}
+                              error={Boolean(errors[fieldKey])}
+                              helperText={
+                                errors[fieldKey]?.message ??
+                                (modoMedicamento && fieldKey === 'valorUnitario' && !compact
+                                  ? 'Preenchido pelo preço referência da lista'
+                                  : undefined)
+                              }
+                              placeholder={
+                                fieldKey === 'data'
+                                  ? 'dd/mm/aa'
+                                  : fieldKey === 'valor' || fieldKey === 'valorUnitario'
+                                    ? 'R$ 0,00'
+                                    : undefined
+                              }
+                              sx={denseFieldSx}
+                              slotProps={{
+                                inputLabel: { shrink: hasValue || undefined },
+                              }}
+                            />
+                          )
+                        }}
+                      />
+                    )}
+                  </Grid>
+                )
+              })}
+            </Grid>
+          )
+
+          if (compact) {
+            return (
+              <Box
+                key={group}
+                sx={(theme) => ({
+                  pb: 0.75,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  '&:last-of-type': { borderBottom: 'none', pb: 0 },
+                })}
+              >
+                {groupHeader}
+                {fieldsGrid}
+              </Box>
+            )
+          }
+
+          return (
+            <Card key={group} variant="outlined" sx={{ borderRadius: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                {groupHeader}
+                {fieldsGrid}
               </CardContent>
             </Card>
           )
         })}
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 1, mt: compact ? 2 : 3, flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 1,
+          mt: compact ? 1 : 3,
+          flexWrap: 'wrap',
+          position: compact ? 'sticky' : undefined,
+          bottom: compact ? 0 : undefined,
+          bgcolor: compact ? 'background.paper' : undefined,
+          pt: compact ? 1 : undefined,
+          zIndex: compact ? 1 : undefined,
+        }}
+      >
         {editingRow && onCancelEdit ? (
-          <Button type="button" variant="outlined" size={compact ? 'small' : 'medium'} onClick={onCancelEdit}>
-            Cancelar edição
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            onClick={onCancelEdit}
+          >
+            Cancelar
           </Button>
         ) : null}
         <Button
           type="submit"
           variant="contained"
-          size={compact ? 'medium' : 'large'}
+          size={compact ? 'small' : 'large'}
           startIcon={<AddIcon />}
+          fullWidth={compact}
         >
-          {editingRow ? 'Salvar lançamento' : 'Adicionar à planilha'}
+          {editingRow ? 'Salvar' : 'Adicionar à planilha'}
         </Button>
       </Box>
     </Box>
