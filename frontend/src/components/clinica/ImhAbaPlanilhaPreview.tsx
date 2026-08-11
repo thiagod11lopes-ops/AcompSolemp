@@ -62,11 +62,12 @@ const headerSx = {
   color: EXCEL_SHEET.mutedText,
 } as const
 
-const titleSx = {
-  ...cellSx,
-  bgcolor: EXCEL_SHEET.groupBg,
+const titleTextSx = {
+  fontFamily: EXCEL_SHEET.fontFamily,
   fontWeight: 800,
-  fontSize: 12,
+  fontSize: 13,
+  color: EXCEL_SHEET.text,
+  lineHeight: 1.35,
 } as const
 
 export function ImhAbaPlanilhaPreview({
@@ -184,108 +185,136 @@ export function ImhAbaPlanilhaPreview({
           </Box>
         ) : (
           <Box
-            className="excel-sheet-grid"
             sx={{
-              width: 'fit-content',
-              maxWidth: '100%',
-              overflowX: 'auto',
               p: 1.5,
               borderTop: EXCEL_SHEET.border,
+              display: 'grid',
+              gap: 1.25,
             }}
           >
-            <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
-              <TableBody>
-                <TableRow>
-                  <TableCell colSpan={colCount} sx={titleSx}>
-                    {IMH_ABA_INSTITUICAO}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={Math.max(4, Math.floor(colCount / 2))} sx={titleSx}>
-                    {IMH_ABA_HOSPITAL}
-                  </TableCell>
-                  <TableCell colSpan={2} sx={{ ...headerSx, fontWeight: 700 }}>
-                    ANEXO DA CP — Nº CP
-                  </TableCell>
-                  <TableCell colSpan={colCount - Math.max(4, Math.floor(colCount / 2)) - 2} sx={cellSx}>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 0.35,
+                px: 0.25,
+                minWidth: 0,
+              }}
+            >
+              <Typography sx={titleTextSx}>{IMH_ABA_INSTITUICAO}</Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Typography sx={titleTextSx}>{IMH_ABA_HOSPITAL}</Typography>
+                <Typography
+                  sx={{
+                    ...titleTextSx,
+                    fontWeight: 700,
+                    textAlign: 'right',
+                    ml: 'auto',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ANEXO DA CP — Nº CP{'\u00A0\u00A0'}
+                  <Box component="span" sx={{ fontWeight: 600 }}>
                     {dash(value.numeroCp)}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={colCount} sx={titleSx}>
-                    {dash(value.clinica)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-              <TableHead>
-                <TableRow>
-                  {IMH_ABA_COLUNAS.map((col) => (
-                    <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
-                      {col.label}
-                    </TableCell>
-                  ))}
-                  <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>AÇÕES</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {value.linhas.map((linha, index) => {
-                  const editing = editingLinhaId === linha.id
-                  return (
-                    <TableRow
-                      key={linha.id}
-                      sx={{
-                        bgcolor: editing ? EXCEL_SHEET.selectedBg : undefined,
-                        '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
-                      }}
-                    >
-                      {IMH_ABA_COLUNAS.map((col) => (
-                        <TableCell
-                          key={col.key}
-                          sx={{
-                            ...cellSx,
-                            ...(col.key === 'descricao' || col.key === 'nomeUsuario'
-                              ? {
-                                  whiteSpace: 'pre-wrap',
-                                  maxWidth: col.width + 40,
-                                  minWidth: 120,
-                                }
-                              : null),
-                          }}
-                        >
-                          {dash(String(linha[col.key] ?? ''))}
-                        </TableCell>
-                      ))}
-                      <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
-                        <IconButton
-                          size="small"
-                          aria-label={`Editar linha IMH ${index + 1}`}
-                          onClick={() => onEditLinha?.(linha.id)}
-                          sx={{ p: 0.35 }}
-                        >
-                          <EditIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          aria-label={`Excluir linha IMH ${index + 1}`}
-                          onClick={() => onDeleteLinha?.(linha.id)}
-                          sx={{ p: 0.35 }}
-                        >
-                          <DeleteIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {value.linhas.length === 0 ? (
+                  </Box>
+                </Typography>
+              </Box>
+              <Typography sx={{ ...titleTextSx, fontWeight: 700 }}>
+                {dash(value.clinica)}
+              </Typography>
+            </Box>
+
+            <Box
+              className="excel-sheet-grid"
+              sx={{
+                width: 'fit-content',
+                maxWidth: '100%',
+                overflowX: 'auto',
+                border: EXCEL_SHEET.border,
+                borderRadius: 1,
+                bgcolor: EXCEL_SHEET.sheetBg,
+              }}
+            >
+              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                      Nenhum lançamento
+                    {IMH_ABA_COLUNAS.map((col) => (
+                      <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
+                        {col.label}
+                      </TableCell>
+                    ))}
+                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                      AÇÕES
                     </TableCell>
                   </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {value.linhas.map((linha, index) => {
+                    const editing = editingLinhaId === linha.id
+                    return (
+                      <TableRow
+                        key={linha.id}
+                        sx={{
+                          bgcolor: editing ? EXCEL_SHEET.selectedBg : undefined,
+                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                        }}
+                      >
+                        {IMH_ABA_COLUNAS.map((col) => (
+                          <TableCell
+                            key={col.key}
+                            sx={{
+                              ...cellSx,
+                              ...(col.key === 'descricao' || col.key === 'nomeUsuario'
+                                ? {
+                                    whiteSpace: 'pre-wrap',
+                                    maxWidth: col.width + 40,
+                                    minWidth: 120,
+                                  }
+                                : null),
+                            }}
+                          >
+                            {dash(String(linha[col.key] ?? ''))}
+                          </TableCell>
+                        ))}
+                        <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                          <IconButton
+                            size="small"
+                            aria-label={`Editar linha IMH ${index + 1}`}
+                            onClick={() => onEditLinha?.(linha.id)}
+                            sx={{ p: 0.35 }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            aria-label={`Excluir linha IMH ${index + 1}`}
+                            onClick={() => onDeleteLinha?.(linha.id)}
+                            sx={{ p: 0.35 }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {value.linhas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
+                        Nenhum lançamento
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </Box>
           </Box>
         )}
       </Paper>
