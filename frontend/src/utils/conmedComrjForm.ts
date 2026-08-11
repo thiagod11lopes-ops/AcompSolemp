@@ -29,7 +29,7 @@ export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   pacienteIniciais: '',
   pacienteData: '',
   pacienteProcedimento: '',
-  materiais: [createEmptyConmedMaterialItem()],
+  materiais: [],
   valorPorPaciente: '',
 }
 
@@ -54,10 +54,9 @@ export function normalizeConmedComrjForm(
   value: ConmedComrjFormData | undefined,
 ): ConmedComrjFormData {
   const materiaisRaw = Array.isArray(value?.materiais) ? value.materiais : []
-  const materiais =
-    materiaisRaw.length > 0
-      ? materiaisRaw.map((item) => normalizeMaterialItem(item))
-      : [createEmptyConmedMaterialItem()]
+  const materiais = materiaisRaw
+    .map((item) => normalizeMaterialItem(item))
+    .filter((item) => materialHasContent(item))
 
   return {
     numero: value?.numero ?? '',
@@ -185,7 +184,7 @@ export function withRecalculatedMateriais(
   }
 }
 
-function materialHasContent(item: ConmedComrjMaterialItem): boolean {
+export function materialHasContent(item: ConmedComrjMaterialItem): boolean {
   return Boolean(
     item.mapaDaSala ||
       item.danfe ||

@@ -1,4 +1,16 @@
-import { Box, Chip, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { DeleteOutlined as DeleteIcon, EditOutlined as EditIcon } from '@mui/icons-material'
+import {
+  Box,
+  Chip,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material'
 import type { ConmedComrjFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
@@ -9,6 +21,9 @@ import '@/components/clinica/spreadsheet-excel.css'
 
 interface ConmedComrjPlanilhaPreviewProps {
   value: ConmedComrjFormData
+  editingMaterialId?: string | null
+  onEditMaterial?: (id: string) => void
+  onDeleteMaterial?: (id: string) => void
 }
 
 function dash(value: string): string {
@@ -52,10 +67,16 @@ const headerSx = {
 }
 
 const PATIENT_COLS = 4
-const MATERIAL_COLS = 9
+/** Inclui coluna AÇÕES */
+const MATERIAL_COLS = 10
 const DETAIL_COLS = PATIENT_COLS + MATERIAL_COLS
 
-export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreviewProps) {
+export function ConmedComrjPlanilhaPreview({
+  value,
+  editingMaterialId = null,
+  onEditMaterial,
+  onDeleteMaterial,
+}: ConmedComrjPlanilhaPreviewProps) {
   const visible = conmedFormHasPreviewContent(value)
   const title = conmedProcessoSheetTitle(value)
   const materiais = value.materiais
@@ -223,64 +244,115 @@ export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreview
                     <TableCell sx={headerSx}>QT</TableCell>
                     <TableCell sx={headerSx}>VALOR UNIT</TableCell>
                     <TableCell sx={headerSx}>VALOR TOTAL</TableCell>
+                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                      AÇÕES
+                    </TableCell>
                   </TableRow>
                 </TableHead>
 
                 <TableBody>
-                  {materiais.map((mat, index) => (
-                    <TableRow
-                      key={mat.id}
-                      sx={{
-                        '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
-                      }}
-                    >
-                      {index === 0 ? (
-                        <>
-                          <TableCell
-                            rowSpan={patientRowSpan}
-                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                          >
-                            {dash(value.pacienteNip)}
-                          </TableCell>
-                          <TableCell
-                            rowSpan={patientRowSpan}
-                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                          >
-                            {dash(value.pacienteIniciais)}
-                          </TableCell>
-                          <TableCell
-                            rowSpan={patientRowSpan}
-                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                          >
-                            {dash(value.pacienteData)}
-                          </TableCell>
-                          <TableCell
-                            rowSpan={patientRowSpan}
-                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe', minWidth: 140 }}
-                          >
-                            {dash(value.pacienteProcedimento)}
-                          </TableCell>
-                        </>
-                      ) : null}
-                      <TableCell sx={{ ...cellSx, fontWeight: 700, width: 36 }}>
-                        {index + 1}
+                  {materiais.length === 0 ? (
+                    <TableRow>
+                      <TableCell sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}>
+                        {dash(value.pacienteNip)}
                       </TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.mapaDaSala)}</TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
-                      <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(mat.descricao)}</TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
-                      <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
-                      <TableCell sx={{ ...cellSx, fontWeight: 700 }}>
-                        {dash(mat.valorTotal)}
+                      <TableCell sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}>
+                        {dash(value.pacienteIniciais)}
+                      </TableCell>
+                      <TableCell sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}>
+                        {dash(value.pacienteData)}
+                      </TableCell>
+                      <TableCell
+                        sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe', minWidth: 140 }}
+                      >
+                        {dash(value.pacienteProcedimento)}
+                      </TableCell>
+                      <TableCell colSpan={MATERIAL_COLS} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
+                        Nenhum material adicionado
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    materiais.map((mat, index) => (
+                      <TableRow
+                        key={mat.id}
+                        sx={{
+                          bgcolor:
+                            editingMaterialId === mat.id ? EXCEL_SHEET.selectedBg : undefined,
+                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                        }}
+                      >
+                        {index === 0 ? (
+                          <>
+                            <TableCell
+                              rowSpan={patientRowSpan}
+                              sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                            >
+                              {dash(value.pacienteNip)}
+                            </TableCell>
+                            <TableCell
+                              rowSpan={patientRowSpan}
+                              sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                            >
+                              {dash(value.pacienteIniciais)}
+                            </TableCell>
+                            <TableCell
+                              rowSpan={patientRowSpan}
+                              sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                            >
+                              {dash(value.pacienteData)}
+                            </TableCell>
+                            <TableCell
+                              rowSpan={patientRowSpan}
+                              sx={{
+                                ...cellSx,
+                                fontWeight: 600,
+                                bgcolor: '#fbfcfe',
+                                minWidth: 140,
+                              }}
+                            >
+                              {dash(value.pacienteProcedimento)}
+                            </TableCell>
+                          </>
+                        ) : null}
+                        <TableCell sx={{ ...cellSx, fontWeight: 700, width: 36 }}>
+                          {index + 1}
+                        </TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.mapaDaSala)}</TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
+                        <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(mat.descricao)}</TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
+                        <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
+                        <TableCell sx={{ ...cellSx, fontWeight: 700 }}>
+                          {dash(mat.valorTotal)}
+                        </TableCell>
+                        <TableCell sx={{ ...cellSx, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <IconButton
+                            size="small"
+                            aria-label={`Editar material ${index + 1}`}
+                            onClick={() => onEditMaterial?.(mat.id)}
+                            sx={{ p: 0.35 }}
+                          >
+                            <EditIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            aria-label={`Excluir material ${index + 1}`}
+                            onClick={() => onDeleteMaterial?.(mat.id)}
+                            sx={{ p: 0.35 }}
+                            color="error"
+                          >
+                            <DeleteIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
 
                   <TableRow>
                     <TableCell
-                      colSpan={DETAIL_COLS - 1}
+                      colSpan={DETAIL_COLS - 2}
                       sx={{
                         ...cellSx,
                         bgcolor: EXCEL_SHEET.selectHeaderBg,
@@ -300,6 +372,7 @@ export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreview
                     >
                       {dash(value.valorPorPaciente)}
                     </TableCell>
+                    <TableCell sx={{ ...cellSx, bgcolor: EXCEL_SHEET.selectHeaderBg }} />
                   </TableRow>
                 </TableBody>
               </Table>

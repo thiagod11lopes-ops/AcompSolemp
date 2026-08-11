@@ -1,8 +1,8 @@
-import { Add as AddIcon, DeleteOutlined as DeleteIcon } from '@mui/icons-material'
+import { useRef, useState } from 'react'
+import { Add as AddIcon } from '@mui/icons-material'
 import {
   Box,
   Button,
-  IconButton,
   Paper,
   TextField,
   Typography,
@@ -22,6 +22,8 @@ import {
   formatConmedProcesso,
   formatConmedQuantidade,
   formatConmedUppercase,
+  materialHasContent,
+  withRecalculatedMaterialTotal,
   withRecalculatedMateriais,
 } from '@/utils/conmedComrjForm'
 
@@ -53,7 +55,16 @@ const multilineFieldSx = {
   },
 } as const
 
+function cloneMaterial(item: ConmedComrjMaterialItem): ConmedComrjMaterialItem {
+  return { ...item }
+}
+
 export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
+  const [draft, setDraft] = useState<ConmedComrjMaterialItem>(() => createEmptyConmedMaterialItem())
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editSnapshotRef = useRef<ConmedComrjMaterialItem | null>(null)
+  const materialFormRef = useRef<HTMLDivElement | null>(null)
+
   const setField = <K extends keyof ConmedComrjFormData>(
     key: K,
     fieldValue: ConmedComrjFormData[K],
@@ -61,29 +72,74 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
     onChange({ ...value, [key]: fieldValue })
   }
 
-  const updateMaterial = (
-    id: string,
-    patch: Partial<Omit<ConmedComrjMaterialItem, 'id' | 'valorTotal'>>,
-  ) => {
-    const materiais = value.materiais.map((item) =>
-      item.id === id ? { ...item, ...patch } : item,
-    )
+  const persistMateriais = (materiais: ConmedComrjMaterialItem[]) => {
     onChange({ ...value, ...withRecalculatedMateriais(materiais) })
   }
 
-  const addMaterial = () => {
-    onChange({
-      ...value,
-      ...withRecalculatedMateriais([...value.materiais, createEmptyConmedMaterialItem()]),
+  const updateDraft = (patch: Partial<Omit<ConmedComrjMaterialItem, 'id' | 'valorTotal'>>) => {
+    const next = withRecalculatedMaterialTotal({ ...draft, ...patch })
+    setDraft(next)
+    if (editingId) {
+      persistMateriais(
+        value.materiais.map((item) => (item.id === editingId ? { ...next, id: editingId } : item)),
+      )
+    }
+  }
+
+  const resetDraftForm = () => {
+    setDraft(createEmptyConmedMaterialItem())
+    setEditingId(null)
+    editSnapshotRef.current = null
+  }
+
+  const handleAdicionar = () => {
+    const ready = withRecalculatedMaterialTotal(draft)
+
+    if (editingId) {
+      const next = value.materiais.map((item) =>
+        item.id === editingId ? { ...ready, id: editingId } : item,
+      )
+      persistMateriais(next)
+      resetDraftForm()
+      return
+    }
+
+    if (!materialHasContent(ready)) {
+      resetDraftForm()
+      return
+    }
+
+    persistMateriais([...value.materiais, ready])
+    resetDraftForm()
+  }
+
+  const handleEditMaterial = (id: string) => {
+    const found = value.materiais.find((item) => item.id === id)
+    if (!found) return
+    editSnapshotRef.current = cloneMaterial(found)
+    setEditingId(id)
+    setDraft(cloneMaterial(found))
+    requestAnimationFrame(() => {
+      materialFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     })
   }
 
-  const removeMaterial = (id: string) => {
-    const remaining =
-      value.materiais.length <= 1
-        ? [createEmptyConmedMaterialItem()]
-        : value.materiais.filter((item) => item.id !== id)
-    onChange({ ...value, ...withRecalculatedMateriais(remaining) })
+  const handleDeleteMaterial = (id: string) => {
+    persistMateriais(value.materiais.filter((item) => item.id !== id))
+    if (editingId === id) {
+      resetDraftForm()
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (editingId && editSnapshotRef.current) {
+      persistMateriais(
+        value.materiais.map((item) =>
+          item.id === editingId ? cloneMaterial(editSnapshotRef.current!) : item,
+        ),
+      )
+    }
+    resetDraftForm()
   }
 
   return (
@@ -259,7 +315,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
           </Box>
         </Box>
 
-        <Box>
+        <Box ref={materialFormRef}>
           <Box
             sx={{
               display: 'flex',
@@ -267,6 +323,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               justifyContent: 'space-between',
               gap: 1,
               mb: 0.5,
+              flexWrap: 'wrap',
             }}
           >
             <Typography
@@ -275,151 +332,143 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
             >
               Materiais do paciente
             </Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={addMaterial}
-              sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
-            >
-              Adicionar
-            </Button>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              {editingId ? (
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={handleCancelEdit}
+                  sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
+                >
+                  Cancelar
+                </Button>
+              ) : null}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={handleAdicionar}
+                sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
+              >
+                {editingId ? 'Salvar' : 'Adicionar'}
+              </Button>
+            </Box>
           </Box>
 
-          <Box sx={{ display: 'grid', gap: 1 }}>
-            {value.materiais.map((mat, index) => (
-              <Paper
-                key={mat.id}
-                variant="outlined"
-                sx={{ p: 1, display: 'grid', gap: 0.75, bgcolor: 'background.paper' }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>
-                    Material {index + 1}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    aria-label={`Remover material ${index + 1}`}
-                    onClick={() => removeMaterial(mat.id)}
-                    sx={{ p: 0.35 }}
-                  >
-                    <DeleteIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Box>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gap: 0.75,
-                    gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr' },
-                  }}
-                >
-                  <TextField
-                    label="MAPA DA SALA"
-                    value={mat.mapaDaSala}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, {
-                        mapaDaSala: formatConmedNumerico(e.target.value),
-                      })
-                    }
-                    size="small"
-                    fullWidth
-                    inputMode="numeric"
-                    sx={compactFieldSx}
-                  />
-                  <TextField
-                    label="DANFE"
-                    value={mat.danfe}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, { danfe: formatConmedNumerico(e.target.value) })
-                    }
-                    size="small"
-                    fullWidth
-                    inputMode="numeric"
-                    sx={compactFieldSx}
-                  />
-                  <TextField
-                    label="ITEM"
-                    value={mat.item}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, { item: formatConmedNumerico(e.target.value) })
-                    }
-                    size="small"
-                    fullWidth
-                    inputMode="numeric"
-                    sx={compactFieldSx}
-                  />
-                  <TextField
-                    label="NEB/PI"
-                    value={mat.nebPi}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, { nebPi: formatConmedNebPi(e.target.value) })
-                    }
-                    size="small"
-                    fullWidth
-                    sx={compactFieldSx}
-                    slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
-                  />
-                  <TextField
-                    label="DESCRIÇÃO DO MATERIAL"
-                    value={mat.descricao}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, {
-                        descricao: formatConmedUppercase(e.target.value),
-                      })
-                    }
-                    size="small"
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    maxRows={8}
-                    sx={multilineFieldSx}
-                    slotProps={{
-                      htmlInput: {
-                        style: { textTransform: 'uppercase', resize: 'vertical' },
-                      },
-                    }}
-                  />
-                  <TextField
-                    label="QT"
-                    value={mat.qt}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, { qt: formatConmedQuantidade(e.target.value) })
-                    }
-                    size="small"
-                    fullWidth
-                    inputMode="decimal"
-                    sx={compactFieldSx}
-                  />
-                  <TextField
-                    label="VALOR UNIT"
-                    value={mat.valorUnit}
-                    onChange={(e) =>
-                      updateMaterial(mat.id, { valorUnit: formatConmedMoeda(e.target.value) })
-                    }
-                    placeholder="R$ 0,00"
-                    size="small"
-                    fullWidth
-                    inputMode="numeric"
-                    sx={compactFieldSx}
-                  />
-                  <TextField
-                    label="VALOR TOTAL"
-                    value={mat.valorTotal}
-                    size="small"
-                    fullWidth
-                    slotProps={{ input: { readOnly: true } }}
-                    sx={{ ...compactFieldSx, gridColumn: '1 / -1' }}
-                  />
-                </Box>
-              </Paper>
-            ))}
-          </Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mb: 0.75, fontSize: '0.68rem' }}
+          >
+            {editingId
+              ? 'Editando material da planilha. Salvar grava e limpa o formulário.'
+              : 'Preencha o material e clique em Adicionar. O formulário limpa para o próximo.'}
+          </Typography>
+
+          <Paper
+            variant="outlined"
+            key={editingId ?? draft.id}
+            sx={{ p: 1, display: 'grid', gap: 0.75, bgcolor: 'background.paper' }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>
+              {editingId
+                ? `Editando material ${
+                    value.materiais.findIndex((item) => item.id === editingId) + 1
+                  }`
+                : 'Novo material'}
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 0.75,
+                gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr' },
+              }}
+            >
+              <TextField
+                label="MAPA DA SALA"
+                value={draft.mapaDaSala}
+                onChange={(e) =>
+                  updateDraft({ mapaDaSala: formatConmedNumerico(e.target.value) })
+                }
+                size="small"
+                fullWidth
+                inputMode="numeric"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="DANFE"
+                value={draft.danfe}
+                onChange={(e) => updateDraft({ danfe: formatConmedNumerico(e.target.value) })}
+                size="small"
+                fullWidth
+                inputMode="numeric"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="ITEM"
+                value={draft.item}
+                onChange={(e) => updateDraft({ item: formatConmedNumerico(e.target.value) })}
+                size="small"
+                fullWidth
+                inputMode="numeric"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="NEB/PI"
+                value={draft.nebPi}
+                onChange={(e) => updateDraft({ nebPi: formatConmedNebPi(e.target.value) })}
+                size="small"
+                fullWidth
+                sx={compactFieldSx}
+                slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
+              />
+              <TextField
+                label="DESCRIÇÃO DO MATERIAL"
+                value={draft.descricao}
+                onChange={(e) =>
+                  updateDraft({ descricao: formatConmedUppercase(e.target.value) })
+                }
+                size="small"
+                fullWidth
+                multiline
+                minRows={3}
+                maxRows={8}
+                sx={multilineFieldSx}
+                slotProps={{
+                  htmlInput: {
+                    style: { textTransform: 'uppercase', resize: 'vertical' },
+                  },
+                }}
+              />
+              <TextField
+                label="QT"
+                value={draft.qt}
+                onChange={(e) => updateDraft({ qt: formatConmedQuantidade(e.target.value) })}
+                size="small"
+                fullWidth
+                inputMode="decimal"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="VALOR UNIT"
+                value={draft.valorUnit}
+                onChange={(e) => updateDraft({ valorUnit: formatConmedMoeda(e.target.value) })}
+                placeholder="R$ 0,00"
+                size="small"
+                fullWidth
+                inputMode="numeric"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="VALOR TOTAL"
+                value={draft.valorTotal}
+                size="small"
+                fullWidth
+                slotProps={{ input: { readOnly: true } }}
+                sx={{ ...compactFieldSx, gridColumn: '1 / -1' }}
+              />
+            </Box>
+          </Paper>
         </Box>
       </Paper>
 
@@ -430,7 +479,12 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
         >
           Planilha do processo (ao vivo)
         </Typography>
-        <ConmedComrjPlanilhaPreview value={value} />
+        <ConmedComrjPlanilhaPreview
+          value={value}
+          editingMaterialId={editingId}
+          onEditMaterial={handleEditMaterial}
+          onDeleteMaterial={handleDeleteMaterial}
+        />
       </Box>
     </Box>
   )
