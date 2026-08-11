@@ -222,17 +222,19 @@ export function ConmedComrjPlanilhaPreview({
               </Table>
             </Box>
 
-            {/* Planilha paciente + material — grade própria, separada */}
+            {/* Planilha paciente + material — largura pelo conteúdo, como a do processo */}
             <Box
               className="excel-sheet-grid excel-sheet-wrap"
               sx={{
+                width: 'fit-content',
+                maxWidth: '100%',
                 overflowX: 'auto',
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
               }}
             >
-              <Table size="small" sx={{ width: '100%', minWidth: 980 }}>
+              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
                 <TableHead>
                   <TableRow>
                     <TableCell colSpan={PATIENT_COLS} sx={groupSx}>
@@ -275,7 +277,14 @@ export function ConmedComrjPlanilhaPreview({
                         {dash(value.pacienteData)}
                       </TableCell>
                       <TableCell
-                        sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe', minWidth: 140 }}
+                        sx={{
+                          ...cellSx,
+                          fontWeight: 600,
+                          bgcolor: '#fbfcfe',
+                          maxWidth: '28ch',
+                          whiteSpace: 'pre-wrap',
+                          overflowWrap: 'anywhere',
+                        }}
                       >
                         {dash(value.pacienteProcedimento)}
                       </TableCell>
@@ -319,7 +328,9 @@ export function ConmedComrjPlanilhaPreview({
                                 ...cellSx,
                                 fontWeight: 600,
                                 bgcolor: '#fbfcfe',
-                                minWidth: 140,
+                                maxWidth: '28ch',
+                                whiteSpace: 'pre-wrap',
+                                overflowWrap: 'anywhere',
                               }}
                             >
                               {dash(value.pacienteProcedimento)}
@@ -337,7 +348,6 @@ export function ConmedComrjPlanilhaPreview({
                           sx={{
                             ...cellSx,
                             maxWidth: '100ch',
-                            width: '100ch',
                             whiteSpace: 'pre-wrap',
                             overflowWrap: 'anywhere',
                             wordBreak: 'break-word',
