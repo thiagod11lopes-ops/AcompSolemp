@@ -1,33 +1,23 @@
 import {
   Box,
   Button,
-  IconButton,
   Tab,
   Tabs,
   Typography,
   alpha,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import AddIcon from '@mui/icons-material/Add'
-import CloseIcon from '@mui/icons-material/Close'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicaAuth } from '@/contexts/AuthContext'
-import {
-  NovaPlanilhaModal,
-  type NovaPlanilhaInput,
-} from '@/components/clinica/NovaPlanilhaModal'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
 } from '@/services/clinicaPlanilhasLivresService'
 import type { PlanilhaLivreAba } from '@/types'
-import { parseSpreadsheetRichSheetsFile } from '@/utils/parseSpreadsheetRich'
-import {
-  createEmptySheetData,
-  type PlanilhaSheetData,
-} from '@/utils/planilhaBrancaGrid'
+import { FIXED_PLANILHAS } from '@/utils/planilhasFixas'
+import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 
 export default function ClinicaNovoPedidoPage() {
   const { navigatePortal } = usePortalPaths()
@@ -35,10 +25,7 @@ export default function ClinicaNovoPedidoPage() {
   const clinicaId = user?.clinicaId ?? ''
 
   const [abas, setAbas] = useState<PlanilhaLivreAba[]>([])
-  const [abaAtivaId, setAbaAtivaId] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [abaAtivaId, setAbaAtivaId] = useState<string | null>(FIXED_PLANILHAS[0].id)
   const hydrated = useRef(false)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -50,7 +37,7 @@ export default function ClinicaNovoPedidoPage() {
     hydrated.current = true
     const state = clinicaPlanilhasLivresService.getState(clinicaId)
     setAbas(state.abas)
-    setAbaAtivaId(state.abaAtivaId)
+    setAbaAtivaId(state.abaAtivaId ?? FIXED_PLANILHAS[0].id)
   }, [clinicaId])
 
   const persist = useCallback(
@@ -65,69 +52,9 @@ export default function ClinicaNovoPedidoPage() {
   )
 
   const abaAtiva = useMemo(
-    () => abas.find((aba) => aba.id === abaAtivaId) ?? null,
+    () => abas.find((aba) => aba.id === abaAtivaId) ?? abas[0] ?? null,
     [abas, abaAtivaId],
   )
-
-  const handleConfirm = async (input: NovaPlanilhaInput) => {
-    setError(null)
-    setIsLoading(true)
-    try {
-      if (input.modo === 'importar') {
-        if (!input.file) {
-          setError('Selecione um arquivo .ods ou .xlsx.')
-          throw new Error('no file')
-        }
-        const sheets = await parseSpreadsheetRichSheetsFile(input.file)
-        if (sheets.length === 0) {
-          setError('Nenhuma aba encontrada no arquivo.')
-          throw new Error('empty')
-        }
-        const baseNome = input.nome.trim()
-        const stamp = Date.now()
-        const novas: PlanilhaLivreAba[] = sheets.map((item, index) => ({
-          id: `plan-${stamp}-${index}-${Math.random().toString(36).slice(2, 8)}`,
-          nome:
-            sheets.length === 1
-              ? baseNome || item.nome
-              : `${baseNome ? `${baseNome} — ` : ''}${item.nome}`,
-          sheet: item.sheet,
-        }))
-        const ativaId = novas[0]?.id ?? null
-        setAbas((prev) => {
-          const next = [...prev, ...novas]
-          persist(next, ativaId)
-          return next
-        })
-        setAbaAtivaId(ativaId)
-        setModalOpen(false)
-        return
-      }
-
-      const nova: PlanilhaLivreAba = {
-        id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        nome: input.nome.trim() || 'Planilha',
-        sheet: createEmptySheetData(),
-      }
-      setAbas((prev) => {
-        const next = [...prev, nova]
-        persist(next, nova.id)
-        return next
-      })
-      setAbaAtivaId(nova.id)
-      setModalOpen(false)
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        err.message !== 'no file' &&
-        err.message !== 'empty'
-      ) {
-        setError(err.message || 'Erro ao abrir a planilha.')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleSheetChange = useCallback(
     (sheet: PlanilhaSheetData) => {
@@ -143,19 +70,6 @@ export default function ClinicaNovoPedidoPage() {
     },
     [persist],
   )
-
-  const handleFecharAba = (abaId: string) => {
-    setAbas((prev) => {
-      const next = prev.filter((aba) => aba.id !== abaId)
-      const nextAtiva =
-        abaAtivaIdRef.current === abaId
-          ? (next[next.length - 1]?.id ?? null)
-          : abaAtivaIdRef.current
-      if (abaAtivaIdRef.current === abaId) setAbaAtivaId(nextAtiva)
-      persist(next, nextAtiva)
-      return next
-    })
-  }
 
   const handleChangeAba = (abaId: string) => {
     setAbaAtivaId(abaId)
@@ -174,76 +88,43 @@ export default function ClinicaNovoPedidoPage() {
           >
             Voltar
           </Button>
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2, mr: 'auto' }}>
+          <Typography variant="h6" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
             Planilhas
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setError(null)
-              setModalOpen(true)
-            }}
-            sx={{ fontWeight: 700, borderRadius: 2 }}
-          >
-            Adicionar nova Planilha
-          </Button>
         </Box>
 
-        {abas.length > 0 && (
-          <Box
-            sx={(theme) => ({
-              borderBottom: 1,
-              borderColor: 'divider',
-              bgcolor: alpha(theme.palette.primary.main, 0.03),
-              borderRadius: '8px 8px 0 0',
-              px: 0.5,
-            })}
-          >
-            <Tabs
-              value={abaAtivaId ?? false}
-              onChange={(_, value: string) => handleChangeAba(value)}
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{
+        <Box
+          sx={(theme) => ({
+            borderBottom: 1,
+            borderColor: 'divider',
+            bgcolor: alpha(theme.palette.primary.main, 0.03),
+            borderRadius: '8px 8px 0 0',
+            px: 0.5,
+          })}
+        >
+          <Tabs
+            value={abaAtivaId ?? FIXED_PLANILHAS[0].id}
+            onChange={(_, value: string) => handleChangeAba(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              minHeight: 42,
+              '& .MuiTab-root': {
                 minHeight: 42,
-                '& .MuiTab-root': {
-                  minHeight: 42,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  px: 1.5,
-                },
-              }}
-            >
-              {abas.map((aba) => (
-                <Tab
-                  key={aba.id}
-                  value={aba.id}
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
-                        {aba.nome}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        component="span"
-                        aria-label={`Fechar ${aba.nome}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleFecharAba(aba.id)
-                        }}
-                        sx={{ p: 0.25 }}
-                      >
-                        <CloseIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    </Box>
-                  }
-                />
-              ))}
-            </Tabs>
-          </Box>
-        )}
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                px: 1.5,
+              },
+            }}
+          >
+            {(abas.length ? abas : FIXED_PLANILHAS.map((f) => ({ id: f.id, nome: f.nome }))).map(
+              (aba) => (
+                <Tab key={aba.id} value={aba.id} label={aba.nome} />
+              ),
+            )}
+          </Tabs>
+        </Box>
       </Box>
 
       {abaAtiva ? (
@@ -252,44 +133,7 @@ export default function ClinicaNovoPedidoPage() {
           sheet={resolveAbaSheet(abaAtiva)}
           onSheetChange={handleSheetChange}
         />
-      ) : (
-        <Box
-          sx={(theme) => ({
-            mt: 4,
-            py: 6,
-            textAlign: 'center',
-            color: 'text.secondary',
-            border: `1px dashed ${alpha(theme.palette.primary.main, 0.25)}`,
-            borderRadius: 2,
-            bgcolor: alpha(theme.palette.primary.main, 0.02),
-          })}
-        >
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Nenhuma planilha aberta.
-          </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              setError(null)
-              setModalOpen(true)
-            }}
-            sx={{ fontWeight: 700 }}
-          >
-            Adicionar nova Planilha
-          </Button>
-        </Box>
-      )}
-
-      <NovaPlanilhaModal
-        open={modalOpen}
-        isLoading={isLoading}
-        error={error}
-        onClose={() => {
-          if (!isLoading) setModalOpen(false)
-        }}
-        onConfirm={handleConfirm}
-      />
+      ) : null}
     </>
   )
 }
