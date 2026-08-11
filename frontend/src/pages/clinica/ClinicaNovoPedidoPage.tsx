@@ -1,14 +1,10 @@
 import {
   Box,
-  Button,
   Tab,
   Tabs,
-  Typography,
   alpha,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
@@ -24,7 +20,6 @@ import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 const CONMED_ABA_ID = 'conmed-comrj'
 
 export default function ClinicaNovoPedidoPage() {
-  const { navigatePortal } = usePortalPaths()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
 
@@ -100,20 +95,6 @@ export default function ClinicaNovoPedidoPage() {
   return (
     <>
       <Box sx={{ mb: 1.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-          <Button
-            size="small"
-            startIcon={<ArrowBackIcon sx={{ fontSize: 18 }} />}
-            onClick={() => navigatePortal('/clinica/pedidos')}
-            sx={{ minWidth: 0, px: 1, py: 0.25, flexShrink: 0 }}
-          >
-            Voltar
-          </Button>
-          <Typography variant="h6" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-            Planilhas
-          </Typography>
-        </Box>
-
         <Box
           sx={(theme) => ({
             borderBottom: 1,
