@@ -173,17 +173,20 @@ function decodeXmlText(value: string): string {
 
 function extractRowTexts(rowXml: string): string[] {
   const cells: string[] = []
+  // Inclui covered-table-cell: em linhas com merge (ex.: paciente rowspan),
+  // sem isso o material "desliza" para as colunas de paciente.
   const cellRe =
-    /<table:table-cell([^>]*)>([\s\S]*?)<\/table:table-cell>|<table:table-cell([^>]*)\/>/g
+    /<table:table-cell\b([^>]*)(?:\/>|>([\s\S]*?)<\/table:table-cell>)|<table:covered-table-cell\b([^>]*)(?:\/>|>([\s\S]*?)<\/table:covered-table-cell>)/g
   let match: RegExpExecArray | null
   while ((match = cellRe.exec(rowXml))) {
-    const attrs = match[1] || match[3] || ''
+    const isCovered = match[0].startsWith('<table:covered-table-cell')
+    const attrs = isCovered ? match[3] || '' : match[1] || ''
+    const body = isCovered ? match[4] || '' : match[2] || ''
     const repeat = attrs.match(/number-columns-repeated="(\d+)"/)
-    const body = match[2] || ''
     const paragraphs = [...body.matchAll(/<text:p[^>]*>([\s\S]*?)<\/text:p>/g)]
-    const val = decodeXmlText(
-      paragraphs.map((p) => p[1]).join(' ').trim(),
-    )
+    const val = isCovered
+      ? ''
+      : decodeXmlText(paragraphs.map((p) => p[1]).join(' ').trim())
     const count = repeat ? Math.min(parseInt(repeat[1], 10), MAX_COLS) : 1
     for (let i = 0; i < count; i++) cells.push(val)
   }
@@ -422,14 +425,39 @@ function readXlsxCellValue(cellXml: string, sharedStrings: string[]): string {
   return value ?? ''
 }
 
+/** Converte letras de coluna Excel (A, B, …, AA) em índice 0-based. */
+function xlsxColLettersToIndex(letters: string): number {
+  let n = 0
+  for (const ch of letters.toUpperCase()) {
+    if (ch < 'A' || ch > 'Z') continue
+    n = n * 26 + (ch.charCodeAt(0) - 64)
+  }
+  return Math.max(0, n - 1)
+}
+
+/**
+ * Lê linhas XLSX respeitando a referência r="B12".
+ * Células vazias omitidas no XML não podem encolher o array — senão as
+ * colunas seguintes "andam" e misturam paciente/material.
+ */
 function parseXlsxXml(sheetXml: string, sharedStrings: string[]): string[][] {
-  const rows = [...sheetXml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)]
-  return rows.map((rowMatch) => {
-    const cells = [...rowMatch[1].matchAll(/<c[^>]*>[\s\S]*?<\/c>|<c[^>/]*\/>/g)].map((cellMatch) =>
-      readXlsxCellValue(cellMatch[0], sharedStrings),
-    )
-    while (cells.length < MAX_COLS) cells.push('')
-    return cells.slice(0, MAX_COLS)
+  const rowMatches = [...sheetXml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)]
+  return rowMatches.map((rowMatch) => {
+    const byCol = new Map<number, string>()
+    let maxCol = -1
+    let sequential = 0
+
+    for (const cellMatch of rowMatch[2].matchAll(/<c\b([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const attrs = cellMatch[1] ?? ''
+      const ref = attrs.match(/\br="([A-Za-z]+)(\d+)"/)
+      const col = ref ? xlsxColLettersToIndex(ref[1]) : sequential
+      byCol.set(col, readXlsxCellValue(cellMatch[0], sharedStrings))
+      if (col > maxCol) maxCol = col
+      sequential = col + 1
+    }
+
+    const width = Math.min(Math.max(MAX_COLS, maxCol + 1), 80)
+    return Array.from({ length: width }, (_, i) => byCol.get(i) ?? '')
   })
 }
 
