@@ -323,12 +323,12 @@ export function ConmedComrjPlanilhaPreview({
                                       ...cellSx,
                                       fontWeight: 600,
                                       bgcolor: '#fbfcfe',
-                                      maxWidth: '28ch',
+                                      maxWidth: '30ch',
                                       whiteSpace: 'pre-wrap',
                                       overflowWrap: 'anywhere',
                                     }}
                                   >
-                                    {dash(paciente.procedimento)}
+                                    {wrapEveryChars(paciente.procedimento, 30)}
                                   </TableCell>
                                   <TableCell
                                     rowSpan={span}
