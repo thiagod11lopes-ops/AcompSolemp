@@ -191,8 +191,25 @@ function extractRowTexts(rowXml: string): string[] {
 }
 
 function parseOdsXml(xml: string): string[][] {
-  const rows = [...xml.matchAll(/<table:table-row[^>]*>([\s\S]*?)<\/table:table-row>/g)]
-  return rows.map((r) => extractRowTexts(r[1]))
+  const sheets = parseOdsSheets(xml)
+  return sheets[0]?.rows ?? []
+}
+
+function parseOdsSheets(xml: string): { nome: string; rows: string[][] }[] {
+  const tables = [...xml.matchAll(/<table:table\b([^>]*)>([\s\S]*?)<\/table:table>/g)]
+  const sheets: { nome: string; rows: string[][] }[] = []
+  tables.forEach((match, index) => {
+    const attrs = match[1] ?? ''
+    const body = match[2] ?? ''
+    const nomeAttr = attrs.match(/table:name="([^"]+)"/)?.[1]
+    const nome = decodeXmlText(nomeAttr?.trim() || `Planilha ${index + 1}`)
+    // Ignora tabelas internas sem linhas úteis (ex.: filtros embutidos vazios)
+    const rowMatches = [...body.matchAll(/<table:table-row[^>]*>([\s\S]*?)<\/table:table-row>/g)]
+    const rows = rowMatches.map((r) => extractRowTexts(r[1]))
+    if (rows.length === 0) return
+    sheets.push({ nome, rows })
+  })
+  return sheets
 }
 
 function normalizeHeader(value: string): string {
@@ -422,27 +439,81 @@ function parseXlsxXml(sheetXml: string, sharedStrings: string[]): string[][] {
 }
 
 async function readOdsRows(file: File): Promise<string[][]> {
+  const sheets = await readOdsSheets(file)
+  return sheets[0]?.rows ?? []
+}
+
+async function readOdsSheets(file: File): Promise<{ nome: string; rows: string[][] }[]> {
   const buffer = await file.arrayBuffer()
   const unzipped = unzipSync(new Uint8Array(buffer))
   const contentXml = unzipped['content.xml']
   if (!contentXml) throw new Error('Arquivo ODS inválido ou corrompido')
 
   const xml = new TextDecoder('utf-8').decode(contentXml)
-  return parseOdsXml(xml)
+  const sheets = parseOdsSheets(xml)
+  if (sheets.length === 0) throw new Error('Nenhuma aba encontrada no arquivo ODS')
+  return sheets
 }
 
 async function readXlsxRows(file: File): Promise<string[][]> {
+  const sheets = await readXlsxSheets(file)
+  return sheets[0]?.rows ?? []
+}
+
+async function readXlsxSheets(file: File): Promise<{ nome: string; rows: string[][] }[]> {
   const buffer = await file.arrayBuffer()
   const unzipped = unzipSync(new Uint8Array(buffer))
-  const sheetPath = Object.keys(unzipped).find((key) => /^xl\/worksheets\/sheet\d+\.xml$/.test(key))
-  if (!sheetPath) throw new Error('Arquivo XLSX inválido ou corrompido')
+  const workbookXmlBytes = unzipped['xl/workbook.xml']
+  if (!workbookXmlBytes) throw new Error('Arquivo XLSX inválido ou corrompido')
+
+  const workbookXml = new TextDecoder('utf-8').decode(workbookXmlBytes)
+  const sheetEntries = [...workbookXml.matchAll(/<sheet\b([^>]*?)\/>|<sheet\b([^>]*)><\/sheet>/g)]
+  if (sheetEntries.length === 0) throw new Error('Nenhuma aba encontrada no arquivo XLSX')
+
+  const relsBytes = unzipped['xl/_rels/workbook.xml.rels']
+  const relsXml = relsBytes ? new TextDecoder('utf-8').decode(relsBytes) : ''
+  const relMap = new Map<string, string>()
+  for (const rel of relsXml.matchAll(/<Relationship\b([^>]*)\/>/g)) {
+    const attrs = rel[1] ?? ''
+    const id = attrs.match(/\bId="([^"]+)"/)?.[1]
+    const target = attrs.match(/\bTarget="([^"]+)"/)?.[1]
+    if (id && target) {
+      const normalized = target.replace(/^\.\//, '').replace(/^\/+/, '')
+      relMap.set(id, normalized.startsWith('xl/') ? normalized : `xl/${normalized}`)
+    }
+  }
 
   const sharedXml = unzipped['xl/sharedStrings.xml']
   const sharedStrings = sharedXml
     ? readXlsxSharedStrings(new TextDecoder('utf-8').decode(sharedXml))
     : []
-  const sheetXml = new TextDecoder('utf-8').decode(unzipped[sheetPath])
-  return parseXlsxXml(sheetXml, sharedStrings)
+
+  const sheets: { nome: string; rows: string[][] }[] = []
+  sheetEntries.forEach((entry, index) => {
+    const attrs = entry[1] || entry[2] || ''
+    const nome = decodeXmlText(attrs.match(/\bname="([^"]+)"/)?.[1]?.trim() || `Planilha ${index + 1}`)
+    const rId = attrs.match(/\br:id="([^"]+)"/)?.[1]
+    let sheetPath =
+      (rId ? relMap.get(rId) : undefined) ??
+      `xl/worksheets/sheet${index + 1}.xml`
+
+    if (!unzipped[sheetPath]) {
+      const fallback = Object.keys(unzipped).find((key) =>
+        key.replace(/\\/g, '/').endsWith(`/sheet${index + 1}.xml`),
+      )
+      if (fallback) sheetPath = fallback
+    }
+
+    const sheetBytes = unzipped[sheetPath]
+    if (!sheetBytes) return
+    const sheetXml = new TextDecoder('utf-8').decode(sheetBytes)
+    const rows = parseXlsxXml(sheetXml, sharedStrings)
+    if (rows.length === 0) return
+    sheets.push({ nome, rows })
+  })
+
+  if (sheets.length === 0) throw new Error('Nenhuma aba com dados encontrada no arquivo XLSX')
+  return sheets
 }
 
 /** Importa planilha de consumo material (.ods ou .xlsx) */
@@ -457,14 +528,25 @@ export async function parseConsumoMaterialFile(file: File): Promise<ConsumoMater
   throw new Error('Selecione um arquivo no formato .ods ou .xlsx')
 }
 
-/** Lê grade bruta (.ods ou .xlsx) para planilha livre estilo Excel */
+/** Lê grade bruta (.ods ou .xlsx) — primeira aba */
 export async function parseSpreadsheetGridFile(file: File): Promise<string[][]> {
+  const sheets = await parseSpreadsheetSheetsFile(file)
+  return sheets[0]?.rows ?? []
+}
+
+export interface SpreadsheetSheetImport {
+  nome: string
+  rows: string[][]
+}
+
+/** Lê todas as abas de um arquivo .ods ou .xlsx */
+export async function parseSpreadsheetSheetsFile(file: File): Promise<SpreadsheetSheetImport[]> {
   const lowerName = file.name.toLowerCase()
   if (lowerName.endsWith('.ods')) {
-    return readOdsRows(file)
+    return readOdsSheets(file)
   }
   if (lowerName.endsWith('.xlsx')) {
-    return readXlsxRows(file)
+    return readXlsxSheets(file)
   }
   throw new Error('Selecione um arquivo no formato .ods ou .xlsx')
 }

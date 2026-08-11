@@ -121,6 +121,7 @@ export function NovaPlanilhaModal({
         </Box>
         <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.75, pr: 4 }}>
           Abra uma planilha em branco (estilo Excel) ou importe um arquivo .ods/.xlsx.
+          Se o arquivo tiver várias abas, cada uma abre como uma aba no sistema.
         </Typography>
       </Box>
 

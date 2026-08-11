@@ -20,7 +20,7 @@ import {
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
 import type { PlanilhaLivreAba } from '@/types'
-import { parseSpreadsheetGridFile } from '@/utils/consumoMaterialOds'
+import { parseSpreadsheetSheetsFile } from '@/utils/consumoMaterialOds'
 import {
   createEmptySpreadsheetGrid,
   gridFromImportedRows,
@@ -70,24 +70,41 @@ export default function ClinicaNovoPedidoPage() {
     setError(null)
     setIsLoading(true)
     try {
-      let grid = createEmptySpreadsheetGrid()
       if (input.modo === 'importar') {
         if (!input.file) {
           setError('Selecione um arquivo .ods ou .xlsx.')
           throw new Error('no file')
         }
-        const rows = await parseSpreadsheetGridFile(input.file)
-        if (rows.length === 0) {
-          setError('Nenhuma célula encontrada no arquivo.')
+        const sheets = await parseSpreadsheetSheetsFile(input.file)
+        if (sheets.length === 0) {
+          setError('Nenhuma aba encontrada no arquivo.')
           throw new Error('empty')
         }
-        grid = gridFromImportedRows(rows)
+        const baseNome = input.nome.trim()
+        const stamp = Date.now()
+        const novas: PlanilhaLivreAba[] = sheets.map((sheet, index) => ({
+          id: `plan-${stamp}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+          nome:
+            sheets.length === 1
+              ? baseNome || sheet.nome
+              : `${baseNome ? `${baseNome} — ` : ''}${sheet.nome}`,
+          grid: gridFromImportedRows(sheet.rows),
+        }))
+        const ativaId = novas[0]?.id ?? null
+        setAbas((prev) => {
+          const next = [...prev, ...novas]
+          persist(next, ativaId)
+          return next
+        })
+        setAbaAtivaId(ativaId)
+        setModalOpen(false)
+        return
       }
 
       const nova: PlanilhaLivreAba = {
         id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         nome: input.nome.trim() || 'Planilha',
-        grid,
+        grid: createEmptySpreadsheetGrid(),
       }
       setAbas((prev) => {
         const next = [...prev, nova]
