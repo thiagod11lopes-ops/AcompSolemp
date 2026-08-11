@@ -7,6 +7,10 @@ export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   pregaoTad: '',
   vigencia: '',
   fornecedor: '',
+  pacienteNip: '',
+  pacienteIniciais: '',
+  pacienteData: '',
+  pacienteProcedimento: '',
 }
 
 export function normalizeConmedComrjForm(
@@ -19,6 +23,10 @@ export function normalizeConmedComrjForm(
     pregaoTad: value?.pregaoTad ?? '',
     vigencia: value?.vigencia ?? '',
     fornecedor: value?.fornecedor ?? '',
+    pacienteNip: value?.pacienteNip ?? '',
+    pacienteIniciais: value?.pacienteIniciais ?? '',
+    pacienteData: value?.pacienteData ?? '',
+    pacienteProcedimento: value?.pacienteProcedimento ?? '',
   }
 }
 
@@ -46,4 +54,17 @@ export function formatConmedProcesso(raw: string): string {
 /** Pregão/TAD no espírito 58/2025 COMRJ — permite dígitos, barra e texto */
 export function formatConmedPregaoTad(raw: string): string {
   return raw.replace(/\s+/g, ' ').slice(0, 40)
+}
+
+/** NIP no formato 00.0000.00 */
+export function formatConmedPacienteNip(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 6) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  return `${digits.slice(0, 2)}.${digits.slice(2, 6)}.${digits.slice(6)}`
+}
+
+/** Iniciais / procedimento em letras maiúsculas */
+export function formatConmedUppercase(raw: string): string {
+  return raw.toUpperCase()
 }

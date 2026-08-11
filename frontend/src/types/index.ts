@@ -416,6 +416,11 @@ export interface ConmedComrjFormData {
   pregaoTad: string
   vigencia: string
   fornecedor: string
+  /** Dados do paciente */
+  pacienteNip: string
+  pacienteIniciais: string
+  pacienteData: string
+  pacienteProcedimento: string
 }
 
 export interface ClinicaPlanilhasLivresState {
