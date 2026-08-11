@@ -398,6 +398,18 @@ export interface ConsumoPlanilhaClinicaState {
   abaAtivaId?: string
 }
 
+/** Aba de planilha livre (grade estilo Excel) na página Planilhas */
+export interface PlanilhaLivreAba {
+  id: string
+  nome: string
+  grid: string[][]
+}
+
+export interface ClinicaPlanilhasLivresState {
+  abas: PlanilhaLivreAba[]
+  abaAtivaId: string | null
+}
+
 export interface PedidoPlanilhaEnvioState {
   /** Formato da planilha anexada ao pedido. Default: IMH/OPME. */
   formato?: 'imh' | 'controleSolemp'
@@ -454,6 +466,8 @@ export interface AppData {
   reversoes: ReversaoTimeline[]
   credenciais: Record<string, CredencialUsuario>
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
+  /** Planilhas livres (grade Excel) da página Planilhas da clínica */
+  planilhasLivres?: Record<string, ClinicaPlanilhasLivresState>
   /** Planilha editável da aba Preço de Medicamentos (persistida no IndexedDB). */
   medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>

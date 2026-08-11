@@ -457,6 +457,18 @@ export async function parseConsumoMaterialFile(file: File): Promise<ConsumoMater
   throw new Error('Selecione um arquivo no formato .ods ou .xlsx')
 }
 
+/** Lê grade bruta (.ods ou .xlsx) para planilha livre estilo Excel */
+export async function parseSpreadsheetGridFile(file: File): Promise<string[][]> {
+  const lowerName = file.name.toLowerCase()
+  if (lowerName.endsWith('.ods')) {
+    return readOdsRows(file)
+  }
+  if (lowerName.endsWith('.xlsx')) {
+    return readXlsxRows(file)
+  }
+  throw new Error('Selecione um arquivo no formato .ods ou .xlsx')
+}
+
 export async function parseConsumoMaterialOds(file: File): Promise<ConsumoMaterialRow[]> {
   return parseConsumoMaterialFile(file)
 }

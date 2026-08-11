@@ -296,6 +296,7 @@ export function generateEmptyTenantData(): AppData {
     reversoes: [],
     credenciais: {},
     consumoPlanilha: {},
+    planilhasLivres: {},
     pedidoPlanilhaEnvio: {},
     processosArquivados: [],
   }
