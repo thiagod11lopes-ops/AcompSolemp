@@ -83,7 +83,7 @@ export default function ClinicaNovoPedidoPage() {
   const isDemoMedicamentoFixo =
     isDemo && isMedicamentoPortal && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
 
-  const [abaAtiva, setAbaAtiva] = useState(1)
+  const [abaAtiva, setAbaAtiva] = useState(0)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
   const [abasExtras, setAbasExtras] = useState<ConsumoPlanilhaAba[]>([])
   const [abaPlanilhaAtivaId, setAbaPlanilhaAtivaId] = useState(CONSUMO_ABA_PRINCIPAL_ID)
