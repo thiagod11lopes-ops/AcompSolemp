@@ -27,6 +27,7 @@ interface ConsumoMaterialPlanilhaPreviewProps {
   rows: ConsumoMaterialRow[]
   editingRowId?: string | null
   importing?: boolean
+  emptyHint?: string
   onImportClick?: () => void
   onEditRow?: (rowId: string) => void
   onDeleteRow?: (rowId: string) => void
@@ -67,6 +68,7 @@ export function ConsumoMaterialPlanilhaPreview({
   rows,
   editingRowId = null,
   importing = false,
+  emptyHint,
   onImportClick,
   onEditRow,
   onDeleteRow,
@@ -158,7 +160,8 @@ export function ConsumoMaterialPlanilhaPreview({
         {!visible ? (
           <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
             <Typography variant="body2" color="text.secondary">
-              Preencha o formulário ao lado ou importe uma planilha para montar a tabela.
+              {emptyHint ??
+                'Preencha o formulário ao lado ou importe uma planilha para montar a tabela.'}
             </Typography>
           </Box>
         ) : (
