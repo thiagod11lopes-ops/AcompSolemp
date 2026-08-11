@@ -1,4 +1,9 @@
-import { isDemoDataSession, useSupabaseDataSource, getActiveDataSourceLabel } from '@/config/dataSource'
+import {
+  getActiveDataSourceLabel,
+  isDemoDataSession,
+  useCloudAppDataSync,
+  useSupabaseDataSource,
+} from '@/config/dataSource'
 import { getRepositories } from '@/data/repositories'
 import { applyRemoteAppData, initAppData } from '@/mocks/seed'
 import { getProfileForCurrentUser } from '@/data/persistence/supabaseTenant'
@@ -15,7 +20,7 @@ export async function initDataLayer(): Promise<void> {
     return
   }
 
-  if (!useSupabaseDataSource()) {
+  if (!useCloudAppDataSync()) {
     initAppData()
     if (import.meta.env.DEV) {
       console.info(`[AcompSolemp] Fonte de dados: ${getActiveDataSourceLabel()}`)

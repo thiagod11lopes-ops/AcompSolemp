@@ -43,7 +43,7 @@ const supabaseLoginSchema = z.object({
 type LoginForm = z.infer<typeof localLoginSchema>
 
 export default function LoginGestorPage() {
-  const { login, register, logout } = useGestorAuth()
+  const { login, loginSemSenha, register, logout } = useGestorAuth()
   const { loginWithEmailTimeline, registerWithEmailTimeline } = useAuth()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
@@ -53,6 +53,7 @@ export default function LoginGestorPage() {
     '/gestor/dashboard'
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [openAccessLoading, setOpenAccessLoading] = useState(false)
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [recognizedEmail, setRecognizedEmail] = useState('')
   const lastAnnouncedEmail = useRef('')
@@ -129,6 +130,19 @@ export default function LoginGestorPage() {
     }
   }
 
+  const onEntrarSemSenha = async () => {
+    try {
+      setError('')
+      setOpenAccessLoading(true)
+      await loginSemSenha()
+      await finishGestorLogin()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao entrar sem senha')
+    } finally {
+      setOpenAccessLoading(false)
+    }
+  }
+
   const handleSignUp = async (values: { email: string; senha: string }) => {
     setError('')
 
@@ -144,6 +158,8 @@ export default function LoginGestorPage() {
     await register({ login: values.email, senha: values.senha })
     await finishGestorLogin()
   }
+
+  const busy = isSubmitting || openAccessLoading
 
   return (
     <Box>
@@ -207,11 +223,22 @@ export default function LoginGestorPage() {
           variant="contained"
           size="large"
           sx={{ mt: isSupabase ? 1 : 3 }}
-          disabled={isSubmitting}
+          disabled={busy}
         >
           {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
+
+      <Button
+        fullWidth
+        variant="outlined"
+        size="large"
+        sx={{ mt: 1.5 }}
+        disabled={busy}
+        onClick={() => void onEntrarSemSenha()}
+      >
+        {openAccessLoading ? 'Entrando...' : 'Entrar sem senha'}
+      </Button>
 
       {isSupabase && (
         <Stack spacing={1.5} sx={{ mt: 1.5 }}>
@@ -234,7 +261,7 @@ export default function LoginGestorPage() {
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
         {isSupabase
-          ? 'E-mail liberado pelo gestor → Timeline. Novo gestor → Cadastrar-se só se o e-mail ainda não estiver em Cadastros.'
+          ? 'E-mail liberado pelo gestor → Timeline. Novo gestor → Cadastrar-se só se o e-mail ainda não estiver em Cadastros. “Entrar sem senha” usa dados locais neste navegador.'
           : 'Demo: gestor / gestor123 ou admin / admin123'}
       </Typography>
 

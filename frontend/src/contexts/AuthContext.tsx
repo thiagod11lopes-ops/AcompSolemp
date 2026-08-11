@@ -20,6 +20,7 @@ interface AuthContextValue {
   demoMode: DemoModeState | null
   isLoading: boolean
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
+  loginGestorSemSenha: () => Promise<AuthUser>
   registerGestor: (credentials: LoginCredentials) => Promise<AuthUser>
   loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
   registerWithEmailTimeline: (email: string, password: string) => Promise<TimelineLoginResult>
@@ -80,6 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
+  const loginGestorSemSenha = useCallback(async () => {
+    const authUser = await authService.loginGestorSemSenha()
+    setGestorUser(authUser)
+    return authUser
+  }, [])
+
   const registerGestor = useCallback(async (credentials: LoginCredentials) => {
     if (!authService.usesSupabaseAuth()) {
       throw new Error('O cadastro está disponível apenas com autenticação em nuvem (Supabase).')
@@ -135,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demoMode,
       isLoading,
       login,
+      loginGestorSemSenha,
       registerGestor,
       loginWithEmailTimeline,
       registerWithEmailTimeline,
@@ -151,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       demoMode,
       isLoading,
       login,
+      loginGestorSemSenha,
       registerGestor,
       loginWithEmailTimeline,
       registerWithEmailTimeline,
@@ -171,11 +180,12 @@ export function useAuth() {
 }
 
 export function useGestorAuth() {
-  const { gestorUser, isLoading, login, registerGestor, logout } = useAuth()
+  const { gestorUser, isLoading, login, loginGestorSemSenha, registerGestor, logout } = useAuth()
   return {
     user: gestorUser,
     isLoading,
     login: (credentials: LoginCredentials) => login(credentials, 'gestor'),
+    loginSemSenha: loginGestorSemSenha,
     register: (credentials: LoginCredentials) => registerGestor(credentials),
     logout: () => logout('gestor'),
   }

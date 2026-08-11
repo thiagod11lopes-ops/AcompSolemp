@@ -5,14 +5,16 @@ import {
   normalizeEmailKey,
   passwordResetRedirectUrl,
 } from '@/utils/email'
-import { useSupabaseDataSource } from '@/config/dataSource'
+import { setOpenAccessSession, useSupabaseDataSource } from '@/config/dataSource'
 import {
   applyRemoteAppData,
+  clearAppDataCache,
   delay,
   generateEmptyTenantData,
   loadAppData,
   MOCK_CREDENTIALS,
   reloadFreshAppData,
+  resetAppData,
 } from '@/mocks/seed'
 import {
   canAccessGestorRoute,
@@ -192,6 +194,8 @@ export const authService = {
   },
 
   async login(credentials: LoginCredentials, portal: Portal): Promise<AuthUser> {
+    setOpenAccessSession(false)
+
     if (useSupabaseDataSource() && portal === 'gestor') {
       return this.loginGestorSupabase(credentials)
     }
@@ -209,6 +213,31 @@ export const authService = {
     }
 
     return completePortalLogin(portal, user)
+  },
+
+  /** Entra no Portal do Gestor sem e-mail/senha (dados locais IndexedDB). */
+  async loginGestorSemSenha(): Promise<AuthUser> {
+    setOpenAccessSession(true)
+
+    if (useSupabaseDataSource()) {
+      await supabaseAuthAdapter.signOut()
+    }
+
+    setTenantId(null)
+    setStoredOrgCode(null)
+    clearAppDataCache()
+
+    let data = loadAppData()
+    let user = data.usuarios.find((u) => u.id === 'user-gestor' && u.ativo)
+    if (!user) {
+      data = resetAppData()
+      user = data.usuarios.find((u) => u.id === 'user-gestor' && u.ativo)
+    }
+    if (!user) {
+      throw new Error('Não foi possível iniciar o acesso sem senha')
+    }
+
+    return completePortalLogin('gestor', user)
   },
 
   async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
@@ -236,6 +265,7 @@ export const authService = {
   },
 
   async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
+    setOpenAccessSession(false)
     const marinhaEmail = assertMarinhaEmail(credentials.login)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
@@ -421,6 +451,10 @@ export const authService = {
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
     setSession(portal, null)
+
+    if (portal === 'gestor') {
+      setOpenAccessSession(false)
+    }
 
     if (!useSupabaseDataSource()) return
 
