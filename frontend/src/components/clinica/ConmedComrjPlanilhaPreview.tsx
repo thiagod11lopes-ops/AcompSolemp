@@ -58,6 +58,42 @@ const cellSx = {
   verticalAlign: 'middle' as const,
 } as const
 
+/** Conteúdo com quebra forçada (vence o nowrap do .excel-sheet-grid). */
+function WrappedCellText({ text, chars }: { text: string; chars: number }) {
+  return (
+    <Box
+      component="div"
+      sx={{
+        display: 'block',
+        width: `${chars}ch`,
+        maxWidth: `${chars}ch`,
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+        lineHeight: 1.35,
+      }}
+    >
+      {wrapEveryChars(text, chars)}
+    </Box>
+  )
+}
+
+function wrapCellSx(chars: number, extra?: Record<string, unknown>) {
+  return {
+    ...cellSx,
+    ...extra,
+    width: `${chars}ch`,
+    maxWidth: `${chars}ch`,
+    minWidth: `${Math.min(chars, 12)}ch`,
+    whiteSpace: 'pre-wrap !important',
+    overflow: 'visible !important',
+    textOverflow: 'unset',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
+    verticalAlign: 'middle',
+  }
+}
+
 const labelCellSx = {
   ...cellSx,
   bgcolor: EXCEL_SHEET.headerBg,
@@ -233,6 +269,10 @@ export function ConmedComrjPlanilhaPreview({
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
                 '& .MuiTableCell-root': { verticalAlign: 'middle' },
+                '& .MuiTable-root': {
+                  tableLayout: 'auto !important',
+                  width: 'max-content',
+                },
               }}
             >
               <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
@@ -319,16 +359,12 @@ export function ConmedComrjPlanilhaPreview({
                                   </TableCell>
                                   <TableCell
                                     rowSpan={span}
-                                    sx={{
-                                      ...cellSx,
+                                    sx={wrapCellSx(25, {
                                       fontWeight: 600,
                                       bgcolor: '#fbfcfe',
-                                      maxWidth: '25ch',
-                                      whiteSpace: 'pre-wrap',
-                                      overflowWrap: 'anywhere',
-                                    }}
+                                    })}
                                   >
-                                    {wrapEveryChars(paciente.procedimento, 25)}
+                                    <WrappedCellText text={paciente.procedimento} chars={25} />
                                   </TableCell>
                                   <TableCell
                                     rowSpan={span}
@@ -366,16 +402,8 @@ export function ConmedComrjPlanilhaPreview({
                                   <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
-                                  <TableCell
-                                    sx={{
-                                      ...cellSx,
-                                      maxWidth: '100ch',
-                                      whiteSpace: 'pre-wrap',
-                                      overflowWrap: 'anywhere',
-                                      wordBreak: 'break-word',
-                                    }}
-                                  >
-                                    {wrapEveryChars(mat.descricao, 100)}
+                                  <TableCell sx={wrapCellSx(100)}>
+                                    <WrappedCellText text={mat.descricao} chars={100} />
                                   </TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
