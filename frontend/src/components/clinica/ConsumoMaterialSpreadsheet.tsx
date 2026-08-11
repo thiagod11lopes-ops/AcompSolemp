@@ -51,7 +51,10 @@ import type {
   InserirLinhaConsumoPosicao,
 } from '@/utils/consumoMaterialTemplate'
 import { ExcluirPlanilhaDialog } from '@/components/clinica/ExcluirPlanilhaDialog'
-import { AdicionarPlanilhaModal } from '@/components/clinica/AdicionarPlanilhaModal'
+import {
+  AdicionarPlanilhaModal,
+  type AdicionarPlanilhaInput,
+} from '@/components/clinica/AdicionarPlanilhaModal'
 import { FinalizadoLinhaModal } from '@/components/clinica/FinalizadoLinhaModal'
 import {
   ColumnResizeHandle,
@@ -134,7 +137,7 @@ interface ConsumoMaterialSpreadsheetProps {
   finalizedMaterialRowIds?: Set<string>
   totalLancamentos?: number
   onExcluirTudo?: () => Promise<void>
-  onAdicionarPlanilha?: (mes: number, ano: number, file: File) => Promise<void>
+  onAdicionarPlanilha?: (input: AdicionarPlanilhaInput) => Promise<void>
   isExcluindo?: boolean
   isAdicionando?: boolean
   addPlanilhaError?: string | null
@@ -274,9 +277,9 @@ function ConsumoMaterialSpreadsheetInner({
     setExcluirOpen(false)
   }
 
-  const handleAdicionarFile = async (mes: number, ano: number, file: File) => {
+  const handleAdicionarConfirm = async (input: AdicionarPlanilhaInput) => {
     if (!onAdicionarPlanilha) return
-    await onAdicionarPlanilha(mes, ano, file)
+    await onAdicionarPlanilha(input)
     setAdicionarOpen(false)
   }
 
@@ -1204,7 +1207,7 @@ function ConsumoMaterialSpreadsheetInner({
           isLoading={isAdicionando}
           error={addPlanilhaError}
           onClose={() => setAdicionarOpen(false)}
-          onFileSelected={handleAdicionarFile}
+          onConfirm={handleAdicionarConfirm}
         />
       </>
     )}

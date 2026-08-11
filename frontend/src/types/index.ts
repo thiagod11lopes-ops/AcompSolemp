@@ -377,12 +377,25 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { ImhCabecalho, ImhLinha } from '@/utils/imhPlanilhaTemplate'
 import type { ControleSolempLinha } from '@/utils/controleSolempTemplate'
 
+export interface ConsumoPlanilhaAba {
+  id: string
+  nome: string
+  mes: number
+  ano: number
+  extraRows: ConsumoMaterialRow[]
+}
+
 export interface ConsumoPlanilhaClinicaState {
   /** Legado — espelha finalizedAuditoriaRowIds ao salvar */
   finalizedRowIds: string[]
   finalizedAuditoriaRowIds?: string[]
   finalizedMaterialRowIds?: string[]
+  /** Planilha principal (aba Consumo Material Consignado) */
   extraRows: ConsumoMaterialRow[]
+  /** Planilhas adicionais em abas próprias */
+  abasExtras?: ConsumoPlanilhaAba[]
+  /** Id da aba ativa (`principal` ou id de abasExtras) */
+  abaAtivaId?: string
 }
 
 export interface PedidoPlanilhaEnvioState {

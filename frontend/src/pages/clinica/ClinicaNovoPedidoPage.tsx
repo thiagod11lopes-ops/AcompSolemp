@@ -13,6 +13,7 @@ import { useMemo, useState, useCallback, useRef, useEffect, type SyntheticEvent 
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
+import type { AdicionarPlanilhaInput } from '@/components/clinica/AdicionarPlanilhaModal'
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
@@ -48,7 +49,11 @@ import {
   inicializarLinhasDoMes,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
-import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
+import {
+  CONSUMO_ABA_PRINCIPAL_ID,
+  consumoPlanilhaService,
+} from '@/services/consumoPlanilhaService'
+import type { ConsumoPlanilhaAba } from '@/types'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
   DEMO_MEDICAMENTO_EXEMPLO_ID,
@@ -82,6 +87,8 @@ export default function ClinicaNovoPedidoPage() {
 
   const [abaAtiva, setAbaAtiva] = useState(1)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
+  const [abasExtras, setAbasExtras] = useState<ConsumoPlanilhaAba[]>([])
+  const [abaPlanilhaAtivaId, setAbaPlanilhaAtivaId] = useState(CONSUMO_ABA_PRINCIPAL_ID)
   const [planilhaNome, setPlanilhaNome] = useState(CONSUMO_PLANILHA_NOME_PADRAO)
   const [rowSelectionAuditoria, setRowSelectionAuditoria] = useState<RowSelectionState>({})
   const [rowSelectionMaterial, setRowSelectionMaterial] = useState<RowSelectionState>({})
@@ -98,11 +105,18 @@ export default function ClinicaNovoPedidoPage() {
   const [paraleloConsumoRows, setParaleloConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [paraleloPreview, setParaleloPreview] = useState<'auditoria' | 'confeccao' | null>(null)
   const [rowsByMes, setRowsByMes] = useState<Record<string, ConsumoMaterialRow[]>>({})
+  const [rowsByAbaExtra, setRowsByAbaExtra] = useState<Record<string, ConsumoMaterialRow[]>>({})
   const [deletedRowIds, setDeletedRowIds] = useState<Set<string>>(new Set())
   const [finalizedAuditoriaRowIds, setFinalizedAuditoriaRowIds] = useState<Set<string>>(new Set())
   const [finalizedMaterialRowIds, setFinalizedMaterialRowIds] = useState<Set<string>>(new Set())
   const extraRowsSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const planilhaHydrated = useRef(false)
+  const abasExtrasRef = useRef(abasExtras)
+  const abaPlanilhaAtivaIdRef = useRef(abaPlanilhaAtivaId)
+  const extraRowsRef = useRef(extraRows)
+  abasExtrasRef.current = abasExtras
+  abaPlanilhaAtivaIdRef.current = abaPlanilhaAtivaId
+  extraRowsRef.current = extraRows
 
   useEffect(
     () => () => {
@@ -167,8 +181,19 @@ export default function ClinicaNovoPedidoPage() {
           finalizedAuditoriaRowIds: [],
           finalizedMaterialRowIds: [],
           extraRows: rowsToLoad,
+          abasExtras: [],
+          abaAtivaId: CONSUMO_ABA_PRINCIPAL_ID,
         })
       }
+    }
+
+    const loadedAbas = persisted.abasExtras ?? []
+    setAbasExtras(loadedAbas)
+    const loadedAbaAtiva = persisted.abaAtivaId ?? CONSUMO_ABA_PRINCIPAL_ID
+    setAbaPlanilhaAtivaId(loadedAbaAtiva)
+    if (loadedAbaAtiva !== CONSUMO_ABA_PRINCIPAL_ID) {
+      const aba = loadedAbas.find((item) => item.id === loadedAbaAtiva)
+      if (aba) setMesSelecionado(getMesModeloFromParts(aba.mes, aba.ano))
     }
 
     if (persisted.finalizedAuditoriaRowIds?.length || persisted.finalizedRowIds.length > 0) {
@@ -198,6 +223,8 @@ export default function ClinicaNovoPedidoPage() {
       nextExtraRows: ConsumoMaterialRow[],
       nextFinalizedAuditoria: Set<string>,
       nextFinalizedMaterial: Set<string>,
+      nextAbasExtras: ConsumoPlanilhaAba[] = abasExtrasRef.current,
+      nextAbaAtivaId: string = abaPlanilhaAtivaIdRef.current,
     ) => {
       if (!clinicaId) return
       consumoPlanilhaService.saveState(clinicaId, {
@@ -205,6 +232,8 @@ export default function ClinicaNovoPedidoPage() {
         finalizedAuditoriaRowIds: [...nextFinalizedAuditoria],
         finalizedMaterialRowIds: [...nextFinalizedMaterial],
         extraRows: nextExtraRows,
+        abasExtras: nextAbasExtras,
+        abaAtivaId: nextAbaAtivaId,
       })
     },
     [clinicaId],
@@ -215,9 +244,38 @@ export default function ClinicaNovoPedidoPage() {
     [pedidos, extraRows, deletedRowIds],
   )
 
+  const abaAtivaExtra = useMemo(
+    () => abasExtras.find((aba) => aba.id === abaPlanilhaAtivaId),
+    [abasExtras, abaPlanilhaAtivaId],
+  )
+  const isAbaPrincipal = abaPlanilhaAtivaId === CONSUMO_ABA_PRINCIPAL_ID
+
+  const planilhaAbas = useMemo(
+    () => [
+      { id: CONSUMO_ABA_PRINCIPAL_ID, nome: 'Consumo Material Consignado' },
+      ...abasExtras.map((aba) => ({ id: aba.id, nome: aba.nome })),
+    ],
+    [abasExtras],
+  )
+
+  const activeLancamentos = isAbaPrincipal ? planilhaRows : (abaAtivaExtra?.extraRows ?? [])
+  const activeFileName = isAbaPrincipal
+    ? planilhaNome || 'Consumo Material Consignado'
+    : (abaAtivaExtra?.nome ?? 'Planilha')
+  const activeMesSelecionado =
+    !isAbaPrincipal && abaAtivaExtra
+      ? getMesModeloFromParts(abaAtivaExtra.mes, abaAtivaExtra.ano)
+      : mesSelecionado
+  const activeRowsByMes = isAbaPrincipal
+    ? rowsByMes[mesSelecionado.id]
+    : rowsByAbaExtra[abaPlanilhaAtivaId]
+
   const limparPlanilha = () => {
     setExtraRows([])
+    setAbasExtras([])
+    setAbaPlanilhaAtivaId(CONSUMO_ABA_PRINCIPAL_ID)
     setRowsByMes({})
+    setRowsByAbaExtra({})
     setDeletedRowIds(new Set())
     setFinalizedAuditoriaRowIds(new Set())
     setFinalizedMaterialRowIds(new Set())
@@ -227,6 +285,50 @@ export default function ClinicaNovoPedidoPage() {
     setBatchError(null)
     if (clinicaId) consumoPlanilhaService.clearState(clinicaId)
   }
+
+  const mergeNovosNasPlanilhas = useCallback(
+    (
+      novos: ConsumoMaterialRow[],
+      nextFinalizedAuditoria: Set<string>,
+      nextFinalizedMaterial: Set<string>,
+    ) => {
+      const ativaId = abaPlanilhaAtivaIdRef.current
+      if (ativaId === CONSUMO_ABA_PRINCIPAL_ID) {
+        setExtraRows((prev) => {
+          const merged = [...prev]
+          for (const row of novos) {
+            const index = merged.findIndex((item) => item.id === row.id)
+            if (index >= 0) merged[index] = row
+            else merged.push(row)
+          }
+          persistPlanilhaState(merged, nextFinalizedAuditoria, nextFinalizedMaterial)
+          return merged
+        })
+        return
+      }
+      setAbasExtras((prev) => {
+        const next = prev.map((aba) => {
+          if (aba.id !== ativaId) return aba
+          const merged = [...aba.extraRows]
+          for (const row of novos) {
+            const index = merged.findIndex((item) => item.id === row.id)
+            if (index >= 0) merged[index] = row
+            else merged.push(row)
+          }
+          return { ...aba, extraRows: merged }
+        })
+        persistPlanilhaState(
+          extraRowsRef.current,
+          nextFinalizedAuditoria,
+          nextFinalizedMaterial,
+          next,
+          ativaId,
+        )
+        return next
+      })
+    },
+    [persistPlanilhaState],
+  )
 
   const handleRowSelectionAuditoriaChange = useCallback(
     (selection: RowSelectionState) => {
@@ -289,6 +391,40 @@ export default function ClinicaNovoPedidoPage() {
 
   const handleMesRowsChange = useCallback(
     (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
+      const ativaId = abaPlanilhaAtivaIdRef.current
+      if (ativaId !== CONSUMO_ABA_PRINCIPAL_ID) {
+        setRowsByAbaExtra((prev) => ({ ...prev, [ativaId]: rows }))
+        if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
+        extraRowsSyncTimer.current = setTimeout(() => {
+          setAbasExtras((prev) => {
+            const next = prev.map((aba) => {
+              if (aba.id !== ativaId) return aba
+              return {
+                ...aba,
+                mes: mes.mes,
+                ano: mes.ano,
+                extraRows: syncExtraRowsFromMesSheet(
+                  aba.extraRows,
+                  rows,
+                  mes,
+                  rowIdsComPedido,
+                ),
+              }
+            })
+            persistPlanilhaState(
+              extraRowsRef.current,
+              finalizedAuditoriaRowIds,
+              finalizedMaterialRowIds,
+              next,
+              ativaId,
+            )
+            return next
+          })
+          extraRowsSyncTimer.current = null
+        }, 400)
+        return
+      }
+
       setRowsByMes((prev) => ({ ...prev, [mes.id]: rows }))
       if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
       extraRowsSyncTimer.current = setTimeout(() => {
@@ -323,49 +459,76 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const handleAdicionarPlanilha = async (mes: number, ano: number, file: File) => {
+  const handleAdicionarPlanilha = async (input: AdicionarPlanilhaInput) => {
     setAddPlanilhaError(null)
     setIsAdicionandoPlanilha(true)
     try {
-      const rows = await parseConsumoMaterialFile(file)
-      const mesModelo = getMesModeloFromParts(mes, ano)
-      const novos = rows.filter(
-        (r) =>
-          dataPertenceAoMes(r.data, mesModelo) &&
-          !rowIdsComPedido.has(r.id) &&
-          !finalizedAuditoriaRowIds.has(r.id) &&
-          !finalizedMaterialRowIds.has(r.id),
-      )
-      if (novos.length === 0) {
-        setAddPlanilhaError(
-          `Nenhum lançamento encontrado para ${mesModelo.label} no arquivo selecionado.`,
-        )
-        throw new Error('no rows')
-      }
-      setExtraRows((prev) => {
-        const semMes = prev.filter((r) => !dataPertenceAoMes(r.data, mesModelo))
-        const ids = new Set(semMes.map((r) => r.id))
-        const merged = [...semMes]
-        for (const row of novos) {
-          if (!ids.has(row.id)) merged.push(row)
+      const mesModelo = getMesModeloFromParts(input.mes, input.ano)
+      let novos: ConsumoMaterialRow[] = []
+
+      if (input.modo === 'importar') {
+        if (!input.file) {
+          setAddPlanilhaError('Selecione um arquivo .ods ou .xlsx.')
+          throw new Error('no file')
         }
-        return merged
-      })
-      setPlanilhaNome(file.name)
-      setMesSelecionado(mesModelo)
-      setRowsByMes((prev) => {
-        const next = { ...prev }
-        delete next[mesModelo.id]
+        const rows = await parseConsumoMaterialFile(input.file)
+        novos = rows.filter(
+          (r) =>
+            dataPertenceAoMes(r.data, mesModelo) &&
+            !rowIdsComPedido.has(r.id) &&
+            !finalizedAuditoriaRowIds.has(r.id) &&
+            !finalizedMaterialRowIds.has(r.id),
+        )
+        if (novos.length === 0) {
+          setAddPlanilhaError(
+            `Nenhum lançamento encontrado para ${mesModelo.label} no arquivo selecionado.`,
+          )
+          throw new Error('no rows')
+        }
+      }
+
+      const novaAba: ConsumoPlanilhaAba = {
+        id: `aba-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        nome: input.nome.trim() || `Planilha ${mesModelo.label}`,
+        mes: input.mes,
+        ano: input.ano,
+        extraRows: novos,
+      }
+
+      setAbasExtras((prev) => {
+        const next = [...prev, novaAba]
+        persistPlanilhaState(
+          extraRowsRef.current,
+          finalizedAuditoriaRowIds,
+          finalizedMaterialRowIds,
+          next,
+          novaAba.id,
+        )
         return next
       })
-      const initialSelection: RowSelectionState = {}
-      novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
-        initialSelection[r.id] = true
+      setAbaPlanilhaAtivaId(novaAba.id)
+      setMesSelecionado(mesModelo)
+      setRowsByAbaExtra((prev) => {
+        const next = { ...prev }
+        delete next[novaAba.id]
+        return next
       })
-      setRowSelectionAuditoria(initialSelection)
+      setRowSelectionAuditoria({})
+      setRowSelectionMaterial({})
+      if (novos.length > 0) {
+        const initialSelection: RowSelectionState = {}
+        novos.slice(0, Math.min(novos.length, 50)).forEach((r) => {
+          initialSelection[r.id] = true
+        })
+        setRowSelectionAuditoria(initialSelection)
+      }
     } catch (err) {
-      if (err instanceof Error && err.message !== 'no rows') {
-        setAddPlanilhaError(err.message || 'Erro ao ler o arquivo ODS')
+      if (
+        err instanceof Error &&
+        err.message !== 'no rows' &&
+        err.message !== 'no file'
+      ) {
+        setAddPlanilhaError(err.message || 'Erro ao criar a planilha')
       }
       throw err
     } finally {
@@ -373,59 +536,182 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
+  const handleAbaPlanilhaChange = useCallback(
+    (abaId: string) => {
+      setAbaPlanilhaAtivaId(abaId)
+      setRowSelectionAuditoria({})
+      setRowSelectionMaterial({})
+      setBatchError(null)
+      if (abaId === CONSUMO_ABA_PRINCIPAL_ID) {
+        persistPlanilhaState(
+          extraRowsRef.current,
+          finalizedAuditoriaRowIds,
+          finalizedMaterialRowIds,
+          abasExtrasRef.current,
+          abaId,
+        )
+        return
+      }
+      const aba = abasExtrasRef.current.find((item) => item.id === abaId)
+      if (aba) setMesSelecionado(getMesModeloFromParts(aba.mes, aba.ano))
+      persistPlanilhaState(
+        extraRowsRef.current,
+        finalizedAuditoriaRowIds,
+        finalizedMaterialRowIds,
+        abasExtrasRef.current,
+        abaId,
+      )
+    },
+    [finalizedAuditoriaRowIds, finalizedMaterialRowIds, persistPlanilhaState],
+  )
+
+  const handleFecharAbaPlanilha = useCallback(
+    (abaId: string) => {
+      setAbasExtras((prev) => {
+        const next = prev.filter((aba) => aba.id !== abaId)
+        const nextAtiva =
+          abaPlanilhaAtivaIdRef.current === abaId
+            ? CONSUMO_ABA_PRINCIPAL_ID
+            : abaPlanilhaAtivaIdRef.current
+        if (abaPlanilhaAtivaIdRef.current === abaId) {
+          setAbaPlanilhaAtivaId(CONSUMO_ABA_PRINCIPAL_ID)
+          setRowSelectionAuditoria({})
+          setRowSelectionMaterial({})
+        }
+        persistPlanilhaState(
+          extraRowsRef.current,
+          finalizedAuditoriaRowIds,
+          finalizedMaterialRowIds,
+          next,
+          nextAtiva,
+        )
+        return next
+      })
+      setRowsByAbaExtra((prev) => {
+        const { [abaId]: _, ...rest } = prev
+        return rest
+      })
+    },
+    [finalizedAuditoriaRowIds, finalizedMaterialRowIds, persistPlanilhaState],
+  )
+
+  const handleMesSelecionadoChange = useCallback(
+    (mes: MesConsumoModelo) => {
+      setMesSelecionado(mes)
+      const ativaId = abaPlanilhaAtivaIdRef.current
+      if (ativaId === CONSUMO_ABA_PRINCIPAL_ID) return
+      setAbasExtras((prev) => {
+        const next = prev.map((aba) =>
+          aba.id === ativaId ? { ...aba, mes: mes.mes, ano: mes.ano } : aba,
+        )
+        persistPlanilhaState(
+          extraRowsRef.current,
+          finalizedAuditoriaRowIds,
+          finalizedMaterialRowIds,
+          next,
+          ativaId,
+        )
+        return next
+      })
+    },
+    [finalizedAuditoriaRowIds, finalizedMaterialRowIds, persistPlanilhaState],
+  )
+
   const handleAddManualRow = (row: ConsumoMaterialRow) => {
-    const dataNoMes = dataPertenceAoMes(row.data, mesSelecionado)
+    const mesAlvo = activeMesSelecionado
+    const dataNoMes = dataPertenceAoMes(row.data, mesAlvo)
       ? row.data
       : (() => {
           const match = row.data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
           const day = match?.[1]?.padStart(2, '0') ?? '01'
-          return `${day}/${String(mesSelecionado.mes).padStart(2, '0')}/${String(mesSelecionado.ano).slice(-2)}`
+          return `${day}/${String(mesAlvo.mes).padStart(2, '0')}/${String(mesAlvo.ano).slice(-2)}`
         })()
     const rowParaMes: ConsumoMaterialRow = { ...row, data: dataNoMes }
 
-    setExtraRows((prev) => {
-      const next = [...prev, rowParaMes]
-      persistPlanilhaState(next, finalizedAuditoriaRowIds, finalizedMaterialRowIds)
-      return next
-    })
-    setRowsByMes((prev) => {
-      const next = { ...prev }
-      delete next[mesSelecionado.id]
-      return next
-    })
+    if (!isAbaPrincipal) {
+      const ativaId = abaPlanilhaAtivaId
+      setAbasExtras((prev) => {
+        const next = prev.map((aba) =>
+          aba.id === ativaId
+            ? { ...aba, extraRows: [...aba.extraRows, rowParaMes] }
+            : aba,
+        )
+        persistPlanilhaState(
+          extraRowsRef.current,
+          finalizedAuditoriaRowIds,
+          finalizedMaterialRowIds,
+          next,
+          ativaId,
+        )
+        return next
+      })
+      setRowsByAbaExtra((prev) => {
+        const next = { ...prev }
+        delete next[ativaId]
+        return next
+      })
+    } else {
+      setExtraRows((prev) => {
+        const next = [...prev, rowParaMes]
+        persistPlanilhaState(next, finalizedAuditoriaRowIds, finalizedMaterialRowIds)
+        return next
+      })
+      setRowsByMes((prev) => {
+        const next = { ...prev }
+        delete next[mesAlvo.id]
+        return next
+      })
+    }
     setRowSelectionAuditoria((prev) => ({ ...prev, [rowParaMes.id]: true }))
     setBatchError(null)
     setAbaAtiva(1)
   }
 
+  const getActiveSourceRows = useCallback(() => {
+    if (isAbaPrincipal) {
+      const mesSheet = rowsByMes[mesSelecionado.id]
+      return mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
+    }
+    const mes =
+      abaAtivaExtra != null
+        ? getMesModeloFromParts(abaAtivaExtra.mes, abaAtivaExtra.ano)
+        : mesSelecionado
+    const sheet = rowsByAbaExtra[abaPlanilhaAtivaId]
+    return sheet ?? inicializarLinhasDoMes(abaAtivaExtra?.extraRows ?? [], mes)
+  }, [
+    isAbaPrincipal,
+    rowsByMes,
+    mesSelecionado,
+    planilhaRows,
+    abaAtivaExtra,
+    rowsByAbaExtra,
+    abaPlanilhaAtivaId,
+  ])
+
   const getSelectedRowsAuditoria = useCallback(() => {
-    const mesSheet = rowsByMes[mesSelecionado.id]
-    const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
-    return sourceRows.filter(
+    return getActiveSourceRows().filter(
       (r) =>
         rowSelectionAuditoria[r.id] &&
         rowPodeSerEnviadaAuditoria(r, rowIdsComPedido, finalizedAuditoriaRowIds),
     )
   }, [
-    rowsByMes,
-    mesSelecionado,
-    planilhaRows,
+    getActiveSourceRows,
     rowSelectionAuditoria,
     rowIdsComPedido,
     finalizedAuditoriaRowIds,
   ])
 
   const getSelectedRowsImhChecklist = useCallback(() => {
-    const mesSheet = rowsByMes[mesSelecionado.id]
-    const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
-    return sourceRows.filter((r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r))
-  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelectionAuditoria])
+    return getActiveSourceRows().filter(
+      (r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r),
+    )
+  }, [getActiveSourceRows, rowSelectionAuditoria])
 
   const getSelectedRowsAs = useCallback(() => {
-    const mesSheet = rowsByMes[mesSelecionado.id]
-    const sourceRows = mesSheet ?? inicializarLinhasDoMes(planilhaRows, mesSelecionado)
-    return sourceRows.filter((r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r))
-  }, [rowsByMes, mesSelecionado, planilhaRows, rowSelectionAuditoria])
+    return getActiveSourceRows().filter(
+      (r) => rowSelectionAuditoria[r.id] && isLinhaPreenchida(r),
+    )
+  }, [getActiveSourceRows, rowSelectionAuditoria])
 
   const handleAbrirImhModal = () => {
     const selectedRows = isMedicamentoPortal
@@ -547,16 +833,7 @@ export default function ClinicaNovoPedidoPage() {
         for (const row of novos) delete next[row.id]
         return next
       })
-      setExtraRows((prev) => {
-        const merged = [...prev]
-        for (const row of novos) {
-          const index = merged.findIndex((item) => item.id === row.id)
-          if (index >= 0) merged[index] = row
-          else merged.push(row)
-        }
-        persistPlanilhaState(merged, nextFinalizedAuditoria, finalizedMaterialRowIds)
-        return merged
-      })
+      mergeNovosNasPlanilhas(novos, nextFinalizedAuditoria, finalizedMaterialRowIds)
       consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
       setImhModalOpen(false)
       setImhConsumoRows([])
@@ -617,16 +894,7 @@ export default function ClinicaNovoPedidoPage() {
         for (const row of novos) delete next[row.id]
         return next
       })
-      setExtraRows((prev) => {
-        const merged = [...prev]
-        for (const row of novos) {
-          const index = merged.findIndex((item) => item.id === row.id)
-          if (index >= 0) merged[index] = row
-          else merged.push(row)
-        }
-        persistPlanilhaState(merged, finalizedAuditoriaRowIds, nextFinalizedMaterial)
-        return merged
-      })
+      mergeNovosNasPlanilhas(novos, finalizedAuditoriaRowIds, nextFinalizedMaterial)
       consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
       setMaterialModalOpen(false)
       setMaterialConsumoRows([])
@@ -700,16 +968,7 @@ export default function ClinicaNovoPedidoPage() {
         for (const row of novos) delete next[row.id]
         return next
       })
-      setExtraRows((prev) => {
-        const merged = [...prev]
-        for (const row of novos) {
-          const index = merged.findIndex((item) => item.id === row.id)
-          if (index >= 0) merged[index] = row
-          else merged.push(row)
-        }
-        persistPlanilhaState(merged, nextFinalizedAuditoria, nextFinalizedMaterial)
-        return merged
-      })
+      mergeNovosNasPlanilhas(novos, nextFinalizedAuditoria, nextFinalizedMaterial)
       consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
       consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
       setParaleloModalOpen(false)
@@ -791,11 +1050,11 @@ export default function ClinicaNovoPedidoPage() {
 
       {abaAtiva === 1 && (
         <ConsumoMaterialConsignadoView
-          lancamentos={planilhaRows}
+          lancamentos={activeLancamentos}
           fileName={
             isDemoMedicamentoFixo
               ? 'Modelo IHM — PME (demonstração)'
-              : planilhaNome || 'Consumo Material Consignado'
+              : activeFileName
           }
           rowSelectionAuditoria={rowSelectionAuditoria}
           onRowSelectionAuditoriaChange={handleRowSelectionAuditoriaChange}
@@ -805,8 +1064,10 @@ export default function ClinicaNovoPedidoPage() {
           finalizedAuditoriaRowIds={finalizedAuditoriaRowIds}
           finalizedMaterialRowIds={finalizedMaterialRowIds}
           totalPedidos={pedidos.length}
-          mesSelecionado={mesSelecionado}
-          onMesSelecionadoChange={setMesSelecionado}
+          mesSelecionado={activeMesSelecionado}
+          onMesSelecionadoChange={
+            isDemoMedicamentoFixo ? undefined : handleMesSelecionadoChange
+          }
           onExcluirTudo={isDemoMedicamentoFixo ? undefined : handleExcluirTudo}
           onAdicionarPlanilha={isDemoMedicamentoFixo ? undefined : handleAdicionarPlanilha}
           isExcluindo={deleteAllPedidos.isPending}
@@ -819,10 +1080,18 @@ export default function ClinicaNovoPedidoPage() {
           modoMedicamento={isMedicamentoPortal}
           planilhaFixaDemo={isDemoMedicamentoFixo}
           isEnviando={isBatchSending}
-          rowsByMes={isDemoMedicamentoFixo ? undefined : rowsByMes[mesSelecionado.id]}
+          rowsByMes={isDemoMedicamentoFixo ? undefined : activeRowsByMes}
           onRowsChange={isDemoMedicamentoFixo ? undefined : handleMesRowsChange}
           onExcluirLinhaRow={isDemoMedicamentoFixo ? undefined : handleExcluirLinhaRow}
           onDesfinalizarLinha={handleDesfinalizarLinha}
+          planilhaAbas={isDemoMedicamentoFixo ? undefined : planilhaAbas}
+          abaPlanilhaAtivaId={abaPlanilhaAtivaId}
+          onAbaPlanilhaChange={
+            isDemoMedicamentoFixo ? undefined : handleAbaPlanilhaChange
+          }
+          onFecharAbaPlanilha={
+            isDemoMedicamentoFixo ? undefined : handleFecharAbaPlanilha
+          }
         />
       )}
 
@@ -845,7 +1114,7 @@ export default function ClinicaNovoPedidoPage() {
       <ImhEnvioModal
         open={imhModalOpen}
         consumoRows={imhConsumoRows}
-        mesReferencia={mesSelecionado}
+        mesReferencia={activeMesSelecionado}
         isSubmitting={isBatchSending}
         modoMedicamento={isMedicamentoPortal}
         previewOnly={paraleloPreview === 'auditoria'}
@@ -865,7 +1134,7 @@ export default function ClinicaNovoPedidoPage() {
       <MaterialEnvioModal
         open={materialModalOpen}
         consumoRows={materialConsumoRows}
-        mesReferencia={mesSelecionado}
+        mesReferencia={activeMesSelecionado}
         isSubmitting={isBatchSending}
         previewOnly={paraleloPreview === 'confeccao'}
         onClose={
