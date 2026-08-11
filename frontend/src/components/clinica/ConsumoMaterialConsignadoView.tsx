@@ -3,7 +3,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Stack,
 } from '@mui/material'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { RowSelectionState } from '@tanstack/react-table'
@@ -11,7 +10,6 @@ import {
   ConsumoMaterialSpreadsheet,
   type ConsumoEnvioCanal,
 } from '@/components/clinica/ConsumoMaterialSpreadsheet'
-import { ConmedPlanilhaView } from '@/components/clinica/ConmedPlanilhaView'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   CONSUMO_MESES_MODELO,
@@ -26,8 +24,6 @@ import {
   type ConsumoMaterialColunaKey,
   type InserirLinhaConsumoPosicao,
 } from '@/utils/consumoMaterialTemplate'
-
-type PlanilhaTabelaId = 'consumo' | 'conmed'
 
 interface ConsumoMaterialConsignadoViewProps {
   lancamentos: ConsumoMaterialRow[]
@@ -94,7 +90,6 @@ function ConsumoMaterialConsignadoViewInner({
   const [mesInterno, setMesInterno] = useState<MesConsumoModelo>(getMesAtualModelo)
   const mesSelecionado = mesControlado ?? mesInterno
   const setMesSelecionado = onMesSelecionadoChange ?? setMesInterno
-  const [tabelaSelecionada, setTabelaSelecionada] = useState<PlanilhaTabelaId>('consumo')
 
   const linhasExibidas = useMemo(() => {
     if (rowsByMes) return rowsByMes
@@ -162,49 +157,6 @@ function ConsumoMaterialConsignadoViewInner({
     ],
   )
 
-  const selectSx = {
-    bgcolor: '#fff',
-    color: '#111827',
-    fontSize: '11px',
-    fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
-    '& .MuiSelect-select': {
-      color: '#111827',
-    },
-    '& .MuiSvgIcon-root': {
-      color: '#4b5563',
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: 'rgba(0,0,0,0.23)',
-    },
-  } as const
-
-  const labelSx = {
-    color: '#374151',
-    '&.Mui-focused': { color: 'primary.main' },
-  } as const
-
-  const seletorTabela = (
-    <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 260 } }}>
-      <InputLabel id="tabela-consumo-label" sx={labelSx}>
-        Tabela
-      </InputLabel>
-      <Select
-        labelId="tabela-consumo-label"
-        label="Tabela"
-        value={tabelaSelecionada}
-        onChange={(e) => setTabelaSelecionada(e.target.value as PlanilhaTabelaId)}
-        sx={selectSx}
-      >
-        <MenuItem value="consumo">Consumo Material Consignado</MenuItem>
-        <MenuItem value="conmed">CONMED</MenuItem>
-      </Select>
-    </FormControl>
-  )
-
-  if (tabelaSelecionada === 'conmed') {
-    return <ConmedPlanilhaView headerExtra={seletorTabela} />
-  }
-
   return (
     <ConsumoMaterialSpreadsheet
       measureRows={lancamentos}
@@ -236,34 +188,47 @@ function ConsumoMaterialConsignadoViewInner({
       onExcluirLinha={planilhaFixaDemo ? undefined : handleExcluirLinha}
       onDesfinalizarLinha={onDesfinalizarLinha}
       headerExtra={
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={1}
-          sx={{ width: { xs: '100%', md: 'auto' } }}
-        >
-          {seletorTabela}
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-            <InputLabel id="mes-consumo-label" sx={labelSx}>
-              Mês de referência
-            </InputLabel>
-            <Select
-              labelId="mes-consumo-label"
-              label="Mês de referência"
-              value={mesSelecionado.id}
-              onChange={(e) => {
-                const mes = CONSUMO_MESES_MODELO.find((m) => m.id === e.target.value)
-                if (mes) setMesSelecionado(mes)
-              }}
-              sx={selectSx}
-            >
-              {CONSUMO_MESES_MODELO.map((m) => (
-                <MenuItem key={m.id} value={m.id}>
-                  {m.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
+        <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
+          <InputLabel
+            id="mes-consumo-label"
+            sx={{
+              color: '#374151',
+              '&.Mui-focused': { color: 'primary.main' },
+            }}
+          >
+            Mês de referência
+          </InputLabel>
+          <Select
+            labelId="mes-consumo-label"
+            label="Mês de referência"
+            value={mesSelecionado.id}
+            onChange={(e) => {
+              const mes = CONSUMO_MESES_MODELO.find((m) => m.id === e.target.value)
+              if (mes) setMesSelecionado(mes)
+            }}
+            sx={{
+              bgcolor: '#fff',
+              color: '#111827',
+              fontSize: '11px',
+              fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
+              '& .MuiSelect-select': {
+                color: '#111827',
+              },
+              '& .MuiSvgIcon-root': {
+                color: '#4b5563',
+              },
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(0,0,0,0.23)',
+              },
+            }}
+          >
+            {CONSUMO_MESES_MODELO.map((m) => (
+              <MenuItem key={m.id} value={m.id}>
+                {m.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       }
     />
   )
