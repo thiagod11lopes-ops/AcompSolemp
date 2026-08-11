@@ -8,13 +8,11 @@ import {
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import GridOnIcon from '@mui/icons-material/GridOn'
-import NoteAddIcon from '@mui/icons-material/NoteAdd'
 import { useMemo, useState, useCallback, useRef, useEffect, type SyntheticEvent } from 'react'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import type { RowSelectionState } from '@tanstack/react-table'
 import { ConsumoMaterialConsignadoView } from '@/components/clinica/ConsumoMaterialConsignadoView'
 import type { AdicionarPlanilhaInput } from '@/components/clinica/AdicionarPlanilhaModal'
-import { NovaPlanilhaBrancaModal } from '@/components/clinica/NovaPlanilhaBrancaModal'
 import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
 import { ClinicaEnvioParaleloModal } from '@/components/clinica/ClinicaEnvioParaleloModal'
@@ -69,7 +67,6 @@ import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
 import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpreadsheet'
-import { createEmptySpreadsheetGrid } from '@/utils/planilhaBrancaGrid'
 
 export default function ClinicaNovoPedidoPage() {
   const { navigatePortal, isDemo } = usePortalPaths()
@@ -87,7 +84,6 @@ export default function ClinicaNovoPedidoPage() {
     isDemo && isMedicamentoPortal && clinicaId === DEMO_MEDICAMENTO_EXEMPLO_ID
 
   const [abaAtiva, setAbaAtiva] = useState(1)
-  const [novaPlanilhaModalOpen, setNovaPlanilhaModalOpen] = useState(false)
   const [extraRows, setExtraRows] = useState<ConsumoMaterialRow[]>([])
   const [abasExtras, setAbasExtras] = useState<ConsumoPlanilhaAba[]>([])
   const [abaPlanilhaAtivaId, setAbaPlanilhaAtivaId] = useState(CONSUMO_ABA_PRINCIPAL_ID)
@@ -624,37 +620,6 @@ export default function ClinicaNovoPedidoPage() {
     [finalizedAuditoriaRowIds, finalizedMaterialRowIds, persistPlanilhaState],
   )
 
-  const handleCriarPlanilhaBranca = (nome: string) => {
-    const mesAtual = getMesAtualModelo()
-    const novaAba: ConsumoPlanilhaAba = {
-      id: `aba-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      nome,
-      mes: mesAtual.mes,
-      ano: mesAtual.ano,
-      extraRows: [],
-      tipo: 'branca',
-      grid: createEmptySpreadsheetGrid(),
-    }
-    setAbasExtras((prev) => {
-      const next = [...prev, novaAba]
-      persistPlanilhaState(
-        extraRowsRef.current,
-        finalizedAuditoriaRowIds,
-        finalizedMaterialRowIds,
-        next,
-        novaAba.id,
-      )
-      return next
-    })
-    setAbaPlanilhaAtivaId(novaAba.id)
-    setMesSelecionado(mesAtual)
-    setRowSelectionAuditoria({})
-    setRowSelectionMaterial({})
-    setBatchError(null)
-    setAbaAtiva(1)
-    setNovaPlanilhaModalOpen(false)
-  }
-
   const handlePlanilhaBrancaGridChange = useCallback(
     (grid: string[][]) => {
       const ativaId = abaPlanilhaAtivaIdRef.current
@@ -1010,13 +975,7 @@ export default function ClinicaNovoPedidoPage() {
 
         <Tabs
           value={abaAtiva}
-          onChange={(_: SyntheticEvent, v: number) => {
-            if (v === 0) {
-              if (!isDemoMedicamentoFixo) setNovaPlanilhaModalOpen(true)
-              return
-            }
-            setAbaAtiva(v)
-          }}
+          onChange={(_: SyntheticEvent, v: number) => setAbaAtiva(v)}
           sx={{
             minHeight: 36,
             '& .MuiTabs-indicator': { height: 2 },
@@ -1031,12 +990,7 @@ export default function ClinicaNovoPedidoPage() {
             },
           }}
         >
-          <Tab
-            icon={<NoteAddIcon sx={{ fontSize: 16 }} />}
-            iconPosition="start"
-            label="Novo lançamento"
-            disabled={isDemoMedicamentoFixo}
-          />
+          <Tab label="Novo lançamento" />
           <Tab
             icon={<GridOnIcon sx={{ fontSize: 16 }} />}
             iconPosition="start"
@@ -1050,6 +1004,8 @@ export default function ClinicaNovoPedidoPage() {
           {batchError}
         </Alert>
       )}
+
+      {abaAtiva === 0 && <Box sx={{ minHeight: 240 }} />}
 
       {abaAtiva === 1 && (
         <ConsumoMaterialConsignadoView
@@ -1110,12 +1066,6 @@ export default function ClinicaNovoPedidoPage() {
           }
         />
       )}
-
-      <NovaPlanilhaBrancaModal
-        open={novaPlanilhaModalOpen}
-        onClose={() => setNovaPlanilhaModalOpen(false)}
-        onConfirm={handleCriarPlanilhaBranca}
-      />
 
       <ClinicaEnvioParaleloModal
         open={paraleloModalOpen}
