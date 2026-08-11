@@ -422,7 +422,7 @@ export interface ConmedComrjMaterialItem {
   valorTotal: string
 }
 
-/** Formulário da aba CONMED COMRJ (não é planilha) */
+/** Formulário + planilha unificada da aba CONMED COMRJ */
 export interface ConmedComrjFormData {
   numero: string
   data: string

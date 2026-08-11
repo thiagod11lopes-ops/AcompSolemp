@@ -184,3 +184,39 @@ export function withRecalculatedMateriais(
     valorPorPaciente: calcValorPorPaciente(next),
   }
 }
+
+function materialHasContent(item: ConmedComrjMaterialItem): boolean {
+  return Boolean(
+    item.mapaDaSala ||
+      item.danfe ||
+      item.item ||
+      item.nebPi ||
+      item.descricao ||
+      item.qt ||
+      item.valorUnit ||
+      item.valorTotal,
+  )
+}
+
+/** Há conteúdo suficiente para exibir a planilha unificada ao vivo */
+export function conmedFormHasPreviewContent(value: ConmedComrjFormData): boolean {
+  return Boolean(
+    value.numero ||
+      value.data ||
+      value.processo ||
+      value.pregaoTad ||
+      value.vigencia ||
+      value.fornecedor ||
+      value.pacienteNip ||
+      value.pacienteIniciais ||
+      value.pacienteData ||
+      value.pacienteProcedimento ||
+      value.materiais.some(materialHasContent),
+  )
+}
+
+export function conmedProcessoSheetTitle(value: ConmedComrjFormData): string {
+  if (value.processo.trim()) return `Processo ${value.processo.trim()}`
+  if (value.numero.trim()) return `Nº ${value.numero.trim()}`
+  return 'Processo (sem número)'
+}
