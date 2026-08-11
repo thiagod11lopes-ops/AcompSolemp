@@ -323,12 +323,12 @@ export function ConmedComrjPlanilhaPreview({
                                       ...cellSx,
                                       fontWeight: 600,
                                       bgcolor: '#fbfcfe',
-                                      maxWidth: '30ch',
+                                      maxWidth: '25ch',
                                       whiteSpace: 'pre-wrap',
                                       overflowWrap: 'anywhere',
                                     }}
                                   >
-                                    {wrapEveryChars(paciente.procedimento, 30)}
+                                    {wrapEveryChars(paciente.procedimento, 25)}
                                   </TableCell>
                                   <TableCell
                                     rowSpan={span}
@@ -369,13 +369,13 @@ export function ConmedComrjPlanilhaPreview({
                                   <TableCell
                                     sx={{
                                       ...cellSx,
-                                      maxWidth: '110ch',
+                                      maxWidth: '100ch',
                                       whiteSpace: 'pre-wrap',
                                       overflowWrap: 'anywhere',
                                       wordBreak: 'break-word',
                                     }}
                                   >
-                                    {wrapEveryChars(mat.descricao, 110)}
+                                    {wrapEveryChars(mat.descricao, 100)}
                                   </TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
