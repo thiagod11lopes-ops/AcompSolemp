@@ -19,7 +19,6 @@ import {
 import type { ImhAbaFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
-  IMH_ABA_ASSINATURA,
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
   IMH_ABA_INSTITUICAO,
@@ -285,17 +284,6 @@ export function ImhAbaPlanilhaPreview({
                     </TableCell>
                   </TableRow>
                 ) : null}
-                <TableRow>
-                  <TableCell colSpan={colCount} sx={{ ...cellSx, height: 28, border: 'none' }} />
-                </TableRow>
-                <TableRow>
-                  <TableCell
-                    colSpan={colCount}
-                    sx={{ ...cellSx, textAlign: 'center', fontWeight: 700, border: 'none' }}
-                  >
-                    {IMH_ABA_ASSINATURA}
-                  </TableCell>
-                </TableRow>
               </TableBody>
             </Table>
           </Box>

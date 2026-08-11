@@ -51,7 +51,6 @@ export type ImhAbaColunaKey = (typeof IMH_ABA_COLUNAS)[number]['key']
 
 export const IMH_ABA_INSTITUICAO = 'MARINHA DO BRASIL'
 export const IMH_ABA_HOSPITAL = 'HOSPITAL NAVAL MARCÍLIO DIAS'
-export const IMH_ABA_ASSINATURA = 'Chefe da Clínica'
 
 export function withRecalculatedImhLinha(linha: ImhAbaLinha): ImhAbaLinha {
   const qtd = parseQuantidade(linha.quantidade)
