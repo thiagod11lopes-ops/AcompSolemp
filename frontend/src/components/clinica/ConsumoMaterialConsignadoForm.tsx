@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  Autocomplete,
   Box,
   FormControl,
   InputLabel,
@@ -8,6 +9,7 @@ import {
   Paper,
   Select,
   Snackbar,
+  TextField,
   Typography,
   alpha,
 } from '@mui/material'
@@ -51,6 +53,8 @@ function sheetHasContent(sheet: SpreadsheetSheetImport): boolean {
   return sheet.rows.some((row) => row.some((cell) => String(cell ?? '').trim()))
 }
 
+const FORNECEDOR_TODOS = '__todos__'
+
 function anosDisponiveis(rows: ConsumoMaterialRow[]): number[] {
   const anos = new Set<number>(ANOS_PLANILHA_DISPONIVEIS)
   anos.add(new Date().getFullYear())
@@ -64,12 +68,22 @@ function anosDisponiveis(rows: ConsumoMaterialRow[]): number[] {
   return [...anos].sort((a, b) => b - a)
 }
 
+function fornecedoresDisponiveis(rows: ConsumoMaterialRow[]): string[] {
+  const set = new Set<string>()
+  for (const row of rows) {
+    const nome = row.fornecedor.trim()
+    if (nome) set.add(nome)
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}
+
 export function ConsumoMaterialConsignadoForm({
   value,
   onChange,
 }: ConsumoMaterialConsignadoFormProps) {
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
+  const [filtroFornecedor, setFiltroFornecedor] = useState(FORNECEDOR_TODOS)
   const [editingRowId, setEditingRowId] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importing, setImporting] = useState(false)
@@ -90,11 +104,28 @@ export function ConsumoMaterialConsignadoForm({
   )
 
   const anosOptions = useMemo(() => anosDisponiveis(value), [value])
+  const fornecedoresOptions = useMemo(() => fornecedoresDisponiveis(value), [value])
 
   const rowsFiltradas = useMemo(
-    () => value.filter((row) => dataPertenceAoMes(row.data, mesFiltro)),
-    [value, mesFiltro],
+    () =>
+      value.filter((row) => {
+        if (!dataPertenceAoMes(row.data, mesFiltro)) return false
+        if (
+          filtroFornecedor !== FORNECEDOR_TODOS &&
+          row.fornecedor.trim() !== filtroFornecedor
+        ) {
+          return false
+        }
+        return true
+      }),
+    [value, mesFiltro, filtroFornecedor],
   )
+
+  const emptyHint = useMemo(() => {
+    const partes = [mesFiltro.label]
+    if (filtroFornecedor !== FORNECEDOR_TODOS) partes.push(`fornecedor “${filtroFornecedor}”`)
+    return `Nenhum lançamento em ${partes.join(' · ')}. Ajuste o filtro ou importe/adicione dados.`
+  }, [mesFiltro.label, filtroFornecedor])
 
   const nextNumero = useMemo(() => {
     if (editingRowId) {
@@ -249,7 +280,7 @@ export function ConsumoMaterialConsignadoForm({
           >
             Planilha (ao vivo)
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
             <FormControl size="small" sx={{ minWidth: 130 }}>
               <InputLabel id="consumo-filtro-mes-label">Mês</InputLabel>
               <Select
@@ -280,6 +311,27 @@ export function ConsumoMaterialConsignadoForm({
                 ))}
               </Select>
             </FormControl>
+            <Autocomplete
+              size="small"
+              sx={{ minWidth: 200, maxWidth: 280 }}
+              options={[FORNECEDOR_TODOS, ...fornecedoresOptions]}
+              value={
+                filtroFornecedor === FORNECEDOR_TODOS ||
+                fornecedoresOptions.includes(filtroFornecedor)
+                  ? filtroFornecedor
+                  : FORNECEDOR_TODOS
+              }
+              onChange={(_, next) => {
+                setFiltroFornecedor(next ?? FORNECEDOR_TODOS)
+              }}
+              getOptionLabel={(option) =>
+                option === FORNECEDOR_TODOS ? 'Todos' : option
+              }
+              isOptionEqualToValue={(option, selected) => option === selected}
+              renderInput={(params) => (
+                <TextField {...params} label="Fornecedor" placeholder="Todos" />
+              )}
+            />
           </Box>
         </Box>
         <input
@@ -296,7 +348,7 @@ export function ConsumoMaterialConsignadoForm({
           onImportClick={handleImportClick}
           onEditRow={handleEdit}
           onDeleteRow={handleDelete}
-          emptyHint={`Nenhum lançamento em ${mesFiltro.label}. Ajuste o filtro ou importe/adicione dados.`}
+          emptyHint={emptyHint}
         />
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
