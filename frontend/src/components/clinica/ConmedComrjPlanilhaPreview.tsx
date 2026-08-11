@@ -33,6 +33,7 @@ const labelCellSx = {
   fontWeight: 700,
   color: EXCEL_SHEET.mutedText,
   whiteSpace: 'nowrap' as const,
+  width: 120,
 }
 
 const groupSx = {
@@ -52,7 +53,7 @@ const headerSx = {
 
 const PATIENT_COLS = 4
 const MATERIAL_COLS = 9
-const TOTAL_COLS = PATIENT_COLS + MATERIAL_COLS
+const DETAIL_COLS = PATIENT_COLS + MATERIAL_COLS
 
 export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreviewProps) {
   const visible = conmedFormHasPreviewContent(value)
@@ -146,141 +147,161 @@ export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreview
             </Typography>
           </Box>
         ) : (
-          <Box className="excel-sheet-grid excel-sheet-wrap" sx={{ overflowX: 'auto' }}>
-            <Table size="small" sx={{ width: '100%', minWidth: 980 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell colSpan={TOTAL_COLS} sx={groupSx}>
-                    DADOS DO PROCESSO
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={labelCellSx}>Nº</TableCell>
-                  <TableCell colSpan={3} sx={cellSx}>
-                    {dash(value.numero)}
-                  </TableCell>
-                  <TableCell sx={labelCellSx}>DATA</TableCell>
-                  <TableCell colSpan={3} sx={cellSx}>
-                    {dash(value.data)}
-                  </TableCell>
-                  <TableCell sx={labelCellSx}>PROCESSO</TableCell>
-                  <TableCell colSpan={4} sx={cellSx}>
-                    {dash(value.processo)}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={labelCellSx}>PREGÃO/TAD</TableCell>
-                  <TableCell colSpan={3} sx={cellSx}>
-                    {dash(value.pregaoTad)}
-                  </TableCell>
-                  <TableCell sx={labelCellSx}>VIGÊNCIA</TableCell>
-                  <TableCell colSpan={3} sx={cellSx}>
-                    {dash(value.vigencia)}
-                  </TableCell>
-                  <TableCell sx={labelCellSx}>FORNECEDOR</TableCell>
-                  <TableCell colSpan={4} sx={cellSx}>
-                    {dash(value.fornecedor)}
-                  </TableCell>
-                </TableRow>
-
-                <TableRow>
-                  <TableCell colSpan={PATIENT_COLS} sx={groupSx}>
-                    DADOS DO PACIENTE
-                  </TableCell>
-                  <TableCell colSpan={MATERIAL_COLS} sx={groupSx}>
-                    DADOS DO MATERIAL
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell sx={headerSx}>NIP</TableCell>
-                  <TableCell sx={headerSx}>INICIAIS</TableCell>
-                  <TableCell sx={headerSx}>DATA</TableCell>
-                  <TableCell sx={headerSx}>PROCEDIMENTO</TableCell>
-                  <TableCell sx={headerSx}>#</TableCell>
-                  <TableCell sx={headerSx}>MAPA DA SALA</TableCell>
-                  <TableCell sx={headerSx}>DANFE</TableCell>
-                  <TableCell sx={headerSx}>ITEM</TableCell>
-                  <TableCell sx={headerSx}>NEB/PI</TableCell>
-                  <TableCell sx={headerSx}>DESCRIÇÃO DO MATERIAL</TableCell>
-                  <TableCell sx={headerSx}>QT</TableCell>
-                  <TableCell sx={headerSx}>VALOR UNIT</TableCell>
-                  <TableCell sx={headerSx}>VALOR TOTAL</TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {materiais.map((mat, index) => (
-                  <TableRow
-                    key={mat.id}
-                    sx={{
-                      '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
-                    }}
-                  >
-                    {index === 0 ? (
-                      <>
-                        <TableCell
-                          rowSpan={patientRowSpan}
-                          sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                        >
-                          {dash(value.pacienteNip)}
-                        </TableCell>
-                        <TableCell
-                          rowSpan={patientRowSpan}
-                          sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                        >
-                          {dash(value.pacienteIniciais)}
-                        </TableCell>
-                        <TableCell
-                          rowSpan={patientRowSpan}
-                          sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
-                        >
-                          {dash(value.pacienteData)}
-                        </TableCell>
-                        <TableCell
-                          rowSpan={patientRowSpan}
-                          sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe', minWidth: 140 }}
-                        >
-                          {dash(value.pacienteProcedimento)}
-                        </TableCell>
-                      </>
-                    ) : null}
-                    <TableCell sx={{ ...cellSx, fontWeight: 700, width: 36 }}>{index + 1}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.mapaDaSala)}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
-                    <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(mat.descricao)}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
-                    <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
-                    <TableCell sx={{ ...cellSx, fontWeight: 700 }}>{dash(mat.valorTotal)}</TableCell>
+          <Box sx={{ display: 'grid', gap: 2, p: 1.5 }}>
+            {/* Planilha própria do processo — grade independente */}
+            <Box
+              className="excel-sheet-grid excel-sheet-wrap"
+              sx={{
+                overflowX: 'auto',
+                border: EXCEL_SHEET.border,
+                borderRadius: 1,
+                bgcolor: EXCEL_SHEET.sheetBg,
+              }}
+            >
+              <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', minWidth: 560 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell colSpan={6} sx={groupSx}>
+                      DADOS DO PROCESSO
+                    </TableCell>
                   </TableRow>
-                ))}
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={labelCellSx}>Nº</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.numero)}</TableCell>
+                    <TableCell sx={labelCellSx}>DATA</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.data)}</TableCell>
+                    <TableCell sx={labelCellSx}>PROCESSO</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.processo)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={labelCellSx}>PREGÃO/TAD</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.pregaoTad)}</TableCell>
+                    <TableCell sx={labelCellSx}>VIGÊNCIA</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.vigencia)}</TableCell>
+                    <TableCell sx={labelCellSx}>FORNECEDOR</TableCell>
+                    <TableCell sx={cellSx}>{dash(value.fornecedor)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
 
-                <TableRow>
-                  <TableCell
-                    colSpan={TOTAL_COLS - 1}
-                    sx={{
-                      ...cellSx,
-                      bgcolor: EXCEL_SHEET.selectHeaderBg,
-                      fontWeight: 800,
-                      textAlign: 'right',
-                    }}
-                  >
-                    VALOR POR PACIENTE
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      ...cellSx,
-                      bgcolor: '#e8f5e9',
-                      fontWeight: 800,
-                      color: EXCEL_SHEET.selectedCheck,
-                    }}
-                  >
-                    {dash(value.valorPorPaciente)}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            {/* Planilha paciente + material — grade própria, separada */}
+            <Box
+              className="excel-sheet-grid excel-sheet-wrap"
+              sx={{
+                overflowX: 'auto',
+                border: EXCEL_SHEET.border,
+                borderRadius: 1,
+                bgcolor: EXCEL_SHEET.sheetBg,
+              }}
+            >
+              <Table size="small" sx={{ width: '100%', minWidth: 980 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell colSpan={PATIENT_COLS} sx={groupSx}>
+                      DADOS DO PACIENTE
+                    </TableCell>
+                    <TableCell colSpan={MATERIAL_COLS} sx={groupSx}>
+                      DADOS DO MATERIAL
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell sx={headerSx}>NIP</TableCell>
+                    <TableCell sx={headerSx}>INICIAIS</TableCell>
+                    <TableCell sx={headerSx}>DATA</TableCell>
+                    <TableCell sx={headerSx}>PROCEDIMENTO</TableCell>
+                    <TableCell sx={headerSx}>#</TableCell>
+                    <TableCell sx={headerSx}>MAPA DA SALA</TableCell>
+                    <TableCell sx={headerSx}>DANFE</TableCell>
+                    <TableCell sx={headerSx}>ITEM</TableCell>
+                    <TableCell sx={headerSx}>NEB/PI</TableCell>
+                    <TableCell sx={headerSx}>DESCRIÇÃO DO MATERIAL</TableCell>
+                    <TableCell sx={headerSx}>QT</TableCell>
+                    <TableCell sx={headerSx}>VALOR UNIT</TableCell>
+                    <TableCell sx={headerSx}>VALOR TOTAL</TableCell>
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {materiais.map((mat, index) => (
+                    <TableRow
+                      key={mat.id}
+                      sx={{
+                        '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                      }}
+                    >
+                      {index === 0 ? (
+                        <>
+                          <TableCell
+                            rowSpan={patientRowSpan}
+                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                          >
+                            {dash(value.pacienteNip)}
+                          </TableCell>
+                          <TableCell
+                            rowSpan={patientRowSpan}
+                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                          >
+                            {dash(value.pacienteIniciais)}
+                          </TableCell>
+                          <TableCell
+                            rowSpan={patientRowSpan}
+                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
+                          >
+                            {dash(value.pacienteData)}
+                          </TableCell>
+                          <TableCell
+                            rowSpan={patientRowSpan}
+                            sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe', minWidth: 140 }}
+                          >
+                            {dash(value.pacienteProcedimento)}
+                          </TableCell>
+                        </>
+                      ) : null}
+                      <TableCell sx={{ ...cellSx, fontWeight: 700, width: 36 }}>
+                        {index + 1}
+                      </TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.mapaDaSala)}</TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
+                      <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(mat.descricao)}</TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
+                      <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
+                      <TableCell sx={{ ...cellSx, fontWeight: 700 }}>
+                        {dash(mat.valorTotal)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                  <TableRow>
+                    <TableCell
+                      colSpan={DETAIL_COLS - 1}
+                      sx={{
+                        ...cellSx,
+                        bgcolor: EXCEL_SHEET.selectHeaderBg,
+                        fontWeight: 800,
+                        textAlign: 'right',
+                      }}
+                    >
+                      VALOR POR PACIENTE
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        ...cellSx,
+                        bgcolor: '#e8f5e9',
+                        fontWeight: 800,
+                        color: EXCEL_SHEET.selectedCheck,
+                      }}
+                    >
+                      {dash(value.valorPorPaciente)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
           </Box>
         )}
       </Paper>
