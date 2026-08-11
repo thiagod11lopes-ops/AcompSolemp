@@ -16,6 +16,8 @@ interface ConmedEscolherAbaModalProps {
   open: boolean
   sheetNames: string[]
   fileName?: string
+  title?: string
+  description?: string
   onCancel: () => void
   onConfirm: (sheetIndex: number) => void
 }
@@ -24,6 +26,8 @@ export function ConmedEscolherAbaModal({
   open,
   sheetNames,
   fileName,
+  title = 'Escolher aba para importar',
+  description,
   onCancel,
   onConfirm,
 }: ConmedEscolherAbaModalProps) {
@@ -35,16 +39,16 @@ export function ConmedEscolherAbaModal({
 
   return (
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="xs">
-      <DialogTitle sx={{ fontWeight: 800 }}>Escolher aba para importar</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 800 }}>{title}</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 1.5, pt: 1 }}>
         <Typography variant="body2" color="text.secondary">
-          O arquivo{fileName ? ` “${fileName}”` : ''} tem várias abas. Selecione qual deve
-          preencher o CONMED COMRJ.
+          {description ??
+            `O arquivo${fileName ? ` “${fileName}”` : ''} tem várias abas. Selecione qual deve ser importada.`}
         </Typography>
         <FormControl fullWidth size="small">
-          <InputLabel id="conmed-aba-import-label">Aba</InputLabel>
+          <InputLabel id="planilha-aba-import-label">Aba</InputLabel>
           <Select
-            labelId="conmed-aba-import-label"
+            labelId="planilha-aba-import-label"
             label="Aba"
             value={selected}
             onChange={(e) => setSelected(Number(e.target.value))}

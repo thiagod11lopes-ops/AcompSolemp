@@ -1,9 +1,11 @@
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
 import {
   Box,
+  Button,
   Chip,
   IconButton,
   Paper,
@@ -24,6 +26,8 @@ import '@/components/clinica/spreadsheet-excel.css'
 interface ConsumoMaterialPlanilhaPreviewProps {
   rows: ConsumoMaterialRow[]
   editingRowId?: string | null
+  importing?: boolean
+  onImportClick?: () => void
   onEditRow?: (rowId: string) => void
   onDeleteRow?: (rowId: string) => void
 }
@@ -62,6 +66,8 @@ const groupSx = {
 export function ConsumoMaterialPlanilhaPreview({
   rows,
   editingRowId = null,
+  importing = false,
+  onImportClick,
   onEditRow,
   onDeleteRow,
 }: ConsumoMaterialPlanilhaPreviewProps) {
@@ -122,12 +128,37 @@ export function ConsumoMaterialPlanilhaPreview({
             label={`${rows.length} lançamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          {onImportClick ? (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
+              onClick={onImportClick}
+              disabled={importing}
+              sx={{
+                ml: 0.5,
+                height: 26,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                borderColor: EXCEL_SHEET.selectedCheck,
+                color: EXCEL_SHEET.selectedCheck,
+                bgcolor: '#fff',
+                '&:hover': {
+                  borderColor: EXCEL_SHEET.selectedCheck,
+                  bgcolor: '#e8f5e9',
+                },
+              }}
+            >
+              {importing ? 'Importando…' : 'Importar planilha'}
+            </Button>
+          ) : null}
         </Box>
 
         {!visible ? (
           <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
             <Typography variant="body2" color="text.secondary">
-              Preencha o formulário ao lado e clique em Adicionar para montar a planilha.
+              Preencha o formulário ao lado ou importe uma planilha para montar a tabela.
             </Typography>
           </Box>
         ) : (

@@ -440,6 +440,14 @@ function parseConsumoMaterialRows(tableRows: string[][]): ConsumoMaterialRow[] {
   return dataRows
 }
 
+/** Interpreta a grade bruta de uma aba no layout CONSUMO MATERIAL CONSIGNADO. */
+export function parseConsumoMaterialFromGrid(tableRows: string[][]): ConsumoMaterialRow[] {
+  return parseConsumoMaterialRows(tableRows).map((row, index) => ({
+    ...row,
+    id: `import-${Date.now()}-${index + 1}-${Math.random().toString(36).slice(2, 7)}`,
+  }))
+}
+
 function readXlsxSharedStrings(xml: string): string[] {
   return [...xml.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((match) =>
     decodeXmlText(match[1]),
