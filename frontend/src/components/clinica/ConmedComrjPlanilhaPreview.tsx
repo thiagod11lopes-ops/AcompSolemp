@@ -148,17 +148,19 @@ export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreview
           </Box>
         ) : (
           <Box sx={{ display: 'grid', gap: 2, p: 1.5 }}>
-            {/* Planilha própria do processo — grade independente */}
+            {/* Planilha do processo — largura própria, sem acompanhar a de baixo */}
             <Box
               className="excel-sheet-grid excel-sheet-wrap"
               sx={{
+                width: 'fit-content',
+                maxWidth: '100%',
                 overflowX: 'auto',
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
               }}
             >
-              <Table size="small" sx={{ width: '100%', tableLayout: 'fixed', minWidth: 560 }}>
+              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
                 <TableHead>
                   <TableRow>
                     <TableCell colSpan={6} sx={groupSx}>
@@ -169,19 +171,19 @@ export function ConmedComrjPlanilhaPreview({ value }: ConmedComrjPlanilhaPreview
                 <TableBody>
                   <TableRow>
                     <TableCell sx={labelCellSx}>Nº</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.numero)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 88 }}>{dash(value.numero)}</TableCell>
                     <TableCell sx={labelCellSx}>DATA</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.data)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 96 }}>{dash(value.data)}</TableCell>
                     <TableCell sx={labelCellSx}>PROCESSO</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.processo)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 120 }}>{dash(value.processo)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell sx={labelCellSx}>PREGÃO/TAD</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.pregaoTad)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 88 }}>{dash(value.pregaoTad)}</TableCell>
                     <TableCell sx={labelCellSx}>VIGÊNCIA</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.vigencia)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 96 }}>{dash(value.vigencia)}</TableCell>
                     <TableCell sx={labelCellSx}>FORNECEDOR</TableCell>
-                    <TableCell sx={cellSx}>{dash(value.fornecedor)}</TableCell>
+                    <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(value.fornecedor)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
