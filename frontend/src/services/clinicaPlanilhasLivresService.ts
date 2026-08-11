@@ -1,16 +1,8 @@
 import { loadAppData, saveAppData } from '@/mocks/seed'
-import type { ClinicaPlanilhasLivresState, PlanilhaLivreAba } from '@/types'
-import {
-  ensureFixedPlanilhas,
-  resolveAbaSheet,
-} from '@/utils/planilhasFixas'
+import type { ClinicaPlanilhasLivresState } from '@/types'
+import { ensureFixedPlanilhas } from '@/utils/planilhasFixas'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
-
-const EMPTY_STATE: ClinicaPlanilhasLivresState = {
-  abas: [],
-  abaAtivaId: null,
-}
 
 function normalizeState(state: ClinicaPlanilhasLivresState | undefined): ClinicaPlanilhasLivresState {
   const abas = ensureFixedPlanilhas(state?.abas ?? [])
