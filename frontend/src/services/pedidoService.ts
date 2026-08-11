@@ -83,14 +83,14 @@ function toDashboardPedidoItem(pedido: PedidoComDetalhes): DashboardPedidoItem {
   }
 }
 
-/** Ativo só em Solemp confeccionada (após Confecção concluída; ainda não Empenhado). */
+/** Ativo só em Solemp em Rascunho (após Confecção concluída; ainda não Empenhado). */
 function isAguardandoEmpenhoNaSolempConfeccionada(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
 ): boolean {
   if (pedido.concluido || !pedido.solemp?.numero) return false
 
-  // Não contar se ainda estiver em Confecção (antes da Solemp confeccionada)
+  // Não contar se ainda estiver em Confecção (antes da Solemp em Rascunho)
   if (pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
   if (!pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')) return false
 

@@ -79,12 +79,12 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Solemp confeccionada',
+    label: 'Solemp em Rascunho',
     perfil: 'FINANCEIRO',
-    graduacao: 'Solemp confeccionada',
+    graduacao: 'Solemp em Rascunho',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao: 'Responsável pela etapa Solemp confeccionada (após Confecção de Solemp).',
+    descricao: 'Responsável pela etapa Solemp em Rascunho (após Confecção de Solemp).',
   },
   {
     id: 'empenhado',

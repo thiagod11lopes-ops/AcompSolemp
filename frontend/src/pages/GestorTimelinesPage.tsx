@@ -40,7 +40,7 @@ import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 type FiltroStatus = 'TODAS' | 'EM_ANDAMENTO' | 'CONCLUIDAS' | 'ATRASADAS'
 type FonteTimeline = 'organizacao' | 'demonstracao'
 
-const FASES_FIXAS = ['Div. de Material', 'Solemp confeccionada', 'Empenhado', 'Concluído'] as const
+const FASES_FIXAS = ['Div. de Material', 'Solemp em Rascunho', 'Empenhado', 'Concluído'] as const
 
 function getEtapasAtivas(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): WorkflowEtapa[] {
   if (pedido.etapasAtivasIds?.length) {
@@ -54,7 +54,7 @@ function getFasePedido(pedido: PedidoComDetalhes, etapas: WorkflowEtapa[]): stri
   const ativas = getEtapasAtivas(pedido, etapas)
   for (const etapa of ativas) {
     if (etapa.chave === 'DIV_MAT_EMPENHADO') return 'Empenhado'
-    if (etapa.chave === 'DIV_MAT_FINANCAS') return 'Solemp confeccionada'
+    if (etapa.chave === 'DIV_MAT_FINANCAS') return 'Solemp em Rascunho'
     const grupo = TIMELINE_ETAPA_META[etapa.chave]?.grupo
     if (grupo) return grupo
   }

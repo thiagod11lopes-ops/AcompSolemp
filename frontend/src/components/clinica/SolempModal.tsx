@@ -121,7 +121,7 @@ export function SolempModal({ open, onClose, onConfirm, loading, defaults }: Sol
 
       <DialogContent sx={{ pt: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          O prefixo é sugerido com base na última SOLEMP confeccionada, mas pode ser alterado.
+          O prefixo é sugerido com base na última Solemp em Rascunho, mas pode ser alterado.
           Informe o sequencial e confira o ano.
         </Typography>
 

@@ -55,8 +55,8 @@ export default function FinanceiroPagamentosPage() {
   return (
     <>
       <PageHeader
-        title="Timelines — Solemp confeccionada"
-        subtitle="Processos em Solemp confeccionada — em andamento, todas ou concluídas"
+        title="Timelines — Solemp em Rascunho"
+        subtitle="Processos em Solemp em Rascunho — em andamento, todas ou concluídas"
       />
 
       <Tabs
@@ -76,7 +76,7 @@ export default function FinanceiroPagamentosPage() {
           <PaymentsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
             {pedidos.length === 0
-              ? 'Nenhum processo de Solemp confeccionada no momento.'
+              ? 'Nenhum processo de Solemp em Rascunho no momento.'
               : 'Nenhuma timeline encontrada com o filtro atual.'}
           </Typography>
         </Card>
@@ -123,8 +123,8 @@ export default function FinanceiroPagamentosPage() {
                       <Chip
                         label={
                           concluido
-                            ? 'Solemp confeccionada — concluído'
-                            : 'Solemp confeccionada — pendente'
+                            ? 'Solemp em Rascunho — concluído'
+                            : 'Solemp em Rascunho — pendente'
                         }
                         color={concluido ? 'success' : 'info'}
                         size="small"

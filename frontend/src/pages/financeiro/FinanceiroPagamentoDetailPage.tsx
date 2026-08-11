@@ -171,10 +171,10 @@ export default function FinanceiroPagamentoDetailPage() {
               <Chip
                 label={
                   pagamentoConcluido
-                    ? 'Solemp confeccionada — concluído'
+                    ? 'Solemp em Rascunho — concluído'
                     : pedido.aguardandoEmpenho
                       ? 'Aguardando Empenhar'
-                      : 'Solemp confeccionada — pendente'
+                      : 'Solemp em Rascunho — pendente'
                 }
                 color={
                   pagamentoConcluido ? 'success' : pedido.aguardandoEmpenho ? 'warning' : 'info'
@@ -207,7 +207,7 @@ export default function FinanceiroPagamentoDetailPage() {
                 {pagamentoConcluido
                   ? 'Pagamento registrado e processo arquivado pelo Financeiro.'
                   : pedido.aguardandoEmpenho
-                    ? 'Processo marcado como Aguardando Empenhar. A timeline permanece em Solemp confeccionada até o registro do pagamento.'
+                    ? 'Processo marcado como Aguardando Empenhar. A timeline permanece em Solemp em Rascunho até o registro do pagamento.'
                     : 'Use Aguardando Empenhar para marcar o card com a tarja laranja, ou Registrar pagamento para informar a nota fiscal e avançar.'}
               </Typography>
             </Paper>

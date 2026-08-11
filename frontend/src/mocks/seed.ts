@@ -109,7 +109,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Solemp confeccionada',
+    nome: 'Solemp em Rascunho',
     ordem: 5,
     prazoDias: 4,
     perfilResponsavel: 'FINANCEIRO',
@@ -524,7 +524,7 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
   return changed
 }
 
-/** Pedidos que já passaram por Solemp confeccionada passam a ter Empenhado no histórico. */
+/** Pedidos que já passaram por Solemp em Rascunho passam a ter Empenhado no histórico. */
 function backfillEmpenhadoHistorico(data: AppData): boolean {
   const financas = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
   const empenhado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
@@ -540,7 +540,7 @@ function backfillEmpenhadoHistorico(data: AppData): boolean {
       if (!empenhadoHist.dataConclusao && (pedido.concluido || financasHist.dataConclusao)) {
         empenhadoHist.dataConclusao = financasHist.dataConclusao
         empenhadoHist.observacao =
-          empenhadoHist.observacao || 'Empenhado registrado com a Solemp confeccionada.'
+          empenhadoHist.observacao || 'Empenhado registrado com a Solemp em Rascunho.'
         changed = true
       }
       continue
@@ -553,7 +553,7 @@ function backfillEmpenhadoHistorico(data: AppData): boolean {
       responsavelNome: financasHist.responsavelNome,
       dataInicio: financasHist.dataConclusao,
       dataConclusao: financasHist.dataConclusao,
-      observacao: 'Empenhado registrado com a Solemp confeccionada.',
+      observacao: 'Empenhado registrado com a Solemp em Rascunho.',
       arquivos: [],
     })
     changed = true
@@ -610,7 +610,7 @@ function migrateSimplifyFluxoFinancas(data: AppData): AppData {
       if (!ETAPAS_REMOVIDAS_SET.has(chave)) continue
       historico.dataConclusao = new Date().toISOString()
       historico.observacao =
-        'Etapa descontinuada — processo encaminhado para Solemp confeccionada.'
+        'Etapa descontinuada — processo encaminhado para Solemp em Rascunho.'
     }
 
     pedido.etapaAtualId = financasEtapa.id
@@ -864,7 +864,7 @@ export function getRoleLabel(role: UserRole): string {
     MEDICAMENTO: 'Medicamento',
     EMPENHADO: 'Empenhado',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Solemp confeccionada',
+    FINANCEIRO: 'Solemp em Rascunho',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'Contabilidade/IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',

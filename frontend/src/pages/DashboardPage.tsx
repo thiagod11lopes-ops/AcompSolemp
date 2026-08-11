@@ -97,8 +97,8 @@ export default function DashboardPage() {
   const qtdAguardando = metrics.quantidadeAguardandoEmpenho
   const subtitleAguardando =
     qtdAguardando === 0
-      ? 'Nenhuma Solemp na etapa Solemp confeccionada — clique para detalhes'
-      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Solemp confeccionada — clique para detalhes`
+      ? 'Nenhuma Solemp na etapa Solemp em Rascunho — clique para detalhes'
+      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Solemp em Rascunho — clique para detalhes`
 
   const subtitleTotalEmpenhado = metrics.dataPrimeiroEmpenho
     ? `Total empenhado desde ${formatDate(metrics.dataPrimeiroEmpenho)} — clique para detalhes`
@@ -279,7 +279,7 @@ export default function DashboardPage() {
     },
     aguardandoEmpenho: {
       title: 'Aguardando Empenho',
-      subtitle: 'Solemps confeccionadas ainda sem empenho',
+      subtitle: 'Solemps em Rascunho ainda sem empenho',
       accent: premiumTokens.red,
       icon: <HourglassTopIcon />,
       summaries: [
@@ -308,7 +308,7 @@ export default function DashboardPage() {
         kpiCol.inicio,
       ],
       rows: metrics.aguardandoEmpenhoItens as unknown as Record<string, unknown>[],
-      emptyMessage: 'Nenhuma Solemp confeccionada aguardando empenho.',
+      emptyMessage: 'Nenhuma Solemp em Rascunho aguardando empenho.',
     },
     totalEmpenhado: {
       title: 'Total Empenhado',

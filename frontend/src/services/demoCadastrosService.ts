@@ -22,7 +22,7 @@ const DEMO_NOMES: Record<string, string> = {
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
-  financas: 'Ten. Santos', // demo Solemp confeccionada (perfil FINANCEIRO)
+  financas: 'Ten. Santos', // demo Solemp em Rascunho (perfil FINANCEIRO)
   empenhado: 'Empenhado',
 }
 
@@ -400,7 +400,7 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     },
   ]
 
-  // Ordem = CADASTRO_PERFIS: … → Solemp confeccionada → Empenhado
+  // Ordem = CADASTRO_PERFIS: … → Solemp em Rascunho → Empenhado
   for (const opcao of CADASTRO_PERFIS) {
     if (opcao.isClinica) {
       resultado.push({

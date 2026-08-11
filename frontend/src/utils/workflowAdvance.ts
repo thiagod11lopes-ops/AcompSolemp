@@ -547,15 +547,15 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Solemp confeccionada.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Solemp em Rascunho.`,
       etapa.id,
     )
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
-      titulo: `SOLEMP confeccionada — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Solemp confeccionada.`,
+      titulo: `Solemp em Rascunho — ${pedido.numero}`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Solemp em Rascunho.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -582,7 +582,7 @@ export function registrarPagamentoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Solemp confeccionada')
+    throw new Error('Este processo não está na etapa Solemp em Rascunho')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
@@ -611,7 +611,7 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Registro em Solemp confeccionada — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Enviado para Empenhado.`,
+    `Registro em Solemp em Rascunho — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Enviado para Empenhado.`,
     etapa.id,
   )
 
@@ -650,14 +650,14 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp confeccionada. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp em Rascunho. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
   })
 
   return data
 }
 
 /**
- * Marca Solemp confeccionada como "Aguardando Empenhar".
+ * Marca Solemp em Rascunho como "Aguardando Empenhar".
  * Não avança o workflow nem abre o card Empenhado — só persiste a tarja.
  */
 export function marcarAguardandoEmpenhoForPedido(
@@ -670,7 +670,7 @@ export function marcarAguardandoEmpenhoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Solemp confeccionada')
+    throw new Error('Este processo não está na etapa Solemp em Rascunho')
   }
 
   if (pedido.aguardandoEmpenho) {
@@ -713,7 +713,7 @@ export function marcarAguardandoEmpenhoForPedido(
         usuarioNome: usuario.nome,
         data: now,
         observacao:
-          'Marcado como Aguardando Empenhar. Timeline permanece em Solemp confeccionada.',
+          'Marcado como Aguardando Empenhar. Timeline permanece em Solemp em Rascunho.',
       },
     ],
     notificacoes: [
@@ -722,7 +722,7 @@ export function marcarAguardandoEmpenhoForPedido(
         id: `notif-${Date.now()}-aguardando-empenho`,
         tipo: 'ETAPA_PENDENTE' as const,
         titulo: `Aguardando Empenhar — ${pedido.numero}`,
-        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Solemp confeccionada.`,
+        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Solemp em Rascunho.`,
         pedidoId,
         reversaoId: null,
         perfilDestino: null,

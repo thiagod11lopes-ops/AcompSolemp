@@ -213,7 +213,7 @@ export interface Pedido {
   /** IDs das linhas da planilha de consumo incluídas neste envio (lote) */
   consumoRowIds?: string[]
   /**
-   * Marcado em Solemp confeccionada via "Aguardando Empenhar".
+   * Marcado em Solemp em Rascunho via "Aguardando Empenhar".
    * Não avança para Empenhado — só aplica a tarja "Aguardando" no card.
    */
   aguardandoEmpenho?: boolean
@@ -319,7 +319,7 @@ export interface DashboardMetrics {
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
   valorPagoMes: number
   quantidadePagoMes: number
-  /** Solemps ativas só na etapa Solemp confeccionada (após Confecção) */
+  /** Solemps ativas só na etapa Solemp em Rascunho (após Confecção) */
   valorAguardandoEmpenho: number
   quantidadeAguardandoEmpenho: number
   aguardandoEmpenhoItens: AguardandoEmpenhoItem[]
