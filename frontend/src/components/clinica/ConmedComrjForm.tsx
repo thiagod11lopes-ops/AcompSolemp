@@ -30,6 +30,29 @@ interface ConmedComrjFormProps {
   onChange: (next: ConmedComrjFormData) => void
 }
 
+const compactFieldSx = {
+  '& .MuiInputBase-root': { fontSize: '0.78rem' },
+  '& .MuiInputBase-input': { fontSize: '0.78rem', py: 0.65 },
+  '& .MuiInputLabel-root': { fontSize: '0.78rem' },
+  '& .MuiFormHelperText-root': { fontSize: '0.68rem', mt: 0.25 },
+} as const
+
+const multilineFieldSx = {
+  ...compactFieldSx,
+  gridColumn: '1 / -1',
+  '& .MuiInputBase-root': {
+    fontSize: '0.78rem',
+    alignItems: 'flex-start',
+  },
+  '& .MuiInputBase-input': {
+    fontSize: '0.78rem',
+    lineHeight: 1.35,
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+} as const
+
 export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
   const setField = <K extends keyof ConmedComrjFormData>(
     key: K,
@@ -67,20 +90,20 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
     <Box
       sx={{
         display: 'grid',
-        gap: 2.5,
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(360px, 420px) minmax(0, 1fr)' },
+        gap: 2,
+        gridTemplateColumns: { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' },
         alignItems: 'start',
       }}
     >
       <Paper
         elevation={0}
         sx={(theme) => ({
-          p: { xs: 1.5, md: 2 },
+          p: { xs: 1.25, md: 1.5 },
           borderRadius: 2,
           border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
           bgcolor: alpha(theme.palette.primary.main, 0.02),
           display: 'grid',
-          gap: 2,
+          gap: 1.25,
           position: { xl: 'sticky' },
           top: { xl: 12 },
           maxHeight: { xl: 'calc(100vh - 120px)' },
@@ -88,23 +111,29 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
         })}
       >
         <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
+          >
             Entrada — CONMED COMRJ
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
             Cada Nº/processo forma uma tabela. Ao preencher, a planilha unificada atualiza ao vivo.
           </Typography>
         </Box>
 
         <Box>
-          <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 0.6 }}>
+          <Typography
+            variant="overline"
+            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+          >
             Dados do processo
           </Typography>
           <Box
             sx={{
-              mt: 0.75,
+              mt: 0.5,
               display: 'grid',
-              gap: 1.25,
+              gap: 0.85,
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
             }}
           >
@@ -115,6 +144,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="25/2026"
               size="small"
               fullWidth
+              sx={compactFieldSx}
             />
             <TextField
               label="DATA"
@@ -123,6 +153,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="dd/mm/aaaa"
               size="small"
               fullWidth
+              sx={compactFieldSx}
             />
             <TextField
               label="PROCESSO"
@@ -132,6 +163,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               size="small"
               fullWidth
               inputMode="numeric"
+              sx={compactFieldSx}
             />
             <TextField
               label="Pregão/TAD"
@@ -140,6 +172,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="58/2025 COMRJ"
               size="small"
               fullWidth
+              sx={compactFieldSx}
             />
             <TextField
               label="Vigência"
@@ -147,7 +180,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               onChange={(e) => setField('vigencia', e.target.value)}
               size="small"
               fullWidth
-              sx={{ gridColumn: { sm: '1 / -1' } }}
+              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
             />
             <TextField
               label="FORNECEDOR"
@@ -156,20 +189,23 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="CONMED –  23.351.545/0003-00"
               size="small"
               fullWidth
-              sx={{ gridColumn: { sm: '1 / -1' } }}
+              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
             />
           </Box>
         </Box>
 
         <Box>
-          <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 0.6 }}>
+          <Typography
+            variant="overline"
+            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+          >
             Dados do paciente
           </Typography>
           <Box
             sx={{
-              mt: 0.75,
+              mt: 0.5,
               display: 'grid',
-              gap: 1.25,
+              gap: 0.85,
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
             }}
           >
@@ -181,6 +217,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               size="small"
               fullWidth
               inputMode="numeric"
+              sx={compactFieldSx}
             />
             <TextField
               label="INICIAIS"
@@ -189,6 +226,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="ABC"
               size="small"
               fullWidth
+              sx={compactFieldSx}
               slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
             />
             <TextField
@@ -198,6 +236,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               placeholder="dd/mm/aaaa"
               size="small"
               fullWidth
+              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
             />
             <TextField
               label="PROCEDIMENTO"
@@ -207,7 +246,15 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               }
               size="small"
               fullWidth
-              slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
+              multiline
+              minRows={3}
+              maxRows={8}
+              sx={multilineFieldSx}
+              slotProps={{
+                htmlInput: {
+                  style: { textTransform: 'uppercase', resize: 'vertical' },
+                },
+              }}
             />
           </Box>
         </Box>
@@ -219,23 +266,32 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 1,
-              mb: 0.75,
+              mb: 0.5,
             }}
           >
-            <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 0.6 }}>
+            <Typography
+              variant="overline"
+              sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+            >
               Materiais do paciente
             </Typography>
-            <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={addMaterial}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+              onClick={addMaterial}
+              sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
+            >
               Adicionar
             </Button>
           </Box>
 
-          <Box sx={{ display: 'grid', gap: 1.5 }}>
+          <Box sx={{ display: 'grid', gap: 1 }}>
             {value.materiais.map((mat, index) => (
               <Paper
                 key={mat.id}
                 variant="outlined"
-                sx={{ p: 1.25, display: 'grid', gap: 1, bgcolor: 'background.paper' }}
+                sx={{ p: 1, display: 'grid', gap: 0.75, bgcolor: 'background.paper' }}
               >
                 <Box
                   sx={{
@@ -244,21 +300,22 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     justifyContent: 'space-between',
                   }}
                 >
-                  <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>
                     Material {index + 1}
                   </Typography>
                   <IconButton
                     size="small"
                     aria-label={`Remover material ${index + 1}`}
                     onClick={() => removeMaterial(mat.id)}
+                    sx={{ p: 0.35 }}
                   >
-                    <DeleteIcon fontSize="small" />
+                    <DeleteIcon sx={{ fontSize: 18 }} />
                   </IconButton>
                 </Box>
                 <Box
                   sx={{
                     display: 'grid',
-                    gap: 1,
+                    gap: 0.75,
                     gridTemplateColumns: { xs: '1fr 1fr', md: '1fr 1fr' },
                   }}
                 >
@@ -273,6 +330,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     inputMode="numeric"
+                    sx={compactFieldSx}
                   />
                   <TextField
                     label="DANFE"
@@ -283,6 +341,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     inputMode="numeric"
+                    sx={compactFieldSx}
                   />
                   <TextField
                     label="ITEM"
@@ -293,6 +352,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     inputMode="numeric"
+                    sx={compactFieldSx}
                   />
                   <TextField
                     label="NEB/PI"
@@ -302,10 +362,11 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     }
                     size="small"
                     fullWidth
+                    sx={compactFieldSx}
                     slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
                   />
                   <TextField
-                    label="DESCRIÇÃO"
+                    label="DESCRIÇÃO DO MATERIAL"
                     value={mat.descricao}
                     onChange={(e) =>
                       updateMaterial(mat.id, {
@@ -314,8 +375,15 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     }
                     size="small"
                     fullWidth
-                    sx={{ gridColumn: '1 / -1' }}
-                    slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
+                    multiline
+                    minRows={3}
+                    maxRows={8}
+                    sx={multilineFieldSx}
+                    slotProps={{
+                      htmlInput: {
+                        style: { textTransform: 'uppercase', resize: 'vertical' },
+                      },
+                    }}
                   />
                   <TextField
                     label="QT"
@@ -326,6 +394,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     inputMode="decimal"
+                    sx={compactFieldSx}
                   />
                   <TextField
                     label="VALOR UNIT"
@@ -337,6 +406,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     inputMode="numeric"
+                    sx={compactFieldSx}
                   />
                   <TextField
                     label="VALOR TOTAL"
@@ -344,7 +414,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                     size="small"
                     fullWidth
                     slotProps={{ input: { readOnly: true } }}
-                    sx={{ gridColumn: '1 / -1' }}
+                    sx={{ ...compactFieldSx, gridColumn: '1 / -1' }}
                   />
                 </Box>
               </Paper>
@@ -356,7 +426,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="subtitle2"
-          sx={{ fontWeight: 700, mb: 1, color: 'text.secondary' }}
+          sx={{ fontWeight: 700, mb: 1, color: 'text.secondary', fontSize: '0.8rem' }}
         >
           Planilha do processo (ao vivo)
         </Typography>
