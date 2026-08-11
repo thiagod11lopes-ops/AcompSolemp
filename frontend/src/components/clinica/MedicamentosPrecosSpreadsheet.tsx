@@ -38,6 +38,7 @@ import {
 } from '@tanstack/react-table'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { MedicamentoPrecoEditModal } from '@/components/clinica/MedicamentoPrecoEditModal'
+import { MedicamentoPrecoAddModal } from '@/components/clinica/MedicamentoPrecoAddModal'
 import { getColumnCellSx } from '@/components/clinica/SpreadsheetResizeHandle'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
@@ -67,6 +68,7 @@ function MedicamentosPrecosSpreadsheetInner() {
     rowId: string
   } | null>(null)
   const [editRow, setEditRow] = useState<MedicamentoPrecoRow | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rowsRef = useRef(rows)
   rowsRef.current = rows
@@ -161,6 +163,16 @@ function MedicamentosPrecosSpreadsheetInner() {
     (updated: MedicamentoPrecoRow) => {
       updateRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
       setEditRow(null)
+    },
+    [updateRows],
+  )
+
+  const handleAddMedicamento = useCallback(
+    (novo: MedicamentoPrecoRow) => {
+      updateRows((prev) => [novo, ...prev])
+      setAddOpen(false)
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+      setGlobalFilter('')
     },
     [updateRows],
   )
@@ -329,11 +341,12 @@ function MedicamentosPrecosSpreadsheetInner() {
               />
               <Button
                 size="small"
-                variant="outlined"
+                variant="contained"
+                color="success"
                 startIcon={<AddIcon />}
-                onClick={() => handleAdicionarLinha('end')}
+                onClick={() => setAddOpen(true)}
               >
-                Adicionar linha
+                Adicionar Medicamento
               </Button>
               <Button
                 size="small"
@@ -346,7 +359,8 @@ function MedicamentosPrecosSpreadsheetInner() {
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
               Use a coluna Ações para editar ou excluir · Botão direito para inserir linhas ·
-              Alterações salvas automaticamente
+              Use Adicionar Medicamento para cadastrar pelo formulário · Alterações salvas
+              automaticamente
             </Typography>
           </Box>
           <TextField
@@ -531,6 +545,12 @@ function MedicamentosPrecosSpreadsheetInner() {
         row={editRow}
         onClose={() => setEditRow(null)}
         onSave={handleSaveEdit}
+      />
+
+      <MedicamentoPrecoAddModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdd={handleAddMedicamento}
       />
     </Paper>
   )
