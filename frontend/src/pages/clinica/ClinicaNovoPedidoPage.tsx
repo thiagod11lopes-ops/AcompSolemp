@@ -61,6 +61,8 @@ import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioServic
 import { loadAppData } from '@/mocks/seed'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
+import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
+import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 import type { ConsumoEnvioCanal } from '@/components/clinica/ConsumoMaterialSpreadsheet'
 
 export default function ClinicaNovoPedidoPage() {
@@ -566,7 +568,7 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const handleConfirmarEnvioMaterial = async (planilha: ImhPlanilha) => {
+  const handleConfirmarEnvioMaterial = async (planilha: ControleSolempPlanilha) => {
     const clinicaNome = clinicaLogada?.nome ?? ''
     if (!clinicaNome) {
       setBatchError('Clínica não identificada. Faça login novamente.')
@@ -587,7 +589,10 @@ export default function ClinicaNovoPedidoPage() {
 
       const rowIds = novos.map((row) => row.id)
       const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
-      const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
+      const tituloPlanilha =
+        planilha.linhas[0]?.mesAnoReferencia?.trim() ||
+        planilha.linhas[0]?.descricao?.trim() ||
+        undefined
       let pedidoId: string
 
       if (pedidoExistente) {
@@ -602,7 +607,7 @@ export default function ClinicaNovoPedidoPage() {
           consumoRowIds: rowIds,
         })
       }
-      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+      pedidoPlanilhaEnvioService.saveControleSolempForPedido(pedidoId, planilha)
 
       const nextFinalizedMaterial = new Set(finalizedMaterialRowIds)
       for (const row of novos) nextFinalizedMaterial.add(row.id)
@@ -657,6 +662,7 @@ export default function ClinicaNovoPedidoPage() {
       const rowIds = novos.map((row) => row.id)
       const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
       const planilha = buildImhPlanilhaFromConsumo(novos, mesSelecionado)
+      const controleSolemp = buildControleSolempFromConsumo(novos, mesSelecionado)
       const tituloPlanilha = planilha.cabecalho.numeroRelacao?.trim() || undefined
       let pedidoId: string
 
@@ -674,6 +680,7 @@ export default function ClinicaNovoPedidoPage() {
         })
       }
       pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+      pedidoPlanilhaEnvioService.saveControleSolempForPedido(pedidoId, controleSolemp)
 
       const nextFinalizedAuditoria = new Set(finalizedAuditoriaRowIds)
       const nextFinalizedMaterial = new Set(finalizedMaterialRowIds)

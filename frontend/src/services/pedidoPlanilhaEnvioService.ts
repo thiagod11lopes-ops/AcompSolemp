@@ -2,6 +2,7 @@ import { isDemoDataSession } from '@/config/dataSource'
 import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
 
 function readPlanilhaData() {
@@ -17,16 +18,70 @@ function filterPlanilhaForRow(planilha: ImhPlanilha, rowId: string): ImhPlanilha
   }
 }
 
+function filterControleSolempForRow(
+  planilha: ControleSolempPlanilha,
+  rowId: string,
+): ControleSolempPlanilha {
+  const linhas = planilha.linhas.filter((linha) => linha.pacienteGrupoId === rowId)
+  return {
+    linhas: linhas.length > 0 ? linhas : planilha.linhas,
+  }
+}
+
+const EMPTY_IMH_CABECALHO = {
+  numeroRelacao: '',
+  pregaoTad: '',
+  data: '',
+  vigencia: '',
+  processo: '',
+  fornecedor: '',
+}
+
 export const pedidoPlanilhaEnvioService = {
   saveForPedido(pedidoId: string, planilha: ImhPlanilha, rowId?: string): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
 
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
     const filtered = rowId ? filterPlanilhaForRow(planilha, rowId) : planilha
     const snapshot: PedidoPlanilhaEnvioState = {
+      formato: 'imh',
       cabecalho: filtered.cabecalho,
       linhas: filtered.linhas.map((linha) => ({ ...linha })),
+      controleSolempLinhas: existing?.controleSolempLinhas,
       enviadoEm: new Date().toISOString(),
+      recebidaEm: existing?.recebidaEm,
+      encaminhadaImhEm: existing?.encaminhadaImhEm,
+      recebidaImhEm: existing?.recebidaImhEm,
+      arquivadaEm: existing?.arquivadaEm,
+    }
+
+    data.pedidoPlanilhaEnvio[pedidoId] = snapshot
+    saveAppData(data)
+    return snapshot
+  },
+
+  saveControleSolempForPedido(
+    pedidoId: string,
+    planilha: ControleSolempPlanilha,
+    rowId?: string,
+  ): PedidoPlanilhaEnvioState {
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
+    const filtered = rowId ? filterControleSolempForRow(planilha, rowId) : planilha
+    const hasImh = Boolean(existing?.linhas?.length)
+    const snapshot: PedidoPlanilhaEnvioState = {
+      formato: hasImh ? existing?.formato ?? 'imh' : 'controleSolemp',
+      cabecalho: existing?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
+      linhas: existing?.linhas ?? [],
+      controleSolempLinhas: filtered.linhas.map((linha) => ({ ...linha })),
+      enviadoEm: new Date().toISOString(),
+      recebidaEm: existing?.recebidaEm,
+      encaminhadaImhEm: existing?.encaminhadaImhEm,
+      recebidaImhEm: existing?.recebidaImhEm,
+      arquivadaEm: existing?.arquivadaEm,
     }
 
     data.pedidoPlanilhaEnvio[pedidoId] = snapshot
@@ -39,8 +94,10 @@ export const pedidoPlanilhaEnvioService = {
     const snapshot = data.pedidoPlanilhaEnvio?.[pedidoId]
     if (!snapshot) return null
     return {
+      formato: snapshot.formato ?? (snapshot.controleSolempLinhas?.length ? 'controleSolemp' : 'imh'),
       cabecalho: { ...snapshot.cabecalho },
-      linhas: snapshot.linhas.map((linha) => ({ ...linha })),
+      linhas: (snapshot.linhas ?? []).map((linha) => ({ ...linha })),
+      controleSolempLinhas: snapshot.controleSolempLinhas?.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,
       recebidaEm: snapshot.recebidaEm,
       encaminhadaImhEm: snapshot.encaminhadaImhEm,

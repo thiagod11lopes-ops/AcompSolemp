@@ -375,6 +375,7 @@ export interface CredencialUsuario {
 
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { ImhCabecalho, ImhLinha } from '@/utils/imhPlanilhaTemplate'
+import type { ControleSolempLinha } from '@/utils/controleSolempTemplate'
 
 export interface ConsumoPlanilhaClinicaState {
   /** Legado — espelha finalizedAuditoriaRowIds ao salvar */
@@ -385,8 +386,12 @@ export interface ConsumoPlanilhaClinicaState {
 }
 
 export interface PedidoPlanilhaEnvioState {
+  /** Formato da planilha anexada ao pedido. Default: IMH/OPME. */
+  formato?: 'imh' | 'controleSolemp'
   cabecalho: ImhCabecalho
   linhas: ImhLinha[]
+  /** Linhas no formato Controle SOLEMP (envio Confecção de Solemp). */
+  controleSolempLinhas?: ControleSolempLinha[]
   enviadoEm: string
   recebidaEm?: string
   /** Planilha encaminhada pela Auditoria ao IMH */

@@ -21,6 +21,7 @@ import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
+import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
@@ -62,13 +63,31 @@ export default function OrdenadorTimelineDetailPage() {
     const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
     if (stored) return stored
     const row = pedidoToConsumoRow(pedido)
+    if (isConfeccao) {
+      const built = buildControleSolempFromConsumo([row])
+      return {
+        formato: 'controleSolemp',
+        cabecalho: {
+          numeroRelacao: '',
+          pregaoTad: '',
+          data: '',
+          vigencia: '',
+          processo: '',
+          fornecedor: '',
+        },
+        linhas: [],
+        controleSolempLinhas: built.linhas,
+        enviadoEm: pedido.dataSolicitacao,
+      }
+    }
     const built = buildImhPlanilhaFromConsumo([row])
     return {
+      formato: 'imh',
       cabecalho: built.cabecalho,
       linhas: built.linhas,
       enviadoEm: pedido.dataSolicitacao,
     }
-  }, [pedido])
+  }, [pedido, isConfeccao])
 
   const fluxoDiretoImh = useMemo(() => {
     if (!pedido) return false
@@ -298,6 +317,7 @@ export default function OrdenadorTimelineDetailPage() {
         open={planilhaOpen}
         pedidoNumero={pedido.numero}
         planilha={planilhaEnvio}
+        preferFormato={isConfeccao ? 'controleSolemp' : 'imh'}
         title={
           isContabilidade
             ? `Contabilidade/IMH — Planilha ${pedido.numero}`
