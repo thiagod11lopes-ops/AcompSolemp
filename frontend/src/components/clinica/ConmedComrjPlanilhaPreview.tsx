@@ -31,6 +31,18 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
+/** Quebra o texto a cada N caracteres para limitar largura horizontal. */
+function wrapEveryChars(value: string, chars = 100): string {
+  const text = value.trim()
+  if (!text) return '—'
+  if (text.length <= chars) return text
+  const parts: string[] = []
+  for (let i = 0; i < text.length; i += chars) {
+    parts.push(text.slice(i, i + chars))
+  }
+  return parts.join('\n')
+}
+
 const cellSx = {
   border: EXCEL_SHEET.border,
   fontFamily: EXCEL_SHEET.fontFamily,
@@ -321,7 +333,18 @@ export function ConmedComrjPlanilhaPreview({
                         <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
                         <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
                         <TableCell sx={cellSx}>{dash(mat.nebPi)}</TableCell>
-                        <TableCell sx={{ ...cellSx, minWidth: 160 }}>{dash(mat.descricao)}</TableCell>
+                        <TableCell
+                          sx={{
+                            ...cellSx,
+                            maxWidth: '100ch',
+                            width: '100ch',
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {wrapEveryChars(mat.descricao, 100)}
+                        </TableCell>
                         <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
                         <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
                         <TableCell sx={{ ...cellSx, fontWeight: 700 }}>
