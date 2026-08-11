@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { Add as AddIcon } from '@mui/icons-material'
 import {
+  Alert,
   Box,
   Button,
   Paper,
+  Snackbar,
   TextField,
   Typography,
   alpha,
@@ -14,6 +16,7 @@ import type {
   ConmedComrjPaciente,
 } from '@/types'
 import { ConmedComrjPlanilhaPreview } from '@/components/clinica/ConmedComrjPlanilhaPreview'
+import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import {
   createEmptyConmedMaterialItem,
   createEmptyConmedPaciente,
@@ -28,10 +31,17 @@ import {
   formatConmedQuantidade,
   formatConmedUppercase,
   materialHasContent,
+  normalizeConmedComrjForm,
   pacienteHasContent,
   withRecalculatedMaterialTotal,
   withRecalculatedPaciente,
 } from '@/utils/conmedComrjForm'
+import {
+  loadConmedSheetsFromFile,
+  mergeConmedImport,
+  parseConmedComrjFromGrid,
+} from '@/utils/conmedComrjImport'
+import type { SpreadsheetSheetImport } from '@/utils/consumoMaterialOds'
 
 interface ConmedComrjFormProps {
   value: ConmedComrjFormData
@@ -77,6 +87,82 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
   )
   const [editingPacienteId, setEditingPacienteId] = useState<string | null>(null)
   const patientSnapshotRef = useRef<ConmedComrjPaciente | null>(null)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [sheetPicker, setSheetPicker] = useState<{
+    open: boolean
+    fileName: string
+    sheets: SpreadsheetSheetImport[]
+  }>({ open: false, fileName: '', sheets: [] })
+  const [importFeedback, setImportFeedback] = useState<{
+    open: boolean
+    severity: 'success' | 'error'
+    message: string
+  }>({ open: false, severity: 'success', message: '' })
+
+  const applyImportedSheet = (sheet: SpreadsheetSheetImport) => {
+    const parsed = normalizeConmedComrjForm(parseConmedComrjFromGrid(sheet.rows))
+    const hasProcess =
+      Boolean(parsed.numero || parsed.data || parsed.processo || parsed.pregaoTad || parsed.vigencia || parsed.fornecedor)
+    const hasPatients = parsed.pacientes.length > 0
+    if (!hasProcess && !hasPatients) {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message:
+          'Não foi possível identificar dados CONMED nessa aba. Verifique se o layout é o da planilha do sistema.',
+      })
+      return
+    }
+    onChange(mergeConmedImport(value, parsed))
+    setImportFeedback({
+      open: true,
+      severity: 'success',
+      message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${parsed.pacientes.length} paciente(s).`,
+    })
+  }
+
+  const handleImportClick = () => {
+    importInputRef.current?.click()
+  }
+
+  const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setImporting(true)
+    try {
+      const sheets = await loadConmedSheetsFromFile(file)
+      if (sheets.length === 0) {
+        setImportFeedback({
+          open: true,
+          severity: 'error',
+          message: 'O arquivo não contém abas legíveis.',
+        })
+        return
+      }
+      if (sheets.length === 1) {
+        applyImportedSheet(sheets[0])
+        return
+      }
+      setSheetPicker({ open: true, fileName: file.name, sheets })
+    } catch (err) {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message: err instanceof Error ? err.message : 'Falha ao ler a planilha.',
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleConfirmSheet = (sheetIndex: number) => {
+    const sheet = sheetPicker.sheets[sheetIndex]
+    setSheetPicker({ open: false, fileName: '', sheets: [] })
+    if (sheet) applyImportedSheet(sheet)
+  }
 
   const [materialDraft, setMaterialDraft] = useState<ConmedComrjMaterialItem>(() =>
     createEmptyConmedMaterialItem(),
@@ -654,15 +740,45 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
         >
           Planilha do processo (ao vivo)
         </Typography>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+          hidden
+          onChange={handleImportFileChange}
+        />
         <ConmedComrjPlanilhaPreview
           value={value}
           editingPacienteId={editingPacienteId}
           editingMaterialId={editingMaterialId}
+          importing={importing}
+          onImportClick={handleImportClick}
           onEditPaciente={handleEditPaciente}
           onDeletePaciente={handleDeletePaciente}
           onEditMaterial={handleEditMaterial}
           onDeleteMaterial={handleDeleteMaterial}
         />
+        <ConmedEscolherAbaModal
+          open={sheetPicker.open}
+          sheetNames={sheetPicker.sheets.map((s) => s.nome)}
+          fileName={sheetPicker.fileName}
+          onCancel={() => setSheetPicker({ open: false, fileName: '', sheets: [] })}
+          onConfirm={handleConfirmSheet}
+        />
+        <Snackbar
+          open={importFeedback.open}
+          autoHideDuration={5000}
+          onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            severity={importFeedback.severity}
+            variant="filled"
+            onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+          >
+            {importFeedback.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Box>
   )

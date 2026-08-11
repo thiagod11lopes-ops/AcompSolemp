@@ -1,7 +1,12 @@
 import { Fragment } from 'react'
-import { DeleteOutlined as DeleteIcon, EditOutlined as EditIcon } from '@mui/icons-material'
+import {
+  DeleteOutlined as DeleteIcon,
+  EditOutlined as EditIcon,
+  UploadFileOutlined as UploadFileIcon,
+} from '@mui/icons-material'
 import {
   Box,
+  Button,
   Chip,
   IconButton,
   Paper,
@@ -25,6 +30,8 @@ interface ConmedComrjPlanilhaPreviewProps {
   value: ConmedComrjFormData
   editingPacienteId?: string | null
   editingMaterialId?: string | null
+  importing?: boolean
+  onImportClick?: () => void
   onEditPaciente?: (pacienteId: string) => void
   onDeletePaciente?: (pacienteId: string) => void
   onEditMaterial?: (pacienteId: string, materialId: string) => void
@@ -148,6 +155,8 @@ export function ConmedComrjPlanilhaPreview({
   value,
   editingPacienteId = null,
   editingMaterialId = null,
+  importing = false,
+  onImportClick,
   onEditPaciente,
   onDeletePaciente,
   onEditMaterial,
@@ -161,10 +170,9 @@ export function ConmedComrjPlanilhaPreview({
   return (
     <Box
       sx={{
-        opacity: visible ? 1 : 0.45,
-        transform: visible ? 'translateY(0)' : 'translateY(8px)',
+        opacity: visible ? 1 : 0.92,
+        transform: visible ? 'translateY(0)' : 'translateY(4px)',
         transition: 'opacity 280ms ease, transform 280ms ease',
-        pointerEvents: visible ? 'auto' : 'none',
       }}
     >
       <Paper
@@ -225,12 +233,38 @@ export function ConmedComrjPlanilhaPreview({
             label={`${materialCount} material(is)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          {onImportClick ? (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
+              onClick={onImportClick}
+              disabled={importing}
+              sx={{
+                ml: 0.5,
+                height: 26,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                borderColor: EXCEL_SHEET.selectedCheck,
+                color: EXCEL_SHEET.selectedCheck,
+                bgcolor: '#fff',
+                '&:hover': {
+                  borderColor: EXCEL_SHEET.selectedCheck,
+                  bgcolor: '#e8f5e9',
+                },
+              }}
+            >
+              {importing ? 'Importando…' : 'Importar planilha'}
+            </Button>
+          ) : null}
         </Box>
 
         {!visible ? (
-          <Box sx={{ px: 2.5, py: 4, textAlign: 'center' }}>
+          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', pointerEvents: 'none', opacity: 0.55 }}>
             <Typography variant="body2" color="text.secondary">
-              Preencha o processo, pacientes e materiais para ver a planilha unificada.
+              Preencha o processo, pacientes e materiais — ou importe uma planilha — para ver a
+              planilha unificada.
             </Typography>
           </Box>
         ) : (
