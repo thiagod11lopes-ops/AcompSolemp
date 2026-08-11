@@ -369,13 +369,13 @@ export function ConmedComrjPlanilhaPreview({
                                   <TableCell
                                     sx={{
                                       ...cellSx,
-                                      maxWidth: '100ch',
+                                      maxWidth: '110ch',
                                       whiteSpace: 'pre-wrap',
                                       overflowWrap: 'anywhere',
                                       wordBreak: 'break-word',
                                     }}
                                   >
-                                    {wrapEveryChars(mat.descricao, 100)}
+                                    {wrapEveryChars(mat.descricao, 110)}
                                   </TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.qt)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.valorUnit)}</TableCell>
