@@ -408,9 +408,20 @@ export interface PlanilhaLivreAba {
   sheet?: import('@/utils/planilhaBrancaGrid').PlanilhaSheetData
 }
 
+/** Formulário da aba CONMED COMRJ (não é planilha) */
+export interface ConmedComrjFormData {
+  numero: string
+  data: string
+  processo: string
+  pregaoTad: string
+  vigencia: string
+  fornecedor: string
+}
+
 export interface ClinicaPlanilhasLivresState {
   abas: PlanilhaLivreAba[]
   abaAtivaId: string | null
+  conmedComrj?: ConmedComrjFormData
 }
 
 export interface PedidoPlanilhaEnvioState {

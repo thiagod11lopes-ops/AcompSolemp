@@ -1,6 +1,7 @@
 import { loadAppData, saveAppData } from '@/mocks/seed'
 import type { ClinicaPlanilhasLivresState } from '@/types'
 import { ensureFixedPlanilhas } from '@/utils/planilhasFixas'
+import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
@@ -10,7 +11,11 @@ function normalizeState(state: ClinicaPlanilhasLivresState | undefined): Clinica
     state?.abaAtivaId && abas.some((aba) => aba.id === state.abaAtivaId)
       ? state.abaAtivaId
       : (abas[0]?.id ?? null)
-  return { abas, abaAtivaId }
+  return {
+    abas,
+    abaAtivaId,
+    conmedComrj: normalizeConmedComrjForm(state?.conmedComrj),
+  }
 }
 
 export const clinicaPlanilhasLivresService = {

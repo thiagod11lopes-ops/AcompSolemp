@@ -11,13 +11,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
+import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
 import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
 } from '@/services/clinicaPlanilhasLivresService'
-import type { PlanilhaLivreAba } from '@/types'
+import type { ConmedComrjFormData, PlanilhaLivreAba } from '@/types'
 import { FIXED_PLANILHAS } from '@/utils/planilhasFixas'
+import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
 import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
+
+const CONMED_ABA_ID = 'conmed-comrj'
 
 export default function ClinicaNovoPedidoPage() {
   const { navigatePortal } = usePortalPaths()
@@ -26,11 +30,14 @@ export default function ClinicaNovoPedidoPage() {
 
   const [abas, setAbas] = useState<PlanilhaLivreAba[]>([])
   const [abaAtivaId, setAbaAtivaId] = useState<string | null>(FIXED_PLANILHAS[0].id)
+  const [conmedForm, setConmedForm] = useState<ConmedComrjFormData>(EMPTY_CONMED_COMRJ_FORM)
   const hydrated = useRef(false)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
+  const conmedFormRef = useRef(conmedForm)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
+  conmedFormRef.current = conmedForm
 
   useEffect(() => {
     if (!clinicaId || hydrated.current) return
@@ -38,14 +45,20 @@ export default function ClinicaNovoPedidoPage() {
     const state = clinicaPlanilhasLivresService.getState(clinicaId)
     setAbas(state.abas)
     setAbaAtivaId(state.abaAtivaId ?? FIXED_PLANILHAS[0].id)
+    setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
   }, [clinicaId])
 
   const persist = useCallback(
-    (nextAbas: PlanilhaLivreAba[], nextAtiva: string | null) => {
+    (
+      nextAbas: PlanilhaLivreAba[],
+      nextAtiva: string | null,
+      nextConmed: ConmedComrjFormData = conmedFormRef.current,
+    ) => {
       if (!clinicaId) return
       clinicaPlanilhasLivresService.saveState(clinicaId, {
         abas: nextAbas,
         abaAtivaId: nextAtiva,
+        conmedComrj: nextConmed,
       })
     },
     [clinicaId],
@@ -59,7 +72,7 @@ export default function ClinicaNovoPedidoPage() {
   const handleSheetChange = useCallback(
     (sheet: PlanilhaSheetData) => {
       const ativaId = abaAtivaIdRef.current
-      if (!ativaId) return
+      if (!ativaId || ativaId === CONMED_ABA_ID) return
       setAbas((prev) => {
         const next = prev.map((aba) =>
           aba.id === ativaId ? { ...aba, sheet, grid: undefined } : aba,
@@ -67,6 +80,14 @@ export default function ClinicaNovoPedidoPage() {
         persist(next, ativaId)
         return next
       })
+    },
+    [persist],
+  )
+
+  const handleConmedChange = useCallback(
+    (next: ConmedComrjFormData) => {
+      setConmedForm(next)
+      persist(abasRef.current, abaAtivaIdRef.current, next)
     },
     [persist],
   )
@@ -127,7 +148,9 @@ export default function ClinicaNovoPedidoPage() {
         </Box>
       </Box>
 
-      {abaAtiva ? (
+      {abaAtivaId === CONMED_ABA_ID ? (
+        <ConmedComrjForm value={conmedForm} onChange={handleConmedChange} />
+      ) : abaAtiva ? (
         <PlanilhaBrancaSpreadsheet
           nome={abaAtiva.nome}
           sheet={resolveAbaSheet(abaAtiva)}
