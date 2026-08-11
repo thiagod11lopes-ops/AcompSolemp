@@ -257,7 +257,6 @@ export default function ClinicaNovoPedidoPage() {
   )
 
   const activeLancamentos = isAbaPrincipal ? planilhaRows : (abaAtivaExtra?.extraRows ?? [])
-  const isAbaBranca = !isAbaPrincipal && abaAtivaExtra?.tipo === 'branca'
   const activeFileName = isAbaPrincipal
     ? planilhaNome || 'Consumo Material Consignado'
     : (abaAtivaExtra?.nome ?? 'Planilha')
@@ -268,7 +267,6 @@ export default function ClinicaNovoPedidoPage() {
   const activeRowsByMes = isAbaPrincipal
     ? rowsByMes[mesSelecionado.id]
     : rowsByAbaExtra[abaPlanilhaAtivaId]
-  const activePlanilhaBrancaGrid = isAbaBranca ? (abaAtivaExtra?.grid ?? []) : undefined
 
   const limparPlanilha = () => {
     setExtraRows([])
@@ -393,14 +391,12 @@ export default function ClinicaNovoPedidoPage() {
     (rows: ConsumoMaterialRow[], mes: MesConsumoModelo) => {
       const ativaId = abaPlanilhaAtivaIdRef.current
       if (ativaId !== CONSUMO_ABA_PRINCIPAL_ID) {
-        const abaAtual = abasExtrasRef.current.find((aba) => aba.id === ativaId)
-        if (abaAtual?.tipo === 'branca') return
         setRowsByAbaExtra((prev) => ({ ...prev, [ativaId]: rows }))
         if (extraRowsSyncTimer.current) clearTimeout(extraRowsSyncTimer.current)
         extraRowsSyncTimer.current = setTimeout(() => {
           setAbasExtras((prev) => {
             const next = prev.map((aba) => {
-              if (aba.id !== ativaId || aba.tipo === 'branca') return aba
+              if (aba.id !== ativaId) return aba
               return {
                 ...aba,
                 mes: mes.mes,
@@ -495,7 +491,6 @@ export default function ClinicaNovoPedidoPage() {
         mes: input.mes,
         ano: input.ano,
         extraRows: novos,
-        tipo: 'consumo',
       }
 
       setAbasExtras((prev) => {
@@ -606,27 +601,6 @@ export default function ClinicaNovoPedidoPage() {
       setAbasExtras((prev) => {
         const next = prev.map((aba) =>
           aba.id === ativaId ? { ...aba, mes: mes.mes, ano: mes.ano } : aba,
-        )
-        persistPlanilhaState(
-          extraRowsRef.current,
-          finalizedAuditoriaRowIds,
-          finalizedMaterialRowIds,
-          next,
-          ativaId,
-        )
-        return next
-      })
-    },
-    [finalizedAuditoriaRowIds, finalizedMaterialRowIds, persistPlanilhaState],
-  )
-
-  const handlePlanilhaBrancaGridChange = useCallback(
-    (grid: string[][]) => {
-      const ativaId = abaPlanilhaAtivaIdRef.current
-      if (ativaId === CONSUMO_ABA_PRINCIPAL_ID) return
-      setAbasExtras((prev) => {
-        const next = prev.map((aba) =>
-          aba.id === ativaId ? { ...aba, grid, tipo: 'branca' as const } : aba,
         )
         persistPlanilhaState(
           extraRowsRef.current,
@@ -1005,8 +979,6 @@ export default function ClinicaNovoPedidoPage() {
         </Alert>
       )}
 
-      {abaAtiva === 0 && <Box sx={{ minHeight: 240 }} />}
-
       {abaAtiva === 1 && (
         <ConsumoMaterialConsignadoView
           lancamentos={activeLancamentos}
@@ -1025,7 +997,7 @@ export default function ClinicaNovoPedidoPage() {
           totalPedidos={pedidos.length}
           mesSelecionado={activeMesSelecionado}
           onMesSelecionadoChange={
-            isDemoMedicamentoFixo || isAbaBranca ? undefined : handleMesSelecionadoChange
+            isDemoMedicamentoFixo ? undefined : handleMesSelecionadoChange
           }
           onExcluirTudo={isDemoMedicamentoFixo ? undefined : handleExcluirTudo}
           onAdicionarPlanilha={isDemoMedicamentoFixo ? undefined : handleAdicionarPlanilha}
@@ -1034,23 +1006,15 @@ export default function ClinicaNovoPedidoPage() {
           addPlanilhaError={addPlanilhaError}
           onAddPlanilhaErrorClear={() => setAddPlanilhaError(null)}
           onLimparRascunho={isDemoMedicamentoFixo ? undefined : limparPlanilha}
-          onEnviarImh={
-            isMedicamentoPortal && !isAbaBranca ? handleAbrirImhModal : undefined
-          }
-          onEnviarParalelo={
-            isMedicamentoPortal || isAbaBranca ? undefined : handleAbrirParaleloModal
-          }
+          onEnviarImh={isMedicamentoPortal ? handleAbrirImhModal : undefined}
+          onEnviarParalelo={isMedicamentoPortal ? undefined : handleAbrirParaleloModal}
           modoMedicamento={isMedicamentoPortal}
           planilhaFixaDemo={isDemoMedicamentoFixo}
           isEnviando={isBatchSending}
-          rowsByMes={
-            isDemoMedicamentoFixo || isAbaBranca ? undefined : activeRowsByMes
-          }
-          onRowsChange={
-            isDemoMedicamentoFixo || isAbaBranca ? undefined : handleMesRowsChange
-          }
-          onExcluirLinhaRow={isDemoMedicamentoFixo || isAbaBranca ? undefined : handleExcluirLinhaRow}
-          onDesfinalizarLinha={isAbaBranca ? undefined : handleDesfinalizarLinha}
+          rowsByMes={isDemoMedicamentoFixo ? undefined : activeRowsByMes}
+          onRowsChange={isDemoMedicamentoFixo ? undefined : handleMesRowsChange}
+          onExcluirLinhaRow={isDemoMedicamentoFixo ? undefined : handleExcluirLinhaRow}
+          onDesfinalizarLinha={handleDesfinalizarLinha}
           planilhaAbas={isDemoMedicamentoFixo ? undefined : planilhaAbas}
           abaPlanilhaAtivaId={abaPlanilhaAtivaId}
           onAbaPlanilhaChange={
@@ -1058,11 +1022,6 @@ export default function ClinicaNovoPedidoPage() {
           }
           onFecharAbaPlanilha={
             isDemoMedicamentoFixo ? undefined : handleFecharAbaPlanilha
-          }
-          modoPlanilhaBranca={isAbaBranca}
-          planilhaBrancaGrid={activePlanilhaBrancaGrid}
-          onPlanilhaBrancaGridChange={
-            isAbaBranca ? handlePlanilhaBrancaGridChange : undefined
           }
         />
       )}

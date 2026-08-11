@@ -14,18 +14,15 @@ const EMPTY_STATE: ConsumoPlanilhaClinicaState = {
 }
 
 function normalizeAbas(abas: ConsumoPlanilhaAba[] | undefined): ConsumoPlanilhaAba[] {
-  return (abas ?? []).map((aba) => ({
-    id: aba.id,
-    nome: aba.nome,
-    mes: aba.mes,
-    ano: aba.ano,
-    extraRows: (aba.extraRows ?? []).map((row) => ({ ...row })),
-    tipo: aba.tipo === 'branca' ? 'branca' : 'consumo',
-    grid:
-      aba.tipo === 'branca'
-        ? (aba.grid ?? []).map((row) => [...(row ?? [])])
-        : undefined,
-  }))
+  return (abas ?? [])
+    .filter((aba) => (aba as { tipo?: string }).tipo !== 'branca')
+    .map((aba) => ({
+      id: aba.id,
+      nome: aba.nome,
+      mes: aba.mes,
+      ano: aba.ano,
+      extraRows: (aba.extraRows ?? []).map((row) => ({ ...row })),
+    }))
 }
 
 function normalizeState(state: ConsumoPlanilhaClinicaState): ConsumoPlanilhaClinicaState {

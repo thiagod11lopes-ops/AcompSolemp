@@ -383,10 +383,6 @@ export interface ConsumoPlanilhaAba {
   mes: number
   ano: number
   extraRows: ConsumoMaterialRow[]
-  /** `branca` = grade Excel livre, sem colunas de Consumo */
-  tipo?: 'consumo' | 'branca'
-  /** Células da planilha em branco (linhas × colunas) */
-  grid?: string[][]
 }
 
 export interface ConsumoPlanilhaClinicaState {
