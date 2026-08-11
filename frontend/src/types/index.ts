@@ -446,10 +446,35 @@ export interface ConmedComrjFormData {
   pacientes: ConmedComrjPaciente[]
 }
 
+/** Linha da planilha IMH (aba IMH do ODS: indenização / procedimento) */
+export interface ImhAbaLinha {
+  id: string
+  data: string
+  nip: string
+  nomeUsuario: string
+  vinculo: string
+  descricao: string
+  nipTitular: string
+  valorUnit: string
+  quantidade: string
+  /** Calculado: QT × VALOR UNIT */
+  valorTotal: string
+  pctIndenizar: string
+}
+
+/** Formulário + planilha unificada da aba IMH (modelo ODS) */
+export interface ImhAbaFormData {
+  clinica: string
+  numeroCp: string
+  linhas: ImhAbaLinha[]
+}
+
 export interface ClinicaPlanilhasLivresState {
   abas: PlanilhaLivreAba[]
   abaAtivaId: string | null
   conmedComrj?: ConmedComrjFormData
+  /** Formulário tipado da aba IMH (layout anexo CP) */
+  imh?: ImhAbaFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
 }
