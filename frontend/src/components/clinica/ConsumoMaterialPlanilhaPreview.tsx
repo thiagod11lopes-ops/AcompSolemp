@@ -1,11 +1,13 @@
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  Send as SendIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   IconButton,
   Paper,
@@ -27,8 +29,14 @@ interface ConsumoMaterialPlanilhaPreviewProps {
   rows: ConsumoMaterialRow[]
   editingRowId?: string | null
   importing?: boolean
+  enviando?: boolean
+  selectedIds?: Set<string>
+  finalizedIds?: Set<string>
   emptyHint?: string
   onImportClick?: () => void
+  onEnviarClick?: () => void
+  onToggleRow?: (rowId: string) => void
+  onToggleAllVisible?: (checked: boolean) => void
   onEditRow?: (rowId: string) => void
   onDeleteRow?: (rowId: string) => void
 }
@@ -64,22 +72,44 @@ const groupSx = {
   fontWeight: 800,
 }
 
+const miStickySx = {
+  position: 'sticky' as const,
+  left: 0,
+  zIndex: 3,
+}
+
 export function ConsumoMaterialPlanilhaPreview({
   rows,
   editingRowId = null,
   importing = false,
+  enviando = false,
+  selectedIds,
+  finalizedIds,
   emptyHint,
   onImportClick,
+  onEnviarClick,
+  onToggleRow,
+  onToggleAllVisible,
   onEditRow,
   onDeleteRow,
 }: ConsumoMaterialPlanilhaPreviewProps) {
   const visible = rows.length > 0
+  const selectionEnabled = Boolean(onToggleRow)
+  const selected = selectedIds ?? new Set<string>()
+  const finalized = finalizedIds ?? new Set<string>()
+  const selectableRows = rows.filter((row) => !finalized.has(row.id))
+  const selectedCount = selectableRows.filter((row) => selected.has(row.id)).length
+  const allVisibleSelected =
+    selectableRows.length > 0 && selectableRows.every((row) => selected.has(row.id))
+  const someVisibleSelected =
+    selectableRows.some((row) => selected.has(row.id)) && !allVisibleSelected
+
   const groups = [
     { id: 'paciente', label: 'PACIENTE', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'paciente') },
     { id: 'clinico', label: 'CLÍNICO', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'clinico') },
     { id: 'financeiro', label: 'FINANCEIRO', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'financeiro') },
   ]
-  const colCount = CONSUMO_MATERIAL_HEADERS.length + 1
+  const colCount = CONSUMO_MATERIAL_HEADERS.length + 1 + (selectionEnabled ? 1 : 0)
 
   return (
     <Box
@@ -130,15 +160,46 @@ export function ConsumoMaterialPlanilhaPreview({
             label={`${rows.length} lançamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          {selectedCount > 0 ? (
+            <Chip
+              size="small"
+              color="primary"
+              label={`MI: ${selectedCount}`}
+              sx={{ height: 22, fontWeight: 700 }}
+            />
+          ) : null}
+          {onEnviarClick ? (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SendIcon sx={{ fontSize: 16 }} />}
+              onClick={onEnviarClick}
+              disabled={enviando || selectedCount === 0}
+              sx={{
+                ml: 0.5,
+                height: 26,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                boxShadow: 'none',
+              }}
+            >
+              {enviando
+                ? 'Enviando…'
+                : selectedCount > 1
+                  ? `Enviar para Confecção Solemp/Auditoria (${selectedCount})`
+                  : 'Enviar para Confecção Solemp/Auditoria'}
+            </Button>
+          ) : null}
           {onImportClick ? (
             <Button
               size="small"
               variant="outlined"
               startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
               onClick={onImportClick}
-              disabled={importing}
+              disabled={importing || enviando}
               sx={{
-                ml: 0.5,
+                ml: onEnviarClick ? 0 : 0.5,
                 height: 26,
                 textTransform: 'none',
                 fontWeight: 700,
@@ -182,6 +243,32 @@ export function ConsumoMaterialPlanilhaPreview({
             <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
               <TableHead>
                 <TableRow>
+                  {selectionEnabled ? (
+                    <TableCell
+                      rowSpan={2}
+                      sx={{
+                        ...groupSx,
+                        ...miStickySx,
+                        zIndex: 4,
+                        minWidth: 44,
+                        width: 44,
+                        px: 0.5,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.25 }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 800, lineHeight: 1 }}>MI</Typography>
+                        <Checkbox
+                          size="small"
+                          checked={allVisibleSelected}
+                          indeterminate={someVisibleSelected}
+                          disabled={enviando || selectableRows.length === 0}
+                          onChange={(_, checked) => onToggleAllVisible?.(checked)}
+                          slotProps={{ input: { 'aria-label': 'Selecionar todos MI' } }}
+                          sx={{ p: 0.25 }}
+                        />
+                      </Box>
+                    </TableCell>
+                  ) : null}
                   {groups.map((g) => (
                     <TableCell key={g.id} colSpan={g.keys.length} sx={groupSx}>
                       {g.label}
@@ -201,6 +288,8 @@ export function ConsumoMaterialPlanilhaPreview({
               <TableBody>
                 {rows.map((row, index) => {
                   const editing = editingRowId === row.id
+                  const isFinalized = finalized.has(row.id)
+                  const isChecked = isFinalized || selected.has(row.id)
                   return (
                     <TableRow
                       key={row.id}
@@ -209,6 +298,28 @@ export function ConsumoMaterialPlanilhaPreview({
                         '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                       }}
                     >
+                      {selectionEnabled ? (
+                        <TableCell
+                          sx={{
+                            ...cellSx,
+                            ...miStickySx,
+                            textAlign: 'center',
+                            px: 0.5,
+                            bgcolor: isChecked ? EXCEL_SHEET.selectedBg : EXCEL_SHEET.cellBg,
+                          }}
+                        >
+                          <Checkbox
+                            size="small"
+                            checked={isChecked}
+                            disabled={enviando || isFinalized}
+                            onChange={() => onToggleRow?.(row.id)}
+                            slotProps={{
+                              input: { 'aria-label': `Selecionar MI linha ${index + 1}` },
+                            }}
+                            sx={{ p: 0.25 }}
+                          />
+                        </TableCell>
+                      ) : null}
                       {CONSUMO_MATERIAL_HEADERS.map((col) => (
                         <TableCell
                           key={col.key}
@@ -231,6 +342,7 @@ export function ConsumoMaterialPlanilhaPreview({
                           size="small"
                           aria-label={`Editar lançamento ${index + 1}`}
                           onClick={() => onEditRow?.(row.id)}
+                          disabled={enviando}
                           sx={{ p: 0.35 }}
                         >
                           <EditIcon sx={{ fontSize: 16 }} />
@@ -240,6 +352,7 @@ export function ConsumoMaterialPlanilhaPreview({
                           color="error"
                           aria-label={`Excluir lançamento ${index + 1}`}
                           onClick={() => onDeleteRow?.(row.id)}
+                          disabled={enviando}
                           sx={{ p: 0.35 }}
                         >
                           <DeleteIcon sx={{ fontSize: 16 }} />

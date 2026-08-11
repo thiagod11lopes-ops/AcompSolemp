@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Autocomplete,
@@ -16,18 +16,40 @@ import {
 import { ConsumoMaterialManualForm } from '@/components/clinica/ConsumoMaterialManualForm'
 import { ConsumoMaterialPlanilhaPreview } from '@/components/clinica/ConsumoMaterialPlanilhaPreview'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
+import { ClinicaEnvioParaleloModal } from '@/components/clinica/ClinicaEnvioParaleloModal'
+import { ImhEnvioModal } from '@/components/clinica/ImhEnvioModal'
+import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
+import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { useClinicas } from '@/hooks/useCadastros'
+import {
+  useAdicionarFluxoParalelo,
+  useCreateClinicaPedido,
+  useClinicaPedidos,
+} from '@/hooks/useClinicaPedidos'
+import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import { loadAppData } from '@/mocks/seed'
 import {
   parseConsumoMaterialFromGrid,
   parseSpreadsheetSheetsFile,
+  consumoRowsToPedidoInput,
   type ConsumoMaterialRow,
   type SpreadsheetSheetImport,
 } from '@/utils/consumoMaterialOds'
 import {
   ANOS_PLANILHA_DISPONIVEIS,
+  createPedidoLoteId,
   dataPertenceAoMes,
+  findPedidoParaMesmasLinhas,
   getMesModeloFromParts,
+  getRowIdsComPedido,
   renumerarLinhasConsumo,
+  rowPodeSerEnviadaAuditoria,
+  rowPodeSerEnviadaMaterial,
 } from '@/utils/consumoMaterialTemplate'
+import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
+import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -81,6 +103,15 @@ export function ConsumoMaterialConsignadoForm({
   value,
   onChange,
 }: ConsumoMaterialConsignadoFormProps) {
+  const { navigatePortal } = usePortalPaths()
+  const { user } = useClinicaAuth()
+  const clinicaId = user?.clinicaId ?? ''
+  const { data: clinicas = [] } = useClinicas()
+  const { data: pedidos = [] } = useClinicaPedidos()
+  const createPedido = useCreateClinicaPedido()
+  const adicionarFluxo = useAdicionarFluxoParalelo()
+  const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
+
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
   const [filtroFornecedor, setFiltroFornecedor] = useState(FORNECEDOR_TODOS)
@@ -92,11 +123,27 @@ export function ConsumoMaterialConsignadoForm({
     fileName: string
     sheets: SpreadsheetSheetImport[]
   }>({ open: false, fileName: '', sheets: [] })
-  const [importFeedback, setImportFeedback] = useState<{
+  const [feedback, setFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [finalizedAuditoriaIds, setFinalizedAuditoriaIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [finalizedMaterialIds, setFinalizedMaterialIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [isEnviando, setIsEnviando] = useState(false)
+  const [paraleloOpen, setParaleloOpen] = useState(false)
+  const [paraleloRows, setParaleloRows] = useState<ConsumoMaterialRow[]>([])
+  const [paraleloPreview, setParaleloPreview] = useState<'auditoria' | 'confeccao' | null>(
+    null,
+  )
+  const [previewAuditoriaOpen, setPreviewAuditoriaOpen] = useState(false)
+  const [previewConfeccaoOpen, setPreviewConfeccaoOpen] = useState(false)
 
   const mesFiltro = useMemo(
     () => getMesModeloFromParts(filtroMes, filtroAno),
@@ -120,6 +167,30 @@ export function ConsumoMaterialConsignadoForm({
       }),
     [value, mesFiltro, filtroFornecedor],
   )
+
+  const finalizedIds = useMemo(() => {
+    const next = new Set<string>()
+    for (const id of finalizedAuditoriaIds) {
+      if (finalizedMaterialIds.has(id)) next.add(id)
+    }
+    return next
+  }, [finalizedAuditoriaIds, finalizedMaterialIds])
+
+  const rowIdsComPedido = useMemo(() => {
+    const data = loadAppData()
+    return getRowIdsComPedido(pedidos, data.pedidoPlanilhaEnvio, data.processosArquivados)
+  }, [pedidos, finalizedAuditoriaIds, finalizedMaterialIds])
+
+  useEffect(() => {
+    if (!clinicaId) return
+    const persisted = consumoPlanilhaService.getState(clinicaId)
+    const auditoria = new Set(
+      persisted.finalizedAuditoriaRowIds ?? persisted.finalizedRowIds ?? [],
+    )
+    const material = new Set(persisted.finalizedMaterialRowIds ?? [])
+    setFinalizedAuditoriaIds(auditoria)
+    setFinalizedMaterialIds(material)
+  }, [clinicaId])
 
   const emptyHint = useMemo(() => {
     const partes = [mesFiltro.label]
@@ -145,13 +216,14 @@ export function ConsumoMaterialConsignadoForm({
       const parsed = renumerarLinhasConsumo(parseConsumoMaterialFromGrid(sheet.rows))
       onChange(parsed)
       setEditingRowId(null)
-      setImportFeedback({
+      setSelectedIds(new Set())
+      setFeedback({
         open: true,
         severity: 'success',
         message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${parsed.length} lançamento(s).`,
       })
     } catch (err) {
-      setImportFeedback({
+      setFeedback({
         open: true,
         severity: 'error',
         message: err instanceof Error ? err.message : 'Falha ao interpretar a planilha.',
@@ -172,7 +244,7 @@ export function ConsumoMaterialConsignadoForm({
     try {
       const sheets = (await parseSpreadsheetSheetsFile(file)).filter(sheetHasContent)
       if (sheets.length === 0) {
-        setImportFeedback({
+        setFeedback({
           open: true,
           severity: 'error',
           message: 'O arquivo não contém abas legíveis.',
@@ -185,7 +257,7 @@ export function ConsumoMaterialConsignadoForm({
       }
       setSheetPicker({ open: true, fileName: file.name, sheets })
     } catch (err) {
-      setImportFeedback({
+      setFeedback({
         open: true,
         severity: 'error',
         message: err instanceof Error ? err.message : 'Falha ao ler a planilha.',
@@ -221,6 +293,176 @@ export function ConsumoMaterialConsignadoForm({
     const next = value.filter((r) => r.id !== rowId)
     onChange(renumerarLinhasConsumo(next))
     if (editingRowId === rowId) setEditingRowId(null)
+    setSelectedIds((prev) => {
+      if (!prev.has(rowId)) return prev
+      const nextSet = new Set(prev)
+      nextSet.delete(rowId)
+      return nextSet
+    })
+  }
+
+  const handleToggleRow = useCallback(
+    (rowId: string) => {
+      if (finalizedIds.has(rowId)) return
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(rowId)) next.delete(rowId)
+        else next.add(rowId)
+        return next
+      })
+    },
+    [finalizedIds],
+  )
+
+  const handleToggleAllVisible = useCallback(
+    (checked: boolean) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const row of rowsFiltradas) {
+          if (finalizedIds.has(row.id)) continue
+          if (checked) next.add(row.id)
+          else next.delete(row.id)
+        }
+        return next
+      })
+    },
+    [rowsFiltradas, finalizedIds],
+  )
+
+  const handleAbrirParalelo = () => {
+    const selecionadas = rowsFiltradas.filter(
+      (row) => selectedIds.has(row.id) && !finalizedIds.has(row.id),
+    )
+    if (selecionadas.length === 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Marque o checklist MI nos lançamentos que deseja enviar.',
+      })
+      return
+    }
+    setParaleloRows(selecionadas)
+    setParaleloOpen(true)
+  }
+
+  const handleVisualizarAuditoria = () => {
+    setParaleloPreview('auditoria')
+    setParaleloOpen(false)
+    setPreviewAuditoriaOpen(true)
+  }
+
+  const handleVisualizarConfeccao = () => {
+    setParaleloPreview('confeccao')
+    setParaleloOpen(false)
+    setPreviewConfeccaoOpen(true)
+  }
+
+  const handleFecharPreviewAuditoria = () => {
+    if (isEnviando) return
+    setPreviewAuditoriaOpen(false)
+    if (paraleloPreview === 'auditoria') {
+      setParaleloPreview(null)
+      setParaleloOpen(true)
+    }
+  }
+
+  const handleFecharPreviewConfeccao = () => {
+    if (isEnviando) return
+    setPreviewConfeccaoOpen(false)
+    if (paraleloPreview === 'confeccao') {
+      setParaleloPreview(null)
+      setParaleloOpen(true)
+    }
+  }
+
+  const handleEnviarAmbas = async () => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome || !clinicaId) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Clínica não identificada. Faça login novamente.',
+      })
+      return
+    }
+
+    const novos = paraleloRows.filter(
+      (r) =>
+        rowPodeSerEnviadaAuditoria(r, rowIdsComPedido, finalizedAuditoriaIds) ||
+        rowPodeSerEnviadaMaterial(r, finalizedMaterialIds),
+    )
+
+    if (novos.length === 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Nenhum lançamento novo para enviar.',
+      })
+      return
+    }
+
+    setIsEnviando(true)
+    try {
+      const rowIds = novos.map((row) => row.id)
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
+      const planilhaImh = buildImhPlanilhaFromConsumo(novos, mesFiltro)
+      const planilhaControle = buildControleSolempFromConsumo(novos, mesFiltro)
+      const tituloPlanilha = planilhaImh.cabecalho.numeroRelacao?.trim() || undefined
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'auditoria'),
+          id: pedidoId,
+          fluxo: 'paralelo',
+          consumoRowIds: rowIds,
+        })
+      }
+
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
+      pedidoPlanilhaEnvioService.saveControleSolempForPedido(pedidoId, planilhaControle)
+
+      const nextAuditoria = new Set(finalizedAuditoriaIds)
+      const nextMaterial = new Set(finalizedMaterialIds)
+      for (const row of novos) {
+        nextAuditoria.add(row.id)
+        nextMaterial.add(row.id)
+      }
+      setFinalizedAuditoriaIds(nextAuditoria)
+      setFinalizedMaterialIds(nextMaterial)
+      consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
+      consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const row of novos) next.delete(row.id)
+        return next
+      })
+      setParaleloOpen(false)
+      setParaleloRows([])
+      setParaleloPreview(null)
+      setPreviewAuditoriaOpen(false)
+      setPreviewConfeccaoOpen(false)
+      setFeedback({
+        open: true,
+        severity: 'success',
+        message: `${novos.length} lançamento(s) enviados para Confecção Solemp e Auditoria.`,
+      })
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Erro ao enviar lançamentos para Confecção Solemp/Auditoria. Tente novamente.',
+      })
+    } finally {
+      setIsEnviando(false)
+    }
   }
 
   return (
@@ -345,7 +587,13 @@ export function ConsumoMaterialConsignadoForm({
           rows={rowsFiltradas}
           editingRowId={editingRowId}
           importing={importing}
+          enviando={isEnviando}
+          selectedIds={selectedIds}
+          finalizedIds={finalizedIds}
           onImportClick={handleImportClick}
+          onEnviarClick={handleAbrirParalelo}
+          onToggleRow={handleToggleRow}
+          onToggleAllVisible={handleToggleAllVisible}
           onEditRow={handleEdit}
           onDeleteRow={handleDelete}
           emptyHint={emptyHint}
@@ -362,18 +610,51 @@ export function ConsumoMaterialConsignadoForm({
           onCancel={() => setSheetPicker({ open: false, fileName: '', sheets: [] })}
           onConfirm={handleConfirmSheet}
         />
+        <ClinicaEnvioParaleloModal
+          open={paraleloOpen}
+          rows={paraleloRows}
+          isSubmitting={isEnviando}
+          onClose={() => {
+            if (!isEnviando) {
+              setParaleloOpen(false)
+              setParaleloRows([])
+              setParaleloPreview(null)
+            }
+          }}
+          onVisualizarAuditoria={handleVisualizarAuditoria}
+          onVisualizarConfeccao={handleVisualizarConfeccao}
+          onEnviarAmbas={handleEnviarAmbas}
+        />
+        <ImhEnvioModal
+          open={previewAuditoriaOpen}
+          consumoRows={paraleloRows}
+          mesReferencia={mesFiltro}
+          isSubmitting={isEnviando}
+          previewOnly
+          onClose={handleFecharPreviewAuditoria}
+          onConfirm={() => undefined}
+        />
+        <MaterialEnvioModal
+          open={previewConfeccaoOpen}
+          consumoRows={paraleloRows}
+          mesReferencia={mesFiltro}
+          isSubmitting={isEnviando}
+          previewOnly
+          onClose={handleFecharPreviewConfeccao}
+          onConfirm={() => undefined}
+        />
         <Snackbar
-          open={importFeedback.open}
+          open={feedback.open}
           autoHideDuration={5000}
-          onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+          onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert
-            severity={importFeedback.severity}
+            severity={feedback.severity}
             variant="filled"
-            onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+            onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
           >
-            {importFeedback.message}
+            {feedback.message}
           </Alert>
         </Snackbar>
       </Box>
