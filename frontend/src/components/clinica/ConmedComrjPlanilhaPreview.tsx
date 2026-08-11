@@ -36,15 +36,31 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
+/** Quebra em linhas de até ~chars, sem partir palavras. */
 function wrapEveryChars(value: string, chars = 100): string {
   const text = value.trim()
   if (!text) return '—'
-  if (text.length <= chars) return text
-  const parts: string[] = []
-  for (let i = 0; i < text.length; i += chars) {
-    parts.push(text.slice(i, i + chars))
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '—'
+
+  const lines: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    if (!current) {
+      current = word
+      continue
+    }
+    const candidate = `${current} ${word}`
+    if (candidate.length <= chars) {
+      current = candidate
+    } else {
+      lines.push(current)
+      current = word
+    }
   }
-  return parts.join('\n')
+  if (current) lines.push(current)
+  return lines.join('\n')
 }
 
 const cellSx = {
@@ -58,7 +74,7 @@ const cellSx = {
   verticalAlign: 'middle' as const,
 } as const
 
-/** Conteúdo com quebra forçada (vence o nowrap do .excel-sheet-grid). */
+/** Conteúdo com quebra forçada por palavra (vence o nowrap do .excel-sheet-grid). */
 function WrappedCellText({ text, chars }: { text: string; chars: number }) {
   return (
     <Box
@@ -68,8 +84,9 @@ function WrappedCellText({ text, chars }: { text: string; chars: number }) {
         width: `${chars}ch`,
         maxWidth: `${chars}ch`,
         whiteSpace: 'pre-wrap',
-        overflowWrap: 'anywhere',
-        wordBreak: 'break-word',
+        wordBreak: 'keep-all',
+        overflowWrap: 'normal',
+        hyphens: 'none',
         lineHeight: 1.35,
       }}
     >
@@ -88,8 +105,8 @@ function wrapCellSx(chars: number, extra?: Record<string, unknown>) {
     whiteSpace: 'pre-wrap !important',
     overflow: 'visible !important',
     textOverflow: 'unset',
-    wordBreak: 'break-word',
-    overflowWrap: 'anywhere',
+    wordBreak: 'keep-all',
+    overflowWrap: 'normal',
     verticalAlign: 'middle',
   }
 }
