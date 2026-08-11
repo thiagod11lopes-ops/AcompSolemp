@@ -17,7 +17,7 @@ export default function ClinicaNovoPedidoPage() {
           Voltar
         </Button>
         <Typography variant="h6" component="h1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-          Novo Lançamento
+          Planilhas
         </Typography>
       </Box>
     </Box>

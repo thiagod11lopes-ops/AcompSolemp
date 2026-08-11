@@ -25,7 +25,7 @@ import { stripDemoRouteBase } from '@/utils/portalPaths'
 
 const NAV_ITEMS = [
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon sx={{ fontSize: 18 }} /> },
-  { path: '/clinica/pedidos/novo', label: 'Novo Lançamento', icon: <AddIcon sx={{ fontSize: 18 }} /> },
+  { path: '/clinica/pedidos/novo', label: 'Planilhas', icon: <AddIcon sx={{ fontSize: 18 }} /> },
   {
     path: '/clinica/precos-medicamentos',
     label: 'Preço de Medicamentos',

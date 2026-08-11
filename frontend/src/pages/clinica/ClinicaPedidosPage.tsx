@@ -91,14 +91,14 @@ export default function ClinicaPedidosPage() {
             startIcon={<AddIcon />}
             onClick={() => navigatePortal('/clinica/pedidos/novo')}
           >
-            Novo Lançamento
+            Planilhas
           </Button>
         }
       />
       <DataTable
         data={pedidos}
         columns={columns}
-        emptyMessage="Nenhum lançamento cadastrado. Clique em Novo Lançamento para iniciar."
+        emptyMessage="Nenhum lançamento cadastrado. Clique em Planilhas para iniciar."
       />
     </>
   )
