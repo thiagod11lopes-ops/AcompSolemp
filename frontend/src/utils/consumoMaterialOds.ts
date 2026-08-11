@@ -171,20 +171,30 @@ function decodeXmlText(value: string): string {
     .replace(/&apos;/g, "'")
 }
 
+/** Converte marcação inline ODS (<text:s/>, etc.) em texto limpo. */
+function stripOdsInlineMarkup(raw: string): string {
+  return raw
+    .replace(/<text:s\b([^>]*)\/>/gi, (_all, attrs: string) => {
+      const count = Number(attrs.match(/text:c="(\d+)"/i)?.[1] ?? '1')
+      return ' '.repeat(Number.isFinite(count) && count > 0 ? Math.min(count, 40) : 1)
+    })
+    .replace(/<text:s\b[^>]*>\s*<\/text:s>/gi, ' ')
+    .replace(/<\/?text:[a-z0-9:-]+\b[^>]*>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+}
+
 function extractOdsCellParagraphs(body: string): string {
   const paragraphs = [...body.matchAll(/<text:p[^>]*>([\s\S]*?)<\/text:p>/g)]
-  return decodeXmlText(
-    paragraphs
-      .map((p) =>
-        p[1]
-          .replace(/<text:s\b[^>]*\/>/g, ' ')
-          .replace(/<[^>]+>/g, '')
-          .replace(/\s+/g, ' ')
-          .trim(),
-      )
-      .filter(Boolean)
-      .join(' '),
-  )
+  return paragraphs
+    .map((p) => {
+      // Strip real tags, decode entities, strip de novo (caso &lt;text:s/&gt;)
+      let text = stripOdsInlineMarkup(p[1])
+      text = decodeXmlText(text)
+      text = stripOdsInlineMarkup(text)
+      return text.replace(/\s+/g, ' ').trim()
+    })
+    .filter(Boolean)
+    .join(' ')
 }
 
 /**

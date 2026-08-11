@@ -444,12 +444,21 @@ function parseOdsStyleMap(xml: string): Map<string, PlanilhaCellStyle> {
 
 function extractOdsCellText(cellXml: string): string {
   const paras = [...cellXml.matchAll(/<text:p\b[^>]*>([\s\S]*?)<\/text:p>/g)].map((p) => {
-    const inner = p[1]
+    let inner = p[1]
       .replace(/<text:line-break\s*\/>/g, '\n')
       .replace(/<text:tab\s*\/>/g, '\t')
-      .replace(/<text:s\b[^>]*\/>/g, ' ')
+      .replace(/<text:s\b([^>]*)\/>/gi, (_all, attrs: string) => {
+        const count = Number(attrs.match(/text:c="(\d+)"/i)?.[1] ?? '1')
+        return ' '.repeat(Number.isFinite(count) && count > 0 ? Math.min(count, 40) : 1)
+      })
+      .replace(/<\/?text:[a-z0-9:-]+\b[^>]*>/gi, ' ')
       .replace(/<[^>]+>/g, '')
-    return decodeXmlText(inner)
+    inner = decodeXmlText(inner)
+    inner = inner
+      .replace(/<text:s\b([^>]*)\/>/gi, ' ')
+      .replace(/<\/?text:[^>]+>/gi, ' ')
+      .replace(/<[^>]+>/g, '')
+    return inner.replace(/[^\S\n]+/g, ' ').trim()
   })
   return paras.join('\n')
 }

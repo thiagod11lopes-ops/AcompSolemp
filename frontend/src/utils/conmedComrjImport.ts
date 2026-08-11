@@ -34,8 +34,21 @@ function norm(value: string): string {
     .toUpperCase()
 }
 
+/** Remove resíduos de markup ODS que possam ter sobrado no texto. */
+function cleanImportedText(value: string): string {
+  return value
+    .replace(/<text:s\b([^>]*)\/>/gi, (_all, attrs: string) => {
+      const count = Number(attrs.match(/text:c="(\d+)"/i)?.[1] ?? '1')
+      return ' '.repeat(Number.isFinite(count) && count > 0 ? Math.min(count, 40) : 1)
+    })
+    .replace(/<\/?text:[^>]+>/gi, ' ')
+    .replace(/<\/?[a-z][^>]*>/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function cell(rows: string[][], r: number, c: number): string {
-  return String(rows[r]?.[c] ?? '').trim()
+  return cleanImportedText(String(rows[r]?.[c] ?? ''))
 }
 
 function findRowContaining(rows: string[][], label: string): number {
