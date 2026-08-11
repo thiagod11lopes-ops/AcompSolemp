@@ -18,6 +18,8 @@ interface ConmedEscolherAbaModalProps {
   fileName?: string
   title?: string
   description?: string
+  /** Índice inicial sugerido (ex.: aba IMH). */
+  initialSheetIndex?: number
   onCancel: () => void
   onConfirm: (sheetIndex: number) => void
 }
@@ -28,14 +30,20 @@ export function ConmedEscolherAbaModal({
   fileName,
   title = 'Escolher aba para importar',
   description,
+  initialSheetIndex = 0,
   onCancel,
   onConfirm,
 }: ConmedEscolherAbaModalProps) {
   const [selected, setSelected] = useState(0)
 
   useEffect(() => {
-    if (open) setSelected(0)
-  }, [open, sheetNames])
+    if (!open) return
+    const max = Math.max(0, sheetNames.length - 1)
+    const next = Number.isFinite(initialSheetIndex)
+      ? Math.min(Math.max(0, initialSheetIndex), max)
+      : 0
+    setSelected(next)
+  }, [open, sheetNames, initialSheetIndex])
 
   return (
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="xs">

@@ -203,7 +203,12 @@ function sheetHasContent(sheet: SpreadsheetSheetImport): boolean {
 }
 
 export async function loadImhSheetsFromFile(file: File): Promise<SpreadsheetSheetImport[]> {
-  const sheets = (await parseSpreadsheetSheetsFile(file)).filter(sheetHasContent)
-  const preferred = sheets.filter((s) => norm(s.nome) === 'IMH' || norm(s.nome).includes('IMH'))
-  return preferred.length > 0 ? preferred : sheets
+  return (await parseSpreadsheetSheetsFile(file)).filter(sheetHasContent)
+}
+
+/** Índice sugerido da aba IMH (ou -1 se não houver). */
+export function findImhSheetIndex(sheets: SpreadsheetSheetImport[]): number {
+  const exact = sheets.findIndex((s) => norm(s.nome) === 'IMH')
+  if (exact >= 0) return exact
+  return sheets.findIndex((s) => norm(s.nome).includes('IMH'))
 }

@@ -27,6 +27,7 @@ import {
   withRecalculatedImhLinha,
 } from '@/utils/imhAbaForm'
 import {
+  findImhSheetIndex,
   loadImhSheetsFromFile,
   mergeImhImport,
   parseImhAbaFromGrid,
@@ -77,7 +78,8 @@ export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
     open: boolean
     fileName: string
     sheets: SpreadsheetSheetImport[]
-  }>({ open: false, fileName: '', sheets: [] })
+    initialSheetIndex: number
+  }>({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
   const [importFeedback, setImportFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
@@ -129,7 +131,13 @@ export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
         applyImportedSheet(sheets[0])
         return
       }
-      setSheetPicker({ open: true, fileName: file.name, sheets })
+      const preferred = findImhSheetIndex(sheets)
+      setSheetPicker({
+        open: true,
+        fileName: file.name,
+        sheets,
+        initialSheetIndex: preferred >= 0 ? preferred : 0,
+      })
     } catch (err) {
       setImportFeedback({
         open: true,
@@ -143,7 +151,7 @@ export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
 
   const handleConfirmSheet = (sheetIndex: number) => {
     const sheet = sheetPicker.sheets[sheetIndex]
-    setSheetPicker({ open: false, fileName: '', sheets: [] })
+    setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
     if (sheet) applyImportedSheet(sheet)
   }
 
@@ -453,12 +461,15 @@ export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
           open={sheetPicker.open}
           sheetNames={sheetPicker.sheets.map((s) => s.nome)}
           fileName={sheetPicker.fileName}
+          initialSheetIndex={sheetPicker.initialSheetIndex}
           description={
             sheetPicker.fileName
-              ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Selecione a aba IMH (ou a que contém esse modelo).`
-              : 'O arquivo tem várias abas. Selecione a aba IMH.'
+              ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar.`
+              : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
           }
-          onCancel={() => setSheetPicker({ open: false, fileName: '', sheets: [] })}
+          onCancel={() =>
+            setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+          }
           onConfirm={handleConfirmSheet}
         />
         <Snackbar
