@@ -82,9 +82,9 @@ const headerSx = {
   whiteSpace: 'nowrap' as const,
 }
 
-/** PAC + paciente (4) + material (9) + ações mat */
+/** paciente (4) + ações pac (1) + material sem # (8) + ações mat (1) */
 const PATIENT_COLS = 5
-const MATERIAL_COLS = 10
+const MATERIAL_COLS = 9
 const TOTAL_COLS = PATIENT_COLS + MATERIAL_COLS
 
 function patientRowSpan(paciente: ConmedComrjPaciente): number {
@@ -246,12 +246,13 @@ export function ConmedComrjPlanilhaPreview({
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell sx={{ ...headerSx, textAlign: 'center' }}>PAC.</TableCell>
                     <TableCell sx={headerSx}>NIP</TableCell>
                     <TableCell sx={headerSx}>INICIAIS</TableCell>
                     <TableCell sx={headerSx}>DATA</TableCell>
                     <TableCell sx={headerSx}>PROCEDIMENTO</TableCell>
-                    <TableCell sx={headerSx}>#</TableCell>
+                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                      AÇÕES
+                    </TableCell>
                     <TableCell sx={headerSx}>MAPA DA SALA</TableCell>
                     <TableCell sx={headerSx}>DANFE</TableCell>
                     <TableCell sx={headerSx}>ITEM</TableCell>
@@ -300,44 +301,6 @@ export function ConmedComrjPlanilhaPreview({
                                 <>
                                   <TableCell
                                     rowSpan={span}
-                                    sx={{
-                                      ...cellSx,
-                                      textAlign: 'center',
-                                      bgcolor: pacEditing ? EXCEL_SHEET.selectedBg : '#fbfcfe',
-                                    }}
-                                  >
-                                    <Typography sx={{ fontWeight: 800, fontSize: 12 }}>
-                                      {pacIndex + 1}
-                                    </Typography>
-                                    <Box
-                                      sx={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        gap: 0.25,
-                                        mt: 0.25,
-                                      }}
-                                    >
-                                      <IconButton
-                                        size="small"
-                                        aria-label={`Editar paciente ${pacIndex + 1}`}
-                                        onClick={() => onEditPaciente?.(paciente.id)}
-                                        sx={{ p: 0.3 }}
-                                      >
-                                        <EditIcon sx={{ fontSize: 15 }} />
-                                      </IconButton>
-                                      <IconButton
-                                        size="small"
-                                        color="error"
-                                        aria-label={`Excluir paciente ${pacIndex + 1}`}
-                                        onClick={() => onDeletePaciente?.(paciente.id)}
-                                        sx={{ p: 0.3 }}
-                                      >
-                                        <DeleteIcon sx={{ fontSize: 15 }} />
-                                      </IconButton>
-                                    </Box>
-                                  </TableCell>
-                                  <TableCell
-                                    rowSpan={span}
                                     sx={{ ...cellSx, fontWeight: 600, bgcolor: '#fbfcfe' }}
                                   >
                                     {dash(paciente.nip)}
@@ -367,14 +330,38 @@ export function ConmedComrjPlanilhaPreview({
                                   >
                                     {dash(paciente.procedimento)}
                                   </TableCell>
+                                  <TableCell
+                                    rowSpan={span}
+                                    sx={{
+                                      ...cellSx,
+                                      textAlign: 'center',
+                                      whiteSpace: 'nowrap',
+                                      bgcolor: pacEditing ? EXCEL_SHEET.selectedBg : '#fbfcfe',
+                                    }}
+                                  >
+                                    <IconButton
+                                      size="small"
+                                      aria-label={`Editar paciente ${pacIndex + 1}`}
+                                      onClick={() => onEditPaciente?.(paciente.id)}
+                                      sx={{ p: 0.35 }}
+                                    >
+                                      <EditIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                    <IconButton
+                                      size="small"
+                                      color="error"
+                                      aria-label={`Excluir paciente ${pacIndex + 1}`}
+                                      onClick={() => onDeletePaciente?.(paciente.id)}
+                                      sx={{ p: 0.35 }}
+                                    >
+                                      <DeleteIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </TableCell>
                                 </>
                               ) : null}
 
                               {mat ? (
                                 <>
-                                  <TableCell sx={{ ...cellSx, fontWeight: 700, width: 36 }}>
-                                    {matIndex + 1}
-                                  </TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.mapaDaSala)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.danfe)}</TableCell>
                                   <TableCell sx={cellSx}>{dash(mat.item)}</TableCell>
