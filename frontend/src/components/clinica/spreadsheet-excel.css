@@ -45,6 +45,60 @@
   text-overflow: clip;
 }
 
+/* Controle SOLEMP / visualização: quebra de linha para mostrar todo o conteúdo */
+.excel-sheet-grid.excel-sheet-wrap .MuiTableCell-root {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.excel-sheet-grid.excel-sheet-wrap .excel-col-header,
+.excel-sheet-grid.excel-sheet-wrap .excel-group-header {
+  white-space: normal;
+  vertical-align: middle;
+}
+
+.excel-sheet-grid.excel-sheet-wrap .excel-cell-wrap {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.excel-sheet-grid.excel-sheet-wrap .excel-editable-textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  resize: vertical;
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0;
+  display: block;
+  box-sizing: border-box;
+  color: #000;
+}
+
+.excel-sheet-grid.excel-sheet-wrap .excel-editable-textarea:focus {
+  outline: 2px solid #217346;
+  outline-offset: -2px;
+  background: #fff;
+}
+
 .excel-sheet-grid .MuiTableHead .MuiTableCell-root {
   background: var(--excel-header-bg);
   font-weight: 700;

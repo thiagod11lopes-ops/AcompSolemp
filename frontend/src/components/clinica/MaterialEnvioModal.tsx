@@ -35,7 +35,6 @@ import {
   downloadControleSolempOds,
   getControleSolempOdsFileName,
 } from '@/utils/controleSolempOdsExport'
-import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
 
@@ -210,7 +209,10 @@ export function MaterialEnvioModal({
             bgcolor: EXCEL_SHEET.sheetBg,
           }}
         >
-          <TableContainer className="excel-sheet-grid" sx={{ maxHeight: '100%', height: '100%' }}>
+          <TableContainer
+            className="excel-sheet-grid excel-sheet-wrap"
+            sx={{ maxHeight: '100%', height: '100%' }}
+          >
             <Table
               stickyHeader
               size="small"
@@ -272,29 +274,26 @@ export function MaterialEnvioModal({
                       >
                         {readOnly ? (
                           <Box
-                            component="span"
-                            className="excel-cell-readonly"
+                            component="div"
+                            className="excel-cell-wrap"
                             sx={{
-                              display: 'block',
-                              px: 0.75,
-                              py: 0.35,
                               fontFamily: EXCEL_SHEET.fontFamily,
                               fontSize: EXCEL_SHEET.fontSize,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              color: EXCEL_SHEET.text,
                             }}
                             title={linha[col.key]}
                           >
-                            {linha[col.key] || ' '}
+                            {linha[col.key] || '\u00A0'}
                           </Box>
                         ) : (
-                          <SpreadsheetEditableCell
-                            rowId={linha.id}
-                            field={col.key}
+                          <textarea
+                            className="excel-editable-textarea"
                             value={linha[col.key]}
-                            onCellChange={handleLinhaChange}
+                            rows={Math.min(6, Math.max(2, Math.ceil((linha[col.key]?.length || 0) / 28)))}
+                            onChange={(e) => handleLinhaChange(linha.id, col.key, e.target.value)}
                             onContextMenu={handleContextMenu}
+                            aria-label={col.label}
+                            disabled={busy}
                           />
                         )}
                       </TableCell>
