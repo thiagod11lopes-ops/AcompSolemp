@@ -183,7 +183,7 @@ export function ConmedComrjPlanilhaPreview({
           <Box sx={{ display: 'grid', gap: 2, p: 1.5 }}>
             {/* Planilha do processo — largura própria, sem acompanhar a de baixo */}
             <Box
-              className="excel-sheet-grid excel-sheet-wrap"
+              className="excel-sheet-grid"
               sx={{
                 width: 'fit-content',
                 maxWidth: '100%',
@@ -191,6 +191,9 @@ export function ConmedComrjPlanilhaPreview({
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
+                '& .MuiTableCell-root': {
+                  verticalAlign: 'middle',
+                },
               }}
             >
               <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
@@ -224,7 +227,7 @@ export function ConmedComrjPlanilhaPreview({
 
             {/* Planilha paciente + material — largura pelo conteúdo, como a do processo */}
             <Box
-              className="excel-sheet-grid excel-sheet-wrap"
+              className="excel-sheet-grid"
               sx={{
                 width: 'fit-content',
                 maxWidth: '100%',
@@ -232,6 +235,9 @@ export function ConmedComrjPlanilhaPreview({
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
+                '& .MuiTableCell-root': {
+                  verticalAlign: 'middle',
+                },
               }}
             >
               <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
