@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
+import { ConsumoMaterialConsignadoForm } from '@/components/clinica/ConsumoMaterialConsignadoForm'
 import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
@@ -15,9 +16,14 @@ import {
 import type { ConmedComrjFormData, PlanilhaLivreAba } from '@/types'
 import { FIXED_PLANILHAS } from '@/utils/planilhasFixas'
 import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
+import {
+  normalizeConsumoMaterialRows,
+  type ConsumoMaterialRow,
+} from '@/utils/consumoMaterialOds'
 import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 
 const CONMED_ABA_ID = 'conmed-comrj'
+const CONSUMO_ABA_ID = 'consumo-material-consignado'
 
 export default function ClinicaNovoPedidoPage() {
   const { user } = useClinicaAuth()
@@ -26,13 +32,16 @@ export default function ClinicaNovoPedidoPage() {
   const [abas, setAbas] = useState<PlanilhaLivreAba[]>([])
   const [abaAtivaId, setAbaAtivaId] = useState<string | null>(FIXED_PLANILHAS[0].id)
   const [conmedForm, setConmedForm] = useState<ConmedComrjFormData>(EMPTY_CONMED_COMRJ_FORM)
+  const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const hydrated = useRef(false)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
   const conmedFormRef = useRef(conmedForm)
+  const consumoRowsRef = useRef(consumoRows)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
   conmedFormRef.current = conmedForm
+  consumoRowsRef.current = consumoRows
 
   useEffect(() => {
     if (!clinicaId || hydrated.current) return
@@ -41,6 +50,7 @@ export default function ClinicaNovoPedidoPage() {
     setAbas(state.abas)
     setAbaAtivaId(state.abaAtivaId ?? FIXED_PLANILHAS[0].id)
     setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
+    setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
   }, [clinicaId])
 
   const persist = useCallback(
@@ -48,12 +58,14 @@ export default function ClinicaNovoPedidoPage() {
       nextAbas: PlanilhaLivreAba[],
       nextAtiva: string | null,
       nextConmed: ConmedComrjFormData = conmedFormRef.current,
+      nextConsumo: ConsumoMaterialRow[] = consumoRowsRef.current,
     ) => {
       if (!clinicaId) return
       clinicaPlanilhasLivresService.saveState(clinicaId, {
         abas: nextAbas,
         abaAtivaId: nextAtiva,
         conmedComrj: nextConmed,
+        consumoMaterialConsignado: nextConsumo,
       })
     },
     [clinicaId],
@@ -67,7 +79,7 @@ export default function ClinicaNovoPedidoPage() {
   const handleSheetChange = useCallback(
     (sheet: PlanilhaSheetData) => {
       const ativaId = abaAtivaIdRef.current
-      if (!ativaId || ativaId === CONMED_ABA_ID) return
+      if (!ativaId || ativaId === CONMED_ABA_ID || ativaId === CONSUMO_ABA_ID) return
       setAbas((prev) => {
         const next = prev.map((aba) =>
           aba.id === ativaId ? { ...aba, sheet, grid: undefined } : aba,
@@ -82,7 +94,15 @@ export default function ClinicaNovoPedidoPage() {
   const handleConmedChange = useCallback(
     (next: ConmedComrjFormData) => {
       setConmedForm(next)
-      persist(abasRef.current, abaAtivaIdRef.current, next)
+      persist(abasRef.current, abaAtivaIdRef.current, next, consumoRowsRef.current)
+    },
+    [persist],
+  )
+
+  const handleConsumoChange = useCallback(
+    (next: ConsumoMaterialRow[]) => {
+      setConsumoRows(next)
+      persist(abasRef.current, abaAtivaIdRef.current, conmedFormRef.current, next)
     },
     [persist],
   )
@@ -129,7 +149,9 @@ export default function ClinicaNovoPedidoPage() {
         </Box>
       </Box>
 
-      {abaAtivaId === CONMED_ABA_ID ? (
+      {abaAtivaId === CONSUMO_ABA_ID ? (
+        <ConsumoMaterialConsignadoForm value={consumoRows} onChange={handleConsumoChange} />
+      ) : abaAtivaId === CONMED_ABA_ID ? (
         <ConmedComrjForm value={conmedForm} onChange={handleConmedChange} />
       ) : abaAtiva ? (
         <PlanilhaBrancaSpreadsheet

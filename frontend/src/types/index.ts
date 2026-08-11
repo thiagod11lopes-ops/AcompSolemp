@@ -450,6 +450,8 @@ export interface ClinicaPlanilhasLivresState {
   abas: PlanilhaLivreAba[]
   abaAtivaId: string | null
   conmedComrj?: ConmedComrjFormData
+  /** Lançamentos tipados da aba Consumo Material Consignado */
+  consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
 }
 
 export interface PedidoPlanilhaEnvioState {

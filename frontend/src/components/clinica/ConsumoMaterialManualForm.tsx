@@ -27,6 +27,7 @@ import {
   buildConsumoRowFromManual,
   CONSUMO_MATERIAL_HEADERS,
   CONSUMO_MEDICAMENTO_PME_HEADERS,
+  consumoMaterialRowToManual,
   EMPTY_MANUAL_ROW,
   formatValorBrasileiro,
   MANUAL_ROW_EXAMPLE,
@@ -164,12 +165,18 @@ interface ConsumoMaterialManualFormProps {
   nextNumero: string
   onAddRow: (row: ConsumoMaterialRow) => void
   modoMedicamento?: boolean
+  editingRow?: ConsumoMaterialRow | null
+  onCancelEdit?: () => void
+  compact?: boolean
 }
 
 export function ConsumoMaterialManualForm({
   nextNumero,
   onAddRow,
   modoMedicamento = false,
+  editingRow = null,
+  onCancelEdit,
+  compact = false,
 }: ConsumoMaterialManualFormProps) {
   const schema = modoMedicamento ? manualSchemaMedicamento : manualSchemaClinica
   const headers = modoMedicamento ? CONSUMO_MEDICAMENTO_PME_HEADERS : CONSUMO_MATERIAL_HEADERS
@@ -192,7 +199,9 @@ export function ConsumoMaterialManualForm({
     formState: { errors },
   } = useForm<ManualRowFormData>({
     resolver: zodResolver(schema),
-    defaultValues: { ...EMPTY_MANUAL_ROW, numero: nextNumero },
+    defaultValues: editingRow
+      ? consumoMaterialRowToManual(editingRow)
+      : { ...EMPTY_MANUAL_ROW, numero: nextNumero },
   })
 
   const formValues = useWatch({ control })
@@ -200,14 +209,22 @@ export function ConsumoMaterialManualForm({
   const valorUnitarioWatch = formValues.valorUnitario
 
   useEffect(() => {
+    if (editingRow) {
+      const manual = consumoMaterialRowToManual(editingRow)
+      reset(manual)
+      setItemPmeInput(manual.itemPme)
+      setItemPmeFocused(false)
+      return
+    }
     setValue('numero', nextNumero)
-  }, [nextNumero, setValue])
+  }, [editingRow, nextNumero, reset, setValue])
 
   useEffect(() => {
+    if (editingRow) return
     reset({ ...EMPTY_MANUAL_ROW, numero: nextNumero })
     setItemPmeInput('')
     setItemPmeFocused(false)
-  }, [modoMedicamento, nextNumero, reset])
+  }, [modoMedicamento, nextNumero, reset, editingRow])
 
   useEffect(() => {
     if (!modoMedicamento) return
@@ -239,8 +256,13 @@ export function ConsumoMaterialManualForm({
   }
 
   const onSubmit = (data: ManualRowFormData) => {
-    const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const id =
+      editingRow?.id ?? `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     onAddRow(buildConsumoRowFromManual(data, id))
+    if (editingRow) {
+      onCancelEdit?.()
+      return
+    }
     const proximoNumero = String((parseInt(data.numero, 10) || 0) + 1)
     reset({ ...EMPTY_MANUAL_ROW, numero: proximoNumero })
     setItemPmeInput('')
@@ -277,33 +299,48 @@ export function ConsumoMaterialManualForm({
 
   return (
     <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="body1" color="text.secondary">
-          {modoMedicamento
-            ? 'Preencha os campos do Modelo IHM — PME e adicione cada lançamento à tabela abaixo.'
-            : 'Preencha os campos da planilha e adicione cada lançamento à tabela abaixo.'}
-        </Typography>
-        <Tooltip title="Preencher com dados de exemplo">
-          <IconButton color="primary" onClick={preencherExemplo} aria-label="Preencher exemplo">
-            <AutoAwesomeIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
+      {!compact ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="body1" color="text.secondary">
+            {modoMedicamento
+              ? 'Preencha os campos do Modelo IHM — PME e adicione cada lançamento à tabela abaixo.'
+              : 'Preencha os campos da planilha e adicione cada lançamento à tabela abaixo.'}
+          </Typography>
+          <Tooltip title="Preencher com dados de exemplo">
+            <IconButton color="primary" onClick={preencherExemplo} aria-label="Preencher exemplo">
+              <AutoAwesomeIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+          <Tooltip title="Preencher com dados de exemplo">
+            <IconButton
+              color="primary"
+              size="small"
+              onClick={preencherExemplo}
+              aria-label="Preencher exemplo"
+            >
+              <AutoAwesomeIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
 
-      <Box sx={{ display: 'grid', gap: 3 }}>
+      <Box sx={{ display: 'grid', gap: compact ? 1.5 : 3 }}>
         {fieldsByGroup.map(({ group, fields }) => {
           const Icon = GROUP_ICONS[group]
           return (
-            <Card key={group} variant="outlined" sx={{ borderRadius: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-                  <Icon color="primary" />
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Card key={group} variant="outlined" sx={{ borderRadius: compact ? 2 : 3 }}>
+              <CardContent sx={{ p: compact ? 1.5 : 3, '&:last-child': { pb: compact ? 1.5 : 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: compact ? 1.5 : 3 }}>
+                  <Icon color="primary" fontSize={compact ? 'small' : 'medium'} />
+                  <Typography variant={compact ? 'subtitle2' : 'h6'} sx={{ fontWeight: 700 }}>
                     {GROUP_TITLES[group]}
                   </Typography>
                 </Box>
 
-                <Grid container spacing={2}>
+                <Grid container spacing={compact ? 1.25 : 2}>
                   {fields.map((col) => {
                     const fieldKey = col.key as keyof ManualRowFormData
                     const isNip = NIP_FIELDS.has(fieldKey)
@@ -320,12 +357,20 @@ export function ConsumoMaterialManualForm({
                         key={col.key}
                         size={{
                           xs: 12,
-                          sm: isMultiline || isItemPme
+                          sm: compact
                             ? 12
-                            : col.key === 'numero' || col.key === 'et' || col.key === 'qtd'
-                              ? 4
-                              : 6,
-                          md: isMultiline || isItemPme ? 12 : wideField ? 8 : 4,
+                            : isMultiline || isItemPme
+                              ? 12
+                              : col.key === 'numero' || col.key === 'et' || col.key === 'qtd'
+                                ? 4
+                                : 6,
+                          md: compact
+                            ? 12
+                            : isMultiline || isItemPme
+                              ? 12
+                              : wideField
+                                ? 8
+                                : 4,
                         }}
                       >
                         {isItemPme ? (
@@ -506,15 +551,21 @@ export function ConsumoMaterialManualForm({
         })}
       </Box>
 
-      <Button
-        type="submit"
-        variant="contained"
-        size="large"
-        startIcon={<AddIcon />}
-        sx={{ mt: 3 }}
-      >
-        Adicionar à planilha
-      </Button>
+      <Box sx={{ display: 'flex', gap: 1, mt: compact ? 2 : 3, flexWrap: 'wrap' }}>
+        {editingRow && onCancelEdit ? (
+          <Button type="button" variant="outlined" size={compact ? 'small' : 'medium'} onClick={onCancelEdit}>
+            Cancelar edição
+          </Button>
+        ) : null}
+        <Button
+          type="submit"
+          variant="contained"
+          size={compact ? 'medium' : 'large'}
+          startIcon={<AddIcon />}
+        >
+          {editingRow ? 'Salvar lançamento' : 'Adicionar à planilha'}
+        </Button>
+      </Box>
     </Box>
   )
 }

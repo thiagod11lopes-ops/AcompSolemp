@@ -2,6 +2,7 @@ import { loadAppData, saveAppData } from '@/mocks/seed'
 import type { ClinicaPlanilhasLivresState } from '@/types'
 import { ensureFixedPlanilhas } from '@/utils/planilhasFixas'
 import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
+import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
@@ -15,6 +16,7 @@ function normalizeState(state: ClinicaPlanilhasLivresState | undefined): Clinica
     abas,
     abaAtivaId,
     conmedComrj: normalizeConmedComrjForm(state?.conmedComrj),
+    consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
   }
 }
 

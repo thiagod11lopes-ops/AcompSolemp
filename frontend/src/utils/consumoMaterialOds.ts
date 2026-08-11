@@ -858,6 +858,55 @@ export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): 
   }
 }
 
+export function consumoMaterialRowToManual(row: ConsumoMaterialRow): ManualRowFormData {
+  return {
+    numero: row.numero ?? '',
+    postoGrad: row.postoGrad ?? '',
+    nip: row.nip ?? '',
+    nome: row.nome ?? '',
+    iniciais: row.iniciais ?? '',
+    data: row.data ?? '',
+    idade: row.idade ?? '',
+    diagnostico: row.diagnostico ?? '',
+    cid: row.cid ?? '',
+    procedimento: row.procedimento ?? '',
+    materiais: row.materiais ?? '',
+    et: row.et ?? '',
+    fornecedor: row.fornecedor ?? '',
+    cirurgiao: row.cirurgiao ?? '',
+    mapaSala: row.mapaSala ?? '',
+    mapa: row.mapa ?? '',
+    ref: row.ref ?? '',
+    safin: row.safin ?? '',
+    empenho: row.empenho ?? '',
+    danfe: row.danfe ?? '',
+    valor: row.valor ?? '',
+    ata: row.ata ?? '',
+    itemPme: row.itemPme ?? '',
+    qtd: row.qtd ?? '',
+    valorUnitario: row.valorUnitario ?? '',
+    nipTitular: row.nipTitular ?? '',
+    vinculo: row.vinculo ?? '',
+    pctIndenizar: row.pctIndenizar ?? '',
+    om: row.om ?? '',
+    unidadeFornecimento: row.unidadeFornecimento ?? '',
+    quantidadeAdquirida: row.quantidadeAdquirida ?? '',
+    maneiraDispensacao: row.maneiraDispensacao ?? '',
+  }
+}
+
+export function normalizeConsumoMaterialRows(
+  rows: ConsumoMaterialRow[] | undefined,
+): ConsumoMaterialRow[] {
+  if (!Array.isArray(rows)) return []
+  return rows
+    .filter((row) => row && typeof row === 'object')
+    .map((row, index) => ({
+      ...buildConsumoRowFromManual(consumoMaterialRowToManual(row as ConsumoMaterialRow), row.id || `consumo-${index + 1}`),
+      numero: row.numero || String(index + 1),
+    }))
+}
+
 export const MANUAL_ROW_EXAMPLE: ManualRowFormData = {
   numero: '1',
   postoGrad: 'MN',
