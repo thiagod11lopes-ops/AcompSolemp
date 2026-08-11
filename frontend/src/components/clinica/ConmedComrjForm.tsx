@@ -8,10 +8,15 @@ import {
   Typography,
   alpha,
 } from '@mui/material'
-import type { ConmedComrjFormData, ConmedComrjMaterialItem } from '@/types'
+import type {
+  ConmedComrjFormData,
+  ConmedComrjMaterialItem,
+  ConmedComrjPaciente,
+} from '@/types'
 import { ConmedComrjPlanilhaPreview } from '@/components/clinica/ConmedComrjPlanilhaPreview'
 import {
   createEmptyConmedMaterialItem,
+  createEmptyConmedPaciente,
   formatConmedData,
   formatConmedMoeda,
   formatConmedNebPi,
@@ -23,8 +28,9 @@ import {
   formatConmedQuantidade,
   formatConmedUppercase,
   materialHasContent,
+  pacienteHasContent,
   withRecalculatedMaterialTotal,
-  withRecalculatedMateriais,
+  withRecalculatedPaciente,
 } from '@/utils/conmedComrjForm'
 
 interface ConmedComrjFormProps {
@@ -36,7 +42,6 @@ const compactFieldSx = {
   '& .MuiInputBase-root': { fontSize: '0.78rem' },
   '& .MuiInputBase-input': { fontSize: '0.78rem', py: 0.65 },
   '& .MuiInputLabel-root': { fontSize: '0.78rem' },
-  '& .MuiFormHelperText-root': { fontSize: '0.68rem', mt: 0.25 },
 } as const
 
 const multilineFieldSx = {
@@ -55,14 +60,30 @@ const multilineFieldSx = {
   },
 } as const
 
+function clonePaciente(p: ConmedComrjPaciente): ConmedComrjPaciente {
+  return {
+    ...p,
+    materiais: p.materiais.map((m) => ({ ...m })),
+  }
+}
+
 function cloneMaterial(item: ConmedComrjMaterialItem): ConmedComrjMaterialItem {
   return { ...item }
 }
 
 export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
-  const [draft, setDraft] = useState<ConmedComrjMaterialItem>(() => createEmptyConmedMaterialItem())
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const editSnapshotRef = useRef<ConmedComrjMaterialItem | null>(null)
+  const [patientDraft, setPatientDraft] = useState<ConmedComrjPaciente>(() =>
+    createEmptyConmedPaciente(),
+  )
+  const [editingPacienteId, setEditingPacienteId] = useState<string | null>(null)
+  const patientSnapshotRef = useRef<ConmedComrjPaciente | null>(null)
+
+  const [materialDraft, setMaterialDraft] = useState<ConmedComrjMaterialItem>(() =>
+    createEmptyConmedMaterialItem(),
+  )
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null)
+  const materialSnapshotRef = useRef<ConmedComrjMaterialItem | null>(null)
+  const patientFormRef = useRef<HTMLDivElement | null>(null)
   const materialFormRef = useRef<HTMLDivElement | null>(null)
 
   const setField = <K extends keyof ConmedComrjFormData>(
@@ -72,74 +93,173 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
     onChange({ ...value, [key]: fieldValue })
   }
 
-  const persistMateriais = (materiais: ConmedComrjMaterialItem[]) => {
-    onChange({ ...value, ...withRecalculatedMateriais(materiais) })
+  const persistPacientes = (pacientes: ConmedComrjPaciente[]) => {
+    onChange({
+      ...value,
+      pacientes: pacientes.map(withRecalculatedPaciente),
+    })
   }
 
-  const updateDraft = (patch: Partial<Omit<ConmedComrjMaterialItem, 'id' | 'valorTotal'>>) => {
-    const next = withRecalculatedMaterialTotal({ ...draft, ...patch })
-    setDraft(next)
-    if (editingId) {
-      persistMateriais(
-        value.materiais.map((item) => (item.id === editingId ? { ...next, id: editingId } : item)),
+  const syncPatientDraftToList = (nextDraft: ConmedComrjPaciente) => {
+    const ready = withRecalculatedPaciente(nextDraft)
+    setPatientDraft(ready)
+    if (!editingPacienteId) return
+    persistPacientes(
+      value.pacientes.map((p) => (p.id === editingPacienteId ? { ...ready, id: editingPacienteId } : p)),
+    )
+  }
+
+  const updatePatientDraft = (
+    patch: Partial<Omit<ConmedComrjPaciente, 'id' | 'materiais' | 'valorPorPaciente'>>,
+  ) => {
+    syncPatientDraftToList({ ...patientDraft, ...patch })
+  }
+
+  const resetPatientForm = () => {
+    setPatientDraft(createEmptyConmedPaciente())
+    setEditingPacienteId(null)
+    patientSnapshotRef.current = null
+    setMaterialDraft(createEmptyConmedMaterialItem())
+    setEditingMaterialId(null)
+    materialSnapshotRef.current = null
+  }
+
+  const handleAdicionarPaciente = () => {
+    const ready = withRecalculatedPaciente(patientDraft)
+    if (editingPacienteId) {
+      persistPacientes(
+        value.pacientes.map((p) =>
+          p.id === editingPacienteId ? { ...ready, id: editingPacienteId } : p,
+        ),
       )
-    }
-  }
-
-  const resetDraftForm = () => {
-    setDraft(createEmptyConmedMaterialItem())
-    setEditingId(null)
-    editSnapshotRef.current = null
-  }
-
-  const handleAdicionar = () => {
-    const ready = withRecalculatedMaterialTotal(draft)
-
-    if (editingId) {
-      const next = value.materiais.map((item) =>
-        item.id === editingId ? { ...ready, id: editingId } : item,
-      )
-      persistMateriais(next)
-      resetDraftForm()
+      resetPatientForm()
       return
     }
-
-    if (!materialHasContent(ready)) {
-      resetDraftForm()
+    if (!pacienteHasContent(ready)) {
+      resetPatientForm()
       return
     }
-
-    persistMateriais([...value.materiais, ready])
-    resetDraftForm()
+    persistPacientes([...value.pacientes, ready])
+    resetPatientForm()
   }
 
-  const handleEditMaterial = (id: string) => {
-    const found = value.materiais.find((item) => item.id === id)
+  const handleEditPaciente = (id: string) => {
+    const found = value.pacientes.find((p) => p.id === id)
     if (!found) return
-    editSnapshotRef.current = cloneMaterial(found)
-    setEditingId(id)
-    setDraft(cloneMaterial(found))
+    patientSnapshotRef.current = clonePaciente(found)
+    setEditingPacienteId(id)
+    setPatientDraft(clonePaciente(found))
+    setMaterialDraft(createEmptyConmedMaterialItem())
+    setEditingMaterialId(null)
+    materialSnapshotRef.current = null
+    requestAnimationFrame(() => {
+      patientFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+  }
+
+  const handleDeletePaciente = (id: string) => {
+    persistPacientes(value.pacientes.filter((p) => p.id !== id))
+    if (editingPacienteId === id) resetPatientForm()
+  }
+
+  const handleCancelPaciente = () => {
+    if (editingPacienteId && patientSnapshotRef.current) {
+      persistPacientes(
+        value.pacientes.map((p) =>
+          p.id === editingPacienteId ? clonePaciente(patientSnapshotRef.current!) : p,
+        ),
+      )
+    }
+    resetPatientForm()
+  }
+
+  const applyMateriaisToPatientDraft = (materiais: ConmedComrjMaterialItem[]) => {
+    syncPatientDraftToList(withRecalculatedPaciente({ ...patientDraft, materiais }))
+  }
+
+  const updateMaterialDraft = (
+    patch: Partial<Omit<ConmedComrjMaterialItem, 'id' | 'valorTotal'>>,
+  ) => {
+    const next = withRecalculatedMaterialTotal({ ...materialDraft, ...patch })
+    setMaterialDraft(next)
+    if (editingMaterialId) {
+      const materiais = patientDraft.materiais.map((item) =>
+        item.id === editingMaterialId ? { ...next, id: editingMaterialId } : item,
+      )
+      applyMateriaisToPatientDraft(materiais)
+    }
+  }
+
+  const resetMaterialForm = () => {
+    setMaterialDraft(createEmptyConmedMaterialItem())
+    setEditingMaterialId(null)
+    materialSnapshotRef.current = null
+  }
+
+  const handleAdicionarMaterial = () => {
+    const ready = withRecalculatedMaterialTotal(materialDraft)
+    if (editingMaterialId) {
+      const materiais = patientDraft.materiais.map((item) =>
+        item.id === editingMaterialId ? { ...ready, id: editingMaterialId } : item,
+      )
+      applyMateriaisToPatientDraft(materiais)
+      resetMaterialForm()
+      return
+    }
+    if (!materialHasContent(ready)) {
+      resetMaterialForm()
+      return
+    }
+    applyMateriaisToPatientDraft([...patientDraft.materiais, ready])
+    resetMaterialForm()
+  }
+
+  const handleEditMaterial = (pacienteId: string, materialId: string) => {
+    const paciente = value.pacientes.find((p) => p.id === pacienteId)
+    const mat = paciente?.materiais.find((m) => m.id === materialId)
+    if (!paciente || !mat) return
+
+    if (editingPacienteId !== pacienteId) {
+      patientSnapshotRef.current = clonePaciente(paciente)
+      setEditingPacienteId(pacienteId)
+      setPatientDraft(clonePaciente(paciente))
+    }
+
+    materialSnapshotRef.current = cloneMaterial(mat)
+    setEditingMaterialId(materialId)
+    setMaterialDraft(cloneMaterial(mat))
     requestAnimationFrame(() => {
       materialFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     })
   }
 
-  const handleDeleteMaterial = (id: string) => {
-    persistMateriais(value.materiais.filter((item) => item.id !== id))
-    if (editingId === id) {
-      resetDraftForm()
+  const handleDeleteMaterial = (pacienteId: string, materialId: string) => {
+    if (editingPacienteId === pacienteId) {
+      applyMateriaisToPatientDraft(patientDraft.materiais.filter((m) => m.id !== materialId))
+      if (editingMaterialId === materialId) resetMaterialForm()
+      return
     }
+    persistPacientes(
+      value.pacientes.map((p) =>
+        p.id === pacienteId
+          ? withRecalculatedPaciente({
+              ...p,
+              materiais: p.materiais.filter((m) => m.id !== materialId),
+            })
+          : p,
+      ),
+    )
   }
 
-  const handleCancelEdit = () => {
-    if (editingId && editSnapshotRef.current) {
-      persistMateriais(
-        value.materiais.map((item) =>
-          item.id === editingId ? cloneMaterial(editSnapshotRef.current!) : item,
+  const handleCancelMaterial = () => {
+    if (editingMaterialId && materialSnapshotRef.current) {
+      applyMateriaisToPatientDraft(
+        patientDraft.materiais.map((item) =>
+          item.id === editingMaterialId ? cloneMaterial(materialSnapshotRef.current!) : item,
         ),
       )
     }
-    resetDraftForm()
+    resetMaterialForm()
   }
 
   return (
@@ -174,7 +294,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
             Entrada — CONMED COMRJ
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Cada Nº/processo forma uma tabela. Ao preencher, a planilha unificada atualiza ao vivo.
+            Adicione pacientes e, em cada um, os materiais utilizados. A planilha atualiza ao vivo.
           </Typography>
         </Box>
 
@@ -215,7 +335,6 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               label="PROCESSO"
               value={value.processo}
               onChange={(e) => setField('processo', formatConmedProcesso(e.target.value))}
-              placeholder="Somente números"
               size="small"
               fullWidth
               inputMode="numeric"
@@ -225,7 +344,6 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               label="Pregão/TAD"
               value={value.pregaoTad}
               onChange={(e) => setField('pregaoTad', formatConmedPregaoTad(e.target.value))}
-              placeholder="58/2025 COMRJ"
               size="small"
               fullWidth
               sx={compactFieldSx}
@@ -242,7 +360,6 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               label="FORNECEDOR"
               value={value.fornecedor}
               onChange={(e) => setField('fornecedor', e.target.value)}
-              placeholder="CONMED –  23.351.545/0003-00"
               size="small"
               fullWidth
               sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
@@ -250,69 +367,124 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
           </Box>
         </Box>
 
-        <Box>
-          <Typography
-            variant="overline"
-            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-          >
-            Dados do paciente
-          </Typography>
+        <Box ref={patientFormRef}>
           <Box
             sx={{
-              mt: 0.5,
-              display: 'grid',
-              gap: 0.85,
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              mb: 0.5,
+              flexWrap: 'wrap',
             }}
           >
-            <TextField
-              label="NIP"
-              value={value.pacienteNip}
-              onChange={(e) => setField('pacienteNip', formatConmedPacienteNip(e.target.value))}
-              placeholder="00.0000.00"
-              size="small"
-              fullWidth
-              inputMode="numeric"
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="INICIAIS"
-              value={value.pacienteIniciais}
-              onChange={(e) => setField('pacienteIniciais', formatConmedUppercase(e.target.value))}
-              placeholder="ABC"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-              slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
-            />
-            <TextField
-              label="Data"
-              value={value.pacienteData}
-              onChange={(e) => setField('pacienteData', formatConmedData(e.target.value))}
-              placeholder="dd/mm/aaaa"
-              size="small"
-              fullWidth
-              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
-            <TextField
-              label="PROCEDIMENTO"
-              value={value.pacienteProcedimento}
-              onChange={(e) =>
-                setField('pacienteProcedimento', formatConmedUppercase(e.target.value))
-              }
-              size="small"
-              fullWidth
-              multiline
-              minRows={3}
-              maxRows={8}
-              sx={multilineFieldSx}
-              slotProps={{
-                htmlInput: {
-                  style: { textTransform: 'uppercase', resize: 'vertical' },
-                },
-              }}
-            />
+            <Typography
+              variant="overline"
+              sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+            >
+              Dados do paciente
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              {editingPacienteId ? (
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={handleCancelPaciente}
+                  sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
+                >
+                  Cancelar
+                </Button>
+              ) : null}
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                onClick={handleAdicionarPaciente}
+                sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
+              >
+                {editingPacienteId ? 'Salvar paciente' : 'Adicionar paciente'}
+              </Button>
+            </Box>
           </Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mb: 0.75, fontSize: '0.68rem' }}
+          >
+            {editingPacienteId
+              ? 'Editando paciente. Materiais abaixo ficam vinculados a este paciente.'
+              : 'Preencha o paciente (e materiais) e clique em Adicionar. O formulário limpa para o próximo.'}
+          </Typography>
+
+          <Paper
+            variant="outlined"
+            key={editingPacienteId ?? `new-${patientDraft.id}`}
+            sx={{ p: 1, display: 'grid', gap: 0.75, bgcolor: 'background.paper' }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>
+              {editingPacienteId
+                ? `Editando paciente ${
+                    value.pacientes.findIndex((p) => p.id === editingPacienteId) + 1
+                  }`
+                : 'Novo paciente'}
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 0.75,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              }}
+            >
+              <TextField
+                label="NIP"
+                value={patientDraft.nip}
+                onChange={(e) =>
+                  updatePatientDraft({ nip: formatConmedPacienteNip(e.target.value) })
+                }
+                placeholder="00.0000.00"
+                size="small"
+                fullWidth
+                inputMode="numeric"
+                sx={compactFieldSx}
+              />
+              <TextField
+                label="INICIAIS"
+                value={patientDraft.iniciais}
+                onChange={(e) =>
+                  updatePatientDraft({ iniciais: formatConmedUppercase(e.target.value) })
+                }
+                size="small"
+                fullWidth
+                sx={compactFieldSx}
+                slotProps={{ htmlInput: { style: { textTransform: 'uppercase' } } }}
+              />
+              <TextField
+                label="Data"
+                value={patientDraft.data}
+                onChange={(e) => updatePatientDraft({ data: formatConmedData(e.target.value) })}
+                placeholder="dd/mm/aaaa"
+                size="small"
+                fullWidth
+                sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
+              />
+              <TextField
+                label="PROCEDIMENTO"
+                value={patientDraft.procedimento}
+                onChange={(e) =>
+                  updatePatientDraft({ procedimento: formatConmedUppercase(e.target.value) })
+                }
+                size="small"
+                fullWidth
+                multiline
+                minRows={3}
+                maxRows={8}
+                sx={multilineFieldSx}
+                slotProps={{
+                  htmlInput: { style: { textTransform: 'uppercase', resize: 'vertical' } },
+                }}
+              />
+            </Box>
+          </Paper>
         </Box>
 
         <Box ref={materialFormRef}>
@@ -333,11 +505,11 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               Materiais do paciente
             </Typography>
             <Box sx={{ display: 'flex', gap: 0.75 }}>
-              {editingId ? (
+              {editingMaterialId ? (
                 <Button
                   size="small"
                   variant="text"
-                  onClick={handleCancelEdit}
+                  onClick={handleCancelMaterial}
                   sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
                 >
                   Cancelar
@@ -347,35 +519,32 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                 size="small"
                 variant="outlined"
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                onClick={handleAdicionar}
+                onClick={handleAdicionarMaterial}
                 sx={{ fontSize: '0.72rem', py: 0.25, px: 1, minHeight: 28 }}
               >
-                {editingId ? 'Salvar' : 'Adicionar'}
+                {editingMaterialId ? 'Salvar material' : 'Adicionar material'}
               </Button>
             </Box>
           </Box>
-
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ display: 'block', mb: 0.75, fontSize: '0.68rem' }}
           >
-            {editingId
-              ? 'Editando material da planilha. Salvar grava e limpa o formulário.'
-              : 'Preencha o material e clique em Adicionar. O formulário limpa para o próximo.'}
+            Materiais vão para o paciente do formulário acima
+            {patientDraft.materiais.length
+              ? ` (${patientDraft.materiais.length} na lista atual)`
+              : ''}
+            .
           </Typography>
 
           <Paper
             variant="outlined"
-            key={editingId ?? draft.id}
+            key={editingMaterialId ?? materialDraft.id}
             sx={{ p: 1, display: 'grid', gap: 0.75, bgcolor: 'background.paper' }}
           >
             <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>
-              {editingId
-                ? `Editando material ${
-                    value.materiais.findIndex((item) => item.id === editingId) + 1
-                  }`
-                : 'Novo material'}
+              {editingMaterialId ? 'Editando material' : 'Novo material'}
             </Typography>
             <Box
               sx={{
@@ -386,9 +555,9 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
             >
               <TextField
                 label="MAPA DA SALA"
-                value={draft.mapaDaSala}
+                value={materialDraft.mapaDaSala}
                 onChange={(e) =>
-                  updateDraft({ mapaDaSala: formatConmedNumerico(e.target.value) })
+                  updateMaterialDraft({ mapaDaSala: formatConmedNumerico(e.target.value) })
                 }
                 size="small"
                 fullWidth
@@ -397,8 +566,10 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="DANFE"
-                value={draft.danfe}
-                onChange={(e) => updateDraft({ danfe: formatConmedNumerico(e.target.value) })}
+                value={materialDraft.danfe}
+                onChange={(e) =>
+                  updateMaterialDraft({ danfe: formatConmedNumerico(e.target.value) })
+                }
                 size="small"
                 fullWidth
                 inputMode="numeric"
@@ -406,8 +577,10 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="ITEM"
-                value={draft.item}
-                onChange={(e) => updateDraft({ item: formatConmedNumerico(e.target.value) })}
+                value={materialDraft.item}
+                onChange={(e) =>
+                  updateMaterialDraft({ item: formatConmedNumerico(e.target.value) })
+                }
                 size="small"
                 fullWidth
                 inputMode="numeric"
@@ -415,8 +588,8 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="NEB/PI"
-                value={draft.nebPi}
-                onChange={(e) => updateDraft({ nebPi: formatConmedNebPi(e.target.value) })}
+                value={materialDraft.nebPi}
+                onChange={(e) => updateMaterialDraft({ nebPi: formatConmedNebPi(e.target.value) })}
                 size="small"
                 fullWidth
                 sx={compactFieldSx}
@@ -424,9 +597,9 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="DESCRIÇÃO DO MATERIAL"
-                value={draft.descricao}
+                value={materialDraft.descricao}
                 onChange={(e) =>
-                  updateDraft({ descricao: formatConmedUppercase(e.target.value) })
+                  updateMaterialDraft({ descricao: formatConmedUppercase(e.target.value) })
                 }
                 size="small"
                 fullWidth
@@ -435,15 +608,15 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
                 maxRows={8}
                 sx={multilineFieldSx}
                 slotProps={{
-                  htmlInput: {
-                    style: { textTransform: 'uppercase', resize: 'vertical' },
-                  },
+                  htmlInput: { style: { textTransform: 'uppercase', resize: 'vertical' } },
                 }}
               />
               <TextField
                 label="QT"
-                value={draft.qt}
-                onChange={(e) => updateDraft({ qt: formatConmedQuantidade(e.target.value) })}
+                value={materialDraft.qt}
+                onChange={(e) =>
+                  updateMaterialDraft({ qt: formatConmedQuantidade(e.target.value) })
+                }
                 size="small"
                 fullWidth
                 inputMode="decimal"
@@ -451,8 +624,10 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="VALOR UNIT"
-                value={draft.valorUnit}
-                onChange={(e) => updateDraft({ valorUnit: formatConmedMoeda(e.target.value) })}
+                value={materialDraft.valorUnit}
+                onChange={(e) =>
+                  updateMaterialDraft({ valorUnit: formatConmedMoeda(e.target.value) })
+                }
                 placeholder="R$ 0,00"
                 size="small"
                 fullWidth
@@ -461,7 +636,7 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
               />
               <TextField
                 label="VALOR TOTAL"
-                value={draft.valorTotal}
+                value={materialDraft.valorTotal}
                 size="small"
                 fullWidth
                 slotProps={{ input: { readOnly: true } }}
@@ -481,7 +656,10 @@ export function ConmedComrjForm({ value, onChange }: ConmedComrjFormProps) {
         </Typography>
         <ConmedComrjPlanilhaPreview
           value={value}
-          editingMaterialId={editingId}
+          editingPacienteId={editingPacienteId}
+          editingMaterialId={editingMaterialId}
+          onEditPaciente={handleEditPaciente}
+          onDeletePaciente={handleDeletePaciente}
           onEditMaterial={handleEditMaterial}
           onDeleteMaterial={handleDeleteMaterial}
         />

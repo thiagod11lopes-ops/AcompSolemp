@@ -1,4 +1,8 @@
-import type { ConmedComrjFormData, ConmedComrjMaterialItem } from '@/types'
+import type {
+  ConmedComrjFormData,
+  ConmedComrjMaterialItem,
+  ConmedComrjPaciente,
+} from '@/types'
 import {
   formatValorBrasileiro,
   parseValorBrasileiro,
@@ -18,6 +22,18 @@ export function createEmptyConmedMaterialItem(): ConmedComrjMaterialItem {
   }
 }
 
+export function createEmptyConmedPaciente(): ConmedComrjPaciente {
+  return {
+    id: `pac-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    nip: '',
+    iniciais: '',
+    data: '',
+    procedimento: '',
+    materiais: [],
+    valorPorPaciente: '',
+  }
+}
+
 export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   numero: '',
   data: '',
@@ -25,12 +41,7 @@ export const EMPTY_CONMED_COMRJ_FORM: ConmedComrjFormData = {
   pregaoTad: '',
   vigencia: '',
   fornecedor: '',
-  pacienteNip: '',
-  pacienteIniciais: '',
-  pacienteData: '',
-  pacienteProcedimento: '',
-  materiais: [],
-  valorPorPaciente: '',
+  pacientes: [],
 }
 
 function normalizeMaterialItem(
@@ -50,14 +61,65 @@ function normalizeMaterialItem(
   return withRecalculatedMaterialTotal(item)
 }
 
-export function normalizeConmedComrjForm(
-  value: ConmedComrjFormData | undefined,
-): ConmedComrjFormData {
+export function withRecalculatedPaciente(paciente: ConmedComrjPaciente): ConmedComrjPaciente {
+  const materiais = paciente.materiais
+    .map(withRecalculatedMaterialTotal)
+    .filter((item) => materialHasContent(item))
+  return {
+    ...paciente,
+    materiais,
+    valorPorPaciente: calcValorPorPaciente(materiais),
+  }
+}
+
+function normalizePaciente(
+  value: Partial<ConmedComrjPaciente> | undefined,
+): ConmedComrjPaciente {
   const materiaisRaw = Array.isArray(value?.materiais) ? value.materiais : []
+  return withRecalculatedPaciente({
+    id: value?.id || createEmptyConmedPaciente().id,
+    nip: value?.nip ?? '',
+    iniciais: value?.iniciais ?? '',
+    data: value?.data ?? '',
+    procedimento: value?.procedimento ?? '',
+    materiais: materiaisRaw.map((item) => normalizeMaterialItem(item)),
+    valorPorPaciente: value?.valorPorPaciente ?? '',
+  })
+}
+
+/** Migra formato antigo (paciente flat + materiais) para pacientes[]. */
+function migrateLegacyPacientes(value: Record<string, unknown> | undefined): ConmedComrjPaciente[] {
+  if (!value) return []
+  if (Array.isArray(value.pacientes)) {
+    return (value.pacientes as Partial<ConmedComrjPaciente>[])
+      .map((p) => normalizePaciente(p))
+      .filter((p) => pacienteHasContent(p) || p.materiais.length > 0)
+  }
+
+  const materiaisRaw = Array.isArray(value.materiais)
+    ? (value.materiais as Partial<ConmedComrjMaterialItem>[])
+    : []
   const materiais = materiaisRaw
     .map((item) => normalizeMaterialItem(item))
     .filter((item) => materialHasContent(item))
 
+  const legacy: ConmedComrjPaciente = withRecalculatedPaciente({
+    id: createEmptyConmedPaciente().id,
+    nip: String(value.pacienteNip ?? ''),
+    iniciais: String(value.pacienteIniciais ?? ''),
+    data: String(value.pacienteData ?? ''),
+    procedimento: String(value.pacienteProcedimento ?? ''),
+    materiais,
+    valorPorPaciente: '',
+  })
+
+  return pacienteHasContent(legacy) || legacy.materiais.length > 0 ? [legacy] : []
+}
+
+export function normalizeConmedComrjForm(
+  value: ConmedComrjFormData | undefined,
+): ConmedComrjFormData {
+  const raw = value as (ConmedComrjFormData & Record<string, unknown>) | undefined
   return {
     numero: value?.numero ?? '',
     data: value?.data ?? '',
@@ -65,12 +127,7 @@ export function normalizeConmedComrjForm(
     pregaoTad: value?.pregaoTad ?? '',
     vigencia: value?.vigencia ?? '',
     fornecedor: value?.fornecedor ?? '',
-    pacienteNip: value?.pacienteNip ?? '',
-    pacienteIniciais: value?.pacienteIniciais ?? '',
-    pacienteData: value?.pacienteData ?? '',
-    pacienteProcedimento: value?.pacienteProcedimento ?? '',
-    materiais,
-    valorPorPaciente: calcValorPorPaciente(materiais),
+    pacientes: migrateLegacyPacientes(raw),
   }
 }
 
@@ -176,7 +233,7 @@ export function calcValorPorPaciente(materiais: ConmedComrjMaterialItem[]): stri
 
 export function withRecalculatedMateriais(
   materiais: ConmedComrjMaterialItem[],
-): Pick<ConmedComrjFormData, 'materiais' | 'valorPorPaciente'> {
+): { materiais: ConmedComrjMaterialItem[]; valorPorPaciente: string } {
   const next = materiais.map(withRecalculatedMaterialTotal)
   return {
     materiais: next,
@@ -197,6 +254,20 @@ export function materialHasContent(item: ConmedComrjMaterialItem): boolean {
   )
 }
 
+export function pacienteHasContent(paciente: ConmedComrjPaciente): boolean {
+  return Boolean(
+    paciente.nip ||
+      paciente.iniciais ||
+      paciente.data ||
+      paciente.procedimento ||
+      paciente.materiais.some(materialHasContent),
+  )
+}
+
+export function countConmedMateriais(value: ConmedComrjFormData): number {
+  return value.pacientes.reduce((sum, p) => sum + p.materiais.length, 0)
+}
+
 /** Há conteúdo suficiente para exibir a planilha unificada ao vivo */
 export function conmedFormHasPreviewContent(value: ConmedComrjFormData): boolean {
   return Boolean(
@@ -206,11 +277,7 @@ export function conmedFormHasPreviewContent(value: ConmedComrjFormData): boolean
       value.pregaoTad ||
       value.vigencia ||
       value.fornecedor ||
-      value.pacienteNip ||
-      value.pacienteIniciais ||
-      value.pacienteData ||
-      value.pacienteProcedimento ||
-      value.materiais.some(materialHasContent),
+      value.pacientes.some((p) => pacienteHasContent(p)),
   )
 }
 

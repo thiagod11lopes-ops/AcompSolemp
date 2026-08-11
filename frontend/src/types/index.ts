@@ -422,6 +422,18 @@ export interface ConmedComrjMaterialItem {
   valorTotal: string
 }
 
+/** Paciente com materiais vinculados */
+export interface ConmedComrjPaciente {
+  id: string
+  nip: string
+  iniciais: string
+  data: string
+  procedimento: string
+  materiais: ConmedComrjMaterialItem[]
+  /** Soma automática dos VALOR TOTAL dos materiais deste paciente */
+  valorPorPaciente: string
+}
+
 /** Formulário + planilha unificada da aba CONMED COMRJ */
 export interface ConmedComrjFormData {
   numero: string
@@ -430,15 +442,8 @@ export interface ConmedComrjFormData {
   pregaoTad: string
   vigencia: string
   fornecedor: string
-  /** Dados do paciente */
-  pacienteNip: string
-  pacienteIniciais: string
-  pacienteData: string
-  pacienteProcedimento: string
-  /** Dados do material (várias linhas) */
-  materiais: ConmedComrjMaterialItem[]
-  /** Soma automática dos VALOR TOTAL das linhas */
-  valorPorPaciente: string
+  /** Pacientes do processo (cada um com seus materiais) */
+  pacientes: ConmedComrjPaciente[]
 }
 
 export interface ClinicaPlanilhasLivresState {
