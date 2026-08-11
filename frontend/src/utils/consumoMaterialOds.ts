@@ -190,11 +190,6 @@ function extractRowTexts(rowXml: string): string[] {
   return cells.slice(0, MAX_COLS)
 }
 
-function parseOdsXml(xml: string): string[][] {
-  const sheets = parseOdsSheets(xml)
-  return sheets[0]?.rows ?? []
-}
-
 function parseOdsSheets(xml: string): { nome: string; rows: string[][] }[] {
   const tables = [...xml.matchAll(/<table:table\b([^>]*)>([\s\S]*?)<\/table:table>/g)]
   const sheets: { nome: string; rows: string[][] }[] = []
