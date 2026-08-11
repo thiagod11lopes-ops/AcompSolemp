@@ -503,11 +503,11 @@ async function readOdsRichSheets(file: File): Promise<SpreadsheetRichSheetImport
         rowHeights[rowIndex] = height
         let colIndex = 0
         const cellRe =
-          /<table:table-cell\b([^>]*)(?:\/>|>([\s\S]*?)<\/table:table-cell>)|<table:covered-table-cell\b([^>]*)\/>/g
+          /<(table:table-cell|table:covered-table-cell)\b([^>]*?)(\s*\/>|>([\s\S]*?)<\/\1>)/g
         let cellMatch: RegExpExecArray | null
         while ((cellMatch = cellRe.exec(rowBody))) {
-          const isCovered = cellMatch[0].startsWith('<table:covered-table-cell')
-          const cellAttrs = isCovered ? cellMatch[3] ?? '' : cellMatch[1] ?? ''
+          const isCovered = cellMatch[1] === 'table:covered-table-cell'
+          const cellAttrs = cellMatch[2] ?? ''
           const colRepeat = parseInt(
             cellAttrs.match(/table:number-columns-repeated="(\d+)"/)?.[1] ?? '1',
             10,

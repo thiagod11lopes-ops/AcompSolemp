@@ -159,7 +159,7 @@ const HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = {
   'MANEIRA DE DISPENSACAO (PELA OMH-OMFM/POR OSE)': 'maneiraDispensacao',
 }
 
-const MAX_COLS = 30
+const MAX_COLS = 40
 const NIP_PATTERN = /\d{1,2}\.\d{4}\.\d{1,2}/
 
 function decodeXmlText(value: string): string {
@@ -171,25 +171,45 @@ function decodeXmlText(value: string): string {
     .replace(/&apos;/g, "'")
 }
 
+function extractOdsCellParagraphs(body: string): string {
+  const paragraphs = [...body.matchAll(/<text:p[^>]*>([\s\S]*?)<\/text:p>/g)]
+  return decodeXmlText(
+    paragraphs
+      .map((p) =>
+        p[1]
+          .replace(/<text:s\b[^>]*\/>/g, ' ')
+          .replace(/<[^>]+>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
+      .filter(Boolean)
+      .join(' '),
+  )
+}
+
+/**
+ * Lê células ODS na ordem correta.
+ * Importante: tags auto-fechadas (`/>` ou ` />`) e covered-table-cell
+ * precisam ocupar coluna — senão DANFE vazia / merges deslocam ITEM→NEB→DESC.
+ */
 function extractRowTexts(rowXml: string): string[] {
   const cells: string[] = []
-  // Inclui covered-table-cell: em linhas com merge (ex.: paciente rowspan),
-  // sem isso o material "desliza" para as colunas de paciente.
   const cellRe =
-    /<table:table-cell\b([^>]*)(?:\/>|>([\s\S]*?)<\/table:table-cell>)|<table:covered-table-cell\b([^>]*)(?:\/>|>([\s\S]*?)<\/table:covered-table-cell>)/g
+    /<(table:table-cell|table:covered-table-cell)\b([^>]*?)(\s*\/>|>([\s\S]*?)<\/\1>)/g
   let match: RegExpExecArray | null
   while ((match = cellRe.exec(rowXml))) {
-    const isCovered = match[0].startsWith('<table:covered-table-cell')
-    const attrs = isCovered ? match[3] || '' : match[1] || ''
-    const body = isCovered ? match[4] || '' : match[2] || ''
+    const isCovered = match[1] === 'table:covered-table-cell'
+    const attrs = match[2] || ''
+    const body = match[4] || ''
     const repeat = attrs.match(/number-columns-repeated="(\d+)"/)
-    const paragraphs = [...body.matchAll(/<text:p[^>]*>([\s\S]*?)<\/text:p>/g)]
-    const val = isCovered
-      ? ''
-      : decodeXmlText(paragraphs.map((p) => p[1]).join(' ').trim())
-    const count = repeat ? Math.min(parseInt(repeat[1], 10), MAX_COLS) : 1
-    for (let i = 0; i < count; i++) cells.push(val)
+    const val = isCovered ? '' : extractOdsCellParagraphs(body)
+    const rawRepeat = repeat ? parseInt(repeat[1], 10) : 1
+    if (cells.length >= MAX_COLS) break
+    const remaining = MAX_COLS - cells.length
+    const count = Math.min(Math.max(rawRepeat, 1), remaining)
+    for (let i = 0; i < count; i += 1) cells.push(val)
   }
+  while (cells.length < MAX_COLS) cells.push('')
   return cells.slice(0, MAX_COLS)
 }
 
