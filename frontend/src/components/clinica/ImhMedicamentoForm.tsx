@@ -66,6 +66,7 @@ function matchToDraftPatch(
   const nipFmt = formatImhMedNip(nipDigitado)
   const { row, isTitular } = match
   const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
+  const vinculoPlanilha = formatImhMedUppercase(row.vinculo)
 
   if (isTitular) {
     return {
@@ -73,7 +74,7 @@ function matchToDraftPatch(
       nome: formatImhMedUppercase(row.nome),
       nipTitular: nipUsuario,
       postoGrad: formatImhMedUppercase(row.postoGradTitular),
-      vinculo: 'TITULAR',
+      vinculo: vinculoPlanilha,
     }
   }
 
@@ -82,7 +83,7 @@ function matchToDraftPatch(
     nome: formatImhMedUppercase(row.nome),
     nipTitular: formatImhMedNip(row.nipTitular),
     postoGrad: formatImhMedUppercase(row.postoGradTitular),
-    vinculo: 'DEPENDENTE',
+    vinculo: vinculoPlanilha,
   }
 }
 
