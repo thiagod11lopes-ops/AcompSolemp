@@ -1,6 +1,9 @@
 import { loadAppData, saveAppData } from '@/mocks/seed'
 import type { ClinicaPlanilhasLivresState } from '@/types'
-import { ensureFixedPlanilhas } from '@/utils/planilhasFixas'
+import {
+  ensureFixedPlanilhas,
+  type PlanilhasModo,
+} from '@/utils/planilhasFixas'
 import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
 import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
@@ -8,8 +11,11 @@ import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
-function normalizeState(state: ClinicaPlanilhasLivresState | undefined): ClinicaPlanilhasLivresState {
-  const abas = ensureFixedPlanilhas(state?.abas ?? [])
+function normalizeState(
+  state: ClinicaPlanilhasLivresState | undefined,
+  modo: PlanilhasModo = 'clinica',
+): ClinicaPlanilhasLivresState {
+  const abas = ensureFixedPlanilhas(state?.abas ?? [], modo)
   const abaAtivaId =
     state?.abaAtivaId && abas.some((aba) => aba.id === state.abaAtivaId)
       ? state.abaAtivaId
@@ -25,15 +31,22 @@ function normalizeState(state: ClinicaPlanilhasLivresState | undefined): Clinica
 }
 
 export const clinicaPlanilhasLivresService = {
-  getState(clinicaId: string): ClinicaPlanilhasLivresState {
+  getState(
+    clinicaId: string,
+    modo: PlanilhasModo = 'clinica',
+  ): ClinicaPlanilhasLivresState {
     const data = loadAppData()
-    return normalizeState(data.planilhasLivres?.[clinicaId])
+    return normalizeState(data.planilhasLivres?.[clinicaId], modo)
   },
 
-  saveState(clinicaId: string, state: ClinicaPlanilhasLivresState): ClinicaPlanilhasLivresState {
+  saveState(
+    clinicaId: string,
+    state: ClinicaPlanilhasLivresState,
+    modo: PlanilhasModo = 'clinica',
+  ): ClinicaPlanilhasLivresState {
     const data = loadAppData()
     if (!data.planilhasLivres) data.planilhasLivres = {}
-    const next = normalizeState(state)
+    const next = normalizeState(state, modo)
     data.planilhasLivres[clinicaId] = next
     saveAppData(data)
     return next
