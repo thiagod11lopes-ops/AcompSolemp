@@ -39,6 +39,19 @@ export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
   finalizedImhIds: [],
 }
 
+/** 20% dependente direto; 100% dependente indireto. */
+export function pctIndenizarFromVinculo(vinculo: string): string | null {
+  const normalized = vinculo
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!normalized) return null
+  if (normalized.includes('INDIRETO')) return '100%'
+  if (normalized.includes('DEPENDENTE DIRETO')) return '20%'
+  return null
+}
+
 export const IMH_MEDICAMENTO_COLUNAS = [
   { key: 'data', label: 'DATA', width: 88 },
   { key: 'nip', label: 'NIP', width: 108 },

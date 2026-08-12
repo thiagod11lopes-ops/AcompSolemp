@@ -36,6 +36,7 @@ import {
   linhaImhMedicamentoHasContent,
   markImhMedicamentoLinhasFinalized,
   normalizeImhMedicamentoForm,
+  pctIndenizarFromVinculo,
   withRecalculatedImhMedicamentoLinha,
 } from '@/utils/imhMedicamentoForm'
 import {
@@ -82,7 +83,13 @@ interface ImhMedicamentoFormProps {
   onListaMedicamentosChange?: (next: ListaMedicamentosFormData) => void
 }
 
-const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
+const VINCULOS = [
+  'TITULAR',
+  'DEPENDENTE DIRETO',
+  'DEPENDENTE INDIRETO',
+  'DEPENDENTE',
+  'OUTRO',
+] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 
 const MESES_OPCOES = [
@@ -121,6 +128,7 @@ function matchToDraftPatch(
   const { row, isTitular } = match
   const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
   const vinculoPlanilha = formatImhMedUppercase(row.vinculo)
+  const pctIndenizar = pctIndenizarFromVinculo(vinculoPlanilha) ?? undefined
 
   if (isTitular) {
     return {
@@ -129,6 +137,7 @@ function matchToDraftPatch(
       nipTitular: nipUsuario,
       postoGrad: formatImhMedUppercase(row.postoGradTitular),
       vinculo: vinculoPlanilha,
+      ...(pctIndenizar ? { pctIndenizar } : {}),
     }
   }
 
@@ -138,6 +147,7 @@ function matchToDraftPatch(
     nipTitular: formatImhMedNip(row.nipTitular),
     postoGrad: formatImhMedUppercase(row.postoGradTitular),
     vinculo: vinculoPlanilha,
+    ...(pctIndenizar ? { pctIndenizar } : {}),
   }
 }
 
@@ -422,7 +432,16 @@ export function ImhMedicamentoForm({
   }
 
   const updateDraft = (patch: Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>>) => {
-    syncDraftToList(withRecalculatedImhMedicamentoLinha({ ...linhaDraft, ...patch }))
+    const nextPatch =
+      patch.vinculo !== undefined
+        ? {
+            ...patch,
+            pctIndenizar:
+              pctIndenizarFromVinculo(patch.vinculo) ??
+              (patch.pctIndenizar !== undefined ? patch.pctIndenizar : linhaDraft.pctIndenizar),
+          }
+        : patch
+    syncDraftToList(withRecalculatedImhMedicamentoLinha({ ...linhaDraft, ...nextPatch }))
   }
 
   const applyPacienteSelection = (paciente: PacientePmeRow | null) => {
