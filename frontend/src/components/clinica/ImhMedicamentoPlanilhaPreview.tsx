@@ -36,6 +36,8 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   editingLinhaId?: string | null
   importing?: boolean
   isEnviando?: boolean
+  mesReferencia?: string
+  emptyHint?: string
   selectedImhIds?: Set<string>
   onSelectedImhIdsChange?: (next: Set<string>) => void
   onImportClick?: () => void
@@ -84,6 +86,8 @@ export function ImhMedicamentoPlanilhaPreview({
   editingLinhaId = null,
   importing = false,
   isEnviando = false,
+  mesReferencia,
+  emptyHint,
   selectedImhIds,
   onSelectedImhIdsChange,
   onImportClick,
@@ -185,6 +189,14 @@ export function ImhMedicamentoPlanilhaPreview({
             label={`${value.linhas.length} lançamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          {mesReferencia ? (
+            <Chip
+              size="small"
+              variant="outlined"
+              label={mesReferencia}
+              sx={{ height: 22, fontWeight: 600 }}
+            />
+          ) : null}
           {total > 0 ? (
             <Chip
               size="small"
@@ -253,7 +265,8 @@ export function ImhMedicamentoPlanilhaPreview({
         {!visible ? (
           <Box sx={{ px: 2, py: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Adicione lançamentos no formulário para ver a planilha ao vivo.
+              {emptyHint ??
+                'Adicione lançamentos no formulário para ver a planilha ao vivo.'}
             </Typography>
           </Box>
         ) : (

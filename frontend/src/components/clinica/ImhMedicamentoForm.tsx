@@ -5,8 +5,11 @@ import {
   Autocomplete,
   Box,
   Button,
+  FormControl,
+  InputLabel,
   MenuItem,
   Paper,
+  Select,
   Snackbar,
   TextField,
   Typography,
@@ -41,7 +44,12 @@ import {
   parseImhMedicamentoFromGrid,
 } from '@/utils/imhMedicamentoImport'
 import type { SpreadsheetSheetImport } from '@/utils/consumoMaterialOds'
-import { createPedidoLoteId } from '@/utils/consumoMaterialTemplate'
+import {
+  ANOS_PLANILHA_DISPONIVEIS,
+  createPedidoLoteId,
+  dataPertenceAoMes,
+  getMesModeloFromParts,
+} from '@/utils/consumoMaterialTemplate'
 import {
   findMedicamentoPrecoByNome,
   formatPrecoReferenciaMedicamento,
@@ -75,6 +83,34 @@ interface ImhMedicamentoFormProps {
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
+
+const MESES_OPCOES = [
+  { value: 1, label: 'Janeiro' },
+  { value: 2, label: 'Fevereiro' },
+  { value: 3, label: 'Março' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Maio' },
+  { value: 6, label: 'Junho' },
+  { value: 7, label: 'Julho' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Setembro' },
+  { value: 10, label: 'Outubro' },
+  { value: 11, label: 'Novembro' },
+  { value: 12, label: 'Dezembro' },
+] as const
+
+function anosDisponiveisImh(linhas: ImhMedicamentoLinha[]): number[] {
+  const anos = new Set<number>(ANOS_PLANILHA_DISPONIVEIS)
+  anos.add(new Date().getFullYear())
+  for (const linha of linhas) {
+    const match = linha.data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+    if (!match) continue
+    const yearRaw = match[3]
+    const year = yearRaw.length === 2 ? 2000 + parseInt(yearRaw, 10) : parseInt(yearRaw, 10)
+    if (Number.isFinite(year)) anos.add(year)
+  }
+  return [...anos].sort((a, b) => b - a)
+}
 
 function matchToDraftPatch(
   match: PacientePmeNipMatch,
@@ -183,6 +219,31 @@ export function ImhMedicamentoForm({
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+  /** Ao montar (abrir a aba IMH), sempre inicia no mês/ano vigentes. */
+  const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
+  const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
+
+  const mesFiltro = useMemo(
+    () => getMesModeloFromParts(filtroMes, filtroAno),
+    [filtroMes, filtroAno],
+  )
+  const anosOptions = useMemo(() => anosDisponiveisImh(value.linhas), [value.linhas])
+  const linhasFiltradas = useMemo(
+    () => value.linhas.filter((linha) => dataPertenceAoMes(linha.data, mesFiltro)),
+    [value.linhas, mesFiltro],
+  )
+  const valueFiltrado = useMemo(
+    () => ({ ...value, linhas: linhasFiltradas }),
+    [value, linhasFiltradas],
+  )
+  const mesReferenciaLabel = useMemo(() => {
+    const mesNome = MESES_OPCOES.find((m) => m.value === filtroMes)?.label ?? String(filtroMes)
+    return `${mesNome}/${filtroAno}`
+  }, [filtroMes, filtroAno])
+  const emptyHint =
+    value.linhas.length > 0 && linhasFiltradas.length === 0
+      ? `Nenhum lançamento em ${mesReferenciaLabel}. Altere o mês/ano ou adicione um lançamento com data neste período.`
+      : undefined
 
   useEffect(
     () => () => {
@@ -882,6 +943,55 @@ export function ImhMedicamentoForm({
       </Paper>
 
       <Box sx={{ minWidth: 0 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+            flexWrap: 'wrap',
+            mb: 0.75,
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem' }}
+          >
+            Planilha (ao vivo)
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel id="imh-med-filtro-mes-label">Mês</InputLabel>
+              <Select
+                labelId="imh-med-filtro-mes-label"
+                label="Mês"
+                value={filtroMes}
+                onChange={(e) => setFiltroMes(Number(e.target.value))}
+              >
+                {MESES_OPCOES.map((mes) => (
+                  <MenuItem key={mes.value} value={mes.value}>
+                    {mes.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 96 }}>
+              <InputLabel id="imh-med-filtro-ano-label">Ano</InputLabel>
+              <Select
+                labelId="imh-med-filtro-ano-label"
+                label="Ano"
+                value={filtroAno}
+                onChange={(e) => setFiltroAno(Number(e.target.value))}
+              >
+                {anosOptions.map((ano) => (
+                  <MenuItem key={ano} value={ano}>
+                    {ano}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
         <input
           ref={importInputRef}
           type="file"
@@ -890,10 +1000,12 @@ export function ImhMedicamentoForm({
           onChange={handleImportFileChange}
         />
         <ImhMedicamentoPlanilhaPreview
-          value={value}
+          value={valueFiltrado}
           editingLinhaId={editingLinhaId}
           importing={importing}
           isEnviando={isEnviando}
+          mesReferencia={mesReferenciaLabel}
+          emptyHint={emptyHint}
           selectedImhIds={selectedImhIds}
           onSelectedImhIdsChange={setSelectedImhIds}
           onImportClick={handleImportClick}
