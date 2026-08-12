@@ -7,8 +7,14 @@ import {
 import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
 import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
 import { normalizeImhMedicamentoForm } from '@/utils/imhMedicamentoForm'
+import {
+  listaMedicamentosFromPrecosRows,
+  listaMedicamentosToPrecosRows,
+  normalizeListaMedicamentosForm,
+} from '@/utils/listaMedicamentosForm'
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
+import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
@@ -21,12 +27,20 @@ function normalizeState(
     state?.abaAtivaId && abas.some((aba) => aba.id === state.abaAtivaId)
       ? state.abaAtivaId
       : (abas[0]?.id ?? null)
+  const listaMedicamentosFromState = normalizeListaMedicamentosForm(state?.listaMedicamentos)
+  const listaMedicamentos =
+    state?.listaMedicamentos !== undefined
+      ? listaMedicamentosFromState
+      : modo === 'medicamento'
+        ? listaMedicamentosFromPrecosRows(medicamentosPrecosService.getRows())
+        : listaMedicamentosFromState
   return {
     abas,
     abaAtivaId,
     conmedComrj: normalizeConmedComrjForm(state?.conmedComrj),
     imh: normalizeImhAbaForm(state?.imh),
     imhMedicamento: normalizeImhMedicamentoForm(state?.imhMedicamento),
+    listaMedicamentos,
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
   }
@@ -50,6 +64,9 @@ export const clinicaPlanilhasLivresService = {
     if (!data.planilhasLivres) data.planilhasLivres = {}
     const next = normalizeState(state, modo)
     data.planilhasLivres[clinicaId] = next
+    if (modo === 'medicamento' && next.listaMedicamentos) {
+      data.medicamentosPrecos = listaMedicamentosToPrecosRows(next.listaMedicamentos)
+    }
     saveAppData(data)
     return next
   },

@@ -495,6 +495,20 @@ export interface ImhMedicamentoFormData {
   linhas: ImhMedicamentoLinha[]
 }
 
+/** Linha da lista de medicamentos com preços (portal medicamento) */
+export interface ListaMedicamentosLinha {
+  id: string
+  neb: string
+  medicamento: string
+  uf: string
+  precoReferencia: string
+}
+
+/** Formulário + planilha unificada da aba Lista de Medicamentos */
+export interface ListaMedicamentosFormData {
+  linhas: ListaMedicamentosLinha[]
+}
+
 /** Linha da planilha Lista de Materiais (aba LISTA DE MATERIAIS do ODS) */
 export interface ListaMateriaisLinha {
   id: string
@@ -525,6 +539,8 @@ export interface ClinicaPlanilhasLivresState {
   imh?: ImhAbaFormData
   /** Formulário tipado da aba IMH do portal medicamento (Modelo IHM — PME) */
   imhMedicamento?: ImhMedicamentoFormData
+  /** Formulário tipado da aba Lista de Medicamentos (preços) */
+  listaMedicamentos?: ListaMedicamentosFormData
   /** Formulário tipado da aba Lista de Materiais */
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
