@@ -190,6 +190,8 @@ export function ImhAbaPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               display: 'grid',
               gap: 1.25,
+              width: 'fit-content',
+              maxWidth: '100%',
             }}
           >
             <Box
@@ -200,33 +202,26 @@ export function ImhAbaPlanilhaPreview({
                 minWidth: 0,
               }}
             >
-              <Typography sx={titleTextSx}>{IMH_ABA_INSTITUICAO}</Typography>
-              <Box
+              <Typography
                 sx={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 2,
-                  flexWrap: 'wrap',
+                  ...titleTextSx,
+                  fontWeight: 700,
+                  textAlign: 'right',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <Typography sx={titleTextSx}>{IMH_ABA_HOSPITAL}</Typography>
-                <Typography
-                  sx={{
-                    ...titleTextSx,
-                    fontWeight: 700,
-                    textAlign: 'right',
-                    ml: 'auto',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  ANEXO DA CP — Nº CP{'\u00A0\u00A0'}
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    {dash(value.numeroCp)}
-                  </Box>
-                </Typography>
-              </Box>
-              <Typography sx={{ ...titleTextSx, fontWeight: 700 }}>
+                ANEXO DA CP — Nº CP{'\u00A0\u00A0'}
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                  {dash(value.numeroCp)}
+                </Box>
+              </Typography>
+              <Typography sx={{ ...titleTextSx, textAlign: 'center' }}>
+                {IMH_ABA_INSTITUICAO}
+              </Typography>
+              <Typography sx={{ ...titleTextSx, textAlign: 'center' }}>
+                {IMH_ABA_HOSPITAL}
+              </Typography>
+              <Typography sx={{ ...titleTextSx, fontWeight: 700, textAlign: 'center' }}>
                 {dash(value.clinica)}
               </Typography>
             </Box>
