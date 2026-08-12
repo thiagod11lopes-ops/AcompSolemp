@@ -15,6 +15,10 @@ import {
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
+import {
+  clonePacientesPmeSeed,
+  normalizePacientesPmeRows,
+} from '@/utils/pacientesPme'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
@@ -34,6 +38,13 @@ function normalizeState(
       : modo === 'medicamento'
         ? listaMedicamentosFromPrecosRows(medicamentosPrecosService.getRows())
         : listaMedicamentosFromState
+  const pacientesFromState = normalizePacientesPmeRows(state?.pacientesPme)
+  const pacientesPme =
+    state?.pacientesPme !== undefined
+      ? pacientesFromState
+      : modo === 'medicamento'
+        ? clonePacientesPmeSeed()
+        : pacientesFromState
   return {
     abas,
     abaAtivaId,
@@ -41,6 +52,7 @@ function normalizeState(
     imh: normalizeImhAbaForm(state?.imh),
     imhMedicamento: normalizeImhMedicamentoForm(state?.imhMedicamento),
     listaMedicamentos,
+    pacientesPme,
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
   }

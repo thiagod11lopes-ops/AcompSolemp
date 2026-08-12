@@ -541,6 +541,8 @@ export interface ClinicaPlanilhasLivresState {
   imhMedicamento?: ImhMedicamentoFormData
   /** Formulário tipado da aba Lista de Medicamentos (preços) */
   listaMedicamentos?: ListaMedicamentosFormData
+  /** Banco de pacientes PME (aba Pacientes — só planilha) */
+  pacientesPme?: import('@/utils/pacientesPme').PacientePmeRow[]
   /** Formulário tipado da aba Lista de Materiais */
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */

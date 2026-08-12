@@ -19,6 +19,7 @@ export const FIXED_PLANILHAS = [
 export const FIXED_PLANILHAS_MEDICAMENTO = [
   { id: 'imh', nome: 'IMH' },
   { id: 'lista-de-medicamentos', nome: 'Lista de Medicamentos' },
+  { id: 'pacientes', nome: 'Pacientes' },
 ] as const
 
 export type PlanilhasModo = 'clinica' | 'medicamento'

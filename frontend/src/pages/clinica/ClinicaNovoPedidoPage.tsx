@@ -15,6 +15,7 @@ import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
 import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
 import { ListaMateriaisForm } from '@/components/clinica/ListaMateriaisForm'
 import { ListaMedicamentosForm } from '@/components/clinica/ListaMedicamentosForm'
+import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpreadsheet'
 import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
@@ -37,6 +38,10 @@ import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
 import {
+  clonePacientesPmeSeed,
+  type PacientePmeRow,
+} from '@/utils/pacientesPme'
+import {
   normalizeConsumoMaterialRows,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
@@ -47,6 +52,7 @@ const CONSUMO_ABA_ID = 'consumo-material-consignado'
 const IMH_ABA_ID = 'imh'
 const LISTA_MATERIAIS_ABA_ID = 'lista-de-materiais'
 const LISTA_MEDICAMENTOS_ABA_ID = 'lista-de-medicamentos'
+const PACIENTES_ABA_ID = 'pacientes'
 
 type PersistPayload = {
   abas?: PlanilhaLivreAba[]
@@ -56,6 +62,7 @@ type PersistPayload = {
   imh?: ImhAbaFormData
   imhMedicamento?: ImhMedicamentoFormData
   listaMedicamentos?: ListaMedicamentosFormData
+  pacientesPme?: PacientePmeRow[]
   lista?: ListaMateriaisFormData
 }
 
@@ -101,6 +108,7 @@ export default function ClinicaNovoPedidoPage() {
   const [listaMedicamentosForm, setListaMedicamentosForm] = useState<ListaMedicamentosFormData>(
     EMPTY_LISTA_MEDICAMENTOS_FORM,
   )
+  const [pacientesPmeRows, setPacientesPmeRows] = useState<PacientePmeRow[]>([])
   const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const hydratedModoRef = useRef<string | null>(null)
@@ -110,6 +118,7 @@ export default function ClinicaNovoPedidoPage() {
   const imhFormRef = useRef(imhForm)
   const imhMedicamentoFormRef = useRef(imhMedicamentoForm)
   const listaMedicamentosFormRef = useRef(listaMedicamentosForm)
+  const pacientesPmeRowsRef = useRef(pacientesPmeRows)
   const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
   const modoRef = useRef(planilhasModo)
@@ -119,6 +128,7 @@ export default function ClinicaNovoPedidoPage() {
   imhFormRef.current = imhForm
   imhMedicamentoFormRef.current = imhMedicamentoForm
   listaMedicamentosFormRef.current = listaMedicamentosForm
+  pacientesPmeRowsRef.current = pacientesPmeRows
   listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
   modoRef.current = planilhasModo
@@ -135,9 +145,10 @@ export default function ClinicaNovoPedidoPage() {
     setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
     setImhMedicamentoForm(state.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM)
     setListaMedicamentosForm(state.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM)
+    setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
     setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
-  }, [clinicaId, planilhasModo, fixedPlanilhas])
+  }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   const persist = useCallback(
     (patch: PersistPayload = {}) => {
@@ -153,6 +164,7 @@ export default function ClinicaNovoPedidoPage() {
           imh: patch.imh ?? imhFormRef.current,
           imhMedicamento: patch.imhMedicamento ?? imhMedicamentoFormRef.current,
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
+          pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: patch.lista ?? listaFormRef.current,
         },
         modoRef.current,
@@ -224,6 +236,14 @@ export default function ClinicaNovoPedidoPage() {
     [persist],
   )
 
+  const handlePacientesPmeChange = useCallback(
+    (next: PacientePmeRow[]) => {
+      setPacientesPmeRows(next)
+      persist({ pacientesPme: next })
+    },
+    [persist],
+  )
+
   const handleListaChange = useCallback(
     (next: ListaMateriaisFormData) => {
       setListaForm(next)
@@ -268,6 +288,14 @@ export default function ClinicaNovoPedidoPage() {
           <ListaMedicamentosForm
             value={listaMedicamentosForm}
             onChange={handleListaMedicamentosChange}
+          />
+        )
+      }
+      if (abaAtivaId === PACIENTES_ABA_ID) {
+        return (
+          <PacientesPmeSpreadsheet
+            value={pacientesPmeRows}
+            onChange={handlePacientesPmeChange}
           />
         )
       }
