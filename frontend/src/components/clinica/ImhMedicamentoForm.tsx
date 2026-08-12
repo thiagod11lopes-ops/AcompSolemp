@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
+import {
+  Add as AddIcon,
+  Close as CloseIcon,
+  MenuBookOutlined as MenuBookIcon,
+  WarningAmberRounded as WarningAmberIcon,
+} from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
+  Dialog,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -14,6 +21,7 @@ import {
   TextField,
   Typography,
   alpha,
+  useTheme,
 } from '@mui/material'
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
@@ -219,6 +227,8 @@ export function ImhMedicamentoForm({
   const [importing, setImporting] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
   const [explicacaoOpen, setExplicacaoOpen] = useState(false)
+  const [dataAvisoOpen, setDataAvisoOpen] = useState(false)
+  const [dataError, setDataError] = useState(false)
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -513,6 +523,7 @@ export function ImhMedicamentoForm({
     setItemPmeInput('')
     setNomeInput('')
     setEditingLinhaId(null)
+    setDataError(false)
     linhaSnapshotRef.current = null
   }
 
@@ -553,6 +564,12 @@ export function ImhMedicamentoForm({
 
   const handleAdicionarLinha = () => {
     const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
+    if (!ready.data.trim()) {
+      setDataError(true)
+      setDataAvisoOpen(true)
+      return
+    }
+    setDataError(false)
     if (editingLinhaId) {
       persistLinhas(
         value.linhas.map((l) =>
@@ -662,9 +679,16 @@ export function ImhMedicamentoForm({
             <TextField
               label="DATA"
               value={linhaDraft.data}
-              onChange={(e) => updateDraft({ data: formatImhMedData(e.target.value) })}
+              onChange={(e) => {
+                const data = formatImhMedData(e.target.value)
+                if (data.trim()) setDataError(false)
+                updateDraft({ data })
+              }}
               placeholder="dd/mm/aa"
               size="small"
+              required
+              error={dataError}
+              helperText={dataError ? 'Campo obrigatório' : undefined}
               fullWidth
               sx={compactFieldSx}
             />
@@ -1068,6 +1092,10 @@ export function ImhMedicamentoForm({
           open={explicacaoOpen}
           onClose={() => setExplicacaoOpen(false)}
         />
+        <ImhDataObrigatoriaModal
+          open={dataAvisoOpen}
+          onClose={() => setDataAvisoOpen(false)}
+        />
         <Snackbar
           open={importFeedback.open}
           autoHideDuration={5000}
@@ -1084,5 +1112,86 @@ export function ImhMedicamentoForm({
         </Snackbar>
       </Box>
     </Box>
+  )
+}
+
+function ImhDataObrigatoriaModal({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  const theme = useTheme()
+  const warning = theme.palette.warning.main
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        backdrop: {
+          sx: {
+            backdropFilter: 'blur(10px)',
+            bgcolor: alpha(theme.palette.common.black, 0.45),
+          },
+        },
+        paper: {
+          elevation: 0,
+          sx: {
+            borderRadius: 4,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(warning, 0.28)}`,
+            boxShadow: `0 24px 80px ${alpha(theme.palette.common.black, 0.32)}`,
+          },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          position: 'relative',
+          px: 3,
+          pt: 3,
+          pb: 2.5,
+          background: `linear-gradient(135deg, ${alpha(warning, 0.18)} 0%, ${alpha(theme.palette.warning.light, 0.08)} 55%, transparent 100%)`,
+        }}
+      >
+        <IconButton
+          onClick={onClose}
+          aria-label="Fechar"
+          size="small"
+          sx={{ position: 'absolute', top: 12, right: 12 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+        <Box
+          sx={{
+            width: 52,
+            height: 52,
+            borderRadius: 2.5,
+            display: 'grid',
+            placeItems: 'center',
+            color: theme.palette.warning.dark,
+            bgcolor: alpha(warning, 0.22),
+            mb: 1.5,
+          }}
+        >
+          <WarningAmberIcon sx={{ fontSize: 28 }} />
+        </Box>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.03em' }}>
+          Data obrigatória
+        </Typography>
+        <Typography sx={{ mt: 0.75, fontSize: '0.88rem', lineHeight: 1.5, color: 'text.secondary' }}>
+          Preencha o campo DATA para adicionar ou salvar o lançamento no Modelo IHM — PME.
+        </Typography>
+      </Box>
+      <Box sx={{ px: 3, pb: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button variant="contained" onClick={onClose} sx={{ textTransform: 'none', fontWeight: 800 }}>
+          Entendi
+        </Button>
+      </Box>
+    </Dialog>
   )
 }
