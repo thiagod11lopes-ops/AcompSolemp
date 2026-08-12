@@ -44,6 +44,8 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   onEnviarImh?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
+  /** Visualização sem checklist, envio, importação ou ações. */
+  readOnly?: boolean
 }
 
 function dash(value: string): string {
@@ -94,6 +96,7 @@ export function ImhMedicamentoPlanilhaPreview({
   onEnviarImh,
   onEditLinha,
   onDeleteLinha,
+  readOnly = false,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const visible = imhMedicamentoHasPreviewContent(value)
   const total = calcImhMedicamentoTotalGeral(value)
@@ -102,7 +105,7 @@ export function ImhMedicamentoPlanilhaPreview({
     [value.finalizedImhIds],
   )
   const selection = selectedImhIds ?? new Set<string>()
-  const colCount = IMH_MEDICAMENTO_COLUNAS.length + 2
+  const colCount = IMH_MEDICAMENTO_COLUNAS.length + (readOnly ? 0 : 2)
 
   const selecionaveis = useMemo(
     () =>
@@ -205,7 +208,7 @@ export function ImhMedicamentoPlanilhaPreview({
               sx={{ height: 22, fontWeight: 600 }}
             />
           ) : null}
-          {selectedCount > 0 ? (
+          {!readOnly && selectedCount > 0 ? (
             <Chip
               size="small"
               color="primary"
@@ -213,7 +216,7 @@ export function ImhMedicamentoPlanilhaPreview({
               sx={{ height: 22, fontWeight: 700 }}
             />
           ) : null}
-          {onEnviarImh ? (
+          {!readOnly && onEnviarImh ? (
             <Button
               size="small"
               variant="contained"
@@ -235,7 +238,7 @@ export function ImhMedicamentoPlanilhaPreview({
                   : 'Enviar para IMH'}
             </Button>
           ) : null}
-          {onImportClick ? (
+          {!readOnly && onImportClick ? (
             <Button
               size="small"
               variant="outlined"
@@ -270,52 +273,54 @@ export function ImhMedicamentoPlanilhaPreview({
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ overflow: 'auto', maxHeight: 'min(70vh, 720px)' }}>
+          <Box sx={{ overflow: 'auto', maxHeight: readOnly ? 'none' : 'min(70vh, 720px)' }}>
             <Box className="excel-sheet-scroll">
               <Table size="small" stickyHeader sx={{ minWidth: 1400 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell
-                      sx={{
-                        ...headerSx,
-                        bgcolor: EXCEL_SHEET.selectHeaderBg,
-                        width: 52,
-                        minWidth: 52,
-                        textAlign: 'center',
-                        px: 0.5,
-                      }}
-                    >
-                      <Box
+                    {!readOnly ? (
+                      <TableCell
                         sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 0.25,
+                          ...headerSx,
+                          bgcolor: EXCEL_SHEET.selectHeaderBg,
+                          width: 52,
+                          minWidth: 52,
+                          textAlign: 'center',
+                          px: 0.5,
                         }}
                       >
-                        <Typography
-                          component="span"
+                        <Box
                           sx={{
-                            fontWeight: 700,
-                            lineHeight: 1,
-                            fontSize: '10px',
-                            color: EXCEL_SHEET.text,
-                            letterSpacing: 0.4,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 0.25,
                           }}
                         >
-                          IMH
-                        </Typography>
-                        <Checkbox
-                          size="small"
-                          checked={allSelected}
-                          indeterminate={someSelected && !allSelected}
-                          disabled={selecionaveis.length === 0 || isEnviando}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(_, checked) => toggleAll(checked)}
-                          sx={{ p: 0, ...selectedCheckboxSx }}
-                        />
-                      </Box>
-                    </TableCell>
+                          <Typography
+                            component="span"
+                            sx={{
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              fontSize: '10px',
+                              color: EXCEL_SHEET.text,
+                              letterSpacing: 0.4,
+                            }}
+                          >
+                            IMH
+                          </Typography>
+                          <Checkbox
+                            size="small"
+                            checked={allSelected}
+                            indeterminate={someSelected && !allSelected}
+                            disabled={selecionaveis.length === 0 || isEnviando}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(_, checked) => toggleAll(checked)}
+                            sx={{ p: 0, ...selectedCheckboxSx }}
+                          />
+                        </Box>
+                      </TableCell>
+                    ) : null}
                     {IMH_MEDICAMENTO_COLUNAS.map((col) => (
                       <TableCell
                         key={col.key}
@@ -324,9 +329,11 @@ export function ImhMedicamentoPlanilhaPreview({
                         {col.label}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...headerSx, width: 72, textAlign: 'center' }}>
-                      Ações
-                    </TableCell>
+                    {!readOnly ? (
+                      <TableCell sx={{ ...headerSx, width: 72, textAlign: 'center' }}>
+                        Ações
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -346,29 +353,31 @@ export function ImhMedicamentoPlanilhaPreview({
                           '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                         }}
                       >
-                        <TableCell
-                          sx={{
-                            ...cellSx,
-                            bgcolor: EXCEL_SHEET.selectHeaderBg,
-                            textAlign: 'center',
-                            px: 0.5,
-                          }}
-                        >
-                          <Checkbox
-                            size="small"
-                            className={finalizado ? 'excel-checkbox-finalizado' : undefined}
-                            checked={checked}
-                            disabled={finalizado || isEnviando}
-                            onChange={(_, nextChecked) => {
-                              if (finalizado) return
-                              toggleRow(linha, nextChecked)
-                            }}
+                        {!readOnly ? (
+                          <TableCell
                             sx={{
-                              p: 0,
-                              ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                              ...cellSx,
+                              bgcolor: EXCEL_SHEET.selectHeaderBg,
+                              textAlign: 'center',
+                              px: 0.5,
                             }}
-                          />
-                        </TableCell>
+                          >
+                            <Checkbox
+                              size="small"
+                              className={finalizado ? 'excel-checkbox-finalizado' : undefined}
+                              checked={checked}
+                              disabled={finalizado || isEnviando}
+                              onChange={(_, nextChecked) => {
+                                if (finalizado) return
+                                toggleRow(linha, nextChecked)
+                              }}
+                              sx={{
+                                p: 0,
+                                ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                              }}
+                            />
+                          </TableCell>
+                        ) : null}
                         {IMH_MEDICAMENTO_COLUNAS.map((col) => (
                           <TableCell
                             key={col.key}
@@ -386,27 +395,29 @@ export function ImhMedicamentoPlanilhaPreview({
                             {dash(String(linha[col.key] ?? ''))}
                           </TableCell>
                         ))}
-                        <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
-                          <IconButton
-                            size="small"
-                            aria-label={`Editar linha PME ${index + 1}`}
-                            onClick={() => onEditLinha?.(linha.id)}
-                            disabled={isEnviando}
-                            sx={{ p: 0.35 }}
-                          >
-                            <EditIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            aria-label={`Excluir linha PME ${index + 1}`}
-                            onClick={() => onDeleteLinha?.(linha.id)}
-                            disabled={isEnviando}
-                            sx={{ p: 0.35 }}
-                          >
-                            <DeleteIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </TableCell>
+                        {!readOnly ? (
+                          <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                            <IconButton
+                              size="small"
+                              aria-label={`Editar linha PME ${index + 1}`}
+                              onClick={() => onEditLinha?.(linha.id)}
+                              disabled={isEnviando}
+                              sx={{ p: 0.35 }}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Excluir linha PME ${index + 1}`}
+                              onClick={() => onDeleteLinha?.(linha.id)}
+                              disabled={isEnviando}
+                              sx={{ p: 0.35 }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </TableCell>
+                        ) : null}
                       </TableRow>
                     )
                   })}

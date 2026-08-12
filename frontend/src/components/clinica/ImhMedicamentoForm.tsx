@@ -33,7 +33,6 @@ import { useClinicas } from '@/hooks/useCadastros'
 import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import {
-  buildImhPlanilhaFromMedicamentoLinhas,
   createEmptyImhMedicamentoLinha,
   formatImhMedData,
   formatImhMedMoeda,
@@ -440,8 +439,7 @@ export function ImhMedicamentoForm({
         id: pedidoId,
         fluxo: 'imh',
       })
-      const planilha = buildImhPlanilhaFromMedicamentoLinhas(selecionadas)
-      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+      pedidoPlanilhaEnvioService.saveImhMedicamentoForPedido(pedidoId, selecionadas)
 
       const ids = selecionadas.map((l) => l.id)
       onChange(markImhMedicamentoLinhasFinalized(value, ids))

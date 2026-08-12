@@ -1,9 +1,10 @@
 import { isDemoDataSession } from '@/config/dataSource'
 import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
-import type { PedidoPlanilhaEnvioState } from '@/types'
+import type { ImhMedicamentoLinha, PedidoPlanilhaEnvioState } from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
+import { buildImhPlanilhaFromMedicamentoLinhas } from '@/utils/imhMedicamentoForm'
 
 function readPlanilhaData() {
   if (isDemoDataSession()) return reloadAppDataFromStorage()
@@ -61,6 +62,33 @@ export const pedidoPlanilhaEnvioService = {
     return snapshot
   },
 
+  saveImhMedicamentoForPedido(
+    pedidoId: string,
+    linhas: ImhMedicamentoLinha[],
+  ): PedidoPlanilhaEnvioState {
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
+    const converted = buildImhPlanilhaFromMedicamentoLinhas(linhas)
+    const snapshot: PedidoPlanilhaEnvioState = {
+      formato: 'imhMedicamento',
+      cabecalho: converted.cabecalho,
+      linhas: converted.linhas.map((linha) => ({ ...linha })),
+      controleSolempLinhas: existing?.controleSolempLinhas,
+      imhMedicamentoLinhas: linhas.map((linha) => ({ ...linha })),
+      enviadoEm: new Date().toISOString(),
+      recebidaEm: existing?.recebidaEm,
+      encaminhadaImhEm: existing?.encaminhadaImhEm,
+      recebidaImhEm: existing?.recebidaImhEm,
+      arquivadaEm: existing?.arquivadaEm,
+    }
+
+    data.pedidoPlanilhaEnvio[pedidoId] = snapshot
+    saveAppData(data)
+    return snapshot
+  },
+
   saveControleSolempForPedido(
     pedidoId: string,
     planilha: ControleSolempPlanilha,
@@ -98,6 +126,7 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: { ...snapshot.cabecalho },
       linhas: (snapshot.linhas ?? []).map((linha) => ({ ...linha })),
       controleSolempLinhas: snapshot.controleSolempLinhas?.map((linha) => ({ ...linha })),
+      imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,
       recebidaEm: snapshot.recebidaEm,
       encaminhadaImhEm: snapshot.encaminhadaImhEm,

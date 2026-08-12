@@ -558,11 +558,13 @@ export interface ClinicaPlanilhasLivresState {
 
 export interface PedidoPlanilhaEnvioState {
   /** Formato da planilha anexada ao pedido. Default: IMH/OPME. */
-  formato?: 'imh' | 'controleSolemp'
+  formato?: 'imh' | 'controleSolemp' | 'imhMedicamento'
   cabecalho: ImhCabecalho
   linhas: ImhLinha[]
   /** Linhas no formato Controle SOLEMP (envio Confecção de Solemp). */
   controleSolempLinhas?: ControleSolempLinha[]
+  /** Planilha PME enviada da aba IMH de medicamentos (colunas iguais à origem). */
+  imhMedicamentoLinhas?: ImhMedicamentoLinha[]
   enviadoEm: string
   recebidaEm?: string
   /** Planilha encaminhada pela Auditoria ao IMH */
