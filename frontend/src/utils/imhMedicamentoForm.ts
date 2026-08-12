@@ -31,7 +31,6 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
     om: '',
     unidadeFornecimento: '',
     quantidadeAdquirida: '',
-    maneiraDispensacao: '',
   }
 }
 
@@ -77,11 +76,6 @@ export const IMH_MEDICAMENTO_COLUNAS = [
     label: 'QUANTIDADE ADQUIRIDA PELA OMH/OMFM',
     width: 160,
   },
-  {
-    key: 'maneiraDispensacao',
-    label: 'MANEIRA DE DISPENSAÇÃO (PELA OMH-OMFM/POR OSE)',
-    width: 200,
-  },
 ] as const
 
 export type ImhMedicamentoColunaKey = (typeof IMH_MEDICAMENTO_COLUNAS)[number]['key']
@@ -89,7 +83,6 @@ export type ImhMedicamentoColunaKey = (typeof IMH_MEDICAMENTO_COLUNAS)[number]['
 export const IMH_MEDICAMENTO_WRAP_KEYS = new Set<ImhMedicamentoColunaKey>([
   'nome',
   'itemPme',
-  'maneiraDispensacao',
 ])
 
 function parseQuantidade(raw: string): number {
@@ -139,8 +132,7 @@ export function linhaImhMedicamentoHasContent(linha: ImhMedicamentoLinha): boole
       linha.valorIndenizar.trim() ||
       linha.om.trim() ||
       linha.unidadeFornecimento.trim() ||
-      linha.quantidadeAdquirida.trim() ||
-      linha.maneiraDispensacao.trim(),
+      linha.quantidadeAdquirida.trim(),
   )
 }
 
@@ -168,7 +160,6 @@ export function normalizeImhMedicamentoForm(
         om: item.om ?? '',
         unidadeFornecimento: item.unidadeFornecimento ?? '',
         quantidadeAdquirida: item.quantidadeAdquirida ?? '',
-        maneiraDispensacao: item.maneiraDispensacao ?? '',
       }),
     )
     .filter((linha) => linhaImhMedicamentoHasContent(linha))

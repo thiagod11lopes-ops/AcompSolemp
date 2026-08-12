@@ -983,18 +983,6 @@ export function ImhMedicamentoForm({
               fullWidth
               sx={compactFieldSx}
             />
-            <TextField
-              label="MANEIRA DE DISPENSAÇÃO"
-              value={linhaDraft.maneiraDispensacao}
-              onChange={(e) =>
-                updateDraft({ maneiraDispensacao: formatImhMedUppercase(e.target.value) })
-              }
-              size="small"
-              fullWidth
-              multiline
-              minRows={2}
-              sx={multilineFieldSx}
-            />
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>

@@ -489,7 +489,6 @@ export interface ImhMedicamentoLinha {
   om: string
   unidadeFornecimento: string
   quantidadeAdquirida: string
-  maneiraDispensacao: string
 }
 
 /** Formulário + planilha unificada da aba IMH (medicamento / PME) */
