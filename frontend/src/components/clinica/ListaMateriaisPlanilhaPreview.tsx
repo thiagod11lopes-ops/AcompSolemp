@@ -42,6 +42,68 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
+/** Quebra em linhas de até ~chars, sem partir palavras. */
+function wrapEveryChars(value: string, chars = 100): string {
+  const text = value.trim()
+  if (!text) return '—'
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '—'
+
+  const lines: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    if (!current) {
+      current = word
+      continue
+    }
+    const candidate = `${current} ${word}`
+    if (candidate.length <= chars) {
+      current = candidate
+    } else {
+      lines.push(current)
+      current = word
+    }
+  }
+  if (current) lines.push(current)
+  return lines.join('\n')
+}
+
+function WrappedCellText({ text, chars }: { text: string; chars: number }) {
+  return (
+    <Box
+      component="div"
+      sx={{
+        display: 'block',
+        width: `${chars}ch`,
+        maxWidth: `${chars}ch`,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'keep-all',
+        overflowWrap: 'normal',
+        hyphens: 'none',
+        lineHeight: 1.35,
+      }}
+    >
+      {wrapEveryChars(text, chars)}
+    </Box>
+  )
+}
+
+function wrapCellSx(chars: number) {
+  return {
+    ...cellSx,
+    width: `${chars}ch`,
+    maxWidth: `${chars}ch`,
+    minWidth: `${Math.min(chars, 12)}ch`,
+    whiteSpace: 'pre-wrap !important',
+    overflow: 'visible !important',
+    textOverflow: 'unset',
+    wordBreak: 'keep-all',
+    overflowWrap: 'normal',
+    verticalAlign: 'middle',
+  }
+}
+
 const cellSx = {
   border: EXCEL_SHEET.border,
   fontFamily: EXCEL_SHEET.fontFamily,
@@ -233,18 +295,17 @@ export function ListaMateriaisPlanilhaPreview({
                         {LISTA_MATERIAIS_COLUNAS.map((col) => (
                           <TableCell
                             key={col.key}
-                            sx={{
-                              ...cellSx,
-                              ...(col.key === 'especificacao'
-                                ? {
-                                    whiteSpace: 'pre-wrap',
-                                    maxWidth: 360,
-                                    minWidth: 180,
-                                  }
-                                : null),
-                            }}
+                            sx={
+                              col.key === 'especificacao'
+                                ? wrapCellSx(100)
+                                : cellSx
+                            }
                           >
-                            {dash(String(linha[col.key] ?? ''))}
+                            {col.key === 'especificacao' ? (
+                              <WrappedCellText text={String(linha[col.key] ?? '')} chars={100} />
+                            ) : (
+                              dash(String(linha[col.key] ?? ''))
+                            )}
                           </TableCell>
                         ))}
                         <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
