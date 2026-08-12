@@ -43,7 +43,7 @@ function dash(value: string): string {
 }
 
 /** Quebra em linhas de até ~chars, sem partir palavras. */
-function wrapEveryChars(value: string, chars = 100): string {
+function wrapEveryChars(value: string, chars = 200): string {
   const text = value.trim()
   if (!text) return '—'
   const words = text.split(/\s+/).filter(Boolean)
@@ -297,12 +297,12 @@ export function ListaMateriaisPlanilhaPreview({
                             key={col.key}
                             sx={
                               col.key === 'especificacao'
-                                ? wrapCellSx(100)
+                                ? wrapCellSx(200)
                                 : cellSx
                             }
                           >
                             {col.key === 'especificacao' ? (
-                              <WrappedCellText text={String(linha[col.key] ?? '')} chars={100} />
+                              <WrappedCellText text={String(linha[col.key] ?? '')} chars={200} />
                             ) : (
                               dash(String(linha[col.key] ?? ''))
                             )}

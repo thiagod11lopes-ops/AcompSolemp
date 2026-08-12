@@ -32,7 +32,7 @@ export const LISTA_MATERIAIS_COLUNAS = [
   { key: 'pi', label: 'PI', width: 110 },
   { key: 'catmat', label: 'CATMAT', width: 96 },
   { key: 'lote', label: 'LOTE', width: 96 },
-  { key: 'especificacao', label: 'ESPECIFICAÇÃO', width: 320 },
+  { key: 'especificacao', label: 'ESPECIFICAÇÃO', width: 640 },
   { key: 'uf', label: 'UF', width: 88 },
   { key: 'qtdMin', label: 'QTD MÍN.', width: 80 },
   { key: 'qtdTotal', label: 'QTD TOTAL', width: 88 },
