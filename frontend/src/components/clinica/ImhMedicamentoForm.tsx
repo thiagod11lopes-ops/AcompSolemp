@@ -40,6 +40,7 @@ import {
   type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
 import {
+  ensurePacientePmeFromLancamento,
   findPacientePmeByNome,
   formatPacientePmeUpper,
   normalizePacienteNipKey,
@@ -54,6 +55,7 @@ interface ImhMedicamentoFormProps {
   value: ImhMedicamentoFormData
   onChange: (next: ImhMedicamentoFormData) => void
   pacientes?: PacientePmeRow[]
+  onPacientesChange?: (next: PacientePmeRow[]) => void
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
@@ -130,6 +132,7 @@ export function ImhMedicamentoForm({
   value,
   onChange,
   pacientes = [],
+  onPacientesChange,
 }: ImhMedicamentoFormProps) {
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
@@ -341,6 +344,25 @@ export function ImhMedicamentoForm({
     linhaSnapshotRef.current = null
   }
 
+  const syncPacienteFromLancamento = (linha: ImhMedicamentoLinha) => {
+    if (!onPacientesChange) return
+    if (!normalizePacienteNipKey(linha.nip)) return
+    const next = ensurePacientePmeFromLancamento(pacientes, {
+      nip: linha.nip,
+      nome: linha.nome,
+      nipTitular: linha.nipTitular,
+      postoGrad: linha.postoGrad,
+      vinculo: linha.vinculo,
+    })
+    if (next === pacientes) return
+    onPacientesChange(next)
+    setNipNaoCadastrado(false)
+    if (nipAlertTimerRef.current) {
+      clearTimeout(nipAlertTimerRef.current)
+      nipAlertTimerRef.current = null
+    }
+  }
+
   const handleAdicionarLinha = () => {
     const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
     if (editingLinhaId) {
@@ -349,6 +371,7 @@ export function ImhMedicamentoForm({
           l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l,
         ),
       )
+      syncPacienteFromLancamento(ready)
       resetLinhaForm()
       return
     }
@@ -357,6 +380,7 @@ export function ImhMedicamentoForm({
       return
     }
     persistLinhas([...value.linhas, ready])
+    syncPacienteFromLancamento(ready)
     resetLinhaForm()
   }
 

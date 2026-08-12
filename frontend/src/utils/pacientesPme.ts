@@ -144,3 +144,37 @@ export function searchPacientesPmeByNome(
     .filter((row) => formatPacientePmeUpper(row.nome).includes(q))
     .slice(0, limit)
 }
+
+/** Dados mínimos do lançamento IMH para cadastrar paciente novo. */
+export type PacientePmeFromLancamento = {
+  nip: string
+  nome: string
+  nipTitular: string
+  postoGrad: string
+  vinculo: string
+}
+
+/**
+ * Se o NIP DO USUÁRIO ainda não existir na lista, acrescenta uma linha.
+ * Retorna a lista original se já existir ou se o NIP estiver vazio.
+ */
+export function ensurePacientePmeFromLancamento(
+  rows: PacientePmeRow[],
+  lancamento: PacientePmeFromLancamento,
+): PacientePmeRow[] {
+  const nipKey = normalizePacienteNipKey(lancamento.nip)
+  if (!nipKey) return rows
+  if (findPacientePmeByNip(lancamento.nip, rows)) return rows
+
+  const nipUsuario = lancamento.nip.trim()
+  const nipTitular = lancamento.nipTitular.trim() || nipUsuario
+  const novo: PacientePmeRow = {
+    ...createEmptyPacientePmeRow(),
+    nome: formatPacientePmeUpper(lancamento.nome),
+    nipUsuario,
+    nipTitular,
+    postoGradTitular: formatPacientePmeUpper(lancamento.postoGrad),
+    vinculo: formatPacientePmeUpper(lancamento.vinculo),
+  }
+  return [...rows, novo]
+}
