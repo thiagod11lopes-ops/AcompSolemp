@@ -469,12 +469,36 @@ export interface ImhAbaFormData {
   linhas: ImhAbaLinha[]
 }
 
+/** Linha da planilha Lista de Materiais (aba LISTA DE MATERIAIS do ODS) */
+export interface ListaMateriaisLinha {
+  id: string
+  item: string
+  pi: string
+  catmat: string
+  lote: string
+  especificacao: string
+  uf: string
+  qtdMin: string
+  qtdTotal: string
+  valor: string
+  fornecedor: string
+}
+
+/** Formulário + planilha unificada da aba Lista de Materiais */
+export interface ListaMateriaisFormData {
+  /** Ex.: APÊNDICE III - PE 90058/2025 */
+  apendice: string
+  linhas: ListaMateriaisLinha[]
+}
+
 export interface ClinicaPlanilhasLivresState {
   abas: PlanilhaLivreAba[]
   abaAtivaId: string | null
   conmedComrj?: ConmedComrjFormData
   /** Formulário tipado da aba IMH (layout anexo CP) */
   imh?: ImhAbaFormData
+  /** Formulário tipado da aba Lista de Materiais */
+  listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
 }

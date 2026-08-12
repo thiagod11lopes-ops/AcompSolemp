@@ -3,6 +3,7 @@ import type { ClinicaPlanilhasLivresState } from '@/types'
 import { ensureFixedPlanilhas } from '@/utils/planilhasFixas'
 import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
 import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
+import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
@@ -18,6 +19,7 @@ function normalizeState(state: ClinicaPlanilhasLivresState | undefined): Clinica
     abaAtivaId,
     conmedComrj: normalizeConmedComrjForm(state?.conmedComrj),
     imh: normalizeImhAbaForm(state?.imh),
+    listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
   }
 }

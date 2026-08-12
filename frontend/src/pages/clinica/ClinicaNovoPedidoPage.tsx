@@ -10,14 +10,21 @@ import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSp
 import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
 import { ConsumoMaterialConsignadoForm } from '@/components/clinica/ConsumoMaterialConsignadoForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
+import { ListaMateriaisForm } from '@/components/clinica/ListaMateriaisForm'
 import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
 } from '@/services/clinicaPlanilhasLivresService'
-import type { ConmedComrjFormData, ImhAbaFormData, PlanilhaLivreAba } from '@/types'
+import type {
+  ConmedComrjFormData,
+  ImhAbaFormData,
+  ListaMateriaisFormData,
+  PlanilhaLivreAba,
+} from '@/types'
 import { FIXED_PLANILHAS } from '@/utils/planilhasFixas'
 import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
 import { EMPTY_IMH_ABA_FORM } from '@/utils/imhAbaForm'
+import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import {
   normalizeConsumoMaterialRows,
   type ConsumoMaterialRow,
@@ -27,6 +34,16 @@ import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 const CONMED_ABA_ID = 'conmed-comrj'
 const CONSUMO_ABA_ID = 'consumo-material-consignado'
 const IMH_ABA_ID = 'imh'
+const LISTA_ABA_ID = 'lista-de-materiais'
+
+type PersistPayload = {
+  abas?: PlanilhaLivreAba[]
+  abaAtivaId?: string | null
+  conmed?: ConmedComrjFormData
+  consumo?: ConsumoMaterialRow[]
+  imh?: ImhAbaFormData
+  lista?: ListaMateriaisFormData
+}
 
 export default function ClinicaNovoPedidoPage() {
   const { user } = useClinicaAuth()
@@ -36,17 +53,20 @@ export default function ClinicaNovoPedidoPage() {
   const [abaAtivaId, setAbaAtivaId] = useState<string | null>(FIXED_PLANILHAS[0].id)
   const [conmedForm, setConmedForm] = useState<ConmedComrjFormData>(EMPTY_CONMED_COMRJ_FORM)
   const [imhForm, setImhForm] = useState<ImhAbaFormData>(EMPTY_IMH_ABA_FORM)
+  const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const hydrated = useRef(false)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
   const conmedFormRef = useRef(conmedForm)
   const imhFormRef = useRef(imhForm)
+  const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
   conmedFormRef.current = conmedForm
   imhFormRef.current = imhForm
+  listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
 
   useEffect(() => {
@@ -57,24 +77,21 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtivaId(state.abaAtivaId ?? FIXED_PLANILHAS[0].id)
     setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
     setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
+    setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
   }, [clinicaId])
 
   const persist = useCallback(
-    (
-      nextAbas: PlanilhaLivreAba[],
-      nextAtiva: string | null,
-      nextConmed: ConmedComrjFormData = conmedFormRef.current,
-      nextConsumo: ConsumoMaterialRow[] = consumoRowsRef.current,
-      nextImh: ImhAbaFormData = imhFormRef.current,
-    ) => {
+    (patch: PersistPayload = {}) => {
       if (!clinicaId) return
       clinicaPlanilhasLivresService.saveState(clinicaId, {
-        abas: nextAbas,
-        abaAtivaId: nextAtiva,
-        conmedComrj: nextConmed,
-        consumoMaterialConsignado: nextConsumo,
-        imh: nextImh,
+        abas: patch.abas ?? abasRef.current,
+        abaAtivaId:
+          patch.abaAtivaId !== undefined ? patch.abaAtivaId : abaAtivaIdRef.current,
+        conmedComrj: patch.conmed ?? conmedFormRef.current,
+        consumoMaterialConsignado: patch.consumo ?? consumoRowsRef.current,
+        imh: patch.imh ?? imhFormRef.current,
+        listaMateriais: patch.lista ?? listaFormRef.current,
       })
     },
     [clinicaId],
@@ -92,7 +109,8 @@ export default function ClinicaNovoPedidoPage() {
         !ativaId ||
         ativaId === CONMED_ABA_ID ||
         ativaId === CONSUMO_ABA_ID ||
-        ativaId === IMH_ABA_ID
+        ativaId === IMH_ABA_ID ||
+        ativaId === LISTA_ABA_ID
       ) {
         return
       }
@@ -100,7 +118,7 @@ export default function ClinicaNovoPedidoPage() {
         const next = prev.map((aba) =>
           aba.id === ativaId ? { ...aba, sheet, grid: undefined } : aba,
         )
-        persist(next, ativaId)
+        persist({ abas: next, abaAtivaId: ativaId })
         return next
       })
     },
@@ -110,7 +128,7 @@ export default function ClinicaNovoPedidoPage() {
   const handleConmedChange = useCallback(
     (next: ConmedComrjFormData) => {
       setConmedForm(next)
-      persist(abasRef.current, abaAtivaIdRef.current, next, consumoRowsRef.current, imhFormRef.current)
+      persist({ conmed: next })
     },
     [persist],
   )
@@ -118,13 +136,15 @@ export default function ClinicaNovoPedidoPage() {
   const handleImhChange = useCallback(
     (next: ImhAbaFormData) => {
       setImhForm(next)
-      persist(
-        abasRef.current,
-        abaAtivaIdRef.current,
-        conmedFormRef.current,
-        consumoRowsRef.current,
-        next,
-      )
+      persist({ imh: next })
+    },
+    [persist],
+  )
+
+  const handleListaChange = useCallback(
+    (next: ListaMateriaisFormData) => {
+      setListaForm(next)
+      persist({ lista: next })
     },
     [persist],
   )
@@ -132,20 +152,14 @@ export default function ClinicaNovoPedidoPage() {
   const handleConsumoChange = useCallback(
     (next: ConsumoMaterialRow[]) => {
       setConsumoRows(next)
-      persist(
-        abasRef.current,
-        abaAtivaIdRef.current,
-        conmedFormRef.current,
-        next,
-        imhFormRef.current,
-      )
+      persist({ consumo: next })
     },
     [persist],
   )
 
   const handleChangeAba = (abaId: string) => {
     setAbaAtivaId(abaId)
-    persist(abasRef.current, abaId)
+    persist({ abaAtivaId: abaId })
   }
 
   return (
@@ -191,6 +205,8 @@ export default function ClinicaNovoPedidoPage() {
         <ConmedComrjForm value={conmedForm} onChange={handleConmedChange} />
       ) : abaAtivaId === IMH_ABA_ID ? (
         <ImhAbaForm value={imhForm} onChange={handleImhChange} />
+      ) : abaAtivaId === LISTA_ABA_ID ? (
+        <ListaMateriaisForm value={listaForm} onChange={handleListaChange} />
       ) : abaAtiva ? (
         <PlanilhaBrancaSpreadsheet
           nome={abaAtiva.nome}
