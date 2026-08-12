@@ -99,6 +99,52 @@ export function findPacientePmeByNip(
   return rows.find((row) => normalizePacienteNipKey(row.nipUsuario) === key)
 }
 
+export function findPacientePmeByNipTitular(
+  nip: string,
+  rows: PacientePmeRow[],
+): PacientePmeRow | undefined {
+  const key = normalizePacienteNipKey(nip)
+  if (!key) return undefined
+  return rows.find((row) => normalizePacienteNipKey(row.nipTitular) === key)
+}
+
+export type PacientePmeNipMatch =
+  | { kind: 'usuario'; row: PacientePmeRow; isTitular: boolean }
+  | { kind: 'somente-titular'; row: PacientePmeRow }
+
+/** Resolve o NIP digitado: primeiro em NIP DO USUÁRIO; senão em NIP DO TITULAR. */
+export function resolvePacientePmeFromNip(
+  nip: string,
+  rows: PacientePmeRow[],
+): PacientePmeNipMatch | null {
+  const key = normalizePacienteNipKey(nip)
+  if (!key) return null
+
+  const asUsuario = findPacientePmeByNip(nip, rows)
+  if (asUsuario) {
+    const userKey = normalizePacienteNipKey(asUsuario.nipUsuario)
+    const titularKey = normalizePacienteNipKey(asUsuario.nipTitular)
+    return {
+      kind: 'usuario',
+      row: asUsuario,
+      isTitular: !titularKey || titularKey === userKey,
+    }
+  }
+
+  const asTitular = findPacientePmeByNipTitular(nip, rows)
+  if (asTitular) {
+    return { kind: 'somente-titular', row: asTitular }
+  }
+
+  return null
+}
+
+export function pacienteNipsIguais(row: PacientePmeRow): boolean {
+  const userKey = normalizePacienteNipKey(row.nipUsuario)
+  const titularKey = normalizePacienteNipKey(row.nipTitular)
+  return Boolean(userKey) && (!titularKey || titularKey === userKey)
+}
+
 export function findPacientePmeByNome(
   nome: string,
   rows: PacientePmeRow[],

@@ -40,11 +40,13 @@ import {
   type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
 import {
-  findPacientePmeByNip,
   findPacientePmeByNome,
   formatPacientePmeUpper,
   normalizePacienteNipKey,
+  pacienteNipsIguais,
+  resolvePacientePmeFromNip,
   searchPacientesPmeByNome,
+  type PacientePmeNipMatch,
   type PacientePmeRow,
 } from '@/utils/pacientesPme'
 
@@ -66,16 +68,55 @@ function mapVinculoPaciente(raw: string): string {
   return upper
 }
 
-function pacienteToDraftPatch(
+function matchToDraftPatch(
+  match: PacientePmeNipMatch,
+  nipDigitado: string,
+): Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>> {
+  const nipFmt = formatImhMedNip(nipDigitado)
+
+  if (match.kind === 'somente-titular') {
+    return {
+      nip: nipFmt,
+      nome: '',
+      nipTitular: nipFmt,
+      postoGrad: formatImhMedUppercase(match.row.postoGradTitular),
+      vinculo: 'TITULAR',
+    }
+  }
+
+  const { row, isTitular } = match
+  if (isTitular) {
+    const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
+    return {
+      nip: nipUsuario,
+      nome: formatImhMedUppercase(row.nome),
+      nipTitular: nipUsuario,
+      postoGrad: formatImhMedUppercase(row.postoGradTitular),
+      vinculo: 'TITULAR',
+    }
+  }
+
+  return {
+    nip: formatImhMedNip(row.nipUsuario) || nipFmt,
+    nome: formatImhMedUppercase(row.nome),
+    nipTitular: formatImhMedNip(row.nipTitular),
+    postoGrad: formatImhMedUppercase(row.postoGradTitular),
+    vinculo: mapVinculoPaciente(row.vinculo),
+  }
+}
+
+/** Preenchimento ao escolher paciente pelo nome (sempre linha de NIP DO USUÁRIO). */
+function pacienteUsuarioToDraftPatch(
   paciente: PacientePmeRow,
 ): Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>> {
-  return {
-    nip: formatImhMedNip(paciente.nipUsuario),
-    nome: formatImhMedUppercase(paciente.nome),
-    nipTitular: formatImhMedNip(paciente.nipTitular || paciente.nipUsuario),
-    postoGrad: formatImhMedUppercase(paciente.postoGradTitular),
-    vinculo: mapVinculoPaciente(paciente.vinculo),
-  }
+  return matchToDraftPatch(
+    {
+      kind: 'usuario',
+      row: paciente,
+      isTitular: pacienteNipsIguais(paciente),
+    },
+    paciente.nipUsuario,
+  )
 }
 
 const compactFieldSx = {
@@ -257,7 +298,21 @@ export function ImhMedicamentoForm({
     syncDraftToList(
       withRecalculatedImhMedicamentoLinha({
         ...linhaDraft,
-        ...pacienteToDraftPatch(paciente),
+        ...pacienteUsuarioToDraftPatch(paciente),
+      }),
+    )
+  }
+
+  const applyNipMatch = (match: PacientePmeNipMatch, nipDigitado: string) => {
+    setNipNaoCadastrado(false)
+    if (nipAlertTimerRef.current) {
+      clearTimeout(nipAlertTimerRef.current)
+      nipAlertTimerRef.current = null
+    }
+    syncDraftToList(
+      withRecalculatedImhMedicamentoLinha({
+        ...linhaDraft,
+        ...matchToDraftPatch(match, nipDigitado),
       }),
     )
   }
@@ -265,9 +320,9 @@ export function ImhMedicamentoForm({
   const tryFillFromNip = (nipRaw: string, { alertIfMissing }: { alertIfMissing: boolean }) => {
     const digits = normalizePacienteNipKey(nipRaw)
     if (!digits) return
-    const found = findPacientePmeByNip(nipRaw, pacientes)
-    if (found) {
-      applyPacienteSelection(found)
+    const match = resolvePacientePmeFromNip(nipRaw, pacientes)
+    if (match) {
+      applyNipMatch(match, nipRaw)
       return
     }
     if (alertIfMissing && digits.length >= 6) {
