@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
+import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -13,6 +13,7 @@ import {
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ListaMedicamentosPlanilhaPreview } from '@/components/clinica/ListaMedicamentosPlanilhaPreview'
+import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import {
   createEmptyListaMedicamentosLinha,
   formatListaMedNeb,
@@ -72,6 +73,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importing, setImporting] = useState(false)
+  const [explicacaoOpen, setExplicacaoOpen] = useState(false)
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
     fileName: string
@@ -368,6 +370,21 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
             ) : null}
           </Box>
         </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
+          onClick={() => setExplicacaoOpen(true)}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 800,
+            fontSize: 12,
+            borderRadius: 2,
+            justifySelf: 'stretch',
+          }}
+        >
+          Explicação Detalhada
+        </Button>
       </Paper>
 
       <Box sx={{ minWidth: 0 }}>
@@ -400,6 +417,10 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
             setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
           }
           onConfirm={handleConfirmSheet}
+        />
+        <MedicamentoAbasExplicacaoModal
+          open={explicacaoOpen}
+          onClose={() => setExplicacaoOpen(false)}
         />
         <Snackbar
           open={importFeedback.open}

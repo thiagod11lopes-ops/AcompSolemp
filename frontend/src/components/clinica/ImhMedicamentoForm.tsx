@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
+import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
@@ -18,6 +18,7 @@ import {
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
+import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
@@ -207,6 +208,7 @@ export function ImhMedicamentoForm({
   const [nipNaoCadastrado, setNipNaoCadastrado] = useState(false)
   const [importing, setImporting] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
+  const [explicacaoOpen, setExplicacaoOpen] = useState(false)
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -930,6 +932,21 @@ export function ImhMedicamentoForm({
             ) : null}
           </Box>
         </Box>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
+          onClick={() => setExplicacaoOpen(true)}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 800,
+            fontSize: 12,
+            borderRadius: 2,
+            justifySelf: 'stretch',
+          }}
+        >
+          Explicação Detalhada
+        </Button>
         {nipNaoCadastrado ? (
           <Alert
             severity="warning"
@@ -1027,6 +1044,10 @@ export function ImhMedicamentoForm({
             setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
           }
           onConfirm={handleConfirmSheet}
+        />
+        <MedicamentoAbasExplicacaoModal
+          open={explicacaoOpen}
+          onClose={() => setExplicacaoOpen(false)}
         />
         <Snackbar
           open={importFeedback.open}
