@@ -55,7 +55,7 @@ interface ImhMedicamentoFormProps {
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
-const NIP_NAO_CADASTRADO = 'NIP NÃO CADASTRADO NO SISTEMA'
+const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 
 function mapVinculoPaciente(raw: string): string {
   const upper = formatPacientePmeUpper(raw)
@@ -700,6 +700,16 @@ export function ImhMedicamentoForm({
             ) : null}
           </Box>
         </Box>
+        {nipNaoCadastrado ? (
+          <Alert
+            severity="warning"
+            variant="filled"
+            sx={{ fontWeight: 800, letterSpacing: 0.3 }}
+            onClose={() => setNipNaoCadastrado(false)}
+          >
+            {NIP_NAO_ENCONTRADO}
+          </Alert>
+        ) : null}
       </Paper>
 
       <Box sx={{ minWidth: 0 }}>
@@ -718,16 +728,6 @@ export function ImhMedicamentoForm({
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
         />
-        {nipNaoCadastrado ? (
-          <Alert
-            severity="warning"
-            variant="filled"
-            sx={{ mt: 1.25, fontWeight: 800, letterSpacing: 0.3 }}
-            onClose={() => setNipNaoCadastrado(false)}
-          >
-            {NIP_NAO_CADASTRADO}
-          </Alert>
-        ) : null}
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
           sheetNames={sheetPicker.sheets.map((s) => s.nome)}
