@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
@@ -20,7 +21,11 @@ import type { ListaMedicamentosFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   LISTA_MEDICAMENTOS_COLUNAS,
+  countListaMedEstoque,
+  filterListaMedicamentosByEstoque,
+  getListaMedEstoqueStatus,
   listaMedicamentosHasPreviewContent,
+  type ListaMedEstoqueFiltro,
 } from '@/utils/listaMedicamentosForm'
 import '@/components/clinica/spreadsheet-excel.css'
 
@@ -37,6 +42,11 @@ function dash(value: string): string {
   const trimmed = value.trim()
   return trimmed || '—'
 }
+
+const ROW_ORANGE = '#fff3e0'
+const ROW_RED = '#ffebee'
+const ROW_ORANGE_HOVER = '#ffe0b2'
+const ROW_RED_HOVER = '#ffcdd2'
 
 const cellSx = {
   border: EXCEL_SHEET.border,
@@ -65,8 +75,18 @@ export function ListaMedicamentosPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
+  const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
   const visible = listaMedicamentosHasPreviewContent(value)
+  const contagem = useMemo(() => countListaMedEstoque(value), [value])
+  const linhasVisiveis = useMemo(
+    () => filterListaMedicamentosByEstoque(value, filtro),
+    [value, filtro],
+  )
   const colCount = LISTA_MEDICAMENTOS_COLUNAS.length + 1
+
+  const toggleFiltro = (next: ListaMedEstoqueFiltro) => {
+    setFiltro((prev) => (prev === next ? 'todos' : next))
+  }
 
   return (
     <Box
@@ -117,6 +137,42 @@ export function ListaMedicamentosPlanilhaPreview({
             label={`${value.linhas.length} medicamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          <Chip
+            size="small"
+            clickable
+            label={`${contagem.baixo} laranja`}
+            onClick={() => toggleFiltro('baixo')}
+            sx={{
+              height: 22,
+              fontWeight: 700,
+              bgcolor: filtro === 'baixo' ? '#fb8c00' : ROW_ORANGE,
+              color: filtro === 'baixo' ? '#fff' : '#e65100',
+              border: '1px solid #ffb74d',
+            }}
+          />
+          <Chip
+            size="small"
+            clickable
+            label={`${contagem.zerado} vermelho`}
+            onClick={() => toggleFiltro('zerado')}
+            sx={{
+              height: 22,
+              fontWeight: 700,
+              bgcolor: filtro === 'zerado' ? '#e53935' : ROW_RED,
+              color: filtro === 'zerado' ? '#fff' : '#c62828',
+              border: '1px solid #ef9a9a',
+            }}
+          />
+          {filtro !== 'todos' ? (
+            <Chip
+              size="small"
+              variant="outlined"
+              label="Mostrar todos"
+              onClick={() => setFiltro('todos')}
+              onDelete={() => setFiltro('todos')}
+              sx={{ height: 22, fontWeight: 600 }}
+            />
+          ) : null}
           {onImportClick ? (
             <Button
               size="small"
@@ -204,14 +260,30 @@ export function ListaMedicamentosPlanilhaPreview({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {value.linhas.map((linha, index) => {
+                  {linhasVisiveis.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
+                    const status = getListaMedEstoqueStatus(linha)
+                    const rowBg =
+                      status === 'zerado'
+                        ? ROW_RED
+                        : status === 'baixo'
+                          ? ROW_ORANGE
+                          : editing
+                            ? EXCEL_SHEET.selectedBg
+                            : undefined
+                    const hoverBg =
+                      status === 'zerado'
+                        ? ROW_RED_HOVER
+                        : status === 'baixo'
+                          ? ROW_ORANGE_HOVER
+                          : EXCEL_SHEET.hoverBg
                     return (
                       <TableRow
                         key={linha.id}
                         sx={{
-                          bgcolor: editing ? EXCEL_SHEET.selectedBg : undefined,
-                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                          bgcolor: rowBg,
+                          '& td': { bgcolor: rowBg },
+                          '&:hover td': { bgcolor: hoverBg },
                         }}
                       >
                         {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
@@ -219,6 +291,7 @@ export function ListaMedicamentosPlanilhaPreview({
                             key={col.key}
                             sx={{
                               ...cellSx,
+                              bgcolor: rowBg ?? cellSx.bgcolor,
                               ...(col.key === 'medicamento'
                                 ? {
                                     whiteSpace: 'pre-wrap',
@@ -226,12 +299,19 @@ export function ListaMedicamentosPlanilhaPreview({
                                     minWidth: 180,
                                   }
                                 : null),
+                              ...(col.key === 'qtd' ? { fontWeight: 700, textAlign: 'center' } : null),
                             }}
                           >
                             {dash(String(linha[col.key] ?? ''))}
                           </TableCell>
                         ))}
-                        <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                        <TableCell
+                          sx={{
+                            ...cellSx,
+                            bgcolor: rowBg ?? cellSx.bgcolor,
+                            textAlign: 'center',
+                          }}
+                        >
                           <IconButton
                             size="small"
                             aria-label={`Editar medicamento ${index + 1}`}
@@ -253,10 +333,12 @@ export function ListaMedicamentosPlanilhaPreview({
                       </TableRow>
                     )
                   })}
-                  {value.linhas.length === 0 ? (
+                  {linhasVisiveis.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                        Nenhum medicamento
+                        {filtro === 'todos'
+                          ? 'Nenhum medicamento'
+                          : 'Nenhum medicamento neste filtro'}
                       </TableCell>
                     </TableRow>
                   ) : null}

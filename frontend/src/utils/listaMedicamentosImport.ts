@@ -4,6 +4,7 @@ import {
   formatListaMedNeb,
   formatListaMedNome,
   formatListaMedPreco,
+  formatListaMedQtd,
   formatListaMedUf,
   linhaListaMedicamentosHasContent,
   withNormalizedListaMedicamentosLinha,
@@ -62,6 +63,8 @@ function mapHeaderColumns(
     if (n === 'NEB') map.neb = index
     else if (n.includes('MEDICAMENTO')) map.medicamento = index
     else if (n === 'UF') map.uf = index
+    else if (n === 'QTD' || n === 'QUANTIDADE') map.qtd = index
+    else if (n.includes('ESTOQUE') && n.includes('BAIXO')) map.estoqueBaixo = index
     else if (n.includes('PRECO') || n.includes('REFERENCIA')) map.precoReferencia = index
   })
   return map
@@ -87,6 +90,11 @@ export function parseListaMedicamentosFromGrid(rows: string[][]): ListaMedicamen
       neb: formatListaMedNeb(nebRaw),
       medicamento: formatListaMedNome(medRaw),
       uf: colMap.uf !== undefined ? formatListaMedUf(cell(rows, r, colMap.uf)) : '',
+      qtd: colMap.qtd !== undefined ? formatListaMedQtd(cell(rows, r, colMap.qtd)) : '',
+      estoqueBaixo:
+        colMap.estoqueBaixo !== undefined
+          ? formatListaMedQtd(cell(rows, r, colMap.estoqueBaixo))
+          : '',
       precoReferencia:
         colMap.precoReferencia !== undefined
           ? formatListaMedPreco(cell(rows, r, colMap.precoReferencia))

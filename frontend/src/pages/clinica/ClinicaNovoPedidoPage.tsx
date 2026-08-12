@@ -282,6 +282,8 @@ export default function ClinicaNovoPedidoPage() {
             onChange={handleImhMedicamentoChange}
             pacientes={pacientesPmeRows}
             onPacientesChange={handlePacientesPmeChange}
+            listaMedicamentos={listaMedicamentosForm}
+            onListaMedicamentosChange={handleListaMedicamentosChange}
           />
         )
       }

@@ -9,6 +9,8 @@ export function createEmptyListaMedicamentosLinha(): ListaMedicamentosLinha {
     neb: '',
     medicamento: '',
     uf: '',
+    qtd: '',
+    estoqueBaixo: '',
     precoReferencia: '',
   }
 }
@@ -21,16 +23,100 @@ export const LISTA_MEDICAMENTOS_COLUNAS = [
   { key: 'neb', label: 'NEB', width: 120 },
   { key: 'medicamento', label: 'Medicamento', width: 420 },
   { key: 'uf', label: 'UF', width: 64 },
+  { key: 'qtd', label: 'QTD', width: 72 },
   { key: 'precoReferencia', label: 'Preço referência 2026', width: 150 },
 ] as const
 
 export type ListaMedicamentosColunaKey = (typeof LISTA_MEDICAMENTOS_COLUNAS)[number]['key']
+
+export type ListaMedEstoqueStatus = 'ok' | 'baixo' | 'zerado'
+export type ListaMedEstoqueFiltro = 'todos' | 'baixo' | 'zerado'
+
+export function parseListaMedQtdNumber(raw: string): number {
+  const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
+  if (!cleaned) return 0
+  const n = parseFloat(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+export function formatListaMedQtd(raw: string): string {
+  const cleaned = raw.replace(/[^\d,]/g, '')
+  const firstComma = cleaned.indexOf(',')
+  if (firstComma === -1) return cleaned.slice(0, 12)
+  const intPart = cleaned.slice(0, firstComma).replace(/,/g, '').slice(0, 9)
+  const decPart = cleaned
+    .slice(firstComma + 1)
+    .replace(/,/g, '')
+    .slice(0, 3)
+  return `${intPart},${decPart}`
+}
+
+export function getListaMedEstoqueStatus(linha: ListaMedicamentosLinha): ListaMedEstoqueStatus {
+  const raw = linha.qtd.trim()
+  if (!raw) return 'ok'
+  const qtd = parseListaMedQtdNumber(raw)
+  if (qtd <= 0) return 'zerado'
+  const limiarRaw = linha.estoqueBaixo.trim()
+  if (limiarRaw) {
+    const limiar = parseListaMedQtdNumber(limiarRaw)
+    if (qtd <= limiar) return 'baixo'
+  }
+  return 'ok'
+}
+
+export function countListaMedEstoque(
+  value: ListaMedicamentosFormData,
+): { baixo: number; zerado: number } {
+  let baixo = 0
+  let zerado = 0
+  for (const linha of value.linhas) {
+    const status = getListaMedEstoqueStatus(linha)
+    if (status === 'zerado') zerado += 1
+    else if (status === 'baixo') baixo += 1
+  }
+  return { baixo, zerado }
+}
+
+export function filterListaMedicamentosByEstoque(
+  value: ListaMedicamentosFormData,
+  filtro: ListaMedEstoqueFiltro,
+): ListaMedicamentosLinha[] {
+  if (filtro === 'todos') return value.linhas
+  return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
+}
+
+/** Baixa estoque do medicamento (match por nome) ao lançar no IMH. */
+export function baixarEstoqueListaMedicamentos(
+  form: ListaMedicamentosFormData,
+  itemPme: string,
+  qtdBaixaRaw: string,
+): ListaMedicamentosFormData {
+  const nome = itemPme.trim().toUpperCase()
+  const baixa = parseListaMedQtdNumber(qtdBaixaRaw)
+  if (!nome || baixa <= 0) return form
+
+  let changed = false
+  const linhas = form.linhas.map((linha) => {
+    if (linha.medicamento.trim().toUpperCase() !== nome) return linha
+    const atual = parseListaMedQtdNumber(linha.qtd)
+    const next = Math.max(0, atual - baixa)
+    changed = true
+    return {
+      ...linha,
+      qtd: Number.isInteger(next) ? String(next) : String(next).replace('.', ','),
+    }
+  })
+
+  return changed ? { linhas } : form
+}
 
 export function linhaListaMedicamentosHasContent(linha: ListaMedicamentosLinha): boolean {
   return Boolean(
     linha.neb.trim() ||
       linha.medicamento.trim() ||
       linha.uf.trim() ||
+      linha.qtd.trim() ||
+      linha.estoqueBaixo.trim() ||
       linha.precoReferencia.trim(),
   )
 }
@@ -43,6 +129,8 @@ export function withNormalizedListaMedicamentosLinha(
     neb: linha.neb.trim(),
     medicamento: linha.medicamento.trim(),
     uf: formatImhUppercase(linha.uf).trim(),
+    qtd: linha.qtd.trim(),
+    estoqueBaixo: linha.estoqueBaixo.trim(),
     precoReferencia:
       formatPrecoReferenciaMedicamento(linha.precoReferencia) || linha.precoReferencia.trim(),
   }
@@ -61,6 +149,8 @@ export function normalizeListaMedicamentosForm(
           neb: item.neb ?? '',
           medicamento: item.medicamento ?? '',
           uf: item.uf ?? '',
+          qtd: item.qtd ?? '',
+          estoqueBaixo: item.estoqueBaixo ?? '',
           precoReferencia: item.precoReferencia ?? '',
         }),
       )
@@ -93,6 +183,8 @@ export function listaMedicamentosFromPrecosRows(
       neb: row.neb ?? '',
       medicamento: row.medicamento ?? '',
       uf: row.uf ?? '',
+      qtd: '',
+      estoqueBaixo: '',
       precoReferencia: row.precoReferencia ?? '',
     })),
   })

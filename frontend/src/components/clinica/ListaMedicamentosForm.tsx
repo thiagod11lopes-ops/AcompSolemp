@@ -18,6 +18,7 @@ import {
   formatListaMedNeb,
   formatListaMedNome,
   formatListaMedPreco,
+  formatListaMedQtd,
   formatListaMedUf,
   linhaListaMedicamentosHasContent,
   normalizeListaMedicamentosForm,
@@ -262,7 +263,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
             Entrada — Lista de Medicamentos
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Catálogo com NEB, medicamento, UF e preço de referência 2026. A tabela à direita
+            Catálogo com NEB, medicamento, UF, QTD, estoque baixo e preço. A tabela à direita
             atualiza ao vivo.
           </Typography>
         </Box>
@@ -309,6 +310,25 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               multiline
               minRows={2}
               sx={multilineFieldSx}
+            />
+            <TextField
+              label="QTD"
+              value={linhaDraft.qtd}
+              onChange={(e) => updateDraft({ qtd: formatListaMedQtd(e.target.value) })}
+              placeholder="0"
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="Estoque Baixo"
+              value={linhaDraft.estoqueBaixo}
+              onChange={(e) => updateDraft({ estoqueBaixo: formatListaMedQtd(e.target.value) })}
+              placeholder="Limiar de alerta"
+              size="small"
+              fullWidth
+              helperText="QTD ≤ limiar → laranja; QTD = 0 → vermelho"
+              sx={compactFieldSx}
             />
             <TextField
               label="Preço referência 2026"

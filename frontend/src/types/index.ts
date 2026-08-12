@@ -501,6 +501,10 @@ export interface ListaMedicamentosLinha {
   neb: string
   medicamento: string
   uf: string
+  /** Quantidade em estoque */
+  qtd: string
+  /** Limiar de alerta de estoque baixo */
+  estoqueBaixo: string
   precoReferencia: string
 }
 

@@ -12,7 +12,7 @@ import {
   Typography,
   alpha,
 } from '@mui/material'
-import type { ImhMedicamentoFormData, ImhMedicamentoLinha } from '@/types'
+import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
 import {
@@ -50,12 +50,17 @@ import {
   type PacientePmeNipMatch,
   type PacientePmeRow,
 } from '@/utils/pacientesPme'
+import {
+  baixarEstoqueListaMedicamentos,
+} from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
   value: ImhMedicamentoFormData
   onChange: (next: ImhMedicamentoFormData) => void
   pacientes?: PacientePmeRow[]
   onPacientesChange?: (next: PacientePmeRow[]) => void
+  listaMedicamentos?: ListaMedicamentosFormData
+  onListaMedicamentosChange?: (next: ListaMedicamentosFormData) => void
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
@@ -133,6 +138,8 @@ export function ImhMedicamentoForm({
   onChange,
   pacientes = [],
   onPacientesChange,
+  listaMedicamentos,
+  onListaMedicamentosChange,
 }: ImhMedicamentoFormProps) {
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
@@ -363,6 +370,14 @@ export function ImhMedicamentoForm({
     }
   }
 
+  const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
+    if (!listaMedicamentos || !onListaMedicamentosChange) return
+    if (!linha.itemPme.trim()) return
+    const next = baixarEstoqueListaMedicamentos(listaMedicamentos, linha.itemPme, linha.qtd)
+    if (next === listaMedicamentos) return
+    onListaMedicamentosChange(next)
+  }
+
   const handleAdicionarLinha = () => {
     const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
     if (editingLinhaId) {
@@ -381,6 +396,7 @@ export function ImhMedicamentoForm({
     }
     persistLinhas([...value.linhas, ready])
     syncPacienteFromLancamento(ready)
+    baixarEstoqueDoLancamento(ready)
     resetLinhaForm()
   }
 
