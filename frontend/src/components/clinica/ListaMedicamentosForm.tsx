@@ -21,6 +21,7 @@ import {
   formatListaMedPreco,
   formatListaMedQtd,
   formatListaMedUf,
+  formatListaMedLote,
   linhaListaMedicamentosHasContent,
   normalizeListaMedicamentosForm,
   withNormalizedListaMedicamentosLinha,
@@ -290,6 +291,15 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               value={linhaDraft.neb}
               onChange={(e) => updateDraft({ neb: formatListaMedNeb(e.target.value) })}
               placeholder="BR3268550"
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="LOTE"
+              value={linhaDraft.lote}
+              onChange={(e) => updateDraft({ lote: formatListaMedLote(e.target.value) })}
+              placeholder="Lote"
               size="small"
               fullWidth
               sx={compactFieldSx}

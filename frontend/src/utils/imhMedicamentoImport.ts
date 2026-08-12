@@ -68,7 +68,8 @@ function mapHeaderColumns(
     else if (n === 'NOME') map.nome = index
     else if (n.includes('ITEM') || (n.includes('PME') && n.includes('DESCRICAO'))) {
       map.itemPme = index
-    } else if (n === 'QTD' || n === 'QT' || n === 'QUANTIDADE') map.qtd = index
+    } else if (n === 'LOTE') map.lote = index
+    else if (n === 'QTD' || n === 'QT' || n === 'QUANTIDADE') map.qtd = index
     else if (n.includes('VALOR') && n.includes('UNIT')) map.valorUnitario = index
     else if (n === 'TOTAL' || (n.includes('VALOR') && n.includes('TOTAL'))) map.total = index
     else if (n.includes('NIP') && n.includes('TITULAR')) map.nipTitular = index
@@ -135,6 +136,7 @@ export function parseImhMedicamentoFromGrid(rows: string[][]): ImhMedicamentoFor
       nip: formatImhMedNip(nipRaw),
       nome: formatImhMedUppercase(nomeRaw),
       itemPme: formatImhMedUppercase(itemRaw),
+      lote: colMap.lote !== undefined ? formatImhMedUppercase(cell(rows, r, colMap.lote)) : '',
       qtd:
         colMap.qtd !== undefined
           ? formatImhMedQtd(cell(rows, r, colMap.qtd)) || '1'

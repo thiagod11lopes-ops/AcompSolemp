@@ -8,6 +8,7 @@ export function createEmptyListaMedicamentosLinha(): ListaMedicamentosLinha {
     id: `lista-med-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     neb: '',
     medicamento: '',
+    lote: '',
     uf: '',
     qtd: '',
     estoqueBaixo: '',
@@ -22,6 +23,7 @@ export const EMPTY_LISTA_MEDICAMENTOS_FORM: ListaMedicamentosFormData = {
 export const LISTA_MEDICAMENTOS_COLUNAS = [
   { key: 'neb', label: 'NEB', width: 120 },
   { key: 'medicamento', label: 'Medicamento', width: 420 },
+  { key: 'lote', label: 'LOTE', width: 110 },
   { key: 'uf', label: 'UF', width: 64 },
   { key: 'qtd', label: 'QTD', width: 72 },
   { key: 'precoReferencia', label: 'Preço referência 2026', width: 150 },
@@ -133,6 +135,7 @@ export function linhaListaMedicamentosHasContent(linha: ListaMedicamentosLinha):
   return Boolean(
     linha.neb.trim() ||
       linha.medicamento.trim() ||
+      linha.lote.trim() ||
       linha.uf.trim() ||
       linha.qtd.trim() ||
       linha.estoqueBaixo.trim() ||
@@ -147,6 +150,7 @@ export function withNormalizedListaMedicamentosLinha(
     ...linha,
     neb: linha.neb.trim(),
     medicamento: linha.medicamento.trim(),
+    lote: formatImhUppercase(linha.lote).trim(),
     uf: formatImhUppercase(linha.uf).trim(),
     qtd: linha.qtd.trim(),
     estoqueBaixo: linha.estoqueBaixo.trim(),
@@ -167,6 +171,7 @@ export function normalizeListaMedicamentosForm(
           id: item.id || createEmptyListaMedicamentosLinha().id,
           neb: item.neb ?? '',
           medicamento: item.medicamento ?? '',
+          lote: item.lote ?? '',
           uf: item.uf ?? '',
           qtd: item.qtd ?? '',
           estoqueBaixo: item.estoqueBaixo ?? '',
@@ -201,6 +206,7 @@ export function listaMedicamentosFromPrecosRows(
       id: row.id || createEmptyListaMedicamentosLinha().id,
       neb: row.neb ?? '',
       medicamento: row.medicamento ?? '',
+      lote: '',
       uf: row.uf ?? '',
       qtd: '',
       estoqueBaixo: '',
@@ -219,6 +225,21 @@ export function formatListaMedUf(raw: string): string {
 
 export function formatListaMedNome(raw: string): string {
   return formatImhUppercase(raw)
+}
+
+export function formatListaMedLote(raw: string): string {
+  return formatImhUppercase(raw).slice(0, 24)
+}
+
+export function findListaMedicamentoByNome(
+  nome: string,
+  form: ListaMedicamentosFormData | undefined,
+): ListaMedicamentosLinha | null {
+  const key = nome.trim().toUpperCase()
+  if (!key) return null
+  return (
+    form?.linhas.find((linha) => linha.medicamento.trim().toUpperCase() === key) ?? null
+  )
 }
 
 export function formatListaMedPreco(raw: string): string {

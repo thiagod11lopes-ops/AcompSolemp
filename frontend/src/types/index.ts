@@ -476,6 +476,7 @@ export interface ImhMedicamentoLinha {
   nip: string
   nome: string
   itemPme: string
+  lote: string
   qtd: string
   valorUnitario: string
   /** Calculado: QTD × VALOR UNITÁRIO */
@@ -503,6 +504,7 @@ export interface ListaMedicamentosLinha {
   id: string
   neb: string
   medicamento: string
+  lote: string
   uf: string
   /** Quantidade em estoque */
   qtd: string
