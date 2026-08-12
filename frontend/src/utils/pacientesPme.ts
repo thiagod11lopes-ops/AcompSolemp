@@ -84,3 +84,38 @@ export function normalizePacientesPmeRows(
 export function formatPacientePmeUpper(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim().toUpperCase()
 }
+
+/** Chave de comparação de NIP (só dígitos). */
+export function normalizePacienteNipKey(raw: string): string {
+  return raw.replace(/\D/g, '')
+}
+
+export function findPacientePmeByNip(
+  nip: string,
+  rows: PacientePmeRow[],
+): PacientePmeRow | undefined {
+  const key = normalizePacienteNipKey(nip)
+  if (!key) return undefined
+  return rows.find((row) => normalizePacienteNipKey(row.nipUsuario) === key)
+}
+
+export function findPacientePmeByNome(
+  nome: string,
+  rows: PacientePmeRow[],
+): PacientePmeRow | undefined {
+  const key = formatPacientePmeUpper(nome)
+  if (!key) return undefined
+  return rows.find((row) => formatPacientePmeUpper(row.nome) === key)
+}
+
+export function searchPacientesPmeByNome(
+  nome: string,
+  rows: PacientePmeRow[],
+  limit = 25,
+): PacientePmeRow[] {
+  const q = formatPacientePmeUpper(nome)
+  if (!q) return rows.slice(0, limit)
+  return rows
+    .filter((row) => formatPacientePmeUpper(row.nome).includes(q))
+    .slice(0, limit)
+}

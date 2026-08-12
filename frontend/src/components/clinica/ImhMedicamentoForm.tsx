@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Add as AddIcon } from '@mui/icons-material'
 import {
   Alert,
@@ -39,13 +39,44 @@ import {
   getMedicamentosPrecosCatalog,
   type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
+import {
+  findPacientePmeByNip,
+  findPacientePmeByNome,
+  formatPacientePmeUpper,
+  normalizePacienteNipKey,
+  searchPacientesPmeByNome,
+  type PacientePmeRow,
+} from '@/utils/pacientesPme'
 
 interface ImhMedicamentoFormProps {
   value: ImhMedicamentoFormData
   onChange: (next: ImhMedicamentoFormData) => void
+  pacientes?: PacientePmeRow[]
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
+const NIP_NAO_CADASTRADO = 'NIP NÃO CADASTRADO NO SISTEMA'
+
+function mapVinculoPaciente(raw: string): string {
+  const upper = formatPacientePmeUpper(raw)
+  if (!upper) return ''
+  if (VINCULOS.includes(upper as (typeof VINCULOS)[number])) return upper
+  if (upper.includes('DEPENDENTE') && !upper.includes('TITULAR')) return 'DEPENDENTE'
+  if (upper.includes('TITULAR') && !upper.includes('DEPENDENTE')) return 'TITULAR'
+  return upper
+}
+
+function pacienteToDraftPatch(
+  paciente: PacientePmeRow,
+): Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>> {
+  return {
+    nip: formatImhMedNip(paciente.nipUsuario),
+    nome: formatImhMedUppercase(paciente.nome),
+    nipTitular: formatImhMedNip(paciente.nipTitular || paciente.nipUsuario),
+    postoGrad: formatImhMedUppercase(paciente.postoGradTitular),
+    vinculo: mapVinculoPaciente(paciente.vinculo),
+  }
+}
 
 const compactFieldSx = {
   '& .MuiInputBase-root': { fontSize: '0.78rem' },
@@ -73,16 +104,23 @@ function cloneLinha(linha: ImhMedicamentoLinha): ImhMedicamentoLinha {
   return { ...linha }
 }
 
-export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps) {
+export function ImhMedicamentoForm({
+  value,
+  onChange,
+  pacientes = [],
+}: ImhMedicamentoFormProps) {
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
     createEmptyImhMedicamentoLinha(),
   )
   const [itemPmeInput, setItemPmeInput] = useState('')
+  const [nomeInput, setNomeInput] = useState('')
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
   const linhaSnapshotRef = useRef<ImhMedicamentoLinha | null>(null)
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const nipAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [nipNaoCadastrado, setNipNaoCadastrado] = useState(false)
   const [importing, setImporting] = useState(false)
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -95,6 +133,30 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+
+  useEffect(
+    () => () => {
+      if (nipAlertTimerRef.current) clearTimeout(nipAlertTimerRef.current)
+    },
+    [],
+  )
+
+  const showNipNaoCadastrado = () => {
+    setNipNaoCadastrado(true)
+    if (nipAlertTimerRef.current) clearTimeout(nipAlertTimerRef.current)
+    nipAlertTimerRef.current = setTimeout(() => {
+      setNipNaoCadastrado(false)
+      nipAlertTimerRef.current = null
+    }, 5000)
+  }
+
+  const vinculoOptions = useMemo(() => {
+    const set = new Set<string>([...VINCULOS])
+    if (linhaDraft.vinculo.trim()) set.add(linhaDraft.vinculo.trim())
+    return [...set]
+  }, [linhaDraft.vinculo])
+
+  const selectedPacienteNome = findPacientePmeByNome(linhaDraft.nome, pacientes) ?? null
 
   const applyImportedSheet = (sheet: SpreadsheetSheetImport) => {
     const parsed = normalizeImhMedicamentoForm(parseImhMedicamentoFromGrid(sheet.rows))
@@ -174,6 +236,7 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
   const syncDraftToList = (nextDraft: ImhMedicamentoLinha) => {
     const ready = withRecalculatedImhMedicamentoLinha(nextDraft)
     setLinhaDraft(ready)
+    setNomeInput(ready.nome)
     if (!editingLinhaId) return
     persistLinhas(
       value.linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
@@ -182,6 +245,39 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
 
   const updateDraft = (patch: Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>>) => {
     syncDraftToList(withRecalculatedImhMedicamentoLinha({ ...linhaDraft, ...patch }))
+  }
+
+  const applyPacienteSelection = (paciente: PacientePmeRow | null) => {
+    if (!paciente) return
+    setNipNaoCadastrado(false)
+    if (nipAlertTimerRef.current) {
+      clearTimeout(nipAlertTimerRef.current)
+      nipAlertTimerRef.current = null
+    }
+    syncDraftToList(
+      withRecalculatedImhMedicamentoLinha({
+        ...linhaDraft,
+        ...pacienteToDraftPatch(paciente),
+      }),
+    )
+  }
+
+  const tryFillFromNip = (nipRaw: string, { alertIfMissing }: { alertIfMissing: boolean }) => {
+    const digits = normalizePacienteNipKey(nipRaw)
+    if (!digits) return
+    const found = findPacientePmeByNip(nipRaw, pacientes)
+    if (found) {
+      applyPacienteSelection(found)
+      return
+    }
+    if (alertIfMissing && digits.length >= 6) {
+      showNipNaoCadastrado()
+    }
+  }
+
+  const tryFillFromNome = (nomeRaw: string) => {
+    const found = findPacientePmeByNome(nomeRaw, pacientes)
+    if (found) applyPacienteSelection(found)
   }
 
   const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
@@ -204,6 +300,7 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
   const resetLinhaForm = () => {
     setLinhaDraft(createEmptyImhMedicamentoLinha())
     setItemPmeInput('')
+    setNomeInput('')
     setEditingLinhaId(null)
     linhaSnapshotRef.current = null
   }
@@ -234,6 +331,7 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
     setEditingLinhaId(id)
     setLinhaDraft(cloneLinha(found))
     setItemPmeInput(found.itemPme)
+    setNomeInput(found.nome)
     requestAnimationFrame(() => {
       linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     })
@@ -290,8 +388,8 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
             Entrada — Modelo IHM — PME
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Lançamentos alinhados à planilha Modelo IHM — PME. A tabela à direita atualiza ao
-            vivo.
+            Digite NIP ou nome para preencher automaticamente com a aba Pacientes. A planilha à
+            direita atualiza ao vivo.
           </Typography>
         </Box>
 
@@ -322,19 +420,82 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
             <TextField
               label="NIP"
               value={linhaDraft.nip}
-              onChange={(e) => updateDraft({ nip: formatImhMedNip(e.target.value) })}
+              onChange={(e) => {
+                const nip = formatImhMedNip(e.target.value)
+                updateDraft({ nip })
+                if (normalizePacienteNipKey(nip).length >= 8) {
+                  tryFillFromNip(nip, { alertIfMissing: true })
+                }
+              }}
+              onBlur={(e) =>
+                tryFillFromNip(formatImhMedNip(e.target.value), { alertIfMissing: true })
+              }
               placeholder="00.0000.00"
               size="small"
               fullWidth
               sx={compactFieldSx}
             />
-            <TextField
-              label="NOME"
-              value={linhaDraft.nome}
-              onChange={(e) => updateDraft({ nome: formatImhMedUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
+            <Autocomplete
+              options={pacientes}
+              value={selectedPacienteNome}
+              inputValue={nomeInput}
+              onInputChange={(_, next, reason) => {
+                setNomeInput(next)
+                if (reason === 'input' || reason === 'clear') {
+                  updateDraft({ nome: formatImhMedUppercase(next) })
+                }
+              }}
+              onChange={(_, option) => {
+                if (typeof option === 'string') {
+                  const nome = formatImhMedUppercase(option)
+                  updateDraft({ nome })
+                  setNomeInput(nome)
+                  tryFillFromNome(nome)
+                  return
+                }
+                if (option) applyPacienteSelection(option)
+              }}
+              getOptionLabel={(option) =>
+                typeof option === 'string' ? option : option.nome
+              }
+              isOptionEqualToValue={(a, b) => {
+                if (typeof a === 'string' || typeof b === 'string') {
+                  return (
+                    formatPacientePmeUpper(typeof a === 'string' ? a : a.nome) ===
+                    formatPacientePmeUpper(typeof b === 'string' ? b : b.nome)
+                  )
+                }
+                return a.id === b.id
+              }}
+              filterOptions={(options, state) =>
+                searchPacientesPmeByNome(state.inputValue, options, 40)
+              }
+              freeSolo
+              onBlur={() => tryFillFromNome(nomeInput || linhaDraft.nome)}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <Box sx={{ py: 0.25 }}>
+                    <Typography variant="body2">{option.nome}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      NIP {option.nipUsuario}
+                      {option.postoGradTitular ? ` · ${option.postoGradTitular}` : ''}
+                      {option.vinculo ? ` · ${option.vinculo}` : ''}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="NOME"
+                  size="small"
+                  fullWidth
+                  placeholder="Busque o paciente pelo nome"
+                  sx={compactFieldSx}
+                />
+              )}
+              noOptionsText="Nenhum paciente na planilha Pacientes"
+              sx={{ gridColumn: { sm: '1 / -1' } }}
             />
             <Autocomplete
               options={catalog}
@@ -461,7 +622,7 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
               sx={compactFieldSx}
             >
               <MenuItem value="">—</MenuItem>
-              {VINCULOS.map((item) => (
+              {vinculoOptions.map((item) => (
                 <MenuItem key={item} value={item}>
                   {item}
                 </MenuItem>
@@ -557,6 +718,16 @@ export function ImhMedicamentoForm({ value, onChange }: ImhMedicamentoFormProps)
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
         />
+        {nipNaoCadastrado ? (
+          <Alert
+            severity="warning"
+            variant="filled"
+            sx={{ mt: 1.25, fontWeight: 800, letterSpacing: 0.3 }}
+            onClose={() => setNipNaoCadastrado(false)}
+          >
+            {NIP_NAO_CADASTRADO}
+          </Alert>
+        ) : null}
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
           sheetNames={sheetPicker.sheets.map((s) => s.nome)}
