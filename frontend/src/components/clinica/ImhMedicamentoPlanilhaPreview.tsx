@@ -1,11 +1,14 @@
+import { useMemo } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  Send as SendIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   IconButton,
   Paper,
@@ -16,13 +19,14 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import type { ImhMedicamentoFormData } from '@/types'
+import type { ImhMedicamentoFormData, ImhMedicamentoLinha } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_MEDICAMENTO_COLUNAS,
   IMH_MEDICAMENTO_WRAP_KEYS,
   calcImhMedicamentoTotalGeral,
   imhMedicamentoHasPreviewContent,
+  linhaImhMedicamentoHasContent,
 } from '@/utils/imhMedicamentoForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import '@/components/clinica/spreadsheet-excel.css'
@@ -31,7 +35,11 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   value: ImhMedicamentoFormData
   editingLinhaId?: string | null
   importing?: boolean
+  isEnviando?: boolean
+  selectedImhIds?: Set<string>
+  onSelectedImhIdsChange?: (next: Set<string>) => void
   onImportClick?: () => void
+  onEnviarImh?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
 }
@@ -60,17 +68,73 @@ const headerSx = {
   color: EXCEL_SHEET.mutedText,
 } as const
 
+const finalizedCheckboxSx = {
+  color: EXCEL_SHEET.finalizedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.finalizedCheck },
+  '&.Mui-disabled': { color: EXCEL_SHEET.finalizedCheck },
+} as const
+
+const selectedCheckboxSx = {
+  color: EXCEL_SHEET.selectedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
+} as const
+
 export function ImhMedicamentoPlanilhaPreview({
   value,
   editingLinhaId = null,
   importing = false,
+  isEnviando = false,
+  selectedImhIds,
+  onSelectedImhIdsChange,
   onImportClick,
+  onEnviarImh,
   onEditLinha,
   onDeleteLinha,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const visible = imhMedicamentoHasPreviewContent(value)
   const total = calcImhMedicamentoTotalGeral(value)
-  const colCount = IMH_MEDICAMENTO_COLUNAS.length + 1
+  const finalizedIds = useMemo(
+    () => new Set(value.finalizedImhIds ?? []),
+    [value.finalizedImhIds],
+  )
+  const selection = selectedImhIds ?? new Set<string>()
+  const colCount = IMH_MEDICAMENTO_COLUNAS.length + 2
+
+  const selecionaveis = useMemo(
+    () =>
+      value.linhas.filter(
+        (linha) => linhaImhMedicamentoHasContent(linha) && !finalizedIds.has(linha.id),
+      ),
+    [value.linhas, finalizedIds],
+  )
+
+  const selectedCount = useMemo(
+    () => selecionaveis.filter((linha) => selection.has(linha.id)).length,
+    [selecionaveis, selection],
+  )
+
+  const allSelected =
+    selecionaveis.length > 0 && selecionaveis.every((linha) => selection.has(linha.id))
+  const someSelected = selecionaveis.some((linha) => selection.has(linha.id))
+
+  const toggleRow = (linha: ImhMedicamentoLinha, checked: boolean) => {
+    if (!onSelectedImhIdsChange || finalizedIds.has(linha.id)) return
+    const next = new Set(selection)
+    if (checked) next.add(linha.id)
+    else next.delete(linha.id)
+    onSelectedImhIdsChange(next)
+  }
+
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectedImhIdsChange) return
+    const next = new Set(selection)
+    for (const linha of selecionaveis) {
+      if (checked) next.add(linha.id)
+      else next.delete(linha.id)
+    }
+    for (const id of finalizedIds) next.delete(id)
+    onSelectedImhIdsChange(next)
+  }
 
   return (
     <Box
@@ -125,9 +189,39 @@ export function ImhMedicamentoPlanilhaPreview({
             <Chip
               size="small"
               variant="outlined"
-              label={formatValorBrasileiro(total)}
+              label={`Total ${formatValorBrasileiro(total)}`}
               sx={{ height: 22, fontWeight: 600 }}
             />
+          ) : null}
+          {selectedCount > 0 ? (
+            <Chip
+              size="small"
+              color="primary"
+              label={`IMH: ${selectedCount}`}
+              sx={{ height: 22, fontWeight: 700 }}
+            />
+          ) : null}
+          {onEnviarImh ? (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SendIcon sx={{ fontSize: 16 }} />}
+              onClick={onEnviarImh}
+              disabled={isEnviando || selectedCount === 0}
+              sx={{
+                ml: 0.5,
+                height: 26,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
+              {isEnviando
+                ? 'Enviando para IMH...'
+                : selectedCount > 1
+                  ? `Enviar para IMH (${selectedCount})`
+                  : 'Enviar para IMH'}
+            </Button>
           ) : null}
           {onImportClick ? (
             <Button
@@ -135,7 +229,7 @@ export function ImhMedicamentoPlanilhaPreview({
               variant="outlined"
               startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
               onClick={onImportClick}
-              disabled={importing}
+              disabled={importing || isEnviando}
               sx={{
                 ml: 0.5,
                 height: 26,
@@ -157,56 +251,111 @@ export function ImhMedicamentoPlanilhaPreview({
         </Box>
 
         {!visible ? (
-          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
+          <Box sx={{ px: 2, py: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Preencha os lançamentos — ou importe o Modelo IHM — PME — para ver a planilha ao
-              vivo.
+              Adicione lançamentos no formulário para ver a planilha ao vivo.
             </Typography>
           </Box>
         ) : (
-          <Box
-            className="excel-sheet-grid"
-            sx={{
-              p: 1.5,
-              borderTop: EXCEL_SHEET.border,
-              width: 'fit-content',
-              maxWidth: '100%',
-              overflowX: 'auto',
-            }}
-          >
-            <Box
-              sx={{
-                width: 'fit-content',
-                maxWidth: '100%',
-                border: EXCEL_SHEET.border,
-                borderRadius: 1,
-                bgcolor: EXCEL_SHEET.sheetBg,
-              }}
-            >
-              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
+          <Box sx={{ overflow: 'auto', maxHeight: 'min(70vh, 720px)' }}>
+            <Box className="excel-sheet-scroll">
+              <Table size="small" stickyHeader sx={{ minWidth: 1400 }}>
                 <TableHead>
                   <TableRow>
+                    <TableCell
+                      sx={{
+                        ...headerSx,
+                        bgcolor: EXCEL_SHEET.selectHeaderBg,
+                        width: 52,
+                        minWidth: 52,
+                        textAlign: 'center',
+                        px: 0.5,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 0.25,
+                        }}
+                      >
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            fontSize: '10px',
+                            color: EXCEL_SHEET.text,
+                            letterSpacing: 0.4,
+                          }}
+                        >
+                          IMH
+                        </Typography>
+                        <Checkbox
+                          size="small"
+                          checked={allSelected}
+                          indeterminate={someSelected && !allSelected}
+                          disabled={selecionaveis.length === 0 || isEnviando}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(_, checked) => toggleAll(checked)}
+                          sx={{ p: 0, ...selectedCheckboxSx }}
+                        />
+                      </Box>
+                    </TableCell>
                     {IMH_MEDICAMENTO_COLUNAS.map((col) => (
-                      <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
+                      <TableCell
+                        key={col.key}
+                        sx={{ ...headerSx, minWidth: col.width, width: col.width }}
+                      >
                         {col.label}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
-                      AÇÕES
+                    <TableCell sx={{ ...headerSx, width: 72, textAlign: 'center' }}>
+                      Ações
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {value.linhas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
+                    const finalizado = finalizedIds.has(linha.id)
+                    const checked = finalizado || selection.has(linha.id)
                     return (
                       <TableRow
                         key={linha.id}
                         sx={{
-                          bgcolor: editing ? EXCEL_SHEET.selectedBg : undefined,
+                          bgcolor: editing
+                            ? EXCEL_SHEET.selectedBg
+                            : selection.has(linha.id)
+                              ? EXCEL_SHEET.selectedBg
+                              : undefined,
                           '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                         }}
                       >
+                        <TableCell
+                          sx={{
+                            ...cellSx,
+                            bgcolor: EXCEL_SHEET.selectHeaderBg,
+                            textAlign: 'center',
+                            px: 0.5,
+                          }}
+                        >
+                          <Checkbox
+                            size="small"
+                            className={finalizado ? 'excel-checkbox-finalizado' : undefined}
+                            checked={checked}
+                            disabled={finalizado || isEnviando}
+                            onChange={(_, nextChecked) => {
+                              if (finalizado) return
+                              toggleRow(linha, nextChecked)
+                            }}
+                            sx={{
+                              p: 0,
+                              ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                            }}
+                          />
+                        </TableCell>
                         {IMH_MEDICAMENTO_COLUNAS.map((col) => (
                           <TableCell
                             key={col.key}
@@ -229,6 +378,7 @@ export function ImhMedicamentoPlanilhaPreview({
                             size="small"
                             aria-label={`Editar linha PME ${index + 1}`}
                             onClick={() => onEditLinha?.(linha.id)}
+                            disabled={isEnviando}
                             sx={{ p: 0.35 }}
                           >
                             <EditIcon sx={{ fontSize: 16 }} />
@@ -238,6 +388,7 @@ export function ImhMedicamentoPlanilhaPreview({
                             color="error"
                             aria-label={`Excluir linha PME ${index + 1}`}
                             onClick={() => onDeleteLinha?.(linha.id)}
+                            disabled={isEnviando}
                             sx={{ p: 0.35 }}
                           >
                             <DeleteIcon sx={{ fontSize: 16 }} />

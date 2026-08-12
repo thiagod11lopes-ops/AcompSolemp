@@ -1,4 +1,5 @@
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha } from '@/types'
+import type { CreatePedidoInput } from '@/services/clinicaPedidoService'
 import {
   formatImhData,
   formatImhMoeda,
@@ -10,6 +11,7 @@ import {
   formatValorBrasileiro,
   parseValorBrasileiro,
 } from '@/utils/consumoMaterialOds'
+import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
   return {
@@ -34,6 +36,7 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
 
 export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
   linhas: [],
+  finalizedImhIds: [],
 }
 
 export const IMH_MEDICAMENTO_COLUNAS = [
@@ -116,30 +119,180 @@ export function normalizeImhMedicamentoForm(
   value: ImhMedicamentoFormData | undefined,
 ): ImhMedicamentoFormData {
   const linhasRaw = Array.isArray(value?.linhas) ? value.linhas : []
+  const linhas = linhasRaw
+    .filter((item) => item && typeof item === 'object')
+    .map((item) =>
+      withRecalculatedImhMedicamentoLinha({
+        id: item.id || createEmptyImhMedicamentoLinha().id,
+        data: item.data ?? '',
+        nip: item.nip ?? '',
+        nome: item.nome ?? '',
+        itemPme: item.itemPme ?? '',
+        qtd: item.qtd ?? '',
+        valorUnitario: item.valorUnitario ?? '',
+        total: item.total ?? '',
+        nipTitular: item.nipTitular ?? '',
+        postoGrad: item.postoGrad ?? '',
+        vinculo: item.vinculo ?? '',
+        pctIndenizar: item.pctIndenizar ?? '',
+        om: item.om ?? '',
+        unidadeFornecimento: item.unidadeFornecimento ?? '',
+        quantidadeAdquirida: item.quantidadeAdquirida ?? '',
+        maneiraDispensacao: item.maneiraDispensacao ?? '',
+      }),
+    )
+    .filter((linha) => linhaImhMedicamentoHasContent(linha))
+  const linhaIds = new Set(linhas.map((l) => l.id))
+  const finalizedRaw = Array.isArray(value?.finalizedImhIds) ? value.finalizedImhIds : []
   return {
-    linhas: linhasRaw
-      .filter((item) => item && typeof item === 'object')
-      .map((item) =>
-        withRecalculatedImhMedicamentoLinha({
-          id: item.id || createEmptyImhMedicamentoLinha().id,
-          data: item.data ?? '',
-          nip: item.nip ?? '',
-          nome: item.nome ?? '',
-          itemPme: item.itemPme ?? '',
-          qtd: item.qtd ?? '',
-          valorUnitario: item.valorUnitario ?? '',
-          total: item.total ?? '',
-          nipTitular: item.nipTitular ?? '',
-          postoGrad: item.postoGrad ?? '',
-          vinculo: item.vinculo ?? '',
-          pctIndenizar: item.pctIndenizar ?? '',
-          om: item.om ?? '',
-          unidadeFornecimento: item.unidadeFornecimento ?? '',
-          quantidadeAdquirida: item.quantidadeAdquirida ?? '',
-          maneiraDispensacao: item.maneiraDispensacao ?? '',
-        }),
-      )
-      .filter((linha) => linhaImhMedicamentoHasContent(linha)),
+    linhas,
+    finalizedImhIds: finalizedRaw.filter((id) => typeof id === 'string' && linhaIds.has(id)),
+  }
+}
+
+function formatDataHojeImh(): string {
+  const d = new Date()
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+}
+
+function iniciaisFromNome(nome: string): string {
+  const parts = nome
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return '—'
+  if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase()
+  return `${parts[0][0] ?? ''}${parts[parts.length - 1][0] ?? ''}`.toUpperCase()
+}
+
+export function buildImhPlanilhaFromMedicamentoLinhas(
+  linhas: ImhMedicamentoLinha[],
+): ImhPlanilha {
+  return {
+    cabecalho: {
+      numeroRelacao: '',
+      pregaoTad: '',
+      data: formatDataHojeImh(),
+      vigencia: '',
+      processo: '',
+      fornecedor: '',
+    },
+    linhas: linhas.map((linha, index) => {
+      const valorFmt =
+        parseValorBrasileiro(linha.total) > 0
+          ? linha.total
+          : parseValorBrasileiro(linha.valorUnitario) > 0
+            ? linha.valorUnitario
+            : ''
+      return {
+        id: `imh-med-envio-${linha.id}`,
+        pacienteGrupoId: linha.id,
+        isLinhaPaciente: true,
+        numero: String(index + 1),
+        nip: linha.nip,
+        iniciais: iniciaisFromNome(linha.nome),
+        data: linha.data,
+        procedimento: linha.itemPme,
+        mapaSala: '',
+        danfe: '',
+        item: String((index + 1) * 10),
+        nebPi: '',
+        descricaoMaterial: linha.itemPme,
+        qt: linha.qtd.trim() || '1',
+        valorUnit: linha.valorUnitario || valorFmt,
+        valorTotal: valorFmt || linha.valorUnitario,
+        subtotalPaciente: valorFmt || linha.valorUnitario,
+      }
+    }),
+  }
+}
+
+export function imhMedicamentoLinhasToPedidoInput(
+  linhas: ImhMedicamentoLinha[],
+  clinicaNome: string,
+): CreatePedidoInput {
+  if (linhas.length === 1) {
+    const linha = linhas[0]
+    const valor =
+      parseValorBrasileiro(linha.total) ||
+      parseValorBrasileiro(linha.valorUnitario) ||
+      0.01
+    const qtd = parseQuantidade(linha.qtd) || 1
+    const vinculoRaw = linha.vinculo.trim().toUpperCase()
+    const vinculo = vinculoRaw.includes('DEP') ? 'DEPENDENTE' : 'TITULAR'
+    return {
+      consumoRowIds: [linha.id],
+      paciente: {
+        nome: linha.nome.trim() || '—',
+        vinculo,
+        nip: linha.nip.trim() || '—',
+        nipTitular: linha.nipTitular.trim() || linha.nip.trim() || '—',
+        nomeTitular: linha.nome.trim() || '—',
+        tipoUsuario: 'MILITAR',
+      },
+      dadosClinica: {
+        nomeClinica: clinicaNome,
+        medico: '—',
+        procedimento: linha.itemPme.trim() || 'Medicamento PME',
+        dataCirurgia: new Date().toISOString().slice(0, 10),
+        empresaConsignada: '—',
+        pregao: '—',
+        materialUtilizado: linha.itemPme.trim() || 'Medicamento PME',
+        quantidade: qtd,
+        valorUnitario: valor / qtd,
+        valorTotal: valor,
+        folhaSala: '',
+        descricaoCirurgica: `Envio PME direto para Contabilidade/IMH — ${linha.nome.trim() || 'paciente'}.`,
+        etiquetas: '',
+        fotos: [],
+      },
+    }
+  }
+
+  const valorTotal = linhas.reduce((sum, linha) => {
+    const v = parseValorBrasileiro(linha.total) || parseValorBrasileiro(linha.valorUnitario)
+    return sum + (v > 0 ? v : 0)
+  }, 0)
+  const titulo = `Planilha IMH PME — ${linhas.length} lançamentos`
+
+  return {
+    consumoRowIds: linhas.map((linha) => linha.id),
+    paciente: {
+      nome: titulo,
+      vinculo: 'TITULAR',
+      nip: '—',
+      nipTitular: '—',
+      nomeTitular: titulo,
+      tipoUsuario: 'MILITAR',
+    },
+    dadosClinica: {
+      nomeClinica: clinicaNome,
+      medico: '—',
+      procedimento: `Lote PME com ${linhas.length} lançamentos`,
+      dataCirurgia: new Date().toISOString().slice(0, 10),
+      empresaConsignada: '—',
+      pregao: '—',
+      materialUtilizado: `${linhas.length} itens PME na planilha enviada`,
+      quantidade: linhas.length,
+      valorUnitario: valorTotal > 0 ? valorTotal / linhas.length : 0.01,
+      valorTotal: valorTotal > 0 ? valorTotal : 0.01 * linhas.length,
+      folhaSala: '',
+      descricaoCirurgica: `Envio de planilha PME com ${linhas.length} lançamentos diretamente para Contabilidade/IMH.`,
+      etiquetas: '',
+      fotos: [],
+    },
+  }
+}
+
+export function markImhMedicamentoLinhasFinalized(
+  value: ImhMedicamentoFormData,
+  ids: string[],
+): ImhMedicamentoFormData {
+  const next = new Set(value.finalizedImhIds ?? [])
+  for (const id of ids) next.add(id)
+  return {
+    ...value,
+    finalizedImhIds: [...next],
   }
 }
 

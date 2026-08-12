@@ -15,14 +15,22 @@ import {
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
+import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { useClinicas } from '@/hooks/useCadastros'
+import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import {
+  buildImhPlanilhaFromMedicamentoLinhas,
   createEmptyImhMedicamentoLinha,
   formatImhMedData,
   formatImhMedMoeda,
   formatImhMedNip,
   formatImhMedQtd,
   formatImhMedUppercase,
+  imhMedicamentoLinhasToPedidoInput,
   linhaImhMedicamentoHasContent,
+  markImhMedicamentoLinhasFinalized,
   normalizeImhMedicamentoForm,
   withRecalculatedImhMedicamentoLinha,
 } from '@/utils/imhMedicamentoForm'
@@ -33,6 +41,7 @@ import {
   parseImhMedicamentoFromGrid,
 } from '@/utils/imhMedicamentoImport'
 import type { SpreadsheetSheetImport } from '@/utils/consumoMaterialOds'
+import { createPedidoLoteId } from '@/utils/consumoMaterialTemplate'
 import {
   findMedicamentoPrecoByNome,
   formatPrecoReferenciaMedicamento,
@@ -142,6 +151,12 @@ export function ImhMedicamentoForm({
   listaMedicamentos,
   onListaMedicamentosChange,
 }: ImhMedicamentoFormProps) {
+  const { navigatePortal } = usePortalPaths()
+  const { user } = useClinicaAuth()
+  const clinicaId = user?.clinicaId ?? ''
+  const { data: clinicas = [] } = useClinicas()
+  const createPedido = useCreateClinicaPedido()
+  const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
     createEmptyImhMedicamentoLinha(),
@@ -155,6 +170,8 @@ export function ImhMedicamentoForm({
   const nipAlertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [nipNaoCadastrado, setNipNaoCadastrado] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [isEnviando, setIsEnviando] = useState(false)
+  const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
     fileName: string
@@ -259,11 +276,76 @@ export function ImhMedicamentoForm({
   }
 
   const persistLinhas = (linhas: ImhMedicamentoLinha[]) => {
+    const nextLinhas = linhas
+      .map(withRecalculatedImhMedicamentoLinha)
+      .filter((l) => linhaImhMedicamentoHasContent(l))
+    const ids = new Set(nextLinhas.map((l) => l.id))
     onChange({
-      linhas: linhas
-        .map(withRecalculatedImhMedicamentoLinha)
-        .filter((l) => linhaImhMedicamentoHasContent(l)),
+      linhas: nextLinhas,
+      finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => ids.has(id)),
     })
+  }
+
+  const handleEnviarImh = async () => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome || !clinicaId) {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Não foi possível identificar a clínica logada para o envio.',
+      })
+      return
+    }
+
+    const finalized = new Set(value.finalizedImhIds ?? [])
+    const selecionadas = value.linhas.filter(
+      (linha) =>
+        selectedImhIds.has(linha.id) &&
+        !finalized.has(linha.id) &&
+        linhaImhMedicamentoHasContent(linha),
+    )
+    if (selecionadas.length === 0) {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Selecione ao menos um lançamento na coluna IMH para enviar.',
+      })
+      return
+    }
+
+    setIsEnviando(true)
+    try {
+      const pedidoId = createPedidoLoteId()
+      await createPedido.mutateAsync({
+        ...imhMedicamentoLinhasToPedidoInput(selecionadas, clinicaNome),
+        id: pedidoId,
+        fluxo: 'imh',
+      })
+      const planilha = buildImhPlanilhaFromMedicamentoLinhas(selecionadas)
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilha)
+
+      const ids = selecionadas.map((l) => l.id)
+      onChange(markImhMedicamentoLinhasFinalized(value, ids))
+      setSelectedImhIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+      setImportFeedback({
+        open: true,
+        severity: 'success',
+        message: `${selecionadas.length} lançamento(s) enviados para Contabilidade/IMH.`,
+      })
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Erro ao enviar lançamentos para IMH. Tente novamente.',
+      })
+    } finally {
+      setIsEnviando(false)
+    }
   }
 
   const syncDraftToList = (nextDraft: ImhMedicamentoLinha) => {
@@ -811,7 +893,11 @@ export function ImhMedicamentoForm({
           value={value}
           editingLinhaId={editingLinhaId}
           importing={importing}
+          isEnviando={isEnviando}
+          selectedImhIds={selectedImhIds}
+          onSelectedImhIdsChange={setSelectedImhIds}
           onImportClick={handleImportClick}
+          onEnviarImh={handleEnviarImh}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
         />

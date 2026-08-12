@@ -493,6 +493,8 @@ export interface ImhMedicamentoLinha {
 /** Formulário + planilha unificada da aba IMH (medicamento / PME) */
 export interface ImhMedicamentoFormData {
   linhas: ImhMedicamentoLinha[]
+  /** Linhas já enviadas para o card Contabilidade/IMH na timeline */
+  finalizedImhIds?: string[]
 }
 
 /** Linha da lista de medicamentos com preços (portal medicamento) */
