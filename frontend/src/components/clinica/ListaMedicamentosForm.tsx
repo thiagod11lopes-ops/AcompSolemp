@@ -267,8 +267,8 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
             Entrada — Lista de Medicamentos
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Catálogo com NEB, medicamento, UF, QTD, estoque baixo e preço. A tabela à direita
-            atualiza ao vivo.
+            Cada lote do mesmo medicamento deve ser uma linha (LOTE, VALIDADE e QTD próprios). A
+            tabela à direita atualiza ao vivo.
           </Typography>
         </Box>
 

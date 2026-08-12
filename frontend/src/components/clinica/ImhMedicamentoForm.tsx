@@ -23,7 +23,12 @@ import {
   alpha,
   useTheme,
 } from '@mui/material'
-import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
+import type {
+  ImhMedicamentoFormData,
+  ImhMedicamentoLinha,
+  ListaMedicamentosFormData,
+  ListaMedicamentosLinha,
+} from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
@@ -61,10 +66,8 @@ import {
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
 import {
-  findMedicamentoPrecoByNome,
   formatPrecoReferenciaMedicamento,
   getMedicamentosPrecosCatalog,
-  type MedicamentoPrecoRow,
 } from '@/utils/medicamentosPrecos'
 import {
   ensurePacientePmeFromLancamento,
@@ -81,6 +84,9 @@ import {
   baixarEstoqueListaMedicamentos,
   devolverEstoqueListaMedicamentos,
   findListaMedicamentoByNome,
+  findListaMedicamentoByNomeELote,
+  findListaMedicamentosByNome,
+  formatListaMedEstoqueOptionLabel,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -101,6 +107,8 @@ const VINCULOS = [
 ] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 const MEDICAMENTO_SEM_LOTE = 'Medicamento sem lote definido'
+const MEDICAMENTO_ESCOLHA_LOTE =
+  'Há mais de um lote deste medicamento — selecione o lote na lista'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -231,6 +239,22 @@ export function ImhMedicamentoForm({
   const createPedido = useCreateClinicaPedido()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
+  /** Opções do IMH: cada linha da Lista = um lote; se Lista vazia, cai no catálogo de preços. */
+  const medicamentoOptions = useMemo((): ListaMedicamentosLinha[] => {
+    const fromLista = (listaMedicamentos?.linhas ?? []).filter((l) => l.medicamento.trim())
+    if (fromLista.length > 0) return fromLista
+    return catalog.map((row) => ({
+      id: row.id,
+      neb: row.neb,
+      medicamento: row.medicamento,
+      lote: '',
+      validade: '',
+      uf: row.uf,
+      qtd: '',
+      estoqueBaixo: '',
+      precoReferencia: row.precoReferencia,
+    }))
+  }, [listaMedicamentos, catalog])
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
     createEmptyImhMedicamentoLinha(),
   )
@@ -248,6 +272,7 @@ export function ImhMedicamentoForm({
   const [dataAvisoOpen, setDataAvisoOpen] = useState(false)
   const [dataError, setDataError] = useState(false)
   const [loteSemDefinir, setLoteSemDefinir] = useState(false)
+  const [loteAviso, setLoteAviso] = useState<string | null>(null)
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -538,26 +563,42 @@ export function ImhMedicamentoForm({
     if (found) applyPacienteSelection(found)
   }
 
-  const resolveLoteDoMedicamento = (nome: string): { lote: string; validade: string } => {
-    const found = findListaMedicamentoByNome(nome, listaMedicamentos)
-    const lote = found?.lote.trim() ?? ''
-    const validade = found?.validade.trim() ?? ''
-    setLoteSemDefinir(Boolean(nome.trim()) && !lote)
+  const resolveLoteDoMedicamento = (
+    nome: string,
+  ): { lote: string; validade: string; aviso: string | null } => {
+    const matches = findListaMedicamentosByNome(nome, listaMedicamentos)
+    if (matches.length === 1) {
+      const found = matches[0]!
+      const lote = found.lote.trim()
+      const validade = found.validade.trim()
+      return {
+        lote: formatImhMedUppercase(lote),
+        validade: formatImhMedData(validade),
+        aviso: nome.trim() && !lote ? MEDICAMENTO_SEM_LOTE : null,
+      }
+    }
+    if (matches.length > 1) {
+      return { lote: '', validade: '', aviso: MEDICAMENTO_ESCOLHA_LOTE }
+    }
     return {
-      lote: formatImhMedUppercase(lote),
-      validade: formatImhMedData(validade),
+      lote: '',
+      validade: '',
+      aviso: nome.trim() ? MEDICAMENTO_SEM_LOTE : null,
     }
   }
 
-  const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
+  const applyMedicamentoSelection = (row: ListaMedicamentosLinha | null) => {
     if (!row) {
       updateDraft({ itemPme: '', lote: '', validade: '' })
       setItemPmeInput('')
       setLoteSemDefinir(false)
+      setLoteAviso(null)
       return
     }
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
-    const { lote, validade } = resolveLoteDoMedicamento(row.medicamento)
+    const lote = formatImhMedUppercase(row.lote)
+    const validade = formatImhMedData(row.validade)
+    const aviso = !lote.trim() ? MEDICAMENTO_SEM_LOTE : null
     updateDraft({
       itemPme: formatImhMedUppercase(row.medicamento),
       lote,
@@ -568,6 +609,8 @@ export function ImhMedicamentoForm({
       qtd: linhaDraft.qtd.trim() || '1',
     })
     setItemPmeInput(row.medicamento)
+    setLoteSemDefinir(Boolean(aviso))
+    setLoteAviso(aviso)
   }
 
   const resetLinhaForm = () => {
@@ -577,6 +620,7 @@ export function ImhMedicamentoForm({
     setEditingLinhaId(null)
     setDataError(false)
     setLoteSemDefinir(false)
+    setLoteAviso(null)
     linhaSnapshotRef.current = null
   }
 
@@ -602,7 +646,12 @@ export function ImhMedicamentoForm({
   const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
     if (!linha.itemPme.trim()) return
-    const next = baixarEstoqueListaMedicamentos(listaMedicamentos, linha.itemPme, linha.qtd)
+    const next = baixarEstoqueListaMedicamentos(
+      listaMedicamentos,
+      linha.itemPme,
+      linha.lote,
+      linha.qtd,
+    )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
   }
@@ -610,7 +659,12 @@ export function ImhMedicamentoForm({
   const devolverEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
     if (!linha.itemPme.trim()) return
-    const next = devolverEstoqueListaMedicamentos(listaMedicamentos, linha.itemPme, linha.qtd)
+    const next = devolverEstoqueListaMedicamentos(
+      listaMedicamentos,
+      linha.itemPme,
+      linha.lote,
+      linha.qtd,
+    )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
   }
@@ -652,6 +706,9 @@ export function ImhMedicamentoForm({
     setItemPmeInput(found.itemPme)
     setNomeInput(found.nome)
     setLoteSemDefinir(Boolean(found.itemPme.trim()) && !found.lote.trim())
+    setLoteAviso(
+      found.itemPme.trim() && !found.lote.trim() ? MEDICAMENTO_SEM_LOTE : null,
+    )
     requestAnimationFrame(() => {
       linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     })
@@ -676,7 +733,12 @@ export function ImhMedicamentoForm({
   }
 
   const selectedMedicamento =
-    findMedicamentoPrecoByNome(linhaDraft.itemPme, catalog) ?? null
+    findListaMedicamentoByNomeELote(linhaDraft.itemPme, linhaDraft.lote, {
+      linhas: medicamentoOptions,
+    }) ??
+    (linhaDraft.lote.trim()
+      ? null
+      : findListaMedicamentoByNome(linhaDraft.itemPme, { linhas: medicamentoOptions }))
 
   return (
     <Box
@@ -827,7 +889,7 @@ export function ImhMedicamentoForm({
               sx={{ gridColumn: { sm: '1 / -1' } }}
             />
             <Autocomplete
-              options={catalog}
+              options={medicamentoOptions}
               value={selectedMedicamento}
               inputValue={itemPmeInput}
               onInputChange={(_, next) => {
@@ -835,20 +897,25 @@ export function ImhMedicamentoForm({
                 if (!next.trim()) {
                   updateDraft({ itemPme: '', lote: '', validade: '' })
                   setLoteSemDefinir(false)
+                  setLoteAviso(null)
                 }
               }}
               onChange={(_, option) => {
                 if (typeof option === 'string') {
                   const nome = formatImhMedUppercase(option)
-                  const { lote, validade } = resolveLoteDoMedicamento(nome)
+                  const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
                   updateDraft({ itemPme: nome, lote, validade })
                   setItemPmeInput(option)
+                  setLoteSemDefinir(Boolean(aviso))
+                  setLoteAviso(aviso)
                   return
                 }
                 applyMedicamentoSelection(option)
               }}
               getOptionLabel={(option) =>
-                typeof option === 'string' ? option : option.medicamento
+                typeof option === 'string'
+                  ? option
+                  : formatListaMedEstoqueOptionLabel(option)
               }
               isOptionEqualToValue={(a, b) => {
                 if (typeof a === 'string' || typeof b === 'string') {
@@ -866,7 +933,9 @@ export function ImhMedicamentoForm({
                   .filter(
                     (opt) =>
                       opt.medicamento.toLowerCase().includes(q) ||
-                      opt.neb.toLowerCase().includes(q),
+                      opt.neb.toLowerCase().includes(q) ||
+                      opt.lote.toLowerCase().includes(q) ||
+                      opt.validade.toLowerCase().includes(q),
                   )
                   .slice(0, 40)
               }}
@@ -875,19 +944,28 @@ export function ImhMedicamentoForm({
                 if (!itemPmeInput.trim()) return
                 if (selectedMedicamento) return
                 const nome = formatImhMedUppercase(itemPmeInput)
-                const { lote, validade } = resolveLoteDoMedicamento(nome)
+                const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
                 updateDraft({ itemPme: nome, lote, validade })
+                setLoteSemDefinir(Boolean(aviso))
+                setLoteAviso(aviso)
               }}
               renderOption={(props, option) => (
                 <li {...props} key={option.id}>
                   <Box sx={{ py: 0.25 }}>
                     <Typography variant="body2">{option.medicamento}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {option.neb}
-                      {option.uf ? ` · ${option.uf}` : ''}
-                      {option.precoReferencia
-                        ? ` · ${formatPrecoReferenciaMedicamento(option.precoReferencia)}`
-                        : ''}
+                      {[
+                        option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
+                        option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
+                        option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
+                        option.neb.trim() || null,
+                        option.uf.trim() || null,
+                        option.precoReferencia.trim()
+                          ? formatPrecoReferenciaMedicamento(option.precoReferencia)
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </Typography>
                   </Box>
                 </li>
@@ -898,11 +976,11 @@ export function ImhMedicamentoForm({
                   label="ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO"
                   size="small"
                   fullWidth
-                  placeholder="Busque pelo nome do medicamento"
+                  placeholder="Busque e escolha o lote (nome · lote · validade)"
                   sx={multilineFieldSx}
                 />
               )}
-              noOptionsText="Nenhum medicamento encontrado na lista de preços"
+              noOptionsText="Nenhum medicamento na Lista de Medicamentos"
               sx={{ gridColumn: '1 / -1' }}
             />
             <TextField
@@ -911,7 +989,10 @@ export function ImhMedicamentoForm({
               onChange={(e) => {
                 const lote = formatImhMedUppercase(e.target.value)
                 updateDraft({ lote })
-                if (lote.trim()) setLoteSemDefinir(false)
+                if (lote.trim()) {
+                  setLoteSemDefinir(false)
+                  setLoteAviso(null)
+                }
               }}
               size="small"
               fullWidth
@@ -1081,14 +1162,17 @@ export function ImhMedicamentoForm({
         >
           Explicação Detalhada
         </Button>
-        {loteSemDefinir ? (
+        {loteSemDefinir && loteAviso ? (
           <Alert
             severity="warning"
             variant="filled"
             sx={{ fontWeight: 800, letterSpacing: 0.3 }}
-            onClose={() => setLoteSemDefinir(false)}
+            onClose={() => {
+              setLoteSemDefinir(false)
+              setLoteAviso(null)
+            }}
           >
-            {MEDICAMENTO_SEM_LOTE}
+            {loteAviso}
           </Alert>
         ) : null}
         {nipNaoCadastrado ? (

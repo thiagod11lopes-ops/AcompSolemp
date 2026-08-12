@@ -89,41 +89,51 @@ export function filterListaMedicamentosByEstoque(
   return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
 }
 
-/** Baixa estoque do medicamento (match por nome) ao lançar no IMH. */
+/** Baixa estoque da linha (medicamento + lote) ao lançar no IMH. */
 export function baixarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
+  lote: string,
   qtdBaixaRaw: string,
 ): ListaMedicamentosFormData {
-  return ajustarEstoqueListaMedicamentos(form, itemPme, qtdBaixaRaw, 'baixar')
+  return ajustarEstoqueListaMedicamentos(form, itemPme, lote, qtdBaixaRaw, 'baixar')
 }
 
-/** Devolve ao estoque a quantidade do lançamento IMH excluído. */
+/** Devolve ao estoque a quantidade do lançamento IMH excluído (medicamento + lote). */
 export function devolverEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
+  lote: string,
   qtdDevolverRaw: string,
 ): ListaMedicamentosFormData {
-  return ajustarEstoqueListaMedicamentos(form, itemPme, qtdDevolverRaw, 'devolver')
+  return ajustarEstoqueListaMedicamentos(form, itemPme, lote, qtdDevolverRaw, 'devolver')
 }
 
 function formatQtdEstoque(n: number): string {
   return Number.isInteger(n) ? String(n) : String(n).replace('.', ',')
 }
 
+function normMedKey(value: string): string {
+  return value.trim().toUpperCase()
+}
+
 function ajustarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
+  lote: string,
   qtdRaw: string,
   modo: 'baixar' | 'devolver',
 ): ListaMedicamentosFormData {
-  const nome = itemPme.trim().toUpperCase()
+  const nome = normMedKey(itemPme)
   const qtd = parseListaMedQtdNumber(qtdRaw)
   if (!nome || qtd <= 0) return form
 
+  const alvo = findListaMedicamentoByNomeELote(itemPme, lote, form)
+  if (!alvo) return form
+
   let changed = false
   const linhas = form.linhas.map((linha) => {
-    if (linha.medicamento.trim().toUpperCase() !== nome) return linha
+    if (linha.id !== alvo.id) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
     const next = modo === 'baixar' ? Math.max(0, atual - qtd) : atual + qtd
     changed = true
@@ -242,15 +252,51 @@ export function formatListaMedValidade(raw: string): string {
   return formatImhData(raw)
 }
 
+export function findListaMedicamentosByNome(
+  nome: string,
+  form: ListaMedicamentosFormData | undefined,
+): ListaMedicamentosLinha[] {
+  const key = normMedKey(nome)
+  if (!key) return []
+  return (form?.linhas ?? []).filter((linha) => normMedKey(linha.medicamento) === key)
+}
+
+/** Retorna a linha só quando há exatamente um cadastro com aquele nome. */
 export function findListaMedicamentoByNome(
   nome: string,
   form: ListaMedicamentosFormData | undefined,
 ): ListaMedicamentosLinha | null {
-  const key = nome.trim().toUpperCase()
-  if (!key) return null
-  return (
-    form?.linhas.find((linha) => linha.medicamento.trim().toUpperCase() === key) ?? null
-  )
+  const matches = findListaMedicamentosByNome(nome, form)
+  return matches.length === 1 ? matches[0]! : null
+}
+
+/** Cada lote é uma linha: localiza por nome + lote. */
+export function findListaMedicamentoByNomeELote(
+  nome: string,
+  lote: string,
+  form: ListaMedicamentosFormData | undefined,
+): ListaMedicamentosLinha | null {
+  const nomeKey = normMedKey(nome)
+  const loteKey = normMedKey(lote)
+  if (!nomeKey) return null
+  const matches = findListaMedicamentosByNome(nome, form)
+  if (matches.length === 0) return null
+  if (loteKey) {
+    return matches.find((linha) => normMedKey(linha.lote) === loteKey) ?? null
+  }
+  const semLote = matches.filter((linha) => !normMedKey(linha.lote))
+  if (semLote.length === 1) return semLote[0]!
+  return matches.length === 1 ? matches[0]! : null
+}
+
+/** Rótulo das opções do Autocomplete no IMH (nome + lote + validade). */
+export function formatListaMedEstoqueOptionLabel(linha: ListaMedicamentosLinha): string {
+  const nome = linha.medicamento.trim() || '—'
+  const parts = [nome]
+  if (linha.lote.trim()) parts.push(`Lote ${linha.lote.trim()}`)
+  if (linha.validade.trim()) parts.push(`Val. ${linha.validade.trim()}`)
+  if (linha.qtd.trim()) parts.push(`QTD ${linha.qtd.trim()}`)
+  return parts.join(' · ')
 }
 
 export function formatListaMedPreco(raw: string): string {

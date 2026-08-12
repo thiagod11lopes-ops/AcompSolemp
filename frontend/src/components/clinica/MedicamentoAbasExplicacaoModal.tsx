@@ -26,12 +26,12 @@ const IMH_PASSOS = [
   {
     titulo: 'Preencher o lançamento',
     texto:
-      'Informe DATA, NIP ou nome do paciente e o medicamento (ITEM PME). O NIP busca automaticamente na aba Pacientes: se o usuário for o titular, NIP e NIP TITULAR ficam iguais; se for dependente, o titular vem da planilha. NIP inexistente mostra o alerta “NIP NÃO ENCONTRADO NO SISTEMA”.',
+      'Informe DATA, NIP ou nome do paciente e o medicamento (ITEM PME). Na Lista, cada lote é uma linha: ao buscar o medicamento, escolha a opção com lote e validade. O NIP busca automaticamente na aba Pacientes: se o usuário for o titular, NIP e NIP TITULAR ficam iguais; se for dependente, o titular vem da planilha. NIP inexistente mostra o alerta “NIP NÃO ENCONTRADO NO SISTEMA”.',
   },
   {
     titulo: 'Adicionar na planilha',
     texto:
-      'Ao clicar em Adicionar lançamento, a linha entra na planilha à direita. A QTD do mesmo medicamento é descontada na Lista de Medicamentos. Se o NIP for novo, ele é cadastrado em Pacientes para os próximos preenchimentos.',
+      'Ao clicar em Adicionar lançamento, a linha entra na planilha à direita. A QTD é descontada só do lote escolhido na Lista de Medicamentos. Se o NIP for novo, ele é cadastrado em Pacientes para os próximos preenchimentos.',
   },
   {
     titulo: 'Filtrar por mês vigente',
@@ -47,9 +47,9 @@ const IMH_PASSOS = [
 
 const LISTA_PASSOS = [
   {
-    titulo: 'Catálogo e estoque',
+    titulo: 'Catálogo e estoque por lote',
     texto:
-      'Cadastre NEB, nome do medicamento, UF, QTD em estoque, limiar de Estoque Baixo e preço de referência. Esse catálogo alimenta a busca e o preço unitário no formulário do IMH.',
+      'Cadastre NEB, medicamento, LOTE, VALIDADE, UF, QTD, limiar de Estoque Baixo e preço. Cada lote do mesmo medicamento deve ser uma linha própria — esse catálogo alimenta a busca no IMH.',
   },
   {
     titulo: 'Alertas visuais',
@@ -59,7 +59,7 @@ const LISTA_PASSOS = [
   {
     titulo: 'Baixa e devolução automática',
     texto:
-      'Cada lançamento no IMH reduz a QTD do medicamento correspondente. Excluir o lançamento no IMH devolve essa quantidade ao estoque.',
+      'No IMH, ao escolher o medicamento aparecem lote e validade para seleção. Cada lançamento reduz a QTD só daquele lote. Excluir o lançamento devolve a quantidade à mesma linha.',
   },
 ]
 
@@ -342,9 +342,9 @@ export function MedicamentoAbasExplicacaoModal({
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography sx={{ fontWeight: 800, fontSize: '0.88rem' }}>Fluxo resumido</Typography>
           <Typography sx={{ mt: 0.4, fontSize: '0.78rem', lineHeight: 1.55, color: alpha('#fff', 0.7) }}>
-            Cadastre o estoque na Lista → lance o PME no IMH (paciente + medicamento) → a QTD
-            baixa sozinha → marque IMH e envie. A aba Pacientes só apoia o preenchimento automático
-            do NIP/nome/vínculo.
+            Cadastre cada lote como uma linha na Lista → no IMH escolha o medicamento com lote e
+            validade → a QTD daquele lote baixa sozinha → marque IMH e envie. A aba Pacientes só
+            apoia o preenchimento automático do NIP/nome/vínculo.
           </Typography>
         </Box>
         <Button
