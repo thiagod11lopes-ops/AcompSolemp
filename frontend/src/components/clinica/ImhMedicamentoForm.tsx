@@ -59,34 +59,15 @@ interface ImhMedicamentoFormProps {
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 
-function mapVinculoPaciente(raw: string): string {
-  const upper = formatPacientePmeUpper(raw)
-  if (!upper) return ''
-  if (VINCULOS.includes(upper as (typeof VINCULOS)[number])) return upper
-  if (upper.includes('DEPENDENTE') && !upper.includes('TITULAR')) return 'DEPENDENTE'
-  if (upper.includes('TITULAR') && !upper.includes('DEPENDENTE')) return 'TITULAR'
-  return upper
-}
-
 function matchToDraftPatch(
   match: PacientePmeNipMatch,
   nipDigitado: string,
 ): Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>> {
   const nipFmt = formatImhMedNip(nipDigitado)
-
-  if (match.kind === 'somente-titular') {
-    return {
-      nip: nipFmt,
-      nome: '',
-      nipTitular: nipFmt,
-      postoGrad: formatImhMedUppercase(match.row.postoGradTitular),
-      vinculo: 'TITULAR',
-    }
-  }
-
   const { row, isTitular } = match
+  const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
+
   if (isTitular) {
-    const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
     return {
       nip: nipUsuario,
       nome: formatImhMedUppercase(row.nome),
@@ -97,11 +78,11 @@ function matchToDraftPatch(
   }
 
   return {
-    nip: formatImhMedNip(row.nipUsuario) || nipFmt,
+    nip: nipUsuario,
     nome: formatImhMedUppercase(row.nome),
     nipTitular: formatImhMedNip(row.nipTitular),
     postoGrad: formatImhMedUppercase(row.postoGradTitular),
-    vinculo: mapVinculoPaciente(row.vinculo),
+    vinculo: 'DEPENDENTE',
   }
 }
 
@@ -111,7 +92,6 @@ function pacienteUsuarioToDraftPatch(
 ): Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>> {
   return matchToDraftPatch(
     {
-      kind: 'usuario',
       row: paciente,
       isTitular: pacienteNipsIguais(paciente),
     },
