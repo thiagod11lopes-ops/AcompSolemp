@@ -74,6 +74,7 @@ function mapHeaderColumns(
     else if (n.includes('NIP') && n.includes('TITULAR')) map.nipTitular = index
     else if (n.includes('POSTO') || n.includes('GRAD')) map.postoGrad = index
     else if (n.includes('VINCULO')) map.vinculo = index
+    else if (n.includes('VALOR') && n.includes('INDENIZAR')) map.valorIndenizar = index
     else if (n.includes('INDENIZAR') || n.includes('%')) map.pctIndenizar = index
     else if (n === 'OM') map.om = index
     else if (n.includes('UNIDADE') && n.includes('FORNECIMENTO')) {

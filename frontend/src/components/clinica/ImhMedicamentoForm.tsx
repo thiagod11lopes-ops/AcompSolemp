@@ -948,6 +948,14 @@ export function ImhMedicamentoForm({
               sx={compactFieldSx}
             />
             <TextField
+              label="VALOR A INDENIZAR"
+              value={linhaDraft.valorIndenizar}
+              size="small"
+              fullWidth
+              slotProps={{ input: { readOnly: true } }}
+              sx={compactFieldSx}
+            />
+            <TextField
               label="OM"
               value={linhaDraft.om}
               onChange={(e) => updateDraft({ om: formatImhMedUppercase(e.target.value) })}

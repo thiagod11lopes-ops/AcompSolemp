@@ -27,6 +27,7 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
     postoGrad: '',
     vinculo: '',
     pctIndenizar: '',
+    valorIndenizar: '',
     om: '',
     unidadeFornecimento: '',
     quantidadeAdquirida: '',
@@ -68,6 +69,7 @@ export const IMH_MEDICAMENTO_COLUNAS = [
   { key: 'postoGrad', label: 'POSTO/GRAD', width: 100 },
   { key: 'vinculo', label: 'VINCULO', width: 100 },
   { key: 'pctIndenizar', label: '% A INDENIZAR', width: 100 },
+  { key: 'valorIndenizar', label: 'VALOR A INDENIZAR', width: 130 },
   { key: 'om', label: 'OM', width: 80 },
   { key: 'unidadeFornecimento', label: 'UNIDADE DE FORNECIMENTO', width: 140 },
   {
@@ -96,15 +98,28 @@ function parseQuantidade(raw: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+function parsePctIndenizar(raw: string): number {
+  const cleaned = raw.trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
+  const n = parseFloat(cleaned)
+  if (!Number.isFinite(n) || n < 0) return 0
+  if (n > 1) return n / 100
+  if (n === 1) return 1
+  return n
+}
+
 export function withRecalculatedImhMedicamentoLinha(
   linha: ImhMedicamentoLinha,
 ): ImhMedicamentoLinha {
   const qtd = parseQuantidade(linha.qtd)
   const unit = parseValorBrasileiro(linha.valorUnitario)
   const total = qtd > 0 && unit > 0 ? unit * qtd : parseValorBrasileiro(linha.total)
+  const totalFmt = total > 0 ? formatValorBrasileiro(total) : linha.total.trim()
+  const pct = parsePctIndenizar(linha.pctIndenizar)
+  const valorIndenizar = total > 0 && pct > 0 ? formatValorBrasileiro(total * pct) : ''
   return {
     ...linha,
-    total: total > 0 ? formatValorBrasileiro(total) : linha.total.trim(),
+    total: totalFmt,
+    valorIndenizar,
   }
 }
 
@@ -121,6 +136,7 @@ export function linhaImhMedicamentoHasContent(linha: ImhMedicamentoLinha): boole
       linha.postoGrad.trim() ||
       linha.vinculo.trim() ||
       linha.pctIndenizar.trim() ||
+      linha.valorIndenizar.trim() ||
       linha.om.trim() ||
       linha.unidadeFornecimento.trim() ||
       linha.quantidadeAdquirida.trim() ||
@@ -148,6 +164,7 @@ export function normalizeImhMedicamentoForm(
         postoGrad: item.postoGrad ?? '',
         vinculo: item.vinculo ?? '',
         pctIndenizar: item.pctIndenizar ?? '',
+        valorIndenizar: item.valorIndenizar ?? '',
         om: item.om ?? '',
         unidadeFornecimento: item.unidadeFornecimento ?? '',
         quantidadeAdquirida: item.quantidadeAdquirida ?? '',

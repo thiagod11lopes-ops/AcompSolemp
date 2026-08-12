@@ -484,6 +484,8 @@ export interface ImhMedicamentoLinha {
   postoGrad: string
   vinculo: string
   pctIndenizar: string
+  /** Calculado: TOTAL × (% A INDENIZAR) */
+  valorIndenizar: string
   om: string
   unidadeFornecimento: string
   quantidadeAdquirida: string
