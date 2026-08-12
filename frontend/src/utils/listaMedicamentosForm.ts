@@ -91,20 +91,39 @@ export function baixarEstoqueListaMedicamentos(
   itemPme: string,
   qtdBaixaRaw: string,
 ): ListaMedicamentosFormData {
+  return ajustarEstoqueListaMedicamentos(form, itemPme, qtdBaixaRaw, 'baixar')
+}
+
+/** Devolve ao estoque a quantidade do lançamento IMH excluído. */
+export function devolverEstoqueListaMedicamentos(
+  form: ListaMedicamentosFormData,
+  itemPme: string,
+  qtdDevolverRaw: string,
+): ListaMedicamentosFormData {
+  return ajustarEstoqueListaMedicamentos(form, itemPme, qtdDevolverRaw, 'devolver')
+}
+
+function formatQtdEstoque(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(n).replace('.', ',')
+}
+
+function ajustarEstoqueListaMedicamentos(
+  form: ListaMedicamentosFormData,
+  itemPme: string,
+  qtdRaw: string,
+  modo: 'baixar' | 'devolver',
+): ListaMedicamentosFormData {
   const nome = itemPme.trim().toUpperCase()
-  const baixa = parseListaMedQtdNumber(qtdBaixaRaw)
-  if (!nome || baixa <= 0) return form
+  const qtd = parseListaMedQtdNumber(qtdRaw)
+  if (!nome || qtd <= 0) return form
 
   let changed = false
   const linhas = form.linhas.map((linha) => {
     if (linha.medicamento.trim().toUpperCase() !== nome) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
-    const next = Math.max(0, atual - baixa)
+    const next = modo === 'baixar' ? Math.max(0, atual - qtd) : atual + qtd
     changed = true
-    return {
-      ...linha,
-      qtd: Number.isInteger(next) ? String(next) : String(next).replace('.', ','),
-    }
+    return { ...linha, qtd: formatQtdEstoque(next) }
   })
 
   return changed ? { linhas } : form

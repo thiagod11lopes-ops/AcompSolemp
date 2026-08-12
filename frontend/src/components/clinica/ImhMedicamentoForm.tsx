@@ -52,6 +52,7 @@ import {
 } from '@/utils/pacientesPme'
 import {
   baixarEstoqueListaMedicamentos,
+  devolverEstoqueListaMedicamentos,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -378,6 +379,14 @@ export function ImhMedicamentoForm({
     onListaMedicamentosChange(next)
   }
 
+  const devolverEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
+    if (!listaMedicamentos || !onListaMedicamentosChange) return
+    if (!linha.itemPme.trim()) return
+    const next = devolverEstoqueListaMedicamentos(listaMedicamentos, linha.itemPme, linha.qtd)
+    if (next === listaMedicamentos) return
+    onListaMedicamentosChange(next)
+  }
+
   const handleAdicionarLinha = () => {
     const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
     if (editingLinhaId) {
@@ -414,7 +423,9 @@ export function ImhMedicamentoForm({
   }
 
   const handleDeleteLinha = (id: string) => {
+    const removida = value.linhas.find((l) => l.id === id)
     persistLinhas(value.linhas.filter((l) => l.id !== id))
+    if (removida) devolverEstoqueDoLancamento(removida)
     if (editingLinhaId === id) resetLinhaForm()
   }
 
