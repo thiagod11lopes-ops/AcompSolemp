@@ -7,6 +7,7 @@ import {
   formatListaMedQtd,
   formatListaMedUf,
   formatListaMedLote,
+  formatListaMedValidade,
   linhaListaMedicamentosHasContent,
   withNormalizedListaMedicamentosLinha,
 } from '@/utils/listaMedicamentosForm'
@@ -40,6 +41,21 @@ function cell(rows: string[][], r: number, c: number): string {
   return cleanImportedText(String(rows[r]?.[c] ?? ''))
 }
 
+function normalizeImportValidade(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const serial = parseFloat(trimmed.replace(',', '.'))
+  if (Number.isFinite(serial) && serial > 30_000 && serial < 60_000) {
+    const excelEpoch = Date.UTC(1899, 11, 30)
+    const date = new Date(excelEpoch + Math.round(serial) * 86_400_000)
+    const day = String(date.getUTCDate()).padStart(2, '0')
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+    const year = String(date.getUTCFullYear())
+    return `${day}/${month}/${year}`
+  }
+  return formatListaMedValidade(trimmed)
+}
+
 function findHeaderRow(rows: string[][]): number {
   for (let r = 0; r < Math.min(rows.length, 40); r++) {
     const joined = (rows[r] ?? []).map((v) => norm(String(v ?? ''))).join('|')
@@ -64,6 +80,7 @@ function mapHeaderColumns(
     if (n === 'NEB') map.neb = index
     else if (n.includes('MEDICAMENTO')) map.medicamento = index
     else if (n === 'LOTE') map.lote = index
+    else if (n.includes('VALIDADE')) map.validade = index
     else if (n === 'UF') map.uf = index
     else if (n === 'QTD' || n === 'QUANTIDADE') map.qtd = index
     else if (n.includes('ESTOQUE') && n.includes('BAIXO')) map.estoqueBaixo = index
@@ -92,6 +109,10 @@ export function parseListaMedicamentosFromGrid(rows: string[][]): ListaMedicamen
       neb: formatListaMedNeb(nebRaw),
       medicamento: formatListaMedNome(medRaw),
       lote: colMap.lote !== undefined ? formatListaMedLote(cell(rows, r, colMap.lote)) : '',
+      validade:
+        colMap.validade !== undefined
+          ? normalizeImportValidade(cell(rows, r, colMap.validade))
+          : '',
       uf: colMap.uf !== undefined ? formatListaMedUf(cell(rows, r, colMap.uf)) : '',
       qtd: colMap.qtd !== undefined ? formatListaMedQtd(cell(rows, r, colMap.qtd)) : '',
       estoqueBaixo:

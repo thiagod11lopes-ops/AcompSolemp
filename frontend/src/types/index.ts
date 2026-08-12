@@ -477,6 +477,8 @@ export interface ImhMedicamentoLinha {
   nome: string
   itemPme: string
   lote: string
+  /** Validade no formato dd/mm/aaaa */
+  validade: string
   qtd: string
   valorUnitario: string
   /** Calculado: QTD × VALOR UNITÁRIO */
@@ -505,6 +507,8 @@ export interface ListaMedicamentosLinha {
   neb: string
   medicamento: string
   lote: string
+  /** Validade no formato dd/mm/aaaa */
+  validade: string
   uf: string
   /** Quantidade em estoque */
   qtd: string

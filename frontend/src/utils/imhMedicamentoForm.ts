@@ -21,6 +21,7 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
     nome: '',
     itemPme: '',
     lote: '',
+    validade: '',
     qtd: '1',
     valorUnitario: '',
     total: '',
@@ -63,6 +64,7 @@ export const IMH_MEDICAMENTO_COLUNAS = [
     width: 280,
   },
   { key: 'lote', label: 'LOTE', width: 110 },
+  { key: 'validade', label: 'VALIDADE', width: 100 },
   { key: 'qtd', label: 'QTD', width: 56 },
   { key: 'valorUnitario', label: 'VALOR UNITÁRIO', width: 110 },
   { key: 'total', label: 'TOTAL', width: 110 },
@@ -125,6 +127,7 @@ export function linhaImhMedicamentoHasContent(linha: ImhMedicamentoLinha): boole
       linha.nome.trim() ||
       linha.itemPme.trim() ||
       linha.lote.trim() ||
+      linha.validade.trim() ||
       (linha.qtd.trim() && linha.qtd.trim() !== '1') ||
       linha.valorUnitario.trim() ||
       linha.total.trim() ||
@@ -153,6 +156,7 @@ export function normalizeImhMedicamentoForm(
         nome: item.nome ?? '',
         itemPme: item.itemPme ?? '',
         lote: item.lote ?? '',
+        validade: item.validade ?? '',
         qtd: item.qtd ?? '',
         valorUnitario: item.valorUnitario ?? '',
         total: item.total ?? '',

@@ -538,25 +538,30 @@ export function ImhMedicamentoForm({
     if (found) applyPacienteSelection(found)
   }
 
-  const resolveLoteDoMedicamento = (nome: string): string => {
+  const resolveLoteDoMedicamento = (nome: string): { lote: string; validade: string } => {
     const found = findListaMedicamentoByNome(nome, listaMedicamentos)
     const lote = found?.lote.trim() ?? ''
+    const validade = found?.validade.trim() ?? ''
     setLoteSemDefinir(Boolean(nome.trim()) && !lote)
-    return formatImhMedUppercase(lote)
+    return {
+      lote: formatImhMedUppercase(lote),
+      validade: formatImhMedData(validade),
+    }
   }
 
   const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
     if (!row) {
-      updateDraft({ itemPme: '', lote: '' })
+      updateDraft({ itemPme: '', lote: '', validade: '' })
       setItemPmeInput('')
       setLoteSemDefinir(false)
       return
     }
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
-    const lote = resolveLoteDoMedicamento(row.medicamento)
+    const { lote, validade } = resolveLoteDoMedicamento(row.medicamento)
     updateDraft({
       itemPme: formatImhMedUppercase(row.medicamento),
       lote,
+      validade,
       valorUnitario: unitario,
       unidadeFornecimento:
         linhaDraft.unidadeFornecimento.trim() || formatImhMedUppercase(row.uf),
@@ -828,14 +833,15 @@ export function ImhMedicamentoForm({
               onInputChange={(_, next) => {
                 setItemPmeInput(next)
                 if (!next.trim()) {
-                  updateDraft({ itemPme: '', lote: '' })
+                  updateDraft({ itemPme: '', lote: '', validade: '' })
                   setLoteSemDefinir(false)
                 }
               }}
               onChange={(_, option) => {
                 if (typeof option === 'string') {
                   const nome = formatImhMedUppercase(option)
-                  updateDraft({ itemPme: nome, lote: resolveLoteDoMedicamento(nome) })
+                  const { lote, validade } = resolveLoteDoMedicamento(nome)
+                  updateDraft({ itemPme: nome, lote, validade })
                   setItemPmeInput(option)
                   return
                 }
@@ -869,7 +875,8 @@ export function ImhMedicamentoForm({
                 if (!itemPmeInput.trim()) return
                 if (selectedMedicamento) return
                 const nome = formatImhMedUppercase(itemPmeInput)
-                updateDraft({ itemPme: nome, lote: resolveLoteDoMedicamento(nome) })
+                const { lote, validade } = resolveLoteDoMedicamento(nome)
+                updateDraft({ itemPme: nome, lote, validade })
               }}
               renderOption={(props, option) => (
                 <li {...props} key={option.id}>
@@ -924,6 +931,15 @@ export function ImhMedicamentoForm({
                     }
                   : null),
               }}
+            />
+            <TextField
+              label="VALIDADE"
+              value={linhaDraft.validade}
+              onChange={(e) => updateDraft({ validade: formatImhMedData(e.target.value) })}
+              placeholder="dd/mm/aaaa"
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
             />
             <TextField
               label="QTD"

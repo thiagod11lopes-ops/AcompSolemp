@@ -69,6 +69,7 @@ function mapHeaderColumns(
     else if (n.includes('ITEM') || (n.includes('PME') && n.includes('DESCRICAO'))) {
       map.itemPme = index
     } else if (n === 'LOTE') map.lote = index
+    else if (n.includes('VALIDADE')) map.validade = index
     else if (n === 'QTD' || n === 'QT' || n === 'QUANTIDADE') map.qtd = index
     else if (n.includes('VALOR') && n.includes('UNIT')) map.valorUnitario = index
     else if (n === 'TOTAL' || (n.includes('VALOR') && n.includes('TOTAL'))) map.total = index
@@ -97,6 +98,22 @@ function normalizeImportDate(raw: string): string {
     const day = String(date.getUTCDate()).padStart(2, '0')
     const month = String(date.getUTCMonth() + 1).padStart(2, '0')
     const year = String(date.getUTCFullYear()).slice(-2)
+    return `${day}/${month}/${year}`
+  }
+  return formatImhMedData(trimmed)
+}
+
+/** Validade no formato dd/mm/aaaa (ano com 4 dígitos). */
+function normalizeImportValidade(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const serial = parseFloat(trimmed.replace(',', '.'))
+  if (Number.isFinite(serial) && serial > 30_000 && serial < 60_000) {
+    const excelEpoch = Date.UTC(1899, 11, 30)
+    const date = new Date(excelEpoch + Math.round(serial) * 86_400_000)
+    const day = String(date.getUTCDate()).padStart(2, '0')
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+    const year = String(date.getUTCFullYear())
     return `${day}/${month}/${year}`
   }
   return formatImhMedData(trimmed)
@@ -137,6 +154,10 @@ export function parseImhMedicamentoFromGrid(rows: string[][]): ImhMedicamentoFor
       nome: formatImhMedUppercase(nomeRaw),
       itemPme: formatImhMedUppercase(itemRaw),
       lote: colMap.lote !== undefined ? formatImhMedUppercase(cell(rows, r, colMap.lote)) : '',
+      validade:
+        colMap.validade !== undefined
+          ? normalizeImportValidade(cell(rows, r, colMap.validade))
+          : '',
       qtd:
         colMap.qtd !== undefined
           ? formatImhMedQtd(cell(rows, r, colMap.qtd)) || '1'

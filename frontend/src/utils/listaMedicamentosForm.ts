@@ -1,5 +1,5 @@
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
-import { formatImhUppercase } from '@/utils/imhAbaForm'
+import { formatImhData, formatImhUppercase } from '@/utils/imhAbaForm'
 import { formatPrecoReferenciaMedicamento } from '@/utils/medicamentosPrecos'
 import type { MedicamentoPrecoRow } from '@/utils/medicamentosPrecos'
 
@@ -9,6 +9,7 @@ export function createEmptyListaMedicamentosLinha(): ListaMedicamentosLinha {
     neb: '',
     medicamento: '',
     lote: '',
+    validade: '',
     uf: '',
     qtd: '',
     estoqueBaixo: '',
@@ -24,6 +25,7 @@ export const LISTA_MEDICAMENTOS_COLUNAS = [
   { key: 'neb', label: 'NEB', width: 120 },
   { key: 'medicamento', label: 'Medicamento', width: 420 },
   { key: 'lote', label: 'LOTE', width: 110 },
+  { key: 'validade', label: 'VALIDADE', width: 100 },
   { key: 'uf', label: 'UF', width: 64 },
   { key: 'qtd', label: 'QTD', width: 72 },
   { key: 'precoReferencia', label: 'Preço referência 2026', width: 150 },
@@ -136,6 +138,7 @@ export function linhaListaMedicamentosHasContent(linha: ListaMedicamentosLinha):
     linha.neb.trim() ||
       linha.medicamento.trim() ||
       linha.lote.trim() ||
+      linha.validade.trim() ||
       linha.uf.trim() ||
       linha.qtd.trim() ||
       linha.estoqueBaixo.trim() ||
@@ -151,6 +154,7 @@ export function withNormalizedListaMedicamentosLinha(
     neb: linha.neb.trim(),
     medicamento: linha.medicamento.trim(),
     lote: formatImhUppercase(linha.lote).trim(),
+    validade: formatListaMedValidade(linha.validade),
     uf: formatImhUppercase(linha.uf).trim(),
     qtd: linha.qtd.trim(),
     estoqueBaixo: linha.estoqueBaixo.trim(),
@@ -172,6 +176,7 @@ export function normalizeListaMedicamentosForm(
           neb: item.neb ?? '',
           medicamento: item.medicamento ?? '',
           lote: item.lote ?? '',
+          validade: item.validade ?? '',
           uf: item.uf ?? '',
           qtd: item.qtd ?? '',
           estoqueBaixo: item.estoqueBaixo ?? '',
@@ -207,6 +212,7 @@ export function listaMedicamentosFromPrecosRows(
       neb: row.neb ?? '',
       medicamento: row.medicamento ?? '',
       lote: '',
+      validade: '',
       uf: row.uf ?? '',
       qtd: '',
       estoqueBaixo: '',
@@ -229,6 +235,11 @@ export function formatListaMedNome(raw: string): string {
 
 export function formatListaMedLote(raw: string): string {
   return formatImhUppercase(raw).slice(0, 24)
+}
+
+/** Validade no formato dd/mm/aaaa enquanto digita. */
+export function formatListaMedValidade(raw: string): string {
+  return formatImhData(raw)
 }
 
 export function findListaMedicamentoByNome(

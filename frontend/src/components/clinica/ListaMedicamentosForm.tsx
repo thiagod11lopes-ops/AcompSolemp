@@ -22,6 +22,7 @@ import {
   formatListaMedQtd,
   formatListaMedUf,
   formatListaMedLote,
+  formatListaMedValidade,
   linhaListaMedicamentosHasContent,
   normalizeListaMedicamentosForm,
   withNormalizedListaMedicamentosLinha,
@@ -300,6 +301,15 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               value={linhaDraft.lote}
               onChange={(e) => updateDraft({ lote: formatListaMedLote(e.target.value) })}
               placeholder="Lote"
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="VALIDADE"
+              value={linhaDraft.validade}
+              onChange={(e) => updateDraft({ validade: formatListaMedValidade(e.target.value) })}
+              placeholder="dd/mm/aaaa"
               size="small"
               fullWidth
               sx={compactFieldSx}
