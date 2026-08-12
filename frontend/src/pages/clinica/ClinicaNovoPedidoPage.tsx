@@ -12,6 +12,7 @@ import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSp
 import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
 import { ConsumoMaterialConsignadoForm } from '@/components/clinica/ConsumoMaterialConsignadoForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
+import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
 import { ListaMateriaisForm } from '@/components/clinica/ListaMateriaisForm'
 import {
   clinicaPlanilhasLivresService,
@@ -20,6 +21,7 @@ import {
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
+  ImhMedicamentoFormData,
   ListaMateriaisFormData,
   PlanilhaLivreAba,
 } from '@/types'
@@ -29,6 +31,7 @@ import {
 } from '@/utils/planilhasFixas'
 import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
 import { EMPTY_IMH_ABA_FORM } from '@/utils/imhAbaForm'
+import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import {
   normalizeConsumoMaterialRows,
@@ -48,6 +51,7 @@ type PersistPayload = {
   conmed?: ConmedComrjFormData
   consumo?: ConsumoMaterialRow[]
   imh?: ImhAbaFormData
+  imhMedicamento?: ImhMedicamentoFormData
   lista?: ListaMateriaisFormData
 }
 
@@ -87,6 +91,9 @@ export default function ClinicaNovoPedidoPage() {
   const [abaAtivaId, setAbaAtivaId] = useState<string | null>(null)
   const [conmedForm, setConmedForm] = useState<ConmedComrjFormData>(EMPTY_CONMED_COMRJ_FORM)
   const [imhForm, setImhForm] = useState<ImhAbaFormData>(EMPTY_IMH_ABA_FORM)
+  const [imhMedicamentoForm, setImhMedicamentoForm] = useState<ImhMedicamentoFormData>(
+    EMPTY_IMH_MEDICAMENTO_FORM,
+  )
   const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const hydratedModoRef = useRef<string | null>(null)
@@ -94,6 +101,7 @@ export default function ClinicaNovoPedidoPage() {
   const abaAtivaIdRef = useRef(abaAtivaId)
   const conmedFormRef = useRef(conmedForm)
   const imhFormRef = useRef(imhForm)
+  const imhMedicamentoFormRef = useRef(imhMedicamentoForm)
   const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
   const modoRef = useRef(planilhasModo)
@@ -101,6 +109,7 @@ export default function ClinicaNovoPedidoPage() {
   abaAtivaIdRef.current = abaAtivaId
   conmedFormRef.current = conmedForm
   imhFormRef.current = imhForm
+  imhMedicamentoFormRef.current = imhMedicamentoForm
   listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
   modoRef.current = planilhasModo
@@ -115,6 +124,7 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtivaId(state.abaAtivaId ?? fixedPlanilhas[0]?.id ?? null)
     setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
     setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
+    setImhMedicamentoForm(state.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM)
     setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
   }, [clinicaId, planilhasModo, fixedPlanilhas])
@@ -131,6 +141,7 @@ export default function ClinicaNovoPedidoPage() {
           conmedComrj: patch.conmed ?? conmedFormRef.current,
           consumoMaterialConsignado: patch.consumo ?? consumoRowsRef.current,
           imh: patch.imh ?? imhFormRef.current,
+          imhMedicamento: patch.imhMedicamento ?? imhMedicamentoFormRef.current,
           listaMateriais: patch.lista ?? listaFormRef.current,
         },
         modoRef.current,
@@ -186,6 +197,14 @@ export default function ClinicaNovoPedidoPage() {
     [persist],
   )
 
+  const handleImhMedicamentoChange = useCallback(
+    (next: ImhMedicamentoFormData) => {
+      setImhMedicamentoForm(next)
+      persist({ imhMedicamento: next })
+    },
+    [persist],
+  )
+
   const handleListaChange = useCallback(
     (next: ListaMateriaisFormData) => {
       setListaForm(next)
@@ -217,7 +236,14 @@ export default function ClinicaNovoPedidoPage() {
 
   const renderContent = () => {
     if (isMedicamento) {
-      if (abaAtivaId === IMH_ABA_ID) return <AbaVaziaPlaceholder titulo="IMH" />
+      if (abaAtivaId === IMH_ABA_ID) {
+        return (
+          <ImhMedicamentoForm
+            value={imhMedicamentoForm}
+            onChange={handleImhMedicamentoChange}
+          />
+        )
+      }
       if (abaAtivaId === LISTA_MEDICAMENTOS_ABA_ID) {
         return <AbaVaziaPlaceholder titulo="Lista de Medicamentos" />
       }

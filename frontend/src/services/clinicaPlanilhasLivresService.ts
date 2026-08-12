@@ -6,6 +6,7 @@ import {
 } from '@/utils/planilhasFixas'
 import { normalizeConmedComrjForm } from '@/utils/conmedComrjForm'
 import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
+import { normalizeImhMedicamentoForm } from '@/utils/imhMedicamentoForm'
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 
@@ -25,6 +26,7 @@ function normalizeState(
     abaAtivaId,
     conmedComrj: normalizeConmedComrjForm(state?.conmedComrj),
     imh: normalizeImhAbaForm(state?.imh),
+    imhMedicamento: normalizeImhMedicamentoForm(state?.imhMedicamento),
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
   }

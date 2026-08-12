@@ -469,6 +469,32 @@ export interface ImhAbaFormData {
   linhas: ImhAbaLinha[]
 }
 
+/** Linha da planilha IMH do portal medicamento (Modelo IHM — PME) */
+export interface ImhMedicamentoLinha {
+  id: string
+  data: string
+  nip: string
+  nome: string
+  itemPme: string
+  qtd: string
+  valorUnitario: string
+  /** Calculado: QTD × VALOR UNITÁRIO */
+  total: string
+  nipTitular: string
+  postoGrad: string
+  vinculo: string
+  pctIndenizar: string
+  om: string
+  unidadeFornecimento: string
+  quantidadeAdquirida: string
+  maneiraDispensacao: string
+}
+
+/** Formulário + planilha unificada da aba IMH (medicamento / PME) */
+export interface ImhMedicamentoFormData {
+  linhas: ImhMedicamentoLinha[]
+}
+
 /** Linha da planilha Lista de Materiais (aba LISTA DE MATERIAIS do ODS) */
 export interface ListaMateriaisLinha {
   id: string
@@ -497,6 +523,8 @@ export interface ClinicaPlanilhasLivresState {
   conmedComrj?: ConmedComrjFormData
   /** Formulário tipado da aba IMH (layout anexo CP) */
   imh?: ImhAbaFormData
+  /** Formulário tipado da aba IMH do portal medicamento (Modelo IHM — PME) */
+  imhMedicamento?: ImhMedicamentoFormData
   /** Formulário tipado da aba Lista de Materiais */
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
