@@ -260,15 +260,89 @@ function addDays(base: Date, days: number): Date {
   return startOfDay(d)
 }
 
+function daysInBalancoPeriodo(tipo: BalancoPeriodoTipo, referencia: Date): Date[] {
+  const ref = startOfDay(referencia)
+  if (tipo === 'dia') return [ref]
+
+  if (tipo === 'mes') {
+    const year = ref.getFullYear()
+    const month = ref.getMonth()
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    return Array.from({ length: lastDay }, (_, i) => startOfDay(new Date(year, month, i + 1)))
+  }
+
+  const year = ref.getFullYear()
+  const days: Date[] = []
+  for (let month = 0; month < 12; month += 1) {
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    for (let day = 1; day <= lastDay; day += 1) {
+      days.push(startOfDay(new Date(year, month, day)))
+    }
+  }
+  return days
+}
+
+function buildExemploMovimentacoesDiarias(
+  days: Date[],
+): ListaMedicamentoMovimentacao[][] {
+  /** Uma lista de movimentações por medicamento (3 lotes de exemplo). */
+  const porMedicamento: ListaMedicamentoMovimentacao[][] = [[], [], []]
+  const origensEntrada = ['Farmácia central', 'Compra PME', 'Devolução setor']
+  const destinosSaida = ['Ambulatório', 'Pronto atendimento', 'Enfermaria', 'UTI']
+  const responsaveis = ['Exemplo', 'Téc. Farmácia', 'Enf. Plantão']
+  let seq = 0
+
+  for (let i = 0; i < days.length; i += 1) {
+    const day = days[i]
+    const data = formatBrDate(day)
+    const createdAt = new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      9 + (i % 8),
+      (i * 7) % 60,
+      0,
+    ).toISOString()
+
+    // 2 movimentações/dia: 1 entrada + 1 saída (mês de 31 dias → 62 registros).
+    const medEntrada = i % 3
+    const medSaida = (i + 1) % 3
+    const qtdEntrada = String(8 + (i % 12))
+    const qtdSaida = String(3 + (i % 9))
+
+    porMedicamento[medEntrada].push({
+      id: `ex-mov-${++seq}`,
+      tipo: 'entrada',
+      qtd: qtdEntrada,
+      data,
+      origemDestino: origensEntrada[i % origensEntrada.length],
+      responsavel: responsaveis[i % responsaveis.length],
+      createdAt,
+    })
+
+    porMedicamento[medSaida].push({
+      id: `ex-mov-${++seq}`,
+      tipo: 'saida',
+      qtd: qtdSaida,
+      data,
+      origemDestino: destinosSaida[i % destinosSaida.length],
+      responsavel: responsaveis[(i + 1) % responsaveis.length],
+      createdAt,
+    })
+  }
+
+  return porMedicamento
+}
+
 /** Dados fictícios alinhados ao período selecionado, só para pré-visualização. */
 export function createMedicamentoBalancoExemploInput(
   periodoTipo: BalancoPeriodoTipo,
   referencia: Date,
 ): MedicamentoBalancoInput {
   const ref = startOfDay(referencia)
-  const d1 = formatBrDate(ref)
-  const d2 = formatBrDate(addDays(ref, periodoTipo === 'dia' ? 0 : -2))
-  const d3 = formatBrDate(addDays(ref, periodoTipo === 'dia' ? 0 : -5))
+  const periodDays = daysInBalancoPeriodo(periodoTipo, ref)
+  const movPorMedicamento = buildExemploMovimentacoesDiarias(periodDays)
+
   const validadeOk = formatBrDate(addDays(ref, 180))
   const validadeProxima = formatBrDate(addDays(ref, 20))
   const validadeVencida = formatBrDate(addDays(ref, -10))
@@ -286,26 +360,7 @@ export function createMedicamentoBalancoExemploInput(
         estoqueBaixo: '30',
         avisoValidadeDias: '30',
         precoReferencia: 'R$ 2,50',
-        movimentacoes: [
-          {
-            id: 'ex-mov-1',
-            tipo: 'entrada',
-            qtd: '80',
-            data: d1,
-            origemDestino: 'Farmácia central',
-            responsavel: 'Exemplo',
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'ex-mov-2',
-            tipo: 'saida',
-            qtd: '25',
-            data: d2,
-            origemDestino: 'Ambulatório',
-            responsavel: 'Exemplo',
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        movimentacoes: movPorMedicamento[0],
       },
       {
         id: 'ex-lista-2',
@@ -318,26 +373,7 @@ export function createMedicamentoBalancoExemploInput(
         estoqueBaixo: '20',
         avisoValidadeDias: '45',
         precoReferencia: 'R$ 4,90',
-        movimentacoes: [
-          {
-            id: 'ex-mov-3',
-            tipo: 'entrada',
-            qtd: '50',
-            data: d3,
-            origemDestino: 'Compra PME',
-            responsavel: 'Exemplo',
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'ex-mov-4',
-            tipo: 'saida',
-            qtd: '32',
-            data: d1,
-            origemDestino: 'Pronto atendimento',
-            responsavel: 'Exemplo',
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        movimentacoes: movPorMedicamento[1],
       },
       {
         id: 'ex-lista-3',
@@ -350,74 +386,45 @@ export function createMedicamentoBalancoExemploInput(
         estoqueBaixo: '10',
         avisoValidadeDias: '30',
         precoReferencia: 'R$ 1,80',
-        movimentacoes: [],
+        movimentacoes: movPorMedicamento[2],
       },
     ],
   }
 
+  // Lançamentos IMH espalhados pelo período (além das movimentações diárias).
+  const imhSeedDays =
+    periodoTipo === 'dia'
+      ? [ref]
+      : periodDays.filter((_, idx) => idx % Math.max(1, Math.floor(periodDays.length / 12)) === 0).slice(0, 12)
+
   const imhMedicamento: ImhMedicamentoFormData = {
-    linhas: [
-      {
-        id: 'ex-imh-1',
-        data: d1,
-        nip: '12.3456.78',
-        nome: 'PACIENTE EXEMPLO A',
-        itemPme: 'DIPIRONA 500 MG COMP',
-        lote: 'L-EX01',
-        validade: validadeOk,
-        qtd: '10',
-        valorUnitario: 'R$ 2,50',
-        total: 'R$ 25,00',
-        nipTitular: '12.3456.78',
-        postoGrad: 'CB',
-        vinculo: 'TITULAR',
-        pctIndenizar: '0%',
-        valorIndenizar: 'R$ 0,00',
+    linhas: imhSeedDays.map((day, idx) => {
+      const isAmox = idx % 2 === 1
+      const qtd = isAmox ? 14 + (idx % 5) : 6 + (idx % 8)
+      const unit = isAmox ? 4.9 : 2.5
+      const total = qtd * unit
+      const pct = idx % 3 === 0 ? 0.2 : 0
+      return {
+        id: `ex-imh-${idx + 1}`,
+        data: formatBrDate(day),
+        nip: `${10 + idx}.${1000 + idx}.${20 + idx}`,
+        nome: `PACIENTE EXEMPLO ${String.fromCharCode(65 + (idx % 26))}`,
+        itemPme: isAmox ? 'AMOXICILINA 500 MG CAP' : 'DIPIRONA 500 MG COMP',
+        lote: isAmox ? 'L-EX02' : 'L-EX01',
+        validade: isAmox ? validadeProxima : validadeOk,
+        qtd: String(qtd),
+        valorUnitario: isAmox ? 'R$ 4,90' : 'R$ 2,50',
+        total: `R$ ${total.toFixed(2).replace('.', ',')}`,
+        nipTitular: `${10 + idx}.${1000 + idx}.${20 + idx}`,
+        postoGrad: ['CB', '1T', 'MN', 'SO'][idx % 4],
+        vinculo: pct > 0 ? 'DEPENDENTE DIRETO' : 'TITULAR',
+        pctIndenizar: pct > 0 ? '20%' : '0%',
+        valorIndenizar: `R$ ${(total * pct).toFixed(2).replace('.', ',')}`,
         om: 'HNMD',
-        unidadeFornecimento: 'COMP',
-        quantidadeAdquirida: '10',
-      },
-      {
-        id: 'ex-imh-2',
-        data: d2,
-        nip: '98.7654.32',
-        nome: 'PACIENTE EXEMPLO B',
-        itemPme: 'AMOXICILINA 500 MG CAP',
-        lote: 'L-EX02',
-        validade: validadeProxima,
-        qtd: '21',
-        valorUnitario: 'R$ 4,90',
-        total: 'R$ 102,90',
-        nipTitular: '11.2233.44',
-        postoGrad: '1T',
-        vinculo: 'DEPENDENTE DIRETO',
-        pctIndenizar: '20%',
-        valorIndenizar: 'R$ 20,58',
-        om: 'HNMD',
-        unidadeFornecimento: 'CAP',
-        quantidadeAdquirida: '21',
-      },
-      {
-        id: 'ex-imh-3',
-        data: d3,
-        nip: '55.6677.88',
-        nome: 'PACIENTE EXEMPLO C',
-        itemPme: 'DIPIRONA 500 MG COMP',
-        lote: 'L-EX01',
-        validade: validadeOk,
-        qtd: '6',
-        valorUnitario: 'R$ 2,50',
-        total: 'R$ 15,00',
-        nipTitular: '55.6677.88',
-        postoGrad: 'MN',
-        vinculo: 'TITULAR',
-        pctIndenizar: '0%',
-        valorIndenizar: 'R$ 0,00',
-        om: 'HNMD',
-        unidadeFornecimento: 'COMP',
-        quantidadeAdquirida: '6',
-      },
-    ],
+        unidadeFornecimento: isAmox ? 'CAP' : 'COMP',
+        quantidadeAdquirida: String(qtd),
+      }
+    }),
   }
 
   const iso = (d: Date) => {
@@ -457,6 +464,25 @@ export function createMedicamentoBalancoExemploInput(
       paciente: null,
       dadosClinica: null,
       dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -3)),
+      dataEntrega: null,
+      etapaAtualId: 'ex',
+      etapasAtivasIds: [],
+      responsavelAtualId: null,
+      concluido: true,
+      etapasHistorico: [],
+    },
+    {
+      id: 'ex-ped-3',
+      numero: 'EX-2026-003',
+      clinicaId: 'ex',
+      empresaId: 'ex',
+      materialId: 'ex',
+      quantidade: 1,
+      valor: 89.5,
+      observacoes: '',
+      paciente: null,
+      dadosClinica: null,
+      dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -8)),
       dataEntrega: null,
       etapaAtualId: 'ex',
       etapasAtivasIds: [],
