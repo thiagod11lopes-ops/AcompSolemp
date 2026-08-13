@@ -157,7 +157,9 @@ export default function ConfigurarPrazosPage() {
                 label="Setor"
                 value={setorId}
                 onChange={(e) => handleSelectSetor(String(e.target.value))}
-                MenuProps={{ PaperProps: { sx: { maxHeight: 320 } } }}
+                MenuProps={{
+                  slotProps: { paper: { sx: { maxHeight: 320 } } },
+                }}
               >
                 {etapas.map((etapa) => (
                   <MenuItem key={etapa.id} value={etapa.id} sx={{ fontSize: '0.82rem' }}>
