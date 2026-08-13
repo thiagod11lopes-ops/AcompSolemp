@@ -35,6 +35,15 @@ export type ListaMedicamentosColunaKey = (typeof LISTA_MEDICAMENTOS_COLUNAS)[num
 
 export type ListaMedEstoqueStatus = 'ok' | 'baixo' | 'zerado'
 export type ListaMedEstoqueFiltro = 'todos' | 'baixo' | 'zerado'
+export type ListaMedValidadeStatus = 'ok' | 'proximo' | 'vencido'
+export type ListaMedValidadeFiltro = 'todos' | 'vencido' | 'proximo'
+export type ListaMedToolbarFiltro =
+  | { tipo: 'todos' }
+  | { tipo: 'estoque'; value: Exclude<ListaMedEstoqueFiltro, 'todos'> }
+  | { tipo: 'validade'; value: Exclude<ListaMedValidadeFiltro, 'todos'> }
+
+export const LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT = 30
+export const LISTA_MED_AVISO_VALIDADE_DIAS_KEY = 'acompsolemp.listaMed.avisoValidadeDias'
 
 export function parseListaMedQtdNumber(raw: string): number {
   const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
@@ -60,6 +69,95 @@ export function formatListaMedQtd(raw: string): string {
   }
   if (!result) return negative ? '-' : ''
   return negative ? `-${result}` : result
+}
+
+/** Converte dd/mm/aaaa (ou d/m/aaaa) em Date local (início do dia). */
+export function parseListaMedDataToDate(raw: string): Date | null {
+  const match = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!match) return null
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) return null
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  const date = new Date(year, month - 1, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null
+  }
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function startOfToday(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+export function getListaMedAvisoValidadeDias(): number {
+  try {
+    const raw = localStorage.getItem(LISTA_MED_AVISO_VALIDADE_DIAS_KEY)
+    if (!raw) return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
+    const n = Number.parseInt(raw, 10)
+    if (!Number.isFinite(n) || n < 1 || n > 3650) return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
+    return n
+  } catch {
+    return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
+  }
+}
+
+export function setListaMedAvisoValidadeDias(dias: number): void {
+  const n = Math.round(dias)
+  if (!Number.isFinite(n) || n < 1 || n > 3650) return
+  try {
+    localStorage.setItem(LISTA_MED_AVISO_VALIDADE_DIAS_KEY, String(n))
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+export function getListaMedValidadeStatus(
+  linha: ListaMedicamentosLinha,
+  diasAviso: number = getListaMedAvisoValidadeDias(),
+): ListaMedValidadeStatus {
+  const validade = parseListaMedDataToDate(linha.validade)
+  if (!validade) return 'ok'
+  const hoje = startOfToday()
+  if (validade.getTime() < hoje.getTime()) return 'vencido'
+  const limite = new Date(hoje)
+  limite.setDate(limite.getDate() + Math.max(1, diasAviso))
+  if (validade.getTime() <= limite.getTime()) return 'proximo'
+  return 'ok'
+}
+
+export function countListaMedValidade(
+  value: ListaMedicamentosFormData,
+  diasAviso: number = getListaMedAvisoValidadeDias(),
+): { vencido: number; proximo: number } {
+  let vencido = 0
+  let proximo = 0
+  for (const linha of value.linhas) {
+    const status = getListaMedValidadeStatus(linha, diasAviso)
+    if (status === 'vencido') vencido += 1
+    else if (status === 'proximo') proximo += 1
+  }
+  return { vencido, proximo }
+}
+
+export function filterListaMedicamentosByToolbarFiltro(
+  value: ListaMedicamentosFormData,
+  filtro: ListaMedToolbarFiltro,
+  diasAviso: number = getListaMedAvisoValidadeDias(),
+): ListaMedicamentosLinha[] {
+  if (filtro.tipo === 'todos') return value.linhas
+  if (filtro.tipo === 'estoque') {
+    return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro.value)
+  }
+  return value.linhas.filter((linha) => getListaMedValidadeStatus(linha, diasAviso) === filtro.value)
 }
 
 export function getListaMedEstoqueStatus(linha: ListaMedicamentosLinha): ListaMedEstoqueStatus {

@@ -4,6 +4,7 @@ import {
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
   HistoryOutlined as HistoricoIcon,
+  SettingsOutlined as SettingsIcon,
   SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
@@ -24,14 +25,18 @@ import {
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
+import { ListaMedAvisoValidadeConfigModal } from '@/components/clinica/ListaMedAvisoValidadeConfigModal'
 import { ListaMedicamentoHistoricoMovimentacoesModal } from '@/components/clinica/ListaMedicamentoHistoricoMovimentacoesModal'
 import {
   LISTA_MEDICAMENTOS_COLUNAS,
   countListaMedEstoque,
-  filterListaMedicamentosByEstoque,
+  countListaMedValidade,
+  filterListaMedicamentosByToolbarFiltro,
+  getListaMedAvisoValidadeDias,
   getListaMedEstoqueStatus,
+  getListaMedValidadeStatus,
   listaMedicamentosHasPreviewContent,
-  type ListaMedEstoqueFiltro,
+  type ListaMedToolbarFiltro,
 } from '@/utils/listaMedicamentosForm'
 import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import '@/components/clinica/spreadsheet-excel.css'
@@ -55,6 +60,22 @@ const ROW_ORANGE = '#fff3e0'
 const ROW_RED = '#ffebee'
 const ROW_ORANGE_HOVER = '#ffe0b2'
 const ROW_RED_HOVER = '#ffcdd2'
+const ROW_VENCIDO = '#fce4ec'
+const ROW_VENCIDO_HOVER = '#f8bbd0'
+const ROW_PROXIMO = '#fff8e1'
+const ROW_PROXIMO_HOVER = '#ffecb3'
+
+const filtroGroupSx = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 0.75,
+  flexWrap: 'wrap' as const,
+  px: 1,
+  py: 0.5,
+  borderRadius: 1.5,
+  border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+  bgcolor: '#fff',
+} as const
 
 const cellSx = {
   border: EXCEL_SHEET.border,
@@ -84,20 +105,38 @@ export function ListaMedicamentosPlanilhaPreview({
   onDeleteLinha,
   onMovimentarLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
-  const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
+  const [filtro, setFiltro] = useState<ListaMedToolbarFiltro>({ tipo: 'todos' })
+  const [avisoDias, setAvisoDias] = useState(() => getListaMedAvisoValidadeDias())
+  const [avisoConfigOpen, setAvisoConfigOpen] = useState(false)
   const [gerarOpen, setGerarOpen] = useState(false)
   const [historicoOpen, setHistoricoOpen] = useState(false)
   const [historicoSeed, setHistoricoSeed] = useState<ListaMedicamentosLinha | null>(null)
   const visible = listaMedicamentosHasPreviewContent(value)
-  const contagem = useMemo(() => countListaMedEstoque(value), [value])
+  const contagemEstoque = useMemo(() => countListaMedEstoque(value), [value])
+  const contagemValidade = useMemo(
+    () => countListaMedValidade(value, avisoDias),
+    [value, avisoDias],
+  )
   const linhasVisiveis = useMemo(
-    () => filterListaMedicamentosByEstoque(value, filtro),
-    [value, filtro],
+    () => filterListaMedicamentosByToolbarFiltro(value, filtro, avisoDias),
+    [value, filtro, avisoDias],
   )
   const colCount = LISTA_MEDICAMENTOS_COLUNAS.length + 1
 
-  const toggleFiltro = (next: ListaMedEstoqueFiltro) => {
-    setFiltro((prev) => (prev === next ? 'todos' : next))
+  const toggleEstoqueFiltro = (valueFiltro: 'baixo' | 'zerado') => {
+    setFiltro((prev) =>
+      prev.tipo === 'estoque' && prev.value === valueFiltro
+        ? { tipo: 'todos' }
+        : { tipo: 'estoque', value: valueFiltro },
+    )
+  }
+
+  const toggleValidadeFiltro = (valueFiltro: 'vencido' | 'proximo') => {
+    setFiltro((prev) =>
+      prev.tipo === 'validade' && prev.value === valueFiltro
+        ? { tipo: 'todos' }
+        : { tipo: 'validade', value: valueFiltro },
+    )
   }
 
   return (
@@ -149,39 +188,114 @@ export function ListaMedicamentosPlanilhaPreview({
             label={`${value.linhas.length} medicamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
-          <Chip
-            size="small"
-            clickable
-            label={`${contagem.baixo} laranja`}
-            onClick={() => toggleFiltro('baixo')}
-            sx={{
-              height: 22,
-              fontWeight: 700,
-              bgcolor: filtro === 'baixo' ? '#fb8c00' : ROW_ORANGE,
-              color: filtro === 'baixo' ? '#fff' : '#e65100',
-              border: '1px solid #ffb74d',
-            }}
-          />
-          <Chip
-            size="small"
-            clickable
-            label={`${contagem.zerado} vermelho`}
-            onClick={() => toggleFiltro('zerado')}
-            sx={{
-              height: 22,
-              fontWeight: 700,
-              bgcolor: filtro === 'zerado' ? '#e53935' : ROW_RED,
-              color: filtro === 'zerado' ? '#fff' : '#c62828',
-              border: '1px solid #ef9a9a',
-            }}
-          />
-          {filtro !== 'todos' ? (
+
+          <Box sx={filtroGroupSx}>
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: EXCEL_SHEET.mutedText,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Estoque Baixo
+            </Typography>
+            <Chip
+              size="small"
+              clickable
+              label={`${contagemEstoque.baixo} laranja`}
+              onClick={() => toggleEstoqueFiltro('baixo')}
+              sx={{
+                height: 22,
+                fontWeight: 700,
+                bgcolor:
+                  filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fb8c00' : ROW_ORANGE,
+                color:
+                  filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fff' : '#e65100',
+                border: '1px solid #ffb74d',
+              }}
+            />
+            <Chip
+              size="small"
+              clickable
+              label={`${contagemEstoque.zerado} vermelho`}
+              onClick={() => toggleEstoqueFiltro('zerado')}
+              sx={{
+                height: 22,
+                fontWeight: 700,
+                bgcolor:
+                  filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#e53935' : ROW_RED,
+                color:
+                  filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#fff' : '#c62828',
+                border: '1px solid #ef9a9a',
+              }}
+            />
+          </Box>
+
+          <Box sx={filtroGroupSx}>
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: EXCEL_SHEET.mutedText,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Validade
+            </Typography>
+            <Chip
+              size="small"
+              clickable
+              label={`${contagemValidade.vencido} vencido(s)`}
+              onClick={() => toggleValidadeFiltro('vencido')}
+              sx={{
+                height: 22,
+                fontWeight: 700,
+                bgcolor:
+                  filtro.tipo === 'validade' && filtro.value === 'vencido'
+                    ? '#c2185b'
+                    : ROW_VENCIDO,
+                color:
+                  filtro.tipo === 'validade' && filtro.value === 'vencido' ? '#fff' : '#ad1457',
+                border: '1px solid #f48fb1',
+              }}
+            />
+            <Chip
+              size="small"
+              clickable
+              label={`${contagemValidade.proximo} próximo(s)`}
+              onClick={() => toggleValidadeFiltro('proximo')}
+              sx={{
+                height: 22,
+                fontWeight: 700,
+                bgcolor:
+                  filtro.tipo === 'validade' && filtro.value === 'proximo'
+                    ? '#f9a825'
+                    : ROW_PROXIMO,
+                color:
+                  filtro.tipo === 'validade' && filtro.value === 'proximo' ? '#fff' : '#f57f17',
+                border: '1px solid #ffe082',
+              }}
+            />
+            <Tooltip title={`Configurar aviso (atual: ${avisoDias} dia(s))`}>
+              <IconButton
+                size="small"
+                aria-label="Configurar aviso de validade"
+                onClick={() => setAvisoConfigOpen(true)}
+                sx={{ p: 0.35, color: EXCEL_SHEET.mutedText }}
+              >
+                <SettingsIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {filtro.tipo !== 'todos' ? (
             <Chip
               size="small"
               variant="outlined"
               label="Mostrar todos"
-              onClick={() => setFiltro('todos')}
-              onDelete={() => setFiltro('todos')}
+              onClick={() => setFiltro({ tipo: 'todos' })}
+              onDelete={() => setFiltro({ tipo: 'todos' })}
               sx={{ height: 22, fontWeight: 600 }}
             />
           ) : null}
@@ -311,21 +425,30 @@ export function ListaMedicamentosPlanilhaPreview({
                 <TableBody>
                   {linhasVisiveis.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
-                    const status = getListaMedEstoqueStatus(linha)
+                    const statusEstoque = getListaMedEstoqueStatus(linha)
+                    const statusValidade = getListaMedValidadeStatus(linha, avisoDias)
                     const rowBg =
-                      status === 'zerado'
+                      statusEstoque === 'zerado'
                         ? ROW_RED
-                        : status === 'baixo'
+                        : statusEstoque === 'baixo'
                           ? ROW_ORANGE
-                          : editing
-                            ? EXCEL_SHEET.selectedBg
-                            : undefined
+                          : statusValidade === 'vencido'
+                            ? ROW_VENCIDO
+                            : statusValidade === 'proximo'
+                              ? ROW_PROXIMO
+                              : editing
+                                ? EXCEL_SHEET.selectedBg
+                                : undefined
                     const hoverBg =
-                      status === 'zerado'
+                      statusEstoque === 'zerado'
                         ? ROW_RED_HOVER
-                        : status === 'baixo'
+                        : statusEstoque === 'baixo'
                           ? ROW_ORANGE_HOVER
-                          : EXCEL_SHEET.hoverBg
+                          : statusValidade === 'vencido'
+                            ? ROW_VENCIDO_HOVER
+                            : statusValidade === 'proximo'
+                              ? ROW_PROXIMO_HOVER
+                              : EXCEL_SHEET.hoverBg
                     return (
                       <TableRow
                         key={linha.id}
@@ -409,7 +532,7 @@ export function ListaMedicamentosPlanilhaPreview({
                   {linhasVisiveis.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                        {filtro === 'todos'
+                        {filtro.tipo === 'todos'
                           ? 'Nenhum medicamento'
                           : 'Nenhum medicamento neste filtro'}
                       </TableCell>
@@ -450,6 +573,12 @@ export function ListaMedicamentosPlanilhaPreview({
           setHistoricoOpen(false)
           setHistoricoSeed(null)
         }}
+      />
+
+      <ListaMedAvisoValidadeConfigModal
+        open={avisoConfigOpen}
+        onClose={() => setAvisoConfigOpen(false)}
+        onSaved={(dias) => setAvisoDias(dias)}
       />
     </Box>
   )
