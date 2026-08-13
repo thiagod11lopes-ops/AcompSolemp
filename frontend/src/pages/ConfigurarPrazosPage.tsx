@@ -20,14 +20,18 @@ import type { WorkflowEtapa } from '@/types'
 
 function grupoEtapa(etapa: WorkflowEtapa): string {
   const meta = TIMELINE_ETAPA_META[etapa.chave]
-  if (!meta?.grupo) return 'Solicitação'
+  if (!meta?.grupo) return 'Outras etapas'
   if (meta.divisao) return `${meta.grupo} — ${meta.divisao}`
   return meta.grupo
 }
 
 export default function ConfigurarPrazosPage() {
   const theme = useTheme()
-  const { data: etapas = [], isLoading } = useWorkflowEtapas()
+  const { data: etapasRaw = [], isLoading } = useWorkflowEtapas()
+  const etapas = useMemo(
+    () => etapasRaw.filter((etapa) => etapa.chave !== 'SOLICITACAO'),
+    [etapasRaw],
+  )
   const updatePrazos = useUpdateWorkflowPrazos()
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<{
