@@ -184,9 +184,11 @@ export function resolvePlanilhaPdfOrientation(
   return natural > portraitUsablePx ? 'landscape' : 'portrait'
 }
 
-function buildPlanilhaPdfHtml(
+function buildPlanilhaPdfCaptureMarkup(
   table: GerarDocumentoTabela,
   orientation: 'portrait' | 'landscape',
+  renderWidthPx: number,
+  sheetFontPx: number,
 ): string {
   const stamp = new Date().toLocaleString('pt-BR')
   const colCount = Math.max(1, table.headers.length)
@@ -206,10 +208,7 @@ function buildPlanilhaPdfHtml(
           .join('')}</colgroup>`
       : ''
 
-  const headCells = table.headers
-    .map((h) => `<th>${escapeHtml(h)}</th>`)
-    .join('')
-
+  const headCells = table.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')
   const bodyRows =
     table.rows.length === 0
       ? `<tr class="empty"><td colspan="${colCount}">Nenhum registro</td></tr>`
@@ -225,169 +224,115 @@ function buildPlanilhaPdfHtml(
           })
           .join('')
 
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(table.titulo)}</title>
-  <style>
-    :root {
-      --border: ${EXCEL_SHEET.borderColor};
-      --header-bg: ${EXCEL_SHEET.headerBg};
-      --toolbar-bg: ${EXCEL_SHEET.toolbarBg};
-      --sheet-bg: ${EXCEL_SHEET.sheetBg};
-      --text: ${EXCEL_SHEET.text};
-      --muted: ${EXCEL_SHEET.mutedText};
-      --accent: ${EXCEL_SHEET.selectedCheck};
-      --font: ${EXCEL_SHEET.fontFamily};
-      --sheet-font: 11px;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #e8eaed;
-      color: var(--text);
-      font-family: var(--font);
-    }
-    @page {
-      size: A4 ${orientation};
-      margin: 8mm;
-    }
-    @media print {
-      html, body { background: #fff; }
-      .no-print { display: none !important; }
-      .page {
-        margin: 0;
-        box-shadow: none;
-        border: none;
-        width: auto;
-        min-height: 0;
-      }
-      thead { display: table-header-group; }
-      tr { page-break-inside: avoid; }
-    }
-    @media screen {
-      body { padding: 18px; }
-      .page {
-        max-width: ${orientation === 'landscape' ? '1120px' : '820px'};
-        margin: 0 auto 18px;
-        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
-      }
-      .hint {
-        max-width: ${orientation === 'landscape' ? '1120px' : '820px'};
-        margin: 0 auto 12px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        background: #fff;
-        border: 1px solid #d0d7de;
-        color: #334155;
-        font-size: 13px;
-      }
-    }
-    .page {
-      background: #fff;
-      border: 1px solid #cfd6dd;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 10px 14px;
-      background: linear-gradient(180deg, var(--toolbar-bg) 0%, #ebebeb 100%);
-      border-bottom: 1px solid var(--border);
-    }
-    .toolbar h1 {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--accent);
-      letter-spacing: -0.01em;
-    }
-    .meta {
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .chip {
-      display: inline-block;
-      margin-left: 8px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid #c9d2da;
-      background: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      color: #334155;
-    }
-    .sheet-wrap {
-      padding: 10px 12px 14px;
-      background: var(--sheet-bg);
-      overflow: hidden;
-    }
-    .sheet-frame {
-      border: 1px solid var(--border);
-      border-radius: 2px;
-      overflow: hidden;
-      background: #fff;
-      width: 100%;
-    }
-    table.excel {
-      border-collapse: collapse;
-      table-layout: fixed;
-      width: 100%;
-      font-size: var(--sheet-font, 11px);
-      line-height: 1.25;
-      color: var(--text);
-    }
-    table.excel th,
-    table.excel td {
-      border: 1px solid var(--border);
-      padding: 5px 7px;
-      vertical-align: middle;
-      overflow: hidden;
-      word-break: break-word;
-    }
-    table.excel th {
-      background: var(--header-bg);
-      font-weight: 700;
-      color: var(--muted);
-      text-align: left;
-    }
-    table.excel td { background: #fff; }
-    table.excel tr.odd td { background: #fafafa; }
-    table.excel tr.empty td {
-      text-align: center;
-      color: var(--muted);
-      font-style: italic;
-      padding: 18px 8px;
-    }
-  </style>
-</head>
-<body>
-  <div class="hint no-print">
-    Visual da planilha pronto para PDF. Na impressão, escolha <strong>Salvar como PDF</strong>
-    e a folha A4 em <strong>${orientation === 'landscape' ? 'paisagem' : 'retrato'}</strong>
-    (ajustada automaticamente). A escala da grade será calibrada para caber na folha.
-  </div>
-  <div class="page" id="page">
-    <div class="toolbar">
+  return `
+<style>
+  .acomp-pdf-root {
+    --border: ${EXCEL_SHEET.borderColor};
+    --header-bg: ${EXCEL_SHEET.headerBg};
+    --toolbar-bg: ${EXCEL_SHEET.toolbarBg};
+    --sheet-bg: ${EXCEL_SHEET.sheetBg};
+    --text: ${EXCEL_SHEET.text};
+    --muted: ${EXCEL_SHEET.mutedText};
+    --accent: ${EXCEL_SHEET.selectedCheck};
+    --font: ${EXCEL_SHEET.fontFamily};
+    width: ${renderWidthPx}px;
+    background: #fff;
+    color: var(--text);
+    font-family: var(--font);
+  }
+  .acomp-pdf-root * { box-sizing: border-box; }
+  .acomp-pdf-page {
+    background: #fff;
+    border: 1px solid #cfd6dd;
+    overflow: hidden;
+  }
+  .acomp-pdf-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, var(--toolbar-bg) 0%, #ebebeb 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .acomp-pdf-toolbar h1 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .acomp-pdf-meta {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .acomp-pdf-chip {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #c9d2da;
+    background: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+  .acomp-pdf-sheet-wrap {
+    padding: 10px 12px 14px;
+    background: var(--sheet-bg);
+  }
+  .acomp-pdf-sheet-frame {
+    border: 1px solid var(--border);
+    overflow: hidden;
+    background: #fff;
+  }
+  .acomp-pdf-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    font-size: ${sheetFontPx}px;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  .acomp-pdf-table th,
+  .acomp-pdf-table td {
+    border: 1px solid var(--border);
+    padding: 5px 7px;
+    vertical-align: middle;
+    overflow: hidden;
+    word-break: break-word;
+  }
+  .acomp-pdf-table th {
+    background: var(--header-bg);
+    font-weight: 700;
+    color: var(--muted);
+    text-align: left;
+  }
+  .acomp-pdf-table td { background: #fff; }
+  .acomp-pdf-table tr.odd td { background: #fafafa; }
+  .acomp-pdf-table tr.empty td {
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    padding: 18px 8px;
+  }
+</style>
+<div class="acomp-pdf-root">
+  <div class="acomp-pdf-page" id="acompPdfPage">
+    <div class="acomp-pdf-toolbar">
       <div>
         <h1>${escapeHtml(table.titulo)}</h1>
-        <div class="meta">
+        <div class="acomp-pdf-meta">
           Gerado em ${escapeHtml(stamp)}
-          <span class="chip">${table.rows.length} linha(s)</span>
-          <span class="chip">${orientation === 'landscape' ? 'A4 paisagem' : 'A4 retrato'}</span>
+          <span class="acomp-pdf-chip">${table.rows.length} linha(s)</span>
+          <span class="acomp-pdf-chip">${orientation === 'landscape' ? 'A4 paisagem' : 'A4 retrato'}</span>
         </div>
       </div>
     </div>
-    <div class="sheet-wrap">
-      <div class="sheet-frame" id="sheetFrame">
-        <table class="excel" id="sheetTable">
+    <div class="acomp-pdf-sheet-wrap">
+      <div class="acomp-pdf-sheet-frame">
+        <table class="acomp-pdf-table">
           ${colgroup}
           <thead><tr>${headCells}</tr></thead>
           <tbody>${bodyRows}</tbody>
@@ -395,50 +340,97 @@ function buildPlanilhaPdfHtml(
       </div>
     </div>
   </div>
-  <script>
-    (function () {
-      var orientation = ${JSON.stringify(orientation)};
-      var naturalWidth = ${JSON.stringify(estimatePlanilhaWidthPx(table))};
-      function fit() {
-        var root = document.documentElement;
-        var pageWidthMm = orientation === 'landscape' ? 297 : 210;
-        var marginMm = 8 * 2;
-        var usableWidthPx = ((pageWidthMm - marginMm) / 25.4) * 96;
-        // Aumenta ou reduz a tipografia/grade para ocupar bem a largura útil da A4.
-        var scale = usableWidthPx / Math.max(naturalWidth, 1);
-        var fontPx = Math.max(6.5, Math.min(13, 11 * scale));
-        root.style.setProperty('--sheet-font', fontPx + 'px');
-      }
-      window.addEventListener('load', function () {
-        fit();
-        setTimeout(function () {
-          window.focus();
-          window.print();
-        }, 100);
-      });
-      window.addEventListener('beforeprint', fit);
-    })();
-  </script>
-</body>
-</html>`
+</div>`
 }
 
 /**
- * Abre visualização da planilha no estilo da tela e dispara impressão/PDF A4
- * (retrato ou paisagem) com escala automática para caber na folha.
+ * Gera e baixa um arquivo PDF da planilha (visual da tela), em A4
+ * retrato/paisagem com escala automática — sem abrir nova aba.
  */
 export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<void> {
+  const [{ jsPDF }, html2canvasModule] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas'),
+  ])
+  const html2canvas = html2canvasModule.default
+
   const orientation = resolvePlanilhaPdfOrientation(table)
-  const html = buildPlanilhaPdfHtml(table, orientation)
-  const popup = window.open('', '_blank', 'noopener,noreferrer')
-  if (!popup) {
-    throw new Error(
-      'Não foi possível abrir a janela do PDF. Permita pop-ups para este site e tente novamente.',
-    )
+  const pageWidthMm = orientation === 'landscape' ? 297 : 210
+  const pageHeightMm = orientation === 'landscape' ? 210 : 297
+  const marginMm = 8
+  const usableWidthMm = pageWidthMm - marginMm * 2
+  const usableHeightMm = pageHeightMm - marginMm * 2
+
+  // Largura de renderização ~ área útil A4 @ 96dpi
+  const renderWidthPx = Math.round((usableWidthMm / 25.4) * 96)
+  const natural = estimatePlanilhaWidthPx(table)
+  const fontScale = renderWidthPx / Math.max(natural, 1)
+  const sheetFontPx = Math.max(6.5, Math.min(13, 11 * fontScale))
+
+  const host = document.createElement('div')
+  host.setAttribute('data-acomp-pdf-host', '1')
+  host.style.cssText =
+    'position:fixed;left:-14000px;top:0;opacity:1;pointer-events:none;z-index:-1;'
+  host.innerHTML = buildPlanilhaPdfCaptureMarkup(
+    table,
+    orientation,
+    renderWidthPx,
+    sheetFontPx,
+  )
+  document.body.appendChild(host)
+
+  try {
+    const pageEl = host.querySelector('#acompPdfPage') as HTMLElement | null
+    if (!pageEl) throw new Error('Falha ao montar a planilha para PDF.')
+
+    // Garante layout calculado antes da captura.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+    const canvas = await html2canvas(pageEl, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      width: renderWidthPx,
+      windowWidth: renderWidthPx,
+    })
+
+    const pdf = new jsPDF({
+      orientation,
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    })
+
+    const imgData = canvas.toDataURL('image/png')
+    const imgWidthMm = usableWidthMm
+    const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width
+
+    // Se couber em uma página, pode ampliar um pouco; se for alta, pagina.
+    if (imgHeightMm <= usableHeightMm) {
+      const grow = Math.min(1.12, usableHeightMm / Math.max(imgHeightMm, 1))
+      const drawW = imgWidthMm * Math.min(grow, usableWidthMm / imgWidthMm)
+      const drawH = imgHeightMm * (drawW / imgWidthMm)
+      const x = marginMm + (usableWidthMm - drawW) / 2
+      const y = marginMm
+      pdf.addImage(imgData, 'PNG', x, y, drawW, drawH, undefined, 'FAST')
+    } else {
+      let heightLeft = imgHeightMm
+      let offsetY = marginMm
+      pdf.addImage(imgData, 'PNG', marginMm, offsetY, imgWidthMm, imgHeightMm, undefined, 'FAST')
+      heightLeft -= usableHeightMm
+      while (heightLeft > 0.5) {
+        offsetY = marginMm - (imgHeightMm - heightLeft)
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', marginMm, offsetY, imgWidthMm, imgHeightMm, undefined, 'FAST')
+        heightLeft -= usableHeightMm
+      }
+    }
+
+    pdf.save(`${stampFileBase(table.fileBaseName)}.pdf`)
+  } finally {
+    host.remove()
   }
-  popup.document.open()
-  popup.document.write(html)
-  popup.document.close()
 }
 
 export async function downloadGerarDocumento(

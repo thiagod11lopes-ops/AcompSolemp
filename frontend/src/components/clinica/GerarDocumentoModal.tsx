@@ -79,18 +79,14 @@ export function GerarDocumentoModal({
             value={formato}
             onChange={(e) => setFormato(e.target.value as GerarDocumentoFormato)}
           >
-            <FormControlLabel
-              value="pdf"
-              control={<Radio />}
-              label="PDF (.pdf) — visual da planilha em A4"
-            />
+            <FormControlLabel value="pdf" control={<Radio />} label="PDF (.pdf)" />
             <FormControlLabel value="xlsx" control={<Radio />} label="Excel (.xlsx)" />
           </RadioGroup>
         </FormControl>
         {formato === 'pdf' ? (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            O PDF abre no estilo da planilha da tela. Use “Salvar como PDF” na impressão. Folha em
-            paisagem automaticamente se a grade for muito larga.
+            O arquivo PDF é baixado no visual da planilha (A4 retrato ou paisagem, conforme a
+            largura).
           </Typography>
         ) : null}
         {erro ? (
