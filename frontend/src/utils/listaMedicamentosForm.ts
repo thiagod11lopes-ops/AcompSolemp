@@ -176,6 +176,103 @@ export function aplicarMovimentacaoListaMedicamentos(
   return changed ? { linhas } : form
 }
 
+/** Item do histórico de movimentações com dados da linha de estoque. */
+export interface ListaMedicamentoHistoricoItem {
+  movId: string
+  linhaId: string
+  tipo: 'entrada' | 'saida'
+  qtd: string
+  data: string
+  origemDestino: string
+  responsavel: string
+  createdAt: string
+  neb: string
+  medicamento: string
+  lote: string
+  validade: string
+  uf: string
+}
+
+function parseDataListaMedToSortKey(data: string): number {
+  const parts = data.trim().split('/')
+  if (parts.length !== 3) return 0
+  const d = Number(parts[0])
+  const m = Number(parts[1])
+  const y = Number(parts[2])
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return 0
+  return y * 10_000 + m * 100 + d
+}
+
+/** Achata o histórico de todas as linhas (mais recente primeiro). */
+export function listarHistoricoMovimentacoesListaMedicamentos(
+  form: ListaMedicamentosFormData | undefined,
+): ListaMedicamentoHistoricoItem[] {
+  const items: ListaMedicamentoHistoricoItem[] = []
+  for (const linha of form?.linhas ?? []) {
+    for (const mov of linha.movimentacoes ?? []) {
+      items.push({
+        movId: mov.id,
+        linhaId: linha.id,
+        tipo: mov.tipo,
+        qtd: mov.qtd,
+        data: mov.data?.trim() || '',
+        origemDestino: mov.origemDestino,
+        responsavel: mov.responsavel,
+        createdAt: mov.createdAt,
+        neb: linha.neb,
+        medicamento: linha.medicamento,
+        lote: linha.lote,
+        validade: linha.validade,
+        uf: linha.uf,
+      })
+    }
+  }
+  return items.sort((a, b) => {
+    const byData = parseDataListaMedToSortKey(b.data) - parseDataListaMedToSortKey(a.data)
+    if (byData !== 0) return byData
+    return String(b.createdAt).localeCompare(String(a.createdAt))
+  })
+}
+
+export type ListaMedicamentoHistoricoFiltros = {
+  data: string
+  medicamento: string
+  neb: string
+  lote: string
+  validade: string
+  uf: string
+}
+
+export const EMPTY_LISTA_MED_HISTORICO_FILTROS: ListaMedicamentoHistoricoFiltros = {
+  data: '',
+  medicamento: '',
+  neb: '',
+  lote: '',
+  validade: '',
+  uf: '',
+}
+
+function incluiFiltroTexto(valor: string, filtro: string): boolean {
+  const f = filtro.trim().toUpperCase()
+  if (!f) return true
+  return valor.trim().toUpperCase().includes(f)
+}
+
+export function filtrarHistoricoMovimentacoesListaMedicamentos(
+  items: ListaMedicamentoHistoricoItem[],
+  filtros: ListaMedicamentoHistoricoFiltros,
+): ListaMedicamentoHistoricoItem[] {
+  return items.filter((item) => {
+    if (!incluiFiltroTexto(item.data, filtros.data)) return false
+    if (!incluiFiltroTexto(item.medicamento, filtros.medicamento)) return false
+    if (!incluiFiltroTexto(item.neb, filtros.neb)) return false
+    if (!incluiFiltroTexto(item.lote, filtros.lote)) return false
+    if (!incluiFiltroTexto(item.validade, filtros.validade)) return false
+    if (!incluiFiltroTexto(item.uf, filtros.uf)) return false
+    return true
+  })
+}
+
 function normMedKey(value: string): string {
   return value.trim().toUpperCase()
 }

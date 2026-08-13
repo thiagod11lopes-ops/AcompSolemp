@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  HistoryOutlined as HistoricoIcon,
   SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
@@ -39,6 +40,7 @@ interface ListaMedicamentosPlanilhaPreviewProps {
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onMovimentarLinha?: (linhaId: string) => void
+  onHistoricoLinha?: (linhaId: string) => void
 }
 
 function dash(value: string): string {
@@ -78,6 +80,7 @@ export function ListaMedicamentosPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
   onMovimentarLinha,
+  onHistoricoLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
   const visible = listaMedicamentosHasPreviewContent(value)
@@ -253,7 +256,7 @@ export function ListaMedicamentosPlanilhaPreview({
                       sx={{
                         ...headerSx,
                         textAlign: 'center',
-                        minWidth: 108,
+                        minWidth: 132,
                         position: 'sticky',
                         top: 0,
                         zIndex: 2,
@@ -325,6 +328,16 @@ export function ListaMedicamentosPlanilhaPreview({
                               sx={{ p: 0.35, color: EXCEL_SHEET.selectedCheck }}
                             >
                               <MovimentarIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Histórico de movimentações">
+                            <IconButton
+                              size="small"
+                              aria-label={`Histórico de movimentações ${index + 1}`}
+                              onClick={() => onHistoricoLinha?.(linha.id)}
+                              sx={{ p: 0.35, color: '#0f5c8c' }}
+                            >
+                              <HistoricoIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
                           <IconButton
