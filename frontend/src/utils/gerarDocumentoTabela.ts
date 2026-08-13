@@ -189,8 +189,16 @@ function buildPlanilhaPdfCaptureMarkup(
   orientation: 'portrait' | 'landscape',
   renderWidthPx: number,
   sheetFontPx: number,
+  options?: {
+    rows?: string[][]
+    pageIndex?: number
+    pageCount?: number
+  },
 ): string {
   const stamp = new Date().toLocaleString('pt-BR')
+  const pageIndex = options?.pageIndex ?? 0
+  const pageCount = Math.max(1, options?.pageCount ?? 1)
+  const pageRows = options?.rows ?? table.rows
   const colCount = Math.max(1, table.headers.length)
   const widths = table.columnWidths
   const totalWidth =
@@ -210,9 +218,9 @@ function buildPlanilhaPdfCaptureMarkup(
 
   const headCells = table.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')
   const bodyRows =
-    table.rows.length === 0
+    pageRows.length === 0
       ? `<tr class="empty"><td colspan="${colCount}">Nenhum registro</td></tr>`
-      : table.rows
+      : pageRows
           .map((row, index) => {
             const cells = table.headers
               .map((_, c) => {
@@ -220,9 +228,12 @@ function buildPlanilhaPdfCaptureMarkup(
                 return `<td>${escapeHtml(raw || '—')}</td>`
               })
               .join('')
-            return `<tr class="${index % 2 === 0 ? 'even' : 'odd'}">${cells}</tr>`
+            return `<tr class="data-row ${index % 2 === 0 ? 'even' : 'odd'}">${cells}</tr>`
           })
           .join('')
+
+  const pageLabel =
+    pageCount > 1 ? `<span class="acomp-pdf-chip">Página ${pageIndex + 1}/${pageCount}</span>` : ''
 
   return `
 <style>
@@ -320,22 +331,23 @@ function buildPlanilhaPdfCaptureMarkup(
 </style>
 <div class="acomp-pdf-root">
   <div class="acomp-pdf-page" id="acompPdfPage">
-    <div class="acomp-pdf-toolbar">
+    <div class="acomp-pdf-toolbar" id="acompPdfToolbar">
       <div>
         <h1>${escapeHtml(table.titulo)}</h1>
         <div class="acomp-pdf-meta">
           Gerado em ${escapeHtml(stamp)}
           <span class="acomp-pdf-chip">${table.rows.length} linha(s)</span>
           <span class="acomp-pdf-chip">${orientation === 'landscape' ? 'A4 paisagem' : 'A4 retrato'}</span>
+          ${pageLabel}
         </div>
       </div>
     </div>
     <div class="acomp-pdf-sheet-wrap">
       <div class="acomp-pdf-sheet-frame">
-        <table class="acomp-pdf-table">
+        <table class="acomp-pdf-table" id="acompPdfTable">
           ${colgroup}
-          <thead><tr>${headCells}</tr></thead>
-          <tbody>${bodyRows}</tbody>
+          <thead id="acompPdfThead"><tr>${headCells}</tr></thead>
+          <tbody id="acompPdfTbody">${bodyRows}</tbody>
         </table>
       </div>
     </div>
@@ -343,9 +355,37 @@ function buildPlanilhaPdfCaptureMarkup(
 </div>`
 }
 
+function packPlanilhaPdfPages(
+  rowHeightsPx: number[],
+  chromeHeightPx: number,
+  usableHeightPx: number,
+): number[][] {
+  const pages: number[][] = []
+  if (rowHeightsPx.length === 0) return [[]]
+
+  let current: number[] = []
+  let used = chromeHeightPx
+
+  rowHeightsPx.forEach((height, index) => {
+    const rowH = Math.max(1, height)
+    const wouldExceed = used + rowH > usableHeightPx && current.length > 0
+    if (wouldExceed) {
+      pages.push(current)
+      current = []
+      used = chromeHeightPx
+    }
+    current.push(index)
+    used += rowH
+  })
+
+  if (current.length > 0) pages.push(current)
+  return pages
+}
+
 /**
  * Gera e baixa um arquivo PDF da planilha (visual da tela), em A4
  * retrato/paisagem com escala automática — sem abrir nova aba.
+ * Quebra páginas só entre linhas inteiras e preserva margem inferior.
  */
 export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<void> {
   const [{ jsPDF }, html2canvasModule] = await Promise.all([
@@ -357,12 +397,14 @@ export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<
   const orientation = resolvePlanilhaPdfOrientation(table)
   const pageWidthMm = orientation === 'landscape' ? 297 : 210
   const pageHeightMm = orientation === 'landscape' ? 210 : 297
-  const marginMm = 8
-  const usableWidthMm = pageWidthMm - marginMm * 2
-  const usableHeightMm = pageHeightMm - marginMm * 2
+  const marginSideMm = 8
+  const marginTopMm = 8
+  const marginBottomMm = 14
+  const usableWidthMm = pageWidthMm - marginSideMm * 2
+  const usableHeightMm = pageHeightMm - marginTopMm - marginBottomMm
 
-  // Largura de renderização ~ área útil A4 @ 96dpi
   const renderWidthPx = Math.round((usableWidthMm / 25.4) * 96)
+  const usableHeightPx = Math.round((usableHeightMm / 25.4) * 96)
   const natural = estimatePlanilhaWidthPx(table)
   const fontScale = renderWidthPx / Math.max(natural, 1)
   const sheetFontPx = Math.max(6.5, Math.min(13, 11 * fontScale))
@@ -371,29 +413,60 @@ export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<
   host.setAttribute('data-acomp-pdf-host', '1')
   host.style.cssText =
     'position:fixed;left:-14000px;top:0;opacity:1;pointer-events:none;z-index:-1;'
-  host.innerHTML = buildPlanilhaPdfCaptureMarkup(
-    table,
-    orientation,
-    renderWidthPx,
-    sheetFontPx,
-  )
   document.body.appendChild(host)
 
+  const mountMarkup = (rows: string[][], pageIndex: number, pageCount: number) => {
+    host.innerHTML = buildPlanilhaPdfCaptureMarkup(
+      table,
+      orientation,
+      renderWidthPx,
+      sheetFontPx,
+      { rows, pageIndex, pageCount },
+    )
+  }
+
+  const waitFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
   try {
-    const pageEl = host.querySelector('#acompPdfPage') as HTMLElement | null
-    if (!pageEl) throw new Error('Falha ao montar a planilha para PDF.')
+    // 1) Mede alturas reais (toolbar + thead + cada linha) com a tabela completa.
+    mountMarkup(table.rows.length ? table.rows : [], 0, 1)
+    await waitFrame()
 
-    // Garante layout calculado antes da captura.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const measurePage = host.querySelector('#acompPdfPage') as HTMLElement | null
+    const measureToolbar = host.querySelector('#acompPdfToolbar') as HTMLElement | null
+    const measureThead = host.querySelector('#acompPdfThead') as HTMLElement | null
+    const measureTbody = host.querySelector('#acompPdfTbody') as HTMLElement | null
+    if (!measurePage || !measureToolbar || !measureThead || !measureTbody) {
+      throw new Error('Falha ao montar a planilha para PDF.')
+    }
 
-    const canvas = await html2canvas(pageEl, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      width: renderWidthPx,
-      windowWidth: renderWidthPx,
-    })
+    const sheetWrap = measurePage.querySelector('.acomp-pdf-sheet-wrap') as HTMLElement | null
+    const sheetPadY = sheetWrap
+      ? (parseFloat(getComputedStyle(sheetWrap).paddingTop) || 0) +
+        (parseFloat(getComputedStyle(sheetWrap).paddingBottom) || 0)
+      : 24
+
+    const chromeHeightPx =
+      measureToolbar.offsetHeight + measureThead.offsetHeight + sheetPadY + 2
+
+    const dataRows = Array.from(measureTbody.querySelectorAll('tr.data-row')) as HTMLElement[]
+    const rowHeightsPx =
+      dataRows.length > 0
+        ? dataRows.map((row) => Math.ceil(row.getBoundingClientRect().height))
+        : [Math.ceil(measureTbody.getBoundingClientRect().height) || 40]
+
+    // Folga extra para nunca encostar no rodapé da página.
+    const safeUsableHeightPx = Math.max(chromeHeightPx + 40, usableHeightPx - 4)
+    const pageIndexGroups = packPlanilhaPdfPages(
+      table.rows.length === 0 ? [rowHeightsPx[0] ?? 40] : rowHeightsPx,
+      chromeHeightPx,
+      safeUsableHeightPx,
+    )
+
+    const pageRowChunks =
+      table.rows.length === 0
+        ? [[]]
+        : pageIndexGroups.map((indexes) => indexes.map((i) => table.rows[i]!))
 
     const pdf = new jsPDF({
       orientation,
@@ -402,29 +475,34 @@ export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<
       compress: true,
     })
 
-    const imgData = canvas.toDataURL('image/png')
-    const imgWidthMm = usableWidthMm
-    const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width
+    for (let pageIndex = 0; pageIndex < pageRowChunks.length; pageIndex += 1) {
+      mountMarkup(pageRowChunks[pageIndex]!, pageIndex, pageRowChunks.length)
+      await waitFrame()
 
-    // Se couber em uma página, pode ampliar um pouco; se for alta, pagina.
-    if (imgHeightMm <= usableHeightMm) {
-      const grow = Math.min(1.12, usableHeightMm / Math.max(imgHeightMm, 1))
-      const drawW = imgWidthMm * Math.min(grow, usableWidthMm / imgWidthMm)
-      const drawH = imgHeightMm * (drawW / imgWidthMm)
-      const x = marginMm + (usableWidthMm - drawW) / 2
-      const y = marginMm
+      const pageEl = host.querySelector('#acompPdfPage') as HTMLElement | null
+      if (!pageEl) throw new Error('Falha ao montar a página do PDF.')
+
+      const canvas = await html2canvas(pageEl, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: renderWidthPx,
+        windowWidth: renderWidthPx,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidthMm = usableWidthMm
+      const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width
+
+      // Nunca ultrapassa a área útil (respeita margem inferior).
+      const drawW = imgWidthMm
+      const drawH = Math.min(imgHeightMm, usableHeightMm)
+      const x = marginSideMm
+      const y = marginTopMm
+
+      if (pageIndex > 0) pdf.addPage()
       pdf.addImage(imgData, 'PNG', x, y, drawW, drawH, undefined, 'FAST')
-    } else {
-      let heightLeft = imgHeightMm
-      let offsetY = marginMm
-      pdf.addImage(imgData, 'PNG', marginMm, offsetY, imgWidthMm, imgHeightMm, undefined, 'FAST')
-      heightLeft -= usableHeightMm
-      while (heightLeft > 0.5) {
-        offsetY = marginMm - (imgHeightMm - heightLeft)
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', marginMm, offsetY, imgWidthMm, imgHeightMm, undefined, 'FAST')
-        heightLeft -= usableHeightMm
-      }
     }
 
     pdf.save(`${stampFileBase(table.fileBaseName)}.pdf`)
