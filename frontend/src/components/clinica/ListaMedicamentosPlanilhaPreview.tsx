@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
+  DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
   HistoryOutlined as HistoricoIcon,
   SwapVert as MovimentarIcon,
@@ -22,6 +23,7 @@ import {
 } from '@mui/material'
 import type { ListaMedicamentosFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import {
   LISTA_MEDICAMENTOS_COLUNAS,
   countListaMedEstoque,
@@ -30,6 +32,7 @@ import {
   listaMedicamentosHasPreviewContent,
   type ListaMedEstoqueFiltro,
 } from '@/utils/listaMedicamentosForm'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import '@/components/clinica/spreadsheet-excel.css'
 
 interface ListaMedicamentosPlanilhaPreviewProps {
@@ -83,6 +86,7 @@ export function ListaMedicamentosPlanilhaPreview({
   onHistoricoLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
+  const [gerarOpen, setGerarOpen] = useState(false)
   const visible = listaMedicamentosHasPreviewContent(value)
   const contagem = useMemo(() => countListaMedEstoque(value), [value])
   const linhasVisiveis = useMemo(
@@ -205,6 +209,22 @@ export function ListaMedicamentosPlanilhaPreview({
               {importing ? 'Importando…' : 'Importar planilha'}
             </Button>
           ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<GerarDocIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setGerarOpen(true)}
+            disabled={!visible || value.linhas.length === 0}
+            sx={{
+              ml: 0.5,
+              height: 26,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Gerar Documento
+          </Button>
         </Box>
 
         {!visible ? (
@@ -376,6 +396,25 @@ export function ListaMedicamentosPlanilhaPreview({
           </Box>
         )}
       </Paper>
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={value.linhas.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          await downloadGerarDocumento(
+            {
+              titulo: 'Lista de medicamentos com preços',
+              fileBaseName: 'Lista-Medicamentos',
+              headers: LISTA_MEDICAMENTOS_COLUNAS.map((c) => c.label),
+              rows: value.linhas.map((linha) =>
+                LISTA_MEDICAMENTOS_COLUNAS.map((c) => String(linha[c.key] ?? '')),
+              ),
+            },
+            formato,
+          )
+        }}
+      />
     </Box>
   )
 }

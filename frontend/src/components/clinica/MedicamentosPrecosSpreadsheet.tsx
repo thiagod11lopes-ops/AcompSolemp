@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
@@ -39,10 +40,12 @@ import {
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { MedicamentoPrecoEditModal } from '@/components/clinica/MedicamentoPrecoEditModal'
 import { MedicamentoPrecoAddModal } from '@/components/clinica/MedicamentoPrecoAddModal'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { getColumnCellSx } from '@/components/clinica/SpreadsheetResizeHandle'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
 import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import {
   createMedicamentoPrecoVazio,
   formatPrecoReferenciaMedicamento,
@@ -69,6 +72,7 @@ function MedicamentosPrecosSpreadsheetInner() {
   } | null>(null)
   const [editRow, setEditRow] = useState<MedicamentoPrecoRow | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [gerarOpen, setGerarOpen] = useState(false)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rowsRef = useRef(rows)
   rowsRef.current = rows
@@ -350,6 +354,15 @@ function MedicamentosPrecosSpreadsheetInner() {
               </Button>
               <Button
                 size="small"
+                variant="outlined"
+                startIcon={<DescriptionOutlinedIcon />}
+                onClick={() => setGerarOpen(true)}
+                disabled={rows.length === 0}
+              >
+                Gerar Documento
+              </Button>
+              <Button
+                size="small"
                 variant="text"
                 startIcon={<RestartAltIcon />}
                 onClick={handleRestaurarSeed}
@@ -551,6 +564,25 @@ function MedicamentosPrecosSpreadsheetInner() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdd={handleAddMedicamento}
+      />
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={rows.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          await downloadGerarDocumento(
+            {
+              titulo: 'Lista de medicamentos com preços',
+              fileBaseName: 'Precos-Medicamentos',
+              headers: MEDICAMENTOS_PRECOS_HEADERS.map((h) => h.label),
+              rows: rows.map((row) =>
+                MEDICAMENTOS_PRECOS_HEADERS.map((h) => String(row[h.key] ?? '')),
+              ),
+            },
+            formato,
+          )
+        }}
       />
     </Paper>
   )

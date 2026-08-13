@@ -24,6 +24,7 @@ import {
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
@@ -40,8 +41,10 @@ import {
 } from '@tanstack/react-table'
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import {
   PACIENTES_PME_HEADERS,
   clonePacientesPmeSeed,
@@ -93,6 +96,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+  const [gerarOpen, setGerarOpen] = useState(false)
 
   const handleCellChange = useCallback(
     (rowId: string, field: string, nextValue: string) => {
@@ -364,6 +368,16 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
               </Button>
               <Button
                 size="small"
+                variant="outlined"
+                startIcon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={() => setGerarOpen(true)}
+                disabled={rows.length === 0}
+                sx={{ textTransform: 'none', fontWeight: 700, height: 26 }}
+              >
+                Gerar Documento
+              </Button>
+              <Button
+                size="small"
                 variant="text"
                 startIcon={<RestartAltIcon />}
                 onClick={handleRestoreSeed}
@@ -545,6 +559,25 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
           {feedback.message}
         </Alert>
       </Snackbar>
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={rows.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          await downloadGerarDocumento(
+            {
+              titulo: 'Banco de dados IMH — Pacientes PME',
+              fileBaseName: 'Pacientes-PME',
+              headers: PACIENTES_PME_HEADERS.map((h) => h.label),
+              rows: rows.map((row) =>
+                PACIENTES_PME_HEADERS.map((h) => String(row[h.key] ?? '')),
+              ),
+            },
+            formato,
+          )
+        }}
+      />
     </Paper>
   )
 }

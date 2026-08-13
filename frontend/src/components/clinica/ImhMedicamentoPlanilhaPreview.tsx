@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
+  DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
   Send as SendIcon,
   UploadFileOutlined as UploadFileIcon,
@@ -21,6 +22,7 @@ import {
 } from '@mui/material'
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import {
   IMH_MEDICAMENTO_COLUNAS,
   IMH_MEDICAMENTO_WRAP_KEYS,
@@ -28,6 +30,7 @@ import {
   imhMedicamentoHasPreviewContent,
   linhaImhMedicamentoHasContent,
 } from '@/utils/imhMedicamentoForm'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import '@/components/clinica/spreadsheet-excel.css'
 
@@ -98,6 +101,7 @@ export function ImhMedicamentoPlanilhaPreview({
   onDeleteLinha,
   readOnly = false,
 }: ImhMedicamentoPlanilhaPreviewProps) {
+  const [gerarOpen, setGerarOpen] = useState(false)
   const visible = imhMedicamentoHasPreviewContent(value)
   const total = calcImhMedicamentoTotalGeral(value)
   const finalizedIds = useMemo(
@@ -263,6 +267,22 @@ export function ImhMedicamentoPlanilhaPreview({
               {importing ? 'Importando…' : 'Importar planilha'}
             </Button>
           ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<GerarDocIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setGerarOpen(true)}
+            disabled={!visible || value.linhas.length === 0}
+            sx={{
+              ml: 0.5,
+              height: 26,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Gerar Documento
+          </Button>
         </Box>
 
         {!visible ? (
@@ -434,6 +454,27 @@ export function ImhMedicamentoPlanilhaPreview({
           </Box>
         )}
       </Paper>
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={value.linhas.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          await downloadGerarDocumento(
+            {
+              titulo: mesReferencia
+                ? `Modelo IHM — PME (${mesReferencia})`
+                : 'Modelo IHM — PME',
+              fileBaseName: 'IMH-Medicamento',
+              headers: IMH_MEDICAMENTO_COLUNAS.map((c) => c.label),
+              rows: value.linhas.map((linha) =>
+                IMH_MEDICAMENTO_COLUNAS.map((c) => String(linha[c.key] ?? '')),
+              ),
+            },
+            formato,
+          )
+        }}
+      />
     </Box>
   )
 }
