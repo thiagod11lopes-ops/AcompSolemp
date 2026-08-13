@@ -400,8 +400,11 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     },
   ]
 
-  // Ordem = CADASTRO_PERFIS: … → Solemp em Rascunho → Empenhado
+  // Ordem = CADASTRO_PERFIS (sem Solemp em Rascunho / Empenhado — cobertos pela Confecção).
   for (const opcao of CADASTRO_PERFIS) {
+    // Acesso via Confecção de Solemp na demonstração.
+    if (opcao.perfil === 'FINANCEIRO' || opcao.isEmpenhado) continue
+
     if (opcao.isClinica) {
       resultado.push({
         id: `clinica-${DEMO_CLINICA_EXEMPLO_ID}`,
@@ -421,18 +424,6 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
         label: opcao.label,
         nome: DEMO_NOMES.medicamento,
         subtitulo: 'Planilha de exemplo com 10 lançamentos',
-        isExemplo: true,
-      })
-      continue
-    }
-
-    if (opcao.isEmpenhado) {
-      resultado.push({
-        id: `empenhado-${DEMO_EMPENHADO_EXEMPLO_ID}`,
-        userId: demoExampleUserId('empenhado', DEMO_EMPENHADO_EXEMPLO_ID),
-        label: opcao.label,
-        nome: DEMO_NOMES.empenhado,
-        subtitulo: 'Planilha OPME — empenho no formato NE (número)',
         isExemplo: true,
       })
       continue
