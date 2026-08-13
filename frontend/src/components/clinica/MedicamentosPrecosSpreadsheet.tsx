@@ -576,6 +576,7 @@ function MedicamentosPrecosSpreadsheetInner() {
               titulo: 'Lista de medicamentos com preços',
               fileBaseName: 'Precos-Medicamentos',
               headers: MEDICAMENTOS_PRECOS_HEADERS.map((h) => h.label),
+              columnWidths: MEDICAMENTOS_PRECOS_HEADERS.map((h) => h.width),
               rows: rows.map((row) =>
                 MEDICAMENTOS_PRECOS_HEADERS.map((h) => String(row[h.key] ?? '')),
               ),

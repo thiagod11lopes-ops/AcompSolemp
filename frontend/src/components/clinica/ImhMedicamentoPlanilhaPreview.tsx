@@ -467,6 +467,7 @@ export function ImhMedicamentoPlanilhaPreview({
                 : 'Modelo IHM — PME',
               fileBaseName: 'IMH-Medicamento',
               headers: IMH_MEDICAMENTO_COLUNAS.map((c) => c.label),
+              columnWidths: IMH_MEDICAMENTO_COLUNAS.map((c) => c.width),
               rows: value.linhas.map((linha) =>
                 IMH_MEDICAMENTO_COLUNAS.map((c) => String(linha[c.key] ?? '')),
               ),

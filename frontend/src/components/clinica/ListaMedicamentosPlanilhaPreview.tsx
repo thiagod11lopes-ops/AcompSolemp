@@ -432,6 +432,7 @@ export function ListaMedicamentosPlanilhaPreview({
               titulo: 'Lista de medicamentos com preços',
               fileBaseName: 'Lista-Medicamentos',
               headers: LISTA_MEDICAMENTOS_COLUNAS.map((c) => c.label),
+              columnWidths: LISTA_MEDICAMENTOS_COLUNAS.map((c) => c.width),
               rows: value.linhas.map((linha) =>
                 LISTA_MEDICAMENTOS_COLUNAS.map((c) => String(linha[c.key] ?? '')),
               ),

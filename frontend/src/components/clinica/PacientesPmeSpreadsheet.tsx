@@ -570,6 +570,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
               titulo: 'Banco de dados IMH — Pacientes PME',
               fileBaseName: 'Pacientes-PME',
               headers: PACIENTES_PME_HEADERS.map((h) => h.label),
+              columnWidths: PACIENTES_PME_HEADERS.map((h) => h.width),
               rows: rows.map((row) =>
                 PACIENTES_PME_HEADERS.map((h) => String(row[h.key] ?? '')),
               ),

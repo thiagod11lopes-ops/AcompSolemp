@@ -1,4 +1,5 @@
 import { zipSync, type Zippable } from 'fflate'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 
 export type GerarDocumentoFormato = 'pdf' | 'xlsx'
 
@@ -7,9 +8,19 @@ export interface GerarDocumentoTabela {
   fileBaseName: string
   headers: string[]
   rows: string[][]
+  /** Larguras relativas das colunas (como na tela), para orientar paisagem/escala */
+  columnWidths?: number[]
 }
 
 function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -150,67 +161,284 @@ ${sharedXml}
   )
 }
 
-function pdfEscape(text: string): string {
-  return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
+/** Largura natural estimada da grade (px), alinhada às larguras da tela. */
+export function estimatePlanilhaWidthPx(table: GerarDocumentoTabela): number {
+  const widths = table.columnWidths
+  if (widths && widths.length === table.headers.length) {
+    return widths.reduce((sum, w) => sum + Math.max(48, w), 0) + 24
+  }
+  return table.headers.reduce((sum, header) => {
+    const byLabel = Math.min(280, Math.max(72, header.length * 8 + 24))
+    return sum + byLabel
+  }, 24)
 }
 
-function toWinAnsiSafe(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\x20-\x7E]/g, '?')
+/**
+ * A4 retrato útil ≈ 190mm (~718px @96dpi); se a planilha for mais larga, usa paisagem.
+ */
+export function resolvePlanilhaPdfOrientation(
+  table: GerarDocumentoTabela,
+): 'portrait' | 'landscape' {
+  const natural = estimatePlanilhaWidthPx(table)
+  const portraitUsablePx = 718
+  return natural > portraitUsablePx ? 'landscape' : 'portrait'
 }
 
-/** Gera PDF simples (texto) a partir de uma tabela. */
+function buildPlanilhaPdfHtml(
+  table: GerarDocumentoTabela,
+  orientation: 'portrait' | 'landscape',
+): string {
+  const stamp = new Date().toLocaleString('pt-BR')
+  const colCount = Math.max(1, table.headers.length)
+  const widths = table.columnWidths
+  const totalWidth =
+    widths && widths.length === colCount
+      ? widths.reduce((a, b) => a + Math.max(48, b), 0)
+      : colCount * 100
+
+  const colgroup =
+    widths && widths.length === colCount
+      ? `<colgroup>${widths
+          .map((w) => {
+            const pct = ((Math.max(48, w) / totalWidth) * 100).toFixed(3)
+            return `<col style="width:${pct}%" />`
+          })
+          .join('')}</colgroup>`
+      : ''
+
+  const headCells = table.headers
+    .map((h) => `<th>${escapeHtml(h)}</th>`)
+    .join('')
+
+  const bodyRows =
+    table.rows.length === 0
+      ? `<tr class="empty"><td colspan="${colCount}">Nenhum registro</td></tr>`
+      : table.rows
+          .map((row, index) => {
+            const cells = table.headers
+              .map((_, c) => {
+                const raw = String(row[c] ?? '').trim()
+                return `<td>${escapeHtml(raw || '—')}</td>`
+              })
+              .join('')
+            return `<tr class="${index % 2 === 0 ? 'even' : 'odd'}">${cells}</tr>`
+          })
+          .join('')
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(table.titulo)}</title>
+  <style>
+    :root {
+      --border: ${EXCEL_SHEET.borderColor};
+      --header-bg: ${EXCEL_SHEET.headerBg};
+      --toolbar-bg: ${EXCEL_SHEET.toolbarBg};
+      --sheet-bg: ${EXCEL_SHEET.sheetBg};
+      --text: ${EXCEL_SHEET.text};
+      --muted: ${EXCEL_SHEET.mutedText};
+      --accent: ${EXCEL_SHEET.selectedCheck};
+      --font: ${EXCEL_SHEET.fontFamily};
+      --sheet-font: 11px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e8eaed;
+      color: var(--text);
+      font-family: var(--font);
+    }
+    @page {
+      size: A4 ${orientation};
+      margin: 8mm;
+    }
+    @media print {
+      html, body { background: #fff; }
+      .no-print { display: none !important; }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        border: none;
+        width: auto;
+        min-height: 0;
+      }
+      thead { display: table-header-group; }
+      tr { page-break-inside: avoid; }
+    }
+    @media screen {
+      body { padding: 18px; }
+      .page {
+        max-width: ${orientation === 'landscape' ? '1120px' : '820px'};
+        margin: 0 auto 18px;
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+      }
+      .hint {
+        max-width: ${orientation === 'landscape' ? '1120px' : '820px'};
+        margin: 0 auto 12px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid #d0d7de;
+        color: #334155;
+        font-size: 13px;
+      }
+    }
+    .page {
+      background: #fff;
+      border: 1px solid #cfd6dd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, var(--toolbar-bg) 0%, #ebebeb 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar h1 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    .meta {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .chip {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #c9d2da;
+      background: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .sheet-wrap {
+      padding: 10px 12px 14px;
+      background: var(--sheet-bg);
+      overflow: hidden;
+    }
+    .sheet-frame {
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      background: #fff;
+      width: 100%;
+    }
+    table.excel {
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: 100%;
+      font-size: var(--sheet-font, 11px);
+      line-height: 1.25;
+      color: var(--text);
+    }
+    table.excel th,
+    table.excel td {
+      border: 1px solid var(--border);
+      padding: 5px 7px;
+      vertical-align: middle;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    table.excel th {
+      background: var(--header-bg);
+      font-weight: 700;
+      color: var(--muted);
+      text-align: left;
+    }
+    table.excel td { background: #fff; }
+    table.excel tr.odd td { background: #fafafa; }
+    table.excel tr.empty td {
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+      padding: 18px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="hint no-print">
+    Visual da planilha pronto para PDF. Na impressão, escolha <strong>Salvar como PDF</strong>
+    e a folha A4 em <strong>${orientation === 'landscape' ? 'paisagem' : 'retrato'}</strong>
+    (ajustada automaticamente). A escala da grade será calibrada para caber na folha.
+  </div>
+  <div class="page" id="page">
+    <div class="toolbar">
+      <div>
+        <h1>${escapeHtml(table.titulo)}</h1>
+        <div class="meta">
+          Gerado em ${escapeHtml(stamp)}
+          <span class="chip">${table.rows.length} linha(s)</span>
+          <span class="chip">${orientation === 'landscape' ? 'A4 paisagem' : 'A4 retrato'}</span>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-wrap">
+      <div class="sheet-frame" id="sheetFrame">
+        <table class="excel" id="sheetTable">
+          ${colgroup}
+          <thead><tr>${headCells}</tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var orientation = ${JSON.stringify(orientation)};
+      var naturalWidth = ${JSON.stringify(estimatePlanilhaWidthPx(table))};
+      function fit() {
+        var root = document.documentElement;
+        var pageWidthMm = orientation === 'landscape' ? 297 : 210;
+        var marginMm = 8 * 2;
+        var usableWidthPx = ((pageWidthMm - marginMm) / 25.4) * 96;
+        // Aumenta ou reduz a tipografia/grade para ocupar bem a largura útil da A4.
+        var scale = usableWidthPx / Math.max(naturalWidth, 1);
+        var fontPx = Math.max(6.5, Math.min(13, 11 * scale));
+        root.style.setProperty('--sheet-font', fontPx + 'px');
+      }
+      window.addEventListener('load', function () {
+        fit();
+        setTimeout(function () {
+          window.focus();
+          window.print();
+        }, 100);
+      });
+      window.addEventListener('beforeprint', fit);
+    })();
+  </script>
+</body>
+</html>`
+}
+
+/**
+ * Abre visualização da planilha no estilo da tela e dispara impressão/PDF A4
+ * (retrato ou paisagem) com escala automática para caber na folha.
+ */
 export async function downloadTabelaAsPdf(table: GerarDocumentoTabela): Promise<void> {
-  const title = toWinAnsiSafe(table.titulo)
-  const headers = table.headers.map(toWinAnsiSafe)
-  const rows = table.rows.map((row) => row.map((cell) => toWinAnsiSafe(String(cell ?? ''))))
-
-  const lines: string[] = [title, '']
-  lines.push(headers.join(' | '))
-  lines.push('-'.repeat(Math.min(120, headers.join(' | ').length)))
-  for (const row of rows) {
-    lines.push(row.join(' | '))
+  const orientation = resolvePlanilhaPdfOrientation(table)
+  const html = buildPlanilhaPdfHtml(table, orientation)
+  const popup = window.open('', '_blank', 'noopener,noreferrer')
+  if (!popup) {
+    throw new Error(
+      'Não foi possível abrir a janela do PDF. Permita pop-ups para este site e tente novamente.',
+    )
   }
-  if (rows.length === 0) lines.push('(sem registros)')
-
-  const contentLines: string[] = ['BT', '/F1 10 Tf', '40 800 Td', '12 TL']
-  lines.forEach((line, index) => {
-    const safe = pdfEscape(line.slice(0, 140))
-    if (index === 0) contentLines.push(`(${safe}) Tj`, 'T*')
-    else contentLines.push(`(${safe}) '`)
-  })
-  contentLines.push('ET')
-  const stream = contentLines.join('\n')
-
-  const objects: string[] = []
-  objects.push('1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n')
-  objects.push('2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n')
-  objects.push(
-    '3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>endobj\n',
-  )
-  objects.push('4 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n')
-  objects.push(
-    `5 0 obj<< /Length ${stream.length} >>stream\n${stream}\nendstream\nendobj\n`,
-  )
-
-  let pdf = '%PDF-1.4\n'
-  const offsets: number[] = [0]
-  for (const obj of objects) {
-    offsets.push(pdf.length)
-    pdf += obj
-  }
-  const xrefStart = pdf.length
-  pdf += `xref\n0 ${objects.length + 1}\n`
-  pdf += '0000000000 65535 f \n'
-  for (let i = 1; i < offsets.length; i += 1) {
-    pdf += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`
-  }
-  pdf += `trailer<< /Size ${objects.length + 1} /Root 1 0 R >>\n`
-  pdf += `startxref\n${xrefStart}\n%%EOF`
-
-  triggerDownload(new Blob([pdf], { type: 'application/pdf' }), `${stampFileBase(table.fileBaseName)}.pdf`)
+  popup.document.open()
+  popup.document.write(html)
+  popup.document.close()
 }
 
 export async function downloadGerarDocumento(
