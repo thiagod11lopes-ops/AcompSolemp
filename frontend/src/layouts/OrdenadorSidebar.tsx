@@ -14,14 +14,24 @@ import {
 import ArchiveIcon from '@mui/icons-material/Archive'
 import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import PaymentsIcon from '@mui/icons-material/Payments'
+import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import { NavLink } from 'react-router-dom'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { isConfeccaoComCadeiaSolemp } from '@/utils/permissions'
 
 const DRAWER_WIDTH = 240
 
-const menuItems = [
+const menuBase = [
   { path: '/ordenador/timelines', label: 'Timelines pendentes', icon: <TimelineIcon /> },
+  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+]
+
+const menuConfeccaoCadeia = [
+  { path: '/ordenador/timelines', label: 'Confecção de Solemp', icon: <TimelineIcon /> },
+  { path: '/financeiro/pagamentos', label: 'Solemp em Rascunho', icon: <PaymentsIcon /> },
+  { path: '/financeiro/aguardando-empenho', label: 'Empenhado', icon: <HourglassTopIcon /> },
   { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
@@ -35,6 +45,8 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const menuItems =
+    user && isConfeccaoComCadeiaSolemp(user.perfil) ? menuConfeccaoCadeia : menuBase
 
   const drawer = (
     <Box>
@@ -43,10 +55,14 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
           <GavelIcon color="warning" />
           <Box>
             <Typography variant="subtitle1" color="warning.dark" sx={{ fontWeight: 700 }}>
-              Ordenador de Despesa
+              {user && isConfeccaoComCadeiaSolemp(user.perfil)
+                ? 'Cadeia Solemp'
+                : 'Ordenador de Despesa'}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Assinatura de SOLEMP
+              {user && isConfeccaoComCadeiaSolemp(user.perfil)
+                ? 'Confecção · Rascunho · Empenhado'
+                : 'Assinatura de SOLEMP'}
             </Typography>
           </Box>
         </Box>
@@ -58,7 +74,9 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
             {user.nome}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Ordenador de Despesa
+            {isConfeccaoComCadeiaSolemp(user.perfil)
+              ? 'Confecção de Solemp'
+              : 'Ordenador de Despesa'}
           </Typography>
         </Box>
       )}

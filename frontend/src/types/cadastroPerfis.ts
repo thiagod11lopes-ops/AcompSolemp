@@ -75,7 +75,8 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     graduacao: 'Confecção de Solemp',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Sgt. Maria Souza',
-    descricao: 'Responsável pela etapa Confecção de Solemp.',
+    descricao:
+      'Responsável pela Confecção de Solemp e também pela cadeia Solemp em Rascunho e Empenhado.',
   },
   {
     id: 'financas',

@@ -130,7 +130,11 @@ export const financeiroService = {
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.perfil === 'FINANCEIRO')
+    const usuario = data.usuarios.find(
+      (u) =>
+        u.id === usuarioId &&
+        (u.perfil === 'FINANCEIRO' || u.perfil === 'CONFECCAO_SOLEMP'),
+    )
     if (!usuario) throw new Error('Usuário não autorizado')
 
     data = registrarPagamentoForPedido(data, pedidoId, solempId, usuario, options)
@@ -148,7 +152,11 @@ export const financeiroService = {
   ): Promise<PedidoComDetalhes> {
     await delay(null, 300)
     let data = loadAppData()
-    const usuario = data.usuarios.find((u) => u.id === usuarioId && u.perfil === 'FINANCEIRO')
+    const usuario = data.usuarios.find(
+      (u) =>
+        u.id === usuarioId &&
+        (u.perfil === 'FINANCEIRO' || u.perfil === 'CONFECCAO_SOLEMP'),
+    )
     if (!usuario) throw new Error('Usuário não autorizado')
 
     data = marcarAguardandoEmpenhoForPedido(data, pedidoId, usuario)

@@ -20,6 +20,7 @@ import {
   canAccessGestorRoute,
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
+  isConfeccaoComCadeiaSolemp,
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
@@ -147,6 +148,12 @@ async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser
   }
 
   setSession(portal, authUser)
+
+  // Confecção de Solemp também opera Solemp em Rascunho / Empenhado (portal financeiro).
+  if (isConfeccaoComCadeiaSolemp(user.perfil)) {
+    if (portal === 'ordenador') setSession('financeiro', authUser)
+    if (portal === 'financeiro') setSession('ordenador', authUser)
+  }
 
   if (portal === 'ordenador' || portal === 'financeiro' || portal === 'clinica') {
     await reloadFreshAppData()
@@ -450,7 +457,13 @@ export const authService = {
 
   async logout(portal: Portal): Promise<void> {
     await delay(null, 100)
+    const current = readStoredUser(sessionKey(portal))
     setSession(portal, null)
+
+    if (current && isConfeccaoComCadeiaSolemp(current.perfil)) {
+      setSession('ordenador', null)
+      setSession('financeiro', null)
+    }
 
     if (portal === 'gestor') {
       setOpenAccessSession(false)
@@ -485,7 +498,15 @@ export const authService = {
   },
 
   getFinanceiroUser(): AuthUser | null {
-    return readStoredUser(FINANCEIRO_AUTH_KEY)
+    const financeiro = readStoredUser(FINANCEIRO_AUTH_KEY)
+    if (financeiro) return financeiro
+    // Sessão antiga só no ordenador: Confecção herda acesso financeiro.
+    const ordenador = readStoredUser(ORDENADOR_AUTH_KEY)
+    if (ordenador && isConfeccaoComCadeiaSolemp(ordenador.perfil)) {
+      setSession('financeiro', ordenador)
+      return ordenador
+    }
+    return null
   },
 
   getCurrentUser(portal: Portal): AuthUser | null {

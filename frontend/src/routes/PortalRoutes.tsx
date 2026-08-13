@@ -61,11 +61,19 @@ export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) {
-  const { financeiroUser, demoMode, isLoading } = useAuth()
+  const { financeiroUser, ordenadorUser, demoMode, isLoading } = useAuth()
   const { isDemo } = usePortalPaths()
   const location = useLocation()
 
-  const user = isDemo && demoMode?.portal === 'financeiro' ? demoMode.authUser : financeiroUser
+  const user = isDemo
+    ? demoMode &&
+      (demoMode.portal === 'financeiro' ||
+        (demoMode.portal === 'ordenador' &&
+          demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
+      ? demoMode.authUser
+      : null
+    : financeiroUser ??
+      (ordenadorUser?.perfil === 'CONFECCAO_SOLEMP' ? ordenadorUser : null)
 
   if (isLoading) return <LoadingSpinner />
 

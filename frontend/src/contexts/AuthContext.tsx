@@ -40,9 +40,14 @@ function applyTimelineLogin(
   },
   result: TimelineLoginResult,
 ): void {
+  const isConfeccao = result.authUser.perfil === 'CONFECCAO_SOLEMP'
   setters.setClinicaUser(result.portal === 'clinica' ? result.authUser : null)
-  setters.setOrdenadorUser(result.portal === 'ordenador' ? result.authUser : null)
-  setters.setFinanceiroUser(result.portal === 'financeiro' ? result.authUser : null)
+  setters.setOrdenadorUser(
+    result.portal === 'ordenador' || isConfeccao ? result.authUser : null,
+  )
+  setters.setFinanceiroUser(
+    result.portal === 'financeiro' || isConfeccao ? result.authUser : null,
+  )
 }
 
 function syncPortalUsersFromService(
@@ -76,8 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUser = await authService.login(credentials, portal)
     if (portal === 'gestor') setGestorUser(authUser)
     else if (portal === 'clinica') setClinicaUser(authUser)
-    else if (portal === 'ordenador') setOrdenadorUser(authUser)
-    else setFinanceiroUser(authUser)
+    else if (portal === 'ordenador' || portal === 'financeiro') {
+      if (authUser.perfil === 'CONFECCAO_SOLEMP') {
+        setOrdenadorUser(authUser)
+        setFinanceiroUser(authUser)
+      } else if (portal === 'ordenador') {
+        setOrdenadorUser(authUser)
+      } else {
+        setFinanceiroUser(authUser)
+      }
+    }
     return authUser
   }, [])
 
@@ -109,12 +122,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async (portal: Portal) => {
+    const current =
+      portal === 'gestor'
+        ? gestorUser
+        : portal === 'clinica'
+          ? clinicaUser
+          : portal === 'ordenador'
+            ? ordenadorUser
+            : financeiroUser
     await authService.logout(portal)
     if (portal === 'gestor') setGestorUser(null)
     else if (portal === 'clinica') setClinicaUser(null)
-    else if (portal === 'ordenador') setOrdenadorUser(null)
-    else setFinanceiroUser(null)
-  }, [])
+    else if (portal === 'ordenador' || portal === 'financeiro') {
+      if (current?.perfil === 'CONFECCAO_SOLEMP') {
+        setOrdenadorUser(null)
+        setFinanceiroUser(null)
+      } else if (portal === 'ordenador') {
+        setOrdenadorUser(null)
+      } else {
+        setFinanceiroUser(null)
+      }
+    }
+  }, [gestorUser, clinicaUser, ordenadorUser, financeiroUser])
 
   const startDemo = useCallback(async (userId: string, tabTitle?: string) => {
     const result = await authService.startDemoMode(userId, tabTitle)
@@ -210,7 +239,13 @@ export function useClinicaAuth() {
 export function useOrdenadorAuth() {
   const { ordenadorUser, demoMode, isLoading, logout, endDemo } = useAuth()
   const { isDemo } = usePortalPaths()
-  const user = isDemo && demoMode?.portal === 'ordenador' ? demoMode.authUser : ordenadorUser
+  const user =
+    isDemo &&
+    demoMode &&
+    (demoMode.portal === 'ordenador' ||
+      (demoMode.portal === 'financeiro' && demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
+      ? demoMode.authUser
+      : ordenadorUser
   return {
     user,
     isLoading,
@@ -226,7 +261,13 @@ export function useOrdenadorAuth() {
 export function useFinanceiroAuth() {
   const { financeiroUser, demoMode, isLoading, logout, endDemo } = useAuth()
   const { isDemo } = usePortalPaths()
-  const user = isDemo && demoMode?.portal === 'financeiro' ? demoMode.authUser : financeiroUser
+  const user =
+    isDemo &&
+    demoMode &&
+    (demoMode.portal === 'financeiro' ||
+      (demoMode.portal === 'ordenador' && demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
+      ? demoMode.authUser
+      : financeiroUser
   return {
     user,
     isLoading,

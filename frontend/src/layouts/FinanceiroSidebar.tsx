@@ -15,19 +15,28 @@ import ArchiveIcon from '@mui/icons-material/Archive'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
+import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { isConfeccaoComCadeiaSolemp } from '@/utils/permissions'
 
 const DRAWER_WIDTH = 240
 
-const menuItems = [
+const menuBase = [
   { path: '/financeiro/pagamentos', label: 'Pagamentos pendentes', icon: <PaymentsIcon /> },
   {
     path: '/financeiro/aguardando-empenho',
     label: 'Aguardando Empenho',
     icon: <HourglassTopIcon />,
   },
+  { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+]
+
+const menuConfeccaoCadeia = [
+  { path: '/ordenador/timelines', label: 'Confecção de Solemp', icon: <TimelineIcon /> },
+  { path: '/financeiro/pagamentos', label: 'Solemp em Rascunho', icon: <PaymentsIcon /> },
+  { path: '/financeiro/aguardando-empenho', label: 'Empenhado', icon: <HourglassTopIcon /> },
   { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
@@ -41,6 +50,8 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
   const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const isConfeccao = Boolean(user && isConfeccaoComCadeiaSolemp(user.perfil))
+  const menuItems = isConfeccao ? menuConfeccaoCadeia : menuBase
 
   const drawer = (
     <Box>
@@ -49,10 +60,10 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
           <AccountBalanceIcon color="success" />
           <Box>
             <Typography variant="subtitle1" color="success.dark" sx={{ fontWeight: 700 }}>
-              Financeiro
+              {isConfeccao ? 'Cadeia Solemp' : 'Financeiro'}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              Pagamento de NF
+              {isConfeccao ? 'Confecção · Rascunho · Empenhado' : 'Pagamento de NF'}
             </Typography>
           </Box>
         </Box>
@@ -64,7 +75,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
             {user.nome}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Setor Financeiro
+            {isConfeccao ? 'Confecção de Solemp' : 'Setor Financeiro'}
           </Typography>
         </Box>
       )}

@@ -59,8 +59,13 @@ export function GestorDemoShell() {
 
   const portalPath = portalPathFromDemo(location.pathname)
   const expectedPrefix = PORTAL_ROUTE_PREFIX[demoMode.portal]
+  const confeccaoCadeia =
+    demoMode.authUser.perfil === 'CONFECCAO_SOLEMP' &&
+    Boolean(
+      portalPath?.startsWith('/ordenador') || portalPath?.startsWith('/financeiro'),
+    )
 
-  if (!portalPath?.startsWith(expectedPrefix)) {
+  if (!portalPath?.startsWith(expectedPrefix) && !confeccaoCadeia) {
     return <Navigate to={getDemoHomeRoute(demoMode.portal, demoMode.authUser.perfil)} replace />
   }
 
