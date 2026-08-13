@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cadastroService,
   historicoService,
@@ -42,6 +42,20 @@ export function useWorkflowEtapas() {
     staleTime: 30_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+  })
+}
+
+export function useUpdateWorkflowPrazos() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (prazos: Array<{ id: string; prazoDias: number }>) =>
+      workflowService.updatePrazos(prazos),
+    onSuccess: (etapas) => {
+      queryClient.setQueryData(['workflow-etapas'], etapas)
+      queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 

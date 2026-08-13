@@ -18,6 +18,7 @@ import PeopleIcon from '@mui/icons-material/People'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import UndoIcon from '@mui/icons-material/Undo'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import ScheduleIcon from '@mui/icons-material/Schedule'
 import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -33,6 +34,7 @@ const menuItems = [
   { path: '/gestor/reversoes', label: 'Reversões', icon: <UndoIcon /> },
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
   { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+  { path: '/gestor/prazos', label: 'Configurar Prazos', icon: <ScheduleIcon /> },
 ]
 
 interface SidebarProps {
