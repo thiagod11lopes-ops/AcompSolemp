@@ -13,10 +13,17 @@ import {
 } from '@/utils/consumoMaterialOds'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
+function formatDataHojeImh(): string {
+  const d = new Date()
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
 export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
   return {
     id: `imh-med-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    data: '',
+    data: formatDataHojeImh(),
     nip: '',
     nome: '',
     itemPme: '',
@@ -181,11 +188,6 @@ export function normalizeImhMedicamentoForm(
     linhas,
     finalizedImhIds: finalizedRaw.filter((id) => typeof id === 'string' && linhaIds.has(id)),
   }
-}
-
-function formatDataHojeImh(): string {
-  const d = new Date()
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
 }
 
 function iniciaisFromNome(nome: string): string {
