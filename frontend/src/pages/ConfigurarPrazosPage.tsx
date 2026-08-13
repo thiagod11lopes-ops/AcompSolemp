@@ -1,29 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Alert,
   Box,
   Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   TextField,
   Typography,
   alpha,
   useTheme,
 } from '@mui/material'
-import SaveIcon from '@mui/icons-material/Save'
+import AddIcon from '@mui/icons-material/Add'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useUpdateWorkflowPrazos, useWorkflowEtapas } from '@/hooks/useCadastros'
-import { TIMELINE_ETAPA_META } from '@/utils/timelineFlow'
 import type { WorkflowEtapa } from '@/types'
-
-function grupoEtapa(etapa: WorkflowEtapa): string {
-  const meta = TIMELINE_ETAPA_META[etapa.chave]
-  if (!meta?.grupo) return 'Outras etapas'
-  if (meta.divisao) return `${meta.grupo} — ${meta.divisao}`
-  return meta.grupo
-}
 
 export default function ConfigurarPrazosPage() {
   const theme = useTheme()
@@ -33,61 +29,59 @@ export default function ConfigurarPrazosPage() {
     [etapasRaw],
   )
   const updatePrazos = useUpdateWorkflowPrazos()
-  const [draft, setDraft] = useState<Record<string, string>>({})
+
+  const [setorId, setSetorId] = useState('')
+  const [dias, setDias] = useState('')
   const [feedback, setFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
 
-  useEffect(() => {
-    const next: Record<string, string> = {}
-    for (const etapa of etapas) {
-      next[etapa.id] = String(etapa.prazoDias)
+  const setorSelecionado = useMemo(
+    () => etapas.find((etapa) => etapa.id === setorId) ?? null,
+    [etapas, setorId],
+  )
+
+  const handleSelectSetor = (id: string) => {
+    setSetorId(id)
+    const etapa = etapas.find((item) => item.id === id)
+    setDias(etapa ? String(etapa.prazoDias) : '')
+  }
+
+  const handleAplicar = async () => {
+    if (!setorSelecionado) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Selecione um setor para configurar o prazo.',
+      })
+      return
     }
-    setDraft(next)
-  }, [etapas])
-
-  const grupos = useMemo(() => {
-    const mapa = new Map<string, WorkflowEtapa[]>()
-    for (const etapa of etapas) {
-      const grupo = grupoEtapa(etapa)
-      const lista = mapa.get(grupo) ?? []
-      lista.push(etapa)
-      mapa.set(grupo, lista)
+    const prazoDias = Number(dias)
+    if (!Number.isFinite(prazoDias) || prazoDias < 1) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Informe um prazo válido (mínimo 1 dia).',
+      })
+      return
     }
-    return Array.from(mapa.entries())
-  }, [etapas])
 
-  const dirty = useMemo(() => {
-    return etapas.some((etapa) => {
-      const valor = Number(draft[etapa.id])
-      return Number.isFinite(valor) && valor !== etapa.prazoDias
-    })
-  }, [etapas, draft])
-
-  const handleSave = async () => {
     try {
-      const prazos = etapas.map((etapa) => ({
-        id: etapa.id,
-        prazoDias: Number(draft[etapa.id]),
-      }))
-      for (const item of prazos) {
-        if (!Number.isFinite(item.prazoDias) || item.prazoDias < 1) {
-          throw new Error('Informe um prazo válido (mínimo 1 dia) para todas as etapas.')
-        }
-      }
-      await updatePrazos.mutateAsync(prazos)
+      await updatePrazos.mutateAsync([{ id: setorSelecionado.id, prazoDias }])
       setFeedback({
         open: true,
         severity: 'success',
-        message: 'Prazos da timeline atualizados com sucesso.',
+        message: `Prazo de ${setorSelecionado.nome} definido em ${prazoDias} dia(s).`,
       })
+      setSetorId('')
+      setDias('')
     } catch (error) {
       setFeedback({
         open: true,
         severity: 'error',
-        message: error instanceof Error ? error.message : 'Erro ao salvar prazos.',
+        message: error instanceof Error ? error.message : 'Erro ao salvar prazo.',
       })
     }
   }
@@ -98,81 +92,136 @@ export default function ConfigurarPrazosPage() {
     <>
       <PageHeader
         title="Configurar Prazos"
-        subtitle="Defina o prazo em dias de cada card da timeline"
-        action={
-          <Button
-            variant="contained"
-            startIcon={<SaveIcon />}
-            onClick={handleSave}
-            disabled={!dirty || updatePrazos.isPending}
-          >
-            {updatePrazos.isPending ? 'Salvando...' : 'Salvar prazos'}
-          </Button>
-        }
+        subtitle="Selecione o setor e defina o prazo em dias do card na timeline"
       />
 
       <Alert severity="info" sx={{ mb: 2.5 }}>
-        O prazo controla o acompanhamento de atraso de cada etapa. Use valores de 1 a 365 dias.
+        Escolha o setor no select, informe os dias e aplique. Os prazos configurados ficam listados
+        abaixo. Use valores de 1 a 365 dias.
       </Alert>
 
-      <Box sx={{ display: 'grid', gap: 2 }}>
-        {grupos.map(([grupo, itens]) => (
-          <Paper
-            key={grupo}
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <ScheduleIcon color="primary" fontSize="small" />
-              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                {grupo}
-              </Typography>
-            </Box>
+      <Paper
+        sx={{
+          p: 2.5,
+          borderRadius: 3,
+          mb: 2.5,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+          background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${theme.palette.background.paper} 55%)`,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <ScheduleIcon color="primary" fontSize="small" />
+          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+            Adicionar / atualizar prazo
+          </Typography>
+        </Box>
 
-            <Box
-              sx={{
-                display: 'grid',
-                gap: 1.5,
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr' },
-              }}
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            gridTemplateColumns: { xs: '1fr', sm: '1.4fr 0.8fr auto' },
+            alignItems: 'start',
+          }}
+        >
+          <FormControl fullWidth size="small">
+            <InputLabel id="prazo-setor-select-label">Setor</InputLabel>
+            <Select
+              labelId="prazo-setor-select-label"
+              id="prazo-setor-select"
+              label="Setor"
+              value={setorId}
+              onChange={(e) => handleSelectSetor(String(e.target.value))}
             >
-              {itens.map((etapa) => (
-                <Box
-                  key={etapa.id}
+              {etapas.map((etapa) => (
+                <MenuItem key={etapa.id} value={etapa.id}>
+                  {etapa.nome}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {setorSelecionado ? (
+            <TextField
+              label="Prazo (dias)"
+              size="small"
+              fullWidth
+              value={dias}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 3)
+                setDias(raw)
+              }}
+              placeholder="Ex.: 3"
+              slotProps={{
+                htmlInput: { min: 1, max: 365, inputMode: 'numeric' },
+              }}
+              helperText="Dias para a etapa selecionada"
+            />
+          ) : (
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }} />
+          )}
+
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAplicar}
+            disabled={!setorSelecionado || !dias.trim() || updatePrazos.isPending}
+            sx={{ height: 40, whiteSpace: 'nowrap' }}
+          >
+            {updatePrazos.isPending ? 'Salvando...' : 'Aplicar prazo'}
+          </Button>
+        </Box>
+
+        {!setorSelecionado && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.25 }}>
+            Selecione um setor para liberar o campo de dias.
+          </Typography>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
+          Prazos configurados
+        </Typography>
+
+        {etapas.length === 0 ? (
+          <Typography color="text.secondary">Nenhum setor disponível para prazo.</Typography>
+        ) : (
+          <Box sx={{ display: 'grid', gap: 1 }}>
+            {etapas.map((etapa: WorkflowEtapa) => (
+              <Box
+                key={etapa.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  px: 1.5,
+                  py: 1.1,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                  bgcolor: alpha(theme.palette.primary.main, 0.02),
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {etapa.nome}
+                </Typography>
+                <Typography
+                  variant="body2"
                   sx={{
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: alpha(theme.palette.primary.main, 0.03),
-                    border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                    fontWeight: 800,
+                    color: 'primary.main',
+                    minWidth: 72,
+                    textAlign: 'right',
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 1.25 }}>
-                    {etapa.chave === 'SOLICITACAO' ? 'Solicitação da Clínica' : etapa.nome}
-                  </Typography>
-                  <TextField
-                    label="Prazo (dias)"
-                    type="number"
-                    size="small"
-                    fullWidth
-                    value={draft[etapa.id] ?? ''}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 3)
-                      setDraft((prev) => ({ ...prev, [etapa.id]: raw }))
-                    }}
-                    slotProps={{
-                      htmlInput: { min: 1, max: 365, inputMode: 'numeric' },
-                    }}
-                    helperText="Número de dias para a etapa"
-                  />
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-        ))}
-      </Box>
+                  {etapa.prazoDias} {etapa.prazoDias === 1 ? 'dia' : 'dias'}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Paper>
 
       <Snackbar
         open={feedback.open}
