@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowCircleDownOutlined as EntradaIcon,
   ArrowCircleUpOutlined as SaidaIcon,
+  CalendarTodayOutlined as CalendarIcon,
   Close as CloseIcon,
   PersonOutlined as PersonIcon,
   PlaceOutlined as PlaceIcon,
@@ -20,7 +21,9 @@ import {
 } from '@mui/material'
 import type { ListaMedicamentosLinha } from '@/types'
 import {
+  formatListaMedDataHoje,
   formatListaMedQtd,
+  formatListaMedValidade,
   parseListaMedQtdNumber,
 } from '@/utils/listaMedicamentosForm'
 
@@ -29,6 +32,7 @@ export type ListaMedMovimentacaoTipo = 'entrada' | 'saida'
 export interface ListaMedicamentoMovimentacaoSubmit {
   tipo: ListaMedMovimentacaoTipo
   qtd: string
+  data: string
   origemDestino: string
   responsavel: string
 }
@@ -52,6 +56,7 @@ export function ListaMedicamentoMovimentacaoModal({
 }: ListaMedicamentoMovimentacaoModalProps) {
   const theme = useTheme()
   const [tipo, setTipo] = useState<ListaMedMovimentacaoTipo>('entrada')
+  const [data, setData] = useState(() => formatListaMedDataHoje())
   const [qtd, setQtd] = useState('')
   const [origemDestino, setOrigemDestino] = useState('')
   const [responsavel, setResponsavel] = useState('')
@@ -60,6 +65,7 @@ export function ListaMedicamentoMovimentacaoModal({
   useEffect(() => {
     if (!open) return
     setTipo('entrada')
+    setData(formatListaMedDataHoje())
     setQtd('')
     setOrigemDestino('')
     setResponsavel('')
@@ -75,8 +81,13 @@ export function ListaMedicamentoMovimentacaoModal({
 
   const accent = tipo === 'entrada' ? '#0f7a4b' : '#c2410c'
   const accentSoft = tipo === 'entrada' ? '#217346' : '#ea580c'
+  const dataPronta = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(data.trim())
 
   const handleConfirm = () => {
+    if (!dataPronta) {
+      setErro('Informe a data da movimentação (dd/mm/aaaa).')
+      return
+    }
     if (qtdNum <= 0) {
       setErro('Informe a quantidade da movimentação.')
       return
@@ -96,6 +107,7 @@ export function ListaMedicamentoMovimentacaoModal({
     onConfirm({
       tipo,
       qtd: formatListaMedQtd(qtd) || String(qtdNum),
+      data: formatListaMedValidade(data),
       origemDestino: origemDestino.trim(),
       responsavel: responsavel.trim().toUpperCase(),
     })
@@ -259,6 +271,27 @@ export function ListaMedicamentoMovimentacaoModal({
             )
           })}
         </Box>
+
+        <TextField
+          label="Data da movimentação"
+          value={data}
+          onChange={(e) => {
+            setData(formatListaMedValidade(e.target.value))
+            setErro('')
+          }}
+          fullWidth
+          placeholder="dd/mm/aaaa"
+          slotProps={{
+            htmlInput: { inputMode: 'numeric', maxLength: 10 },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <CalendarIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
 
         <TextField
           label="Quantidade"

@@ -143,6 +143,7 @@ export function aplicarMovimentacaoListaMedicamentos(
   input: {
     tipo: 'entrada' | 'saida'
     qtdRaw: string
+    data: string
     origemDestino: string
     responsavel: string
   },
@@ -159,6 +160,7 @@ export function aplicarMovimentacaoListaMedicamentos(
       id: `lista-med-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       tipo: input.tipo,
       qtd: formatQtdEstoque(qtdMov),
+      data: formatListaMedValidade(input.data) || formatListaMedDataHoje(),
       origemDestino: input.origemDestino.trim(),
       responsavel: input.responsavel.trim(),
       createdAt: new Date().toISOString(),
@@ -400,6 +402,12 @@ export function formatListaMedLote(raw: string): string {
 /** Validade no formato dd/mm/aaaa enquanto digita. */
 export function formatListaMedValidade(raw: string): string {
   return formatImhData(raw)
+}
+
+/** Data de hoje no formato dd/mm/aaaa. */
+export function formatListaMedDataHoje(): string {
+  const d = new Date()
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
 }
 
 export function findListaMedicamentosByNome(

@@ -528,10 +528,12 @@ export interface ListaMedicamentoMovimentacao {
   id: string
   tipo: 'entrada' | 'saida'
   qtd: string
+  /** Data da movimentação no formato dd/mm/aaaa */
+  data: string
   /** De onde veio (entrada) ou para onde vai (saída) */
   origemDestino: string
   responsavel: string
-  /** ISO 8601 */
+  /** ISO 8601 do momento do registro no sistema */
   createdAt: string
 }
 

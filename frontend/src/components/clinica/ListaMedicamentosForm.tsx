@@ -251,6 +251,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   const handleConfirmarMovimentacao = (payload: {
     tipo: 'entrada' | 'saida'
     qtd: string
+    data: string
     origemDestino: string
     responsavel: string
   }) => {
@@ -258,6 +259,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     const next = aplicarMovimentacaoListaMedicamentos(value, movimentacaoLinhaId, {
       tipo: payload.tipo,
       qtdRaw: payload.qtd,
+      data: payload.data,
       origemDestino: payload.origemDestino,
       responsavel: payload.responsavel,
     })
@@ -268,8 +270,8 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
       severity: 'success',
       message:
         payload.tipo === 'entrada'
-          ? `Entrada de ${payload.qtd} registrada.`
-          : `Saída de ${payload.qtd} registrada.`,
+          ? `Entrada de ${payload.qtd} em ${payload.data} registrada.`
+          : `Saída de ${payload.qtd} em ${payload.data} registrada.`,
     })
   }
 
