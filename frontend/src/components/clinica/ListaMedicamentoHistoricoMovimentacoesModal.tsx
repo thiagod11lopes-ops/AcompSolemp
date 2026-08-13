@@ -10,7 +10,11 @@ import {
   Button,
   Chip,
   Dialog,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -58,7 +62,7 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
     if (!open) return
     if (seedLinha) {
       setFiltros({
-        data: '',
+        ...EMPTY_LISTA_MED_HISTORICO_FILTROS,
         medicamento: seedLinha.medicamento.trim(),
         neb: seedLinha.neb.trim(),
         lote: seedLinha.lote.trim(),
@@ -79,9 +83,14 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
     [todos, filtros],
   )
 
-  const filtrosAtivos = Object.values(filtros).some((v) => v.trim())
+  const filtrosAtivos = Object.values(filtros).some((v) => String(v).trim())
 
   const patchFiltro = (key: keyof ListaMedicamentoHistoricoFiltros, raw: string) => {
+    if (key === 'tipo') {
+      const tipo = raw === 'entrada' || raw === 'saida' ? raw : ''
+      setFiltros((prev) => ({ ...prev, tipo }))
+      return
+    }
     const next =
       key === 'data' || key === 'validade' ? formatListaMedValidade(raw) : raw
     setFiltros((prev) => ({ ...prev, [key]: next }))
@@ -206,6 +215,19 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
             gap: 1.25,
           }}
         >
+          <FormControl size="small" fullWidth>
+            <InputLabel id="lista-med-hist-tipo-label">Tipo</InputLabel>
+            <Select
+              labelId="lista-med-hist-tipo-label"
+              label="Tipo"
+              value={filtros.tipo}
+              onChange={(e) => patchFiltro('tipo', String(e.target.value))}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="entrada">Entrada</MenuItem>
+              <MenuItem value="saida">Saída</MenuItem>
+            </Select>
+          </FormControl>
           {(
             [
               { key: 'data', label: 'Data', placeholder: 'dd/mm/aaaa' },

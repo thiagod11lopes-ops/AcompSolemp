@@ -235,6 +235,7 @@ export function listarHistoricoMovimentacoesListaMedicamentos(
 }
 
 export type ListaMedicamentoHistoricoFiltros = {
+  tipo: '' | 'entrada' | 'saida'
   data: string
   medicamento: string
   neb: string
@@ -244,6 +245,7 @@ export type ListaMedicamentoHistoricoFiltros = {
 }
 
 export const EMPTY_LISTA_MED_HISTORICO_FILTROS: ListaMedicamentoHistoricoFiltros = {
+  tipo: '',
   data: '',
   medicamento: '',
   neb: '',
@@ -263,6 +265,7 @@ export function filtrarHistoricoMovimentacoesListaMedicamentos(
   filtros: ListaMedicamentoHistoricoFiltros,
 ): ListaMedicamentoHistoricoItem[] {
   return items.filter((item) => {
+    if (filtros.tipo && item.tipo !== filtros.tipo) return false
     if (!incluiFiltroTexto(item.data, filtros.data)) return false
     if (!incluiFiltroTexto(item.medicamento, filtros.medicamento)) return false
     if (!incluiFiltroTexto(item.neb, filtros.neb)) return false
