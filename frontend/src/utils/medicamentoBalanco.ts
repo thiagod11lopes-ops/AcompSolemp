@@ -480,3 +480,113 @@ export function formatBalancoQtd(value: number): string {
     maximumFractionDigits: 3,
   }).format(value)
 }
+
+export interface MedicamentoBalancoChartBundles {
+  kpis: { key: string; label: string; value: number; format: 'qtd' | 'moeda' | 'int' }[]
+  topMedicamentos: { nome: string; nomeCurto: string; qtd: number; valor: number }[]
+  estoqueMov: { nome: string; valor: number; fill: string }[]
+  valoresImh: { nome: string; valor: number }[]
+  alertas: { nome: string; valor: number; fill: string }[]
+  pedidos: { nome: string; valor: number; fill: string }[]
+  radialPedidos: { nome: string; valor: number; fill: string }[]
+  areaTendencia: { ponto: string; consumo: number; indenizar: number; entradas: number; saidas: number }[]
+}
+
+/** Séries prontas para os gráficos do Balanço Geral. */
+export function buildMedicamentoBalancoChartBundles(
+  balanco: MedicamentoBalancoResult,
+): MedicamentoBalancoChartBundles {
+  const topMedicamentos = balanco.imh.topMedicamentos.map((item) => ({
+    nome: item.nome,
+    nomeCurto: item.nome.length > 22 ? `${item.nome.slice(0, 20)}…` : item.nome,
+    qtd: item.qtd,
+    valor: item.valor,
+  }))
+
+  const estoqueMov = [
+    { nome: 'Entradas', valor: balanco.estoqueMov.entradas, fill: '#22C55E' },
+    { nome: 'Saídas', valor: balanco.estoqueMov.saidas, fill: '#F97316' },
+    {
+      nome: 'Saldo',
+      valor: Math.abs(balanco.estoqueMov.saldoLiquido),
+      fill: balanco.estoqueMov.saldoLiquido >= 0 ? '#3B82F6' : '#EF4444',
+    },
+  ]
+
+  const valoresImh = [
+    { nome: 'Valor total', valor: balanco.imh.valorTotal },
+    { nome: 'A indenizar', valor: balanco.imh.valorIndenizar },
+  ]
+
+  const alertas = [
+    { nome: 'Estoque baixo', valor: balanco.alertas.estoqueBaixo, fill: '#F97316' },
+    { nome: 'Zerado', valor: balanco.alertas.estoqueZerado, fill: '#EF4444' },
+    { nome: 'Vencido', valor: balanco.alertas.validadeVencida, fill: '#BE123C' },
+    { nome: 'Próximo', valor: balanco.alertas.validadeProxima, fill: '#F59E0B' },
+  ].filter((item) => item.valor > 0)
+
+  const pedidos = [
+    { nome: 'Em andamento', valor: balanco.pedidos.emAndamento, fill: '#3B82F6' },
+    { nome: 'Concluídos', valor: balanco.pedidos.concluidos, fill: '#22C55E' },
+  ]
+
+  const maxPedidos = Math.max(balanco.pedidos.total, 1)
+  const radialPedidos = [
+    {
+      nome: 'Andamento',
+      valor: Math.round((balanco.pedidos.emAndamento / maxPedidos) * 100),
+      fill: '#3B82F6',
+    },
+    {
+      nome: 'Concluídos',
+      valor: Math.round((balanco.pedidos.concluidos / maxPedidos) * 100),
+      fill: '#22C55E',
+    },
+  ]
+
+  // Mini tendência sintética a partir dos totais (visual moderno; escala proporcional).
+  const c = Math.max(balanco.imh.valorTotal, 1)
+  const i = Math.max(balanco.imh.valorIndenizar, 0)
+  const e = Math.max(balanco.estoqueMov.entradas, 0)
+  const s = Math.max(balanco.estoqueMov.saidas, 0)
+  const areaTendencia = [
+    { ponto: 'Início', consumo: c * 0.35, indenizar: i * 0.25, entradas: e * 0.4, saidas: s * 0.3 },
+    { ponto: 'Meio', consumo: c * 0.7, indenizar: i * 0.55, entradas: e * 0.75, saidas: s * 0.65 },
+    { ponto: 'Atual', consumo: c, indenizar: i, entradas: e, saidas: s },
+  ]
+
+  const kpis: MedicamentoBalancoChartBundles['kpis'] = [
+    { key: 'lanc', label: 'Lançamentos IMH', value: balanco.imh.lancamentos, format: 'int' },
+    { key: 'qtd', label: 'QTD consumida', value: balanco.imh.qtdTotal, format: 'qtd' },
+    { key: 'valor', label: 'Valor total', value: balanco.imh.valorTotal, format: 'moeda' },
+    { key: 'inden', label: 'A indenizar', value: balanco.imh.valorIndenizar, format: 'moeda' },
+    { key: 'mov', label: 'Movimentações', value: balanco.estoqueMov.movimentacoes, format: 'int' },
+    { key: 'ped', label: 'Pedidos', value: balanco.pedidos.total, format: 'int' },
+    {
+      key: 'est',
+      label: 'Estoque estimado',
+      value: balanco.alertas.valorEstoqueEstimado,
+      format: 'moeda',
+    },
+    {
+      key: 'itens',
+      label: 'Itens com estoque',
+      value: balanco.alertas.itensComEstoque,
+      format: 'int',
+    },
+  ]
+
+  return {
+    kpis,
+    topMedicamentos,
+    estoqueMov,
+    valoresImh,
+    alertas:
+      alertas.length > 0
+        ? alertas
+        : [{ nome: 'Sem alertas', valor: 1, fill: '#94A3B8' }],
+    pedidos,
+    radialPedidos,
+    areaTendencia,
+  }
+}
