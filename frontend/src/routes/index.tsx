@@ -56,6 +56,7 @@ const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedi
 const ClinicaPrecosMedicamentosPage = lazy(
   () => import('@/pages/clinica/ClinicaPrecosMedicamentosPage'),
 )
+const ClinicaBalancoGeralPage = lazy(() => import('@/pages/clinica/ClinicaBalancoGeralPage'))
 const ClinicaTimelinePage = lazy(() => import('@/pages/clinica/ClinicaTimelinePage'))
 const ClinicaTimelineDetailPage = lazy(() => import('@/pages/clinica/ClinicaTimelineDetailPage'))
 const ClinicaPedidoDetailPage = lazy(() => import('@/pages/clinica/ClinicaPedidoDetailPage'))
@@ -189,6 +190,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/precos-medicamentos" element={<LazyPage><ClinicaPrecosMedicamentosPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/balanco" element={<LazyPage><ClinicaBalancoGeralPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/:id" element={<LazyPage><ClinicaPedidoDetailPage /></LazyPage>} />
           </Route>
@@ -249,6 +251,7 @@ export function AppRoutes() {
           <Route path="/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
           <Route path="/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
           <Route path="/clinica/precos-medicamentos" element={<LazyPage><ClinicaPrecosMedicamentosPage /></LazyPage>} />
+          <Route path="/clinica/balanco" element={<LazyPage><ClinicaBalancoGeralPage /></LazyPage>} />
           <Route path="/clinica/timeline/:id" element={<LazyPage><ClinicaTimelineDetailPage /></LazyPage>} />
           <Route path="/clinica/pedidos/:id" element={<LazyPage><ClinicaPedidoDetailPage /></LazyPage>} />
         </Route>

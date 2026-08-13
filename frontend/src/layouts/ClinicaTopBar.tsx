@@ -15,6 +15,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import MedicationIcon from '@mui/icons-material/Medication'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -33,11 +34,18 @@ const NAV_ITEMS = [
     medicamentoOnly: true,
   },
   { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon sx={{ fontSize: 18 }} /> },
+  {
+    path: '/clinica/balanco',
+    label: 'Balanço Geral',
+    icon: <AccountBalanceIcon sx={{ fontSize: 18 }} />,
+    medicamentoOnly: true,
+  },
 ] as const
 
 function resolveActiveTab(pathname: string): string {
   const path = stripDemoRouteBase(pathname)
   if (path.startsWith('/clinica/precos-medicamentos')) return '/clinica/precos-medicamentos'
+  if (path.startsWith('/clinica/balanco')) return '/clinica/balanco'
   if (path.startsWith('/clinica/pedidos/novo')) return '/clinica/pedidos/novo'
   if (path.startsWith('/clinica/timeline')) return '/clinica/timelines'
   if (path.startsWith('/clinica/pedidos')) return '/clinica/pedidos'
@@ -150,7 +158,11 @@ export function ClinicaTopBar() {
             iconPosition="start"
             component={NavLink}
             to={mapPath(item.path)}
-            end={item.path === '/clinica/pedidos' || item.path === '/clinica/timelines'}
+            end={
+              item.path === '/clinica/pedidos' ||
+              item.path === '/clinica/timelines' ||
+              item.path === '/clinica/balanco'
+            }
           />
         ))}
       </Tabs>
