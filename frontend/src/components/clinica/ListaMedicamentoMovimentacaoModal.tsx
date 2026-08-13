@@ -3,7 +3,7 @@ import {
   ArrowCircleDownOutlined as EntradaIcon,
   ArrowCircleUpOutlined as SaidaIcon,
   Close as CloseIcon,
-  PersonOutline as PersonIcon,
+  PersonOutlined as PersonIcon,
   PlaceOutlined as PlaceIcon,
   SwapVert as SwapIcon,
 } from '@mui/icons-material'
@@ -12,6 +12,7 @@ import {
   Box,
   Button,
   Dialog,
+  InputAdornment,
   TextField,
   IconButton,
   Typography,
@@ -268,21 +269,23 @@ export function ListaMedicamentoMovimentacaoModal({
           }}
           fullWidth
           autoFocus
-          inputProps={{ inputMode: 'decimal' }}
           helperText={
             qtdNum > 0
               ? `Estoque após ${tipo === 'entrada' ? 'entrada' : 'saída'}: ${formatEstoqueNumero(estoqueApos)}`
               : ' '
           }
-          FormHelperTextProps={{
-            sx: {
-              fontWeight: 700,
-              color:
-                qtdNum > 0 && estoqueApos < 0
-                  ? 'error.main'
-                  : qtdNum > 0
-                    ? accent
-                    : 'text.secondary',
+          slotProps={{
+            htmlInput: { inputMode: 'decimal' },
+            formHelperText: {
+              sx: {
+                fontWeight: 700,
+                color:
+                  qtdNum > 0 && estoqueApos < 0
+                    ? 'error.main'
+                    : qtdNum > 0
+                      ? accent
+                      : 'text.secondary',
+              },
             },
           }}
         />
@@ -300,10 +303,14 @@ export function ListaMedicamentoMovimentacaoModal({
               ? 'Ex.: Farmácia Central, doação, transferência…'
               : 'Ex.: Setor Cirúrgico, paciente, transferência…'
           }
-          InputProps={{
-            startAdornment: (
-              <PlaceIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PlaceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 
@@ -316,10 +323,14 @@ export function ListaMedicamentoMovimentacaoModal({
           }}
           fullWidth
           placeholder="Nome completo"
-          InputProps={{
-            startAdornment: (
-              <PersonIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            ),
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            },
           }}
         />
 
