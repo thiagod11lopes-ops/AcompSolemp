@@ -9,6 +9,7 @@ import {
   formatListaMedLote,
   formatListaMedValidade,
   linhaListaMedicamentosHasContent,
+  sortListaMedicamentosLinhas,
   withNormalizedListaMedicamentosLinha,
 } from '@/utils/listaMedicamentosForm'
 import {
@@ -146,7 +147,7 @@ export function mergeListaMedicamentosImport(
   })
 
   return {
-    linhas: [...current.linhas, ...novos],
+    linhas: sortListaMedicamentosLinhas([...current.linhas, ...novos]),
   }
 }
 

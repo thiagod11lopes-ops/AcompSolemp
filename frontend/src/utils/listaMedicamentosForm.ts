@@ -267,27 +267,44 @@ export function withNormalizedListaMedicamentosLinha(
   }
 }
 
+/** Ordena por medicamento (A–Z); empate por lote e NEB. */
+export function sortListaMedicamentosLinhas(
+  linhas: ListaMedicamentosLinha[],
+): ListaMedicamentosLinha[] {
+  const cmp = (a: string, b: string) =>
+    a.trim().localeCompare(b.trim(), 'pt-BR', { sensitivity: 'base' })
+  return [...linhas].sort((a, b) => {
+    const byNome = cmp(a.medicamento, b.medicamento)
+    if (byNome !== 0) return byNome
+    const byLote = cmp(a.lote, b.lote)
+    if (byLote !== 0) return byLote
+    return cmp(a.neb, b.neb)
+  })
+}
+
 export function normalizeListaMedicamentosForm(
   value: ListaMedicamentosFormData | undefined,
 ): ListaMedicamentosFormData {
   const linhasRaw = Array.isArray(value?.linhas) ? value.linhas : []
   return {
-    linhas: linhasRaw
-      .filter((item) => item && typeof item === 'object')
-      .map((item) =>
-        withNormalizedListaMedicamentosLinha({
-          id: item.id || createEmptyListaMedicamentosLinha().id,
-          neb: item.neb ?? '',
-          medicamento: item.medicamento ?? '',
-          lote: item.lote ?? '',
-          validade: item.validade ?? '',
-          uf: item.uf ?? '',
-          qtd: item.qtd ?? '',
-          estoqueBaixo: item.estoqueBaixo ?? '',
-          precoReferencia: item.precoReferencia ?? '',
-        }),
-      )
-      .filter((linha) => linhaListaMedicamentosHasContent(linha)),
+    linhas: sortListaMedicamentosLinhas(
+      linhasRaw
+        .filter((item) => item && typeof item === 'object')
+        .map((item) =>
+          withNormalizedListaMedicamentosLinha({
+            id: item.id || createEmptyListaMedicamentosLinha().id,
+            neb: item.neb ?? '',
+            medicamento: item.medicamento ?? '',
+            lote: item.lote ?? '',
+            validade: item.validade ?? '',
+            uf: item.uf ?? '',
+            qtd: item.qtd ?? '',
+            estoqueBaixo: item.estoqueBaixo ?? '',
+            precoReferencia: item.precoReferencia ?? '',
+          }),
+        )
+        .filter((linha) => linhaListaMedicamentosHasContent(linha)),
+    ),
   }
 }
 

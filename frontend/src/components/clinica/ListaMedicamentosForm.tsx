@@ -25,6 +25,7 @@ import {
   formatListaMedValidade,
   linhaListaMedicamentosHasContent,
   normalizeListaMedicamentosForm,
+  sortListaMedicamentosLinhas,
   withNormalizedListaMedicamentosLinha,
 } from '@/utils/listaMedicamentosForm'
 import {
@@ -157,9 +158,11 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
 
   const persistLinhas = (linhas: ListaMedicamentosLinha[]) => {
     onChange({
-      linhas: linhas
-        .map(withNormalizedListaMedicamentosLinha)
-        .filter((l) => linhaListaMedicamentosHasContent(l)),
+      linhas: sortListaMedicamentosLinhas(
+        linhas
+          .map(withNormalizedListaMedicamentosLinha)
+          .filter((l) => linhaListaMedicamentosHasContent(l)),
+      ),
     })
   }
 
