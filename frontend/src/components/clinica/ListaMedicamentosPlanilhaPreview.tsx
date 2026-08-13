@@ -21,9 +21,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import type { ListaMedicamentosFormData } from '@/types'
+import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
+import { ListaMedicamentoHistoricoMovimentacoesModal } from '@/components/clinica/ListaMedicamentoHistoricoMovimentacoesModal'
 import {
   LISTA_MEDICAMENTOS_COLUNAS,
   countListaMedEstoque,
@@ -43,7 +44,6 @@ interface ListaMedicamentosPlanilhaPreviewProps {
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onMovimentarLinha?: (linhaId: string) => void
-  onHistoricoLinha?: (linhaId: string) => void
 }
 
 function dash(value: string): string {
@@ -83,10 +83,11 @@ export function ListaMedicamentosPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
   onMovimentarLinha,
-  onHistoricoLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [historicoOpen, setHistoricoOpen] = useState(false)
+  const [historicoSeed, setHistoricoSeed] = useState<ListaMedicamentosLinha | null>(null)
   const visible = listaMedicamentosHasPreviewContent(value)
   const contagem = useMemo(() => countListaMedEstoque(value), [value])
   const linhasVisiveis = useMemo(
@@ -209,6 +210,27 @@ export function ListaMedicamentosPlanilhaPreview({
               {importing ? 'Importando…' : 'Importar planilha'}
             </Button>
           ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<HistoricoIcon sx={{ fontSize: 16 }} />}
+            onClick={() => {
+              setHistoricoSeed(null)
+              setHistoricoOpen(true)
+            }}
+            sx={{
+              ml: 0.5,
+              height: 26,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+              color: '#0f5c8c',
+              borderColor: '#0f5c8c',
+              bgcolor: '#fff',
+            }}
+          >
+            Histórico de movimentações
+          </Button>
           <Button
             size="small"
             variant="outlined"
@@ -354,7 +376,10 @@ export function ListaMedicamentosPlanilhaPreview({
                             <IconButton
                               size="small"
                               aria-label={`Histórico de movimentações ${index + 1}`}
-                              onClick={() => onHistoricoLinha?.(linha.id)}
+                              onClick={() => {
+                                setHistoricoSeed(linha)
+                                setHistoricoOpen(true)
+                              }}
                               sx={{ p: 0.35, color: '#0f5c8c' }}
                             >
                               <HistoricoIcon sx={{ fontSize: 16 }} />
@@ -413,6 +438,16 @@ export function ListaMedicamentosPlanilhaPreview({
             },
             formato,
           )
+        }}
+      />
+
+      <ListaMedicamentoHistoricoMovimentacoesModal
+        open={historicoOpen}
+        value={value}
+        seedLinha={historicoSeed}
+        onClose={() => {
+          setHistoricoOpen(false)
+          setHistoricoSeed(null)
         }}
       />
     </Box>

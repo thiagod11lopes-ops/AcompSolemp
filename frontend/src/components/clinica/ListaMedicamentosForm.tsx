@@ -12,7 +12,6 @@ import {
 } from '@mui/material'
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
-import { ListaMedicamentoHistoricoMovimentacoesModal } from '@/components/clinica/ListaMedicamentoHistoricoMovimentacoesModal'
 import { ListaMedicamentoMovimentacaoModal } from '@/components/clinica/ListaMedicamentoMovimentacaoModal'
 import { ListaMedicamentosPlanilhaPreview } from '@/components/clinica/ListaMedicamentosPlanilhaPreview'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
@@ -92,13 +91,9 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     message: string
   }>({ open: false, severity: 'success', message: '' })
   const [movimentacaoLinhaId, setMovimentacaoLinhaId] = useState<string | null>(null)
-  const [historicoOpen, setHistoricoOpen] = useState(false)
-  const [historicoSeedLinhaId, setHistoricoSeedLinhaId] = useState<string | null>(null)
 
   const movimentacaoLinha =
     value.linhas.find((l) => l.id === movimentacaoLinhaId) ?? null
-  const historicoSeedLinha =
-    value.linhas.find((l) => l.id === historicoSeedLinhaId) ?? null
 
   const applyImportedSheet = (sheet: SpreadsheetSheetImport) => {
     const parsed = normalizeListaMedicamentosForm(parseListaMedicamentosFromGrid(sheet.rows))
@@ -251,11 +246,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
 
   const handleMovimentarLinha = (id: string) => {
     setMovimentacaoLinhaId(id)
-  }
-
-  const handleHistoricoLinha = (id: string) => {
-    setHistoricoSeedLinhaId(id)
-    setHistoricoOpen(true)
   }
 
   const handleConfirmarMovimentacao = (payload: {
@@ -473,22 +463,12 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
           onMovimentarLinha={handleMovimentarLinha}
-          onHistoricoLinha={handleHistoricoLinha}
         />
         <ListaMedicamentoMovimentacaoModal
           open={Boolean(movimentacaoLinha)}
           linha={movimentacaoLinha}
           onClose={() => setMovimentacaoLinhaId(null)}
           onConfirm={handleConfirmarMovimentacao}
-        />
-        <ListaMedicamentoHistoricoMovimentacoesModal
-          open={historicoOpen}
-          value={value}
-          seedLinha={historicoSeedLinha}
-          onClose={() => {
-            setHistoricoOpen(false)
-            setHistoricoSeedLinhaId(null)
-          }}
         />
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
