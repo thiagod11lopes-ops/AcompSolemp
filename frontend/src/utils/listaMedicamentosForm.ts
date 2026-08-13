@@ -96,24 +96,40 @@ export function filterListaMedicamentosByEstoque(
   return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
 }
 
-/** Baixa estoque da linha (medicamento + lote) ao lançar no IMH. */
+/** Baixa estoque da linha (id da lista ou medicamento + lote) ao lançar no IMH. */
 export function baixarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
   lote: string,
   qtdBaixaRaw: string,
+  listaMedicamentoId?: string,
 ): ListaMedicamentosFormData {
-  return ajustarEstoqueListaMedicamentos(form, itemPme, lote, qtdBaixaRaw, 'baixar')
+  return ajustarEstoqueListaMedicamentos(
+    form,
+    itemPme,
+    lote,
+    qtdBaixaRaw,
+    'baixar',
+    listaMedicamentoId,
+  )
 }
 
-/** Devolve ao estoque a quantidade do lançamento IMH excluído (medicamento + lote). */
+/** Devolve ao estoque a quantidade do lançamento IMH excluído. */
 export function devolverEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
   lote: string,
   qtdDevolverRaw: string,
+  listaMedicamentoId?: string,
 ): ListaMedicamentosFormData {
-  return ajustarEstoqueListaMedicamentos(form, itemPme, lote, qtdDevolverRaw, 'devolver')
+  return ajustarEstoqueListaMedicamentos(
+    form,
+    itemPme,
+    lote,
+    qtdDevolverRaw,
+    'devolver',
+    listaMedicamentoId,
+  )
 }
 
 function formatQtdEstoque(n: number): string {
@@ -124,14 +140,38 @@ function normMedKey(value: string): string {
   return value.trim().toUpperCase()
 }
 
+export function findListaMedicamentoById(
+  id: string | undefined,
+  form: ListaMedicamentosFormData | undefined,
+): ListaMedicamentosLinha | null {
+  const key = id?.trim()
+  if (!key) return null
+  return form?.linhas.find((linha) => linha.id === key) ?? null
+}
+
+/** Resolve a linha de estoque por id (preferencial) ou nome + lote. */
+export function resolveListaMedicamentoEstoque(
+  form: ListaMedicamentosFormData | undefined,
+  itemPme: string,
+  lote: string,
+  listaMedicamentoId?: string,
+): ListaMedicamentosLinha | null {
+  return (
+    findListaMedicamentoById(listaMedicamentoId, form) ??
+    findListaMedicamentoByNomeELote(itemPme, lote, form)
+  )
+}
+
 /** Resultado previsto da baixa (permite estoque negativo). */
 export function previewBaixaEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData | undefined,
   itemPme: string,
   lote: string,
   qtdBaixaRaw: string,
+  listaMedicamentoId?: string,
 ): {
   encontrado: boolean
+  listaMedicamentoId: string
   medicamento: string
   lote: string
   estoqueAtual: number
@@ -142,10 +182,11 @@ export function previewBaixaEstoqueListaMedicamentos(
   const qtdBaixa = parseListaMedQtdNumber(qtdBaixaRaw)
   const nome = itemPme.trim()
   if (!nome || qtdBaixa <= 0) return null
-  const alvo = findListaMedicamentoByNomeELote(itemPme, lote, form)
+  const alvo = resolveListaMedicamentoEstoque(form, itemPme, lote, listaMedicamentoId)
   if (!alvo) {
     return {
       encontrado: false,
+      listaMedicamentoId: '',
       medicamento: nome,
       lote: lote.trim(),
       estoqueAtual: 0,
@@ -158,6 +199,7 @@ export function previewBaixaEstoqueListaMedicamentos(
   const estoqueApos = estoqueAtual - qtdBaixa
   return {
     encontrado: true,
+    listaMedicamentoId: alvo.id,
     medicamento: alvo.medicamento.trim() || nome,
     lote: alvo.lote.trim() || lote.trim(),
     estoqueAtual,
@@ -173,19 +215,20 @@ function ajustarEstoqueListaMedicamentos(
   lote: string,
   qtdRaw: string,
   modo: 'baixar' | 'devolver',
+  listaMedicamentoId?: string,
 ): ListaMedicamentosFormData {
   const nome = normMedKey(itemPme)
   const qtd = parseListaMedQtdNumber(qtdRaw)
-  if (!nome || qtd <= 0) return form
+  if ((!nome && !listaMedicamentoId?.trim()) || qtd <= 0) return form
 
-  const alvo = findListaMedicamentoByNomeELote(itemPme, lote, form)
+  const alvo = resolveListaMedicamentoEstoque(form, itemPme, lote, listaMedicamentoId)
   if (!alvo) return form
 
   let changed = false
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== alvo.id) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
-    // Baixa pode deixar o estoque negativo (ex.: 2 − 4 = −2).
+    // Baixa pode deixar o estoque negativo (ex.: 8 − 10 = −2).
     const next = modo === 'baixar' ? atual - qtd : atual + qtd
     changed = true
     return { ...linha, qtd: formatQtdEstoque(next) }

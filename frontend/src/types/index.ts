@@ -492,6 +492,10 @@ export interface ImhMedicamentoLinha {
   om: string
   unidadeFornecimento: string
   quantidadeAdquirida: string
+  /** ID da linha na Lista de Medicamentos usada na baixa de estoque */
+  listaMedicamentoId?: string
+  /** QTD efetivamente movimentada no estoque (baixa/devolução) */
+  estoqueQtdMovida?: string
 }
 
 /** Formulário + planilha unificada da aba IMH (medicamento / PME) */

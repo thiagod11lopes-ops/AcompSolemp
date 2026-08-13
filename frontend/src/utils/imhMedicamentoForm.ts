@@ -168,6 +168,10 @@ export function normalizeImhMedicamentoForm(
         om: item.om ?? '',
         unidadeFornecimento: item.unidadeFornecimento ?? '',
         quantidadeAdquirida: item.quantidadeAdquirida ?? '',
+        listaMedicamentoId:
+          typeof item.listaMedicamentoId === 'string' ? item.listaMedicamentoId : undefined,
+        estoqueQtdMovida:
+          typeof item.estoqueQtdMovida === 'string' ? item.estoqueQtdMovida : undefined,
       }),
     )
     .filter((linha) => linhaImhMedicamentoHasContent(linha))

@@ -88,6 +88,7 @@ import {
   findListaMedicamentosByNome,
   formatListaMedEstoqueOptionLabel,
   previewBaixaEstoqueListaMedicamentos,
+  resolveListaMedicamentoEstoque,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -276,6 +277,7 @@ export function ImhMedicamentoForm({
   const [loteAviso, setLoteAviso] = useState<string | null>(null)
   const [estoqueInsuficiente, setEstoqueInsuficiente] = useState<{
     open: boolean
+    modo: 'add' | 'edit'
     linha: ImhMedicamentoLinha | null
     medicamento: string
     lote: string
@@ -284,6 +286,7 @@ export function ImhMedicamentoForm({
     estoqueApos: number
   }>({
     open: false,
+    modo: 'add',
     linha: null,
     medicamento: '',
     lote: '',
@@ -607,7 +610,12 @@ export function ImhMedicamentoForm({
 
   const applyMedicamentoSelection = (row: ListaMedicamentosLinha | null) => {
     if (!row) {
-      updateDraft({ itemPme: '', lote: '', validade: '' })
+      updateDraft({
+        itemPme: '',
+        lote: '',
+        validade: '',
+        listaMedicamentoId: undefined,
+      })
       setItemPmeInput('')
       setLoteSemDefinir(false)
       setLoteAviso(null)
@@ -621,6 +629,7 @@ export function ImhMedicamentoForm({
       itemPme: formatImhMedUppercase(row.medicamento),
       lote,
       validade,
+      listaMedicamentoId: row.id,
       valorUnitario: unitario,
       unidadeFornecimento:
         linhaDraft.unidadeFornecimento.trim() || formatImhMedUppercase(row.uf),
@@ -629,6 +638,20 @@ export function ImhMedicamentoForm({
     setItemPmeInput(row.medicamento)
     setLoteSemDefinir(Boolean(aviso))
     setLoteAviso(aviso)
+  }
+
+  const withListaEstoqueMeta = (linha: ImhMedicamentoLinha): ImhMedicamentoLinha => {
+    const resolved = resolveListaMedicamentoEstoque(
+      listaMedicamentos,
+      linha.itemPme,
+      linha.lote,
+      linha.listaMedicamentoId,
+    )
+    return {
+      ...linha,
+      listaMedicamentoId: resolved?.id ?? linha.listaMedicamentoId,
+      estoqueQtdMovida: linha.qtd,
+    }
   }
 
   const resetLinhaForm = () => {
@@ -661,14 +684,18 @@ export function ImhMedicamentoForm({
     }
   }
 
+  const qtdMovidaEstoque = (linha: ImhMedicamentoLinha) =>
+    (linha.estoqueQtdMovida?.trim() || linha.qtd).trim()
+
   const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
-    if (!linha.itemPme.trim()) return
+    if (!linha.itemPme.trim() && !linha.listaMedicamentoId?.trim()) return
     const next = baixarEstoqueListaMedicamentos(
       listaMedicamentos,
       linha.itemPme,
       linha.lote,
-      linha.qtd,
+      qtdMovidaEstoque(linha),
+      linha.listaMedicamentoId,
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -676,26 +703,80 @@ export function ImhMedicamentoForm({
 
   const devolverEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
-    if (!linha.itemPme.trim()) return
+    if (!linha.itemPme.trim() && !linha.listaMedicamentoId?.trim()) return
     const next = devolverEstoqueListaMedicamentos(
       listaMedicamentos,
       linha.itemPme,
       linha.lote,
-      linha.qtd,
+      qtdMovidaEstoque(linha),
+      linha.listaMedicamentoId,
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
   }
 
+  /** Simula devolução do lançamento anterior e prevê a nova baixa (edição). */
+  const previewBaixaAposDevolverLancamento = (
+    snapshot: ImhMedicamentoLinha,
+    ready: ImhMedicamentoLinha,
+  ) => {
+    const formAposDevolver =
+      listaMedicamentos &&
+      devolverEstoqueListaMedicamentos(
+        listaMedicamentos,
+        snapshot.itemPme,
+        snapshot.lote,
+        qtdMovidaEstoque(snapshot),
+        snapshot.listaMedicamentoId,
+      )
+    return previewBaixaEstoqueListaMedicamentos(
+      formAposDevolver || listaMedicamentos,
+      ready.itemPme,
+      ready.lote,
+      ready.qtd,
+      ready.listaMedicamentoId,
+    )
+  }
+
   const confirmarAdicaoComBaixa = (ready: ImhMedicamentoLinha) => {
-    persistLinhas([...value.linhas, ready])
-    syncPacienteFromLancamento(ready)
-    baixarEstoqueDoLancamento(ready)
+    const readyMeta = withListaEstoqueMeta(ready)
+    persistLinhas([...value.linhas, readyMeta])
+    syncPacienteFromLancamento(readyMeta)
+    baixarEstoqueDoLancamento(readyMeta)
+    resetLinhaForm()
+  }
+
+  const confirmarEdicaoComAjusteEstoque = (ready: ImhMedicamentoLinha) => {
+    if (!editingLinhaId) return
+    const snapshot = linhaSnapshotRef.current
+    const readyMeta = withListaEstoqueMeta({ ...ready, id: editingLinhaId })
+    if (listaMedicamentos && onListaMedicamentosChange && snapshot) {
+      let next = devolverEstoqueListaMedicamentos(
+        listaMedicamentos,
+        snapshot.itemPme,
+        snapshot.lote,
+        qtdMovidaEstoque(snapshot),
+        snapshot.listaMedicamentoId,
+      )
+      next = baixarEstoqueListaMedicamentos(
+        next,
+        readyMeta.itemPme,
+        readyMeta.lote,
+        qtdMovidaEstoque(readyMeta),
+        readyMeta.listaMedicamentoId,
+      )
+      if (next !== listaMedicamentos) onListaMedicamentosChange(next)
+    }
+    persistLinhas(
+      value.linhas.map((l) => (l.id === editingLinhaId ? readyMeta : l)),
+    )
+    syncPacienteFromLancamento(readyMeta)
     resetLinhaForm()
   }
 
   const handleAdicionarLinha = () => {
-    const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
+    const readyBase = withRecalculatedImhMedicamentoLinha(linhaDraft)
+    const ready = withListaEstoqueMeta(readyBase)
     if (!ready.data.trim()) {
       setDataError(true)
       setDataAvisoOpen(true)
@@ -703,13 +784,24 @@ export function ImhMedicamentoForm({
     }
     setDataError(false)
     if (editingLinhaId) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l,
-        ),
-      )
-      syncPacienteFromLancamento(ready)
-      resetLinhaForm()
+      const snapshot = linhaSnapshotRef.current
+      if (snapshot) {
+        const preview = previewBaixaAposDevolverLancamento(snapshot, ready)
+        if (preview?.encontrado && preview.insuficiente) {
+          setEstoqueInsuficiente({
+            open: true,
+            modo: 'edit',
+            linha: ready,
+            medicamento: preview.medicamento,
+            lote: preview.lote,
+            estoqueAtual: preview.estoqueAtual,
+            qtdBaixa: preview.qtdBaixa,
+            estoqueApos: preview.estoqueApos,
+          })
+          return
+        }
+      }
+      confirmarEdicaoComAjusteEstoque(ready)
       return
     }
     if (!linhaImhMedicamentoHasContent(ready)) {
@@ -722,10 +814,12 @@ export function ImhMedicamentoForm({
       ready.itemPme,
       ready.lote,
       ready.qtd,
+      ready.listaMedicamentoId,
     )
     if (preview?.encontrado && preview.insuficiente) {
       setEstoqueInsuficiente({
         open: true,
+        modo: 'add',
         linha: ready,
         medicamento: preview.medicamento,
         lote: preview.lote,
@@ -741,8 +835,13 @@ export function ImhMedicamentoForm({
 
   const handleConfirmarEstoqueInsuficiente = () => {
     const pending = estoqueInsuficiente.linha
+    const modo = estoqueInsuficiente.modo
     setEstoqueInsuficiente((prev) => ({ ...prev, open: false, linha: null }))
     if (!pending) return
+    if (modo === 'edit') {
+      confirmarEdicaoComAjusteEstoque(pending)
+      return
+    }
     confirmarAdicaoComBaixa(pending)
   }
 
