@@ -8,11 +8,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
-  Tab,
-  Tabs,
+  Select,
   TextField,
   Tooltip,
   Typography,
@@ -25,7 +27,12 @@ import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadast
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
 import { CADASTRO_PERFIS, isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
-import { DEMO_CLINICA_EXEMPLO_ID, DEMO_MEDICAMENTO_EXEMPLO_ID, DEMO_EMPENHADO_EXEMPLO_ID, isDemoExampleUser } from '@/services/demoCadastrosService'
+import {
+  DEMO_CLINICA_EXEMPLO_ID,
+  DEMO_MEDICAMENTO_EXEMPLO_ID,
+  DEMO_EMPENHADO_EXEMPLO_ID,
+  isDemoExampleUser,
+} from '@/services/demoCadastrosService'
 
 interface RegistroCadastro {
   id: string
@@ -36,19 +43,27 @@ interface RegistroCadastro {
 
 export function UsuariosTab() {
   const theme = useTheme()
-  const [subTab, setSubTab] = useState(0)
+  const [perfilId, setPerfilId] = useState(CADASTRO_PERFIS[0]!.id)
   const createUser = useCreatePortalUser()
   const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
 
-  const opcao = CADASTRO_PERFIS[subTab]
+  const opcao = CADASTRO_PERFIS.find((p) => p.id === perfilId) ?? CADASTRO_PERFIS[0]!
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
+
+  const resetFormFeedback = () => {
+    setErro('')
+    setSucesso('')
+    setNome('')
+    setEmail('')
+    setRegistroExcluir(null)
+  }
 
   const registros = useMemo<RegistroCadastro[]>(() => {
     if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) {
@@ -171,24 +186,25 @@ export function UsuariosTab() {
         <strong>/clinica/timeline</strong>. Cada cadastro usa e-mail institucional @marinha.mil.br.
       </Alert>
 
-      <Tabs
-        value={subTab}
-        onChange={(_, v) => {
-          setSubTab(v)
-          setErro('')
-          setSucesso('')
-          setNome('')
-          setEmail('')
-          setRegistroExcluir(null)
-        }}
-        sx={{ mb: 3 }}
-        variant="scrollable"
-        scrollButtons="auto"
-      >
-        {CADASTRO_PERFIS.map((p) => (
-          <Tab key={p.id} label={p.label} />
-        ))}
-      </Tabs>
+      <FormControl fullWidth size="small" sx={{ mb: 3, maxWidth: { sm: 420 } }}>
+        <InputLabel id="cadastro-perfil-select-label">Tipo de cadastro</InputLabel>
+        <Select
+          labelId="cadastro-perfil-select-label"
+          id="cadastro-perfil-select"
+          label="Tipo de cadastro"
+          value={perfilId}
+          onChange={(e) => {
+            setPerfilId(String(e.target.value))
+            resetFormFeedback()
+          }}
+        >
+          {CADASTRO_PERFIS.map((p) => (
+            <MenuItem key={p.id} value={p.id}>
+              {p.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {erro && (
         <Alert severity="error" sx={{ mb: 2 }}>
