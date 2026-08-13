@@ -56,14 +56,18 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
-const ROW_ORANGE = '#fff3e0'
-const ROW_RED = '#ffebee'
-const ROW_ORANGE_HOVER = '#ffe0b2'
-const ROW_RED_HOVER = '#ffcdd2'
-const ROW_VENCIDO = '#fce4ec'
-const ROW_VENCIDO_HOVER = '#f8bbd0'
-const ROW_PROXIMO = '#fff8e1'
-const ROW_PROXIMO_HOVER = '#ffecb3'
+const CHIP_ORANGE_BG = '#fff3e0'
+const CHIP_RED_BG = '#ffebee'
+const CHIP_VENCIDO_BG = '#fce4ec'
+const CHIP_PROXIMO_BG = '#fff8e1'
+const BORDER_ALERT_ORANGE = '#fb8c00'
+const BORDER_ALERT_RED = '#e53935'
+
+const alertCellBorderSx = (color: string) =>
+  ({
+    boxShadow: `inset 0 0 0 2px ${color}`,
+    borderColor: color,
+  }) as const
 
 const filtroGroupSx = {
   display: 'inline-flex',
@@ -209,7 +213,9 @@ export function ListaMedicamentosPlanilhaPreview({
                 height: 22,
                 fontWeight: 700,
                 bgcolor:
-                  filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fb8c00' : ROW_ORANGE,
+                  filtro.tipo === 'estoque' && filtro.value === 'baixo'
+                    ? BORDER_ALERT_ORANGE
+                    : CHIP_ORANGE_BG,
                 color:
                   filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fff' : '#e65100',
                 border: '1px solid #ffb74d',
@@ -224,7 +230,9 @@ export function ListaMedicamentosPlanilhaPreview({
                 height: 22,
                 fontWeight: 700,
                 bgcolor:
-                  filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#e53935' : ROW_RED,
+                  filtro.tipo === 'estoque' && filtro.value === 'zerado'
+                    ? BORDER_ALERT_RED
+                    : CHIP_RED_BG,
                 color:
                   filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#fff' : '#c62828',
                 border: '1px solid #ef9a9a',
@@ -254,7 +262,7 @@ export function ListaMedicamentosPlanilhaPreview({
                 bgcolor:
                   filtro.tipo === 'validade' && filtro.value === 'vencido'
                     ? '#c2185b'
-                    : ROW_VENCIDO,
+                    : CHIP_VENCIDO_BG,
                 color:
                   filtro.tipo === 'validade' && filtro.value === 'vencido' ? '#fff' : '#ad1457',
                 border: '1px solid #f48fb1',
@@ -270,8 +278,8 @@ export function ListaMedicamentosPlanilhaPreview({
                 fontWeight: 700,
                 bgcolor:
                   filtro.tipo === 'validade' && filtro.value === 'proximo'
-                    ? '#f9a825'
-                    : ROW_PROXIMO,
+                    ? BORDER_ALERT_ORANGE
+                    : CHIP_PROXIMO_BG,
                 color:
                   filtro.tipo === 'validade' && filtro.value === 'proximo' ? '#fff' : '#f57f17',
                 border: '1px solid #ffe082',
@@ -427,35 +435,26 @@ export function ListaMedicamentosPlanilhaPreview({
                     const editing = editingLinhaId === linha.id
                     const statusEstoque = getListaMedEstoqueStatus(linha)
                     const statusValidade = getListaMedValidadeStatus(linha, avisoDias)
-                    const rowBg =
+                    const rowBg = editing ? EXCEL_SHEET.selectedBg : undefined
+                    const qtdBorder =
                       statusEstoque === 'zerado'
-                        ? ROW_RED
+                        ? alertCellBorderSx(BORDER_ALERT_RED)
                         : statusEstoque === 'baixo'
-                          ? ROW_ORANGE
-                          : statusValidade === 'vencido'
-                            ? ROW_VENCIDO
-                            : statusValidade === 'proximo'
-                              ? ROW_PROXIMO
-                              : editing
-                                ? EXCEL_SHEET.selectedBg
-                                : undefined
-                    const hoverBg =
-                      statusEstoque === 'zerado'
-                        ? ROW_RED_HOVER
-                        : statusEstoque === 'baixo'
-                          ? ROW_ORANGE_HOVER
-                          : statusValidade === 'vencido'
-                            ? ROW_VENCIDO_HOVER
-                            : statusValidade === 'proximo'
-                              ? ROW_PROXIMO_HOVER
-                              : EXCEL_SHEET.hoverBg
+                          ? alertCellBorderSx(BORDER_ALERT_ORANGE)
+                          : null
+                    const validadeBorder =
+                      statusValidade === 'vencido'
+                        ? alertCellBorderSx(BORDER_ALERT_RED)
+                        : statusValidade === 'proximo'
+                          ? alertCellBorderSx(BORDER_ALERT_ORANGE)
+                          : null
                     return (
                       <TableRow
                         key={linha.id}
                         sx={{
                           bgcolor: rowBg,
                           '& td': { bgcolor: rowBg },
-                          '&:hover td': { bgcolor: hoverBg },
+                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                         }}
                       >
                         {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
@@ -471,7 +470,10 @@ export function ListaMedicamentosPlanilhaPreview({
                                     minWidth: 180,
                                   }
                                 : null),
-                              ...(col.key === 'qtd' ? { fontWeight: 700, textAlign: 'center' } : null),
+                              ...(col.key === 'qtd'
+                                ? { fontWeight: 700, textAlign: 'center', ...qtdBorder }
+                                : null),
+                              ...(col.key === 'validade' ? validadeBorder : null),
                             }}
                           >
                             {dash(String(linha[col.key] ?? ''))}
