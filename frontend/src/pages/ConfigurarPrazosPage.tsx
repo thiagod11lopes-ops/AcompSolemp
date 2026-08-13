@@ -158,7 +158,9 @@ export default function ConfigurarPrazosPage() {
                       const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 3)
                       setDraft((prev) => ({ ...prev, [etapa.id]: raw }))
                     }}
-                    inputProps={{ min: 1, max: 365, inputMode: 'numeric' }}
+                    slotProps={{
+                      htmlInput: { min: 1, max: 365, inputMode: 'numeric' },
+                    }}
                     helperText="Número de dias para a etapa"
                   />
                 </Box>
