@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Add as AddIcon,
-  Close as CloseIcon,
-  MenuBookOutlined as MenuBookIcon,
-  WarningAmberRounded as WarningAmberIcon,
-} from '@mui/icons-material'
+import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
-  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -21,7 +18,6 @@ import {
   TextField,
   Typography,
   alpha,
-  useTheme,
 } from '@mui/material'
 import type {
   ImhMedicamentoFormData,
@@ -1475,76 +1471,19 @@ function ImhDataObrigatoriaModal({
   open: boolean
   onClose: () => void
 }) {
-  const theme = useTheme()
-  const warning = theme.palette.warning.main
-
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="xs"
-      fullWidth
-      slotProps={{
-        backdrop: {
-          sx: {
-            backdropFilter: 'blur(10px)',
-            bgcolor: alpha(theme.palette.common.black, 0.45),
-          },
-        },
-        paper: {
-          elevation: 0,
-          sx: {
-            borderRadius: 4,
-            overflow: 'hidden',
-            border: `1px solid ${alpha(warning, 0.28)}`,
-            boxShadow: `0 24px 80px ${alpha(theme.palette.common.black, 0.32)}`,
-          },
-        },
-      }}
-    >
-      <Box
-        sx={{
-          position: 'relative',
-          px: 3,
-          pt: 3,
-          pb: 2.5,
-          background: `linear-gradient(135deg, ${alpha(warning, 0.18)} 0%, ${alpha(theme.palette.warning.light, 0.08)} 55%, transparent 100%)`,
-        }}
-      >
-        <IconButton
-          onClick={onClose}
-          aria-label="Fechar"
-          size="small"
-          sx={{ position: 'absolute', top: 12, right: 12 }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-        <Box
-          sx={{
-            width: 52,
-            height: 52,
-            borderRadius: 2.5,
-            display: 'grid',
-            placeItems: 'center',
-            color: theme.palette.warning.dark,
-            bgcolor: alpha(warning, 0.22),
-            mb: 1.5,
-          }}
-        >
-          <WarningAmberIcon sx={{ fontSize: 28 }} />
-        </Box>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.03em' }}>
-          Data obrigatória
-        </Typography>
-        <Typography sx={{ mt: 0.75, fontSize: '0.88rem', lineHeight: 1.5, color: 'text.secondary' }}>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700 }}>Data obrigatória</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary">
           Preencha o campo DATA para adicionar ou salvar o lançamento no Modelo IHM — PME.
         </Typography>
-      </Box>
-      <Box sx={{ px: 3, pb: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="contained" onClick={onClose} sx={{ textTransform: 'none', fontWeight: 800 }}>
+      </DialogContent>
+      <DialogActions sx={{ px: 2.5, pb: 2 }}>
+        <Button variant="contained" onClick={onClose} sx={{ textTransform: 'none' }}>
           Entendi
         </Button>
-      </Box>
+      </DialogActions>
     </Dialog>
   )
 }
@@ -1572,189 +1511,37 @@ function ImhEstoqueInsuficienteModal({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const theme = useTheme()
-  const danger = theme.palette.error.main
-
   return (
-    <Dialog
-      open={open}
-      onClose={onCancel}
-      maxWidth="xs"
-      fullWidth
-      slotProps={{
-        backdrop: {
-          sx: {
-            backdropFilter: 'blur(12px)',
-            bgcolor: alpha(theme.palette.common.black, 0.5),
-          },
-        },
-        paper: {
-          elevation: 0,
-          sx: {
-            borderRadius: 4,
-            overflow: 'hidden',
-            border: `1px solid ${alpha(danger, 0.28)}`,
-            boxShadow: `0 28px 90px ${alpha(theme.palette.common.black, 0.38)}`,
-            background: theme.palette.background.paper,
-          },
-        },
-      }}
-    >
-      <Box
-        sx={{
-          position: 'relative',
-          px: 3,
-          pt: 3,
-          pb: 2,
-          background: `
-            radial-gradient(ellipse 90% 70% at 0% 0%, ${alpha(danger, 0.22)}, transparent 55%),
-            linear-gradient(160deg, ${alpha(danger, 0.1)} 0%, transparent 60%)
-          `,
-        }}
-      >
-        <IconButton
-          onClick={onCancel}
-          aria-label="Fechar"
-          size="small"
-          sx={{ position: 'absolute', top: 12, right: 12 }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-
-        <Box
-          sx={{
-            width: 56,
-            height: 56,
-            borderRadius: '18px',
-            display: 'grid',
-            placeItems: 'center',
-            color: theme.palette.error.dark,
-            bgcolor: alpha(danger, 0.18),
-            border: `1px solid ${alpha(danger, 0.28)}`,
-            mb: 1.75,
-          }}
-        >
-          <WarningAmberIcon sx={{ fontSize: 30 }} />
-        </Box>
-
-        <Typography
-          sx={{
-            fontWeight: 900,
-            fontSize: '1.2rem',
-            letterSpacing: '-0.04em',
-            lineHeight: 1.2,
-          }}
-        >
-          Estoque insuficiente
-        </Typography>
-        <Typography
-          sx={{ mt: 0.85, fontSize: '0.86rem', lineHeight: 1.55, color: 'text.secondary' }}
-        >
+    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 700 }}>Estoque insuficiente</DialogTitle>
+      <DialogContent sx={{ display: 'grid', gap: 1.25 }}>
+        <Typography variant="body2" color="text.secondary">
           A quantidade lançada é maior que o estoque disponível. O medicamento será incluído na
-          planilha IMH e o estoque ficará negativo (não será zerado).
+          planilha IMH e o estoque ficará negativo.
         </Typography>
-      </Box>
-
-      <Box sx={{ px: 3, pb: 1.25, display: 'grid', gap: 0.85 }}>
-        <Box
-          sx={{
-            px: 1.5,
-            py: 1.15,
-            borderRadius: 2.5,
-            border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-            bgcolor: alpha(theme.palette.primary.main, 0.03),
-          }}
-        >
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 800, letterSpacing: 0.6, color: 'text.secondary' }}
-          >
-            MEDICAMENTO
-          </Typography>
-          <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', mt: 0.25 }}>
+        <Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             {medicamento || '—'}
           </Typography>
           {lote ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.35 }}>
+            <Typography variant="body2" color="text.secondary">
               Lote {lote}
             </Typography>
           ) : null}
         </Box>
-
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: 0.75,
-          }}
-        >
-          {[
-            { label: 'Estoque', value: formatEstoqueNumero(estoqueAtual) },
-            { label: 'QTD lançada', value: formatEstoqueNumero(qtdBaixa) },
-            { label: 'Após baixa', value: formatEstoqueNumero(estoqueApos), highlight: true },
-          ].map((item) => (
-            <Box
-              key={item.label}
-              sx={{
-                px: 1,
-                py: 1,
-                borderRadius: 2,
-                textAlign: 'center',
-                border: `1px solid ${
-                  item.highlight ? alpha(danger, 0.35) : alpha(theme.palette.divider, 0.9)
-                }`,
-                bgcolor: item.highlight ? alpha(danger, 0.08) : alpha(theme.palette.common.black, 0.02),
-              }}
-            >
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.65rem' }}
-              >
-                {item.label}
-              </Typography>
-              <Typography
-                sx={{
-                  mt: 0.25,
-                  fontWeight: 900,
-                  fontSize: '1.05rem',
-                  letterSpacing: '-0.03em',
-                  color: item.highlight ? 'error.main' : 'text.primary',
-                }}
-              >
-                {item.value}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Box>
-
-      <Box
-        sx={{
-          px: 3,
-          pb: 2.5,
-          pt: 1,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 1,
-          flexWrap: 'wrap',
-        }}
-      >
-        <Button
-          variant="text"
-          onClick={onCancel}
-          sx={{ textTransform: 'none', fontWeight: 700 }}
-        >
+        <Typography variant="body2">
+          Estoque: {formatEstoqueNumero(estoqueAtual)} · Lançado:{' '}
+          {formatEstoqueNumero(qtdBaixa)} · Após: {formatEstoqueNumero(estoqueApos)}
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 2.5, pb: 2 }}>
+        <Button onClick={onCancel} sx={{ textTransform: 'none' }}>
           Cancelar
         </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={onConfirm}
-          sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
-        >
+        <Button variant="contained" color="error" onClick={onConfirm} sx={{ textTransform: 'none' }}>
           Continuar mesmo assim
         </Button>
-      </Box>
+      </DialogActions>
     </Dialog>
   )
 }
