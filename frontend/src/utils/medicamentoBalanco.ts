@@ -191,16 +191,17 @@ function summarizeAlertas(linhas: ListaMedicamentosLinha[]): MedicamentoBalancoA
   let itensComEstoque = 0
 
   for (const linha of linhas) {
+    if (!linha) continue
     const statusEstoque = getListaMedEstoqueStatus(linha)
     if (statusEstoque === 'baixo') estoqueBaixo += 1
     if (statusEstoque === 'zerado') estoqueZerado += 1
     const statusValidade = getListaMedValidadeStatus(linha)
     if (statusValidade === 'vencido') validadeVencida += 1
     if (statusValidade === 'proximo') validadeProxima += 1
-    const qtd = parseListaMedQtdNumber(linha.qtd)
+    const qtd = parseListaMedQtdNumber(String(linha.qtd ?? ''))
     if (qtd > 0) {
       itensComEstoque += 1
-      valorEstoqueEstimado += qtd * parseValorBrasileiro(linha.precoReferencia)
+      valorEstoqueEstimado += qtd * parseValorBrasileiro(String(linha.precoReferencia ?? ''))
     }
   }
 

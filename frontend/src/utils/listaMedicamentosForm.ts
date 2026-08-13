@@ -74,8 +74,8 @@ export function formatListaMedAvisoValidadeDias(raw: string): string {
   return raw.replace(/[^\d]/g, '').slice(0, 4)
 }
 
-export function parseListaMedAvisoValidadeDias(raw: string): number | null {
-  const cleaned = raw.trim()
+export function parseListaMedAvisoValidadeDias(raw: string | null | undefined): number | null {
+  const cleaned = String(raw ?? '').trim()
   if (!cleaned) return null
   const n = Number.parseInt(cleaned, 10)
   if (!Number.isFinite(n) || n < 1) return null
@@ -147,11 +147,11 @@ export function filterListaMedicamentosByToolbarFiltro(
 }
 
 export function getListaMedEstoqueStatus(linha: ListaMedicamentosLinha): ListaMedEstoqueStatus {
-  const raw = linha.qtd.trim()
+  const raw = String(linha.qtd ?? '').trim()
   if (!raw) return 'ok'
   const qtd = parseListaMedQtdNumber(raw)
   if (qtd <= 0) return 'zerado'
-  const limiarRaw = linha.estoqueBaixo.trim()
+  const limiarRaw = String(linha.estoqueBaixo ?? '').trim()
   if (limiarRaw) {
     const limiar = parseListaMedQtdNumber(limiarRaw)
     if (qtd <= limiar) return 'baixo'

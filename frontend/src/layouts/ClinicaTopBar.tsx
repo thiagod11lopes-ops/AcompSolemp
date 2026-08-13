@@ -72,6 +72,7 @@ export function ClinicaTopBar() {
       ),
     [isMedicamento],
   )
+  const tabsValue = navItems.some((item) => item.path === activeTab) ? activeTab : false
 
   const handleLogout = async () => {
     await logout()
@@ -129,7 +130,10 @@ export function ClinicaTopBar() {
       </Toolbar>
 
       <Tabs
-        value={activeTab}
+        value={tabsValue}
+        onChange={(_, path: string) => {
+          if (path) navigatePortal(path)
+        }}
         variant="scrollable"
         scrollButtons="auto"
         allowScrollButtonsMobile

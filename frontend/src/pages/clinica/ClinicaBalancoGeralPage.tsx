@@ -11,7 +11,6 @@ import {
   MenuItem,
   Paper,
   Select,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -73,16 +72,31 @@ function MetricCard({
   )
 }
 
+const MESES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+] as const
+
 export default function ClinicaBalancoGeralPage() {
-  const { user } = useClinicaAuth()
+  const { user, isLoading: authLoading } = useClinicaAuth()
   const { mapPath } = usePortalPaths()
-  const { data: clinicas = [] } = useClinicas()
+  const { data: clinicas = [], isLoading: clinicasLoading } = useClinicas()
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
   const isMedicamento =
     user?.perfil === 'MEDICAMENTO' || clinica?.tipo === 'medicamento'
 
   const clinicaId = user?.clinicaId ?? ''
-  const { data: pedidos = [], isLoading: loadingPedidos } = useClinicaPedidos()
+  const { data: pedidos = [] } = useClinicaPedidos()
 
   const [periodoTipo, setPeriodoTipo] = useState<BalancoPeriodoTipo>('mes')
   const [referencia, setReferencia] = useState(() => new Date())
@@ -92,37 +106,59 @@ export default function ClinicaBalancoGeralPage() {
     return Array.from({ length: 6 }, (_, i) => y - i)
   }, [])
 
-  const { data: planilhas, isLoading: loadingPlanilhas } = useQuery({
+  const { data: planilhas, isError: planilhasError } = useQuery({
     queryKey: ['clinica-balanco-planilhas', clinicaId],
     queryFn: () => clinicaPlanilhasLivresService.getState(clinicaId, 'medicamento'),
-    enabled: Boolean(clinicaId) && isMedicamento,
+    enabled: Boolean(clinicaId),
     staleTime: 0,
     refetchOnMount: 'always',
+    retry: 1,
   })
 
   const balanco = useMemo(() => {
-    return buildMedicamentoBalanco({
-      listaMedicamentos: planilhas?.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM,
-      imhMedicamento: planilhas?.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM,
-      pedidos,
-      periodoTipo,
-      referencia,
-    })
+    try {
+      return buildMedicamentoBalanco({
+        listaMedicamentos: planilhas?.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM,
+        imhMedicamento: planilhas?.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM,
+        pedidos: Array.isArray(pedidos) ? pedidos : [],
+        periodoTipo,
+        referencia,
+      })
+    } catch (err) {
+      console.error('Falha ao montar balanço:', err)
+      return buildMedicamentoBalanco({
+        listaMedicamentos: EMPTY_LISTA_MEDICAMENTOS_FORM,
+        imhMedicamento: EMPTY_IMH_MEDICAMENTO_FORM,
+        pedidos: [],
+        periodoTipo,
+        referencia,
+      })
+    }
   }, [planilhas, pedidos, periodoTipo, referencia])
+
+  if (authLoading || clinicasLoading) return <LoadingSpinner />
+
+  if (!user) {
+    return <Navigate to={mapPath('/clinica/timelines')} replace />
+  }
 
   if (!isMedicamento) {
     return <Navigate to={mapPath('/clinica/timelines')} replace />
   }
-
-  if (loadingPedidos || loadingPlanilhas) return <LoadingSpinner />
 
   return (
     <Box>
       <PageHeader
         title="Balanço Geral"
         subtitle={`Resumo do período: ${balanco.periodoLabel}`}
-        titleAdornment={<AccountBalanceIcon color="primary" />}
+        titleAdornment={<AccountBalanceIcon color="primary" fontSize="small" />}
       />
+
+      {planilhasError ? (
+        <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+          Não foi possível carregar as planilhas. Os totais podem ficar zerados até recarregar.
+        </Typography>
+      ) : null}
 
       <Paper
         variant="outlined"
@@ -172,7 +208,7 @@ export default function ClinicaBalancoGeralPage() {
         ) : null}
 
         {periodoTipo === 'mes' ? (
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <InputLabel id="balanco-mes-label">Mês</InputLabel>
               <Select
@@ -185,20 +221,7 @@ export default function ClinicaBalancoGeralPage() {
                   setReferencia(next)
                 }}
               >
-                {[
-                  'Janeiro',
-                  'Fevereiro',
-                  'Março',
-                  'Abril',
-                  'Maio',
-                  'Junho',
-                  'Julho',
-                  'Agosto',
-                  'Setembro',
-                  'Outubro',
-                  'Novembro',
-                  'Dezembro',
-                ].map((nome, idx) => (
+                {MESES.map((nome, idx) => (
                   <MenuItem key={nome} value={idx}>
                     {nome}
                   </MenuItem>
@@ -224,7 +247,7 @@ export default function ClinicaBalancoGeralPage() {
                 ))}
               </Select>
             </FormControl>
-          </Stack>
+          </Box>
         ) : null}
 
         {periodoTipo === 'ano' ? (
