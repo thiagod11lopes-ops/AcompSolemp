@@ -12,9 +12,11 @@ import {
 } from '@mui/material'
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
+import { ListaMedicamentoMovimentacaoModal } from '@/components/clinica/ListaMedicamentoMovimentacaoModal'
 import { ListaMedicamentosPlanilhaPreview } from '@/components/clinica/ListaMedicamentosPlanilhaPreview'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import {
+  aplicarMovimentacaoListaMedicamentos,
   createEmptyListaMedicamentosLinha,
   formatListaMedNeb,
   formatListaMedNome,
@@ -88,6 +90,10 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+  const [movimentacaoLinhaId, setMovimentacaoLinhaId] = useState<string | null>(null)
+
+  const movimentacaoLinha =
+    value.linhas.find((l) => l.id === movimentacaoLinhaId) ?? null
 
   const applyImportedSheet = (sheet: SpreadsheetSheetImport) => {
     const parsed = normalizeListaMedicamentosForm(parseListaMedicamentosFromGrid(sheet.rows))
@@ -236,6 +242,35 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
       )
     }
     resetLinhaForm()
+  }
+
+  const handleMovimentarLinha = (id: string) => {
+    setMovimentacaoLinhaId(id)
+  }
+
+  const handleConfirmarMovimentacao = (payload: {
+    tipo: 'entrada' | 'saida'
+    qtd: string
+    origemDestino: string
+    responsavel: string
+  }) => {
+    if (!movimentacaoLinhaId) return
+    const next = aplicarMovimentacaoListaMedicamentos(value, movimentacaoLinhaId, {
+      tipo: payload.tipo,
+      qtdRaw: payload.qtd,
+      origemDestino: payload.origemDestino,
+      responsavel: payload.responsavel,
+    })
+    if (next !== value) onChange(next)
+    setMovimentacaoLinhaId(null)
+    setImportFeedback({
+      open: true,
+      severity: 'success',
+      message:
+        payload.tipo === 'entrada'
+          ? `Entrada de ${payload.qtd} registrada.`
+          : `Saída de ${payload.qtd} registrada.`,
+    })
   }
 
   return (
@@ -425,6 +460,13 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
           onImportClick={handleImportClick}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
+          onMovimentarLinha={handleMovimentarLinha}
+        />
+        <ListaMedicamentoMovimentacaoModal
+          open={Boolean(movimentacaoLinha)}
+          linha={movimentacaoLinha}
+          onClose={() => setMovimentacaoLinhaId(null)}
+          onConfirm={handleConfirmarMovimentacao}
         />
         <ConmedEscolherAbaModal
           open={sheetPicker.open}

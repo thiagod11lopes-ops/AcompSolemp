@@ -519,6 +519,20 @@ export interface ListaMedicamentosLinha {
   /** Limiar de alerta de estoque baixo */
   estoqueBaixo: string
   precoReferencia: string
+  /** Histórico de entradas/saídas manuais */
+  movimentacoes?: ListaMedicamentoMovimentacao[]
+}
+
+/** Movimentação manual de estoque (entrada ou saída) */
+export interface ListaMedicamentoMovimentacao {
+  id: string
+  tipo: 'entrada' | 'saida'
+  qtd: string
+  /** De onde veio (entrada) ou para onde vai (saída) */
+  origemDestino: string
+  responsavel: string
+  /** ISO 8601 */
+  createdAt: string
 }
 
 /** Formulário + planilha unificada da aba Lista de Medicamentos */

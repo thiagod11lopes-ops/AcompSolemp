@@ -136,6 +136,44 @@ function formatQtdEstoque(n: number): string {
   return Number.isInteger(n) ? String(n) : String(n).replace('.', ',')
 }
 
+/** Aplica entrada/saída manual na linha e registra o histórico. */
+export function aplicarMovimentacaoListaMedicamentos(
+  form: ListaMedicamentosFormData,
+  linhaId: string,
+  input: {
+    tipo: 'entrada' | 'saida'
+    qtdRaw: string
+    origemDestino: string
+    responsavel: string
+  },
+): ListaMedicamentosFormData {
+  const qtdMov = parseListaMedQtdNumber(input.qtdRaw)
+  if (!linhaId.trim() || qtdMov <= 0) return form
+
+  let changed = false
+  const linhas = form.linhas.map((linha) => {
+    if (linha.id !== linhaId) return linha
+    const atual = parseListaMedQtdNumber(linha.qtd)
+    const nextQtd = input.tipo === 'entrada' ? atual + qtdMov : atual - qtdMov
+    const mov = {
+      id: `lista-med-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tipo: input.tipo,
+      qtd: formatQtdEstoque(qtdMov),
+      origemDestino: input.origemDestino.trim(),
+      responsavel: input.responsavel.trim(),
+      createdAt: new Date().toISOString(),
+    }
+    changed = true
+    return {
+      ...linha,
+      qtd: formatQtdEstoque(nextQtd),
+      movimentacoes: [...(linha.movimentacoes ?? []), mov],
+    }
+  })
+
+  return changed ? { linhas } : form
+}
+
 function normMedKey(value: string): string {
   return value.trim().toUpperCase()
 }
@@ -301,6 +339,7 @@ export function normalizeListaMedicamentosForm(
             qtd: item.qtd ?? '',
             estoqueBaixo: item.estoqueBaixo ?? '',
             precoReferencia: item.precoReferencia ?? '',
+            movimentacoes: Array.isArray(item.movimentacoes) ? item.movimentacoes : undefined,
           }),
         )
         .filter((linha) => linhaListaMedicamentosHasContent(linha)),

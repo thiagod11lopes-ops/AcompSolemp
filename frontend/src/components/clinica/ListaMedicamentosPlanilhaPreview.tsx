@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   EditOutlined as EditIcon,
+  SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
 import {
@@ -15,6 +16,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import type { ListaMedicamentosFormData } from '@/types'
@@ -36,6 +38,7 @@ interface ListaMedicamentosPlanilhaPreviewProps {
   onImportClick?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
+  onMovimentarLinha?: (linhaId: string) => void
 }
 
 function dash(value: string): string {
@@ -74,6 +77,7 @@ export function ListaMedicamentosPlanilhaPreview({
   onImportClick,
   onEditLinha,
   onDeleteLinha,
+  onMovimentarLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedEstoqueFiltro>('todos')
   const visible = listaMedicamentosHasPreviewContent(value)
@@ -249,7 +253,7 @@ export function ListaMedicamentosPlanilhaPreview({
                       sx={{
                         ...headerSx,
                         textAlign: 'center',
-                        minWidth: 72,
+                        minWidth: 108,
                         position: 'sticky',
                         top: 0,
                         zIndex: 2,
@@ -312,6 +316,17 @@ export function ListaMedicamentosPlanilhaPreview({
                             textAlign: 'center',
                           }}
                         >
+                          <Tooltip title="Movimentar estoque">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              aria-label={`Movimentar medicamento ${index + 1}`}
+                              onClick={() => onMovimentarLinha?.(linha.id)}
+                              sx={{ p: 0.35, color: EXCEL_SHEET.selectedCheck }}
+                            >
+                              <MovimentarIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
                           <IconButton
                             size="small"
                             aria-label={`Editar medicamento ${index + 1}`}
