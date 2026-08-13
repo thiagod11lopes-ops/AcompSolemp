@@ -1113,16 +1113,6 @@ export function ImhMedicamentoForm({
               fullWidth
               sx={compactFieldSx}
             />
-            <TextField
-              label="QUANTIDADE ADQUIRIDA PELA OMH/OMFM"
-              value={linhaDraft.quantidadeAdquirida}
-              onChange={(e) =>
-                updateDraft({ quantidadeAdquirida: formatImhMedQtd(e.target.value) })
-              }
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
