@@ -101,7 +101,18 @@ export const TimelineDrawer = memo(function TimelineDrawer({
 
               {actions && (
                 <section style={{ marginBottom: 22 }}>
-                  <div className="timeline-actions-slot">{actions}</div>
+                  <div
+                    className="timeline-actions-slot"
+                    onClickCapture={(event) => {
+                      const target = event.target
+                      if (!(target instanceof Element)) return
+                      const button = target.closest('button')
+                      if (!button || button.disabled) return
+                      onClose()
+                    }}
+                  >
+                    {actions}
+                  </div>
                 </section>
               )}
 
