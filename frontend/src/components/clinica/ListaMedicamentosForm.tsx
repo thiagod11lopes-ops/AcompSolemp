@@ -329,10 +329,29 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
             }}
           >
             <TextField
+              label="Medicamento"
+              value={linhaDraft.medicamento}
+              onChange={(e) => updateDraft({ medicamento: formatListaMedNome(e.target.value) })}
+              size="small"
+              fullWidth
+              multiline
+              minRows={2}
+              sx={multilineFieldSx}
+            />
+            <TextField
               label="NEB"
               value={linhaDraft.neb}
               onChange={(e) => updateDraft({ neb: formatListaMedNeb(e.target.value) })}
               placeholder="BR3268550"
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="UF"
+              value={linhaDraft.uf}
+              onChange={(e) => updateDraft({ uf: formatListaMedUf(e.target.value) })}
+              placeholder="SE"
               size="small"
               fullWidth
               sx={compactFieldSx}
@@ -356,25 +375,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               sx={compactFieldSx}
             />
             <TextField
-              label="UF"
-              value={linhaDraft.uf}
-              onChange={(e) => updateDraft({ uf: formatListaMedUf(e.target.value) })}
-              placeholder="SE"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="Medicamento"
-              value={linhaDraft.medicamento}
-              onChange={(e) => updateDraft({ medicamento: formatListaMedNome(e.target.value) })}
-              size="small"
-              fullWidth
-              multiline
-              minRows={2}
-              sx={multilineFieldSx}
-            />
-            <TextField
               label="QTD"
               value={linhaDraft.qtd}
               onChange={(e) => updateDraft({ qtd: formatListaMedQtd(e.target.value) })}
@@ -390,7 +390,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               placeholder="Limiar de alerta"
               size="small"
               fullWidth
-              helperText="QTD ≤ limiar → laranja; QTD = 0 → vermelho"
               sx={compactFieldSx}
             />
             <TextField
@@ -404,7 +403,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               placeholder="Ex.: 30"
               size="small"
               fullWidth
-              helperText="Validade dentro dos dias → laranja; vencido → vermelho"
               sx={compactFieldSx}
             />
             <TextField
