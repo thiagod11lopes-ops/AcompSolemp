@@ -248,6 +248,233 @@ export function buildMedicamentoBalanco(input: MedicamentoBalancoInput): Medicam
   }
 }
 
+function formatBrDate(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base)
+  d.setDate(d.getDate() + days)
+  return startOfDay(d)
+}
+
+/** Dados fictícios alinhados ao período selecionado, só para pré-visualização. */
+export function createMedicamentoBalancoExemploInput(
+  periodoTipo: BalancoPeriodoTipo,
+  referencia: Date,
+): MedicamentoBalancoInput {
+  const ref = startOfDay(referencia)
+  const d1 = formatBrDate(ref)
+  const d2 = formatBrDate(addDays(ref, periodoTipo === 'dia' ? 0 : -2))
+  const d3 = formatBrDate(addDays(ref, periodoTipo === 'dia' ? 0 : -5))
+  const validadeOk = formatBrDate(addDays(ref, 180))
+  const validadeProxima = formatBrDate(addDays(ref, 20))
+  const validadeVencida = formatBrDate(addDays(ref, -10))
+
+  const listaMedicamentos: ListaMedicamentosFormData = {
+    linhas: [
+      {
+        id: 'ex-lista-1',
+        neb: 'BR1000001',
+        medicamento: 'DIPIRONA 500 MG COMP',
+        lote: 'L-EX01',
+        validade: validadeOk,
+        uf: 'SE',
+        qtd: '120',
+        estoqueBaixo: '30',
+        avisoValidadeDias: '30',
+        precoReferencia: 'R$ 2,50',
+        movimentacoes: [
+          {
+            id: 'ex-mov-1',
+            tipo: 'entrada',
+            qtd: '80',
+            data: d1,
+            origemDestino: 'Farmácia central',
+            responsavel: 'Exemplo',
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: 'ex-mov-2',
+            tipo: 'saida',
+            qtd: '25',
+            data: d2,
+            origemDestino: 'Ambulatório',
+            responsavel: 'Exemplo',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+      {
+        id: 'ex-lista-2',
+        neb: 'BR1000002',
+        medicamento: 'AMOXICILINA 500 MG CAP',
+        lote: 'L-EX02',
+        validade: validadeProxima,
+        uf: 'SE',
+        qtd: '18',
+        estoqueBaixo: '20',
+        avisoValidadeDias: '45',
+        precoReferencia: 'R$ 4,90',
+        movimentacoes: [
+          {
+            id: 'ex-mov-3',
+            tipo: 'entrada',
+            qtd: '50',
+            data: d3,
+            origemDestino: 'Compra PME',
+            responsavel: 'Exemplo',
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: 'ex-mov-4',
+            tipo: 'saida',
+            qtd: '32',
+            data: d1,
+            origemDestino: 'Pronto atendimento',
+            responsavel: 'Exemplo',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      },
+      {
+        id: 'ex-lista-3',
+        neb: 'BR1000003',
+        medicamento: 'LOSARTANA 50 MG COMP',
+        lote: 'L-EX03',
+        validade: validadeVencida,
+        uf: 'SE',
+        qtd: '0',
+        estoqueBaixo: '10',
+        avisoValidadeDias: '30',
+        precoReferencia: 'R$ 1,80',
+        movimentacoes: [],
+      },
+    ],
+  }
+
+  const imhMedicamento: ImhMedicamentoFormData = {
+    linhas: [
+      {
+        id: 'ex-imh-1',
+        data: d1,
+        nip: '12.3456.78',
+        nome: 'PACIENTE EXEMPLO A',
+        itemPme: 'DIPIRONA 500 MG COMP',
+        lote: 'L-EX01',
+        validade: validadeOk,
+        qtd: '10',
+        valorUnitario: 'R$ 2,50',
+        total: 'R$ 25,00',
+        nipTitular: '12.3456.78',
+        postoGrad: 'CB',
+        vinculo: 'TITULAR',
+        pctIndenizar: '0%',
+        valorIndenizar: 'R$ 0,00',
+        om: 'HNMD',
+        unidadeFornecimento: 'COMP',
+        quantidadeAdquirida: '10',
+      },
+      {
+        id: 'ex-imh-2',
+        data: d2,
+        nip: '98.7654.32',
+        nome: 'PACIENTE EXEMPLO B',
+        itemPme: 'AMOXICILINA 500 MG CAP',
+        lote: 'L-EX02',
+        validade: validadeProxima,
+        qtd: '21',
+        valorUnitario: 'R$ 4,90',
+        total: 'R$ 102,90',
+        nipTitular: '11.2233.44',
+        postoGrad: '1T',
+        vinculo: 'DEPENDENTE DIRETO',
+        pctIndenizar: '20%',
+        valorIndenizar: 'R$ 20,58',
+        om: 'HNMD',
+        unidadeFornecimento: 'CAP',
+        quantidadeAdquirida: '21',
+      },
+      {
+        id: 'ex-imh-3',
+        data: d3,
+        nip: '55.6677.88',
+        nome: 'PACIENTE EXEMPLO C',
+        itemPme: 'DIPIRONA 500 MG COMP',
+        lote: 'L-EX01',
+        validade: validadeOk,
+        qtd: '6',
+        valorUnitario: 'R$ 2,50',
+        total: 'R$ 15,00',
+        nipTitular: '55.6677.88',
+        postoGrad: 'MN',
+        vinculo: 'TITULAR',
+        pctIndenizar: '0%',
+        valorIndenizar: 'R$ 0,00',
+        om: 'HNMD',
+        unidadeFornecimento: 'COMP',
+        quantidadeAdquirida: '6',
+      },
+    ],
+  }
+
+  const iso = (d: Date) => {
+    const x = startOfDay(d)
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 12, 0, 0).toISOString()
+  }
+
+  const pedidos: Pedido[] = [
+    {
+      id: 'ex-ped-1',
+      numero: 'EX-2026-001',
+      clinicaId: 'ex',
+      empresaId: 'ex',
+      materialId: 'ex',
+      quantidade: 1,
+      valor: 128.9,
+      observacoes: '',
+      paciente: null,
+      dadosClinica: null,
+      dataSolicitacao: iso(ref),
+      dataEntrega: null,
+      etapaAtualId: 'ex',
+      etapasAtivasIds: [],
+      responsavelAtualId: null,
+      concluido: false,
+      etapasHistorico: [],
+    },
+    {
+      id: 'ex-ped-2',
+      numero: 'EX-2026-002',
+      clinicaId: 'ex',
+      empresaId: 'ex',
+      materialId: 'ex',
+      quantidade: 1,
+      valor: 256.4,
+      observacoes: '',
+      paciente: null,
+      dadosClinica: null,
+      dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -3)),
+      dataEntrega: null,
+      etapaAtualId: 'ex',
+      etapasAtivasIds: [],
+      responsavelAtualId: null,
+      concluido: true,
+      etapasHistorico: [],
+    },
+  ]
+
+  return {
+    listaMedicamentos,
+    imhMedicamento,
+    pedidos,
+    periodoTipo,
+    referencia: ref,
+  }
+}
+
 export function formatBalancoQtd(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     maximumFractionDigits: 3,

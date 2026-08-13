@@ -2,10 +2,14 @@ import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import PreviewIcon from '@mui/icons-material/Preview'
 import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
+  Chip,
   FormControl,
   InputLabel,
   MenuItem,
@@ -19,6 +23,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -31,6 +36,7 @@ import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivres
 import { formatCurrency } from '@/utils/format'
 import {
   buildMedicamentoBalanco,
+  createMedicamentoBalancoExemploInput,
   formatBalancoQtd,
   type BalancoPeriodoTipo,
 } from '@/utils/medicamentoBalanco'
@@ -100,6 +106,7 @@ export default function ClinicaBalancoGeralPage() {
 
   const [periodoTipo, setPeriodoTipo] = useState<BalancoPeriodoTipo>('mes')
   const [referencia, setReferencia] = useState(() => new Date())
+  const [mostrarExemplo, setMostrarExemplo] = useState(false)
 
   const anos = useMemo(() => {
     const y = new Date().getFullYear()
@@ -117,13 +124,16 @@ export default function ClinicaBalancoGeralPage() {
 
   const balanco = useMemo(() => {
     try {
-      return buildMedicamentoBalanco({
-        listaMedicamentos: planilhas?.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM,
-        imhMedicamento: planilhas?.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM,
-        pedidos: Array.isArray(pedidos) ? pedidos : [],
-        periodoTipo,
-        referencia,
-      })
+      const input = mostrarExemplo
+        ? createMedicamentoBalancoExemploInput(periodoTipo, referencia)
+        : {
+            listaMedicamentos: planilhas?.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM,
+            imhMedicamento: planilhas?.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM,
+            pedidos: Array.isArray(pedidos) ? pedidos : [],
+            periodoTipo,
+            referencia,
+          }
+      return buildMedicamentoBalanco(input)
     } catch (err) {
       console.error('Falha ao montar balanço:', err)
       return buildMedicamentoBalanco({
@@ -134,7 +144,7 @@ export default function ClinicaBalancoGeralPage() {
         referencia,
       })
     }
-  }, [planilhas, pedidos, periodoTipo, referencia])
+  }, [mostrarExemplo, planilhas, pedidos, periodoTipo, referencia])
 
   if (authLoading || clinicasLoading) return <LoadingSpinner />
 
@@ -150,11 +160,40 @@ export default function ClinicaBalancoGeralPage() {
     <Box>
       <PageHeader
         title="Balanço Geral"
-        subtitle={`Resumo do período: ${balanco.periodoLabel}`}
+        subtitle={
+          mostrarExemplo
+            ? `Pré-visualização com dados de exemplo · ${balanco.periodoLabel}`
+            : `Resumo do período: ${balanco.periodoLabel}`
+        }
         titleAdornment={<AccountBalanceIcon color="primary" fontSize="small" />}
+        action={
+          <Tooltip
+            title={
+              mostrarExemplo
+                ? 'Voltar aos dados reais'
+                : 'Ver como fica o balanço com dados de exemplo'
+            }
+          >
+            <Button
+              size="small"
+              variant={mostrarExemplo ? 'contained' : 'outlined'}
+              startIcon={<PreviewIcon />}
+              onClick={() => setMostrarExemplo((v) => !v)}
+              sx={{ textTransform: 'none', fontWeight: 700 }}
+            >
+              {mostrarExemplo ? 'Sair do exemplo' : 'Ver exemplo'}
+            </Button>
+          </Tooltip>
+        }
       />
 
-      {planilhasError ? (
+      {mostrarExemplo ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Exibindo dados fictícios para demonstração. Isso não altera estoque, IMH nem pedidos.
+        </Alert>
+      ) : null}
+
+      {planilhasError && !mostrarExemplo ? (
         <Typography variant="body2" color="error" sx={{ mb: 2 }}>
           Não foi possível carregar as planilhas. Os totais podem ficar zerados até recarregar.
         </Typography>
@@ -171,6 +210,9 @@ export default function ClinicaBalancoGeralPage() {
           alignItems: 'center',
         }}
       >
+        {mostrarExemplo ? (
+          <Chip size="small" color="info" label="Modo exemplo" sx={{ fontWeight: 700 }} />
+        ) : null}
         <ToggleButtonGroup
           exclusive
           size="small"
