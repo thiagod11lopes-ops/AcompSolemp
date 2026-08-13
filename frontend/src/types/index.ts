@@ -518,6 +518,8 @@ export interface ListaMedicamentosLinha {
   qtd: string
   /** Limiar de alerta de estoque baixo */
   estoqueBaixo: string
+  /** Dias de antecedência para alerta de próximo do vencimento (por medicamento) */
+  avisoValidadeDias: string
   precoReferencia: string
   /** Histórico de entradas/saídas manuais */
   movimentacoes?: ListaMedicamentoMovimentacao[]

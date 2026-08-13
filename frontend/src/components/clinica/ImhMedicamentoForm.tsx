@@ -250,6 +250,7 @@ export function ImhMedicamentoForm({
       uf: row.uf,
       qtd: '',
       estoqueBaixo: '',
+      avisoValidadeDias: '',
       precoReferencia: row.precoReferencia,
     }))
   }, [listaMedicamentos, catalog])

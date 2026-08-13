@@ -18,6 +18,7 @@ import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/Medicamento
 import {
   aplicarMovimentacaoListaMedicamentos,
   createEmptyListaMedicamentosLinha,
+  formatListaMedAvisoValidadeDias,
   formatListaMedNeb,
   formatListaMedNome,
   formatListaMedPreco,
@@ -390,6 +391,20 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               size="small"
               fullWidth
               helperText="QTD ≤ limiar → laranja; QTD = 0 → vermelho"
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="Aviso validade (dias)"
+              value={linhaDraft.avisoValidadeDias}
+              onChange={(e) =>
+                updateDraft({
+                  avisoValidadeDias: formatListaMedAvisoValidadeDias(e.target.value),
+                })
+              }
+              placeholder="Ex.: 30"
+              size="small"
+              fullWidth
+              helperText="Validade dentro dos dias → laranja; vencido → vermelho"
               sx={compactFieldSx}
             />
             <TextField

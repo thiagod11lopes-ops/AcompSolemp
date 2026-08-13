@@ -4,7 +4,6 @@ import {
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
   HistoryOutlined as HistoricoIcon,
-  SettingsOutlined as SettingsIcon,
   SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
@@ -25,14 +24,12 @@ import {
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
-import { ListaMedAvisoValidadeConfigModal } from '@/components/clinica/ListaMedAvisoValidadeConfigModal'
 import { ListaMedicamentoHistoricoMovimentacoesModal } from '@/components/clinica/ListaMedicamentoHistoricoMovimentacoesModal'
 import {
   LISTA_MEDICAMENTOS_COLUNAS,
   countListaMedEstoque,
   countListaMedValidade,
   filterListaMedicamentosByToolbarFiltro,
-  getListaMedAvisoValidadeDias,
   getListaMedEstoqueStatus,
   getListaMedValidadeStatus,
   listaMedicamentosHasPreviewContent,
@@ -110,20 +107,15 @@ export function ListaMedicamentosPlanilhaPreview({
   onMovimentarLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedToolbarFiltro>({ tipo: 'todos' })
-  const [avisoDias, setAvisoDias] = useState(() => getListaMedAvisoValidadeDias())
-  const [avisoConfigOpen, setAvisoConfigOpen] = useState(false)
   const [gerarOpen, setGerarOpen] = useState(false)
   const [historicoOpen, setHistoricoOpen] = useState(false)
   const [historicoSeed, setHistoricoSeed] = useState<ListaMedicamentosLinha | null>(null)
   const visible = listaMedicamentosHasPreviewContent(value)
   const contagemEstoque = useMemo(() => countListaMedEstoque(value), [value])
-  const contagemValidade = useMemo(
-    () => countListaMedValidade(value, avisoDias),
-    [value, avisoDias],
-  )
+  const contagemValidade = useMemo(() => countListaMedValidade(value), [value])
   const linhasVisiveis = useMemo(
-    () => filterListaMedicamentosByToolbarFiltro(value, filtro, avisoDias),
-    [value, filtro, avisoDias],
+    () => filterListaMedicamentosByToolbarFiltro(value, filtro),
+    [value, filtro],
   )
   const colCount = LISTA_MEDICAMENTOS_COLUNAS.length + 1
 
@@ -285,16 +277,6 @@ export function ListaMedicamentosPlanilhaPreview({
                 border: '1px solid #ffe082',
               }}
             />
-            <Tooltip title={`Configurar aviso (atual: ${avisoDias} dia(s))`}>
-              <IconButton
-                size="small"
-                aria-label="Configurar aviso de validade"
-                onClick={() => setAvisoConfigOpen(true)}
-                sx={{ p: 0.35, color: EXCEL_SHEET.mutedText }}
-              >
-                <SettingsIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
           </Box>
 
           {filtro.tipo !== 'todos' ? (
@@ -434,7 +416,7 @@ export function ListaMedicamentosPlanilhaPreview({
                   {linhasVisiveis.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
                     const statusEstoque = getListaMedEstoqueStatus(linha)
-                    const statusValidade = getListaMedValidadeStatus(linha, avisoDias)
+                    const statusValidade = getListaMedValidadeStatus(linha)
                     const rowBg = editing ? EXCEL_SHEET.selectedBg : undefined
                     const qtdBorder =
                       statusEstoque === 'zerado'
@@ -575,12 +557,6 @@ export function ListaMedicamentosPlanilhaPreview({
           setHistoricoOpen(false)
           setHistoricoSeed(null)
         }}
-      />
-
-      <ListaMedAvisoValidadeConfigModal
-        open={avisoConfigOpen}
-        onClose={() => setAvisoConfigOpen(false)}
-        onSaved={(dias) => setAvisoDias(dias)}
       />
     </Box>
   )

@@ -1,6 +1,7 @@
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import {
   createEmptyListaMedicamentosLinha,
+  formatListaMedAvisoValidadeDias,
   formatListaMedNeb,
   formatListaMedNome,
   formatListaMedPreco,
@@ -85,6 +86,13 @@ function mapHeaderColumns(
     else if (n === 'UF') map.uf = index
     else if (n === 'QTD' || n === 'QUANTIDADE') map.qtd = index
     else if (n.includes('ESTOQUE') && n.includes('BAIXO')) map.estoqueBaixo = index
+    else if (
+      (n.includes('AVISO') && n.includes('VALIDADE')) ||
+      (n.includes('PROXIMO') && n.includes('VENC')) ||
+      (n.includes('DIAS') && n.includes('VALIDADE'))
+    ) {
+      map.avisoValidadeDias = index
+    }
     else if (n.includes('PRECO') || n.includes('REFERENCIA')) map.precoReferencia = index
   })
   return map
@@ -119,6 +127,10 @@ export function parseListaMedicamentosFromGrid(rows: string[][]): ListaMedicamen
       estoqueBaixo:
         colMap.estoqueBaixo !== undefined
           ? formatListaMedQtd(cell(rows, r, colMap.estoqueBaixo))
+          : '',
+      avisoValidadeDias:
+        colMap.avisoValidadeDias !== undefined
+          ? formatListaMedAvisoValidadeDias(cell(rows, r, colMap.avisoValidadeDias))
           : '',
       precoReferencia:
         colMap.precoReferencia !== undefined

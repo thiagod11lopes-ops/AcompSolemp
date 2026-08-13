@@ -13,6 +13,7 @@ export function createEmptyListaMedicamentosLinha(): ListaMedicamentosLinha {
     uf: '',
     qtd: '',
     estoqueBaixo: '',
+    avisoValidadeDias: '',
     precoReferencia: '',
   }
 }
@@ -42,9 +43,6 @@ export type ListaMedToolbarFiltro =
   | { tipo: 'estoque'; value: Exclude<ListaMedEstoqueFiltro, 'todos'> }
   | { tipo: 'validade'; value: Exclude<ListaMedValidadeFiltro, 'todos'> }
 
-export const LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT = 30
-export const LISTA_MED_AVISO_VALIDADE_DIAS_KEY = 'acompsolemp.listaMed.avisoValidadeDias'
-
 export function parseListaMedQtdNumber(raw: string): number {
   const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
   if (!cleaned) return 0
@@ -69,6 +67,19 @@ export function formatListaMedQtd(raw: string): string {
   }
   if (!result) return negative ? '-' : ''
   return negative ? `-${result}` : result
+}
+
+/** Dias de aviso de validade: somente inteiro positivo (até 4 dígitos). */
+export function formatListaMedAvisoValidadeDias(raw: string): string {
+  return raw.replace(/[^\d]/g, '').slice(0, 4)
+}
+
+export function parseListaMedAvisoValidadeDias(raw: string): number | null {
+  const cleaned = raw.trim()
+  if (!cleaned) return null
+  const n = Number.parseInt(cleaned, 10)
+  if (!Number.isFinite(n) || n < 1) return null
+  return n
 }
 
 /** Converte dd/mm/aaaa (ou d/m/aaaa) em Date local (início do dia). */
@@ -98,50 +109,26 @@ function startOfToday(): Date {
   return d
 }
 
-export function getListaMedAvisoValidadeDias(): number {
-  try {
-    const raw = localStorage.getItem(LISTA_MED_AVISO_VALIDADE_DIAS_KEY)
-    if (!raw) return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
-    const n = Number.parseInt(raw, 10)
-    if (!Number.isFinite(n) || n < 1 || n > 3650) return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
-    return n
-  } catch {
-    return LISTA_MED_AVISO_VALIDADE_DIAS_DEFAULT
-  }
-}
-
-export function setListaMedAvisoValidadeDias(dias: number): void {
-  const n = Math.round(dias)
-  if (!Number.isFinite(n) || n < 1 || n > 3650) return
-  try {
-    localStorage.setItem(LISTA_MED_AVISO_VALIDADE_DIAS_KEY, String(n))
-  } catch {
-    // ignore quota / private mode
-  }
-}
-
-export function getListaMedValidadeStatus(
-  linha: ListaMedicamentosLinha,
-  diasAviso: number = getListaMedAvisoValidadeDias(),
-): ListaMedValidadeStatus {
+export function getListaMedValidadeStatus(linha: ListaMedicamentosLinha): ListaMedValidadeStatus {
   const validade = parseListaMedDataToDate(linha.validade)
   if (!validade) return 'ok'
   const hoje = startOfToday()
   if (validade.getTime() < hoje.getTime()) return 'vencido'
+  const diasAviso = parseListaMedAvisoValidadeDias(linha.avisoValidadeDias)
+  if (diasAviso == null) return 'ok'
   const limite = new Date(hoje)
-  limite.setDate(limite.getDate() + Math.max(1, diasAviso))
+  limite.setDate(limite.getDate() + diasAviso)
   if (validade.getTime() <= limite.getTime()) return 'proximo'
   return 'ok'
 }
 
 export function countListaMedValidade(
   value: ListaMedicamentosFormData,
-  diasAviso: number = getListaMedAvisoValidadeDias(),
 ): { vencido: number; proximo: number } {
   let vencido = 0
   let proximo = 0
   for (const linha of value.linhas) {
-    const status = getListaMedValidadeStatus(linha, diasAviso)
+    const status = getListaMedValidadeStatus(linha)
     if (status === 'vencido') vencido += 1
     else if (status === 'proximo') proximo += 1
   }
@@ -151,13 +138,12 @@ export function countListaMedValidade(
 export function filterListaMedicamentosByToolbarFiltro(
   value: ListaMedicamentosFormData,
   filtro: ListaMedToolbarFiltro,
-  diasAviso: number = getListaMedAvisoValidadeDias(),
 ): ListaMedicamentosLinha[] {
   if (filtro.tipo === 'todos') return value.linhas
   if (filtro.tipo === 'estoque') {
     return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro.value)
   }
-  return value.linhas.filter((linha) => getListaMedValidadeStatus(linha, diasAviso) === filtro.value)
+  return value.linhas.filter((linha) => getListaMedValidadeStatus(linha) === filtro.value)
 }
 
 export function getListaMedEstoqueStatus(linha: ListaMedicamentosLinha): ListaMedEstoqueStatus {
@@ -484,6 +470,7 @@ export function linhaListaMedicamentosHasContent(linha: ListaMedicamentosLinha):
       linha.uf.trim() ||
       linha.qtd.trim() ||
       linha.estoqueBaixo.trim() ||
+      linha.avisoValidadeDias.trim() ||
       linha.precoReferencia.trim(),
   )
 }
@@ -500,6 +487,7 @@ export function withNormalizedListaMedicamentosLinha(
     uf: formatImhUppercase(linha.uf).trim(),
     qtd: linha.qtd.trim(),
     estoqueBaixo: linha.estoqueBaixo.trim(),
+    avisoValidadeDias: formatListaMedAvisoValidadeDias(linha.avisoValidadeDias ?? ''),
     precoReferencia:
       formatPrecoReferenciaMedicamento(linha.precoReferencia) || linha.precoReferencia.trim(),
   }
@@ -538,6 +526,7 @@ export function normalizeListaMedicamentosForm(
             uf: item.uf ?? '',
             qtd: item.qtd ?? '',
             estoqueBaixo: item.estoqueBaixo ?? '',
+            avisoValidadeDias: item.avisoValidadeDias ?? '',
             precoReferencia: item.precoReferencia ?? '',
             movimentacoes: Array.isArray(item.movimentacoes) ? item.movimentacoes : undefined,
           }),
@@ -576,6 +565,7 @@ export function listaMedicamentosFromPrecosRows(
       uf: row.uf ?? '',
       qtd: '',
       estoqueBaixo: '',
+      avisoValidadeDias: '',
       precoReferencia: row.precoReferencia ?? '',
     })),
   })
