@@ -87,6 +87,7 @@ import {
   findListaMedicamentoByNomeELote,
   findListaMedicamentosByNome,
   formatListaMedEstoqueOptionLabel,
+  previewBaixaEstoqueListaMedicamentos,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -273,6 +274,23 @@ export function ImhMedicamentoForm({
   const [dataError, setDataError] = useState(false)
   const [loteSemDefinir, setLoteSemDefinir] = useState(false)
   const [loteAviso, setLoteAviso] = useState<string | null>(null)
+  const [estoqueInsuficiente, setEstoqueInsuficiente] = useState<{
+    open: boolean
+    linha: ImhMedicamentoLinha | null
+    medicamento: string
+    lote: string
+    estoqueAtual: number
+    qtdBaixa: number
+    estoqueApos: number
+  }>({
+    open: false,
+    linha: null,
+    medicamento: '',
+    lote: '',
+    estoqueAtual: 0,
+    qtdBaixa: 0,
+    estoqueApos: 0,
+  })
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -669,6 +687,13 @@ export function ImhMedicamentoForm({
     onListaMedicamentosChange(next)
   }
 
+  const confirmarAdicaoComBaixa = (ready: ImhMedicamentoLinha) => {
+    persistLinhas([...value.linhas, ready])
+    syncPacienteFromLancamento(ready)
+    baixarEstoqueDoLancamento(ready)
+    resetLinhaForm()
+  }
+
   const handleAdicionarLinha = () => {
     const ready = withRecalculatedImhMedicamentoLinha(linhaDraft)
     if (!ready.data.trim()) {
@@ -691,10 +716,38 @@ export function ImhMedicamentoForm({
       resetLinhaForm()
       return
     }
-    persistLinhas([...value.linhas, ready])
-    syncPacienteFromLancamento(ready)
-    baixarEstoqueDoLancamento(ready)
-    resetLinhaForm()
+
+    const preview = previewBaixaEstoqueListaMedicamentos(
+      listaMedicamentos,
+      ready.itemPme,
+      ready.lote,
+      ready.qtd,
+    )
+    if (preview?.encontrado && preview.insuficiente) {
+      setEstoqueInsuficiente({
+        open: true,
+        linha: ready,
+        medicamento: preview.medicamento,
+        lote: preview.lote,
+        estoqueAtual: preview.estoqueAtual,
+        qtdBaixa: preview.qtdBaixa,
+        estoqueApos: preview.estoqueApos,
+      })
+      return
+    }
+
+    confirmarAdicaoComBaixa(ready)
+  }
+
+  const handleConfirmarEstoqueInsuficiente = () => {
+    const pending = estoqueInsuficiente.linha
+    setEstoqueInsuficiente((prev) => ({ ...prev, open: false, linha: null }))
+    if (!pending) return
+    confirmarAdicaoComBaixa(pending)
+  }
+
+  const handleCancelarEstoqueInsuficiente = () => {
+    setEstoqueInsuficiente((prev) => ({ ...prev, open: false, linha: null }))
   }
 
   const handleEditLinha = (id: string) => {
@@ -1287,6 +1340,16 @@ export function ImhMedicamentoForm({
           open={dataAvisoOpen}
           onClose={() => setDataAvisoOpen(false)}
         />
+        <ImhEstoqueInsuficienteModal
+          open={estoqueInsuficiente.open}
+          medicamento={estoqueInsuficiente.medicamento}
+          lote={estoqueInsuficiente.lote}
+          estoqueAtual={estoqueInsuficiente.estoqueAtual}
+          qtdBaixa={estoqueInsuficiente.qtdBaixa}
+          estoqueApos={estoqueInsuficiente.estoqueApos}
+          onCancel={handleCancelarEstoqueInsuficiente}
+          onConfirm={handleConfirmarEstoqueInsuficiente}
+        />
         <Snackbar
           open={importFeedback.open}
           autoHideDuration={5000}
@@ -1381,6 +1444,216 @@ function ImhDataObrigatoriaModal({
       <Box sx={{ px: 3, pb: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
         <Button variant="contained" onClick={onClose} sx={{ textTransform: 'none', fontWeight: 800 }}>
           Entendi
+        </Button>
+      </Box>
+    </Dialog>
+  )
+}
+
+function formatEstoqueNumero(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(n).replace('.', ',')
+}
+
+function ImhEstoqueInsuficienteModal({
+  open,
+  medicamento,
+  lote,
+  estoqueAtual,
+  qtdBaixa,
+  estoqueApos,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean
+  medicamento: string
+  lote: string
+  estoqueAtual: number
+  qtdBaixa: number
+  estoqueApos: number
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const theme = useTheme()
+  const danger = theme.palette.error.main
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onCancel}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        backdrop: {
+          sx: {
+            backdropFilter: 'blur(12px)',
+            bgcolor: alpha(theme.palette.common.black, 0.5),
+          },
+        },
+        paper: {
+          elevation: 0,
+          sx: {
+            borderRadius: 4,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(danger, 0.28)}`,
+            boxShadow: `0 28px 90px ${alpha(theme.palette.common.black, 0.38)}`,
+            background: theme.palette.background.paper,
+          },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          position: 'relative',
+          px: 3,
+          pt: 3,
+          pb: 2,
+          background: `
+            radial-gradient(ellipse 90% 70% at 0% 0%, ${alpha(danger, 0.22)}, transparent 55%),
+            linear-gradient(160deg, ${alpha(danger, 0.1)} 0%, transparent 60%)
+          `,
+        }}
+      >
+        <IconButton
+          onClick={onCancel}
+          aria-label="Fechar"
+          size="small"
+          sx={{ position: 'absolute', top: 12, right: 12 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+
+        <Box
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '18px',
+            display: 'grid',
+            placeItems: 'center',
+            color: theme.palette.error.dark,
+            bgcolor: alpha(danger, 0.18),
+            border: `1px solid ${alpha(danger, 0.28)}`,
+            mb: 1.75,
+          }}
+        >
+          <WarningAmberIcon sx={{ fontSize: 30 }} />
+        </Box>
+
+        <Typography
+          sx={{
+            fontWeight: 900,
+            fontSize: '1.2rem',
+            letterSpacing: '-0.04em',
+            lineHeight: 1.2,
+          }}
+        >
+          Estoque insuficiente
+        </Typography>
+        <Typography
+          sx={{ mt: 0.85, fontSize: '0.86rem', lineHeight: 1.55, color: 'text.secondary' }}
+        >
+          A quantidade lançada é maior que o estoque disponível. O medicamento será incluído na
+          planilha IMH e o estoque ficará negativo (não será zerado).
+        </Typography>
+      </Box>
+
+      <Box sx={{ px: 3, pb: 1.25, display: 'grid', gap: 0.85 }}>
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1.15,
+            borderRadius: 2.5,
+            border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+            bgcolor: alpha(theme.palette.primary.main, 0.03),
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 800, letterSpacing: 0.6, color: 'text.secondary' }}
+          >
+            MEDICAMENTO
+          </Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', mt: 0.25 }}>
+            {medicamento || '—'}
+          </Typography>
+          {lote ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.35 }}>
+              Lote {lote}
+            </Typography>
+          ) : null}
+        </Box>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: 0.75,
+          }}
+        >
+          {[
+            { label: 'Estoque', value: formatEstoqueNumero(estoqueAtual) },
+            { label: 'QTD lançada', value: formatEstoqueNumero(qtdBaixa) },
+            { label: 'Após baixa', value: formatEstoqueNumero(estoqueApos), highlight: true },
+          ].map((item) => (
+            <Box
+              key={item.label}
+              sx={{
+                px: 1,
+                py: 1,
+                borderRadius: 2,
+                textAlign: 'center',
+                border: `1px solid ${
+                  item.highlight ? alpha(danger, 0.35) : alpha(theme.palette.divider, 0.9)
+                }`,
+                bgcolor: item.highlight ? alpha(danger, 0.08) : alpha(theme.palette.common.black, 0.02),
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.65rem' }}
+              >
+                {item.label}
+              </Typography>
+              <Typography
+                sx={{
+                  mt: 0.25,
+                  fontWeight: 900,
+                  fontSize: '1.05rem',
+                  letterSpacing: '-0.03em',
+                  color: item.highlight ? 'error.main' : 'text.primary',
+                }}
+              >
+                {item.value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          px: 3,
+          pb: 2.5,
+          pt: 1,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
+      >
+        <Button
+          variant="text"
+          onClick={onCancel}
+          sx={{ textTransform: 'none', fontWeight: 700 }}
+        >
+          Cancelar
+        </Button>
+        <Button
+          variant="contained"
+          color="error"
+          onClick={onConfirm}
+          sx={{ textTransform: 'none', fontWeight: 800, borderRadius: 2 }}
+        >
+          Continuar mesmo assim
         </Button>
       </Box>
     </Dialog>

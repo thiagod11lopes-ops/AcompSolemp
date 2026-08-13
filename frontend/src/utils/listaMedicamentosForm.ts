@@ -44,15 +44,22 @@ export function parseListaMedQtdNumber(raw: string): number {
 }
 
 export function formatListaMedQtd(raw: string): string {
+  const negative = raw.trim().startsWith('-')
   const cleaned = raw.replace(/[^\d,]/g, '')
   const firstComma = cleaned.indexOf(',')
-  if (firstComma === -1) return cleaned.slice(0, 12)
-  const intPart = cleaned.slice(0, firstComma).replace(/,/g, '').slice(0, 9)
-  const decPart = cleaned
-    .slice(firstComma + 1)
-    .replace(/,/g, '')
-    .slice(0, 3)
-  return `${intPart},${decPart}`
+  let result: string
+  if (firstComma === -1) {
+    result = cleaned.slice(0, 12)
+  } else {
+    const intPart = cleaned.slice(0, firstComma).replace(/,/g, '').slice(0, 9)
+    const decPart = cleaned
+      .slice(firstComma + 1)
+      .replace(/,/g, '')
+      .slice(0, 3)
+    result = `${intPart},${decPart}`
+  }
+  if (!result) return negative ? '-' : ''
+  return negative ? `-${result}` : result
 }
 
 export function getListaMedEstoqueStatus(linha: ListaMedicamentosLinha): ListaMedEstoqueStatus {
@@ -117,6 +124,49 @@ function normMedKey(value: string): string {
   return value.trim().toUpperCase()
 }
 
+/** Resultado previsto da baixa (permite estoque negativo). */
+export function previewBaixaEstoqueListaMedicamentos(
+  form: ListaMedicamentosFormData | undefined,
+  itemPme: string,
+  lote: string,
+  qtdBaixaRaw: string,
+): {
+  encontrado: boolean
+  medicamento: string
+  lote: string
+  estoqueAtual: number
+  qtdBaixa: number
+  estoqueApos: number
+  insuficiente: boolean
+} | null {
+  const qtdBaixa = parseListaMedQtdNumber(qtdBaixaRaw)
+  const nome = itemPme.trim()
+  if (!nome || qtdBaixa <= 0) return null
+  const alvo = findListaMedicamentoByNomeELote(itemPme, lote, form)
+  if (!alvo) {
+    return {
+      encontrado: false,
+      medicamento: nome,
+      lote: lote.trim(),
+      estoqueAtual: 0,
+      qtdBaixa,
+      estoqueApos: -qtdBaixa,
+      insuficiente: true,
+    }
+  }
+  const estoqueAtual = parseListaMedQtdNumber(alvo.qtd)
+  const estoqueApos = estoqueAtual - qtdBaixa
+  return {
+    encontrado: true,
+    medicamento: alvo.medicamento.trim() || nome,
+    lote: alvo.lote.trim() || lote.trim(),
+    estoqueAtual,
+    qtdBaixa,
+    estoqueApos,
+    insuficiente: estoqueApos < 0,
+  }
+}
+
 function ajustarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
   itemPme: string,
@@ -135,7 +185,8 @@ function ajustarEstoqueListaMedicamentos(
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== alvo.id) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
-    const next = modo === 'baixar' ? Math.max(0, atual - qtd) : atual + qtd
+    // Baixa pode deixar o estoque negativo (ex.: 2 − 4 = −2).
+    const next = modo === 'baixar' ? atual - qtd : atual + qtd
     changed = true
     return { ...linha, qtd: formatQtdEstoque(next) }
   })
