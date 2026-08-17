@@ -40,6 +40,8 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
     om: '',
     unidadeFornecimento: '',
     quantidadeAdquirida: '',
+    qtdFornecidaOse: '',
+    maneiraFornecimento: '',
   }
 }
 
@@ -85,6 +87,16 @@ export const IMH_MEDICAMENTO_COLUNAS = [
   {
     key: 'quantidadeAdquirida',
     label: 'QUANTIDADE ADQUIRIDA PELA OMH/OMFM',
+    width: 160,
+  },
+  {
+    key: 'qtdFornecidaOse',
+    label: 'QTD FORNECIDA POR OSE',
+    width: 140,
+  },
+  {
+    key: 'maneiraFornecimento',
+    label: 'MANEIRA DE FORNECIMENTO',
     width: 160,
   },
 ] as const
@@ -145,7 +157,9 @@ export function linhaImhMedicamentoHasContent(linha: ImhMedicamentoLinha): boole
       linha.valorIndenizar.trim() ||
       linha.om.trim() ||
       linha.unidadeFornecimento.trim() ||
-      linha.quantidadeAdquirida.trim(),
+      linha.quantidadeAdquirida.trim() ||
+      linha.qtdFornecidaOse.trim() ||
+      linha.maneiraFornecimento.trim(),
   )
 }
 
@@ -175,6 +189,8 @@ export function normalizeImhMedicamentoForm(
         om: item.om ?? '',
         unidadeFornecimento: item.unidadeFornecimento ?? '',
         quantidadeAdquirida: item.quantidadeAdquirida ?? '',
+        qtdFornecidaOse: item.qtdFornecidaOse ?? '',
+        maneiraFornecimento: item.maneiraFornecimento ?? '',
         listaMedicamentoId:
           typeof item.listaMedicamentoId === 'string' ? item.listaMedicamentoId : undefined,
         estoqueQtdMovida:

@@ -492,6 +492,10 @@ export interface ImhMedicamentoLinha {
   om: string
   unidadeFornecimento: string
   quantidadeAdquirida: string
+  /** Quantidade fornecida por OSE */
+  qtdFornecidaOse: string
+  /** Maneira de fornecimento (ex.: PELA OMH, POR OSE) */
+  maneiraFornecimento: string
   /** ID da linha na Lista de Medicamentos usada na baixa de estoque */
   listaMedicamentoId?: string
   /** QTD efetivamente movimentada no estoque (baixa/devolução) */

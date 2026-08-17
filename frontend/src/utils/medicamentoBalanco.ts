@@ -423,6 +423,8 @@ export function createMedicamentoBalancoExemploInput(
         om: 'HNMD',
         unidadeFornecimento: isAmox ? 'CAP' : 'COMP',
         quantidadeAdquirida: String(qtd),
+        qtdFornecidaOse: '',
+        maneiraFornecimento: idx % 2 === 0 ? 'PELA OMH' : 'POR OSE',
       }
     }),
   }

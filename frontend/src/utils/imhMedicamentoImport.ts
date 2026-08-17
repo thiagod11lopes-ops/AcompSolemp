@@ -83,6 +83,16 @@ function mapHeaderColumns(
       map.unidadeFornecimento = index
     } else if (n.includes('QUANTIDADE') && n.includes('ADQUIRIDA')) {
       map.quantidadeAdquirida = index
+    } else if (
+      (n.includes('QTD') || n.includes('QUANTIDADE')) &&
+      n.includes('OSE') &&
+      (n.includes('FORNEC') || n.includes('FORNECIDA'))
+    ) {
+      map.qtdFornecidaOse = index
+    } else if (n.includes('MANEIRA') && n.includes('FORNECIMENTO')) {
+      map.maneiraFornecimento = index
+    } else if (n.includes('MANEIRA') && (n.includes('DISPENS') || n.includes('FORNEC'))) {
+      map.maneiraFornecimento = index
     }
   })
   return map
@@ -189,6 +199,14 @@ export function parseImhMedicamentoFromGrid(rows: string[][]): ImhMedicamentoFor
       quantidadeAdquirida:
         colMap.quantidadeAdquirida !== undefined
           ? formatImhMedQtd(cell(rows, r, colMap.quantidadeAdquirida))
+          : '',
+      qtdFornecidaOse:
+        colMap.qtdFornecidaOse !== undefined
+          ? formatImhMedQtd(cell(rows, r, colMap.qtdFornecidaOse))
+          : '',
+      maneiraFornecimento:
+        colMap.maneiraFornecimento !== undefined
+          ? formatImhMedUppercase(cell(rows, r, colMap.maneiraFornecimento))
           : '',
     })
 

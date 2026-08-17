@@ -1262,6 +1262,32 @@ export function ImhMedicamentoForm({
               fullWidth
               sx={compactFieldSx}
             />
+            <TextField
+              label="QUANTIDADE ADQUIRIDA PELA OMH/OMFM"
+              value={linhaDraft.quantidadeAdquirida}
+              onChange={(e) => updateDraft({ quantidadeAdquirida: formatImhMedQtd(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="QTD FORNECIDA POR OSE"
+              value={linhaDraft.qtdFornecidaOse}
+              onChange={(e) => updateDraft({ qtdFornecidaOse: formatImhMedQtd(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
+            <TextField
+              label="MANEIRA DE FORNECIMENTO"
+              value={linhaDraft.maneiraFornecimento}
+              onChange={(e) =>
+                updateDraft({ maneiraFornecimento: formatImhMedUppercase(e.target.value) })
+              }
+              size="small"
+              fullWidth
+              sx={compactFieldSx}
+            />
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
