@@ -3,7 +3,10 @@ import type {
   ListaMedicamentoMovimentacao,
   ListaMedicamentosFormData,
 } from '@/types'
-import { IMH_MEDICAMENTO_COLUNAS } from '@/utils/imhMedicamentoForm'
+import {
+  IMH_MEDICAMENTO_COLUNAS,
+  IMH_MEDICAMENTO_COLUNAS_ENVIO,
+} from '@/utils/imhMedicamentoForm'
 import {
   parseListaMedQtdNumber,
   resolveListaMedicamentoEstoque,
@@ -67,6 +70,11 @@ export function getImhMedicamentoColunasExibicao(mesReferencia: number): ImhEsto
     { key: 'saidasPaciente', label: 'Saídas para Paciente', width: 140, computed: true },
   ]
   return [...before, ...extra, ...after]
+}
+
+/** Colunas da planilha recebida pela Contabilidade/IMH (sem estoque/lote/validade/UF). */
+export function getImhMedicamentoColunasEnvio(): ImhEstoqueColunaDef[] {
+  return IMH_MEDICAMENTO_COLUNAS_ENVIO.map((col) => ({ ...col }))
 }
 
 function parseImhFlexDate(raw: string): Date | null {

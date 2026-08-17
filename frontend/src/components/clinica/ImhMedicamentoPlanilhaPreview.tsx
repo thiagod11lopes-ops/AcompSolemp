@@ -30,6 +30,7 @@ import {
 } from '@/utils/imhMedicamentoForm'
 import {
   chaveEstoqueImhLinha,
+  getImhMedicamentoColunasEnvio,
   getImhMedicamentoColunasExibicao,
   resumoEstoqueImhColunas,
   valorCelulaImhExibicao,
@@ -126,8 +127,8 @@ export function ImhMedicamentoPlanilhaPreview({
   const mesEstoque = filtroMes && filtroMes >= 1 && filtroMes <= 12 ? filtroMes : new Date().getMonth() + 1
   const anoEstoque = filtroAno && filtroAno > 2000 ? filtroAno : new Date().getFullYear()
   const colunas = useMemo(
-    () => getImhMedicamentoColunasExibicao(mesEstoque),
-    [mesEstoque],
+    () => (readOnly ? getImhMedicamentoColunasEnvio() : getImhMedicamentoColunasExibicao(mesEstoque)),
+    [readOnly, mesEstoque],
   )
   const linhasEstoqueBase = todasLinhasImh ?? value.linhas
   const resumoPorChave = useMemo(() => {

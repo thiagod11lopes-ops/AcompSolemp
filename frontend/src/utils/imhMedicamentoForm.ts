@@ -103,6 +103,33 @@ export const IMH_MEDICAMENTO_COLUNAS = [
 
 export type ImhMedicamentoColunaKey = (typeof IMH_MEDICAMENTO_COLUNAS)[number]['key']
 
+/**
+ * Colunas que seguem para a planilha Contabilidade/IMH ao enviar.
+ * Exclui LOTE, VALIDADE, UNIDADE DE FORNECIMENTO e colunas de estoque da clínica.
+ */
+export const IMH_MEDICAMENTO_COLUNAS_ENVIO_KEYS = [
+  'data',
+  'nip',
+  'nome',
+  'itemPme',
+  'qtd',
+  'valorUnitario',
+  'total',
+  'nipTitular',
+  'postoGrad',
+  'vinculo',
+  'pctIndenizar',
+  'valorIndenizar',
+  'om',
+  'quantidadeAdquirida',
+  'qtdFornecidaOse',
+  'maneiraFornecimento',
+] as const satisfies readonly ImhMedicamentoColunaKey[]
+
+export const IMH_MEDICAMENTO_COLUNAS_ENVIO = IMH_MEDICAMENTO_COLUNAS_ENVIO_KEYS.map(
+  (key) => IMH_MEDICAMENTO_COLUNAS.find((col) => col.key === key)!,
+)
+
 export const IMH_MEDICAMENTO_WRAP_KEYS = new Set<ImhMedicamentoColunaKey>([
   'nome',
   'itemPme',

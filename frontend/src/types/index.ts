@@ -595,7 +595,7 @@ export interface PedidoPlanilhaEnvioState {
   linhas: ImhLinha[]
   /** Linhas no formato Controle SOLEMP (envio Confecção de Solemp). */
   controleSolempLinhas?: ControleSolempLinha[]
-  /** Planilha PME enviada da aba IMH de medicamentos (colunas iguais à origem). */
+  /** Planilha PME enviada da aba IMH de medicamentos (subconjunto de colunas para Contabilidade/IMH). */
   imhMedicamentoLinhas?: ImhMedicamentoLinha[]
   enviadoEm: string
   recebidaEm?: string
