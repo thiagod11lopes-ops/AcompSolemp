@@ -20,16 +20,21 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import type { ImhMedicamentoFormData, ImhMedicamentoLinha } from '@/types'
+import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import {
-  IMH_MEDICAMENTO_COLUNAS,
-  IMH_MEDICAMENTO_WRAP_KEYS,
   calcImhMedicamentoTotalGeral,
   imhMedicamentoHasPreviewContent,
   linhaImhMedicamentoHasContent,
 } from '@/utils/imhMedicamentoForm'
+import {
+  chaveEstoqueImhLinha,
+  getImhMedicamentoColunasExibicao,
+  resumoEstoqueImhColunas,
+  valorCelulaImhExibicao,
+  type ImhEstoqueResumoColunas,
+} from '@/utils/imhMedicamentoEstoqueColunas'
 import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import '@/components/clinica/spreadsheet-excel.css'
@@ -49,6 +54,11 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   onDeleteLinha?: (linhaId: string) => void
   /** Visualização sem checklist, envio, importação ou ações. */
   readOnly?: boolean
+  listaMedicamentos?: ListaMedicamentosFormData
+  /** Todas as linhas IMH (sem filtro de dia) para totais mensais de saída. */
+  todasLinhasImh?: ImhMedicamentoLinha[]
+  filtroMes?: number
+  filtroAno?: number
 }
 
 function dash(value: string): string {
@@ -100,6 +110,10 @@ export function ImhMedicamentoPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
   readOnly = false,
+  listaMedicamentos,
+  todasLinhasImh,
+  filtroMes,
+  filtroAno,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
   const visible = imhMedicamentoHasPreviewContent(value)
@@ -109,7 +123,26 @@ export function ImhMedicamentoPlanilhaPreview({
     [value.finalizedImhIds],
   )
   const selection = selectedImhIds ?? new Set<string>()
-  const colCount = IMH_MEDICAMENTO_COLUNAS.length + (readOnly ? 0 : 2)
+  const mesEstoque = filtroMes && filtroMes >= 1 && filtroMes <= 12 ? filtroMes : new Date().getMonth() + 1
+  const anoEstoque = filtroAno && filtroAno > 2000 ? filtroAno : new Date().getFullYear()
+  const colunas = useMemo(
+    () => getImhMedicamentoColunasExibicao(mesEstoque),
+    [mesEstoque],
+  )
+  const linhasEstoqueBase = todasLinhasImh ?? value.linhas
+  const resumoPorChave = useMemo(() => {
+    const map = new Map<string, ImhEstoqueResumoColunas>()
+    for (const linha of value.linhas) {
+      const chave = chaveEstoqueImhLinha(linha)
+      if (map.has(chave)) continue
+      map.set(
+        chave,
+        resumoEstoqueImhColunas(linha, listaMedicamentos, linhasEstoqueBase, mesEstoque, anoEstoque),
+      )
+    }
+    return map
+  }, [value.linhas, listaMedicamentos, linhasEstoqueBase, mesEstoque, anoEstoque])
+  const colCount = colunas.length + (readOnly ? 0 : 2)
 
   const selecionaveis = useMemo(
     () =>
@@ -341,7 +374,7 @@ export function ImhMedicamentoPlanilhaPreview({
                         </Box>
                       </TableCell>
                     ) : null}
-                    {IMH_MEDICAMENTO_COLUNAS.map((col) => (
+                    {colunas.map((col) => (
                       <TableCell
                         key={col.key}
                         sx={{ ...headerSx, minWidth: col.width, width: col.width }}
@@ -398,12 +431,12 @@ export function ImhMedicamentoPlanilhaPreview({
                             />
                           </TableCell>
                         ) : null}
-                        {IMH_MEDICAMENTO_COLUNAS.map((col) => (
+                        {colunas.map((col) => (
                           <TableCell
                             key={col.key}
                             sx={{
                               ...cellSx,
-                              ...(IMH_MEDICAMENTO_WRAP_KEYS.has(col.key)
+                              ...(col.key === 'nome' || col.key === 'itemPme'
                                 ? {
                                     whiteSpace: 'pre-wrap',
                                     maxWidth: col.width + 40,
@@ -412,7 +445,13 @@ export function ImhMedicamentoPlanilhaPreview({
                                 : null),
                             }}
                           >
-                            {dash(String(linha[col.key] ?? ''))}
+                            {dash(
+                              valorCelulaImhExibicao(
+                                col,
+                                linha,
+                                resumoPorChave.get(chaveEstoqueImhLinha(linha)),
+                              ),
+                            )}
                           </TableCell>
                         ))}
                         {!readOnly ? (
@@ -466,10 +505,16 @@ export function ImhMedicamentoPlanilhaPreview({
                 ? `Modelo IHM — PME (${mesReferencia})`
                 : 'Modelo IHM — PME',
               fileBaseName: 'IMH-Medicamento',
-              headers: IMH_MEDICAMENTO_COLUNAS.map((c) => c.label),
-              columnWidths: IMH_MEDICAMENTO_COLUNAS.map((c) => c.width),
+              headers: colunas.map((c) => c.label),
+              columnWidths: colunas.map((c) => c.width),
               rows: value.linhas.map((linha) =>
-                IMH_MEDICAMENTO_COLUNAS.map((c) => String(linha[c.key] ?? '')),
+                colunas.map((c) =>
+                  valorCelulaImhExibicao(
+                    c,
+                    linha,
+                    resumoPorChave.get(chaveEstoqueImhLinha(linha)),
+                  ),
+                ),
               ),
             },
             formato,

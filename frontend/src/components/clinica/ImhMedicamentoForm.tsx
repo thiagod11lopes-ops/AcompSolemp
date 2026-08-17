@@ -1412,6 +1412,10 @@ export function ImhMedicamentoForm({
           onEnviarImh={handleEnviarImh}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
+          listaMedicamentos={listaMedicamentos}
+          todasLinhasImh={value.linhas}
+          filtroMes={filtroMes}
+          filtroAno={filtroAno}
         />
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
