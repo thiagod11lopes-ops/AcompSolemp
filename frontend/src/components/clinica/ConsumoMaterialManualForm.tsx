@@ -81,6 +81,9 @@ const manualSchemaClinica = z.object({
   unidadeFornecimento: z.string(),
   quantidadeAdquirida: z.string(),
   maneiraDispensacao: z.string(),
+  valorIndenizar: z.string(),
+  qtdFornecidaOse: z.string(),
+  maneiraFornecimento: z.string(),
 })
 
 const manualSchemaMedicamento = z.object({
@@ -119,6 +122,9 @@ const manualSchemaMedicamento = z.object({
   unidadeFornecimento: z.string(),
   quantidadeAdquirida: z.string(),
   maneiraDispensacao: z.string(),
+  valorIndenizar: z.string(),
+  qtdFornecidaOse: z.string(),
+  maneiraFornecimento: z.string(),
 })
 
 const GROUP_ICONS = {
@@ -141,7 +147,7 @@ const GROUP_TITLES = {
 
 type FormGroup = keyof typeof GROUP_TITLES
 
-const GROUPS_CLINICA: FormGroup[] = ['paciente', 'clinico', 'financeiro']
+const GROUPS_CLINICA: FormGroup[] = ['paciente', 'clinico', 'financeiro', 'medicamento', 'titular', 'imh']
 const GROUPS_MEDICAMENTO: FormGroup[] = ['paciente', 'medicamento', 'titular', 'imh']
 
 const MULTILINE_FIELDS = new Set([
@@ -150,6 +156,7 @@ const MULTILINE_FIELDS = new Set([
   'materiais',
   'danfe',
   'maneiraDispensacao',
+  'maneiraFornecimento',
 ])
 
 const NIP_FIELDS = new Set(['nip', 'nipTitular'])
@@ -371,7 +378,8 @@ export function ConsumoMaterialManualForm({
                   fieldKey === 'nome' ||
                   fieldKey === 'procedimento' ||
                   fieldKey === 'itemPme' ||
-                  fieldKey === 'maneiraDispensacao'
+                  fieldKey === 'maneiraDispensacao' ||
+                  fieldKey === 'maneiraFornecimento'
                 const tinyField =
                   fieldKey === 'numero' ||
                   fieldKey === 'et' ||

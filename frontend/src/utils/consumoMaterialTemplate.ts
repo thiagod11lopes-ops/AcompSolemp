@@ -1,6 +1,7 @@
 import seedData from '@/data/consumoMaterialSeed.json'
 import type { ConsumoPlanilhaClinicaState, Pedido, PedidoPlanilhaEnvioState, ProcessoArquivado } from '@/types'
 import {
+  calcValorIndenizar,
   formatValorBrasileiro,
   parseValorBrasileiro,
   type ConsumoMaterialRow,
@@ -63,6 +64,9 @@ export function createLinhaVazia(id: string, numero: string): ConsumoMaterialRow
     unidadeFornecimento: '',
     quantidadeAdquirida: '',
     maneiraDispensacao: '',
+    valorIndenizar: '',
+    qtdFornecidaOse: '',
+    maneiraFornecimento: '',
   }
 }
 
@@ -81,7 +85,10 @@ function normalizeConsumoSeedRow(row: ConsumoMaterialRow): ConsumoMaterialRow {
     om: row.om ?? '',
     unidadeFornecimento: row.unidadeFornecimento ?? '',
     quantidadeAdquirida: row.quantidadeAdquirida ?? '',
-    maneiraDispensacao: row.maneiraDispensacao ?? '',
+    maneiraDispensacao: row.maneiraDispensacao ?? row.maneiraFornecimento ?? '',
+    valorIndenizar: row.valorIndenizar ?? '',
+    qtdFornecidaOse: row.qtdFornecidaOse ?? '',
+    maneiraFornecimento: row.maneiraFornecimento ?? row.maneiraDispensacao ?? '',
   }
 }
 
@@ -156,6 +163,16 @@ export function getConsumoMaterialDemoMedicamento(): ConsumoMaterialRow[] {
       unidadeFornecimento: med.uf,
       quantidadeAdquirida: String(100 + index * 10),
       maneiraDispensacao: index % 2 === 0 ? 'PELA OMH' : 'POR OSE',
+      valorIndenizar:
+        paciente.vinculo === 'TITULAR'
+          ? total > 0
+            ? formatValorBrasileiro(total)
+            : unitario
+          : total > 0
+            ? formatValorBrasileiro(total * 0.5)
+            : '',
+      qtdFornecidaOse: index % 2 === 0 ? '' : String(qtd),
+      maneiraFornecimento: index % 2 === 0 ? 'PELA OMH' : 'POR OSE',
     }
   })
 }
@@ -265,6 +282,9 @@ function buildRowFromPedido(pedido: Pedido): ConsumoMaterialRow {
     unidadeFornecimento: '',
     quantidadeAdquirida: '',
     maneiraDispensacao: '',
+    valorIndenizar: '',
+    qtdFornecidaOse: '',
+    maneiraFornecimento: '',
   }
 }
 
@@ -518,43 +538,58 @@ export function atualizarCampoConsumo(
   field: ConsumoMaterialColunaKey,
   value: string,
 ): ConsumoMaterialRow {
+  let next: ConsumoMaterialRow
   if (field === 'valor' || field === 'valorUnitario') {
     const valorNumericoCampo = parseValorBrasileiro(value)
     if (field === 'valor') {
-      return {
+      next = {
         ...row,
         valor: value,
         valorNumerico: valorNumericoCampo,
       }
+    } else {
+      const qtd = parseInt(row.qtd || '1', 10) || 1
+      const total = valorNumericoCampo * qtd
+      next = {
+        ...row,
+        valorUnitario: value,
+        valor: total > 0 ? formatValorBrasileiro(total) : row.valor,
+        valorNumerico: total > 0 ? total : row.valorNumerico,
+      }
     }
-    const qtd = parseInt(row.qtd || '1', 10) || 1
-    const total = valorNumericoCampo * qtd
-    return {
-      ...row,
-      valorUnitario: value,
-      valor: total > 0 ? formatValorBrasileiro(total) : row.valor,
-      valorNumerico: total > 0 ? total : row.valorNumerico,
-    }
-  }
-  if (field === 'qtd') {
+  } else if (field === 'qtd') {
     const qtd = parseInt(value || '1', 10) || 1
     const unit = parseValorBrasileiro(row.valorUnitario)
     const total = unit > 0 ? unit * qtd : row.valorNumerico
-    return {
+    next = {
       ...row,
       qtd: value,
       valor: total > 0 && unit > 0 ? formatValorBrasileiro(total) : row.valor,
       valorNumerico: unit > 0 ? total : row.valorNumerico,
     }
-  }
-  if (field === 'itemPme') {
-    return {
+  } else if (field === 'itemPme') {
+    next = {
       ...row,
       itemPme: value,
       materiais: value || row.materiais,
     }
+  } else if (field === 'maneiraFornecimento') {
+    next = {
+      ...row,
+      maneiraFornecimento: value,
+      maneiraDispensacao: value || row.maneiraDispensacao,
+    }
+  } else {
+    next = { ...row, [field]: value }
   }
-  return { ...row, [field]: value }
+
+  if (field === 'valor' || field === 'valorUnitario' || field === 'qtd' || field === 'pctIndenizar') {
+    next = {
+      ...next,
+      valorIndenizar: calcValorIndenizar(next.valorNumerico, next.pctIndenizar),
+    }
+  }
+  return next
 }
 
 export function syncExtraRowsFromMesSheet(

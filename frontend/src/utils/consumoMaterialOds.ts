@@ -39,6 +39,9 @@ export interface ConsumoMaterialRow {
   unidadeFornecimento: string
   quantidadeAdquirida: string
   maneiraDispensacao: string
+  valorIndenizar: string
+  qtdFornecidaOse: string
+  maneiraFornecimento: string
 }
 
 export type ConsumoMaterialHeader = {
@@ -71,6 +74,42 @@ export const CONSUMO_MATERIAL_HEADERS: readonly ConsumoMaterialHeader[] = [
   { key: 'danfe', label: 'DANFE', group: 'financeiro', width: 120 },
   { key: 'valor', label: 'VALOR', group: 'financeiro', width: 110 },
   { key: 'ata', label: 'ATA', group: 'financeiro', width: 72 },
+  {
+    key: 'itemPme',
+    label: 'ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO',
+    group: 'medicamento',
+    width: 280,
+  },
+  { key: 'qtd', label: 'QTD', group: 'medicamento', width: 56 },
+  { key: 'valorUnitario', label: 'VALOR UNITÁRIO', group: 'medicamento', width: 110 },
+  { key: 'nipTitular', label: 'NIP TITULAR', group: 'titular', width: 108 },
+  { key: 'vinculo', label: 'VINCULO', group: 'titular', width: 100 },
+  {
+    key: 'pctIndenizar',
+    label: '% A INDENIZAR',
+    group: 'imh',
+    width: 100,
+  },
+  { key: 'valorIndenizar', label: 'VALOR A INDENIZAR', group: 'imh', width: 130 },
+  { key: 'om', label: 'OM', group: 'imh', width: 80 },
+  {
+    key: 'quantidadeAdquirida',
+    label: 'QUANTIDADE ADQUIRIDA PELA OMH/OMFM',
+    group: 'imh',
+    width: 160,
+  },
+  {
+    key: 'qtdFornecidaOse',
+    label: 'QTD FORNECIDA POR OSE',
+    group: 'imh',
+    width: 140,
+  },
+  {
+    key: 'maneiraFornecimento',
+    label: 'MANEIRA DE FORNECIMENTO',
+    group: 'imh',
+    width: 160,
+  },
 ]
 
 /** Colunas do Modelo IHM — PME (Novo Lançamento do setor medicamento). */
@@ -96,6 +135,7 @@ export const CONSUMO_MEDICAMENTO_PME_HEADERS: readonly ConsumoMaterialHeader[] =
     group: 'imh',
     width: 100,
   },
+  { key: 'valorIndenizar', label: 'VALOR A INDENIZAR', group: 'imh', width: 130 },
   { key: 'om', label: 'OM', group: 'imh', width: 80 },
   {
     key: 'unidadeFornecimento',
@@ -110,10 +150,16 @@ export const CONSUMO_MEDICAMENTO_PME_HEADERS: readonly ConsumoMaterialHeader[] =
     width: 160,
   },
   {
-    key: 'maneiraDispensacao',
-    label: 'MANEIRA DE DISPENSAÇÃO (PELA OMH-OMFM/POR OSE)',
+    key: 'qtdFornecidaOse',
+    label: 'QTD FORNECIDA POR OSE',
     group: 'imh',
-    width: 200,
+    width: 140,
+  },
+  {
+    key: 'maneiraFornecimento',
+    label: 'MANEIRA DE FORNECIMENTO',
+    group: 'imh',
+    width: 160,
   },
 ]
 
@@ -157,9 +203,12 @@ const HEADER_TO_FIELD: Record<string, keyof ConsumoMaterialRow> = {
   'QUANTIDADE ADQUIRIDA PELA OMH/OMFM': 'quantidadeAdquirida',
   'MANEIRA DE DISPENSAÇÃO (PELA OMH-OMFM/POR OSE)': 'maneiraDispensacao',
   'MANEIRA DE DISPENSACAO (PELA OMH-OMFM/POR OSE)': 'maneiraDispensacao',
+  'VALOR A INDENIZAR': 'valorIndenizar',
+  'QTD FORNECIDA POR OSE': 'qtdFornecidaOse',
+  'MANEIRA DE FORNECIMENTO': 'maneiraFornecimento',
 }
 
-const MAX_COLS = 40
+const MAX_COLS = 48
 const NIP_PATTERN = /\d{1,2}\.\d{4}\.\d{1,2}/
 
 function decodeXmlText(value: string): string {
@@ -267,6 +316,9 @@ NORMALIZED_HEADER_TO_FIELD[normalizeHeader('CALCULADO NO SETOR DE IMH % A INDENI
   'pctIndenizar'
 NORMALIZED_HEADER_TO_FIELD[normalizeHeader('Calculado no setor de IMH % A INDENIZAR')] =
   'pctIndenizar'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('VALOR A INDENIZAR')] = 'valorIndenizar'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('QTD FORNECIDA POR OSE')] = 'qtdFornecidaOse'
+NORMALIZED_HEADER_TO_FIELD[normalizeHeader('MANEIRA DE FORNECIMENTO')] = 'maneiraFornecimento'
 
 function normalizeSpreadsheetCell(value: string, field?: keyof ConsumoMaterialRow): string {
   const trimmed = value.trim()
@@ -303,6 +355,21 @@ export function parseValorBrasileiro(value: string): number {
   const cleaned = trimmed.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')
   const n = parseFloat(cleaned)
   return Number.isFinite(n) ? n : 0
+}
+
+function parsePctIndenizar(raw: string): number {
+  const cleaned = raw.trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
+  const n = parseFloat(cleaned)
+  if (!Number.isFinite(n) || n < 0) return 0
+  if (n > 1) return n / 100
+  if (n === 1) return 1
+  return n
+}
+
+export function calcValorIndenizar(valorTotal: number, pctRaw: string): string {
+  const pct = parsePctIndenizar(pctRaw)
+  if (valorTotal <= 0 || pct <= 0) return ''
+  return formatValorBrasileiro(valorTotal * pct)
 }
 
 export function parseDataBrasileira(value: string): string {
@@ -412,7 +479,11 @@ function rowFromCells(
     om: get('om'),
     unidadeFornecimento: get('unidadeFornecimento'),
     quantidadeAdquirida: get('quantidadeAdquirida'),
-    maneiraDispensacao: get('maneiraDispensacao'),
+    maneiraDispensacao: get('maneiraDispensacao') || get('maneiraFornecimento'),
+    valorIndenizar:
+      get('valorIndenizar') || calcValorIndenizar(valorNumerico, get('pctIndenizar')),
+    qtdFornecidaOse: get('qtdFornecidaOse'),
+    maneiraFornecimento: get('maneiraFornecimento') || get('maneiraDispensacao'),
   }
 }
 
@@ -768,6 +839,9 @@ export type ManualRowFormData = {
   unidadeFornecimento: string
   quantidadeAdquirida: string
   maneiraDispensacao: string
+  valorIndenizar: string
+  qtdFornecidaOse: string
+  maneiraFornecimento: string
 }
 
 export const EMPTY_MANUAL_ROW: ManualRowFormData = {
@@ -803,6 +877,9 @@ export const EMPTY_MANUAL_ROW: ManualRowFormData = {
   unidadeFornecimento: '',
   quantidadeAdquirida: '',
   maneiraDispensacao: '',
+  valorIndenizar: '',
+  qtdFornecidaOse: '',
+  maneiraFornecimento: '',
 }
 
 export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): ConsumoMaterialRow {
@@ -862,7 +939,11 @@ export function buildConsumoRowFromManual(data: ManualRowFormData, id: string): 
     om: data.om.trim(),
     unidadeFornecimento: data.unidadeFornecimento.trim(),
     quantidadeAdquirida: data.quantidadeAdquirida.trim(),
-    maneiraDispensacao: data.maneiraDispensacao.trim(),
+    maneiraDispensacao: data.maneiraDispensacao.trim() || data.maneiraFornecimento.trim(),
+    valorIndenizar:
+      data.valorIndenizar.trim() || calcValorIndenizar(valorNumerico, data.pctIndenizar),
+    qtdFornecidaOse: data.qtdFornecidaOse.trim(),
+    maneiraFornecimento: data.maneiraFornecimento.trim() || data.maneiraDispensacao.trim(),
   }
 }
 
@@ -899,7 +980,10 @@ export function consumoMaterialRowToManual(row: ConsumoMaterialRow): ManualRowFo
     om: row.om ?? '',
     unidadeFornecimento: row.unidadeFornecimento ?? '',
     quantidadeAdquirida: row.quantidadeAdquirida ?? '',
-    maneiraDispensacao: row.maneiraDispensacao ?? '',
+    maneiraDispensacao: row.maneiraDispensacao ?? row.maneiraFornecimento ?? '',
+    valorIndenizar: row.valorIndenizar ?? '',
+    qtdFornecidaOse: row.qtdFornecidaOse ?? '',
+    maneiraFornecimento: row.maneiraFornecimento ?? row.maneiraDispensacao ?? '',
   }
 }
 
@@ -948,6 +1032,9 @@ export const MANUAL_ROW_EXAMPLE: ManualRowFormData = {
   unidadeFornecimento: '',
   quantidadeAdquirida: '',
   maneiraDispensacao: '',
+  valorIndenizar: '',
+  qtdFornecidaOse: '',
+  maneiraFornecimento: '',
 }
 
 /** Exemplo alinhado às colunas do Modelo IHM — PME (medicamento). */
@@ -968,4 +1055,7 @@ export const MANUAL_ROW_EXAMPLE_MEDICAMENTO: ManualRowFormData = {
   unidadeFornecimento: 'SE',
   quantidadeAdquirida: '1000',
   maneiraDispensacao: 'PELA OMH',
+  valorIndenizar: 'R$ 2.058,92',
+  qtdFornecidaOse: '',
+  maneiraFornecimento: 'PELA OMH',
 }

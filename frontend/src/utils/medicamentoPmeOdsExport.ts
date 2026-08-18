@@ -39,10 +39,12 @@ function buildDataRow(row: ConsumoMaterialRow): string {
     strCell(row.postoGrad) +
     strCell(row.vinculo) +
     strCell(row.pctIndenizar) +
+    strCell(row.valorIndenizar) +
     strCell(row.om) +
     strCell(row.unidadeFornecimento) +
     strCell(row.quantidadeAdquirida) +
-    strCell(row.maneiraDispensacao) +
+    strCell(row.qtdFornecidaOse) +
+    strCell(row.maneiraFornecimento || row.maneiraDispensacao) +
     '</table:table-row>'
   )
 }

@@ -116,7 +116,8 @@ export function MedicamentoPmeVerificacaoModal({
               >
                 {CONSUMO_MEDICAMENTO_PME_HEADERS.map((col) => {
                   const value = String(row[col.key] ?? '')
-                  const isPreco = col.key === 'valor' || col.key === 'valorUnitario'
+                  const isPreco =
+                    col.key === 'valor' || col.key === 'valorUnitario' || col.key === 'valorIndenizar'
                   return (
                     <TableCell
                       key={col.key}
