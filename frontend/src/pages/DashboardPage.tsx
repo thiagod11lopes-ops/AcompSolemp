@@ -236,7 +236,7 @@ export default function DashboardPage() {
       emptyMessage: 'Nenhum processo próximo do vencimento.',
     },
     tempoMedio: {
-      title: 'Tempo médio até conclusão',
+      title: 'Tempo Médio de Finalização',
       subtitle: `Média de ${metrics.tempoMedioPagamento} dias entre solicitação e conclusão`,
       accent: premiumTokens.primary,
       icon: <ScheduleIcon />,
@@ -420,7 +420,7 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
           <KpiCard
-            title="Tempo médio p/ pagamento"
+            title="Tempo Médio de Finalização"
             value={`${metrics.tempoMedioPagamento}d`}
             subtitle="Clique para detalhes"
             icon={<ScheduleIcon />}
