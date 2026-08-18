@@ -9,6 +9,10 @@ import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { enrichPedido } from '@/utils/workflow'
 import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
 import {
+  devolverPlanilhaParaDestino,
+  type DestinoDevolucaoPlanilha,
+} from '@/utils/devolverPlanilha'
+import {
   PERFIS_SETOR,
   PERFIS_SOLEMP,
   PERFIL_PARA_CHAVE_ETAPA,
@@ -191,6 +195,25 @@ export const ordenadorService = {
     const pedido = data.pedidos.find((p) => p.id === pedidoId)!
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao atualizar pedido')
+    return enriched
+  },
+
+  async devolverPlanilha(
+    pedidoId: string,
+    usuarioId: string,
+    destino: DestinoDevolucaoPlanilha,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 400)
+    const { data: initialData, usuario } = await resolveDataForSetor(usuarioId)
+    if (!usuario) throw new Error('Usuário não autorizado')
+
+    const data = devolverPlanilhaParaDestino(initialData, pedidoId, destino, usuario)
+    await persistSetorData(data)
+
+    const pedido = data.pedidos.find((p) => p.id === pedidoId)
+    if (!pedido) throw new Error('Pedido não encontrado')
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao devolver planilha')
     return enriched
   },
 

@@ -21,6 +21,7 @@ import DownloadIcon from '@mui/icons-material/Download'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import SendIcon from '@mui/icons-material/Send'
 import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { DevolverPlanilhaButton } from '@/components/ordenador/DevolverPlanilhaButton'
 import { formatValorBrasileiro, type ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import type { MesConsumoModelo } from '@/utils/consumoMaterialTemplate'
 import {
@@ -56,6 +57,7 @@ interface MaterialEnvioModalProps {
   onConfirm: (planilha: ControleSolempPlanilha) => void
   planilhaInicial?: ControleSolempPlanilha | null
   title?: string
+  onDevolver?: () => void
 }
 
 export function MaterialEnvioModal({
@@ -68,6 +70,7 @@ export function MaterialEnvioModal({
   onConfirm,
   planilhaInicial = null,
   title,
+  onDevolver,
 }: MaterialEnvioModalProps) {
   const [linhas, setLinhas] = useState<ControleSolempLinha[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -154,6 +157,7 @@ export function MaterialEnvioModal({
           <Typography variant="caption" sx={{ opacity: 0.9 }}>
             {linhas.length} linha(s)
           </Typography>
+          {onDevolver ? <DevolverPlanilhaButton onClick={onDevolver} disabled={busy} /> : null}
           <IconButton edge="end" color="inherit" onClick={onClose} disabled={busy} aria-label="Fechar">
             <CloseIcon />
           </IconButton>
@@ -323,6 +327,14 @@ export function MaterialEnvioModal({
             borderTop: EXCEL_SHEET.border,
           }}
         >
+          {onDevolver ? (
+            <DevolverPlanilhaButton
+              onClick={onDevolver}
+              disabled={busy}
+              color="primary"
+              variant="outlined"
+            />
+          ) : null}
           <Button onClick={onClose} disabled={busy} color="inherit" size="small">
             {readOnly ? 'Fechar' : 'Cancelar'}
           </Button>

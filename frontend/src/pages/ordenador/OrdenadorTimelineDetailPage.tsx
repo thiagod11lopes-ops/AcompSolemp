@@ -7,10 +7,11 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
 import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
+import { useAssinarSolemp, useDevolverPlanilha, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
+import { DevolverPlanilhaModal } from '@/components/ordenador/DevolverPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
-import { useAssinarSolemp, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -22,6 +23,7 @@ import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioServic
 import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
+import { listarDestinosDevolucaoPlanilha, type DestinoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
@@ -31,8 +33,10 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
+  const devolverPlanilha = useDevolverPlanilha()
   const [auditoriaOpen, setAuditoriaOpen] = useState(false)
   const [planilhaOpen, setPlanilhaOpen] = useState(false)
+  const [devolverOpen, setDevolverOpen] = useState(false)
   const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
   const [planilhaEncaminhadaImh, setPlanilhaEncaminhadaImh] = useState(false)
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
@@ -133,6 +137,11 @@ export default function OrdenadorTimelineDetailPage() {
     }
   }, [pedido, etapas, chavePerfil, fluxoDiretoImh])
 
+  const destinosDevolucao = useMemo(() => {
+    if (!pedido || !chavePerfil) return []
+    return listarDestinosDevolucaoPlanilha(pedido, etapas, planilhaEnvio, chavePerfil)
+  }, [pedido, etapas, planilhaEnvio, chavePerfil])
+
   if (isLoading) return <LoadingSpinner />
 
   if (!pedido) {
@@ -191,6 +200,23 @@ export default function OrdenadorTimelineDetailPage() {
     pedidoPlanilhaEnvioService.markRecebida(pedido.id)
     setPlanilhaRecebida(true)
     setPlanilhaOpen(true)
+  }
+
+  const handleAbrirDevolver = () => {
+    setDevolverOpen(true)
+  }
+
+  const handleConfirmarDevolver = (destino: DestinoDevolucaoPlanilha) => {
+    devolverPlanilha.mutate(
+      { pedidoId: pedido.id, destino },
+      {
+        onSuccess: () => {
+          setDevolverOpen(false)
+          setPlanilhaOpen(false)
+          navigatePortal('/ordenador/timelines')
+        },
+      },
+    )
   }
 
   const handleEncaminharImh = () => {
@@ -326,6 +352,15 @@ export default function OrdenadorTimelineDetailPage() {
               : undefined
         }
         onClose={() => setPlanilhaOpen(false)}
+        onDevolver={handleAbrirDevolver}
+      />
+
+      <DevolverPlanilhaModal
+        open={devolverOpen}
+        destinos={destinosDevolucao}
+        loading={devolverPlanilha.isPending}
+        onClose={() => setDevolverOpen(false)}
+        onConfirmar={handleConfirmarDevolver}
       />
 
       <SetorConclusaoModal

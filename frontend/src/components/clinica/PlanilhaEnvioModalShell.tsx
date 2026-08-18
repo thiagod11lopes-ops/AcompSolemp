@@ -75,6 +75,7 @@ export interface PlanilhaEnvioModalShellProps {
   disabled?: boolean
   exportError?: string | null
   onClose: () => void
+  headerCloseExtra?: ReactNode
   onCabecalhoChange: (field: keyof ImhCabecalho, value: string) => void
   onLinhaChange: (id: string, field: ImhColunaKey, value: string) => void
   onInserirLinha: (linhaId: string, position: InserirLinhaPosicao) => void
@@ -95,6 +96,7 @@ export function PlanilhaEnvioModalShell({
   disabled = false,
   exportError,
   onClose,
+  headerCloseExtra,
   onCabecalhoChange,
   onLinhaChange,
   onInserirLinha,
@@ -159,6 +161,7 @@ export function PlanilhaEnvioModalShell({
             <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
               Total: {formatValorBrasileiro(totalGeral)}
             </Typography>
+            {headerCloseExtra}
             <IconButton edge="end" onClick={onClose} disabled={disabled} color="inherit" aria-label="Fechar">
               <CloseIcon />
             </IconButton>

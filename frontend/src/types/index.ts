@@ -27,6 +27,7 @@ export type NotificationType =
   | 'REVERSAO_TIMELINE'
   | 'RESPOSTA_GESTOR'
   | 'ETAPA_PENDENTE'
+  | 'PLANILHA_DEVOLVIDA'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 

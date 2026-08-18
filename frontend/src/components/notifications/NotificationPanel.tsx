@@ -22,6 +22,12 @@ import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import type { Notification } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
+  if (n.tipo === 'PLANILHA_DEVOLVIDA' && n.pedidoId) {
+    if (n.perfilDestino === 'CLINICA' || n.perfilDestino === 'MEDICAMENTO' || n.perfilDestino === 'EMPENHADO') {
+      return `/clinica/timeline/${n.pedidoId}`
+    }
+    return `/ordenador/timelines/${n.pedidoId}`
+  }
   if (n.tipo === 'REVERSAO_TIMELINE') return '/gestor/reversoes'
   if (n.tipo === 'RESPOSTA_GESTOR' && n.pedidoId) return `/clinica/timeline/${n.pedidoId}`
   if (n.tipo === 'ETAPA_PENDENTE' || n.tipo === 'PAGAMENTO_PENDENTE') {

@@ -4,6 +4,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModalShell'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
+import { DevolverPlanilhaButton } from '@/components/ordenador/DevolverPlanilhaButton'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { calcImhMedicamentoTotalGeral } from '@/utils/imhMedicamentoForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
@@ -16,6 +17,7 @@ interface AuditoriaPlanilhaModalProps {
   title?: string
   /** Preferência de visualização quando o pedido tem ambos os formatos. */
   preferFormato?: 'imh' | 'controleSolemp'
+  onDevolver?: () => void
 }
 
 export function AuditoriaPlanilhaModal({
@@ -25,6 +27,7 @@ export function AuditoriaPlanilhaModal({
   onClose,
   title,
   preferFormato,
+  onDevolver,
 }: AuditoriaPlanilhaModalProps) {
   if (!planilha) return null
 
@@ -58,9 +61,12 @@ export function AuditoriaPlanilhaModal({
                 {total > 0 ? ` · Total ${formatValorBrasileiro(total)}` : ''}
               </Typography>
             </Box>
-            <IconButton edge="end" onClick={onClose} color="inherit" aria-label="Fechar">
-              <CloseIcon />
-            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+              {onDevolver ? <DevolverPlanilhaButton onClick={onDevolver} /> : null}
+              <IconButton edge="end" onClick={onClose} color="inherit" aria-label="Fechar">
+                <CloseIcon />
+              </IconButton>
+            </Box>
           </Toolbar>
         </AppBar>
         <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1, sm: 2 } }}>
@@ -78,8 +84,16 @@ export function AuditoriaPlanilhaModal({
             borderColor: 'divider',
             display: 'flex',
             justifyContent: 'flex-end',
+            gap: 1,
           }}
         >
+          {onDevolver ? (
+            <DevolverPlanilhaButton
+              onClick={onDevolver}
+              color="primary"
+              variant="outlined"
+            />
+          ) : null}
           <Button onClick={onClose} variant="contained" size="small" sx={{ fontWeight: 700 }}>
             Fechar
           </Button>
@@ -109,6 +123,7 @@ export function AuditoriaPlanilhaModal({
         onClose={onClose}
         onConfirm={() => undefined}
         previewOnly
+        onDevolver={onDevolver}
       />
     )
   }
@@ -126,14 +141,26 @@ export function AuditoriaPlanilhaModal({
       isSaving={false}
       disabled
       onClose={onClose}
+      headerCloseExtra={
+        onDevolver ? <DevolverPlanilhaButton onClick={onDevolver} /> : null
+      }
       onCabecalhoChange={() => {}}
       onLinhaChange={() => {}}
       onInserirLinha={() => {}}
       onExcluirLinha={() => {}}
       footerActions={
-        <Button onClick={onClose} variant="contained" size="small" sx={{ fontWeight: 700 }}>
-          Fechar
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {onDevolver ? (
+            <DevolverPlanilhaButton
+              onClick={onDevolver}
+              color="primary"
+              variant="outlined"
+            />
+          ) : null}
+          <Button onClick={onClose} variant="contained" size="small" sx={{ fontWeight: 700 }}>
+            Fechar
+          </Button>
+        </Box>
       }
     />
   )
