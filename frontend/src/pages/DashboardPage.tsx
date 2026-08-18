@@ -377,22 +377,22 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
           <KpiCard
-            title="Atrasados"
-            value={metrics.atrasados}
-            subtitle="Clique para detalhes"
-            icon={<WarningIcon />}
-            color={premiumTokens.red}
-            onClick={() => setKpiAberto('atrasados')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
             title="Próx. vencimento"
             value={metrics.proximosVencimento}
             subtitle="Clique para detalhes"
             icon={<ScheduleIcon />}
             color={premiumTokens.purple}
             onClick={() => setKpiAberto('proximos')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+          <KpiCard
+            title="Atrasados"
+            value={metrics.atrasados}
+            subtitle="Clique para detalhes"
+            icon={<WarningIcon />}
+            color={premiumTokens.red}
+            onClick={() => setKpiAberto('atrasados')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
