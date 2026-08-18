@@ -4,12 +4,9 @@ import {
   Button,
   Card,
   CardContent,
-  FormControl,
   Grid,
   IconButton,
-  InputLabel,
   MenuItem,
-  Select,
   TextField,
   Tooltip,
   Typography,
@@ -574,25 +571,26 @@ export function ConsumoMaterialManualForm({
                             fieldKey === 'vinculo' ? VINCULO_OPCOES : MANEIRA_FORNECIMENTO_OPCOES
                           const hasValue = Boolean(String(field.value ?? '').trim())
                           return (
-                            <FormControl fullWidth size={fieldSize} sx={denseFieldSx}>
-                              <InputLabel shrink={hasValue || undefined}>{col.label}</InputLabel>
-                              <Select
-                                label={col.label}
-                                value={field.value ?? ''}
-                                onChange={field.onChange}
-                                onBlur={field.onBlur}
-                                displayEmpty
-                              >
-                                <MenuItem value="">
-                                  <em>Selecione</em>
+                            <TextField
+                              select
+                              fullWidth
+                              size={fieldSize}
+                              label={col.label}
+                              value={field.value ?? ''}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              error={Boolean(errors[fieldKey])}
+                              sx={denseFieldSx}
+                              slotProps={{
+                                inputLabel: { shrink: hasValue || undefined },
+                              }}
+                            >
+                              {options.map((option) => (
+                                <MenuItem key={option} value={option}>
+                                  {option}
                                 </MenuItem>
-                                {options.map((option) => (
-                                  <MenuItem key={option} value={option}>
-                                    {option}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
+                              ))}
+                            </TextField>
                           )
                         }}
                       />
