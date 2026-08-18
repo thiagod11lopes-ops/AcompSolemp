@@ -5,7 +5,6 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import WarningIcon from '@mui/icons-material/Warning'
 import ScheduleIcon from '@mui/icons-material/Schedule'
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
@@ -34,7 +33,6 @@ type KpiKey =
   | 'atrasados'
   | 'proximos'
   | 'tempoMedio'
-  | 'pagoMes'
   | 'aguardandoEmpenho'
   | 'totalEmpenhado'
   | 'empenhadoMes'
@@ -256,27 +254,6 @@ export default function DashboardPage() {
       emptyMessage: 'Sem processos concluídos para calcular o tempo médio.',
       showTempoEtapa: true,
     },
-    pagoMes: {
-      title: 'Pago no mês',
-      subtitle: 'Processos concluídos nos últimos 30 dias',
-      accent: premiumTokens.green,
-      icon: <AttachMoneyIcon />,
-      summaries: [
-        { label: 'Valor', value: formatCurrency(metrics.valorPagoMes) },
-        { label: 'Quantidade', value: metrics.quantidadePagoMes },
-      ],
-      columns: [
-        kpiCol.pedido,
-        kpiCol.clinica,
-        kpiCol.empresa,
-        kpiCol.valor,
-        kpiCol.solemp,
-        kpiCol.diasConclusao,
-        kpiCol.inicio,
-      ],
-      rows: metrics.pagoMesItens as unknown as Record<string, unknown>[],
-      emptyMessage: 'Nenhum pagamento registrado nos últimos 30 dias.',
-    },
     aguardandoEmpenho: {
       title: 'Aguardando Empenho',
       subtitle: 'Solemps em Rascunho ainda sem empenho',
@@ -430,17 +407,7 @@ export default function DashboardPage() {
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-          <KpiCard
-            title="Pago no mês"
-            value={formatCurrency(metrics.valorPagoMes)}
-            subtitle="Clique para detalhes"
-            icon={<AttachMoneyIcon />}
-            color={premiumTokens.green}
-            onClick={() => setKpiAberto('pagoMes')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
             title="Aguardando Empenho"
             value={formatCurrency(metrics.valorAguardandoEmpenho)}
@@ -450,7 +417,7 @@ export default function DashboardPage() {
             onClick={() => setKpiAberto('aguardandoEmpenho')}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
             title="Total empenhado do mês"
             value={formatCurrency(mesFiltrado.valor)}
@@ -460,7 +427,7 @@ export default function DashboardPage() {
             onClick={() => setKpiAberto('empenhadoMes')}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
             title="Total Empenhado"
             value={formatCurrency(metrics.valorTotalEmpenhado)}
