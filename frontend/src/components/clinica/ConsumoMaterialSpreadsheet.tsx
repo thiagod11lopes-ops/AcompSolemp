@@ -42,6 +42,7 @@ import {
   CONSUMO_MATERIAL_HEADERS,
   CONSUMO_MEDICAMENTO_PME_HEADERS,
   formatValorBrasileiro,
+  parseValorBrasileiro,
   type ConsumoMaterialHeader,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
@@ -519,15 +520,17 @@ function ConsumoMaterialSpreadsheetInner({
             )
           }
 
-          if (col.key === 'valor' || col.key === 'valorUnitario') {
+          if (col.key === 'valor' || col.key === 'valorUnitario' || col.key === 'valorIndenizar') {
+            const raw =
+              col.key === 'valor'
+                ? row.original.valor
+                : col.key === 'valorUnitario'
+                  ? row.original.valorUnitario
+                  : row.original.valorIndenizar
             const num =
               col.key === 'valor'
                 ? row.original.valorNumerico
-                : parseFloat(
-                    String(row.original.valorUnitario || '')
-                      .replace(/[R$\s.]/g, '')
-                      .replace(',', '.'),
-                  ) || 0
+                : parseValorBrasileiro(String(raw || ''))
             if (!isLinhaPreenchida(row.original) && !num) {
               return <span>&nbsp;</span>
             }

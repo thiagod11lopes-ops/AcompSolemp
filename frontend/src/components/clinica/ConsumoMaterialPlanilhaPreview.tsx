@@ -108,7 +108,10 @@ export function ConsumoMaterialPlanilhaPreview({
     { id: 'paciente', label: 'PACIENTE', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'paciente') },
     { id: 'clinico', label: 'CLÍNICO', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'clinico') },
     { id: 'financeiro', label: 'FINANCEIRO', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'financeiro') },
-  ]
+    { id: 'medicamento', label: 'MEDICAMENTO', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'medicamento') },
+    { id: 'titular', label: 'TITULAR', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'titular') },
+    { id: 'imh', label: 'IMH', keys: CONSUMO_MATERIAL_HEADERS.filter((h) => h.group === 'imh') },
+  ].filter((g) => g.keys.length > 0)
   const colCount = CONSUMO_MATERIAL_HEADERS.length + 1 + (selectionEnabled ? 1 : 0)
 
   return (
@@ -325,7 +328,11 @@ export function ConsumoMaterialPlanilhaPreview({
                           key={col.key}
                           sx={{
                             ...cellSx,
-                            ...(col.key === 'procedimento' || col.key === 'materiais' || col.key === 'diagnostico'
+                            ...(col.key === 'procedimento' ||
+                            col.key === 'materiais' ||
+                            col.key === 'diagnostico' ||
+                            col.key === 'itemPme' ||
+                            col.key === 'maneiraFornecimento'
                               ? {
                                   whiteSpace: 'pre-wrap',
                                   maxWidth: 220,
