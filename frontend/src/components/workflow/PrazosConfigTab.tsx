@@ -56,7 +56,27 @@ export function PrazosConfigTab() {
 
   const updatePrazo = (id: string, prazoDias: number) => {
     const valor = Math.max(0, Math.min(PRAZO_MAX, prazoDias))
-    setLocalEtapas(current.map((e) => (e.id === id ? { ...e, prazoDias: valor } : e)))
+    setLocalEtapas(
+      current.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              prazoDias: valor,
+              alertaVencimentoDias: Math.min(e.alertaVencimentoDias ?? 2, valor),
+            }
+          : e,
+      ),
+    )
+  }
+
+  const updateAlerta = (id: string, alertaVencimentoDias: number) => {
+    setLocalEtapas(
+      current.map((e) => {
+        if (e.id !== id) return e
+        const valor = Math.max(0, Math.min(e.prazoDias, alertaVencimentoDias))
+        return { ...e, alertaVencimentoDias: valor }
+      }),
+    )
   }
 
   const handleReset = () => {
@@ -72,7 +92,7 @@ export function PrazosConfigTab() {
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
         Defina <strong>quantos dias</strong> cada etapa pode permanecer em andamento antes de
-        vencer. O sistema calcula automaticamente o status de cada processo com base nesses prazos.
+        vencer e a partir de quantos dias restantes ela entra em <strong>próximo do vencimento</strong>.
       </Alert>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -84,7 +104,7 @@ export function PrazosConfigTab() {
                 No prazo
               </Typography>
               <Typography variant="caption">
-                Mais de 2 dias restantes para vencer
+                Mais de N dias restantes, conforme o alerta da etapa
               </Typography>
             </Box>
           </Paper>
@@ -96,7 +116,7 @@ export function PrazosConfigTab() {
               <Typography variant="body2" color="text.secondary">
                 Próximo do vencimento
               </Typography>
-              <Typography variant="caption">Faltam 2 dias ou menos</Typography>
+              <Typography variant="caption">Faltam os dias do alerta ou menos</Typography>
             </Box>
           </Paper>
         </Grid>
@@ -144,7 +164,8 @@ export function PrazosConfigTab() {
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                   Responsável: {getRoleLabel(etapa.perfilResponsavel)} · Vence após{' '}
-                  <strong>{etapa.prazoDias} dias</strong> na etapa
+                  <strong>{etapa.prazoDias} dias</strong> · alerta com{' '}
+                  <strong>{etapa.alertaVencimentoDias ?? 2} dias</strong> restantes
                 </Typography>
 
                 {canEdit ? (
@@ -164,19 +185,32 @@ export function PrazosConfigTab() {
                       valueLabelDisplay="auto"
                       valueLabelFormat={(v) => `${v} dias`}
                     />
-                    <TextField
-                      type="number"
-                      size="small"
-                      label="Prazo em dias"
-                      value={etapa.prazoDias}
-                      onChange={(e) => updatePrazo(etapa.id, Number(e.target.value))}
-                      slotProps={{ htmlInput: { min: 0, max: PRAZO_MAX } }}
-                      sx={{ mt: 1, width: 140 }}
-                    />
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Prazo em dias"
+                        value={etapa.prazoDias}
+                        onChange={(e) => updatePrazo(etapa.id, Number(e.target.value))}
+                        slotProps={{ htmlInput: { min: 0, max: PRAZO_MAX } }}
+                        sx={{ width: 140 }}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Próx. vencimento a partir de"
+                        value={etapa.alertaVencimentoDias ?? 2}
+                        onChange={(e) => updateAlerta(etapa.id, Number(e.target.value))}
+                        slotProps={{ htmlInput: { min: 0, max: etapa.prazoDias } }}
+                        helperText="Dias restantes"
+                        sx={{ width: 220 }}
+                      />
+                    </Box>
                   </Box>
                 ) : (
                   <Typography variant="body2">
-                    Prazo configurado: <strong>{etapa.prazoDias} dias</strong>
+                    Prazo configurado: <strong>{etapa.prazoDias} dias</strong> · alerta com{' '}
+                    <strong>{etapa.alertaVencimentoDias ?? 2} dias</strong> restantes
                   </Typography>
                 )}
               </CardContent>

@@ -48,7 +48,7 @@ export function useWorkflowEtapas() {
 export function useUpdateWorkflowPrazos() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (prazos: Array<{ id: string; prazoDias: number }>) =>
+    mutationFn: (prazos: Array<{ id: string; prazoDias: number; alertaVencimentoDias?: number }>) =>
       workflowService.updatePrazos(prazos),
     onSuccess: (etapas) => {
       queryClient.setQueryData(['workflow-etapas'], etapas)

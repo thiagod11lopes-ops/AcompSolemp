@@ -32,6 +32,7 @@ export default function ConfigurarPrazosPage() {
 
   const [setorId, setSetorId] = useState('')
   const [dias, setDias] = useState('')
+  const [alertaDias, setAlertaDias] = useState('')
   const [feedback, setFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
@@ -47,6 +48,9 @@ export default function ConfigurarPrazosPage() {
     setSetorId(id)
     const etapa = etapas.find((item) => item.id === id)
     setDias(etapa ? String(etapa.prazoDias) : '')
+    setAlertaDias(
+      etapa ? String(etapa.alertaVencimentoDias ?? 2) : '',
+    )
   }
 
   const handleAplicar = async () => {
@@ -67,16 +71,34 @@ export default function ConfigurarPrazosPage() {
       })
       return
     }
+    const alertaVencimentoDias = Number(alertaDias)
+    if (!Number.isFinite(alertaVencimentoDias) || alertaVencimentoDias < 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Informe a partir de quantos dias restantes o processo entra em Próx. vencimento.',
+      })
+      return
+    }
+    if (alertaVencimentoDias > prazoDias) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'O alerta de próximo vencimento não pode ser maior que os dias para vencer.',
+      })
+      return
+    }
 
     try {
-      await updatePrazos.mutateAsync([{ id: setorSelecionado.id, prazoDias }])
+      await updatePrazos.mutateAsync([{ id: setorSelecionado.id, prazoDias, alertaVencimentoDias }])
       setFeedback({
         open: true,
         severity: 'success',
-        message: `${setorSelecionado.nome}: ${prazoDias} dia(s).`,
+        message: `${setorSelecionado.nome}: ${prazoDias} dia(s) para vencer · alerta com ${alertaVencimentoDias} dia(s) restantes.`,
       })
       setSetorId('')
       setDias('')
+      setAlertaDias('')
     } catch (error) {
       setFeedback({
         open: true,
@@ -102,7 +124,7 @@ export default function ConfigurarPrazosPage() {
     <>
       <PageHeader
         title="Configurar Prazos"
-        subtitle="Prazos em dias por setor da timeline"
+        subtitle="Prazos em dias por setor e alerta de próximo do vencimento"
         titleVariant="h6"
       />
 
@@ -172,15 +194,15 @@ export default function ConfigurarPrazosPage() {
             <Box
               sx={{
                 overflow: 'hidden',
-                maxWidth: setorSelecionado ? 220 : 0,
+                maxWidth: setorSelecionado ? 520 : 0,
                 opacity: setorSelecionado ? 1 : 0,
                 transition: 'max-width 220ms ease, opacity 180ms ease',
               }}
             >
               {setorSelecionado ? (
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <TextField
-                    label="Dias"
+                    label="Dias para vencer"
                     size="small"
                     value={dias}
                     onChange={(e) => {
@@ -189,10 +211,31 @@ export default function ConfigurarPrazosPage() {
                     }}
                     placeholder="3"
                     autoFocus
-                    sx={{ ...fieldSx, width: 88 }}
+                    helperText="Prazo da etapa"
+                    sx={{ ...fieldSx, width: 128 }}
                     slotProps={{
                       htmlInput: {
                         min: 1,
+                        max: 365,
+                        inputMode: 'numeric',
+                        style: { textAlign: 'center', fontWeight: 700 },
+                      },
+                    }}
+                  />
+                  <TextField
+                    label="Próx. vencimento"
+                    size="small"
+                    value={alertaDias}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 3)
+                      setAlertaDias(raw)
+                    }}
+                    placeholder="2"
+                    helperText="A partir de quantos dias restantes"
+                    sx={{ ...fieldSx, width: 148 }}
+                    slotProps={{
+                      htmlInput: {
+                        min: 0,
                         max: 365,
                         inputMode: 'numeric',
                         style: { textAlign: 'center', fontWeight: 700 },
@@ -205,10 +248,11 @@ export default function ConfigurarPrazosPage() {
                     disableElevation
                     startIcon={<AddRoundedIcon sx={{ fontSize: 16 }} />}
                     onClick={handleAplicar}
-                    disabled={!dias.trim() || updatePrazos.isPending}
+                    disabled={!dias.trim() || !alertaDias.trim() || updatePrazos.isPending}
                     sx={{
                       height: 38,
                       px: 1.5,
+                      mt: '1px',
                       borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 800,
@@ -229,7 +273,7 @@ export default function ConfigurarPrazosPage() {
               color="text.secondary"
               sx={{ display: 'block', mt: 1, fontSize: '0.7rem' }}
             >
-              Selecione o setor para informar os dias.
+              Selecione o setor para informar os dias para vencer e o alerta de próximo do vencimento.
             </Typography>
           )}
         </Box>
@@ -322,18 +366,43 @@ export default function ConfigurarPrazosPage() {
                   </Typography>
                   <Box
                     sx={{
-                      px: 0.9,
-                      py: 0.35,
-                      borderRadius: 999,
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                      color: 'primary.main',
-                      fontWeight: 800,
-                      fontSize: '0.72rem',
-                      letterSpacing: 0.2,
-                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-end',
+                      gap: 0.35,
+                      flexShrink: 0,
                     }}
                   >
-                    {etapa.prazoDias}d
+                    <Box
+                      sx={{
+                        px: 0.9,
+                        py: 0.35,
+                        borderRadius: 999,
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        color: 'primary.main',
+                        fontWeight: 800,
+                        fontSize: '0.72rem',
+                        letterSpacing: 0.2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {etapa.prazoDias}d p/ vencer
+                    </Box>
+                    <Box
+                      sx={{
+                        px: 0.9,
+                        py: 0.35,
+                        borderRadius: 999,
+                        bgcolor: alpha(theme.palette.warning.main, 0.12),
+                        color: 'warning.dark',
+                        fontWeight: 800,
+                        fontSize: '0.72rem',
+                        letterSpacing: 0.2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      alerta {etapa.alertaVencimentoDias ?? 2}d
+                    </Box>
                   </Box>
                 </Box>
               ))}

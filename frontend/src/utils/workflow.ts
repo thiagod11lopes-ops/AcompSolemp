@@ -1,15 +1,16 @@
 import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
-import type {
-  Pedido,
-  PedidoComDetalhes,
-  PrazoStatus,
-  User,
-  WorkflowEtapa,
-  Clinica,
-  Empresa,
-  Material,
-  Solemp,
-  NotaFiscal,
+import {
+  ALERTA_VENCIMENTO_PADRAO_DIAS,
+  type Pedido,
+  type PedidoComDetalhes,
+  type PrazoStatus,
+  type User,
+  type WorkflowEtapa,
+  type Clinica,
+  type Empresa,
+  type Material,
+  type Solemp,
+  type NotaFiscal,
 } from '@/types'
 
 export function resolveEtapaFromRef(
@@ -139,13 +140,25 @@ export function calcularDiasNaEtapa(pedido: Pedido): number {
   return Math.max(0, differenceInCalendarDays(new Date(), inicio))
 }
 
+export function resolveAlertaVencimentoDias(
+  alertaVencimentoDias: number | undefined,
+  prazoDias: number,
+): number {
+  const prazo = Math.max(0, Math.round(prazoDias) || 0)
+  if (typeof alertaVencimentoDias === 'number' && Number.isFinite(alertaVencimentoDias)) {
+    return Math.max(0, Math.min(prazo, Math.round(alertaVencimentoDias)))
+  }
+  return Math.min(ALERTA_VENCIMENTO_PADRAO_DIAS, prazo)
+}
+
 export function calcularPrazoStatus(
   diasNaEtapa: number,
   prazoDias: number,
+  alertaVencimentoDias: number = ALERTA_VENCIMENTO_PADRAO_DIAS,
 ): PrazoStatus {
   const diasRestantes = prazoDias - diasNaEtapa
   if (diasRestantes < 0) return 'ATRASADO'
-  if (diasRestantes <= 2) return 'PROXIMO_VENCIMENTO'
+  if (diasRestantes <= alertaVencimentoDias) return 'PROXIMO_VENCIMENTO'
   return 'NO_PRAZO'
 }
 
@@ -175,7 +188,11 @@ export function enrichPedido(
   const responsavelAtual =
     context.usuarios.find((u) => u.id === pedido.responsavelAtualId) ?? null
   const diasNaEtapa = calcularDiasNaEtapa(pedido)
-  const prazoStatus = calcularPrazoStatus(diasNaEtapa, etapaAtual.prazoDias)
+  const alertaVencimentoDias = resolveAlertaVencimentoDias(
+    etapaAtual.alertaVencimentoDias,
+    etapaAtual.prazoDias,
+  )
+  const prazoStatus = calcularPrazoStatus(diasNaEtapa, etapaAtual.prazoDias, alertaVencimentoDias)
   const diasRestantes = calcularDiasRestantes(diasNaEtapa, etapaAtual.prazoDias)
 
   return {

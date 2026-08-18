@@ -1,8 +1,9 @@
-import type {
-  AppData,
-  User,
-  UserRole,
-  WorkflowEtapa,
+import {
+  ALERTA_VENCIMENTO_PADRAO_DIAS,
+  type AppData,
+  type User,
+  type UserRole,
+  type WorkflowEtapa,
 } from '@/types'
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 import { asStringArray } from '@/utils/format'
@@ -78,6 +79,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Solicitação da Clínica',
     ordem: 1,
     prazoDias: 2,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
@@ -87,6 +89,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Auditoria',
     ordem: 2,
     prazoDias: 3,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'AUDITORIA',
     ativo: true,
   },
@@ -95,6 +98,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Contabilidade/IMH',
     ordem: 3,
     prazoDias: 3,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
@@ -104,6 +108,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Confecção de Solemp',
     ordem: 4,
     prazoDias: 3,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'CONFECCAO_SOLEMP',
     ativo: true,
   },
@@ -112,6 +117,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Solemp em Rascunho',
     ordem: 5,
     prazoDias: 4,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'FINANCEIRO',
     ativo: true,
   },
@@ -120,6 +126,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     nome: 'Empenhado',
     ordem: 6,
     prazoDias: 4,
+    alertaVencimentoDias: 2,
     perfilResponsavel: 'EMPENHADO',
     ativo: true,
   },
@@ -508,6 +515,13 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
       existente.perfilResponsavel = def.perfilResponsavel
       changed = true
     }
+    if (
+      typeof existente.alertaVencimentoDias !== 'number' ||
+      !Number.isFinite(existente.alertaVencimentoDias)
+    ) {
+      existente.alertaVencimentoDias = def.alertaVencimentoDias ?? ALERTA_VENCIMENTO_PADRAO_DIAS
+      changed = true
+    }
   }
 
   // Garante sincronização mesmo se chave já existir com nome legado
@@ -516,6 +530,16 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
     if (!def) continue
     if (etapa.nome !== def.nome) {
       etapa.nome = def.nome
+      changed = true
+    }
+  }
+
+  for (const etapa of data.workflowEtapas) {
+    if (
+      typeof etapa.alertaVencimentoDias !== 'number' ||
+      !Number.isFinite(etapa.alertaVencimentoDias)
+    ) {
+      etapa.alertaVencimentoDias = ALERTA_VENCIMENTO_PADRAO_DIAS
       changed = true
     }
   }

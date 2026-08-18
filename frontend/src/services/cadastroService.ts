@@ -1,11 +1,12 @@
-import type {
-  Clinica,
-  Empresa,
-  HistoricoEvento,
-  Material,
-  Notification,
-  User,
-  WorkflowEtapa,
+import {
+  ALERTA_VENCIMENTO_PADRAO_DIAS,
+  type Clinica,
+  type Empresa,
+  type HistoricoEvento,
+  type Material,
+  type Notification,
+  type User,
+  type WorkflowEtapa,
 } from '@/types'
 import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
@@ -134,22 +135,30 @@ export const workflowService = {
     return etapas
   },
 
-  /** Atualiza só o prazo (dias) das etapas, preservando o restante do workflow. */
+  /** Atualiza prazo e alerta de vencimento das etapas, preservando o restante do workflow. */
   async updatePrazos(
-    prazos: Array<{ id: string; prazoDias: number }>,
+    prazos: Array<{ id: string; prazoDias: number; alertaVencimentoDias?: number }>,
   ): Promise<WorkflowEtapa[]> {
     await delay(null, 300)
     const data = loadAppData()
     const map = new Map(
-      prazos.map((item) => [
-        item.id,
-        Math.max(1, Math.min(365, Math.round(Number(item.prazoDias)) || 1)),
-      ]),
+      prazos.map((item) => {
+        const prazoDias = Math.max(1, Math.min(365, Math.round(Number(item.prazoDias)) || 1))
+        const alertaInformado =
+          item.alertaVencimentoDias === undefined
+            ? undefined
+            : Math.max(0, Math.min(365, Math.round(Number(item.alertaVencimentoDias)) || 0))
+        return [item.id, { prazoDias, alertaInformado }] as const
+      }),
     )
     data.workflowEtapas = data.workflowEtapas.map((etapa) => {
-      const prazoDias = map.get(etapa.id)
-      if (prazoDias === undefined) return etapa
-      return { ...etapa, prazoDias }
+      const update = map.get(etapa.id)
+      if (!update) return etapa
+      const alertaVencimentoDias =
+        update.alertaInformado === undefined
+          ? Math.min(etapa.alertaVencimentoDias ?? ALERTA_VENCIMENTO_PADRAO_DIAS, update.prazoDias)
+          : Math.min(update.alertaInformado, update.prazoDias)
+      return { ...etapa, prazoDias: update.prazoDias, alertaVencimentoDias }
     })
     saveAppData(data)
     return filtrarEtapasParaTimeline(data.workflowEtapas)

@@ -86,12 +86,17 @@ export interface Material {
   unidade: string
 }
 
+/** Dias restantes padrão para o card Próx. vencimento (quando a etapa não tem valor próprio). */
+export const ALERTA_VENCIMENTO_PADRAO_DIAS = 2
+
 export interface WorkflowEtapa {
   id: string
   chave: string
   nome: string
   ordem: number
   prazoDias: number
+  /** A partir de quantos dias restantes o processo entra em Próx. vencimento. */
+  alertaVencimentoDias: number
   perfilResponsavel: UserRole
   ativo: boolean
 }
