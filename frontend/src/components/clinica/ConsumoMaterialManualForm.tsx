@@ -4,8 +4,12 @@ import {
   Button,
   Card,
   CardContent,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   TextField,
   Tooltip,
   Typography,
@@ -28,6 +32,7 @@ import {
   CONSUMO_MATERIAL_HEADERS,
   CONSUMO_MEDICAMENTO_PME_HEADERS,
   consumoMaterialRowToManual,
+  calcValorIndenizar,
   EMPTY_MANUAL_ROW,
   formatValorBrasileiro,
   MANUAL_ROW_EXAMPLE,
@@ -36,6 +41,7 @@ import {
   type ConsumoMaterialRow,
   type ManualRowFormData,
 } from '@/utils/consumoMaterialOds'
+import { pctIndenizarFromVinculo } from '@/utils/imhMedicamentoForm'
 import {
   findMedicamentoPrecoByNome,
   formatPrecoReferenciaMedicamento,
@@ -160,6 +166,9 @@ const MULTILINE_FIELDS = new Set([
 ])
 
 const NIP_FIELDS = new Set(['nip', 'nipTitular'])
+const SELECT_FIELDS = new Set(['vinculo', 'maneiraFornecimento'])
+const VINCULO_OPCOES = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO'] as const
+const MANEIRA_FORNECIMENTO_OPCOES = ['PELA OMH', 'POR OSE'] as const
 
 function calcTotalFromQtdAndUnit(qtdRaw: string, unitRaw: string): string {
   const qtd = parseFloat(qtdRaw.replace(',', '.')) || 0
@@ -214,6 +223,9 @@ export function ConsumoMaterialManualForm({
   const formValues = useWatch({ control })
   const qtdWatch = formValues.qtd
   const valorUnitarioWatch = formValues.valorUnitario
+  const valorWatch = formValues.valor
+  const vinculoWatch = formValues.vinculo
+  const pctWatch = formValues.pctIndenizar
 
   useEffect(() => {
     if (editingRow) {
@@ -234,12 +246,26 @@ export function ConsumoMaterialManualForm({
   }, [modoMedicamento, nextNumero, reset, editingRow])
 
   useEffect(() => {
-    if (!modoMedicamento) return
     const total = calcTotalFromQtdAndUnit(qtdWatch ?? '', valorUnitarioWatch ?? '')
-    if (total) {
+    if (total && total !== (valorWatch ?? '')) {
       setValue('valor', total, { shouldValidate: true, shouldDirty: true })
     }
-  }, [modoMedicamento, qtdWatch, valorUnitarioWatch, setValue])
+  }, [qtdWatch, valorUnitarioWatch, valorWatch, setValue])
+
+  useEffect(() => {
+    const pct = pctIndenizarFromVinculo(vinculoWatch ?? '')
+    if (pct && pct !== (pctWatch ?? '')) {
+      setValue('pctIndenizar', pct, { shouldValidate: true, shouldDirty: true })
+    }
+  }, [vinculoWatch, pctWatch, setValue])
+
+  useEffect(() => {
+    const valorNum = parseValorBrasileiro(valorWatch ?? '')
+    const calculated = calcValorIndenizar(valorNum, pctWatch ?? '')
+    if (calculated !== (formValues.valorIndenizar ?? '')) {
+      setValue('valorIndenizar', calculated, { shouldDirty: true })
+    }
+  }, [valorWatch, pctWatch, formValues.valorIndenizar, setValue])
 
   const applyMedicamentoSelection = (row: MedicamentoPrecoRow | null) => {
     if (!row) {
@@ -372,6 +398,7 @@ export function ConsumoMaterialManualForm({
               {fields.map((col) => {
                 const fieldKey = col.key as keyof ManualRowFormData
                 const isNip = NIP_FIELDS.has(fieldKey)
+                const isSelect = SELECT_FIELDS.has(fieldKey)
                 const isItemPme = modoMedicamento && fieldKey === 'itemPme'
                 const isMultiline = MULTILINE_FIELDS.has(fieldKey)
                 const wideField =
@@ -538,6 +565,37 @@ export function ConsumoMaterialManualForm({
                           )
                         }}
                       />
+                    ) : isSelect ? (
+                      <Controller
+                        name={fieldKey}
+                        control={control}
+                        render={({ field }) => {
+                          const options =
+                            fieldKey === 'vinculo' ? VINCULO_OPCOES : MANEIRA_FORNECIMENTO_OPCOES
+                          const hasValue = Boolean(String(field.value ?? '').trim())
+                          return (
+                            <FormControl fullWidth size={fieldSize} sx={denseFieldSx}>
+                              <InputLabel shrink={hasValue || undefined}>{col.label}</InputLabel>
+                              <Select
+                                label={col.label}
+                                value={field.value ?? ''}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                displayEmpty
+                              >
+                                <MenuItem value="">
+                                  <em>Selecione</em>
+                                </MenuItem>
+                                {options.map((option) => (
+                                  <MenuItem key={option} value={option}>
+                                    {option}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          )
+                        }}
+                      />
                     ) : (
                       <Controller
                         name={fieldKey}
@@ -567,13 +625,19 @@ export function ConsumoMaterialManualForm({
                               placeholder={
                                 fieldKey === 'data'
                                   ? 'dd/mm/aa'
-                                  : fieldKey === 'valor' || fieldKey === 'valorUnitario'
+                                  : fieldKey === 'valor' ||
+                                      fieldKey === 'valorUnitario' ||
+                                      fieldKey === 'valorIndenizar'
                                     ? 'R$ 0,00'
-                                    : undefined
+                                    : fieldKey === 'pctIndenizar'
+                                      ? '20%'
+                                      : undefined
                               }
                               sx={denseFieldSx}
                               slotProps={{
                                 inputLabel: { shrink: hasValue || undefined },
+                                input:
+                                  fieldKey === 'valorIndenizar' ? { readOnly: true } : undefined,
                               }}
                             />
                           )
