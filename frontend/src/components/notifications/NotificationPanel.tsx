@@ -7,6 +7,7 @@ import {
   Box,
   Divider,
   Button,
+  Tooltip,
 } from '@mui/material'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import { useState } from 'react'
@@ -19,7 +20,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
-import type { Notification } from '@/types'
+import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
+import type { Notification, NotificationType } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
   if (n.tipo === 'PLANILHA_DEVOLVIDA' && n.pedidoId) {
@@ -48,7 +50,26 @@ function getNotificationPath(n: Notification): string | null {
   return null
 }
 
-export function NotificationPanel() {
+interface NotificationPanelProps {
+  tipos?: NotificationType[]
+  excludeTipos?: NotificationType[]
+  title?: string
+  emptyText?: string
+  tooltip?: string
+  size?: 'small' | 'medium'
+  /** Evita que o clique no sino dispare o NavLink da aba. */
+  stopClickPropagation?: boolean
+}
+
+export function NotificationPanel({
+  tipos,
+  excludeTipos,
+  title = 'Notificações',
+  emptyText = 'Nenhuma notificação',
+  tooltip = 'Notificações',
+  size = 'medium',
+  stopClickPropagation = false,
+}: NotificationPanelProps) {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser, demoMode } = useAuth()
@@ -61,28 +82,45 @@ export function NotificationPanel() {
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 
-  const unread = notifications.filter((n) => !n.lida).length
+  const visible = notifications.filter((n) =>
+    notificacaoPertenceAosTipos(n, tipos, excludeTipos),
+  )
+  const unread = visible.filter((n) => !n.lida).length
 
   const handleMarkAll = async () => {
-    await notificationService.markAllAsRead(user?.perfil ?? null)
+    await notificationService.markAllAsRead(user?.perfil ?? null, { tipos, excludeTipos })
     queryClient.invalidateQueries({ queryKey: ['notifications'] })
   }
 
   return (
     <>
-      <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
-        <Badge badgeContent={unread} color="error">
-          <NotificationsIcon />
-        </Badge>
-      </IconButton>
+      <Tooltip title={tooltip}>
+        <IconButton
+          color="inherit"
+          size={size}
+          onClick={(e) => {
+            if (stopClickPropagation) {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+            setAnchorEl(e.currentTarget)
+          }}
+          aria-label={tooltip}
+        >
+          <Badge badgeContent={unread} color="error">
+            <NotificationsIcon fontSize={size === 'small' ? 'small' : 'medium'} />
+          </Badge>
+        </IconButton>
+      </Tooltip>
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
         slotProps={{ paper: { sx: { width: 360, maxHeight: 420 } } }}
+        onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
       >
         <Box sx={{ px: 2, py: 1, display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ fontWeight: 700 }}>Notificações</Typography>
+          <Typography sx={{ fontWeight: 700 }}>{title}</Typography>
           {unread > 0 && (
             <Button size="small" onClick={handleMarkAll}>
               Marcar todas
@@ -90,10 +128,10 @@ export function NotificationPanel() {
           )}
         </Box>
         <Divider />
-        {notifications.length === 0 ? (
-          <MenuItem disabled>Nenhuma notificação</MenuItem>
+        {visible.length === 0 ? (
+          <MenuItem disabled>{emptyText}</MenuItem>
         ) : (
-          notifications.slice(0, 8).map((n) => (
+          visible.slice(0, 8).map((n) => (
             <MenuItem
               key={n.id}
               onClick={() => {

@@ -22,6 +22,7 @@ import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { DRAWER_WIDTH } from './Sidebar'
+import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -78,7 +79,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
               {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
             </IconButton>
           </Tooltip>
-          <NotificationPanel />
+          <NotificationPanel excludeTipos={TIPOS_NOTIFICACAO_REVERSAO} />
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
               {user?.nome.charAt(0)}
