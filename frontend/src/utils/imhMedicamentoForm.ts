@@ -48,6 +48,7 @@ export function createEmptyImhMedicamentoLinha(): ImhMedicamentoLinha {
 export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
   linhas: [],
   finalizedImhIds: [],
+  devolvidosImhIds: [],
 }
 
 /** 20% dependente direto; 100% dependente indireto. */
@@ -227,9 +228,11 @@ export function normalizeImhMedicamentoForm(
     .filter((linha) => linhaImhMedicamentoHasContent(linha))
   const linhaIds = new Set(linhas.map((l) => l.id))
   const finalizedRaw = Array.isArray(value?.finalizedImhIds) ? value.finalizedImhIds : []
+  const devolvidosRaw = Array.isArray(value?.devolvidosImhIds) ? value.devolvidosImhIds : []
   return {
     linhas,
     finalizedImhIds: finalizedRaw.filter((id) => typeof id === 'string' && linhaIds.has(id)),
+    devolvidosImhIds: devolvidosRaw.filter((id) => typeof id === 'string' && linhaIds.has(id)),
   }
 }
 
@@ -367,10 +370,15 @@ export function markImhMedicamentoLinhasFinalized(
   ids: string[],
 ): ImhMedicamentoFormData {
   const next = new Set(value.finalizedImhIds ?? [])
-  for (const id of ids) next.add(id)
+  const devolvidos = new Set(value.devolvidosImhIds ?? [])
+  for (const id of ids) {
+    next.add(id)
+    devolvidos.delete(id)
+  }
   return {
     ...value,
     finalizedImhIds: [...next],
+    devolvidosImhIds: [...devolvidos],
   }
 }
 

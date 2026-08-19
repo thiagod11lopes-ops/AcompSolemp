@@ -17,6 +17,7 @@ import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
 import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
+import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 
 export interface CreatePedidoInput {
   id?: string
@@ -77,6 +78,28 @@ export interface ExecutarAcaoInput {
   clinicaId: string
   solempNumero?: string
   notaFiscalNumero?: string
+}
+
+function reabrirPedidoAposDevolucaoOrigem(
+  data: ReturnType<typeof loadAppData>,
+  pedido: ReturnType<typeof loadAppData>['pedidos'][number],
+  novaEtapaId: string,
+  agora: string,
+): boolean {
+  if (pedido.planilhaDevolvidaParaChave !== 'SOLICITACAO') return false
+  limparEstadoDevolucaoPlanilha(data, pedido.id)
+  pedido.planilhaDevolvidaParaChave = null
+  pedido.planilhaDevolvidaEm = null
+  const solicitacao = data.workflowEtapas.find((e) => e.chave === 'SOLICITACAO')
+  if (solicitacao) {
+    const hist = pedido.etapasHistorico.find(
+      (h) => h.etapaId === solicitacao.id || h.etapaNome === solicitacao.nome,
+    )
+    if (hist && !hist.dataConclusao) hist.dataConclusao = agora
+    pedido.etapasAtivasIds = pedido.etapasAtivasIds.filter((id) => id !== solicitacao.id)
+  }
+  pedido.etapaAtualId = novaEtapaId
+  return true
 }
 
 function getContext(data: ReturnType<typeof loadAppData>) {
@@ -353,6 +376,7 @@ export const clinicaPedidoService = {
     }
 
     const agora = new Date().toISOString()
+    reabrirPedidoAposDevolucaoOrigem(data, pedido, targetEtapa.id, agora)
     const countRows = pedido.consumoRowIds?.length ?? 0
 
     if (!hasOpenTrack && !pedido.etapasHistorico.some((h) => h.etapaId === targetEtapa.id)) {
@@ -379,6 +403,7 @@ export const clinicaPedidoService = {
     const temConfeccao = pedido.etapasAtivasIds.includes(confeccao.id)
     if (temAuditoria && temConfeccao) {
       pedido.etapasAtivasIds = [confeccao.id, auditoria.id]
+      pedido.etapaAtualId = confeccao.id
       pedido.observacoes =
         countRows > 1
           ? `Planilha enviada com ${countRows} lançamentos em fluxo paralelo — Auditoria e Confecção de Solemp.`
@@ -398,6 +423,87 @@ export const clinicaPedidoService = {
         fluxo === 'auditoria'
           ? `Planilha também enviada para Auditoria — ${pedido.numero}.`
           : `Planilha também enviada para Confecção de Solemp — ${pedido.numero}.`,
+    })
+
+    notifySetoresEtapasAtivas(data, pedidoId)
+    saveAppData(data)
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
+
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao atualizar pedido')
+    return enriched
+  },
+
+  async reabrirFluxoImh(
+    pedidoId: string,
+    usuarioId: string,
+    clinicaId: string,
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 300)
+
+    if (usuarioId.startsWith(DEMO_EXEMPLO_USER_PREFIX)) {
+      await ensureDemoUserById(usuarioId)
+    }
+
+    const data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    if (!usuario) throw new Error('Usuário não encontrado')
+
+    const pedidoIndex = data.pedidos.findIndex(
+      (p) => p.id === pedidoId && p.clinicaId === clinicaId,
+    )
+    if (pedidoIndex < 0) throw new Error('Pedido não encontrado')
+
+    const etapas = [...data.workflowEtapas].sort((a, b) => a.ordem - b.ordem)
+    const contabilidade = etapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
+    if (!contabilidade) throw new Error('Workflow não configurado')
+
+    const pedido = {
+      ...data.pedidos[pedidoIndex],
+      etapasHistorico: [...data.pedidos[pedidoIndex].etapasHistorico],
+      etapasAtivasIds: [...(data.pedidos[pedidoIndex].etapasAtivasIds ?? [])],
+    }
+    const agora = new Date().toISOString()
+    reabrirPedidoAposDevolucaoOrigem(data, pedido, contabilidade.id, agora)
+
+    const hasOpenTrack = pedido.etapasHistorico.some(
+      (h) => h.etapaId === contabilidade.id && !h.dataConclusao,
+    )
+    if (!hasOpenTrack && !pedido.etapasHistorico.some((h) => h.etapaId === contabilidade.id)) {
+      pedido.etapasHistorico.push({
+        etapaId: contabilidade.id,
+        etapaNome: contabilidade.nome,
+        responsavelId: null,
+        responsavelNome: null,
+        dataInicio: agora,
+        dataConclusao: null,
+        observacao: 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
+        arquivos: [],
+      })
+    }
+    if (!pedido.etapasAtivasIds.includes(contabilidade.id)) {
+      pedido.etapasAtivasIds.push(contabilidade.id)
+    }
+    pedido.etapaAtualId = contabilidade.id
+
+    const countRows = pedido.consumoRowIds?.length ?? 0
+    pedido.observacoes =
+      countRows > 1
+        ? `Planilha reenviada com ${countRows} lançamentos para Contabilidade/IMH.`
+        : `Lançamento reenviado diretamente para Contabilidade/IMH.`
+
+    data.pedidos[pedidoIndex] = pedido
+    data.historico.push({
+      id: `hist-${Date.now()}`,
+      pedidoId,
+      etapaId: contabilidade.id,
+      etapaNome: contabilidade.nome,
+      usuarioId: usuario.id,
+      usuarioNome: usuario.nome,
+      data: agora,
+      observacao: `Planilha reenviada para Contabilidade/IMH — ${pedido.numero}.`,
     })
 
     notifySetoresEtapasAtivas(data, pedidoId)

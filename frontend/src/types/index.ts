@@ -225,6 +225,10 @@ export interface Pedido {
   aguardandoEmpenho?: boolean
   /** ISO da marcação aguardando empenho */
   aguardandoEmpenhoEm?: string
+  /** Chave da etapa que recebeu a planilha devolvida (tarja "Devolvido"). */
+  planilhaDevolvidaParaChave?: string | null
+  /** ISO da última devolução de planilha */
+  planilhaDevolvidaEm?: string | null
 }
 
 export interface Notification {
@@ -396,6 +400,9 @@ export interface ConsumoPlanilhaClinicaState {
   finalizedRowIds: string[]
   finalizedAuditoriaRowIds?: string[]
   finalizedMaterialRowIds?: string[]
+  /** Linhas desmarcadas após devolução da planilha (checkbox laranja). */
+  devolvidosAuditoriaRowIds?: string[]
+  devolvidosMaterialRowIds?: string[]
   /** Planilha principal (aba Consumo Material Consignado) */
   extraRows: ConsumoMaterialRow[]
   /** Planilhas adicionais em abas próprias */
@@ -513,6 +520,8 @@ export interface ImhMedicamentoFormData {
   linhas: ImhMedicamentoLinha[]
   /** Linhas já enviadas para o card Contabilidade/IMH na timeline */
   finalizedImhIds?: string[]
+  /** Linhas desmarcadas após devolução da planilha (checkbox laranja). */
+  devolvidosImhIds?: string[]
 }
 
 /** Linha da lista de medicamentos com preços (portal medicamento) */
@@ -604,6 +613,10 @@ export interface PedidoPlanilhaEnvioState {
   /** Planilha PME enviada da aba IMH de medicamentos (subconjunto de colunas para Contabilidade/IMH). */
   imhMedicamentoLinhas?: ImhMedicamentoLinha[]
   enviadoEm: string
+  /** ISO da devolução da planilha para um setor/origem */
+  devolvidaEm?: string
+  /** Destino da devolução (`SOLICITACAO` = clínica/medicamento) */
+  devolvidaParaChave?: string
   recebidaEm?: string
   /** Planilha encaminhada pela Auditoria ao IMH */
   encaminhadaImhEm?: string

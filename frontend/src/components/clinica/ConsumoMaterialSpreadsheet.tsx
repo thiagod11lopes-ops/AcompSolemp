@@ -88,6 +88,13 @@ const GROUP_LABELS: Record<string, string> = {
 
 const FINALIZED_CHECKBOX_OPACITY = 0.55
 
+const devolvidoCheckboxSx = {
+  color: EXCEL_SHEET.devolvidoCheck,
+  '&.Mui-checked': {
+    color: EXCEL_SHEET.devolvidoCheck,
+  },
+} as const
+
 const finalizedCheckboxSx = {
   color: alpha(EXCEL_SHEET.finalizedCheck, FINALIZED_CHECKBOX_OPACITY),
   opacity: FINALIZED_CHECKBOX_OPACITY,
@@ -136,6 +143,8 @@ interface ConsumoMaterialSpreadsheetProps {
   rowIdsComPedido?: Set<string>
   finalizedAuditoriaRowIds?: Set<string>
   finalizedMaterialRowIds?: Set<string>
+  devolvidosAuditoriaRowIds?: Set<string>
+  devolvidosMaterialRowIds?: Set<string>
   totalLancamentos?: number
   onExcluirTudo?: () => Promise<void>
   onAdicionarPlanilha?: (input: AdicionarPlanilhaInput) => Promise<void>
@@ -170,6 +179,8 @@ function ConsumoMaterialSpreadsheetInner({
   rowIdsComPedido,
   finalizedAuditoriaRowIds,
   finalizedMaterialRowIds,
+  devolvidosAuditoriaRowIds,
+  devolvidosMaterialRowIds,
   totalLancamentos = 0,
   onExcluirTudo,
   onAdicionarPlanilha,
@@ -339,6 +350,21 @@ function ConsumoMaterialSpreadsheetInner({
     [finalizedMaterialRowIds],
   )
 
+  const isDevolvidoAuditoria = useCallback(
+    (row: ConsumoMaterialRow) => Boolean(devolvidosAuditoriaRowIds?.has(row.id)),
+    [devolvidosAuditoriaRowIds],
+  )
+
+  const isDevolvidoMaterial = useCallback(
+    (row: ConsumoMaterialRow) => Boolean(devolvidosMaterialRowIds?.has(row.id)),
+    [devolvidosMaterialRowIds],
+  )
+
+  const isDevolvidoAs = useCallback(
+    (row: ConsumoMaterialRow) => isDevolvidoAuditoria(row) || isDevolvidoMaterial(row),
+    [isDevolvidoAuditoria, isDevolvidoMaterial],
+  )
+
   const handleDesmarcarFinalizado = useCallback(() => {
     if (!finalizadoModalRow || !finalizadoModalCanal || !onDesfinalizarLinha) return
     if (
@@ -411,6 +437,7 @@ function ConsumoMaterialSpreadsheetInner({
       _finalizedIds: Set<string> | undefined,
       podeSelecionar: (row: ConsumoMaterialRow) => boolean,
       isFinalizado: (row: ConsumoMaterialRow) => boolean,
+      isDevolvido: (row: ConsumoMaterialRow) => boolean,
     ): ColumnDef<ConsumoMaterialRow> => ({
       id: columnId,
       size: columnId === 'select-as' ? 48 : 40,
@@ -461,12 +488,19 @@ function ConsumoMaterialSpreadsheetInner({
       },
       cell: ({ row }) => {
         const finalizado = isFinalizado(row.original)
+        const devolvido = !finalizado && isDevolvido(row.original)
         const selecionavel = podeSelecionar(row.original) && !finalizado
         const checked = finalizado || Boolean(selection[row.original.id])
         return (
           <Checkbox
             size="small"
-            className={finalizado ? 'excel-checkbox-finalizado' : undefined}
+            className={
+              finalizado
+                ? 'excel-checkbox-finalizado'
+                : devolvido
+                  ? 'excel-checkbox-devolvido'
+                  : undefined
+            }
             checked={checked}
             disabled={!selecionavel && !finalizado}
             onClick={(e) => {
@@ -482,7 +516,7 @@ function ConsumoMaterialSpreadsheetInner({
               )
             }}
             sx={{
-              ...(finalizado ? finalizedCheckboxSx : undefined),
+              ...(finalizado ? finalizedCheckboxSx : devolvido ? devolvidoCheckboxSx : undefined),
               ...(finalizado ? { cursor: 'pointer' } : undefined),
             }}
           />
@@ -582,6 +616,7 @@ function ConsumoMaterialSpreadsheetInner({
             finalizedAuditoriaRowIds,
             podeSelecionarAuditoria,
             isFinalizadoAuditoria,
+            isDevolvidoAuditoria,
           ),
           ...dataColumns,
         ]
@@ -595,6 +630,7 @@ function ConsumoMaterialSpreadsheetInner({
             finalizedAuditoriaRowIds,
             podeSelecionarAs,
             isFinalizadoAs,
+            isDevolvidoAs,
           ),
           ...dataColumns,
         ]
@@ -614,6 +650,8 @@ function ConsumoMaterialSpreadsheetInner({
     syncAsSelection,
     podeSelecionarAs,
     isFinalizadoAs,
+    isDevolvidoAuditoria,
+    isDevolvidoAs,
   ])
 
   const table = useReactTable({

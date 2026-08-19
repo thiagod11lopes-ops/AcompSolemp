@@ -29,7 +29,7 @@ export interface TimelineNodeData {
   /** Etapa não usada em timeline de medicamento (fluxo direto IMH). */
   dispensavel?: boolean
   /** Tarja lateral no card (ex.: Aguardando empenho). */
-  statusBand?: 'concluido' | 'aguardando' | 'dispensavel'
+  statusBand?: 'concluido' | 'aguardando' | 'devolvido' | 'dispensavel'
   icon?: LucideIcon
 }
 

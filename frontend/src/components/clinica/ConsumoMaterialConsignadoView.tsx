@@ -49,6 +49,8 @@ interface ConsumoMaterialConsignadoViewProps {
   rowIdsComPedido?: Set<string>
   finalizedAuditoriaRowIds?: Set<string>
   finalizedMaterialRowIds?: Set<string>
+  devolvidosAuditoriaRowIds?: Set<string>
+  devolvidosMaterialRowIds?: Set<string>
   totalPedidos?: number
   mesSelecionado?: MesConsumoModelo
   onMesSelecionadoChange?: (mes: MesConsumoModelo) => void
@@ -85,6 +87,8 @@ function ConsumoMaterialConsignadoViewInner({
   rowIdsComPedido,
   finalizedAuditoriaRowIds,
   finalizedMaterialRowIds,
+  devolvidosAuditoriaRowIds,
+  devolvidosMaterialRowIds,
   totalPedidos,
   mesSelecionado: mesControlado,
   onMesSelecionadoChange,
@@ -255,6 +259,8 @@ function ConsumoMaterialConsignadoViewInner({
         rowIdsComPedido={rowIdsComPedido}
         finalizedAuditoriaRowIds={finalizedAuditoriaRowIds}
         finalizedMaterialRowIds={finalizedMaterialRowIds}
+        devolvidosAuditoriaRowIds={devolvidosAuditoriaRowIds}
+        devolvidosMaterialRowIds={devolvidosMaterialRowIds}
         totalLancamentos={totalNoSistema}
         onExcluirTudo={onExcluirTudo}
         onAdicionarPlanilha={onAdicionarPlanilha}

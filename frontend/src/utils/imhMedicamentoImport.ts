@@ -235,6 +235,7 @@ export function mergeImhMedicamentoImport(
   return {
     linhas: [...current.linhas, ...novos],
     finalizedImhIds: current.finalizedImhIds ?? [],
+    devolvidosImhIds: current.devolvidosImhIds ?? [],
   }
 }
 

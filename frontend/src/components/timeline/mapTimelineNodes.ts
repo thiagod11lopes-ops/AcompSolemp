@@ -183,12 +183,22 @@ export function buildTimelineNode(
     status = 'waiting'
   }
 
+  const devolvidoNesteCard =
+    Boolean(pedido.planilhaDevolvidaParaChave) &&
+    pedido.planilhaDevolvidaParaChave === etapa.chave
+
+  if (devolvidoNesteCard && status === 'completed') {
+    status = atual ? resolveNodeStatus(pedido, historico, atual) : 'active'
+  }
+
   const statusBand =
-    status === 'completed'
-      ? 'concluido'
-      : aguardandoEmpenhar
-        ? 'aguardando'
-        : undefined
+    devolvidoNesteCard
+      ? 'devolvido'
+      : status === 'completed'
+        ? 'concluido'
+        : aguardandoEmpenhar
+          ? 'aguardando'
+          : undefined
 
   return {
     id: etapa.id,

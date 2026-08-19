@@ -118,6 +118,7 @@ function invalidateAfterPedidoMutation(
   queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
   queryClient.invalidateQueries({ queryKey: ['historico'] })
   queryClient.invalidateQueries({ queryKey: ['workflow-etapas'] })
+  queryClient.invalidateQueries({ queryKey: ['consumo-planilha'] })
   if (pedidoId) {
     queryClient.invalidateQueries({ queryKey: ['clinica-pedido', pedidoId] })
     queryClient.invalidateQueries({ queryKey: ['demo-pedido', pedidoId] })
@@ -150,6 +151,19 @@ export function useAdicionarFluxoParalelo() {
         user!.id,
         user!.clinicaId!,
       ),
+    onSuccess: (pedido) => {
+      invalidateAfterPedidoMutation(queryClient, pedido.id)
+    },
+  })
+}
+
+export function useReabrirFluxoImh() {
+  const { user } = useClinicaAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: { pedidoId: string }) =>
+      clinicaPedidoService.reabrirFluxoImh(params.pedidoId, user!.id, user!.clinicaId!),
     onSuccess: (pedido) => {
       invalidateAfterPedidoMutation(queryClient, pedido.id)
     },

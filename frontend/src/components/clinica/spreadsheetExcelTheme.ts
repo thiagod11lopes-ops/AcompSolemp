@@ -19,6 +19,8 @@ export const EXCEL_SHEET = {
   sheetBg: '#ffffff',
   /** Checkbox de linha já enviada (tarja/estado finalizado) */
   finalizedCheck: '#9e9e9e',
+  /** Checkbox de linha devolvida (pronta para reenvio) */
+  devolvidoCheck: '#c2410c',
   /** Checkbox selecionado para novo envio */
   selectedCheck: '#217346',
 } as const

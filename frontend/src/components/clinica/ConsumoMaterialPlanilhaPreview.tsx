@@ -32,6 +32,7 @@ interface ConsumoMaterialPlanilhaPreviewProps {
   enviando?: boolean
   selectedIds?: Set<string>
   finalizedIds?: Set<string>
+  devolvidosIds?: Set<string>
   emptyHint?: string
   onImportClick?: () => void
   onEnviarClick?: () => void
@@ -85,6 +86,7 @@ export function ConsumoMaterialPlanilhaPreview({
   enviando = false,
   selectedIds,
   finalizedIds,
+  devolvidosIds,
   emptyHint,
   onImportClick,
   onEnviarClick,
@@ -97,6 +99,7 @@ export function ConsumoMaterialPlanilhaPreview({
   const selectionEnabled = Boolean(onToggleRow)
   const selected = selectedIds ?? new Set<string>()
   const finalized = finalizedIds ?? new Set<string>()
+  const devolvidos = devolvidosIds ?? new Set<string>()
   const selectableRows = rows.filter((row) => !finalized.has(row.id))
   const selectedCount = selectableRows.filter((row) => selected.has(row.id)).length
   const allVisibleSelected =
@@ -292,6 +295,7 @@ export function ConsumoMaterialPlanilhaPreview({
                 {rows.map((row, index) => {
                   const editing = editingRowId === row.id
                   const isFinalized = finalized.has(row.id)
+                  const isDevolvido = !isFinalized && devolvidos.has(row.id)
                   const isChecked = isFinalized || selected.has(row.id)
                   return (
                     <TableRow
@@ -313,13 +317,28 @@ export function ConsumoMaterialPlanilhaPreview({
                         >
                           <Checkbox
                             size="small"
+                            className={
+                              isFinalized
+                                ? 'excel-checkbox-finalizado'
+                                : isDevolvido
+                                  ? 'excel-checkbox-devolvido'
+                                  : undefined
+                            }
                             checked={isChecked}
                             disabled={enviando || isFinalized}
                             onChange={() => onToggleRow?.(row.id)}
                             slotProps={{
                               input: { 'aria-label': `Selecionar MI linha ${index + 1}` },
                             }}
-                            sx={{ p: 0.25 }}
+                            sx={{
+                              p: 0.25,
+                              ...(isDevolvido
+                                ? {
+                                    color: EXCEL_SHEET.devolvidoCheck,
+                                    '&.Mui-checked': { color: EXCEL_SHEET.devolvidoCheck },
+                                  }
+                                : null),
+                            }}
                           />
                         </TableCell>
                       ) : null}

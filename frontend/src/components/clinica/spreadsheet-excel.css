@@ -187,6 +187,15 @@
   opacity: 0.55;
 }
 
+/* Linhas devolvidas: laranja, desmarcadas e reenviáveis */
+.excel-sheet .MuiCheckbox-root.excel-checkbox-devolvido,
+.excel-sheet .MuiCheckbox-root.excel-checkbox-devolvido.Mui-checked,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-devolvido,
+.excel-sheet-grid .excel-data-row .MuiCheckbox-root.excel-checkbox-devolvido.Mui-checked {
+  color: #c2410c !important;
+  opacity: 1;
+}
+
 .excel-sheet-pagination {
   border-top: var(--excel-border);
   background: #f3f3f3;

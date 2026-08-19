@@ -1,5 +1,6 @@
 import type {
   AppData,
+  Pedido,
   PedidoComDetalhes,
   PedidoPlanilhaEnvioState,
   User,
@@ -134,6 +135,101 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function uniqueStrings(values: string[] | undefined): string[] {
+  return [...new Set((values ?? []).filter((id) => typeof id === 'string' && id.length > 0))]
+}
+
+function rowIdsDoPedido(data: AppData, pedido: Pedido): string[] {
+  if (pedido.consumoRowIds?.length) return [...pedido.consumoRowIds]
+  const planilha = data.pedidoPlanilhaEnvio?.[pedido.id]
+  return uniqueStrings(planilha?.imhMedicamentoLinhas?.map((linha) => linha.id))
+}
+
+function moverIdsParaDevolvidos(
+  finalized: string[] | undefined,
+  devolvidos: string[] | undefined,
+  ids: Set<string>,
+): { finalized: string[]; devolvidos: string[] } {
+  const nextFinalized: string[] = []
+  const nextDevolvidos = new Set(uniqueStrings(devolvidos))
+  for (const id of uniqueStrings(finalized)) {
+    if (ids.has(id)) nextDevolvidos.add(id)
+    else nextFinalized.push(id)
+  }
+  return { finalized: nextFinalized, devolvidos: [...nextDevolvidos] }
+}
+
+/** Desmarca linhas enviadas e as pinta de laranja para reenvio (clínica/medicamento). */
+function desmarcarCheckboxesOrigem(data: AppData, pedido: Pedido): void {
+  const ids = new Set(rowIdsDoPedido(data, pedido))
+  if (ids.size === 0) return
+
+  if (!data.consumoPlanilha) data.consumoPlanilha = {}
+  const consumo = data.consumoPlanilha[pedido.clinicaId]
+  if (consumo) {
+    const auditoria = moverIdsParaDevolvidos(
+      consumo.finalizedAuditoriaRowIds ?? consumo.finalizedRowIds,
+      consumo.devolvidosAuditoriaRowIds,
+      ids,
+    )
+    const material = moverIdsParaDevolvidos(
+      consumo.finalizedMaterialRowIds,
+      consumo.devolvidosMaterialRowIds,
+      ids,
+    )
+    data.consumoPlanilha[pedido.clinicaId] = {
+      ...consumo,
+      finalizedRowIds: auditoria.finalized,
+      finalizedAuditoriaRowIds: auditoria.finalized,
+      finalizedMaterialRowIds: material.finalized,
+      devolvidosAuditoriaRowIds: auditoria.devolvidos,
+      devolvidosMaterialRowIds: material.devolvidos,
+    }
+  }
+
+  if (!data.planilhasLivres) data.planilhasLivres = {}
+  const livres = data.planilhasLivres[pedido.clinicaId]
+  if (livres?.imhMedicamento) {
+    const imh = moverIdsParaDevolvidos(
+      livres.imhMedicamento.finalizedImhIds,
+      livres.imhMedicamento.devolvidosImhIds,
+      ids,
+    )
+    data.planilhasLivres[pedido.clinicaId] = {
+      ...livres,
+      imhMedicamento: {
+        ...livres.imhMedicamento,
+        finalizedImhIds: imh.finalized,
+        devolvidosImhIds: imh.devolvidos,
+      },
+    }
+  }
+}
+
+export function pedidoDevolvidoParaOrigem(
+  pedido: Pick<Pedido, 'planilhaDevolvidaParaChave'>,
+): boolean {
+  return pedido.planilhaDevolvidaParaChave === 'SOLICITACAO'
+}
+
+export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): void {
+  const index = data.pedidos.findIndex((item) => item.id === pedidoId)
+  if (index >= 0) {
+    data.pedidos[index] = {
+      ...data.pedidos[index],
+      planilhaDevolvidaParaChave: null,
+      planilhaDevolvidaEm: null,
+    }
+  }
+  const atual = data.pedidoPlanilhaEnvio?.[pedidoId]
+  if (!atual) return
+  data.pedidoPlanilhaEnvio![pedidoId] = {
+    ...atual,
+    devolvidaEm: undefined,
+    devolvidaParaChave: undefined,
+  }
+}
+
 function ajustarFlagsPlanilha(
   data: AppData,
   pedidoId: string,
@@ -145,6 +241,7 @@ function ajustarFlagsPlanilha(
   if (etapaChave === 'SOLICITACAO') {
     data.pedidoPlanilhaEnvio![pedidoId] = {
       ...atual,
+      enviadoEm: '',
       recebidaEm: undefined,
       encaminhadaImhEm: undefined,
       recebidaImhEm: undefined,
@@ -268,6 +365,8 @@ export function devolverPlanilhaParaDestino(
     concluido: false,
     etapasHistorico: proximoHistorico,
     dataEntrega: destino.etapaChave === 'SOLICITACAO' ? null : pedido.dataEntrega,
+    planilhaDevolvidaParaChave: destino.etapaChave,
+    planilhaDevolvidaEm: nowIso(),
   }
 
   if (data.processosArquivados) {
@@ -278,6 +377,21 @@ export function devolverPlanilhaParaDestino(
   }
 
   ajustarFlagsPlanilha(data, pedidoId, destino.etapaChave)
+
+  const planilhaAtual = data.pedidoPlanilhaEnvio?.[pedidoId]
+  if (planilhaAtual) {
+    data.pedidoPlanilhaEnvio![pedidoId] = {
+      ...planilhaAtual,
+      devolvidaEm: nowIso(),
+      devolvidaParaChave: destino.etapaChave,
+    }
+  }
+
+  if (destino.etapaChave === 'SOLICITACAO') {
+    desmarcarCheckboxesOrigem(data, {
+      ...data.pedidos[pedidoIndex],
+    })
+  }
 
   const etapaAtual =
     data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId) ??

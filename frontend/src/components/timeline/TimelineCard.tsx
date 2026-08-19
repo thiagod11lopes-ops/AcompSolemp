@@ -30,13 +30,15 @@ export const TimelineCard = memo(function TimelineCard({
 }: TimelineCardProps) {
   const isDispensavel = node.dispensavel === true
   const isAguardando = !isDispensavel && node.statusBand === 'aguardando'
+  const isDevolvido = !isDispensavel && node.statusBand === 'devolvido'
+  const isOrangeBand = isAguardando || isDevolvido
   const isActive =
     !isDispensavel &&
-    !isAguardando &&
+    !isOrangeBand &&
     (node.isHighlighted || node.status === 'active' || node.status === 'error' || node.status === 'review')
   const showRotateRing = isActive && node.status !== 'completed'
   const isPending = !isDispensavel && nodeNaoIniciada(node)
-  const isCompleted = !isDispensavel && (node.statusBand === 'concluido' || node.status === 'completed')
+  const isCompleted = !isDispensavel && !isDevolvido && (node.statusBand === 'concluido' || node.status === 'completed')
 
   const shellClass = [
     activeShellClass(node.status, isActive),
@@ -44,6 +46,7 @@ export const TimelineCard = memo(function TimelineCard({
     isPending ? 'timeline-card-shell--pending' : '',
     isCompleted ? 'timeline-card-shell--completed' : '',
     isAguardando ? 'timeline-card-shell--aguardando' : '',
+    isDevolvido ? 'timeline-card-shell--devolvido' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -76,7 +79,7 @@ export const TimelineCard = memo(function TimelineCard({
         border: showRotateRing
           ? '1px solid rgba(255,255,255,0.1)'
           : `1px solid ${
-              isAguardando
+              isOrangeBand
                 ? `${timelineTheme.orange}88`
                 : isActive
                   ? `${timelineTheme.blue}66`
@@ -85,7 +88,7 @@ export const TimelineCard = memo(function TimelineCard({
         backdropFilter: 'blur(12px)',
         boxShadow: showRotateRing
           ? `0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)`
-          : isAguardando
+          : isOrangeBand
             ? `0 0 24px ${timelineTheme.orange}28, ${timelineTheme.shadow}`
             : isActive
               ? `0 0 24px ${timelineTheme.blue}22, ${timelineTheme.shadow}`
@@ -96,7 +99,7 @@ export const TimelineCard = memo(function TimelineCard({
       }}
       onClick={onOpenDetails}
     >
-      {isActive && !showRotateRing && !isAguardando && (
+      {isActive && !showRotateRing && !isOrangeBand && (
         <motion.div
           layoutId={`glow-${node.id}`}
           style={{
@@ -123,6 +126,12 @@ export const TimelineCard = memo(function TimelineCard({
       {isAguardando && (
         <div className="timeline-card-aguardando-band" aria-hidden>
           <span>Aguardando</span>
+        </div>
+      )}
+
+      {isDevolvido && (
+        <div className="timeline-card-devolvido-band" aria-hidden>
+          <span>Devolvido</span>
         </div>
       )}
 

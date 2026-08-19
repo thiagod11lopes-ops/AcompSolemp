@@ -31,7 +31,7 @@ import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/Medicamento
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
-import { useCreateClinicaPedido } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos, useReabrirFluxoImh } from '@/hooks/useClinicaPedidos'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import {
   createEmptyImhMedicamentoLinha,
@@ -58,6 +58,7 @@ import {
   ANOS_PLANILHA_DISPONIVEIS,
   createPedidoLoteId,
   dataPertenceAoMes,
+  findPedidoParaMesmasLinhas,
   getMesModeloFromParts,
   type MesConsumoModelo,
 } from '@/utils/consumoMaterialTemplate'
@@ -234,7 +235,9 @@ export function ImhMedicamentoForm({
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
+  const { data: pedidos = [] } = useClinicaPedidos()
   const createPedido = useCreateClinicaPedido()
+  const reabrirImh = useReabrirFluxoImh()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   /** Opções do IMH: cada linha da Lista = um lote; se Lista vazia, cai no catálogo de preços. */
@@ -447,6 +450,7 @@ export function ImhMedicamentoForm({
     onChange({
       linhas: nextLinhas,
       finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => ids.has(id)),
+      devolvidosImhIds: (value.devolvidosImhIds ?? []).filter((id) => ids.has(id)),
     })
   }
 
@@ -479,15 +483,23 @@ export function ImhMedicamentoForm({
 
     setIsEnviando(true)
     try {
-      const pedidoId = createPedidoLoteId()
-      await createPedido.mutateAsync({
-        ...imhMedicamentoLinhasToPedidoInput(selecionadas, clinicaNome),
-        id: pedidoId,
-        fluxo: 'imh',
-      })
+      const ids = selecionadas.map((l) => l.id)
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, ids, clinicaId)
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await reabrirImh.mutateAsync({ pedidoId })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...imhMedicamentoLinhasToPedidoInput(selecionadas, clinicaNome),
+          id: pedidoId,
+          fluxo: 'imh',
+        })
+      }
       pedidoPlanilhaEnvioService.saveImhMedicamentoForPedido(pedidoId, selecionadas)
 
-      const ids = selecionadas.map((l) => l.id)
       onChange(markImhMedicamentoLinhasFinalized(value, ids))
       setSelectedImhIds((prev) => {
         const next = new Set(prev)

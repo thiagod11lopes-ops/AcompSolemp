@@ -55,6 +55,8 @@ export const pedidoPlanilhaEnvioService = {
       encaminhadaImhEm: existing?.encaminhadaImhEm,
       recebidaImhEm: existing?.recebidaImhEm,
       arquivadaEm: existing?.arquivadaEm,
+      devolvidaEm: undefined,
+      devolvidaParaChave: undefined,
     }
 
     data.pedidoPlanilhaEnvio[pedidoId] = snapshot
@@ -82,6 +84,8 @@ export const pedidoPlanilhaEnvioService = {
       encaminhadaImhEm: existing?.encaminhadaImhEm,
       recebidaImhEm: existing?.recebidaImhEm,
       arquivadaEm: existing?.arquivadaEm,
+      devolvidaEm: undefined,
+      devolvidaParaChave: undefined,
     }
 
     data.pedidoPlanilhaEnvio[pedidoId] = snapshot
@@ -110,6 +114,8 @@ export const pedidoPlanilhaEnvioService = {
       encaminhadaImhEm: existing?.encaminhadaImhEm,
       recebidaImhEm: existing?.recebidaImhEm,
       arquivadaEm: existing?.arquivadaEm,
+      devolvidaEm: undefined,
+      devolvidaParaChave: undefined,
     }
 
     data.pedidoPlanilhaEnvio[pedidoId] = snapshot
@@ -128,6 +134,8 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: snapshot.controleSolempLinhas?.map((linha) => ({ ...linha })),
       imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,
+      devolvidaEm: snapshot.devolvidaEm,
+      devolvidaParaChave: snapshot.devolvidaParaChave,
       recebidaEm: snapshot.recebidaEm,
       encaminhadaImhEm: snapshot.encaminhadaImhEm,
       recebidaImhEm: snapshot.recebidaImhEm,

@@ -427,12 +427,20 @@
   white-space: nowrap;
 }
 
-.timeline-card-shell--aguardando .timeline-card-inner {
+.timeline-card-shell--aguardando .timeline-card-inner,
+.timeline-card-shell--devolvido .timeline-card-inner {
   opacity: 0.92;
   border-color: rgba(249, 115, 22, 0.45) !important;
 }
 
-.timeline-card-aguardando-band {
+.timeline-card-shell--aguardando .timeline-card-inner--compact,
+.timeline-card-shell--devolvido .timeline-card-inner--compact,
+.timeline-card-shell--completed .timeline-card-inner--compact {
+  padding-right: 42px;
+}
+
+.timeline-card-aguardando-band,
+.timeline-card-devolvido-band {
   position: absolute;
   top: 0;
   right: 0;
@@ -450,7 +458,8 @@
   box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
-.timeline-card-aguardando-band span {
+.timeline-card-aguardando-band span,
+.timeline-card-devolvido-band span {
   color: #fff;
   font-size: 0.62rem;
   font-weight: 700;

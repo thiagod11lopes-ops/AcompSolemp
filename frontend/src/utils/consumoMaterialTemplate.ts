@@ -348,6 +348,7 @@ export function getRowIdsComPedido(
 ): Set<string> {
   const ids = new Set<string>()
   for (const pedido of pedidos) {
+    if (pedido.planilhaDevolvidaParaChave === 'SOLICITACAO') continue
     if (pedidoPlanilhaArquivada(pedido.id, planilhaEnvio, processosArquivados)) continue
 
     if (pedido.consumoRowIds?.length) {

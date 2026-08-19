@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Autocomplete,
@@ -26,6 +26,7 @@ import {
   useAdicionarFluxoParalelo,
   useCreateClinicaPedido,
   useClinicaPedidos,
+  useConsumoPlanilhaState,
 } from '@/hooks/useClinicaPedidos'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
@@ -108,6 +109,7 @@ export function ConsumoMaterialConsignadoForm({
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
   const { data: pedidos = [] } = useClinicaPedidos()
+  const { data: consumoPlanilha } = useConsumoPlanilhaState(clinicaId)
   const createPedido = useCreateClinicaPedido()
   const adicionarFluxo = useAdicionarFluxoParalelo()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
@@ -130,12 +132,6 @@ export function ConsumoMaterialConsignadoForm({
   }>({ open: false, severity: 'success', message: '' })
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [finalizedAuditoriaIds, setFinalizedAuditoriaIds] = useState<Set<string>>(
-    () => new Set(),
-  )
-  const [finalizedMaterialIds, setFinalizedMaterialIds] = useState<Set<string>>(
-    () => new Set(),
-  )
   const [isEnviando, setIsEnviando] = useState(false)
   const [paraleloOpen, setParaleloOpen] = useState(false)
   const [paraleloRows, setParaleloRows] = useState<ConsumoMaterialRow[]>([])
@@ -168,6 +164,24 @@ export function ConsumoMaterialConsignadoForm({
     [value, mesFiltro, filtroFornecedor],
   )
 
+  const finalizedAuditoriaIds = useMemo(
+    () =>
+      new Set(
+        consumoPlanilha?.finalizedAuditoriaRowIds ?? consumoPlanilha?.finalizedRowIds ?? [],
+      ),
+    [consumoPlanilha],
+  )
+  const finalizedMaterialIds = useMemo(
+    () => new Set(consumoPlanilha?.finalizedMaterialRowIds ?? []),
+    [consumoPlanilha],
+  )
+  const devolvidosIds = useMemo(() => {
+    const next = new Set<string>()
+    for (const id of consumoPlanilha?.devolvidosAuditoriaRowIds ?? []) next.add(id)
+    for (const id of consumoPlanilha?.devolvidosMaterialRowIds ?? []) next.add(id)
+    return next
+  }, [consumoPlanilha])
+
   const finalizedIds = useMemo(() => {
     const next = new Set<string>()
     for (const id of finalizedAuditoriaIds) {
@@ -179,18 +193,7 @@ export function ConsumoMaterialConsignadoForm({
   const rowIdsComPedido = useMemo(() => {
     const data = loadAppData()
     return getRowIdsComPedido(pedidos, data.pedidoPlanilhaEnvio, data.processosArquivados)
-  }, [pedidos, finalizedAuditoriaIds, finalizedMaterialIds])
-
-  useEffect(() => {
-    if (!clinicaId) return
-    const persisted = consumoPlanilhaService.getState(clinicaId)
-    const auditoria = new Set(
-      persisted.finalizedAuditoriaRowIds ?? persisted.finalizedRowIds ?? [],
-    )
-    const material = new Set(persisted.finalizedMaterialRowIds ?? [])
-    setFinalizedAuditoriaIds(auditoria)
-    setFinalizedMaterialIds(material)
-  }, [clinicaId])
+  }, [pedidos])
 
   const emptyHint = useMemo(() => {
     const partes = [mesFiltro.label]
@@ -427,14 +430,6 @@ export function ConsumoMaterialConsignadoForm({
       pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
       pedidoPlanilhaEnvioService.saveControleSolempForPedido(pedidoId, planilhaControle)
 
-      const nextAuditoria = new Set(finalizedAuditoriaIds)
-      const nextMaterial = new Set(finalizedMaterialIds)
-      for (const row of novos) {
-        nextAuditoria.add(row.id)
-        nextMaterial.add(row.id)
-      }
-      setFinalizedAuditoriaIds(nextAuditoria)
-      setFinalizedMaterialIds(nextMaterial)
       consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
       consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
 
@@ -590,6 +585,7 @@ export function ConsumoMaterialConsignadoForm({
           enviando={isEnviando}
           selectedIds={selectedIds}
           finalizedIds={finalizedIds}
+          devolvidosIds={devolvidosIds}
           onImportClick={handleImportClick}
           onEnviarClick={handleAbrirParalelo}
           onToggleRow={handleToggleRow}

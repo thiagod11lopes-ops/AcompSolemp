@@ -8,6 +8,8 @@ const EMPTY_STATE: ConsumoPlanilhaClinicaState = {
   finalizedRowIds: [],
   finalizedAuditoriaRowIds: [],
   finalizedMaterialRowIds: [],
+  devolvidosAuditoriaRowIds: [],
+  devolvidosMaterialRowIds: [],
   extraRows: [],
   abasExtras: [],
   abaAtivaId: CONSUMO_ABA_PRINCIPAL_ID,
@@ -43,6 +45,8 @@ function normalizeState(state: ConsumoPlanilhaClinicaState): ConsumoPlanilhaClin
     extraRows: state.extraRows.map((row) => ({ ...row })),
     abasExtras,
     abaAtivaId,
+    devolvidosAuditoriaRowIds: [...(state.devolvidosAuditoriaRowIds ?? [])],
+    devolvidosMaterialRowIds: [...(state.devolvidosMaterialRowIds ?? [])],
   }
 }
 
@@ -86,6 +90,9 @@ export const consumoPlanilhaService = {
       if (!current.finalizedAuditoriaRowIds!.includes(row.id)) {
         current.finalizedAuditoriaRowIds!.push(row.id)
       }
+      current.devolvidosAuditoriaRowIds = (current.devolvidosAuditoriaRowIds ?? []).filter(
+        (id) => id !== row.id,
+      )
       const index = current.extraRows.findIndex((item) => item.id === row.id)
       if (index >= 0) {
         current.extraRows[index] = row
@@ -125,6 +132,9 @@ export const consumoPlanilhaService = {
       if (!current.finalizedMaterialRowIds!.includes(row.id)) {
         current.finalizedMaterialRowIds!.push(row.id)
       }
+      current.devolvidosMaterialRowIds = (current.devolvidosMaterialRowIds ?? []).filter(
+        (id) => id !== row.id,
+      )
       const index = current.extraRows.findIndex((item) => item.id === row.id)
       if (index >= 0) {
         current.extraRows[index] = row

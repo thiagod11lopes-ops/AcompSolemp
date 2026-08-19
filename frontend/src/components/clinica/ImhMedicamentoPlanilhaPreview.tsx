@@ -92,6 +92,11 @@ const finalizedCheckboxSx = {
   '&.Mui-disabled': { color: EXCEL_SHEET.finalizedCheck },
 } as const
 
+const devolvidoCheckboxSx = {
+  color: EXCEL_SHEET.devolvidoCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.devolvidoCheck },
+} as const
+
 const selectedCheckboxSx = {
   color: EXCEL_SHEET.selectedCheck,
   '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
@@ -122,6 +127,10 @@ export function ImhMedicamentoPlanilhaPreview({
   const finalizedIds = useMemo(
     () => new Set(value.finalizedImhIds ?? []),
     [value.finalizedImhIds],
+  )
+  const devolvidosIds = useMemo(
+    () => new Set(value.devolvidosImhIds ?? []),
+    [value.devolvidosImhIds],
   )
   const selection = selectedImhIds ?? new Set<string>()
   const mesEstoque = filtroMes && filtroMes >= 1 && filtroMes <= 12 ? filtroMes : new Date().getMonth() + 1
@@ -394,6 +403,7 @@ export function ImhMedicamentoPlanilhaPreview({
                   {value.linhas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
                     const finalizado = finalizedIds.has(linha.id)
+                    const devolvido = !finalizado && devolvidosIds.has(linha.id)
                     const checked = finalizado || selection.has(linha.id)
                     return (
                       <TableRow
@@ -418,7 +428,13 @@ export function ImhMedicamentoPlanilhaPreview({
                           >
                             <Checkbox
                               size="small"
-                              className={finalizado ? 'excel-checkbox-finalizado' : undefined}
+                              className={
+                                finalizado
+                                  ? 'excel-checkbox-finalizado'
+                                  : devolvido
+                                    ? 'excel-checkbox-devolvido'
+                                    : undefined
+                              }
                               checked={checked}
                               disabled={finalizado || isEnviando}
                               onChange={(_, nextChecked) => {
@@ -427,7 +443,11 @@ export function ImhMedicamentoPlanilhaPreview({
                               }}
                               sx={{
                                 p: 0,
-                                ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                                ...(finalizado
+                                  ? finalizedCheckboxSx
+                                  : devolvido
+                                    ? devolvidoCheckboxSx
+                                    : selectedCheckboxSx),
                               }}
                             />
                           </TableCell>

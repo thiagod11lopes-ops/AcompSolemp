@@ -6,6 +6,7 @@ import {
   alpha,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
@@ -150,9 +151,27 @@ export default function ClinicaNovoPedidoPage() {
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
+  useEffect(() => {
+    if (!clinicaId) return
+    return subscribeDemoAppDataChanged(() => {
+      const state = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
+      const imh = state.imhMedicamento
+      if (!imh) return
+      setImhMedicamentoForm((prev) => ({
+        ...prev,
+        finalizedImhIds: imh.finalizedImhIds ?? prev.finalizedImhIds,
+        devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
+      }))
+    })
+  }, [clinicaId])
+
   const persist = useCallback(
     (patch: PersistPayload = {}) => {
       if (!clinicaId) return
+      const storedImh = clinicaPlanilhasLivresService.getState(
+        clinicaId,
+        modoRef.current,
+      ).imhMedicamento
       clinicaPlanilhasLivresService.saveState(
         clinicaId,
         {
@@ -162,7 +181,13 @@ export default function ClinicaNovoPedidoPage() {
           conmedComrj: patch.conmed ?? conmedFormRef.current,
           consumoMaterialConsignado: patch.consumo ?? consumoRowsRef.current,
           imh: patch.imh ?? imhFormRef.current,
-          imhMedicamento: patch.imhMedicamento ?? imhMedicamentoFormRef.current,
+          imhMedicamento: patch.imhMedicamento ?? {
+            ...imhMedicamentoFormRef.current,
+            finalizedImhIds:
+              storedImh?.finalizedImhIds ?? imhMedicamentoFormRef.current.finalizedImhIds,
+            devolvidosImhIds:
+              storedImh?.devolvidosImhIds ?? imhMedicamentoFormRef.current.devolvidosImhIds,
+          },
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: patch.lista ?? listaFormRef.current,
