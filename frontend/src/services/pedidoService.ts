@@ -22,6 +22,7 @@ import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
+import { coletarLinhasTotalIndenizado } from '@/utils/totalIndenizado'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
 import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
@@ -463,6 +464,7 @@ export const pedidoService = {
         etapa,
         valor,
       })),
+      totalIndenizadoLinhas: coletarLinhasTotalIndenizado(data),
     }
   },
 

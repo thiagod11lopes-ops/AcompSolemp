@@ -356,6 +356,8 @@ export interface DashboardMetrics {
   rankingGargalos: { etapa: string; mediaDias: number; atrasados: number }[]
   processosPorMes: { mes: string; total: number; concluidos: number }[]
   valorPorEtapa: { etapa: string; valor: number }[]
+  /** Linhas indenizáveis das planilhas (medicamento + OPME) para o card Total Indenizado */
+  totalIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
 }
 
 export interface PedidoComDetalhes extends Pedido {

@@ -16,6 +16,8 @@ import { KpiCard } from '@/components/common/KpiCard'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
+import { TotalIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
+import type { TotalIndenizadoPeriodoTipo } from '@/utils/totalIndenizado'
 import {
   KpiDetalheDialog,
   kpiCol,
@@ -54,6 +56,13 @@ export default function DashboardPage() {
   const { data: metrics, isPending } = useDashboardMetrics()
   const [kpiAberto, setKpiAberto] = useState<KpiKey | null>(null)
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [indenizadoPeriodoTipo, setIndenizadoPeriodoTipo] =
+    useState<TotalIndenizadoPeriodoTipo>('ano')
+  const [indenizadoReferencia, setIndenizadoReferencia] = useState(() => {
+    const d = new Date()
+    d.setMonth(0, 1)
+    return d
+  })
 
   const mesAtual = useMemo(() => {
     const chave = format(new Date(), 'yyyy-MM')
@@ -435,6 +444,15 @@ export default function DashboardPage() {
             icon={<AccountBalanceIcon />}
             color={premiumTokens.green}
             onClick={() => setKpiAberto('totalEmpenhado')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <TotalIndenizadoCard
+            linhas={metrics.totalIndenizadoLinhas ?? []}
+            periodoTipo={indenizadoPeriodoTipo}
+            referencia={indenizadoReferencia}
+            onPeriodoTipoChange={setIndenizadoPeriodoTipo}
+            onReferenciaChange={setIndenizadoReferencia}
           />
         </Grid>
       </Grid>
