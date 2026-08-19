@@ -204,7 +204,15 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 )}
               </Section>
 
-              <Section title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'} icon={FileText}>
+              <Section
+                title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'}
+                icon={FileText}
+                titleClassName={
+                  isDevolvido && justificativaDevolucao
+                    ? 'timeline-drawer-devolucao-title-blink'
+                    : undefined
+                }
+              >
                 {isDevolvido && justificativaDevolucao ? (
                   <p
                     style={{
@@ -297,15 +305,18 @@ export const TimelineDrawer = memo(function TimelineDrawer({
 function Section({
   title,
   icon: Icon,
+  titleClassName,
   children,
 }: {
   title: string
   icon: typeof User
+  titleClassName?: string
   children: React.ReactNode
 }) {
   return (
     <section style={{ marginBottom: 22 }}>
       <h3
+        className={titleClassName}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -314,7 +325,7 @@ function Section({
           fontSize: '0.72rem',
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
-          color: timelineTheme.textSecondary,
+          ...(titleClassName ? {} : { color: timelineTheme.textSecondary }),
           fontWeight: 700,
         }}
       >

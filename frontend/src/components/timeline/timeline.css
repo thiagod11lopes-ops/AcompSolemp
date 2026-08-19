@@ -470,6 +470,22 @@
   white-space: nowrap;
 }
 
+@keyframes tl-devolucao-title-blink {
+  0%,
+  100% {
+    color: #c2410c;
+    opacity: 1;
+  }
+  50% {
+    color: #fb923c;
+    opacity: 0.55;
+  }
+}
+
+.timeline-drawer-devolucao-title-blink {
+  animation: tl-devolucao-title-blink 1.35s ease-in-out infinite;
+}
+
 /* Layout em fluxo: clínica centralizada + ramificações */
 .timeline-flow {
   display: flex;
