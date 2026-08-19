@@ -3,6 +3,7 @@ import {
   List,
   ListItemButton,
   ListItemIcon,
+  ListItemSecondaryAction,
   ListItemText,
   Toolbar,
   Box,
@@ -98,10 +99,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
+            <ListItemText primary={item.label} sx={{ pr: item.path === '/gestor/reversoes' ? 5 : 0 }} />
             {item.path === '/gestor/reversoes' ? (
-              <Box
-                sx={{ ml: 0.5 }}
+              <ListItemSecondaryAction
+                sx={{ right: 8 }}
                 onClick={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
@@ -113,9 +114,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   emptyText="Nenhuma reversão notificada"
                   tooltip="Notificações de reversão"
                   size="small"
+                  iconColor="warning"
                   stopClickPropagation
                 />
-              </Box>
+              </ListItemSecondaryAction>
             ) : null}
           </ListItemButton>
         ))}

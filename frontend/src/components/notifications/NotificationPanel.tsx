@@ -57,6 +57,8 @@ interface NotificationPanelProps {
   emptyText?: string
   tooltip?: string
   size?: 'small' | 'medium'
+  /** Cor do ícone (ex.: warning no menu lateral). */
+  iconColor?: 'inherit' | 'warning' | 'primary'
   /** Evita que o clique no sino dispare o NavLink da aba. */
   stopClickPropagation?: boolean
 }
@@ -68,6 +70,7 @@ export function NotificationPanel({
   emptyText = 'Nenhuma notificação',
   tooltip = 'Notificações',
   size = 'medium',
+  iconColor = 'inherit',
   stopClickPropagation = false,
 }: NotificationPanelProps) {
   const navigate = useNavigate()
@@ -96,7 +99,7 @@ export function NotificationPanel({
     <>
       <Tooltip title={tooltip}>
         <IconButton
-          color="inherit"
+          color={iconColor}
           size={size}
           onClick={(e) => {
             if (stopClickPropagation) {
