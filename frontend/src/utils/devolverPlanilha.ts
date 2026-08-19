@@ -212,6 +212,33 @@ export function pedidoDevolvidoParaOrigem(
   return pedido.planilhaDevolvidaParaChave === 'SOLICITACAO'
 }
 
+/** Extrai a justificativa pura de uma observação de devolução (retrocompatível). */
+export function extrairJustificativaDevolucao(
+  observacao: string | null | undefined,
+): string | null {
+  if (!observacao?.trim()) return null
+  const match = observacao.match(/Justificativa:\s*(.+)$/s)
+  return match?.[1]?.trim() || observacao.trim()
+}
+
+export function resolveJustificativaDevolucaoPedido(
+  pedido: Pick<Pedido, 'planilhaDevolvidaJustificativa' | 'etapasHistorico'>,
+  _etapaChave: string,
+  etapaId?: string,
+  etapaNome?: string,
+): string | null {
+  if (pedido.planilhaDevolvidaJustificativa?.trim()) {
+    return pedido.planilhaDevolvidaJustificativa.trim()
+  }
+  const historico = pedido.etapasHistorico.find(
+    (h) =>
+      h.etapaId === etapaId ||
+      (etapaNome && h.etapaNome === etapaNome) ||
+      h.observacao?.includes('Planilha devolvida'),
+  )
+  return extrairJustificativaDevolucao(historico?.observacao)
+}
+
 export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): void {
   const index = data.pedidos.findIndex((item) => item.id === pedidoId)
   if (index >= 0) {
@@ -219,6 +246,7 @@ export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): 
       ...data.pedidos[index],
       planilhaDevolvidaParaChave: null,
       planilhaDevolvidaEm: null,
+      planilhaDevolvidaJustificativa: null,
     }
   }
   const atual = data.pedidoPlanilhaEnvio?.[pedidoId]
@@ -367,6 +395,7 @@ export function devolverPlanilhaParaDestino(
     dataEntrega: destino.etapaChave === 'SOLICITACAO' ? null : pedido.dataEntrega,
     planilhaDevolvidaParaChave: destino.etapaChave,
     planilhaDevolvidaEm: nowIso(),
+    planilhaDevolvidaJustificativa: justificativaLimpa,
   }
 
   if (data.processosArquivados) {

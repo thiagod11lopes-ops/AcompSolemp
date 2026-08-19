@@ -18,6 +18,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   actions,
 }: TimelineDrawerProps) {
   const historico = detail?.node.historico
+  const isDevolvido = detail?.node.statusBand === 'devolvido'
+  const justificativaDevolucao = detail?.node.justificativaDevolucao?.trim() || null
+  const corDevolvido = '#c2410c'
 
   return (
     <AnimatePresence>
@@ -145,7 +148,13 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               )}
 
               <Section title="Observações" icon={FileText}>
-                {historico?.observacao ?? 'Sem observações registradas.'}
+                {isDevolvido ? (
+                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                    Sem observações adicionais nesta etapa.
+                  </span>
+                ) : (
+                  historico?.observacao ?? 'Sem observações registradas.'
+                )}
               </Section>
 
               <Section title="Arquivos" icon={FolderOpen}>
@@ -162,10 +171,28 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 )}
               </Section>
 
-              <Section title="Comentários" icon={FileText}>
-                <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
-                  Nenhum comentário registrado nesta etapa.
-                </span>
+              <Section title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'} icon={FileText}>
+                {isDevolvido && justificativaDevolucao ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      color: corDevolvido,
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {justificativaDevolucao}
+                  </p>
+                ) : isDevolvido ? (
+                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                    Justificativa não registrada.
+                  </span>
+                ) : (
+                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                    Nenhum comentário registrado nesta etapa.
+                  </span>
+                )}
               </Section>
 
               <Section title="Alterações" icon={Clock3}>

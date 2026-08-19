@@ -15,6 +15,7 @@ import { buildTimelineBlocos, filtrarEtapasParaTimeline, resolveEtapaNomeExibica
 import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
+import { resolveJustificativaDevolucaoPedido } from '@/utils/devolverPlanilha'
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -222,6 +223,9 @@ export function buildTimelineNode(
     edgeAfter: 'waiting',
     isHighlighted: options?.isHighlighted ?? (etapa.chave === 'SOLICITACAO' ? status === 'active' : atual),
     statusBand,
+    justificativaDevolucao: devolvidoNesteCard
+      ? resolveJustificativaDevolucaoPedido(pedido, etapa.chave, etapa.id, etapa.nome)
+      : null,
     icon: getEtapaIcon(etapa.chave),
   }
 }

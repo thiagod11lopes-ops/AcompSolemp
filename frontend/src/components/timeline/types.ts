@@ -30,6 +30,8 @@ export interface TimelineNodeData {
   dispensavel?: boolean
   /** Tarja lateral no card (ex.: Aguardando empenho). */
   statusBand?: 'concluido' | 'aguardando' | 'devolvido' | 'dispensavel'
+  /** Justificativa da devolução de planilha (card com tarja Devolvido). */
+  justificativaDevolucao?: string | null
   icon?: LucideIcon
 }
 

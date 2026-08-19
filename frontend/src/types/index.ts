@@ -229,6 +229,8 @@ export interface Pedido {
   planilhaDevolvidaParaChave?: string | null
   /** ISO da última devolução de planilha */
   planilhaDevolvidaEm?: string | null
+  /** Texto informado na devolução da planilha (exibido nos detalhes da etapa). */
+  planilhaDevolvidaJustificativa?: string | null
 }
 
 export interface Notification {

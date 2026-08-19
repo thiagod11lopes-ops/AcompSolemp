@@ -90,6 +90,7 @@ function reabrirPedidoAposDevolucaoOrigem(
   limparEstadoDevolucaoPlanilha(data, pedido.id)
   pedido.planilhaDevolvidaParaChave = null
   pedido.planilhaDevolvidaEm = null
+  pedido.planilhaDevolvidaJustificativa = null
   const solicitacao = data.workflowEtapas.find((e) => e.chave === 'SOLICITACAO')
   if (solicitacao) {
     const hist = pedido.etapasHistorico.find(
