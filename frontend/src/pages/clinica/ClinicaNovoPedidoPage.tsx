@@ -325,6 +325,7 @@ export default function ClinicaNovoPedidoPage() {
             onPacientesChange={handlePacientesPmeChange}
             listaMedicamentos={listaMedicamentosForm}
             onListaMedicamentosChange={handleListaMedicamentosChange}
+            corrigirPedidoId={corrigirPedidoId}
           />
         )
       }
@@ -351,7 +352,11 @@ export default function ClinicaNovoPedidoPage() {
 
     if (abaAtivaId === CONSUMO_ABA_ID) {
       return (
-        <ConsumoMaterialConsignadoForm value={consumoRows} onChange={handleConsumoChange} />
+        <ConsumoMaterialConsignadoForm
+          value={consumoRows}
+          onChange={handleConsumoChange}
+          corrigirPedidoId={corrigirPedidoId}
+        />
       )
     }
     if (abaAtivaId === CONMED_ABA_ID) {

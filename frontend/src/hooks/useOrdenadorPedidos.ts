@@ -55,6 +55,27 @@ export function useDevolverPlanilha() {
   })
 }
 
+export function useReenviarPlanilhaCorrigidaOrdenador() {
+  const { user } = useOrdenadorAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: { pedidoId: string; destinoIds: string[] }) =>
+      ordenadorService.reenviarPlanilhaCorrigida(
+        params.pedidoId,
+        user!.id,
+        params.destinoIds,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['pedidos'] })
+      queryClient.invalidateQueries({ queryKey: ['pedido'] })
+    },
+  })
+}
+
 export function useAssinarSolemp() {
   const { user } = useOrdenadorAuth()
   const queryClient = useQueryClient()

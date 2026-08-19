@@ -66,8 +66,7 @@ export function DevolverPlanilhaModal({
       <DialogTitle sx={{ fontWeight: 800 }}>Devolver planilha</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Só é possível devolver para quem produziu e enviou esta planilha e para os setores que
-          já fizeram parte desse caminho.
+          Escolha para qual setor devolver entre os que produziram ou receberam esta planilha.
         </Typography>
 
         {destinos.length === 0 ? (
