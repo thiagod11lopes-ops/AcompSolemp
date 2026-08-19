@@ -23,6 +23,8 @@ import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getRoleLabel } from '@/mocks/seed'
+import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 
 const DRAWER_WIDTH = 260
 
@@ -97,6 +99,24 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
             <ListItemText primary={item.label} />
+            {item.path === '/gestor/reversoes' ? (
+              <Box
+                sx={{ ml: 0.5 }}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+              >
+                <NotificationPanel
+                  tipos={TIPOS_NOTIFICACAO_REVERSAO}
+                  title="Reversões"
+                  emptyText="Nenhuma reversão notificada"
+                  tooltip="Notificações de reversão"
+                  size="small"
+                  stopClickPropagation
+                />
+              </Box>
+            ) : null}
           </ListItemButton>
         ))}
       </List>

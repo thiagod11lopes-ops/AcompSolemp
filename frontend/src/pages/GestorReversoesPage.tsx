@@ -25,6 +25,8 @@ import {
 } from '@/hooks/useReversoes'
 import { formatDateTime } from '@/utils/format'
 import type { ReversaoTimeline } from '@/types'
+import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 
 const statusLabel: Record<ReversaoTimeline['status'], { label: string; color: 'warning' | 'success' | 'info' }> = {
   PENDENTE: { label: 'Pendente', color: 'warning' },
@@ -63,6 +65,14 @@ export default function GestorReversoesPage() {
       <PageHeader
         title="Reversões de Timeline"
         subtitle="Planilhas e etapas devolvidas — visualize, responda ou registre ciência"
+        action={
+          <NotificationPanel
+            tipos={TIPOS_NOTIFICACAO_REVERSAO}
+            title="Notificações de reversão"
+            emptyText="Nenhuma reversão notificada"
+            tooltip="Notificações de reversão"
+          />
+        }
       />
 
       {reversoes.length === 0 ? (

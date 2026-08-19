@@ -5,11 +5,13 @@ import {
   type HistoricoEvento,
   type Material,
   type Notification,
+  type NotificationType,
   type User,
   type WorkflowEtapa,
 } from '@/types'
 import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
+import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -205,10 +207,14 @@ export const notificationService = {
     saveAppData(data)
   },
 
-  async markAllAsRead(perfil?: Notification['perfilDestino']): Promise<void> {
+  async markAllAsRead(
+    perfil?: Notification['perfilDestino'],
+    options?: { tipos?: NotificationType[]; excludeTipos?: NotificationType[] },
+  ): Promise<void> {
     await delay(null, 200)
     const data = loadAppData()
     data.notificacoes.forEach((n) => {
+      if (!notificacaoPertenceAosTipos(n, options?.tipos, options?.excludeTipos)) return
       if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
         n.lida = true
         return
