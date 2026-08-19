@@ -130,7 +130,7 @@ export default function ConfigurarPrazosPage() {
 
       <Box
         sx={{
-          maxWidth: 720,
+          maxWidth: 880,
           display: 'grid',
           gap: 2.25,
         }}
@@ -193,16 +193,16 @@ export default function ConfigurarPrazosPage() {
 
             <Box
               sx={{
-                overflow: 'hidden',
-                maxWidth: setorSelecionado ? 520 : 0,
-                opacity: setorSelecionado ? 1 : 0,
-                transition: 'max-width 220ms ease, opacity 180ms ease',
+                display: setorSelecionado ? 'block' : 'none',
+                minWidth: 0,
+                flex: { sm: '1 1 360px' },
+                pt: 0.75,
               }}
             >
               {setorSelecionado ? (
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <TextField
-                    label="Dias para vencer"
+                    label="Prazo da etapa"
                     size="small"
                     value={dias}
                     onChange={(e) => {
@@ -211,9 +211,9 @@ export default function ConfigurarPrazosPage() {
                     }}
                     placeholder="3"
                     autoFocus
-                    helperText="Prazo da etapa"
-                    sx={{ ...fieldSx, width: 128 }}
+                    sx={{ ...fieldSx, width: { xs: '100%', sm: 168 } }}
                     slotProps={{
+                      inputLabel: { shrink: true },
                       htmlInput: {
                         min: 1,
                         max: 365,
@@ -223,7 +223,7 @@ export default function ConfigurarPrazosPage() {
                     }}
                   />
                   <TextField
-                    label="Próx. vencimento"
+                    label="A partir de quantos dias restantes"
                     size="small"
                     value={alertaDias}
                     onChange={(e) => {
@@ -231,9 +231,9 @@ export default function ConfigurarPrazosPage() {
                       setAlertaDias(raw)
                     }}
                     placeholder="2"
-                    helperText="A partir de quantos dias restantes"
-                    sx={{ ...fieldSx, width: 148 }}
+                    sx={{ ...fieldSx, width: { xs: '100%', sm: 280 } }}
                     slotProps={{
+                      inputLabel: { shrink: true },
                       htmlInput: {
                         min: 0,
                         max: 365,
@@ -252,7 +252,7 @@ export default function ConfigurarPrazosPage() {
                     sx={{
                       height: 38,
                       px: 1.5,
-                      mt: '1px',
+                      mt: { xs: 0, sm: '1px' },
                       borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 800,
