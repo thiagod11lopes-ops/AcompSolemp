@@ -6,6 +6,7 @@ import {
   alpha,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { useClinicas } from '@/hooks/useCadastros'
@@ -90,6 +91,7 @@ function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
 }
 
 export default function ClinicaNovoPedidoPage() {
+  const [searchParams] = useSearchParams()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
@@ -289,6 +291,20 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtivaId(abaId)
     persist({ abaAtivaId: abaId })
   }
+
+  const corrigirPedidoId = searchParams.get('corrigir')
+  const abaCorrigir = searchParams.get('aba')
+
+  useEffect(() => {
+    if (!abaCorrigir) return
+    const ids = new Set([
+      ...fixedPlanilhas.map((f) => f.id),
+      ...abasRef.current.map((a) => a.id),
+    ])
+    if (!ids.has(abaCorrigir)) return
+    setAbaAtivaId(abaCorrigir)
+    persist({ abaAtivaId: abaCorrigir })
+  }, [abaCorrigir, fixedPlanilhas, persist, corrigirPedidoId])
 
   const tabsSource = abas.length
     ? abas

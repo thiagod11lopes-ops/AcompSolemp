@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -28,6 +28,7 @@ import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
+  const [searchParams] = useSearchParams()
   const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
   const { data: pedido, isLoading } = useOrdenadorPedido(id)
@@ -136,6 +137,11 @@ export default function OrdenadorTimelineDetailPage() {
       setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
     }
   }, [pedido, etapas, chavePerfil, fluxoDiretoImh])
+
+  useEffect(() => {
+    if (!pedido || searchParams.get('planilha') !== '1') return
+    setPlanilhaOpen(true)
+  }, [pedido, searchParams])
 
   const destinosDevolucao = useMemo(() => {
     if (!pedido || !chavePerfil) return []

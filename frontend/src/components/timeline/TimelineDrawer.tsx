@@ -1,10 +1,19 @@
 import { memo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, User, FileText, FolderOpen, Clock3, ShieldCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { TimelineDrawerDetail } from './types'
 import { TimelineStatus } from './TimelineStatus'
+import { TimelineActionButton } from './TimelineActionButton'
 import { timelineTheme } from './theme'
 import { formatDateTime } from '@/utils/format'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import {
+  buildCorrigirDevolucaoPath,
+  usuarioPodeCorrigirDevolucao,
+} from '@/utils/corrigirDevolucao'
 
 interface TimelineDrawerProps {
   detail: TimelineDrawerDetail | null
@@ -17,10 +26,34 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   onClose,
   actions,
 }: TimelineDrawerProps) {
+  const navigate = useNavigate()
+  const { mapPath } = usePortalPaths()
+  const { gestorUser, clinicaUser, ordenadorUser, financeiroUser, demoMode } = useAuth()
+  const authUser =
+    demoMode?.authUser ?? clinicaUser ?? ordenadorUser ?? financeiroUser ?? gestorUser
+
   const historico = detail?.node.historico
   const isDevolvido = detail?.node.statusBand === 'devolvido'
   const justificativaDevolucao = detail?.node.justificativaDevolucao?.trim() || null
   const corDevolvido = '#c2410c'
+
+  const planilhaEnvio = detail
+    ? pedidoPlanilhaEnvioService.getForPedido(detail.pedido.id)
+    : null
+  const corrigirPath =
+    detail && isDevolvido
+      ? buildCorrigirDevolucaoPath(detail.pedido, planilhaEnvio)
+      : null
+  const podeCorrigir =
+    detail && corrigirPath
+      ? usuarioPodeCorrigirDevolucao(detail.pedido, detail.node, authUser)
+      : false
+
+  const handleCorrigir = () => {
+    if (!corrigirPath) return
+    navigate(mapPath(corrigirPath))
+    onClose()
+  }
 
   return (
     <AnimatePresence>
@@ -193,6 +226,22 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     Nenhum comentário registrado nesta etapa.
                   </span>
                 )}
+                {isDevolvido && podeCorrigir && corrigirPath ? (
+                  <div style={{ marginTop: 14 }}>
+                    <TimelineActionButton
+                      onClick={handleCorrigir}
+                      style={{
+                        width: '100%',
+                        background: corDevolvido,
+                        color: '#fff',
+                        border: 'none',
+                        letterSpacing: '0.06em',
+                      }}
+                    >
+                      CORRIGIR
+                    </TimelineActionButton>
+                  </div>
+                ) : null}
               </Section>
 
               <Section title="Alterações" icon={Clock3}>
