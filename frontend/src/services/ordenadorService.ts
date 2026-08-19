@@ -202,12 +202,19 @@ export const ordenadorService = {
     pedidoId: string,
     usuarioId: string,
     destino: DestinoDevolucaoPlanilha,
+    justificativa: string,
   ): Promise<PedidoComDetalhes> {
     await delay(null, 400)
     const { data: initialData, usuario } = await resolveDataForSetor(usuarioId)
     if (!usuario) throw new Error('Usuário não autorizado')
 
-    const data = devolverPlanilhaParaDestino(initialData, pedidoId, destino, usuario)
+    const data = devolverPlanilhaParaDestino(
+      initialData,
+      pedidoId,
+      destino,
+      usuario,
+      justificativa,
+    )
     await persistSetorData(data)
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)

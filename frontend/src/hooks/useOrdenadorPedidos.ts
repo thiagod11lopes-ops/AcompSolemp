@@ -33,10 +33,12 @@ export function useDevolverPlanilha() {
     mutationFn: ({
       pedidoId,
       destino,
+      justificativa,
     }: {
       pedidoId: string
       destino: DestinoDevolucaoPlanilha
-    }) => ordenadorService.devolverPlanilha(pedidoId, user!.id, destino),
+      justificativa: string
+    }) => ordenadorService.devolverPlanilha(pedidoId, user!.id, destino, justificativa),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['ordenador-pedido'] })
@@ -48,6 +50,7 @@ export function useDevolverPlanilha() {
       queryClient.invalidateQueries({ queryKey: ['processos-arquivados'] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedidos'] })
       queryClient.invalidateQueries({ queryKey: ['clinica-pedido'] })
+      queryClient.invalidateQueries({ queryKey: ['reversoes'] })
     },
   })
 }

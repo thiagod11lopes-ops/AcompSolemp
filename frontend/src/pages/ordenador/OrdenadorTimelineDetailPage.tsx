@@ -206,9 +206,12 @@ export default function OrdenadorTimelineDetailPage() {
     setDevolverOpen(true)
   }
 
-  const handleConfirmarDevolver = (destino: DestinoDevolucaoPlanilha) => {
+  const handleConfirmarDevolver = (
+    destino: DestinoDevolucaoPlanilha,
+    justificativa: string,
+  ) => {
     devolverPlanilha.mutate(
-      { pedidoId: pedido.id, destino },
+      { pedidoId: pedido.id, destino, justificativa },
       {
         onSuccess: () => {
           setDevolverOpen(false)

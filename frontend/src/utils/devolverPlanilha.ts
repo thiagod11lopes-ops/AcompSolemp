@@ -9,6 +9,7 @@ import type {
 import { getResponsavelParaEtapa } from '@/utils/workflow'
 
 export type DestinoDevolucaoId = 'clinica' | 'medicamento' | string
+export type OrigemPlanilha = 'clinica' | 'medicamento'
 
 export interface DestinoDevolucaoPlanilha {
   id: DestinoDevolucaoId
@@ -19,9 +20,14 @@ export interface DestinoDevolucaoPlanilha {
   notificaOrigem: boolean
 }
 
-const SETORES_CAMINHO_PLANILHA = [
+const SETORES_CAMINHO_CLINICA = [
   'DIV_MAT_AUDITORIA',
   'DIV_MAT_CONFECCAO_SOLEMP',
+  'DIV_MAT_CONTABILIDADE_IMH',
+] as const
+
+const SETORES_CAMINHO_MEDICAMENTO = [
+  'DIV_MAT_AUDITORIA',
   'DIV_MAT_CONTABILIDADE_IMH',
 ] as const
 
@@ -39,6 +45,15 @@ function historicoDaEtapa(
   )
 }
 
+export function origemProducaoPlanilha(
+  pedido: PedidoComDetalhes,
+  planilha: PedidoPlanilhaEnvioState | null,
+): OrigemPlanilha {
+  if (planilha?.formato === 'imhMedicamento') return 'medicamento'
+  if (pedido.clinica.tipo === 'medicamento') return 'medicamento'
+  return 'clinica'
+}
+
 function setorVisitado(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
@@ -48,44 +63,56 @@ function setorVisitado(
   const hist = historicoDaEtapa(pedido, etapas, chave)
   if (hist?.dataInicio) return true
   if (chave === 'DIV_MAT_AUDITORIA') {
-    return Boolean(planilha?.recebidaEm && !historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')?.dataInicio)
+    return Boolean(
+      planilha?.recebidaEm &&
+        !historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')?.dataInicio,
+    )
   }
   if (chave === 'DIV_MAT_CONTABILIDADE_IMH') {
     return Boolean(planilha?.encaminhadaImhEm || planilha?.recebidaImhEm)
   }
   if (chave === 'DIV_MAT_CONFECCAO_SOLEMP') {
-    return Boolean(planilha?.recebidaEm && historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP'))
+    return Boolean(
+      planilha?.recebidaEm && historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP'),
+    )
   }
   return false
 }
 
-/** Setores pelos quais a planilha já passou, mais Clínica e Medicamento. */
+/** Destinos do caminho real da planilha: só quem produziu/enviou e os setores que a receberam. */
 export function listarDestinosDevolucaoPlanilha(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
   planilha: PedidoPlanilhaEnvioState | null,
   setorAtualChave: string,
 ): DestinoDevolucaoPlanilha[] {
-  const destinos: DestinoDevolucaoPlanilha[] = [
-    {
-      id: 'clinica',
-      label: 'Clínica',
-      detalhe: 'Devolve à clínica de origem. O setor será notificado.',
-      etapaChave: 'SOLICITACAO',
-      perfilNotificar: 'CLINICA',
-      notificaOrigem: true,
-    },
-    {
+  const origem = origemProducaoPlanilha(pedido, planilha)
+  const destinos: DestinoDevolucaoPlanilha[] = []
+
+  if (origem === 'medicamento') {
+    destinos.push({
       id: 'medicamento',
       label: 'Medicamento',
-      detalhe: 'Devolve ao portal de medicamento. O setor será notificado.',
+      detalhe: 'Devolve ao medicamento que produziu e enviou a planilha. O setor será notificado.',
       etapaChave: 'SOLICITACAO',
       perfilNotificar: 'MEDICAMENTO',
       notificaOrigem: true,
-    },
-  ]
+    })
+  } else {
+    destinos.push({
+      id: 'clinica',
+      label: 'Clínica',
+      detalhe: 'Devolve à clínica que produziu e enviou a planilha. O setor será notificado.',
+      etapaChave: 'SOLICITACAO',
+      perfilNotificar: 'CLINICA',
+      notificaOrigem: true,
+    })
+  }
 
-  for (const chave of SETORES_CAMINHO_PLANILHA) {
+  const setoresCaminho =
+    origem === 'medicamento' ? SETORES_CAMINHO_MEDICAMENTO : SETORES_CAMINHO_CLINICA
+
+  for (const chave of setoresCaminho) {
     if (chave === setorAtualChave) continue
     if (!setorVisitado(pedido, etapas, planilha, chave)) continue
     const etapa = etapas.find((item) => item.chave === chave)
@@ -170,7 +197,13 @@ export function devolverPlanilhaParaDestino(
   pedidoId: string,
   destino: DestinoDevolucaoPlanilha,
   usuario: User,
+  justificativa: string,
 ): AppData {
+  const justificativaLimpa = justificativa.trim()
+  if (justificativaLimpa.length < 10) {
+    throw new Error('Informe a justificativa da devolução (mínimo 10 caracteres).')
+  }
+
   const pedidoIndex = data.pedidos.findIndex((p) => p.id === pedidoId)
   if (pedidoIndex < 0) throw new Error('Pedido não encontrado')
 
@@ -190,7 +223,7 @@ export function devolverPlanilhaParaDestino(
     return true
   })
 
-  const observacao = `Planilha devolvida por ${usuario.nome} para ${destino.label}.`
+  const observacao = `Planilha devolvida por ${usuario.nome} para ${destino.label}. Justificativa: ${justificativaLimpa}`
 
   const alvo = proximoHistorico.find(
     (h) =>
@@ -246,6 +279,31 @@ export function devolverPlanilhaParaDestino(
 
   ajustarFlagsPlanilha(data, pedidoId, destino.etapaChave)
 
+  const etapaAtual =
+    data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId) ??
+    data.workflowEtapas.find((e) => e.id === (pedido.etapasAtivasIds?.[0] ?? ''))
+  const clinicaNome =
+    data.clinicas.find((c) => c.id === pedido.clinicaId)?.nome ?? destino.label
+  const reversaoId = `rev-planilha-${Date.now()}`
+
+  if (!data.reversoes) data.reversoes = []
+  data.reversoes.push({
+    id: reversaoId,
+    pedidoId,
+    pedidoNumero: pedido.numero,
+    clinicaNome,
+    etapaDeNome: etapaAtual?.nome ?? 'Setor atual',
+    etapaParaNome: destino.label,
+    motivo: justificativaLimpa,
+    usuarioId: usuario.id,
+    usuarioNome: usuario.nome,
+    data: nowIso(),
+    status: 'PENDENTE',
+    respostaGestor: null,
+    dataResposta: null,
+    gestorNome: null,
+  })
+
   data.historico.push({
     id: `hist-devolver-${Date.now()}`,
     pedidoId,
@@ -261,10 +319,23 @@ export function devolverPlanilhaParaDestino(
     id: `notif-devolver-${pedidoId}-${destino.id}-${Date.now()}`,
     tipo: 'PLANILHA_DEVOLVIDA',
     titulo: `Planilha devolvida — ${pedido.numero}`,
-    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. Acesse o processo para revisar.`,
+    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. Justificativa: ${justificativaLimpa}`,
     pedidoId,
-    reversaoId: null,
+    reversaoId,
     perfilDestino: destino.perfilNotificar,
+    etapaChave: destino.etapaChave,
+    lida: false,
+    data: nowIso(),
+  })
+
+  data.notificacoes.push({
+    id: `notif-devolver-gestor-${pedidoId}-${Date.now()}`,
+    tipo: 'REVERSAO_TIMELINE',
+    titulo: `Devolução de planilha — ${pedido.numero}`,
+    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. ${justificativaLimpa}`,
+    pedidoId,
+    reversaoId,
+    perfilDestino: null,
     etapaChave: destino.etapaChave,
     lida: false,
     data: nowIso(),

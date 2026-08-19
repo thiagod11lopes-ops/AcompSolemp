@@ -62,7 +62,7 @@ export default function GestorReversoesPage() {
     <>
       <PageHeader
         title="Reversões de Timeline"
-        subtitle="Clínicas que voltaram etapas — visualize, responda ou registre ciência"
+        subtitle="Planilhas e etapas devolvidas — visualize, responda ou registre ciência"
       />
 
       {reversoes.length === 0 ? (
@@ -154,7 +154,7 @@ export default function GestorReversoesPage() {
         <DialogTitle>Responder reversão — {selected?.pedidoNumero}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Motivo da clínica: {selected?.motivo}
+            Motivo: {selected?.motivo}
           </Typography>
           <TextField
             fullWidth
