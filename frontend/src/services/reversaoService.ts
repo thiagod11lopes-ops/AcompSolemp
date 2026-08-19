@@ -1,5 +1,6 @@
 import type { ReversaoTimeline } from '@/types'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
+import { marcarNotificacoesReversaoComoLidas } from '@/utils/notificacoes'
 
 export const reversaoService = {
   async list(): Promise<ReversaoTimeline[]> {
@@ -25,6 +26,8 @@ export const reversaoService = {
     rev.gestorNome = gestorNome
     rev.dataResposta = new Date().toISOString()
     rev.respostaGestor = 'Situação compreendida pelo gestor.'
+
+    marcarNotificacoesReversaoComoLidas(data, reversaoId)
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,
@@ -57,6 +60,8 @@ export const reversaoService = {
     rev.gestorNome = gestorNome
     rev.dataResposta = new Date().toISOString()
     rev.respostaGestor = resposta
+
+    marcarNotificacoesReversaoComoLidas(data, reversaoId)
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,

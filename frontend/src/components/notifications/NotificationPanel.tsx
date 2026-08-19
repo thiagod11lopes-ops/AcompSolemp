@@ -85,9 +85,11 @@ export function NotificationPanel({
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 
-  const visible = notifications.filter((n) =>
+  const filtered = notifications.filter((n) =>
     notificacaoPertenceAosTipos(n, tipos, excludeTipos),
   )
+  /** Sinos filtrados por tipo (ex.: Reversões) exibem só não lidas — ciência remove do sino. */
+  const visible = tipos && tipos.length > 0 ? filtered.filter((n) => !n.lida) : filtered
   const unread = visible.filter((n) => !n.lida).length
 
   const handleMarkAll = async () => {
