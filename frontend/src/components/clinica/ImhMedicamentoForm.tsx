@@ -24,14 +24,17 @@ import type {
   ImhMedicamentoLinha,
   ListaMedicamentosFormData,
   ListaMedicamentosLinha,
+  PedidoComDetalhes,
 } from '@/types'
+import { EnviarPlanilhaDestinoModal } from '@/components/ordenador/EnviarPlanilhaDestinoModal'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
-import { useCreateClinicaPedido, useClinicaPedidos, useReabrirFluxoImh } from '@/hooks/useClinicaPedidos'
+import { useCreateClinicaPedido, useClinicaPedidos, useReabrirFluxoImh, useReenviarPlanilhaCorrigidaClinica } from '@/hooks/useClinicaPedidos'
+import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import {
   createEmptyImhMedicamentoLinha,
@@ -87,6 +90,7 @@ import {
   previewBaixaEstoqueListaMedicamentos,
   resolveListaMedicamentoEstoque,
 } from '@/utils/listaMedicamentosForm'
+import { listarOpcoesReenvioPlanilha } from '@/utils/reenviarPlanilha'
 
 interface ImhMedicamentoFormProps {
   value: ImhMedicamentoFormData
@@ -95,6 +99,7 @@ interface ImhMedicamentoFormProps {
   onPacientesChange?: (next: PacientePmeRow[]) => void
   listaMedicamentos?: ListaMedicamentosFormData
   onListaMedicamentosChange?: (next: ListaMedicamentosFormData) => void
+  corrigirPedidoId?: string | null
 }
 
 const VINCULOS = [
@@ -230,14 +235,17 @@ export function ImhMedicamentoForm({
   onPacientesChange,
   listaMedicamentos,
   onListaMedicamentosChange,
+  corrigirPedidoId = null,
 }: ImhMedicamentoFormProps) {
   const { navigatePortal } = usePortalPaths()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
   const { data: pedidos = [] } = useClinicaPedidos()
+  const { data: etapas = [] } = useWorkflowEtapas()
   const createPedido = useCreateClinicaPedido()
   const reabrirImh = useReabrirFluxoImh()
+  const reenviarPlanilha = useReenviarPlanilhaCorrigidaClinica()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
   /** Opções do IMH: cada linha da Lista = um lote; se Lista vazia, cai no catálogo de preços. */
@@ -270,6 +278,11 @@ export function ImhMedicamentoForm({
   const [nipNaoCadastrado, setNipNaoCadastrado] = useState(false)
   const [importing, setImporting] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
+  const [enviarDestinoOpen, setEnviarDestinoOpen] = useState(false)
+  const [pedidoCorrecaoPendente, setPedidoCorrecaoPendente] = useState<PedidoComDetalhes | null>(
+    null,
+  )
+  const [linhasCorrecaoPendentes, setLinhasCorrecaoPendentes] = useState<ImhMedicamentoLinha[]>([])
   const [explicacaoOpen, setExplicacaoOpen] = useState(false)
   const [dataAvisoOpen, setDataAvisoOpen] = useState(false)
   const [dataError, setDataError] = useState(false)
@@ -481,10 +494,28 @@ export function ImhMedicamentoForm({
       return
     }
 
+    const ids = selecionadas.map((l) => l.id)
+    const pedidoExistenteRaw = findPedidoParaMesmasLinhas(pedidos, ids, clinicaId)
+    const pedidoExistente = pedidoExistenteRaw
+      ? (pedidos.find((p) => p.id === pedidoExistenteRaw.id) ?? null)
+      : null
+    const pedidoCorrecao =
+      (corrigirPedidoId
+        ? pedidos.find(
+            (p) => p.id === corrigirPedidoId && p.planilhaDevolvidaParaChave === 'SOLICITACAO',
+          )
+        : null) ??
+      (pedidoExistente?.planilhaDevolvidaParaChave === 'SOLICITACAO' ? pedidoExistente : null)
+
+    if (pedidoCorrecao) {
+      setPedidoCorrecaoPendente(pedidoCorrecao)
+      setLinhasCorrecaoPendentes(selecionadas)
+      setEnviarDestinoOpen(true)
+      return
+    }
+
     setIsEnviando(true)
     try {
-      const ids = selecionadas.map((l) => l.id)
-      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, ids, clinicaId)
       let pedidoId: string
 
       if (pedidoExistente) {
@@ -517,6 +548,54 @@ export function ImhMedicamentoForm({
         open: true,
         severity: 'error',
         message: 'Erro ao enviar lançamentos para IMH. Tente novamente.',
+      })
+    } finally {
+      setIsEnviando(false)
+    }
+  }
+
+  const opcoesReenvioCorrecao = useMemo(() => {
+    if (!pedidoCorrecaoPendente) return null
+    const planilha = pedidoPlanilhaEnvioService.getForPedido(pedidoCorrecaoPendente.id)
+    return listarOpcoesReenvioPlanilha(
+      pedidoCorrecaoPendente,
+      etapas,
+      planilha,
+      'SOLICITACAO',
+    )
+  }, [pedidoCorrecaoPendente, etapas])
+
+  const handleConfirmarReenvioCorrecao = async (destinoIds: string[]) => {
+    if (!pedidoCorrecaoPendente || linhasCorrecaoPendentes.length === 0) return
+    setIsEnviando(true)
+    try {
+      const selecionadas = linhasCorrecaoPendentes
+      const ids = selecionadas.map((l) => l.id)
+      const pedidoId = pedidoCorrecaoPendente.id
+
+      pedidoPlanilhaEnvioService.saveImhMedicamentoForPedido(pedidoId, selecionadas)
+      await reenviarPlanilha.mutateAsync({ pedidoId, destinoIds })
+
+      onChange(markImhMedicamentoLinhasFinalized(value, ids))
+      setSelectedImhIds((prev) => {
+        const next = new Set(prev)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+      setEnviarDestinoOpen(false)
+      setPedidoCorrecaoPendente(null)
+      setLinhasCorrecaoPendentes([])
+      setImportFeedback({
+        open: true,
+        severity: 'success',
+        message: `Planilha ${pedidoCorrecaoPendente.numero} reenviada após correção.`,
+      })
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Erro ao reenviar planilha corrigida. Tente novamente.',
       })
     } finally {
       setIsEnviando(false)
@@ -1488,6 +1567,23 @@ export function ImhMedicamentoForm({
           onCancel={handleCancelarEstoqueInsuficiente}
           onConfirm={handleConfirmarEstoqueInsuficiente}
         />
+        {opcoesReenvioCorrecao && pedidoCorrecaoPendente ? (
+          <EnviarPlanilhaDestinoModal
+            open={enviarDestinoOpen}
+            pedidoNumero={pedidoCorrecaoPendente.numero}
+            destinos={opcoesReenvioCorrecao.destinos}
+            defaultDestinoId={opcoesReenvioCorrecao.defaultDestinoId}
+            permiteParaleloClinica={opcoesReenvioCorrecao.permiteParaleloClinica}
+            loading={isEnviando || reenviarPlanilha.isPending}
+            onClose={() => {
+              if (isEnviando || reenviarPlanilha.isPending) return
+              setEnviarDestinoOpen(false)
+              setPedidoCorrecaoPendente(null)
+              setLinhasCorrecaoPendentes([])
+            }}
+            onConfirmar={handleConfirmarReenvioCorrecao}
+          />
+        ) : null}
         <Snackbar
           open={importFeedback.open}
           autoHideDuration={5000}

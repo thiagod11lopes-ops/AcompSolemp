@@ -28,6 +28,7 @@ export type NotificationType =
   | 'RESPOSTA_GESTOR'
   | 'ETAPA_PENDENTE'
   | 'PLANILHA_DEVOLVIDA'
+  | 'PLANILHA_DEVOLVIDA_AVISO'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 
@@ -231,6 +232,10 @@ export interface Pedido {
   planilhaDevolvidaEm?: string | null
   /** Texto informado na devolução da planilha (exibido nos detalhes da etapa). */
   planilhaDevolvidaJustificativa?: string | null
+  /** Chave do setor que devolveu a planilha (destino pré-selecionado no reenvio). */
+  planilhaDevolvidaDeChave?: string | null
+  /** Snapshot dos setores com acesso à planilha no momento da devolução (reenvio). */
+  planilhaSetoresAcessoSnapshot?: string[]
 }
 
 export interface Notification {

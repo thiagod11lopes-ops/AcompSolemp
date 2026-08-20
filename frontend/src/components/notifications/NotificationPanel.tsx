@@ -30,6 +30,9 @@ function getNotificationPath(n: Notification): string | null {
     }
     return `/ordenador/timelines/${n.pedidoId}`
   }
+  if (n.tipo === 'PLANILHA_DEVOLVIDA_AVISO' && n.pedidoId) {
+    return `/ordenador/timelines/${n.pedidoId}`
+  }
   if (n.tipo === 'REVERSAO_TIMELINE') return '/gestor/reversoes'
   if (n.tipo === 'RESPOSTA_GESTOR' && n.pedidoId) return `/clinica/timeline/${n.pedidoId}`
   if (n.tipo === 'ETAPA_PENDENTE' || n.tipo === 'PAGAMENTO_PENDENTE') {

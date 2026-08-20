@@ -10,8 +10,10 @@ import { enrichPedido } from '@/utils/workflow'
 import { advancePedidoEtapa, assinarSolempForPedido } from '@/utils/workflowAdvance'
 import {
   devolverPlanilhaParaDestino,
+  pedidoSuspensoParaSetor,
   type DestinoDevolucaoPlanilha,
 } from '@/utils/devolverPlanilha'
+import { reenviarPlanilhaAposCorrecao } from '@/utils/reenviarPlanilha'
 import {
   PERFIS_SETOR,
   PERFIS_SOLEMP,
@@ -44,7 +46,7 @@ function pedidoPendenteParaPerfil(
     data.workflowEtapas,
     chave,
     data.processosArquivados,
-  )
+  ) && !pedidoSuspensoParaSetor(pedido, chave)
 }
 
 function pedidoRelacionadoParaPerfil(
@@ -214,6 +216,7 @@ export const ordenadorService = {
       destino,
       usuario,
       justificativa,
+      PERFIL_PARA_CHAVE_ETAPA[usuario.perfil] ?? '',
     )
     await persistSetorData(data)
 
@@ -221,6 +224,33 @@ export const ordenadorService = {
     if (!pedido) throw new Error('Pedido não encontrado')
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao devolver planilha')
+    return enriched
+  },
+
+  async reenviarPlanilhaCorrigida(
+    pedidoId: string,
+    usuarioId: string,
+    destinoIds: string[],
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 400)
+    const { data: initialData, usuario } = await resolveDataForSetor(usuarioId)
+    if (!usuario) throw new Error('Usuário não autorizado')
+    const chave = PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
+    if (!chave) throw new Error('Perfil sem etapa associada')
+
+    const data = reenviarPlanilhaAposCorrecao(
+      initialData,
+      pedidoId,
+      usuario,
+      destinoIds,
+      chave,
+    )
+    await persistSetorData(data)
+
+    const pedido = data.pedidos.find((p) => p.id === pedidoId)
+    if (!pedido) throw new Error('Pedido não encontrado')
+    const enriched = enrichPedido(pedido, getContext(data))
+    if (!enriched) throw new Error('Erro ao reenviar planilha')
     return enriched
   },
 

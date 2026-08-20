@@ -8,6 +8,7 @@ import type {
   WorkflowEtapa,
 } from '@/types'
 import { getResponsavelParaEtapa } from '@/utils/workflow'
+import { enrichPedido } from '@/utils/workflow'
 
 export type DestinoDevolucaoId = 'clinica' | 'medicamento' | string
 export type OrigemPlanilha = 'clinica' | 'medicamento'
@@ -80,6 +81,54 @@ function setorVisitado(
   return false
 }
 
+export function pedidoSuspensoParaSetor(
+  pedido: Pick<Pedido, 'planilhaDevolvidaParaChave'>,
+  chaveSetor: string,
+): boolean {
+  if (!pedido.planilhaDevolvidaParaChave) return false
+  return pedido.planilhaDevolvidaParaChave !== chaveSetor
+}
+
+/** Setores que efetivamente receberam/abriram a planilha no caminho. */
+export function listarSetoresComAcessoPlanilha(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+  planilha: PedidoPlanilhaEnvioState | null,
+): Array<{ chave: string; label: string; perfilNotificar: UserRole }> {
+  const origem = origemProducaoPlanilha(pedido, planilha)
+  const setores: Array<{ chave: string; label: string; perfilNotificar: UserRole }> = []
+
+  if (origem === 'medicamento') {
+    setores.push({
+      chave: 'SOLICITACAO',
+      label: 'Medicamento',
+      perfilNotificar: 'MEDICAMENTO',
+    })
+  } else {
+    setores.push({
+      chave: 'SOLICITACAO',
+      label: 'Clínica',
+      perfilNotificar: 'CLINICA',
+    })
+  }
+
+  const setoresCaminho =
+    origem === 'medicamento' ? SETORES_CAMINHO_MEDICAMENTO : SETORES_CAMINHO_CLINICA
+
+  for (const chave of setoresCaminho) {
+    if (!setorVisitado(pedido, etapas, planilha, chave)) continue
+    const etapa = etapas.find((item) => item.chave === chave)
+    if (!etapa) continue
+    setores.push({
+      chave,
+      label: etapa.nome,
+      perfilNotificar: etapa.perfilResponsavel,
+    })
+  }
+
+  return setores
+}
+
 /** Destinos do caminho real da planilha: só quem produziu/enviou e os setores que a receberam. */
 export function listarDestinosDevolucaoPlanilha(
   pedido: PedidoComDetalhes,
@@ -88,47 +137,24 @@ export function listarDestinosDevolucaoPlanilha(
   setorAtualChave: string,
 ): DestinoDevolucaoPlanilha[] {
   const origem = origemProducaoPlanilha(pedido, planilha)
-  const destinos: DestinoDevolucaoPlanilha[] = []
-
-  if (origem === 'medicamento') {
-    destinos.push({
-      id: 'medicamento',
-      label: 'Medicamento',
-      detalhe: 'Devolve ao medicamento que produziu e enviou a planilha. O setor será notificado.',
-      etapaChave: 'SOLICITACAO',
-      perfilNotificar: 'MEDICAMENTO',
-      notificaOrigem: true,
-    })
-  } else {
-    destinos.push({
-      id: 'clinica',
-      label: 'Clínica',
-      detalhe: 'Devolve à clínica que produziu e enviou a planilha. O setor será notificado.',
-      etapaChave: 'SOLICITACAO',
-      perfilNotificar: 'CLINICA',
-      notificaOrigem: true,
-    })
-  }
-
-  const setoresCaminho =
-    origem === 'medicamento' ? SETORES_CAMINHO_MEDICAMENTO : SETORES_CAMINHO_CLINICA
-
-  for (const chave of setoresCaminho) {
-    if (chave === setorAtualChave) continue
-    if (!setorVisitado(pedido, etapas, planilha, chave)) continue
-    const etapa = etapas.find((item) => item.chave === chave)
-    if (!etapa) continue
-    destinos.push({
-      id: chave,
-      label: etapa.nome,
-      detalhe: `Retorna a planilha para ${etapa.nome}.`,
-      etapaChave: chave,
-      perfilNotificar: etapa.perfilResponsavel,
-      notificaOrigem: false,
-    })
-  }
-
-  return destinos
+  return listarSetoresComAcessoPlanilha(pedido, etapas, planilha)
+    .filter((setor) => setor.chave !== setorAtualChave)
+    .map((setor) => ({
+      id:
+        setor.chave === 'SOLICITACAO'
+          ? origem === 'medicamento'
+            ? 'medicamento'
+            : 'clinica'
+          : setor.chave,
+      label: setor.label,
+      detalhe:
+        setor.chave === 'SOLICITACAO'
+          ? `Devolve à ${setor.label} que produziu e enviou a planilha. O setor será notificado.`
+          : `Retorna a planilha para ${setor.label}.`,
+      etapaChave: setor.chave,
+      perfilNotificar: setor.perfilNotificar,
+      notificaOrigem: setor.chave === 'SOLICITACAO',
+    }))
 }
 
 function nowIso(): string {
@@ -247,6 +273,8 @@ export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): 
       planilhaDevolvidaParaChave: null,
       planilhaDevolvidaEm: null,
       planilhaDevolvidaJustificativa: null,
+      planilhaDevolvidaDeChave: null,
+      planilhaSetoresAcessoSnapshot: undefined,
     }
   }
   const atual = data.pedidoPlanilhaEnvio?.[pedidoId]
@@ -323,6 +351,7 @@ export function devolverPlanilhaParaDestino(
   destino: DestinoDevolucaoPlanilha,
   usuario: User,
   justificativa: string,
+  setorDevolvedorChave: string,
 ): AppData {
   const justificativaLimpa = justificativa.trim()
   if (justificativaLimpa.length < 10) {
@@ -334,6 +363,20 @@ export function devolverPlanilhaParaDestino(
 
   const pedido = { ...data.pedidos[pedidoIndex] }
   if (pedido.concluido) throw new Error('Processo já encerrado')
+
+  const planilhaAntes = data.pedidoPlanilhaEnvio?.[pedidoId] ?? null
+  const ctxAcesso = {
+    clinicas: data.clinicas,
+    empresas: data.empresas,
+    materiais: data.materiais,
+    etapas: data.workflowEtapas,
+    usuarios: data.usuarios,
+    solemp: data.solemp,
+    notasFiscais: data.notasFiscais,
+  }
+  const pedidoAntesDetalhes = enrichPedido(pedido, ctxAcesso)
+  const setorDevolvedorEtapa = data.workflowEtapas.find((e) => e.chave === setorDevolvedorChave)
+  const setorDevolvedorLabel = setorDevolvedorEtapa?.nome ?? 'Setor'
 
   const etapaDestino = data.workflowEtapas.find((e) => e.chave === destino.etapaChave)
   if (!etapaDestino) throw new Error('Setor de destino não encontrado')
@@ -396,6 +439,14 @@ export function devolverPlanilhaParaDestino(
     planilhaDevolvidaParaChave: destino.etapaChave,
     planilhaDevolvidaEm: nowIso(),
     planilhaDevolvidaJustificativa: justificativaLimpa,
+    planilhaDevolvidaDeChave: setorDevolvedorChave,
+    planilhaSetoresAcessoSnapshot: pedidoAntesDetalhes
+      ? listarSetoresComAcessoPlanilha(
+          pedidoAntesDetalhes,
+          data.workflowEtapas,
+          planilhaAntes,
+        ).map((s) => s.chave)
+      : undefined,
   }
 
   if (data.processosArquivados) {
@@ -422,9 +473,8 @@ export function devolverPlanilhaParaDestino(
     })
   }
 
-  const etapaAtual =
-    data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId) ??
-    data.workflowEtapas.find((e) => e.id === (pedido.etapasAtivasIds?.[0] ?? ''))
+  const etapaAtual = setorDevolvedorEtapa ??
+    data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId)
   const clinicaNome =
     data.clinicas.find((c) => c.id === pedido.clinicaId)?.nome ?? destino.label
   const reversaoId = `rev-planilha-${Date.now()}`
@@ -483,6 +533,33 @@ export function devolverPlanilhaParaDestino(
     lida: false,
     data: nowIso(),
   })
+
+  const pedidoDetalhes = pedidoAntesDetalhes
+  if (pedidoDetalhes) {
+    const testemunhas = listarSetoresComAcessoPlanilha(
+      pedidoDetalhes,
+      data.workflowEtapas,
+      planilhaAntes,
+    ).filter(
+      (setor) =>
+        setor.chave !== setorDevolvedorChave && setor.chave !== destino.etapaChave,
+    )
+
+    for (const [index, setor] of testemunhas.entries()) {
+      data.notificacoes.push({
+        id: `notif-devolver-aviso-${pedidoId}-${setor.chave}-${Date.now()}-${index}`,
+        tipo: 'PLANILHA_DEVOLVIDA_AVISO',
+        titulo: `Planilha devolvida — ${pedido.numero}`,
+        mensagem: `${setorDevolvedorLabel} devolveu a planilha ${pedido.numero} para ${destino.label} (correção). Motivo: ${justificativaLimpa}`,
+        pedidoId,
+        reversaoId,
+        perfilDestino: setor.perfilNotificar,
+        etapaChave: setor.chave,
+        lida: false,
+        data: nowIso(),
+      })
+    }
+  }
 
   return data
 }

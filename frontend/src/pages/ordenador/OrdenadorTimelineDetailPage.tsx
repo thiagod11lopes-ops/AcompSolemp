@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
 import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
-import { useAssinarSolemp, useDevolverPlanilha, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
+import { useAssinarSolemp, useDevolverPlanilha, useOrdenadorPedido, useReenviarPlanilhaCorrigidaOrdenador } from '@/hooks/useOrdenadorPedidos'
 import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import { DevolverPlanilhaModal } from '@/components/ordenador/DevolverPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
@@ -24,6 +24,8 @@ import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 import { listarDestinosDevolucaoPlanilha, type DestinoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
+import { listarOpcoesReenvioPlanilha } from '@/utils/reenviarPlanilha'
+import { EnviarPlanilhaDestinoModal } from '@/components/ordenador/EnviarPlanilhaDestinoModal'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 
 export default function OrdenadorTimelineDetailPage() {
@@ -35,6 +37,7 @@ export default function OrdenadorTimelineDetailPage() {
   const { data: etapas = [] } = useWorkflowEtapas()
   const assinar = useAssinarSolemp()
   const devolverPlanilha = useDevolverPlanilha()
+  const reenviarPlanilha = useReenviarPlanilhaCorrigidaOrdenador()
   const [auditoriaOpen, setAuditoriaOpen] = useState(false)
   const [planilhaOpen, setPlanilhaOpen] = useState(false)
   const [devolverOpen, setDevolverOpen] = useState(false)
@@ -45,6 +48,10 @@ export default function OrdenadorTimelineDetailPage() {
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
+  const [enviarDestinoOpen, setEnviarDestinoOpen] = useState(false)
+  const [pendingAcaoPosReenvio, setPendingAcaoPosReenvio] = useState<
+    'encaminharImh' | 'confeccao' | 'contabilidade' | null
+  >(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
@@ -148,6 +155,15 @@ export default function OrdenadorTimelineDetailPage() {
     return listarDestinosDevolucaoPlanilha(pedido, etapas, planilhaEnvio, chavePerfil)
   }, [pedido, etapas, planilhaEnvio, chavePerfil])
 
+  const aguardandoCorrecaoDevolucao =
+    Boolean(pedido?.planilhaDevolvidaParaChave && chavePerfil) &&
+    pedido?.planilhaDevolvidaParaChave === chavePerfil
+
+  const opcoesReenvio = useMemo(() => {
+    if (!pedido || !chavePerfil || !aguardandoCorrecaoDevolucao) return null
+    return listarOpcoesReenvioPlanilha(pedido, etapas, planilhaEnvio, chavePerfil)
+  }, [pedido, etapas, planilhaEnvio, chavePerfil, aguardandoCorrecaoDevolucao])
+
   if (isLoading) return <LoadingSpinner />
 
   if (!pedido) {
@@ -168,15 +184,30 @@ export default function OrdenadorTimelineDetailPage() {
     navigatePortal('/ordenador/arquivados')
   }
 
+  const abrirReenvioPosCorrecao = (
+    acao: 'encaminharImh' | 'confeccao' | 'contabilidade',
+  ) => {
+    setPendingAcaoPosReenvio(acao)
+    setEnviarDestinoOpen(true)
+  }
+
   const handleAssinar = () => {
     if (isAuditoria) return
     if (isContabilidade) {
       if (!planilhaRecebidaImh) return
+      if (aguardandoCorrecaoDevolucao && opcoesReenvio) {
+        abrirReenvioPosCorrecao('contabilidade')
+        return
+      }
       setContabilidadeOpen(true)
       return
     }
     if (isConfeccao) {
       if (!planilhaRecebida) return
+      if (aguardandoCorrecaoDevolucao && opcoesReenvio) {
+        abrirReenvioPosCorrecao('confeccao')
+        return
+      }
       setConfeccaoOpen(true)
       return
     }
@@ -229,7 +260,32 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const handleEncaminharImh = () => {
+    if (aguardandoCorrecaoDevolucao && opcoesReenvio) {
+      abrirReenvioPosCorrecao('encaminharImh')
+      return
+    }
     setAuditoriaOpen(true)
+  }
+
+  const handleConfirmarReenvioDestino = (destinoIds: string[]) => {
+    reenviarPlanilha.mutate(
+      { pedidoId: pedido.id, destinoIds },
+      {
+        onSuccess: () => {
+          setEnviarDestinoOpen(false)
+          const acao = pendingAcaoPosReenvio
+          setPendingAcaoPosReenvio(null)
+          const vaiImh =
+            destinoIds.includes('DIV_MAT_CONTABILIDADE_IMH') ||
+            destinoIds.includes('paralelo-auditoria-confeccao')
+          if (acao === 'encaminharImh' && vaiImh) {
+            setAuditoriaOpen(true)
+            return
+          }
+          navigatePortal('/ordenador/timelines')
+        },
+      },
+    )
   }
 
   const handleConfirmarContabilidade = (anotacoes: string) => {
@@ -398,6 +454,23 @@ export default function OrdenadorTimelineDetailPage() {
         defaults={solempDefaults}
         valorSugerido={pedido.valor}
       />
+
+      {opcoesReenvio ? (
+        <EnviarPlanilhaDestinoModal
+          open={enviarDestinoOpen}
+          pedidoNumero={pedido.numero}
+          destinos={opcoesReenvio.destinos}
+          defaultDestinoId={opcoesReenvio.defaultDestinoId}
+          permiteParaleloClinica={opcoesReenvio.permiteParaleloClinica}
+          loading={reenviarPlanilha.isPending}
+          onClose={() => {
+            if (reenviarPlanilha.isPending) return
+            setEnviarDestinoOpen(false)
+            setPendingAcaoPosReenvio(null)
+          }}
+          onConfirmar={handleConfirmarReenvioDestino}
+        />
+      ) : null}
     </>
   )
 }

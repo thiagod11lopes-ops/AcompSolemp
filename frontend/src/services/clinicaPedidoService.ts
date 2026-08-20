@@ -18,6 +18,7 @@ import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
+import { reenviarPlanilhaAposCorrecao } from '@/utils/reenviarPlanilha'
 
 export interface CreatePedidoInput {
   id?: string
@@ -91,6 +92,8 @@ function reabrirPedidoAposDevolucaoOrigem(
   pedido.planilhaDevolvidaParaChave = null
   pedido.planilhaDevolvidaEm = null
   pedido.planilhaDevolvidaJustificativa = null
+  pedido.planilhaDevolvidaDeChave = null
+  pedido.planilhaSetoresAcessoSnapshot = undefined
   const solicitacao = data.workflowEtapas.find((e) => e.chave === 'SOLICITACAO')
   if (solicitacao) {
     const hist = pedido.etapasHistorico.find(
@@ -670,5 +673,33 @@ export const clinicaPedidoService = {
     removePedidosFromAppData(data, ids)
     saveAppData(data)
     return ids.size
+  },
+
+  async reenviarPlanilhaCorrigida(
+    pedidoId: string,
+    usuarioId: string,
+    clinicaId: string,
+    destinoIds: string[],
+  ): Promise<PedidoComDetalhes> {
+    await delay(null, 400)
+    if (usuarioId.startsWith(DEMO_EXEMPLO_USER_PREFIX)) {
+      await ensureDemoUserById(usuarioId)
+    }
+    let data = loadAppData()
+    const usuario = data.usuarios.find((u) => u.id === usuarioId)
+    const pedido = data.pedidos.find((p) => p.id === pedidoId && p.clinicaId === clinicaId)
+    if (!usuario || !pedido) throw new Error('Pedido não encontrado')
+
+    data = reenviarPlanilhaAposCorrecao(data, pedidoId, usuario, destinoIds, 'SOLICITACAO')
+    saveAppData(data)
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
+    const enriched = enrichPedido(
+      data.pedidos.find((p) => p.id === pedidoId)!,
+      getContext(data),
+    )
+    if (!enriched) throw new Error('Erro ao reenviar planilha')
+    return enriched
   },
 }
