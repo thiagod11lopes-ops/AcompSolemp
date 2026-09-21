@@ -603,6 +603,8 @@ export interface ClinicaPlanilhasLivresState {
   pacientesPme?: import('@/utils/pacientesPme').PacientePmeRow[]
   /** Formulário tipado da aba Lista de Materiais */
   listaMateriais?: ListaMateriaisFormData
+  /** Aba Div. Material (processos por NIP / data) */
+  divMaterial?: import('@/utils/divMaterialForm').DivMaterialFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
 }

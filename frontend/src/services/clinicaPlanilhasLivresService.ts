@@ -14,6 +14,7 @@ import {
 } from '@/utils/listaMedicamentosForm'
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
+import { normalizeDivMaterialForm } from '@/utils/divMaterialForm'
 import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
 import {
   clonePacientesPmeSeed,
@@ -55,6 +56,7 @@ function normalizeState(
     pacientesPme,
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
+    divMaterial: normalizeDivMaterialForm(state?.divMaterial),
   }
 }
 

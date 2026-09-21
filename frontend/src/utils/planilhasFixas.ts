@@ -13,6 +13,7 @@ export const FIXED_PLANILHAS = [
   { id: 'lista-de-materiais', nome: 'Lista de Materiais' },
   { id: 'plan1', nome: 'Plan1' },
   { id: 'imh', nome: 'IMH' },
+  { id: 'div-material', nome: 'Div. Material' },
 ] as const
 
 /** Abas fixas do portal medicamento. */
