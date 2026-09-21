@@ -98,21 +98,22 @@ export async function resolveImpersonation(email: string): Promise<Impersonation
   const row = Array.isArray(data) ? data[0] : data
   if (!row) throw new Error('E-mail não encontrado no sistema')
 
+  const payloadRaw = row.result_app_payload ?? row.app_payload
   const payload =
-    row.app_payload && typeof row.app_payload === 'object'
-      ? (row.app_payload as AppData)
+    payloadRaw && typeof payloadRaw === 'object'
+      ? (payloadRaw as AppData)
       : ({ usuarios: [] } as unknown as AppData)
 
   return {
-    target_email: String(row.target_email ?? '').toLowerCase(),
-    tenant_id: String(row.tenant_id ?? ''),
-    org_code: String(row.org_code ?? ''),
-    owner_email: String(row.owner_email ?? '').toLowerCase(),
-    perfil: String(row.perfil ?? 'GESTOR'),
-    app_user_id: String(row.app_user_id ?? ''),
-    nome: String(row.nome ?? ''),
-    is_gestor: Boolean(row.is_gestor),
-    app_version: String(row.app_version ?? 'v16'),
+    target_email: String(row.result_target_email ?? row.target_email ?? '').toLowerCase(),
+    tenant_id: String(row.result_tenant_id ?? row.tenant_id ?? ''),
+    org_code: String(row.result_org_code ?? row.org_code ?? ''),
+    owner_email: String(row.result_owner_email ?? row.owner_email ?? '').toLowerCase(),
+    perfil: String(row.result_perfil ?? row.perfil ?? 'CLINICA').toUpperCase(),
+    app_user_id: String(row.result_app_user_id ?? row.app_user_id ?? ''),
+    nome: String(row.result_nome ?? row.nome ?? ''),
+    is_gestor: Boolean(row.result_is_gestor ?? row.is_gestor),
+    app_version: String(row.result_app_version ?? row.app_version ?? 'v16'),
     app_payload: payload,
   }
 }
@@ -127,11 +128,12 @@ export async function adminLoadAppState(tenantId: string): Promise<{
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
   if (!row) return null
+  const payloadRaw = row.result_payload ?? row.payload
   return {
-    version: String(row.version ?? 'v16'),
+    version: String(row.result_version ?? row.version ?? 'v16'),
     payload:
-      row.payload && typeof row.payload === 'object'
-        ? (row.payload as AppData)
+      payloadRaw && typeof payloadRaw === 'object'
+        ? (payloadRaw as AppData)
         : ({ usuarios: [] } as unknown as AppData),
   }
 }

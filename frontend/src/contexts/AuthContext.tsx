@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { flushSync } from 'react-dom'
 import type { AuthUser, LoginCredentials } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { authService, type DemoModeState, type TimelineLoginResult } from '@/services/authService'
@@ -179,17 +180,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const startImpersonation = useCallback(async (email: string) => {
     const result = await authService.startImpersonation(email)
-    setImpersonationTargetEmail(result.authUser.email?.trim().toLowerCase() ?? email)
-    setDemoMode(null)
-    if (result.portal === 'gestor') {
-      setGestorUser(result.authUser)
-      setClinicaUser(null)
-      setOrdenadorUser(null)
-      setFinanceiroUser(null)
-    } else {
-      setGestorUser(null)
-      applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
-    }
+    flushSync(() => {
+      setImpersonationTargetEmail(result.authUser.email?.trim().toLowerCase() ?? email)
+      setDemoMode(null)
+      if (result.portal === 'gestor') {
+        setGestorUser(result.authUser)
+        setClinicaUser(null)
+        setOrdenadorUser(null)
+        setFinanceiroUser(null)
+      } else {
+        setGestorUser(null)
+        applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+      }
+    })
     return { route: result.route }
   }, [])
 

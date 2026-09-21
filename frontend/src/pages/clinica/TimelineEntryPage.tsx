@@ -38,6 +38,20 @@ export default function TimelineEntryPage() {
     let cancelled = false
 
     const abrirPorta = async () => {
+      // Personificação ativa: não limpar sessão nem pedir login/senha
+      const impersonation = authService.getImpersonation()
+      if (impersonation) {
+        const clinica = authService.getClinicaUser()
+        const ordenador = authService.getOrdenadorUser()
+        const financeiro = authService.getFinanceiroUser()
+        const user = clinica ?? ordenador ?? financeiro
+        if (user) {
+          const { getHomeRouteForPerfil } = await import('@/utils/perfilEtapa')
+          if (!cancelled) navigate(getHomeRouteForPerfil(user.perfil), { replace: true })
+          return
+        }
+      }
+
       setGateReady(false)
       setErro('')
       await authService.prepareTimelineEntry()
@@ -48,7 +62,7 @@ export default function TimelineEntryPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [navigate])
 
   const handleEmailLogin = async () => {
     setLoading(true)

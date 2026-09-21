@@ -164,7 +164,11 @@ function setSession(portal: Portal, authUser: AuthUser | null): void {
   writeStoredUser(sessionKey(portal), authUser)
 }
 
-async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser> {
+async function completePortalLogin(
+  portal: Portal,
+  user: User,
+  options?: { skipReload?: boolean },
+): Promise<AuthUser> {
   if (!validatePortalAccess(portal, user.perfil)) {
     throw new Error('Este usuário não tem acesso a este portal')
   }
@@ -182,7 +186,11 @@ async function completePortalLogin(portal: Portal, user: User): Promise<AuthUser
     if (portal === 'financeiro') setSession('ordenador', authUser)
   }
 
-  if (portal === 'ordenador' || portal === 'financeiro' || portal === 'clinica') {
+  if (
+    !options?.skipReload &&
+    !readImpersonation() &&
+    (portal === 'ordenador' || portal === 'financeiro' || portal === 'clinica')
+  ) {
     await reloadFreshAppData()
   }
 
@@ -625,6 +633,8 @@ export const authService = {
       ) ??
       null
 
+    const resolvedPerfil = (resolved.perfil || user?.perfil || 'CLINICA').toUpperCase() as UserRole
+
     if (!user && resolved.is_gestor) {
       user =
         data.usuarios.find((u) => u.perfil === 'GESTOR' && u.ativo) ??
@@ -646,13 +656,15 @@ export const authService = {
         id: resolved.app_user_id || `user-impersonate-${Date.now()}`,
         nome: resolved.nome || resolved.target_email.split('@')[0] || 'Usuário',
         posto: '',
-        graduacao: resolved.perfil,
+        graduacao: resolvedPerfil,
         login: resolved.target_email.split('@')[0] || 'user',
         email: resolved.target_email,
-        perfil: resolved.perfil as UserRole,
+        perfil: resolvedPerfil,
         clinicaId: null,
         ativo: true,
       }
+    } else if (!resolved.is_gestor && user.perfil !== resolvedPerfil && resolvedPerfil) {
+      user = { ...user, perfil: resolvedPerfil, email: resolved.target_email }
     }
 
     writeImpersonation({
@@ -664,19 +676,26 @@ export const authService = {
     })
 
     if (resolved.is_gestor || canAccessGestorRoute(user.perfil)) {
-      const authUser = await completePortalLogin('gestor', user)
+      const authUser = await completePortalLogin('gestor', user, { skipReload: true })
       return { authUser, portal: 'gestor', route: '/gestor/dashboard' }
     }
 
     const portal = portalForPerfil(user.perfil)
-    const authUser = await completePortalLogin(portal, user)
+    const authUser = await completePortalLogin(portal, user, { skipReload: true })
     // Personificação de equipe: não manter sessão de gestor na UI
     setSession('gestor', null)
+
+    const homeRoute = getHomeRouteForPerfil(user.perfil)
+    if (homeRoute === '/login') {
+      throw new Error(
+        `Perfil "${user.perfil}" do e-mail ${resolved.target_email} não tem portal de acesso definido`,
+      )
+    }
 
     return {
       authUser,
       portal,
-      route: getHomeRouteForPerfil(user.perfil),
+      route: homeRoute,
     }
   },
 
@@ -767,6 +786,9 @@ export const authService = {
   },
 
   async prepareTimelineEntry(): Promise<void> {
+    // Não destruir sessão de personificação do super-admin
+    if (readImpersonation()) return
+
     this.clearClinicaOrdenadorSessions()
     if (useSupabaseDataSource()) {
       await supabaseAuthAdapter.signOut()

@@ -7,21 +7,24 @@ import type { Portal } from '@/utils/portal'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { syncRemoteDataWhenAuthenticated } from '@/data/initDataLayer'
+import { authService } from '@/services/authService'
+import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 
 export function GestorProtectedRoute({ children }: { children: ReactNode }) {
   const { gestorUser, isLoading } = useAuth()
   const location = useLocation()
   const isSupabase = useSupabaseDataSource()
   const isDemoRoute = location.pathname.startsWith('/gestor/demo')
+  const user = gestorUser ?? authService.getGestorUser()
 
   useEffect(() => {
-    if (!isSupabase || !gestorUser || isDemoRoute) return
+    if (!isSupabase || !user || isDemoRoute) return
     void syncRemoteDataWhenAuthenticated()
-  }, [isSupabase, gestorUser, isDemoRoute])
+  }, [isSupabase, user, isDemoRoute])
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!gestorUser || !canAccessGestorRoute(gestorUser.perfil)) {
+  if (!user || !canAccessGestorRoute(user.perfil)) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
@@ -29,15 +32,28 @@ export function GestorProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
-  const { clinicaUser, demoMode, isLoading } = useAuth()
+  const { clinicaUser, demoMode, isLoading, impersonationTargetEmail } = useAuth()
   const { isDemo } = usePortalPaths()
   const location = useLocation()
 
-  const user = isDemo && demoMode?.portal === 'clinica' ? demoMode.authUser : clinicaUser
+  const user =
+    (isDemo && demoMode?.portal === 'clinica' ? demoMode.authUser : null) ??
+    clinicaUser ??
+    authService.getClinicaUser()
 
   if (isLoading) return <LoadingSpinner />
 
   if (!user || (user.perfil !== 'CLINICA' && user.perfil !== 'MEDICAMENTO' && user.perfil !== 'EMPENHADO')) {
+    if (impersonationTargetEmail || authService.getImpersonation()) {
+      const fallback =
+        authService.getOrdenadorUser() ??
+        authService.getFinanceiroUser() ??
+        authService.getGestorUser()
+      if (fallback) {
+        return <Navigate to={getHomeRouteForPerfil(fallback.perfil)} replace />
+      }
+      return <LoadingSpinner />
+    }
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 
@@ -45,15 +61,28 @@ export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
-  const { ordenadorUser, demoMode, isLoading } = useAuth()
+  const { ordenadorUser, demoMode, isLoading, impersonationTargetEmail } = useAuth()
   const { isDemo } = usePortalPaths()
   const location = useLocation()
 
-  const user = isDemo && demoMode?.portal === 'ordenador' ? demoMode.authUser : ordenadorUser
+  const user =
+    (isDemo && demoMode?.portal === 'ordenador' ? demoMode.authUser : null) ??
+    ordenadorUser ??
+    authService.getOrdenadorUser()
 
   if (isLoading) return <LoadingSpinner />
 
   if (!user || !canAccessOrdenadorRoute(user.perfil)) {
+    if (impersonationTargetEmail || authService.getImpersonation()) {
+      const fallback =
+        authService.getClinicaUser() ??
+        authService.getFinanceiroUser() ??
+        authService.getGestorUser()
+      if (fallback) {
+        return <Navigate to={getHomeRouteForPerfil(fallback.perfil)} replace />
+      }
+      return <LoadingSpinner />
+    }
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 
@@ -61,7 +90,7 @@ export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) {
-  const { financeiroUser, ordenadorUser, demoMode, isLoading } = useAuth()
+  const { financeiroUser, ordenadorUser, demoMode, isLoading, impersonationTargetEmail } = useAuth()
   const { isDemo } = usePortalPaths()
   const location = useLocation()
 
@@ -73,11 +102,25 @@ export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) 
       ? demoMode.authUser
       : null
     : financeiroUser ??
-      (ordenadorUser?.perfil === 'CONFECCAO_SOLEMP' ? ordenadorUser : null)
+      (ordenadorUser?.perfil === 'CONFECCAO_SOLEMP' ? ordenadorUser : null) ??
+      authService.getFinanceiroUser() ??
+      (authService.getOrdenadorUser()?.perfil === 'CONFECCAO_SOLEMP'
+        ? authService.getOrdenadorUser()
+        : null)
 
   if (isLoading) return <LoadingSpinner />
 
   if (!user || !canAccessFinanceiroRoute(user.perfil)) {
+    if (impersonationTargetEmail || authService.getImpersonation()) {
+      const fallback =
+        authService.getClinicaUser() ??
+        authService.getOrdenadorUser() ??
+        authService.getGestorUser()
+      if (fallback) {
+        return <Navigate to={getHomeRouteForPerfil(fallback.perfil)} replace />
+      }
+      return <LoadingSpinner />
+    }
     return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
   }
 

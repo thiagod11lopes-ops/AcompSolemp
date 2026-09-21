@@ -1,18 +1,20 @@
 -- AcompSOLEMP — personificação (super-admin entra como outro e-mail)
--- Requer is_super_admin() já existente.
+-- Corrige sombreamento de colunas OUT (perfil/tenant_id/email).
+
+drop function if exists public.admin_resolve_impersonation(text);
 
 create or replace function public.admin_resolve_impersonation(p_email text)
 returns table (
-  target_email text,
-  tenant_id uuid,
-  org_code text,
-  owner_email text,
-  perfil text,
-  app_user_id text,
-  nome text,
-  is_gestor boolean,
-  app_version text,
-  app_payload jsonb
+  result_target_email text,
+  result_tenant_id uuid,
+  result_org_code text,
+  result_owner_email text,
+  result_perfil text,
+  result_app_user_id text,
+  result_nome text,
+  result_is_gestor boolean,
+  result_app_version text,
+  result_app_payload jsonb
 )
 language plpgsql
 security definer
@@ -39,7 +41,6 @@ begin
     raise exception 'Não é possível personificar o super administrador';
   end if;
 
-  -- Gestor (dono da organização)
   select t.id, t.org_code, lower(t.owner_email)
     into v_tenant, v_org, v_owner
   from public.tenants t
@@ -52,12 +53,16 @@ begin
     v_app_user := 'user-owner-' || v_tenant::text;
     v_nome := split_part(v_email, '@', 1);
   else
-    -- Equipe liberada em Cadastros
-    select e.tenant_id, e.perfil, e.app_user_id, coalesce(e.nome, ''), lower(t.owner_email), t.org_code
+    select ea.tenant_id,
+           ea.perfil,
+           ea.app_user_id,
+           coalesce(ea.nome, ''),
+           lower(t.owner_email),
+           t.org_code
       into v_tenant, v_perfil, v_app_user, v_nome, v_owner, v_org
-    from public.email_access e
-    join public.tenants t on t.id = e.tenant_id
-    where lower(e.email) = v_email
+    from public.email_access ea
+    join public.tenants t on t.id = ea.tenant_id
+    where lower(ea.email) = v_email
     limit 1;
 
     if v_tenant is null then
@@ -75,15 +80,28 @@ begin
     v_version := 'v16';
   end if;
 
+  -- Se o perfil vier vazio, tenta pegar do app_state.usuarios
+  if nullif(trim(coalesce(v_perfil, '')), '') is null and v_payload ? 'usuarios' then
+    select u.elem->>'perfil'
+      into v_perfil
+    from jsonb_array_elements(coalesce(v_payload->'usuarios', '[]'::jsonb)) as u(elem)
+    where lower(trim(u.elem->>'email')) = v_email
+    limit 1;
+  end if;
+
+  if nullif(trim(coalesce(v_perfil, '')), '') is null then
+    v_perfil := 'CLINICA';
+  end if;
+
   return query
   select
     v_email,
     v_tenant,
     v_org,
     v_owner,
-    v_perfil,
-    v_app_user,
-    v_nome,
+    upper(trim(v_perfil)),
+    coalesce(v_app_user, ''),
+    coalesce(v_nome, ''),
     v_is_gestor,
     coalesce(v_version, 'v16'),
     v_payload;
@@ -92,11 +110,13 @@ $$;
 
 grant execute on function public.admin_resolve_impersonation(text) to authenticated;
 
+drop function if exists public.admin_get_app_state(uuid);
+
 create or replace function public.admin_get_app_state(p_tenant_id uuid)
 returns table (
-  version text,
-  payload jsonb,
-  updated_at timestamptz
+  result_version text,
+  result_payload jsonb,
+  result_updated_at timestamptz
 )
 language plpgsql
 security definer
