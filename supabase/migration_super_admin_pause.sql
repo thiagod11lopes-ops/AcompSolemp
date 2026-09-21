@@ -144,8 +144,8 @@ grant execute on function public.list_gestor_team_emails(text) to authenticated;
 
 create or replace function public.set_account_paused(p_email text, p_paused boolean)
 returns table (
-  email text,
-  paused boolean
+  result_email text,
+  result_paused boolean
 )
 language plpgsql
 security definer
@@ -164,13 +164,14 @@ begin
   end if;
 
   if p_paused then
-    insert into public.account_pauses (email, paused_by, paused_at)
+    insert into public.account_pauses as ap (email, paused_by, paused_at)
     values (v_email, v_actor, now())
     on conflict (email) do update
       set paused_by = excluded.paused_by,
           paused_at = now();
   else
-    delete from public.account_pauses where lower(email) = v_email;
+    delete from public.account_pauses as ap
+    where lower(ap.email) = v_email;
   end if;
 
   return query

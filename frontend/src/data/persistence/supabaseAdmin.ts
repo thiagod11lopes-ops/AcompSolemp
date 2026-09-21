@@ -60,7 +60,7 @@ export async function setAccountPaused(email: string, paused: boolean): Promise<
   })
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
-  return Boolean(row?.paused)
+  return Boolean(row?.result_paused ?? row?.paused)
 }
 
 export async function assertAccountNotPaused(email: string): Promise<void> {
