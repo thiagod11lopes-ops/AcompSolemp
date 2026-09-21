@@ -12,7 +12,6 @@ import {
   Divider,
   List,
   ListItemButton,
-  Stack,
   Switch,
   Typography,
 } from '@mui/material'
@@ -152,19 +151,27 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                       }}
                     >
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}
+                        >
                           <Typography sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
                             {row.email}
                           </Typography>
                           {row.is_gestor && <Chip size="small" label="Gestor" color="primary" />}
                           {row.paused && <Chip size="small" label="Pausado" color="warning" />}
-                        </Stack>
+                        </Box>
                         <Typography variant="body2" color="text.secondary">
                           {row.perfil}
                           {row.nome ? ` · ${row.nome}` : ''}
                         </Typography>
                       </Box>
-                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {row.paused ? (
                           <PauseCircleIcon fontSize="small" color="warning" />
                         ) : (
@@ -180,7 +187,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                             },
                           }}
                         />
-                      </Stack>
+                      </Box>
                     </Box>
                     <Divider />
                   </Box>
@@ -197,12 +204,20 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                 <Box key={gestor.tenant_id}>
                   <ListItemButton onClick={() => void handleSelectGestor(gestor)}>
                     <Box sx={{ width: '100%' }}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          gap: 1,
+                        }}
+                      >
                         <Typography sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
                           {gestor.email}
                         </Typography>
                         {gestor.paused && <Chip size="small" label="Pausado" color="warning" />}
-                      </Stack>
+                      </Box>
                       <Typography variant="body2" color="text.secondary">
                         Org {gestor.org_code} · {gestor.team_count} e-mail(s) na equipe
                       </Typography>
