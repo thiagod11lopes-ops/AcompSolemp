@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/supabase/client'
-import { assertMarinhaEmail, normalizeEmailKey } from '@/utils/email'
+import { assertMarinhaEmail, normalizeEmailKey, SUPER_ADMIN_EMAIL } from '@/utils/email'
 
 export interface ActiveGestorRow {
   email: string
@@ -29,13 +29,15 @@ export async function listActiveGestores(): Promise<ActiveGestorRow[]> {
   const { data, error } = await getSupabaseClient().rpc('list_active_gestores')
   if (error) throw new Error(error.message)
   const rows = Array.isArray(data) ? data : []
-  return rows.map((row) => ({
-    email: String(row.email ?? '').toLowerCase(),
-    tenant_id: String(row.tenant_id ?? ''),
-    org_code: String(row.org_code ?? ''),
-    paused: Boolean(row.paused),
-    team_count: Number(row.team_count ?? 0),
-  }))
+  return rows
+    .map((row) => ({
+      email: String(row.email ?? '').toLowerCase(),
+      tenant_id: String(row.tenant_id ?? ''),
+      org_code: String(row.org_code ?? ''),
+      paused: Boolean(row.paused),
+      team_count: Number(row.team_count ?? 0),
+    }))
+    .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
 }
 
 export async function listGestorTeamEmails(gestorEmail: string): Promise<GestorTeamEmailRow[]> {
@@ -44,13 +46,15 @@ export async function listGestorTeamEmails(gestorEmail: string): Promise<GestorT
   })
   if (error) throw new Error(error.message)
   const rows = Array.isArray(data) ? data : []
-  return rows.map((row) => ({
-    email: String(row.email ?? '').toLowerCase(),
-    perfil: String(row.perfil ?? ''),
-    nome: String(row.nome ?? ''),
-    paused: Boolean(row.paused),
-    is_gestor: Boolean(row.is_gestor),
-  }))
+  return rows
+    .map((row) => ({
+      email: String(row.email ?? '').toLowerCase(),
+      perfil: String(row.perfil ?? ''),
+      nome: String(row.nome ?? ''),
+      paused: Boolean(row.paused),
+      is_gestor: Boolean(row.is_gestor),
+    }))
+    .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
 }
 
 export async function setAccountPaused(email: string, paused: boolean): Promise<boolean> {

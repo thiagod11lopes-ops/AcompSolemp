@@ -76,8 +76,10 @@ begin
       select count(*)::bigint
       from public.email_access e
       where e.tenant_id = t.id
+        and lower(e.email) <> 'lopes.thiago.oliveira@marinha.mil.br'
     ) as team_count
   from public.tenants t
+  where lower(t.owner_email) <> 'lopes.thiago.oliveira@marinha.mil.br'
   order by lower(t.owner_email);
 end;
 $$;
@@ -99,6 +101,7 @@ as $$
 declare
   v_gestor text := lower(trim(p_gestor_email));
   v_tenant uuid;
+  v_super text := 'lopes.thiago.oliveira@marinha.mil.br';
 begin
   if not public.is_super_admin() then
     raise exception 'Acesso restrito ao super administrador';
@@ -113,7 +116,7 @@ begin
     return;
   end if;
 
-  -- Inclui o próprio gestor + equipe
+  -- Gestor da organização + equipe (nunca o super-admin)
   return query
   select * from (
     select
@@ -124,7 +127,10 @@ begin
         select 1 from public.account_pauses p where lower(p.email) = v_gestor
       ) as paused,
       true as is_gestor
+    where v_gestor <> v_super
+
     union all
+
     select
       lower(e.email) as email,
       e.perfil,
@@ -135,6 +141,7 @@ begin
       false as is_gestor
     from public.email_access e
     where e.tenant_id = v_tenant
+      and lower(e.email) <> v_super
   ) q
   order by q.is_gestor desc, q.email;
 end;
