@@ -72,6 +72,29 @@ function assertEmailAvailableLocal(email: string, ignoreUserId?: string): void {
   }
 }
 
+/** Impede o gestor de liberar o próprio e-mail como usuário da Timeline. */
+function assertNotGestorOwnEmail(email: string): void {
+  const data = loadAppData()
+  const ownerEmail = data.tenantMeta?.ownerEmail?.trim().toLowerCase()
+  if (ownerEmail && ownerEmail === email) {
+    throw new Error(
+      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+    )
+  }
+
+  const gestorComMesmoEmail = data.usuarios.find(
+    (user) =>
+      user.ativo &&
+      (user.perfil === 'GESTOR' || user.perfil === 'ADMINISTRADOR') &&
+      user.email?.trim().toLowerCase() === email,
+  )
+  if (gestorComMesmoEmail) {
+    throw new Error(
+      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+    )
+  }
+}
+
 export const usuarioCadastroService = {
   async createPortalUser(input: CreatePortalUserInput): Promise<CreateUserResult> {
     const nome = input.nome.trim()
@@ -83,6 +106,7 @@ export const usuarioCadastroService = {
     }
 
     const email = validateEmail(input.email)
+    assertNotGestorOwnEmail(email)
     assertEmailAvailableLocal(email)
 
     const tenantId = getTenantId()

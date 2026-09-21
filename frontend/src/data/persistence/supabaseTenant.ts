@@ -153,9 +153,18 @@ export async function upsertEmailAccess(input: {
   clinicaId?: string | null
   nome?: string
 }): Promise<void> {
+  const email = input.email.trim().toLowerCase()
+  const tenant = await getTenantById(input.tenantId)
+  const ownerEmail = tenant?.owner_email?.trim().toLowerCase()
+  if (ownerEmail && ownerEmail === email) {
+    throw new Error(
+      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+    )
+  }
+
   const { error } = await getSupabaseClient().from('email_access').upsert(
     {
-      email: input.email.trim().toLowerCase(),
+      email,
       tenant_id: input.tenantId,
       app_user_id: input.appUserId,
       perfil: input.perfil,
