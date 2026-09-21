@@ -30,7 +30,7 @@ export function ImhDivMaterialEnvioModal({
   onClose,
   onEnviar,
 }: ImhDivMaterialEnvioModalProps) {
-  const canSend = imhCount > 0 && divMaterialCount > 0 && !isSubmitting
+  const canSend = (imhCount > 0 || divMaterialCount > 0) && !isSubmitting
 
   return (
     <Dialog
@@ -104,7 +104,9 @@ export function ImhDivMaterialEnvioModal({
                   Planilha IMH → Auditoria
                 </Typography>
                 <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.8), mt: 0.35 }}>
-                  {imhCount} lançamento(s) marcado(s) serão encaminhados para Auditoria.
+                  {imhCount > 0
+                    ? `${imhCount} lançamento(s) marcado(s) serão encaminhados para Auditoria.`
+                    : 'Nenhuma linha marcada na IMH — este destino não será enviado agora.'}
                 </Typography>
               </Box>
             </Box>
@@ -129,8 +131,9 @@ export function ImhDivMaterialEnvioModal({
                   Div. Material → Confecção de Solemp
                 </Typography>
                 <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.8), mt: 0.35 }}>
-                  {divMaterialCount} lançamento(s) marcado(s) serão encaminhados para Confecção
-                  de Solemp.
+                  {divMaterialCount > 0
+                    ? `${divMaterialCount} lançamento(s) marcado(s) serão encaminhados para Confecção de Solemp.`
+                    : 'Nenhuma linha marcada na Div. Material — este destino não será enviado agora.'}
                 </Typography>
               </Box>
             </Box>
@@ -166,13 +169,17 @@ export function ImhDivMaterialEnvioModal({
           >
             {isSubmitting
               ? 'Enviando planilhas...'
-              : 'Enviar para Auditoria e Confecção de Solemp'}
+              : imhCount > 0 && divMaterialCount > 0
+                ? 'Enviar para Auditoria e Confecção de Solemp'
+                : imhCount > 0
+                  ? 'Enviar IMH para Auditoria'
+                  : 'Enviar Div. Material para Confecção de Solemp'}
           </Button>
           <Typography
             variant="caption"
             sx={{ display: 'block', mt: 1.25, textAlign: 'center', color: alpha('#cbd5e1', 0.8) }}
           >
-            Marque linhas na IMH e na Div. Material antes de confirmar.
+            É necessário marcar ao menos uma linha em IMH ou em Div. Material.
           </Typography>
         </Box>
       </Box>

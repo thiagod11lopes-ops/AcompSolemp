@@ -73,6 +73,7 @@ import {
 import {
   buildControleSolempFromDivMaterial,
   buildDivMaterialLinhas,
+  divMaterialLinhasToPedidoInput,
 } from '@/utils/divMaterialForm'
 import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 
@@ -379,12 +380,11 @@ export default function ClinicaNovoPedidoPage() {
   }
 
   const handleAbrirEnvio = () => {
-    if (selectedImhCount === 0 || selectedDivCount === 0) {
+    if (selectedImhCount === 0 && selectedDivCount === 0) {
       setFeedback({
         open: true,
         severity: 'error',
-        message:
-          'Marque ao menos um lançamento na planilha IMH e um na Div. Material para enviar.',
+        message: 'Marque ao menos um lançamento na IMH ou na Div. Material para enviar.',
       })
       return
     }
@@ -410,15 +410,19 @@ export default function ClinicaNovoPedidoPage() {
       (l) => selectedDivMaterialIds.has(l.id) && !finalizedDivMaterialIds.has(l.id),
     )
 
-    if (imhSelecionadas.length === 0 || divSelecionadas.length === 0) {
+    if (imhSelecionadas.length === 0 && divSelecionadas.length === 0) {
       setFeedback({
         open: true,
         severity: 'error',
-        message:
-          'Marque ao menos um lançamento na planilha IMH e um na Div. Material para enviar.',
+        message: 'Marque ao menos um lançamento na IMH ou na Div. Material para enviar.',
       })
       return
     }
+
+    const temImh = imhSelecionadas.length > 0
+    const temDiv = divSelecionadas.length > 0
+    const fluxo =
+      temImh && temDiv ? 'paralelo' : temImh ? 'auditoria' : 'confeccao'
 
     setIsEnviando(true)
     try {
@@ -427,61 +431,77 @@ export default function ClinicaNovoPedidoPage() {
         ...divSelecionadas.map((l) => l.id),
       ]
       const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
-      const planilhaImh = buildImhPlanilhaFromAbaForm(imhForm, imhSelecionadas)
-      const planilhaControle = buildControleSolempFromDivMaterial(divSelecionadas)
       let pedidoId: string
 
       if (pedidoExistente) {
         pedidoId = pedidoExistente.id
-        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
-        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+        if (temImh) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+        if (temDiv) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
       } else {
         pedidoId = createPedidoLoteId()
+        const baseInput = temImh
+          ? imhAbaLinhasToPedidoInput(imhSelecionadas, clinicaNome)
+          : divMaterialLinhasToPedidoInput(divSelecionadas, clinicaNome)
         await createPedido.mutateAsync({
-          ...imhAbaLinhasToPedidoInput(imhSelecionadas, clinicaNome),
+          ...baseInput,
           id: pedidoId,
-          fluxo: 'paralelo',
+          fluxo,
           consumoRowIds: rowIds,
         })
       }
 
-      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
-      pedidoPlanilhaEnvioService.saveDivMaterialForPedido(
-        pedidoId,
-        divSelecionadas,
-        planilhaControle,
-      )
+      if (temImh) {
+        const planilhaImh = buildImhPlanilhaFromAbaForm(imhForm, imhSelecionadas)
+        pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
+      }
+      if (temDiv) {
+        const planilhaControle = buildControleSolempFromDivMaterial(divSelecionadas)
+        pedidoPlanilhaEnvioService.saveDivMaterialForPedido(
+          pedidoId,
+          divSelecionadas,
+          planilhaControle,
+        )
+      }
 
-      const nextImh = markImhAbaLinhasFinalized(
-        imhForm,
-        imhSelecionadas.map((l) => l.id),
-      )
+      const nextImh = temImh
+        ? markImhAbaLinhasFinalized(
+            imhForm,
+            imhSelecionadas.map((l) => l.id),
+          )
+        : imhForm
       const nextDivFinalized = new Set(finalizedDivMaterialIds)
       for (const linha of divSelecionadas) nextDivFinalized.add(linha.id)
 
-      setImhForm(nextImh)
-      setFinalizedDivMaterialIds(nextDivFinalized)
+      if (temImh) setImhForm(nextImh)
+      if (temDiv) setFinalizedDivMaterialIds(nextDivFinalized)
       persist({
-        imh: nextImh,
-        finalizedDivMaterialIds: [...nextDivFinalized],
+        ...(temImh ? { imh: nextImh } : {}),
+        ...(temDiv ? { finalizedDivMaterialIds: [...nextDivFinalized] } : {}),
       })
 
-      setSelectedImhIds((prev) => {
-        const next = new Set(prev)
-        for (const linha of imhSelecionadas) next.delete(linha.id)
-        return next
-      })
-      setSelectedDivMaterialIds((prev) => {
-        const next = new Set(prev)
-        for (const linha of divSelecionadas) next.delete(linha.id)
-        return next
-      })
+      if (temImh) {
+        setSelectedImhIds((prev) => {
+          const next = new Set(prev)
+          for (const linha of imhSelecionadas) next.delete(linha.id)
+          return next
+        })
+      }
+      if (temDiv) {
+        setSelectedDivMaterialIds((prev) => {
+          const next = new Set(prev)
+          for (const linha of divSelecionadas) next.delete(linha.id)
+          return next
+        })
+      }
 
       setEnvioModalOpen(false)
+      const partes: string[] = []
+      if (temImh) partes.push(`IMH (${imhSelecionadas.length}) → Auditoria`)
+      if (temDiv) partes.push(`Div. Material (${divSelecionadas.length}) → Confecção de Solemp`)
       setFeedback({
         open: true,
         severity: 'success',
-        message: `IMH (${imhSelecionadas.length}) enviada à Auditoria e Div. Material (${divSelecionadas.length}) à Confecção de Solemp.`,
+        message: `${partes.join(' · ')}.`,
       })
       navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {
@@ -613,28 +633,28 @@ export default function ClinicaNovoPedidoPage() {
             flexWrap: 'wrap',
           })}
         >
-          <Tabs
+        <Tabs
             value={tabValue}
             onChange={(_, value: string) => handleChangeAba(value)}
             variant="scrollable"
             scrollButtons="auto"
-            sx={{
+          sx={{
               flex: 1,
               minHeight: 42,
               minWidth: 0,
-              '& .MuiTab-root': {
+            '& .MuiTab-root': {
                 minHeight: 42,
-                textTransform: 'none',
-                fontWeight: 600,
+              textTransform: 'none',
+              fontWeight: 600,
                 fontSize: '0.85rem',
                 px: 1.5,
-              },
-            }}
-          >
+            },
+          }}
+        >
             {tabsSource.map((aba) => (
               <Tab key={aba.id} value={aba.id} label={aba.nome} />
             ))}
-          </Tabs>
+        </Tabs>
           {!isMedicamento && tabsSource.some((a) => a.id === DIV_MATERIAL_ABA_ID) ? (
             <Button
               size="small"

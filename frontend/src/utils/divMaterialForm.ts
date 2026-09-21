@@ -203,6 +203,71 @@ export function buildDivMaterialLinhas(input: {
   })
 }
 
+export function divMaterialLinhasToPedidoInput(
+  linhas: DivMaterialLinha[],
+  clinicaNome: string,
+): import('@/services/clinicaPedidoService').CreatePedidoInput {
+  if (linhas.length === 1) {
+    const linha = linhas[0]
+    return {
+      consumoRowIds: [linha.id],
+      paciente: {
+        nome: linha.nomePaciente.trim() || '—',
+        vinculo: 'TITULAR',
+        nip: linha.nip.trim() || '—',
+        nipTitular: linha.nip.trim() || '—',
+        nomeTitular: linha.nomePaciente.trim() || '—',
+        tipoUsuario: 'MILITAR',
+      },
+      dadosClinica: {
+        nomeClinica: clinicaNome,
+        medico: '—',
+        procedimento: linha.descricaoMaterial.trim() || 'Div. Material',
+        dataCirurgia: new Date().toISOString().slice(0, 10),
+        empresaConsignada: linha.fornecedor.trim() || '—',
+        pregao: linha.modalidadeLicitatoria.trim() || '—',
+        materialUtilizado: linha.descricaoMaterial.trim() || 'Div. Material',
+        quantidade: 1,
+        valorUnitario: 0.01,
+        valorTotal: 0.01,
+        folhaSala: [linha.mapa, linha.valeSala].filter(Boolean).join(' / '),
+        descricaoCirurgica: `Envio Div. Material para Confecção de Solemp — ${linha.nomePaciente.trim() || 'paciente'}.`,
+        etiquetas: '',
+        fotos: [],
+      },
+    }
+  }
+
+  const titulo = `Div. Material — ${linhas.length} lançamentos`
+  return {
+    consumoRowIds: linhas.map((linha) => linha.id),
+    paciente: {
+      nome: titulo,
+      vinculo: 'TITULAR',
+      nip: '—',
+      nipTitular: '—',
+      nomeTitular: titulo,
+      tipoUsuario: 'MILITAR',
+    },
+    dadosClinica: {
+      nomeClinica: clinicaNome,
+      medico: '—',
+      procedimento: `Lote Div. Material com ${linhas.length} lançamentos`,
+      dataCirurgia: new Date().toISOString().slice(0, 10),
+      empresaConsignada: linhas.find((l) => l.fornecedor.trim())?.fornecedor.trim() || '—',
+      pregao: linhas.find((l) => l.modalidadeLicitatoria.trim())?.modalidadeLicitatoria.trim() || '—',
+      materialUtilizado: `${linhas.length} itens Div. Material na planilha enviada`,
+      quantidade: linhas.length,
+      valorUnitario: 0.01,
+      valorTotal: 0.01 * linhas.length,
+      folhaSala: '',
+      descricaoCirurgica: `Envio de Div. Material com ${linhas.length} lançamentos para Confecção de Solemp.`,
+      etiquetas: '',
+      fotos: [],
+    },
+  }
+}
+
 export function buildControleSolempFromDivMaterial(
   linhas: DivMaterialLinha[],
 ): ControleSolempPlanilha {
