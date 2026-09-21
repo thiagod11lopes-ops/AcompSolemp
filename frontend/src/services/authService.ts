@@ -41,6 +41,7 @@ import {
   declineTeamEmailInvite,
   provisionGestorTenant,
 } from '@/data/persistence/supabaseTenant'
+import { assertAccountNotPaused } from '@/data/persistence/supabaseAdmin'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
 import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
@@ -254,6 +255,8 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
+    await assertAccountNotPaused(marinhaEmail)
+
     const teamAccess = await getEmailAccess(marinhaEmail)
     if (teamAccess) {
       throw new Error(
@@ -278,6 +281,8 @@ export const authService = {
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
+
+    await assertAccountNotPaused(marinhaEmail)
 
     const teamAccess = await getEmailAccess(marinhaEmail)
     if (teamAccess) {
@@ -385,6 +390,8 @@ export const authService = {
         throw new Error('Informe a senha (mínimo 6 caracteres)')
       }
 
+      await assertAccountNotPaused(marinhaEmail)
+
       const access = await getEmailAccess(marinhaEmail)
       if (!access) {
         throw new Error('Email não cadastrado pelo gestor')
@@ -416,6 +423,8 @@ export const authService = {
     if (password.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
+
+    await assertAccountNotPaused(marinhaEmail)
 
     const access = await getEmailAccess(marinhaEmail)
     if (!access) {

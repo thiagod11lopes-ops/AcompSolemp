@@ -1,9 +1,17 @@
 export const MARINHA_EMAIL_DOMAIN = 'marinha.mil.br'
 
+/** Super administrador: pode listar gestores e pausar contas. */
+export const SUPER_ADMIN_EMAIL = 'lopes.thiago.oliveira@marinha.mil.br'
+
 export const MARINHA_EMAIL_HINT = `Use um e-mail institucional @${MARINHA_EMAIL_DOMAIN}`
 
 export function normalizeEmailKey(email: string): string {
   return email.trim().toLowerCase()
+}
+
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return normalizeEmailKey(email) === SUPER_ADMIN_EMAIL
 }
 
 function domainOf(email: string): string | null {

@@ -14,6 +14,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import ScienceIcon from '@mui/icons-material/Science'
 import LogoutIcon from '@mui/icons-material/Logout'
+import GroupsIcon from '@mui/icons-material/Groups'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
@@ -21,8 +22,12 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
+import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
 import { DRAWER_WIDTH } from './Sidebar'
 import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
+import { isSuperAdminEmail } from '@/utils/email'
+import { useSupabaseDataSource } from '@/config/dataSource'
+import { loadAppData } from '@/mocks/seed'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -33,9 +38,17 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const { user, logout } = useGestorAuth()
   const { mode, toggleTheme } = useThemeMode()
   const { demoBannerHeight } = usePortalPaths()
+  const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+
+  const sessionEmail =
+    user?.email?.trim().toLowerCase() ||
+    loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
+    ''
+  const showSuperAdmin = isSupabase && isSuperAdminEmail(sessionEmail)
 
   const handleLogout = async () => {
     await logout()
@@ -91,7 +104,18 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
                 {user?.posto} {user?.nome}
               </Typography>
             </MenuItem>
-            <MenuItem onClick={handleLogout}>
+            {showSuperAdmin && (
+              <MenuItem
+                onClick={() => {
+                  setAnchorEl(null)
+                  setAdminOpen(true)
+                }}
+              >
+                <GroupsIcon fontSize="small" sx={{ mr: 1 }} />
+                Gestores ativos
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => void handleLogout()}>
               <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
               Sair
             </MenuItem>
@@ -99,6 +123,9 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
         </Box>
       </Toolbar>
       <DemoCadastrosModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+      {showSuperAdmin && (
+        <SuperAdminGestoresDialog open={adminOpen} onClose={() => setAdminOpen(false)} />
+      )}
     </AppBar>
   )
 }
