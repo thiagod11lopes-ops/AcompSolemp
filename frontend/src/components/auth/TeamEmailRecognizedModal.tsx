@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Box, Button, Dialog, Fade, Stack, Typography, keyframes } from '@mui/material'
+import { Alert, Box, Button, Dialog, Stack, Typography, keyframes } from '@mui/material'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 
@@ -48,13 +48,12 @@ export function TeamEmailRecognizedModal({
   return (
     <Dialog
       open={open}
-      onClose={(_, reason) => {
+      onClose={(_event, reason) => {
         if (reason === 'backdropClick' || reason === 'escapeKeyDown') return
       }}
-      disableEscapeKeyDown
-      slots={{ transition: Fade }}
+      maxWidth="xs"
+      fullWidth
       slotProps={{
-        transition: { timeout: 320 },
         backdrop: {
           sx: {
             backgroundColor: 'rgba(6, 24, 18, 0.55)',
@@ -64,8 +63,6 @@ export function TeamEmailRecognizedModal({
         paper: {
           sx: {
             m: 2,
-            maxWidth: 440,
-            width: '100%',
             overflow: 'hidden',
             borderRadius: 4,
             border: '1px solid rgba(34, 197, 94, 0.35)',
@@ -170,14 +167,7 @@ export function TeamEmailRecognizedModal({
           O gestor abaixo cadastrou o seu e-mail para integrar o AcompSOLEMP:
         </Typography>
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1,
-            mb: 2.5,
-          }}
-        >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
           <Box
             sx={{
               px: 1.75,
