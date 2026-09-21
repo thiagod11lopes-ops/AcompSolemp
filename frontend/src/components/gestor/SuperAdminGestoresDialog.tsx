@@ -11,9 +11,11 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   List,
   ListItemButton,
   Switch,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -139,8 +141,8 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {selectedGestor
-            ? 'Clique em Entrar para abrir o sistema como esse e-mail. Use o interruptor para pausar/reativar.'
-            : 'Clique em um gestor para ver a equipe, ou use Entrar para acessar como ele.'}
+            ? 'Use o ícone de entrar ao lado do play/pause para abrir o sistema como esse e-mail.'
+            : 'Clique em um gestor para ver a equipe. Use o ícone de entrar para acessar como ele.'}
         </Typography>
 
         {error && (
@@ -160,12 +162,13 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
             ) : (
               team.map((row) => {
                 const isSelf = row.email === SUPER_ADMIN_EMAIL
+                const entering = enteringEmail === row.email
                 return (
                   <Box key={row.email}>
                     <Box
                       sx={{
                         display: 'flex',
-                        alignItems: 'flex-start',
+                        alignItems: 'center',
                         gap: 1,
                         py: 1.25,
                         px: 0.5,
@@ -191,17 +194,8 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                           {row.perfil}
                           {row.nome ? ` · ${row.nome}` : ''}
                         </Typography>
-                        <Button
-                          size="small"
-                          startIcon={<LoginIcon />}
-                          disabled={Boolean(enteringEmail) || row.paused}
-                          onClick={() => void handleEnterAs(row.email)}
-                          sx={{ mt: 0.75, textTransform: 'none' }}
-                        >
-                          {enteringEmail === row.email ? 'Entrando...' : 'Entrar como este e-mail'}
-                        </Button>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
                         {row.paused ? (
                           <PauseCircleIcon fontSize="small" color="warning" />
                         ) : (
@@ -217,6 +211,23 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                             },
                           }}
                         />
+                        <Tooltip title={row.paused ? 'Conta pausada' : 'Entrar como este e-mail'}>
+                          <span>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              disabled={Boolean(enteringEmail) || row.paused || isSelf}
+                              onClick={() => void handleEnterAs(row.email)}
+                              aria-label="Entrar como este e-mail"
+                            >
+                              {entering ? (
+                                <CircularProgress size={18} />
+                              ) : (
+                                <LoginIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </Box>
                     </Box>
                     <Divider />
@@ -230,49 +241,86 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
             {gestores.length === 0 ? (
               <Typography color="text.secondary">Nenhum gestor ativo no sistema.</Typography>
             ) : (
-              gestores.map((gestor) => (
-                <Box key={gestor.tenant_id}>
-                  <ListItemButton
-                    onClick={() => void handleSelectGestor(gestor)}
-                    sx={{ alignItems: 'flex-start' }}
-                  >
-                    <Box sx={{ width: '100%' }}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          flexDirection: 'row',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          gap: 1,
-                        }}
+              gestores.map((gestor) => {
+                const entering = enteringEmail === gestor.email
+                return (
+                  <Box key={gestor.tenant_id}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        py: 0.5,
+                        px: 0.5,
+                      }}
+                    >
+                      <ListItemButton
+                        onClick={() => void handleSelectGestor(gestor)}
+                        sx={{ flex: 1, minWidth: 0, borderRadius: 1 }}
                       >
-                        <Typography sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
-                          {gestor.email}
-                        </Typography>
-                        {gestor.paused && <Chip size="small" label="Pausado" color="warning" />}
+                        <Box sx={{ width: '100%' }}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'row',
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              gap: 1,
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
+                              {gestor.email}
+                            </Typography>
+                            {gestor.paused && (
+                              <Chip size="small" label="Pausado" color="warning" />
+                            )}
+                          </Box>
+                          <Typography variant="body2" color="text.secondary">
+                            Org {gestor.org_code} · {gestor.team_count} e-mail(s) na equipe
+                          </Typography>
+                        </Box>
+                      </ListItemButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
+                        {gestor.paused ? (
+                          <PauseCircleIcon fontSize="small" color="warning" />
+                        ) : (
+                          <PlayCircleIcon fontSize="small" color="success" />
+                        )}
+                        <Switch
+                          checked={!gestor.paused}
+                          disabled={busyEmail === gestor.email}
+                          onChange={(_, checked) =>
+                            void handleTogglePause(gestor.email, !checked)
+                          }
+                          slotProps={{
+                            input: {
+                              'aria-label': gestor.paused ? 'Reativar conta' : 'Pausar conta',
+                            },
+                          }}
+                        />
+                        <Tooltip title={gestor.paused ? 'Conta pausada' : 'Entrar como este gestor'}>
+                          <span>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              disabled={Boolean(enteringEmail) || gestor.paused}
+                              onClick={() => void handleEnterAs(gestor.email)}
+                              aria-label="Entrar como este gestor"
+                            >
+                              {entering ? (
+                                <CircularProgress size={18} />
+                              ) : (
+                                <LoginIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Org {gestor.org_code} · {gestor.team_count} e-mail(s) na equipe
-                      </Typography>
-                      <Button
-                        size="small"
-                        startIcon={<LoginIcon />}
-                        disabled={Boolean(enteringEmail) || gestor.paused}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void handleEnterAs(gestor.email)
-                        }}
-                        sx={{ mt: 0.75, textTransform: 'none' }}
-                      >
-                        {enteringEmail === gestor.email
-                          ? 'Entrando...'
-                          : 'Entrar como este gestor'}
-                      </Button>
                     </Box>
-                  </ListItemButton>
-                  <Divider />
-                </Box>
-              ))
+                    <Divider />
+                  </Box>
+                )
+              })
             )}
           </List>
         )}
