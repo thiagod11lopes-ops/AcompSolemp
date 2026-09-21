@@ -158,6 +158,9 @@ create policy "email_access_delete_tenant"
   using (tenant_id = public.current_tenant_id());
 
 -- Lookup público (security definer) para o portão da Timeline antes da sessão
+drop function if exists public.lookup_email_access(text);
+drop function if exists public.decline_team_email_invite(text);
+
 create or replace function public.lookup_email_access(p_email text)
 returns table (
   email text,
