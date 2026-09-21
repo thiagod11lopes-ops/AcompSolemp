@@ -1,5 +1,7 @@
-import { Box, Button, Dialog, Fade, Typography, keyframes } from '@mui/material'
+import { useState } from 'react'
+import { Alert, Box, Button, Dialog, Fade, Stack, Typography, keyframes } from '@mui/material'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 
 const pulseRing = keyframes`
   0% { transform: scale(0.85); opacity: 0.55; }
@@ -15,19 +17,41 @@ const floatIn = keyframes`
 interface TeamEmailRecognizedModalProps {
   open: boolean
   email: string
-  onClose: () => void
+  gestorEmail: string | null
+  onAccept: () => void
+  onDecline: () => Promise<void>
 }
 
-/** Modal de confirmação quando o e-mail já foi liberado pelo gestor em Cadastros. */
+/** Modal de convite quando o e-mail já foi liberado pelo gestor em Cadastros. */
 export function TeamEmailRecognizedModal({
   open,
   email,
-  onClose,
+  gestorEmail,
+  onAccept,
+  onDecline,
 }: TeamEmailRecognizedModalProps) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleDecline = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      await onDecline()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível recusar o convite.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(_, reason) => {
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') return
+      }}
+      disableEscapeKeyDown
       slots={{ transition: Fade }}
       slotProps={{
         transition: { timeout: 320 },
@@ -40,7 +64,7 @@ export function TeamEmailRecognizedModal({
         paper: {
           sx: {
             m: 2,
-            maxWidth: 420,
+            maxWidth: 440,
             width: '100%',
             overflow: 'hidden',
             borderRadius: 4,
@@ -105,7 +129,7 @@ export function TeamEmailRecognizedModal({
               boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
             }}
           >
-            <CheckCircleRoundedIcon sx={{ fontSize: 40, color: '#ECFDF5' }} />
+            <PersonAddAlt1RoundedIcon sx={{ fontSize: 40, color: '#ECFDF5' }} />
           </Box>
         </Box>
 
@@ -119,7 +143,7 @@ export function TeamEmailRecognizedModal({
             mb: 1,
           }}
         >
-          E-mail reconhecido
+          Convite do gestor
         </Typography>
 
         <Typography
@@ -137,74 +161,126 @@ export function TeamEmailRecognizedModal({
 
         <Typography
           sx={{
-            fontSize: '0.98rem',
+            fontSize: '0.95rem',
             lineHeight: 1.55,
             color: 'rgba(236, 253, 245, 0.92)',
-            mb: 1,
+            mb: 1.5,
           }}
         >
-          O gestor cadastrou você para integrar o AcompSOLEMP com o e-mail:
+          O gestor abaixo cadastrou o seu e-mail para integrar o AcompSOLEMP:
         </Typography>
 
         <Box
           sx={{
-            display: 'inline-block',
-            px: 1.75,
-            py: 0.85,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
             mb: 2.5,
-            borderRadius: 2,
-            bgcolor: 'rgba(0,0,0,0.18)',
-            border: '1px solid rgba(255,255,255,0.16)',
-            backdropFilter: 'blur(6px)',
           }}
         >
-          <Typography
+          <Box
             sx={{
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              wordBreak: 'break-all',
-              color: '#FFFFFF',
+              px: 1.75,
+              py: 1,
+              borderRadius: 2,
+              bgcolor: 'rgba(0,0,0,0.18)',
+              border: '1px solid rgba(255,255,255,0.16)',
+              textAlign: 'left',
             }}
           >
-            {email}
-          </Typography>
+            <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
+              Gestor que cadastrou
+            </Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', wordBreak: 'break-all' }}>
+              {gestorEmail || 'E-mail do gestor indisponível'}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              px: 1.75,
+              py: 1,
+              borderRadius: 2,
+              bgcolor: 'rgba(0,0,0,0.12)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              textAlign: 'left',
+            }}
+          >
+            <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
+              Seu e-mail
+            </Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', wordBreak: 'break-all' }}>
+              {email}
+            </Typography>
+          </Box>
         </Box>
 
         <Typography
           sx={{
-            fontSize: '0.88rem',
-            color: 'rgba(236, 253, 245, 0.78)',
-            mb: 3,
+            fontSize: '0.86rem',
+            color: 'rgba(236, 253, 245, 0.8)',
+            mb: 2.5,
             lineHeight: 1.5,
           }}
         >
-          Defina ou informe sua senha e entre — você será direcionado à Timeline da
-          organização, sem criar um novo Portal do Gestor.
+          <strong>Aceitar</strong> — entra na Timeline dessa organização.
+          <br />
+          <strong>Não fazer parte</strong> — remove seu e-mail do cadastro do gestor para você
+          poder criar o próprio banco de dados (Portal do Gestor).
         </Typography>
 
-        <Button
-          fullWidth
-          size="large"
-          onClick={onClose}
-          sx={{
-            py: 1.35,
-            borderRadius: 2.5,
-            fontWeight: 800,
-            textTransform: 'none',
-            fontSize: '1rem',
-            color: '#065F46',
-            bgcolor: '#ECFDF5',
-            boxShadow: '0 10px 28px rgba(0,0,0,0.2)',
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            '&:hover': {
-              bgcolor: '#FFFFFF',
-              boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
-              transform: 'translateY(-1px)',
-            },
-          }}
-        >
-          Continuar
-        </Button>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>
+            {error}
+          </Alert>
+        )}
+
+        <Stack spacing={1.25}>
+          <Button
+            fullWidth
+            size="large"
+            disabled={loading}
+            onClick={onAccept}
+            startIcon={<CheckCircleRoundedIcon />}
+            sx={{
+              py: 1.35,
+              borderRadius: 2.5,
+              fontWeight: 800,
+              textTransform: 'none',
+              fontSize: '1rem',
+              color: '#065F46',
+              bgcolor: '#ECFDF5',
+              boxShadow: '0 10px 28px rgba(0,0,0,0.2)',
+              '&:hover': {
+                bgcolor: '#FFFFFF',
+                boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
+              },
+            }}
+          >
+            Aceitar e continuar
+          </Button>
+          <Button
+            fullWidth
+            size="large"
+            disabled={loading}
+            onClick={() => void handleDecline()}
+            sx={{
+              py: 1.25,
+              borderRadius: 2.5,
+              fontWeight: 700,
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              color: '#ECFDF5',
+              border: '1px solid rgba(236, 253, 245, 0.45)',
+              bgcolor: 'rgba(0,0,0,0.12)',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.22)',
+                borderColor: 'rgba(236, 253, 245, 0.7)',
+              },
+            }}
+          >
+            {loading ? 'Removendo...' : 'Não fazer parte'}
+          </Button>
+        </Stack>
       </Box>
     </Dialog>
   )

@@ -182,12 +182,39 @@ export async function getEmailAccess(email: string): Promise<{
   perfil: string
   clinica_id: string | null
   nome: string | null
+  gestor_email: string | null
 } | null> {
   const { data, error } = await getSupabaseClient().rpc('lookup_email_access', {
     p_email: email.trim().toLowerCase(),
   })
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
-  return row ?? null
+  if (!row) return null
+  return {
+    ...row,
+    gestor_email:
+      typeof row.gestor_email === 'string' && row.gestor_email.trim()
+        ? row.gestor_email.trim().toLowerCase()
+        : null,
+  }
+}
+
+/** Remove o e-mail do Cadastros do gestor (recusa de convite na tela de login). */
+export async function declineTeamEmailInvite(email: string): Promise<{
+  removed: boolean
+  gestor_email: string | null
+}> {
+  const { data, error } = await getSupabaseClient().rpc('decline_team_email_invite', {
+    p_email: email.trim().toLowerCase(),
+  })
+  if (error) throw new Error(error.message)
+  const row = Array.isArray(data) ? data[0] : data
+  return {
+    removed: Boolean(row?.removed),
+    gestor_email:
+      typeof row?.gestor_email === 'string' && row.gestor_email.trim()
+        ? row.gestor_email.trim().toLowerCase()
+        : null,
+  }
 }
 

@@ -38,6 +38,7 @@ import { supabaseAuthAdapter } from '@/supabase/authAdapter'
 import {
   getEmailAccess,
   getProfileForCurrentUser,
+  declineTeamEmailInvite,
   provisionGestorTenant,
 } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
@@ -362,6 +363,15 @@ export const authService = {
   async getTeamEmailAccess(email: string) {
     if (!useSupabaseDataSource()) return null
     return getEmailAccess(assertMarinhaEmail(email))
+  },
+
+  /** Recusa o convite: remove o e-mail do Cadastros do gestor. */
+  async declineTeamInvite(email: string) {
+    if (!useSupabaseDataSource()) {
+      throw new Error('Disponível apenas com autenticação em nuvem (Supabase).')
+    }
+    const marinhaEmail = assertMarinhaEmail(email)
+    return declineTeamEmailInvite(marinhaEmail)
   },
 
   async loginWithEmailTimeline(

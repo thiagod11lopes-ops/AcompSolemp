@@ -56,6 +56,8 @@ export default function LoginGestorPage() {
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [recognizedEmail, setRecognizedEmail] = useState('')
+  const [gestorEmail, setGestorEmail] = useState<string | null>(null)
+  const [info, setInfo] = useState('')
   const lastAnnouncedEmail = useRef('')
 
   const {
@@ -89,6 +91,8 @@ export default function LoginGestorPage() {
           if (lastAnnouncedEmail.current === normalized) return
           lastAnnouncedEmail.current = normalized
           setRecognizedEmail(normalized)
+          setGestorEmail(access.gestor_email)
+          setInfo('')
           setTeamModalOpen(true)
         } catch {
           // Silencioso: falha de rede não deve bloquear o login
@@ -98,6 +102,23 @@ export default function LoginGestorPage() {
 
     return () => window.clearTimeout(timer)
   }, [emailHint, isSupabase])
+
+  const handleAcceptTeamInvite = () => {
+    setTeamModalOpen(false)
+    setInfo(
+      'Convite aceito. Informe a senha e clique em Entrar (ou Cadastrar-se no primeiro acesso) para ir à Timeline.',
+    )
+  }
+
+  const handleDeclineTeamInvite = async () => {
+    await authService.declineTeamInvite(recognizedEmail)
+    lastAnnouncedEmail.current = ''
+    setTeamModalOpen(false)
+    setGestorEmail(null)
+    setInfo(
+      'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta em Cadastrar-se e montar o seu banco de dados.',
+    )
+  }
 
   const finishGestorLogin = async () => {
     const authUser = authService.getGestorUser()
@@ -176,6 +197,12 @@ export default function LoginGestorPage() {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {info && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setInfo('')}>
+          {info}
         </Alert>
       )}
 
@@ -268,7 +295,9 @@ export default function LoginGestorPage() {
       <TeamEmailRecognizedModal
         open={teamModalOpen}
         email={recognizedEmail}
-        onClose={() => setTeamModalOpen(false)}
+        gestorEmail={gestorEmail}
+        onAccept={handleAcceptTeamInvite}
+        onDecline={handleDeclineTeamInvite}
       />
     </Box>
   )
