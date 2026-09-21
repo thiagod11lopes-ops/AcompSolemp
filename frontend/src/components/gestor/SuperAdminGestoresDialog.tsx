@@ -23,7 +23,6 @@ import PlayCircleIcon from '@mui/icons-material/PlayCircle'
 import LoginIcon from '@mui/icons-material/Login'
 import GroupsIcon from '@mui/icons-material/Groups'
 import {
-  adminLoadAppState,
   listActiveGestores,
   listGestorTeamEmails,
   setAccountPaused,
@@ -36,62 +35,6 @@ import { useAuth } from '@/contexts/AuthContext'
 interface SuperAdminGestoresDialogProps {
   open: boolean
   onClose: () => void
-}
-
-function mergeTeamRows(
-  fromRpc: GestorTeamEmailRow[],
-  fromAppState: GestorTeamEmailRow[],
-): GestorTeamEmailRow[] {
-  const byEmail = new Map<string, GestorTeamEmailRow>()
-  for (const row of [...fromRpc, ...fromAppState]) {
-    if (!row.email || row.email === SUPER_ADMIN_EMAIL) continue
-    const prev = byEmail.get(row.email)
-    if (!prev) {
-      byEmail.set(row.email, row)
-      continue
-    }
-    byEmail.set(row.email, {
-      ...prev,
-      ...row,
-      nome: row.nome || prev.nome,
-      perfil: row.perfil || prev.perfil,
-      paused: prev.paused || row.paused,
-      is_gestor: prev.is_gestor || row.is_gestor,
-    })
-  }
-  return Array.from(byEmail.values()).sort((a, b) => {
-    if (a.is_gestor !== b.is_gestor) return a.is_gestor ? -1 : 1
-    return a.email.localeCompare(b.email)
-  })
-}
-
-function teamFromAppStateUsuarios(
-  gestorEmail: string,
-  payload: { usuarios?: Array<{ email?: string | null; perfil?: string; nome?: string; ativo?: boolean }> } | null,
-): GestorTeamEmailRow[] {
-  const users = payload?.usuarios ?? []
-  const rows: GestorTeamEmailRow[] = [
-    {
-      email: gestorEmail,
-      perfil: 'GESTOR',
-      nome: 'Gestor',
-      paused: false,
-      is_gestor: true,
-    },
-  ]
-  for (const u of users) {
-    const email = u.email?.trim().toLowerCase() ?? ''
-    if (!email || email === SUPER_ADMIN_EMAIL || email === gestorEmail) continue
-    if (u.ativo === false) continue
-    rows.push({
-      email,
-      perfil: u.perfil ?? '',
-      nome: u.nome ?? '',
-      paused: false,
-      is_gestor: false,
-    })
-  }
-  return rows
 }
 
 export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDialogProps) {
@@ -123,31 +66,10 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
     setTeamLoading(true)
     setTeamError('')
     try {
-      let fromRpc: GestorTeamEmailRow[] = []
-      let rpcError = ''
-      try {
-        fromRpc = await listGestorTeamEmails(gestor.email)
-      } catch (e) {
-        rpcError = e instanceof Error ? e.message : 'Falha ao listar equipe'
-        fromRpc = []
-      }
-
-      let fromApp: GestorTeamEmailRow[] = []
-      try {
-        const state = await adminLoadAppState(gestor.tenant_id)
-        fromApp = teamFromAppStateUsuarios(gestor.email, state?.payload ?? null)
-        const pausedByEmail = new Map(fromRpc.map((r) => [r.email, r.paused]))
-        fromApp = fromApp.map((r) => ({
-          ...r,
-          paused: pausedByEmail.get(r.email) ?? r.paused,
-        }))
-      } catch {
-        fromApp = []
-      }
-
-      const merged = mergeTeamRows(fromRpc, fromApp)
-      if (merged.length === 0) {
-        if (rpcError) setTeamError(rpcError)
+      // Fonte de verdade do acesso: email_access (RPC). Dados históricos no app_state
+      // permanecem mesmo após exclusão, mas não aparecem aqui.
+      const fromRpc = await listGestorTeamEmails(gestor.email)
+      if (fromRpc.length === 0) {
         setTeam([
           {
             email: gestor.email,
@@ -159,7 +81,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
         ])
       } else {
         setTeam(
-          merged.map((r) =>
+          fromRpc.map((r) =>
             r.email === gestor.email ? { ...r, paused: gestor.paused, is_gestor: true } : r,
           ),
         )

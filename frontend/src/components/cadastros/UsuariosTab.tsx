@@ -78,7 +78,7 @@ export function UsuariosTab() {
           ? 'empenhado'
           : 'clinica'
       const usuariosEntidade = usuarios.filter(
-        (u) => u.perfil === perfilEntidade && !isDemoExampleUser(u),
+        (u) => u.perfil === perfilEntidade && u.ativo && !isDemoExampleUser(u),
       )
       return clinicas
         .filter(
@@ -86,7 +86,8 @@ export function UsuariosTab() {
             clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
             clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
             clinica.id !== DEMO_EMPENHADO_EXEMPLO_ID &&
-            (clinica.tipo ?? 'clinica') === tipoEntidade,
+            (clinica.tipo ?? 'clinica') === tipoEntidade &&
+            usuariosEntidade.some((u) => u.clinicaId === clinica.id),
         )
         .map((c) => {
           const user =
@@ -101,7 +102,7 @@ export function UsuariosTab() {
         })
     }
     return usuarios
-      .filter((u) => u.perfil === opcao.perfil && !isDemoExampleUser(u))
+      .filter((u) => u.perfil === opcao.perfil && u.ativo && !isDemoExampleUser(u))
       .map((u) => ({
         id: u.id,
         nome: u.nome,

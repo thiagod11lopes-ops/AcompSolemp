@@ -137,6 +137,15 @@ export const usuarioCadastroService = {
       ativo: true,
     }
 
+    // Reativa cadastro anterior do mesmo e-mail (dados preservados na exclusão)
+    const inactiveSameEmail = data.usuarios.find(
+      (u) =>
+        !u.ativo &&
+        u.email?.trim().toLowerCase() === email &&
+        u.perfil !== 'GESTOR' &&
+        u.perfil !== 'ADMINISTRADOR',
+    )
+
     if (isEntidade && clinicaId) {
       const existingIdx = data.usuarios.findIndex(
         (u) => u.clinicaId === clinicaId && u.perfil === perfil,
@@ -149,10 +158,27 @@ export const usuarioCadastroService = {
         existing.nome = nome
         existing.email = email
         existing.ativo = true
+        existing.perfil = perfil
         user = existing
+      } else if (inactiveSameEmail) {
+        inactiveSameEmail.nome = nome
+        inactiveSameEmail.email = email
+        inactiveSameEmail.perfil = perfil
+        inactiveSameEmail.clinicaId = clinicaId
+        inactiveSameEmail.graduacao = input.opcao.graduacao
+        inactiveSameEmail.ativo = true
+        user = inactiveSameEmail
       } else {
         data.usuarios.push(user)
       }
+    } else if (inactiveSameEmail) {
+      inactiveSameEmail.nome = nome
+      inactiveSameEmail.email = email
+      inactiveSameEmail.perfil = perfil
+      inactiveSameEmail.clinicaId = null
+      inactiveSameEmail.graduacao = input.opcao.graduacao
+      inactiveSameEmail.ativo = true
+      user = inactiveSameEmail
     } else {
       data.usuarios.push(user)
     }
@@ -185,14 +211,18 @@ export const usuarioCadastroService = {
       const clinica = data.clinicas.find((c) => c.id === input.id)
       if (!clinica) throw new Error('Cadastro não encontrado')
 
-      const usersToRemove = data.usuarios.filter((u) => u.clinicaId === input.id)
+      const usersToRevoke = data.usuarios.filter((u) => u.clinicaId === input.id && u.ativo)
 
-      data.clinicas = data.clinicas.filter((c) => c.id !== input.id)
-      data.usuarios = data.usuarios.filter((u) => u.clinicaId !== input.id)
+      // Mantém clínica e histórico; só revoga acesso e desativa o e-mail
+      for (const user of data.usuarios) {
+        if (user.clinicaId === input.id) {
+          user.ativo = false
+        }
+      }
 
       if (useSupabaseDataSource()) {
         await Promise.all(
-          usersToRemove
+          usersToRevoke
             .filter((user) => user.email)
             .map((user) => removeEmailAccess(user.email!)),
         )
@@ -207,7 +237,8 @@ export const usuarioCadastroService = {
       if (useSupabaseDataSource() && user.email) {
         await removeEmailAccess(user.email)
       }
-      data.usuarios = data.usuarios.filter((u) => u.id !== input.id)
+      // Mantém o registro e os dados gerados; remove só o acesso
+      user.ativo = false
     }
 
     saveAppData(data)

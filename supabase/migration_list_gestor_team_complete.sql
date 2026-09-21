@@ -1,5 +1,5 @@
--- AcompSOLEMP — corrige listagem da equipe (evita sombreamento de colunas OUT "email")
--- Execute no SQL Editor do Supabase.
+-- AcompSOLEMP — equipe do super-admin = somente e-mails com acesso ativo (email_access)
+-- E-mails excluídos pelo gestor saem da lista, mas os dados no app_state permanecem.
 
 drop function if exists public.list_gestor_team_emails(text);
 
@@ -56,7 +56,7 @@ begin
 
     union all
 
-    -- E-mails liberados em Cadastros (email_access)
+    -- Somente e-mails com acesso liberado (Cadastros / email_access)
     select
       lower(trim(ea.email)) as em,
       coalesce(nullif(trim(ea.perfil), ''), 'USUARIO')::text as pf,
@@ -73,37 +73,6 @@ begin
       and lower(trim(ea.email)) <> v_super
       and lower(trim(ea.email)) <> v_gestor
       and nullif(trim(ea.email), '') is not null
-
-    union all
-
-    -- Usuários com e-mail no app_state ainda não espelhados em email_access
-    select
-      lower(trim(elem.e->>'email')) as em,
-      coalesce(nullif(trim(elem.e->>'perfil'), ''), 'USUARIO')::text as pf,
-      coalesce(elem.e->>'nome', '')::text as nm,
-      exists (
-        select 1
-        from public.account_pauses ap
-        where lower(ap.email) = lower(trim(elem.e->>'email'))
-      ) as ps,
-      false as ig,
-      1 as rk
-    from public.app_state st
-    cross join lateral jsonb_array_elements(coalesce(st.payload->'usuarios', '[]'::jsonb)) as elem(e)
-    where st.tenant_id = v_tenant
-      and nullif(trim(elem.e->>'email'), '') is not null
-      and lower(trim(elem.e->>'email')) <> v_super
-      and lower(trim(elem.e->>'email')) <> v_gestor
-      and (
-        elem.e->>'ativo' is null
-        or lower(elem.e->>'ativo') in ('true', 't', '1')
-      )
-      and not exists (
-        select 1
-        from public.email_access ea2
-        where ea2.tenant_id = v_tenant
-          and lower(trim(ea2.email)) = lower(trim(elem.e->>'email'))
-      )
   ) q
   order by q.rk, q.em;
 end;
@@ -143,28 +112,12 @@ begin
       where lower(ap.email) = lower(t.owner_email)
     ),
     (
-      select count(distinct lower(trim(x.em)))::bigint
-      from (
-        select ea.email as em
-        from public.email_access ea
-        where ea.tenant_id = t.id
-          and lower(trim(ea.email)) <> v_super
-          and lower(trim(ea.email)) <> lower(t.owner_email)
-
-        union
-
-        select trim(elem.e->>'email') as em
-        from public.app_state st
-        cross join lateral jsonb_array_elements(coalesce(st.payload->'usuarios', '[]'::jsonb)) as elem(e)
-        where st.tenant_id = t.id
-          and nullif(trim(elem.e->>'email'), '') is not null
-          and lower(trim(elem.e->>'email')) <> v_super
-          and lower(trim(elem.e->>'email')) <> lower(t.owner_email)
-          and (
-            elem.e->>'ativo' is null
-            or lower(elem.e->>'ativo') in ('true', 't', '1')
-          )
-      ) x
+      select count(*)::bigint
+      from public.email_access ea
+      where ea.tenant_id = t.id
+        and lower(trim(ea.email)) <> v_super
+        and lower(trim(ea.email)) <> lower(t.owner_email)
+        and nullif(trim(ea.email), '') is not null
     )
   from public.tenants t
   where lower(t.owner_email) <> v_super
