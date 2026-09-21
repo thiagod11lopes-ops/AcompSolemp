@@ -22,6 +22,8 @@ interface SignUpButtonProps {
   fullWidth?: boolean
   disabled?: boolean
   helperText?: string
+  /** Incrementar para abrir o modal de cadastro automaticamente. */
+  openSignal?: number
   onSubmit: (values: SignUpFormValues) => Promise<void>
 }
 
@@ -30,6 +32,7 @@ export function SignUpButton({
   fullWidth = true,
   disabled = false,
   helperText = 'Use o e-mail institucional @marinha.mil.br. O link de recuperação de senha será enviado para este mesmo e-mail.',
+  openSignal = 0,
   onSubmit,
 }: SignUpButtonProps) {
   const [open, setOpen] = useState(false)
@@ -50,6 +53,11 @@ export function SignUpButton({
     setError('')
     setOpen(true)
   }
+
+  useEffect(() => {
+    if (openSignal > 0) openDialog()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage ao sinal externo
+  }, [openSignal])
 
   const handleRegister = async () => {
     setError('')

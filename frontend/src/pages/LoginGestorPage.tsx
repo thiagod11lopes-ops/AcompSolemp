@@ -58,6 +58,7 @@ export default function LoginGestorPage() {
   const [recognizedEmail, setRecognizedEmail] = useState('')
   const [gestorEmail, setGestorEmail] = useState<string | null>(null)
   const [info, setInfo] = useState('')
+  const [signUpOpenSignal, setSignUpOpenSignal] = useState(0)
   const lastAnnouncedEmail = useRef('')
 
   const {
@@ -105,9 +106,8 @@ export default function LoginGestorPage() {
 
   const handleAcceptTeamInvite = () => {
     setTeamModalOpen(false)
-    setInfo(
-      'Convite aceito. Informe a senha e clique em Entrar (ou Cadastrar-se no primeiro acesso) para ir à Timeline.',
-    )
+    setInfo('Convite aceito. Defina sua senha para entrar na Timeline da organização.')
+    setSignUpOpenSignal((n) => n + 1)
   }
 
   const handleDeclineTeamInvite = async () => {
@@ -270,7 +270,8 @@ export default function LoginGestorPage() {
       {isSupabase && (
         <Stack spacing={1.5} sx={{ mt: 1.5 }}>
           <SignUpButton
-            emailHint={emailHint}
+            emailHint={recognizedEmail || emailHint}
+            openSignal={signUpOpenSignal}
             helperText="Se o gestor já cadastrou seu e-mail, você entra na Timeline da organização. Só vira gestor quem ainda não foi liberado em Cadastros."
             onSubmit={handleSignUp}
           />
