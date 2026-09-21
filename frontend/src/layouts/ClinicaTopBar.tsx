@@ -17,11 +17,12 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import MedicationIcon from '@mui/icons-material/Medication'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import { useMemo, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { useClinicaAuth } from '@/contexts/AuthContext'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth, useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
 
 const NAV_ITEMS = [
@@ -56,8 +57,10 @@ export const CLINICA_TOPBAR_HEIGHT = 108
 
 export function ClinicaTopBar() {
   const { user, logout, isDemo } = useClinicaAuth()
+  const { impersonationTargetEmail } = useAuth()
   const { data: clinicas = [] } = useClinicas()
   const { mapPath, navigatePortal, demoBannerHeight } = usePortalPaths()
+  const navigate = useNavigate()
   const location = useLocation()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
@@ -75,7 +78,12 @@ export function ClinicaTopBar() {
   const tabsValue = navItems.some((item) => item.path === activeTab) ? activeTab : false
 
   const handleLogout = async () => {
+    const wasImpersonating = Boolean(impersonationTargetEmail)
     await logout()
+    if (wasImpersonating) {
+      navigate('/login', { replace: true })
+      return
+    }
     if (window.opener) {
       window.close()
       return
@@ -97,6 +105,7 @@ export function ClinicaTopBar() {
         borderColor: 'divider',
       }}
     >
+      <ImpersonationBanner />
       <Toolbar variant="dense" sx={{ gap: 1, minHeight: 40, py: 0.5 }}>
         <LocalHospitalIcon color="primary" />
         <Box sx={{ minWidth: 0, mr: 1 }}>
@@ -122,7 +131,7 @@ export function ClinicaTopBar() {
               {user?.posto} {user?.nome}
             </Typography>
           </MenuItem>
-          <MenuItem onClick={handleLogout}>
+          <MenuItem onClick={() => void handleLogout()}>
             <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
             {isDemo ? 'Voltar ao gestor' : 'Sair'}
           </MenuItem>

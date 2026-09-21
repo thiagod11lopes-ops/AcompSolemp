@@ -17,12 +17,13 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import GroupsIcon from '@mui/icons-material/Groups'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useGestorAuth } from '@/contexts/AuthContext'
+import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
+import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { DRAWER_WIDTH } from './Sidebar'
 import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 import { isSuperAdminEmail } from '@/utils/email'
@@ -36,6 +37,7 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: TopBarProps) {
   const { user, logout } = useGestorAuth()
+  const { impersonationTargetEmail } = useAuth()
   const { mode, toggleTheme } = useThemeMode()
   const { demoBannerHeight } = usePortalPaths()
   const isSupabase = useSupabaseDataSource()
@@ -48,7 +50,8 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
     user?.email?.trim().toLowerCase() ||
     loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
     ''
-  const showSuperAdmin = isSupabase && isSuperAdminEmail(sessionEmail)
+  const showSuperAdmin =
+    isSupabase && isSuperAdminEmail(sessionEmail) && !impersonationTargetEmail
 
   const handleLogout = async () => {
     await logout()
@@ -69,6 +72,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
         bgcolor: 'background.paper',
       }}
     >
+      <ImpersonationBanner />
       <Toolbar>
         <IconButton
           color="inherit"

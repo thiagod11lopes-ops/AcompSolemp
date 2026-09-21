@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Box,
@@ -18,6 +19,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PauseCircleIcon from '@mui/icons-material/PauseCircle'
 import PlayCircleIcon from '@mui/icons-material/PlayCircle'
+import LoginIcon from '@mui/icons-material/Login'
 import {
   listActiveGestores,
   listGestorTeamEmails,
@@ -26,6 +28,7 @@ import {
   type GestorTeamEmailRow,
 } from '@/data/persistence/supabaseAdmin'
 import { SUPER_ADMIN_EMAIL } from '@/utils/email'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface SuperAdminGestoresDialogProps {
   open: boolean
@@ -33,7 +36,10 @@ interface SuperAdminGestoresDialogProps {
 }
 
 export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDialogProps) {
+  const navigate = useNavigate()
+  const { startImpersonation } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [enteringEmail, setEnteringEmail] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [gestores, setGestores] = useState<ActiveGestorRow[]>([])
   const [selectedGestor, setSelectedGestor] = useState<ActiveGestorRow | null>(null)
@@ -69,6 +75,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
       setSelectedGestor(null)
       setTeam([])
       setError('')
+      setEnteringEmail(null)
       return
     }
     void loadGestores()
@@ -77,6 +84,20 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
   const handleSelectGestor = async (gestor: ActiveGestorRow) => {
     setSelectedGestor(gestor)
     await loadTeam(gestor.email)
+  }
+
+  const handleEnterAs = async (email: string) => {
+    setEnteringEmail(email)
+    setError('')
+    try {
+      const result = await startImpersonation(email)
+      onClose()
+      navigate(result.route, { replace: true })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível entrar como este e-mail')
+    } finally {
+      setEnteringEmail(null)
+    }
   }
 
   const handleTogglePause = async (email: string, paused: boolean) => {
@@ -118,8 +139,8 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {selectedGestor
-            ? 'Pause ou reative qualquer e-mail desta organização (gestor ou equipe).'
-            : 'Selecione um gestor para ver os e-mails cadastrados na organização dele.'}
+            ? 'Clique em Entrar para abrir o sistema como esse e-mail. Use o interruptor para pausar/reativar.'
+            : 'Clique em um gestor para ver a equipe, ou use Entrar para acessar como ele.'}
         </Typography>
 
         {error && (
@@ -170,6 +191,15 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                           {row.perfil}
                           {row.nome ? ` · ${row.nome}` : ''}
                         </Typography>
+                        <Button
+                          size="small"
+                          startIcon={<LoginIcon />}
+                          disabled={Boolean(enteringEmail) || row.paused}
+                          onClick={() => void handleEnterAs(row.email)}
+                          sx={{ mt: 0.75, textTransform: 'none' }}
+                        >
+                          {enteringEmail === row.email ? 'Entrando...' : 'Entrar como este e-mail'}
+                        </Button>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {row.paused ? (
@@ -202,7 +232,10 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
             ) : (
               gestores.map((gestor) => (
                 <Box key={gestor.tenant_id}>
-                  <ListItemButton onClick={() => void handleSelectGestor(gestor)}>
+                  <ListItemButton
+                    onClick={() => void handleSelectGestor(gestor)}
+                    sx={{ alignItems: 'flex-start' }}
+                  >
                     <Box sx={{ width: '100%' }}>
                       <Box
                         sx={{
@@ -221,6 +254,20 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
                       <Typography variant="body2" color="text.secondary">
                         Org {gestor.org_code} · {gestor.team_count} e-mail(s) na equipe
                       </Typography>
+                      <Button
+                        size="small"
+                        startIcon={<LoginIcon />}
+                        disabled={Boolean(enteringEmail) || gestor.paused}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleEnterAs(gestor.email)
+                        }}
+                        sx={{ mt: 0.75, textTransform: 'none' }}
+                      >
+                        {enteringEmail === gestor.email
+                          ? 'Entrando...'
+                          : 'Entrar como este gestor'}
+                      </Button>
                     </Box>
                   </ListItemButton>
                   <Divider />

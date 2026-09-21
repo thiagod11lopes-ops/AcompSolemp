@@ -2,9 +2,11 @@ import { Box, Toolbar, IconButton, Typography, Avatar, Menu, MenuItem } from '@m
 import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
 import { useState } from 'react'
-import { useFinanceiroAuth } from '@/contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { useAuth, useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
 
 interface FinanceiroTopBarProps {
@@ -17,11 +19,18 @@ export function FinanceiroTopBar({
   title = 'Pagamentos pendentes',
 }: FinanceiroTopBarProps) {
   const { user, logout, isDemo } = useFinanceiroAuth()
+  const { impersonationTargetEmail } = useAuth()
   const { navigatePortal, demoBannerHeight } = usePortalPaths()
+  const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const handleLogout = async () => {
+    const wasImpersonating = Boolean(impersonationTargetEmail)
     await logout()
+    if (wasImpersonating) {
+      navigate('/login', { replace: true })
+      return
+    }
     if (window.opener) {
       window.close()
       return
@@ -43,6 +52,7 @@ export function FinanceiroTopBar({
         borderColor: 'divider',
       }}
     >
+      <ImpersonationBanner />
       <Toolbar>
         <IconButton edge="start" onClick={onMenuClick} sx={{ mr: 2, display: { md: 'none' } }}>
           <MenuIcon />
@@ -60,7 +70,7 @@ export function FinanceiroTopBar({
           <MenuItem disabled>
             <Typography variant="body2">{user?.nome}</Typography>
           </MenuItem>
-          <MenuItem onClick={handleLogout}>
+          <MenuItem onClick={() => void handleLogout()}>
             <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
             {isDemo ? 'Voltar ao gestor' : 'Sair'}
           </MenuItem>

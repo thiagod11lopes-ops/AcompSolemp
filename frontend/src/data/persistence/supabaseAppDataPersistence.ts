@@ -8,12 +8,24 @@ import {
 } from '@/data/persistence/types'
 import { getSupabaseClient } from '@/supabase/client'
 import { getTenantId } from '@/services/tenantService'
+import { isImpersonationSession } from '@/config/dataSource'
+import { adminLoadAppState, adminSaveAppState } from '@/data/persistence/supabaseAdmin'
 
 export async function loadAppDataFromSupabase(
   tenantId?: string | null,
 ): Promise<AppDataSnapshot | null> {
   const id = tenantId ?? getTenantId()
   if (!id) return null
+
+  if (isImpersonationSession()) {
+    const snapshot = await adminLoadAppState(id)
+    if (!snapshot) return null
+    return {
+      version: snapshot.version,
+      payload: JSON.stringify(snapshot.payload),
+      updatedAt: new Date().toISOString(),
+    }
+  }
 
   const { data, error } = await getSupabaseClient()
     .from('app_state')
@@ -44,6 +56,11 @@ export async function saveAppDataToSupabase(
 
   const snapshot = serializeAppData(appData, version)
   const payload = JSON.parse(snapshot.payload) as AppData
+
+  if (isImpersonationSession()) {
+    await adminSaveAppState(id, snapshot.version, payload)
+    return
+  }
 
   const { error } = await getSupabaseClient().from('app_state').upsert(
     {

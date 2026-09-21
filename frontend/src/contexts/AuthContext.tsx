@@ -28,6 +28,9 @@ interface AuthContextValue {
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
   endDemo: () => void
+  startImpersonation: (email: string) => Promise<{ route: string }>
+  endImpersonation: () => Promise<{ route: string }>
+  impersonationTargetEmail: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -68,12 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ordenadorUser, setOrdenadorUser] = useState<AuthUser | null>(null)
   const [financeiroUser, setFinanceiroUser] = useState<AuthUser | null>(null)
   const [demoMode, setDemoMode] = useState<DemoModeState | null>(null)
+  const [impersonationTargetEmail, setImpersonationTargetEmail] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     setGestorUser(authService.getGestorUser())
     syncPortalUsersFromService({ setClinicaUser, setOrdenadorUser, setFinanceiroUser })
     setDemoMode(authService.getDemoMode())
+    setImpersonationTargetEmail(authService.getImpersonation()?.targetEmail ?? null)
     setIsLoading(false)
   }, [])
 
@@ -130,7 +135,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : portal === 'ordenador'
             ? ordenadorUser
             : financeiroUser
+    const wasImpersonating = Boolean(impersonationTargetEmail)
     await authService.logout(portal)
+    if (wasImpersonating) {
+      setImpersonationTargetEmail(null)
+      setGestorUser(null)
+      setClinicaUser(null)
+      setOrdenadorUser(null)
+      setFinanceiroUser(null)
+      setDemoMode(null)
+      return
+    }
     if (portal === 'gestor') setGestorUser(null)
     else if (portal === 'clinica') setClinicaUser(null)
     else if (portal === 'ordenador' || portal === 'financeiro') {
@@ -143,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFinanceiroUser(null)
       }
     }
-  }, [gestorUser, clinicaUser, ordenadorUser, financeiroUser])
+  }, [gestorUser, clinicaUser, ordenadorUser, financeiroUser, impersonationTargetEmail])
 
   const startDemo = useCallback(async (userId: string, tabTitle?: string) => {
     const result = await authService.startDemoMode(userId, tabTitle)
@@ -160,6 +175,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const endDemo = useCallback(() => {
     authService.endDemoMode()
     setDemoMode(null)
+  }, [])
+
+  const startImpersonation = useCallback(async (email: string) => {
+    const result = await authService.startImpersonation(email)
+    setImpersonationTargetEmail(result.authUser.email?.trim().toLowerCase() ?? email)
+    setDemoMode(null)
+    if (result.portal === 'gestor') {
+      setGestorUser(result.authUser)
+      setClinicaUser(null)
+      setOrdenadorUser(null)
+      setFinanceiroUser(null)
+    } else {
+      setGestorUser(null)
+      applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+    }
+    return { route: result.route }
+  }, [])
+
+  const endImpersonation = useCallback(async () => {
+    const result = await authService.endImpersonation()
+    setImpersonationTargetEmail(null)
+    setClinicaUser(null)
+    setOrdenadorUser(null)
+    setFinanceiroUser(null)
+    setGestorUser(authService.getGestorUser())
+    return result
   }, [])
 
   const value = useMemo(
@@ -179,6 +220,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       startDemo,
       startDemoGestorOverview,
       endDemo,
+      startImpersonation,
+      endImpersonation,
+      impersonationTargetEmail,
     }),
     [
       gestorUser,
@@ -196,6 +240,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       startDemo,
       startDemoGestorOverview,
       endDemo,
+      startImpersonation,
+      endImpersonation,
+      impersonationTargetEmail,
     ],
   )
 

@@ -2,6 +2,7 @@ import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/type
 import type { Portal } from '@/utils/portal'
 import {
   assertMarinhaEmail,
+  isSuperAdminEmail,
   normalizeEmailKey,
   passwordResetRedirectUrl,
 } from '@/utils/email'
@@ -41,7 +42,8 @@ import {
   declineTeamEmailInvite,
   provisionGestorTenant,
 } from '@/data/persistence/supabaseTenant'
-import { assertAccountNotPaused } from '@/data/persistence/supabaseAdmin'
+import { assertAccountNotPaused, resolveImpersonation } from '@/data/persistence/supabaseAdmin'
+import type { UserRole } from '@/types'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
 import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
@@ -57,6 +59,29 @@ export interface DemoModeState {
   portal: Portal
   authUser: AuthUser
   tabTitle?: string
+}
+
+export interface ImpersonationState {
+  targetEmail: string
+  tenantId: string
+  returnTenantId: string | null
+  returnOrgCode: string | null
+  returnGestorUser: AuthUser
+}
+
+function readImpersonation(): ImpersonationState | null {
+  const stored = sessionStorage.getItem(STORAGE_KEYS.AUTH_IMPERSONATION)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored) as ImpersonationState
+  } catch {
+    return null
+  }
+}
+
+function writeImpersonation(state: ImpersonationState | null): void {
+  if (state) sessionStorage.setItem(STORAGE_KEYS.AUTH_IMPERSONATION, JSON.stringify(state))
+  else sessionStorage.removeItem(STORAGE_KEYS.AUTH_IMPERSONATION)
 }
 
 function readDemoMode(): DemoModeState | null {
@@ -484,6 +509,20 @@ export const authService = {
       setSession('financeiro', null)
     }
 
+    const wasImpersonating = Boolean(readImpersonation())
+    if (wasImpersonating) {
+      writeImpersonation(null)
+      this.clearClinicaOrdenadorSessions()
+      setSession('gestor', null)
+      setOpenAccessSession(false)
+      if (useSupabaseDataSource()) {
+        setTenantId(null)
+        setStoredOrgCode(null)
+        await supabaseAuthAdapter.signOut()
+      }
+      return
+    }
+
     if (portal === 'gestor') {
       setOpenAccessSession(false)
     }
@@ -534,6 +573,134 @@ export const authService = {
 
   getDemoMode(): DemoModeState | null {
     return readDemoMode()
+  },
+
+  getImpersonation(): ImpersonationState | null {
+    return readImpersonation()
+  },
+
+  /**
+   * Super-admin entra no sistema como o e-mail alvo (gestor ou equipe).
+   * Mantém a sessão Auth do super-admin; troca tenant/AppData e sessão de portal.
+   */
+  async startImpersonation(email: string): Promise<{
+    authUser: AuthUser
+    portal: Portal
+    route: string
+  }> {
+    const existing = readImpersonation()
+    const actor = existing?.returnGestorUser ?? this.getGestorUser()
+    if (!actor || !isSuperAdminEmail(actor.email)) {
+      throw new Error('Faça login como super administrador para personificar contas')
+    }
+
+    const resolved = await resolveImpersonation(email)
+    const returnTenantId = existing?.returnTenantId ?? getTenantId()
+    const returnOrgCode = existing?.returnOrgCode ?? getStoredOrgCode()
+
+    // Limpa sessões de equipe antes de montar a personificação
+    this.clearClinicaOrdenadorSessions()
+    writeDemoMode(null)
+
+    const payload = {
+      ...generateEmptyTenantData(),
+      ...resolved.app_payload,
+      tenantMeta: {
+        orgCode: resolved.org_code,
+        ownerEmail: resolved.owner_email,
+        ownerUid: resolved.tenant_id,
+        createdAt: resolved.app_payload.tenantMeta?.createdAt ?? new Date().toISOString(),
+      },
+    }
+
+    setTenantId(resolved.tenant_id)
+    setStoredOrgCode(resolved.org_code)
+    applyRemoteAppData(payload)
+
+    const data = loadAppData()
+    let user =
+      data.usuarios.find((u) => u.id === resolved.app_user_id && u.ativo) ??
+      data.usuarios.find(
+        (u) => u.email?.trim().toLowerCase() === resolved.target_email && u.ativo,
+      ) ??
+      null
+
+    if (!user && resolved.is_gestor) {
+      user =
+        data.usuarios.find((u) => u.perfil === 'GESTOR' && u.ativo) ??
+        ({
+          id: resolved.app_user_id || `user-owner-${resolved.tenant_id}`,
+          nome: resolved.nome || resolved.target_email.split('@')[0] || 'Gestor',
+          posto: '',
+          graduacao: 'Gestor Geral',
+          login: 'gestor',
+          email: resolved.target_email,
+          perfil: 'GESTOR' as UserRole,
+          clinicaId: null,
+          ativo: true,
+        } satisfies User)
+    }
+
+    if (!user) {
+      user = {
+        id: resolved.app_user_id || `user-impersonate-${Date.now()}`,
+        nome: resolved.nome || resolved.target_email.split('@')[0] || 'Usuário',
+        posto: '',
+        graduacao: resolved.perfil,
+        login: resolved.target_email.split('@')[0] || 'user',
+        email: resolved.target_email,
+        perfil: resolved.perfil as UserRole,
+        clinicaId: null,
+        ativo: true,
+      }
+    }
+
+    writeImpersonation({
+      targetEmail: resolved.target_email,
+      tenantId: resolved.tenant_id,
+      returnTenantId,
+      returnOrgCode,
+      returnGestorUser: actor,
+    })
+
+    if (resolved.is_gestor || canAccessGestorRoute(user.perfil)) {
+      const authUser = await completePortalLogin('gestor', user)
+      return { authUser, portal: 'gestor', route: '/gestor/dashboard' }
+    }
+
+    const portal = portalForPerfil(user.perfil)
+    const authUser = await completePortalLogin(portal, user)
+    // Personificação de equipe: não manter sessão de gestor na UI
+    setSession('gestor', null)
+
+    return {
+      authUser,
+      portal,
+      route: getHomeRouteForPerfil(user.perfil),
+    }
+  },
+
+  async endImpersonation(): Promise<{ route: string }> {
+    const state = readImpersonation()
+    if (!state) {
+      throw new Error('Nenhuma personificação ativa')
+    }
+
+    this.clearClinicaOrdenadorSessions()
+    writeImpersonation(null)
+
+    setTenantId(state.returnTenantId)
+    setStoredOrgCode(state.returnOrgCode)
+    clearAppDataCache()
+
+    if (state.returnTenantId) {
+      await hydrateLocalCacheFromSupabase((data) => {
+        applyRemoteAppData(data)
+      })
+    }
+
+    await completePortalLogin('gestor', state.returnGestorUser)
+    return { route: '/gestor/dashboard' }
   },
 
   async startDemoMode(
