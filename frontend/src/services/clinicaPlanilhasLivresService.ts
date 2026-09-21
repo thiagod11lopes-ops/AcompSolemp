@@ -55,6 +55,9 @@ function normalizeState(
     pacientesPme,
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
+    finalizedDivMaterialIds: Array.isArray(state?.finalizedDivMaterialIds)
+      ? state.finalizedDivMaterialIds.filter((id) => typeof id === 'string')
+      : [],
   }
 }
 

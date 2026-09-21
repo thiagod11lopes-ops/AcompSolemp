@@ -6,6 +6,7 @@ import {
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   IconButton,
   Paper,
@@ -33,6 +34,8 @@ interface ImhAbaPlanilhaPreviewProps {
   value: ImhAbaFormData
   editingLinhaId?: string | null
   importing?: boolean
+  selectedImhIds?: Set<string>
+  onSelectedImhIdsChange?: (next: Set<string>) => void
   onImportClick?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
@@ -70,17 +73,55 @@ const titleTextSx = {
   lineHeight: 1.35,
 } as const
 
+const finalizedCheckboxSx = {
+  color: EXCEL_SHEET.finalizedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.finalizedCheck },
+  opacity: 0.55,
+} as const
+
+const selectedCheckboxSx = {
+  color: EXCEL_SHEET.selectedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
+} as const
+
 export function ImhAbaPlanilhaPreview({
   value,
   editingLinhaId = null,
   importing = false,
+  selectedImhIds,
+  onSelectedImhIdsChange,
   onImportClick,
   onEditLinha,
   onDeleteLinha,
 }: ImhAbaPlanilhaPreviewProps) {
   const visible = imhFormHasPreviewContent(value)
   const total = calcImhTotalGeral(value)
-  const colCount = IMH_ABA_COLUNAS.length + 1
+  const selectionEnabled = Boolean(onSelectedImhIdsChange)
+  const selection = selectedImhIds ?? new Set<string>()
+  const finalizedIds = new Set(value.finalizedImhIds ?? [])
+  const selecionaveis = value.linhas.filter((l) => !finalizedIds.has(l.id))
+  const allSelected =
+    selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
+  const someSelected = selecionaveis.some((l) => selection.has(l.id))
+  const colCount = IMH_ABA_COLUNAS.length + 1 + (selectionEnabled ? 1 : 0)
+
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectedImhIdsChange) return
+    const next = new Set(selection)
+    for (const linha of selecionaveis) {
+      if (checked) next.add(linha.id)
+      else next.delete(linha.id)
+    }
+    onSelectedImhIdsChange(next)
+  }
+
+  const toggleOne = (linhaId: string, checked: boolean) => {
+    if (!onSelectedImhIdsChange || finalizedIds.has(linhaId)) return
+    const next = new Set(selection)
+    if (checked) next.add(linhaId)
+    else next.delete(linhaId)
+    onSelectedImhIdsChange(next)
+  }
 
   return (
     <Box
@@ -142,6 +183,14 @@ export function ImhAbaPlanilhaPreview({
             label={`${value.linhas.length} lançamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
+          {selectionEnabled && selection.size > 0 ? (
+            <Chip
+              size="small"
+              variant="outlined"
+              label={`${selection.size} marcado(s)`}
+              sx={{ height: 22, fontWeight: 600, borderColor: EXCEL_SHEET.selectedCheck }}
+            />
+          ) : null}
           {total > 0 ? (
             <Chip
               size="small"
@@ -240,6 +289,48 @@ export function ImhAbaPlanilhaPreview({
               <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
                 <TableHead>
                   <TableRow>
+                    {selectionEnabled ? (
+                      <TableCell
+                        sx={{
+                          ...headerSx,
+                          bgcolor: EXCEL_SHEET.selectHeaderBg,
+                          minWidth: 52,
+                          textAlign: 'center',
+                          px: 0.5,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 0.25,
+                          }}
+                        >
+                          <Typography
+                            component="span"
+                            sx={{
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              fontSize: '10px',
+                              color: EXCEL_SHEET.text,
+                              letterSpacing: 0.4,
+                            }}
+                          >
+                            IMH
+                          </Typography>
+                          <Checkbox
+                            size="small"
+                            checked={allSelected}
+                            indeterminate={someSelected && !allSelected}
+                            disabled={selecionaveis.length === 0}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(_, checked) => toggleAll(checked)}
+                            sx={{ p: 0, ...selectedCheckboxSx }}
+                          />
+                        </Box>
+                      </TableCell>
+                    ) : null}
                     {IMH_ABA_COLUNAS.map((col) => (
                       <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
                         {col.label}
@@ -253,14 +344,42 @@ export function ImhAbaPlanilhaPreview({
                 <TableBody>
                   {value.linhas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
+                    const finalizado = finalizedIds.has(linha.id)
+                    const checked = finalizado || selection.has(linha.id)
                     return (
                       <TableRow
                         key={linha.id}
                         sx={{
-                          bgcolor: editing ? EXCEL_SHEET.selectedBg : undefined,
+                          bgcolor: editing
+                            ? EXCEL_SHEET.selectedBg
+                            : selection.has(linha.id)
+                              ? EXCEL_SHEET.selectedBg
+                              : undefined,
                           '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                         }}
                       >
+                        {selectionEnabled ? (
+                          <TableCell
+                            sx={{
+                              ...cellSx,
+                              bgcolor: EXCEL_SHEET.selectHeaderBg,
+                              textAlign: 'center',
+                              px: 0.5,
+                            }}
+                          >
+                            <Checkbox
+                              size="small"
+                              checked={checked}
+                              disabled={finalizado}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
+                              sx={{
+                                p: 0,
+                                ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                              }}
+                            />
+                          </TableCell>
+                        ) : null}
                         {IMH_ABA_COLUNAS.map((col) => (
                           <TableCell
                             key={col.key}

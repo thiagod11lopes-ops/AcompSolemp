@@ -1,20 +1,31 @@
 import {
+  Alert,
   Box,
+  Button,
+  Snackbar,
   Tab,
   Tabs,
   Typography,
   alpha,
 } from '@mui/material'
+import SendIcon from '@mui/icons-material/Send'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas, useEmpresas } from '@/hooks/useCadastros'
+import {
+  useAdicionarFluxoParalelo,
+  useCreateClinicaPedido,
+  useClinicaPedidos,
+} from '@/hooks/useClinicaPedidos'
 import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
 import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
 import { ConsumoMaterialConsignadoForm } from '@/components/clinica/ConsumoMaterialConsignadoForm'
 import { DivMaterialForm } from '@/components/clinica/DivMaterialForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
+import { ImhDivMaterialEnvioModal } from '@/components/clinica/ImhDivMaterialEnvioModal'
 import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
 import { ListaMateriaisForm } from '@/components/clinica/ListaMateriaisForm'
 import { ListaMedicamentosForm } from '@/components/clinica/ListaMedicamentosForm'
@@ -23,6 +34,7 @@ import {
   clinicaPlanilhasLivresService,
   resolveAbaSheet,
 } from '@/services/clinicaPlanilhasLivresService'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
@@ -36,7 +48,13 @@ import {
   type PlanilhasModo,
 } from '@/utils/planilhasFixas'
 import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
-import { EMPTY_IMH_ABA_FORM } from '@/utils/imhAbaForm'
+import {
+  buildImhPlanilhaFromAbaForm,
+  EMPTY_IMH_ABA_FORM,
+  imhAbaLinhasToPedidoInput,
+  linhaHasContent,
+  markImhAbaLinhasFinalized,
+} from '@/utils/imhAbaForm'
 import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
@@ -48,6 +66,14 @@ import {
   normalizeConsumoMaterialRows,
   type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
+import {
+  createPedidoLoteId,
+  findPedidoParaMesmasLinhas,
+} from '@/utils/consumoMaterialTemplate'
+import {
+  buildControleSolempFromDivMaterial,
+  buildDivMaterialLinhas,
+} from '@/utils/divMaterialForm'
 import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
 
 const CONMED_ABA_ID = 'conmed-comrj'
@@ -68,6 +94,7 @@ type PersistPayload = {
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
   lista?: ListaMateriaisFormData
+  finalizedDivMaterialIds?: string[]
 }
 
 function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
@@ -95,9 +122,13 @@ function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
 export default function ClinicaNovoPedidoPage() {
   const [searchParams] = useSearchParams()
   const { user } = useClinicaAuth()
+  const { navigatePortal } = usePortalPaths()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
   const { data: empresas = [] } = useEmpresas()
+  const { data: pedidos = [] } = useClinicaPedidos()
+  const createPedido = useCreateClinicaPedido()
+  const adicionarFluxo = useAdicionarFluxoParalelo()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const isMedicamento =
     user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
@@ -117,6 +148,21 @@ export default function ClinicaNovoPedidoPage() {
   const [pacientesPmeRows, setPacientesPmeRows] = useState<PacientePmeRow[]>([])
   const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
+  const [selectedDivMaterialIds, setSelectedDivMaterialIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [finalizedDivMaterialIds, setFinalizedDivMaterialIds] = useState<Set<string>>(
+    () => new Set(),
+  )
+  const [envioModalOpen, setEnvioModalOpen] = useState(false)
+  const [isEnviando, setIsEnviando] = useState(false)
+  const [feedback, setFeedback] = useState<{
+    open: boolean
+    severity: 'success' | 'error'
+    message: string
+  }>({ open: false, severity: 'success', message: '' })
+
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -127,6 +173,7 @@ export default function ClinicaNovoPedidoPage() {
   const pacientesPmeRowsRef = useRef(pacientesPmeRows)
   const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
+  const finalizedDivMaterialIdsRef = useRef(finalizedDivMaterialIds)
   const modoRef = useRef(planilhasModo)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
@@ -137,6 +184,7 @@ export default function ClinicaNovoPedidoPage() {
   pacientesPmeRowsRef.current = pacientesPmeRows
   listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
+  finalizedDivMaterialIdsRef.current = finalizedDivMaterialIds
   modoRef.current = planilhasModo
 
   useEffect(() => {
@@ -154,6 +202,7 @@ export default function ClinicaNovoPedidoPage() {
     setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
     setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
+    setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   useEffect(() => {
@@ -161,22 +210,30 @@ export default function ClinicaNovoPedidoPage() {
     return subscribeDemoAppDataChanged(() => {
       const state = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
       const imh = state.imhMedicamento
-      if (!imh) return
-      setImhMedicamentoForm((prev) => ({
-        ...prev,
-        finalizedImhIds: imh.finalizedImhIds ?? prev.finalizedImhIds,
-        devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
-      }))
+      if (imh) {
+        setImhMedicamentoForm((prev) => ({
+          ...prev,
+          finalizedImhIds: imh.finalizedImhIds ?? prev.finalizedImhIds,
+          devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
+        }))
+      }
+      if (state.imh?.finalizedImhIds) {
+        setImhForm((prev) => ({
+          ...prev,
+          finalizedImhIds: state.imh?.finalizedImhIds ?? prev.finalizedImhIds,
+        }))
+      }
+      if (state.finalizedDivMaterialIds) {
+        setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds))
+      }
     })
   }, [clinicaId])
 
   const persist = useCallback(
     (patch: PersistPayload = {}) => {
       if (!clinicaId) return
-      const storedImh = clinicaPlanilhasLivresService.getState(
-        clinicaId,
-        modoRef.current,
-      ).imhMedicamento
+      const stored = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
+      const storedImh = stored.imhMedicamento
       clinicaPlanilhasLivresService.saveState(
         clinicaId,
         {
@@ -196,6 +253,9 @@ export default function ClinicaNovoPedidoPage() {
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: patch.lista ?? listaFormRef.current,
+          finalizedDivMaterialIds:
+            patch.finalizedDivMaterialIds ??
+            [...finalizedDivMaterialIdsRef.current],
         },
         modoRef.current,
       )
@@ -207,6 +267,29 @@ export default function ClinicaNovoPedidoPage() {
     () => abas.find((aba) => aba.id === abaAtivaId) ?? abas[0] ?? null,
     [abas, abaAtivaId],
   )
+
+  const divMaterialLinhas = useMemo(
+    () =>
+      buildDivMaterialLinhas({
+        consumoRows,
+        conmed: conmedForm,
+        empresas,
+      }),
+    [consumoRows, conmedForm, empresas],
+  )
+
+  const selectedImhCount = useMemo(() => {
+    const finalized = new Set(imhForm.finalizedImhIds ?? [])
+    return imhForm.linhas.filter(
+      (l) => selectedImhIds.has(l.id) && !finalized.has(l.id) && linhaHasContent(l),
+    ).length
+  }, [imhForm, selectedImhIds])
+
+  const selectedDivCount = useMemo(() => {
+    return divMaterialLinhas.filter(
+      (l) => selectedDivMaterialIds.has(l.id) && !finalizedDivMaterialIds.has(l.id),
+    ).length
+  }, [divMaterialLinhas, selectedDivMaterialIds, finalizedDivMaterialIds])
 
   const handleSheetChange = useCallback(
     (sheet: PlanilhaSheetData) => {
@@ -221,7 +304,6 @@ export default function ClinicaNovoPedidoPage() {
       ) {
         return
       }
-      // Medicamento: abas ainda sem edição de conteúdo.
       if (modoRef.current === 'medicamento') return
 
       setAbas((prev) => {
@@ -296,6 +378,123 @@ export default function ClinicaNovoPedidoPage() {
     persist({ abaAtivaId: abaId })
   }
 
+  const handleAbrirEnvio = () => {
+    if (selectedImhCount === 0 || selectedDivCount === 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message:
+          'Marque ao menos um lançamento na planilha IMH e um na Div. Material para enviar.',
+      })
+      return
+    }
+    setEnvioModalOpen(true)
+  }
+
+  const handleEnviarPlanilhas = async () => {
+    const clinicaNome = clinicaLogada?.nome ?? ''
+    if (!clinicaNome || !clinicaId) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Clínica não identificada. Faça login novamente.',
+      })
+      return
+    }
+
+    const finalizedImh = new Set(imhForm.finalizedImhIds ?? [])
+    const imhSelecionadas = imhForm.linhas.filter(
+      (l) => selectedImhIds.has(l.id) && !finalizedImh.has(l.id) && linhaHasContent(l),
+    )
+    const divSelecionadas = divMaterialLinhas.filter(
+      (l) => selectedDivMaterialIds.has(l.id) && !finalizedDivMaterialIds.has(l.id),
+    )
+
+    if (imhSelecionadas.length === 0 || divSelecionadas.length === 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message:
+          'Marque ao menos um lançamento na planilha IMH e um na Div. Material para enviar.',
+      })
+      return
+    }
+
+    setIsEnviando(true)
+    try {
+      const rowIds = [
+        ...imhSelecionadas.map((l) => l.id),
+        ...divSelecionadas.map((l) => l.id),
+      ]
+      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
+      const planilhaImh = buildImhPlanilhaFromAbaForm(imhForm, imhSelecionadas)
+      const planilhaControle = buildControleSolempFromDivMaterial(divSelecionadas)
+      let pedidoId: string
+
+      if (pedidoExistente) {
+        pedidoId = pedidoExistente.id
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+      } else {
+        pedidoId = createPedidoLoteId()
+        await createPedido.mutateAsync({
+          ...imhAbaLinhasToPedidoInput(imhSelecionadas, clinicaNome),
+          id: pedidoId,
+          fluxo: 'paralelo',
+          consumoRowIds: rowIds,
+        })
+      }
+
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
+      pedidoPlanilhaEnvioService.saveDivMaterialForPedido(
+        pedidoId,
+        divSelecionadas,
+        planilhaControle,
+      )
+
+      const nextImh = markImhAbaLinhasFinalized(
+        imhForm,
+        imhSelecionadas.map((l) => l.id),
+      )
+      const nextDivFinalized = new Set(finalizedDivMaterialIds)
+      for (const linha of divSelecionadas) nextDivFinalized.add(linha.id)
+
+      setImhForm(nextImh)
+      setFinalizedDivMaterialIds(nextDivFinalized)
+      persist({
+        imh: nextImh,
+        finalizedDivMaterialIds: [...nextDivFinalized],
+      })
+
+      setSelectedImhIds((prev) => {
+        const next = new Set(prev)
+        for (const linha of imhSelecionadas) next.delete(linha.id)
+        return next
+      })
+      setSelectedDivMaterialIds((prev) => {
+        const next = new Set(prev)
+        for (const linha of divSelecionadas) next.delete(linha.id)
+        return next
+      })
+
+      setEnvioModalOpen(false)
+      setFeedback({
+        open: true,
+        severity: 'success',
+        message: `IMH (${imhSelecionadas.length}) enviada à Auditoria e Div. Material (${divSelecionadas.length}) à Confecção de Solemp.`,
+      })
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Erro ao enviar planilhas. Tente novamente.',
+      })
+    } finally {
+      setIsEnviando(false)
+    }
+  }
+
   const corrigirPedidoId = searchParams.get('corrigir')
   const abaCorrigir = searchParams.get('aba')
 
@@ -362,7 +561,14 @@ export default function ClinicaNovoPedidoPage() {
       return <ConmedComrjForm value={conmedForm} onChange={handleConmedChange} />
     }
     if (abaAtivaId === IMH_ABA_ID) {
-      return <ImhAbaForm value={imhForm} onChange={handleImhChange} />
+      return (
+        <ImhAbaForm
+          value={imhForm}
+          onChange={handleImhChange}
+          selectedImhIds={selectedImhIds}
+          onSelectedImhIdsChange={setSelectedImhIds}
+        />
+      )
     }
     if (abaAtivaId === DIV_MATERIAL_ABA_ID) {
       return (
@@ -370,6 +576,9 @@ export default function ClinicaNovoPedidoPage() {
           consumoRows={consumoRows}
           conmed={conmedForm}
           empresas={empresas}
+          selectedIds={selectedDivMaterialIds}
+          onSelectedIdsChange={setSelectedDivMaterialIds}
+          finalizedIds={finalizedDivMaterialIds}
         />
       )
     }
@@ -398,6 +607,10 @@ export default function ClinicaNovoPedidoPage() {
             bgcolor: alpha(theme.palette.primary.main, 0.03),
             borderRadius: '8px 8px 0 0',
             px: 0.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
           })}
         >
           <Tabs
@@ -406,7 +619,9 @@ export default function ClinicaNovoPedidoPage() {
             variant="scrollable"
             scrollButtons="auto"
             sx={{
+              flex: 1,
               minHeight: 42,
+              minWidth: 0,
               '& .MuiTab-root': {
                 minHeight: 42,
                 textTransform: 'none',
@@ -420,10 +635,56 @@ export default function ClinicaNovoPedidoPage() {
               <Tab key={aba.id} value={aba.id} label={aba.nome} />
             ))}
           </Tabs>
+          {!isMedicamento && tabsSource.some((a) => a.id === DIV_MATERIAL_ABA_ID) ? (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SendIcon sx={{ fontSize: 16 }} />}
+              onClick={handleAbrirEnvio}
+              disabled={isEnviando}
+              sx={{
+                mr: 1,
+                my: 0.5,
+                flexShrink: 0,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Enviar planilha
+            </Button>
+          ) : null}
         </Box>
       </Box>
 
       {renderContent()}
+
+      <ImhDivMaterialEnvioModal
+        open={envioModalOpen}
+        imhCount={selectedImhCount}
+        divMaterialCount={selectedDivCount}
+        isSubmitting={isEnviando}
+        onClose={() => {
+          if (!isEnviando) setEnvioModalOpen(false)
+        }}
+        onEnviar={handleEnviarPlanilhas}
+      />
+
+      <Snackbar
+        open={feedback.open}
+        autoHideDuration={5000}
+        onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={feedback.severity}
+          variant="filled"
+          onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+        >
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </>
   )
 }

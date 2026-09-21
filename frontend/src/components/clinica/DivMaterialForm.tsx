@@ -37,6 +37,9 @@ interface DivMaterialFormProps {
   consumoRows: ConsumoMaterialRow[]
   conmed?: ConmedComrjFormData
   empresas?: Empresa[]
+  selectedIds?: Set<string>
+  onSelectedIdsChange?: (next: Set<string>) => void
+  finalizedIds?: Set<string>
 }
 
 const MESES_OPCOES = [
@@ -103,10 +106,24 @@ const headerSx = {
   whiteSpace: 'nowrap' as const,
 } as const
 
+const finalizedCheckboxSx = {
+  color: EXCEL_SHEET.finalizedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.finalizedCheck },
+  opacity: 0.55,
+} as const
+
+const selectedCheckboxSx = {
+  color: EXCEL_SHEET.selectedCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
+} as const
+
 export function DivMaterialForm({
   consumoRows,
   conmed,
   empresas = [],
+  selectedIds,
+  onSelectedIdsChange,
+  finalizedIds,
 }: DivMaterialFormProps) {
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
@@ -147,6 +164,14 @@ export function DivMaterialForm({
     return `${mesNome}/${filtroAno}`
   }, [mostrarTodos, filtroDia, filtroMes, filtroAno])
 
+  const selectionEnabled = Boolean(onSelectedIdsChange)
+  const selection = selectedIds ?? new Set<string>()
+  const finalized = finalizedIds ?? new Set<string>()
+  const selecionaveis = linhasFiltradas.filter((l) => !finalized.has(l.id))
+  const allSelected =
+    selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
+  const someSelected = selecionaveis.some((l) => selection.has(l.id))
+
   const handleFiltroMesChange = (mes: number) => {
     setFiltroMes(mes)
     const maxDia = diasNoMes(mes, filtroAno)
@@ -159,6 +184,24 @@ export function DivMaterialForm({
     if (filtroDia > maxDia) setFiltroDia(0)
   }
 
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectedIdsChange) return
+    const next = new Set(selection)
+    for (const linha of selecionaveis) {
+      if (checked) next.add(linha.id)
+      else next.delete(linha.id)
+    }
+    onSelectedIdsChange(next)
+  }
+
+  const toggleOne = (linhaId: string, checked: boolean) => {
+    if (!onSelectedIdsChange || finalized.has(linhaId)) return
+    const next = new Set(selection)
+    if (checked) next.add(linhaId)
+    else next.delete(linhaId)
+    onSelectedIdsChange(next)
+  }
+
   const emptyHint =
     linhas.length > 0 && linhasFiltradas.length === 0
       ? `Nenhum processo em ${mesReferenciaLabel}. Altere o dia/mês/ano do filtro ou marque Todos.`
@@ -168,7 +211,8 @@ export function DivMaterialForm({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
         Somente leitura — espelha automaticamente o Consumo Material Consignado e o CONMED COMRJ
-        pela NIP do paciente. NIPs iguais são separados pela data do procedimento.
+        pela NIP do paciente. NIPs iguais são separados pela data do procedimento. Marque o
+        checklist para enviar à Confecção de Solemp.
       </Alert>
 
       <Paper
@@ -259,6 +303,7 @@ export function DivMaterialForm({
             </FormControl>
             <Typography variant="caption" color="text.secondary">
               {linhasFiltradas.length} de {linhas.length} registro(s)
+              {selectionEnabled && selection.size > 0 ? ` · ${selection.size} marcado(s)` : ''}
             </Typography>
           </Box>
         </Box>
@@ -281,6 +326,50 @@ export function DivMaterialForm({
             <Table stickyHeader size="small" sx={{ minWidth: 1800 }}>
               <TableHead>
                 <TableRow>
+                  {selectionEnabled ? (
+                    <TableCell
+                      sx={{
+                        ...headerSx,
+                        bgcolor: EXCEL_SHEET.selectHeaderBg,
+                        minWidth: 56,
+                        textAlign: 'center',
+                        top: 0,
+                        zIndex: 3,
+                        px: 0.5,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 0.25,
+                        }}
+                      >
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            fontSize: '10px',
+                            color: EXCEL_SHEET.text,
+                            letterSpacing: 0.4,
+                          }}
+                        >
+                          DM
+                        </Typography>
+                        <Checkbox
+                          size="small"
+                          checked={allSelected}
+                          indeterminate={someSelected && !allSelected}
+                          disabled={selecionaveis.length === 0}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(_, checked) => toggleAll(checked)}
+                          sx={{ p: 0, ...selectedCheckboxSx }}
+                        />
+                      </Box>
+                    </TableCell>
+                  ) : null}
                   {DIV_MATERIAL_COLUNAS.map((col) => (
                     <TableCell
                       key={col.key}
@@ -292,22 +381,54 @@ export function DivMaterialForm({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {linhasFiltradas.map((linha) => (
-                  <TableRow key={linha.id} hover>
-                    {DIV_MATERIAL_COLUNAS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        sx={{
-                          ...cellSx,
-                          minWidth: col.width,
-                          whiteSpace: col.key === 'descricaoMaterial' ? 'normal' : 'nowrap',
-                        }}
-                      >
-                        {dash(String(linha[col.key] ?? ''))}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                {linhasFiltradas.map((linha) => {
+                  const finalizado = finalized.has(linha.id)
+                  const checked = finalizado || selection.has(linha.id)
+                  return (
+                    <TableRow
+                      key={linha.id}
+                      hover
+                      sx={{
+                        bgcolor: selection.has(linha.id) ? EXCEL_SHEET.selectedBg : undefined,
+                      }}
+                    >
+                      {selectionEnabled ? (
+                        <TableCell
+                          sx={{
+                            ...cellSx,
+                            bgcolor: EXCEL_SHEET.selectHeaderBg,
+                            textAlign: 'center',
+                            px: 0.5,
+                          }}
+                        >
+                          <Checkbox
+                            size="small"
+                            checked={checked}
+                            disabled={finalizado}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
+                            sx={{
+                              p: 0,
+                              ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                            }}
+                          />
+                        </TableCell>
+                      ) : null}
+                      {DIV_MATERIAL_COLUNAS.map((col) => (
+                        <TableCell
+                          key={col.key}
+                          sx={{
+                            ...cellSx,
+                            minWidth: col.width,
+                            whiteSpace: col.key === 'descricaoMaterial' ? 'normal' : 'nowrap',
+                          }}
+                        >
+                          {dash(String(linha[col.key] ?? ''))}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </TableContainer>

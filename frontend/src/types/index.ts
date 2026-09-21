@@ -484,6 +484,8 @@ export interface ImhAbaFormData {
   clinica: string
   numeroCp: string
   linhas: ImhAbaLinha[]
+  /** Linhas já enviadas para Auditoria (checklist cinza). */
+  finalizedImhIds?: string[]
 }
 
 /** Linha da planilha IMH do portal medicamento (Modelo IHM — PME) */
@@ -605,17 +607,21 @@ export interface ClinicaPlanilhasLivresState {
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
+  /** Linhas da Div. Material já enviadas para Confecção de Solemp. */
+  finalizedDivMaterialIds?: string[]
 }
 
 export interface PedidoPlanilhaEnvioState {
   /** Formato da planilha anexada ao pedido. Default: IMH/OPME. */
-  formato?: 'imh' | 'controleSolemp' | 'imhMedicamento'
+  formato?: 'imh' | 'controleSolemp' | 'imhMedicamento' | 'divMaterial'
   cabecalho: ImhCabecalho
   linhas: ImhLinha[]
   /** Linhas no formato Controle SOLEMP (envio Confecção de Solemp). */
   controleSolempLinhas?: ControleSolempLinha[]
   /** Planilha PME enviada da aba IMH de medicamentos (subconjunto de colunas para Contabilidade/IMH). */
   imhMedicamentoLinhas?: ImhMedicamentoLinha[]
+  /** Linhas da aba Div. Material enviadas para Confecção de Solemp. */
+  divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
   enviadoEm: string
   /** ISO da devolução da planilha para um setor/origem */
   devolvidaEm?: string

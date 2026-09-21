@@ -1,5 +1,9 @@
 import type { ConmedComrjFormData, Empresa } from '@/types'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
+import {
+  CONTROLE_SOLEMP_DIVISAO_PADRAO,
+  type ControleSolempPlanilha,
+} from '@/utils/controleSolempTemplate'
 import { formatNip } from '@/utils/format'
 import { normalizePacienteNipKey } from '@/utils/pacientesPme'
 
@@ -197,4 +201,66 @@ export function buildDivMaterialLinhas(input: {
     if (dataCmp !== 0) return dataCmp
     return a.nomePaciente.localeCompare(b.nomePaciente, 'pt-BR')
   })
+}
+
+export function buildControleSolempFromDivMaterial(
+  linhas: DivMaterialLinha[],
+): ControleSolempPlanilha {
+  const MESES_NOME = [
+    'JANEIRO',
+    'FEVEREIRO',
+    'MARÇO',
+    'ABRIL',
+    'MAIO',
+    'JUNHO',
+    'JULHO',
+    'AGOSTO',
+    'SETEMBRO',
+    'OUTUBRO',
+    'NOVEMBRO',
+    'DEZEMBRO',
+  ]
+  function mesAnoFromData(data: string): string {
+    const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+    if (!match) return ''
+    const month = parseInt(match[2], 10)
+    const yearRaw = match[3]
+    const year = yearRaw.length === 2 ? 2000 + parseInt(yearRaw, 10) : parseInt(yearRaw, 10)
+    if (month < 1 || month > 12 || !Number.isFinite(year)) return ''
+    return `${MESES_NOME[month - 1]}/${year}`
+  }
+
+  return {
+    linhas: linhas.map((linha, index) => ({
+      id: `controle-solemp-div-${linha.id}`,
+      pacienteGrupoId: linha.id,
+      numero: String(index + 1),
+      divisao: CONTROLE_SOLEMP_DIVISAO_PADRAO,
+      solemp: '',
+      dataEnvioSolempFinancas: '',
+      mesAnoReferencia: mesAnoFromData(linha.dataProcedimento),
+      pi: '',
+      descricao: [linha.descricaoMaterial, linha.nomePaciente, linha.nip]
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .join(' — '),
+      tipoContratacao: linha.modalidadeLicitatoria,
+      qtdSol: '1',
+      valorUnitario: '',
+      total: '',
+      cnpj: linha.cnpj,
+      ne: '',
+      restosAPagar: '',
+      dataEnvioNeFornecedor: '',
+      dataEntregaFornecedor: '',
+      prazoEntregaDias: '',
+      statusEmpenho: '',
+      nf: '',
+      statusPagamento: '',
+      valorPago: '',
+      valorCancelado: '',
+      pendencia: '',
+      statusProcesso: 'EM ANDAMENTO',
+    })),
+  }
 }

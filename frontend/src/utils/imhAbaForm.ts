@@ -1,4 +1,5 @@
 import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
+import type { CreatePedidoInput } from '@/services/clinicaPedidoService'
 import {
   formatConmedData,
   formatConmedMoeda,
@@ -11,6 +12,7 @@ import {
   formatValorBrasileiro,
   parseValorBrasileiro,
 } from '@/utils/consumoMaterialOds'
+import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 
 export function createEmptyImhAbaLinha(): ImhAbaLinha {
   return {
@@ -32,6 +34,7 @@ export const EMPTY_IMH_ABA_FORM: ImhAbaFormData = {
   clinica: '',
   numeroCp: '',
   linhas: [],
+  finalizedImhIds: [],
 }
 
 export const IMH_ABA_COLUNAS = [
@@ -85,28 +88,163 @@ export function linhaHasContent(linha: ImhAbaLinha): boolean {
 
 export function normalizeImhAbaForm(value: ImhAbaFormData | undefined): ImhAbaFormData {
   const linhasRaw = Array.isArray(value?.linhas) ? value.linhas : []
+  const linhas = linhasRaw
+    .filter((item) => item && typeof item === 'object')
+    .map((item) =>
+      withRecalculatedImhLinha({
+        id: item.id || createEmptyImhAbaLinha().id,
+        data: item.data ?? '',
+        nip: item.nip ?? '',
+        nomeUsuario: item.nomeUsuario ?? '',
+        vinculo: item.vinculo ?? '',
+        descricao: item.descricao ?? '',
+        nipTitular: item.nipTitular ?? '',
+        valorUnit: item.valorUnit ?? '',
+        quantidade: item.quantidade ?? '',
+        valorTotal: item.valorTotal ?? '',
+        pctIndenizar: item.pctIndenizar ?? '',
+      }),
+    )
+    .filter((linha) => linhaHasContent(linha))
+  const linhaIds = new Set(linhas.map((l) => l.id))
   return {
     clinica: value?.clinica ?? '',
     numeroCp: value?.numeroCp ?? '',
-    linhas: linhasRaw
-      .filter((item) => item && typeof item === 'object')
-      .map((item) =>
-        withRecalculatedImhLinha({
-          id: item.id || createEmptyImhAbaLinha().id,
-          data: item.data ?? '',
-          nip: item.nip ?? '',
-          nomeUsuario: item.nomeUsuario ?? '',
-          vinculo: item.vinculo ?? '',
-          descricao: item.descricao ?? '',
-          nipTitular: item.nipTitular ?? '',
-          valorUnit: item.valorUnit ?? '',
-          quantidade: item.quantidade ?? '',
-          valorTotal: item.valorTotal ?? '',
-          pctIndenizar: item.pctIndenizar ?? '',
-        }),
-      )
-      .filter((linha) => linhaHasContent(linha)),
+    linhas,
+    finalizedImhIds: (value?.finalizedImhIds ?? []).filter((id) => linhaIds.has(id)),
   }
+}
+
+function formatDataHoje(): string {
+  const d = new Date()
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+}
+
+export function buildImhPlanilhaFromAbaForm(
+  form: ImhAbaFormData,
+  linhas: ImhAbaLinha[],
+): ImhPlanilha {
+  return {
+    cabecalho: {
+      numeroRelacao: form.numeroCp.trim(),
+      pregaoTad: '',
+      data: formatDataHoje(),
+      vigencia: '',
+      processo: '',
+      fornecedor: form.clinica.trim(),
+    },
+    linhas: linhas.map((linha, index) => {
+      const valorFmt =
+        linha.valorTotal.trim() ||
+        (parseValorBrasileiro(linha.valorUnit) > 0
+          ? formatValorBrasileiro(parseValorBrasileiro(linha.valorUnit))
+          : '')
+      return {
+        id: `imh-aba-${linha.id}`,
+        pacienteGrupoId: linha.id,
+        isLinhaPaciente: true,
+        numero: String(index + 1),
+        nip: linha.nip,
+        iniciais: linha.nomeUsuario,
+        data: linha.data,
+        procedimento: linha.descricao,
+        mapaSala: '',
+        danfe: '',
+        item: '',
+        nebPi: '',
+        descricaoMaterial: linha.descricao,
+        qt: linha.quantidade.trim() || '1',
+        valorUnit: linha.valorUnit || valorFmt,
+        valorTotal: valorFmt || linha.valorUnit,
+        subtotalPaciente: valorFmt || linha.valorUnit,
+      }
+    }),
+  }
+}
+
+export function imhAbaLinhasToPedidoInput(
+  linhas: ImhAbaLinha[],
+  clinicaNome: string,
+): CreatePedidoInput {
+  if (linhas.length === 1) {
+    const linha = linhas[0]
+    const valor =
+      parseValorBrasileiro(linha.valorTotal) ||
+      parseValorBrasileiro(linha.valorUnit) ||
+      0.01
+    const qtd = parseQuantidade(linha.quantidade) || 1
+    const vinculoRaw = linha.vinculo.trim().toUpperCase()
+    const vinculo = vinculoRaw.includes('DEP') ? 'DEPENDENTE' : 'TITULAR'
+    return {
+      consumoRowIds: [linha.id],
+      paciente: {
+        nome: linha.nomeUsuario.trim() || '—',
+        vinculo,
+        nip: linha.nip.trim() || '—',
+        nipTitular: linha.nipTitular.trim() || linha.nip.trim() || '—',
+        nomeTitular: linha.nomeUsuario.trim() || '—',
+        tipoUsuario: 'MILITAR',
+      },
+      dadosClinica: {
+        nomeClinica: clinicaNome,
+        medico: '—',
+        procedimento: linha.descricao.trim() || 'Procedimento IMH',
+        dataCirurgia: new Date().toISOString().slice(0, 10),
+        empresaConsignada: '—',
+        pregao: '—',
+        materialUtilizado: linha.descricao.trim() || 'Procedimento IMH',
+        quantidade: qtd,
+        valorUnitario: valor / qtd,
+        valorTotal: valor,
+        folhaSala: '',
+        descricaoCirurgica: `Envio IMH para Auditoria — ${linha.nomeUsuario.trim() || 'paciente'}.`,
+        etiquetas: '',
+        fotos: [],
+      },
+    }
+  }
+
+  const valorTotal = linhas.reduce((sum, linha) => {
+    const v = parseValorBrasileiro(linha.valorTotal) || parseValorBrasileiro(linha.valorUnit)
+    return sum + (v > 0 ? v : 0)
+  }, 0)
+  const titulo = `Planilha IMH — ${linhas.length} lançamentos`
+
+  return {
+    consumoRowIds: linhas.map((linha) => linha.id),
+    paciente: {
+      nome: titulo,
+      vinculo: 'TITULAR',
+      nip: '—',
+      nipTitular: '—',
+      nomeTitular: titulo,
+      tipoUsuario: 'MILITAR',
+    },
+    dadosClinica: {
+      nomeClinica: clinicaNome,
+      medico: '—',
+      procedimento: `Lote IMH com ${linhas.length} lançamentos`,
+      dataCirurgia: new Date().toISOString().slice(0, 10),
+      empresaConsignada: '—',
+      pregao: '—',
+      materialUtilizado: `${linhas.length} itens IMH na planilha enviada`,
+      quantidade: linhas.length,
+      valorUnitario: valorTotal > 0 ? valorTotal / linhas.length : 0.01,
+      valorTotal: valorTotal > 0 ? valorTotal : 0.01 * linhas.length,
+      folhaSala: '',
+      descricaoCirurgica: `Envio de planilha IMH com ${linhas.length} lançamentos para Auditoria.`,
+      etiquetas: '',
+      fotos: [],
+    },
+  }
+}
+
+export function markImhAbaLinhasFinalized(
+  form: ImhAbaFormData,
+  ids: string[],
+): ImhAbaFormData {
+  const next = new Set([...(form.finalizedImhIds ?? []), ...ids])
+  return { ...form, finalizedImhIds: [...next] }
 }
 
 export function imhFormHasPreviewContent(value: ImhAbaFormData): boolean {

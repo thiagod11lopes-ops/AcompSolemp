@@ -50,6 +50,7 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: filtered.cabecalho,
       linhas: filtered.linhas.map((linha) => ({ ...linha })),
       controleSolempLinhas: existing?.controleSolempLinhas,
+      divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
       recebidaEm: existing?.recebidaEm,
       encaminhadaImhEm: existing?.encaminhadaImhEm,
@@ -109,6 +110,37 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: existing?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
       linhas: existing?.linhas ?? [],
       controleSolempLinhas: filtered.linhas.map((linha) => ({ ...linha })),
+      divMaterialLinhas: existing?.divMaterialLinhas,
+      enviadoEm: new Date().toISOString(),
+      recebidaEm: existing?.recebidaEm,
+      encaminhadaImhEm: existing?.encaminhadaImhEm,
+      recebidaImhEm: existing?.recebidaImhEm,
+      arquivadaEm: existing?.arquivadaEm,
+      devolvidaEm: undefined,
+      devolvidaParaChave: undefined,
+    }
+
+    data.pedidoPlanilhaEnvio[pedidoId] = snapshot
+    saveAppData(data)
+    return snapshot
+  },
+
+  saveDivMaterialForPedido(
+    pedidoId: string,
+    linhas: import('@/utils/divMaterialForm').DivMaterialLinha[],
+    controle: ControleSolempPlanilha,
+  ): PedidoPlanilhaEnvioState {
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
+    const hasImh = Boolean(existing?.linhas?.length)
+    const snapshot: PedidoPlanilhaEnvioState = {
+      formato: hasImh ? existing?.formato ?? 'imh' : 'divMaterial',
+      cabecalho: existing?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
+      linhas: existing?.linhas ?? [],
+      controleSolempLinhas: controle.linhas.map((linha) => ({ ...linha })),
+      divMaterialLinhas: linhas.map((linha) => ({ ...linha })),
       enviadoEm: new Date().toISOString(),
       recebidaEm: existing?.recebidaEm,
       encaminhadaImhEm: existing?.encaminhadaImhEm,
@@ -133,6 +165,7 @@ export const pedidoPlanilhaEnvioService = {
       linhas: (snapshot.linhas ?? []).map((linha) => ({ ...linha })),
       controleSolempLinhas: snapshot.controleSolempLinhas?.map((linha) => ({ ...linha })),
       imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
+      divMaterialLinhas: snapshot.divMaterialLinhas?.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,
       devolvidaEm: snapshot.devolvidaEm,
       devolvidaParaChave: snapshot.devolvidaParaChave,

@@ -37,6 +37,8 @@ import type { SpreadsheetSheetImport } from '@/utils/consumoMaterialOds'
 interface ImhAbaFormProps {
   value: ImhAbaFormData
   onChange: (next: ImhAbaFormData) => void
+  selectedImhIds?: Set<string>
+  onSelectedImhIdsChange?: (next: Set<string>) => void
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
@@ -67,7 +69,12 @@ function cloneLinha(linha: ImhAbaLinha): ImhAbaLinha {
   return { ...linha }
 }
 
-export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
+export function ImhAbaForm({
+  value,
+  onChange,
+  selectedImhIds,
+  onSelectedImhIdsChange,
+}: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
   const linhaSnapshotRef = useRef<ImhAbaLinha | null>(null)
@@ -453,6 +460,8 @@ export function ImhAbaForm({ value, onChange }: ImhAbaFormProps) {
           value={value}
           editingLinhaId={editingLinhaId}
           importing={importing}
+          selectedImhIds={selectedImhIds}
+          onSelectedImhIdsChange={onSelectedImhIdsChange}
           onImportClick={handleImportClick}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}

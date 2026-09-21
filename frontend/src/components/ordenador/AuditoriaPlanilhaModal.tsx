@@ -106,10 +106,12 @@ export function AuditoriaPlanilhaModal({
   const hasImh = Boolean(planilha.linhas?.length)
   const isControleSolemp =
     preferFormato === 'controleSolemp'
-      ? hasControle
+      ? hasControle || Boolean(planilha.divMaterialLinhas?.length)
       : preferFormato === 'imh'
         ? false
-        : planilha.formato === 'controleSolemp' || (hasControle && !hasImh)
+        : planilha.formato === 'controleSolemp' ||
+          planilha.formato === 'divMaterial' ||
+          (hasControle && !hasImh)
 
   if (isControleSolemp) {
     return (
