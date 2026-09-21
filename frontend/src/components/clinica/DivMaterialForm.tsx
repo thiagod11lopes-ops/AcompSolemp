@@ -8,7 +8,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useMemo } from 'react'
@@ -18,16 +17,10 @@ import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   buildDivMaterialLinhas,
   DIV_MATERIAL_COLUNAS,
-  isDivMaterialEditable,
-  setDivMaterialOverride,
-  type DivMaterialColunaKey,
-  type DivMaterialFormData,
 } from '@/utils/divMaterialForm'
 import '@/components/clinica/spreadsheet-excel.css'
 
 interface DivMaterialFormProps {
-  value: DivMaterialFormData
-  onChange: (next: DivMaterialFormData) => void
   consumoRows: ConsumoMaterialRow[]
   conmed?: ConmedComrjFormData
   empresas?: Empresa[]
@@ -58,8 +51,6 @@ const headerSx = {
 } as const
 
 export function DivMaterialForm({
-  value,
-  onChange,
   consumoRows,
   conmed,
   empresas = [],
@@ -70,27 +61,15 @@ export function DivMaterialForm({
         consumoRows,
         conmed,
         empresas,
-        form: value,
       }),
-    [consumoRows, conmed, empresas, value],
+    [consumoRows, conmed, empresas],
   )
-
-  const handleCellChange = (
-    sourceKey: string,
-    field: DivMaterialColunaKey,
-    nextValue: string,
-  ) => {
-    if (!isDivMaterialEditable(field)) return
-    if (field === 'nip' || field === 'nomePaciente' || field === 'dataProcedimento') return
-    onChange(setDivMaterialOverride(value, sourceKey, field, nextValue))
-  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
-        Preenchimento automático a partir do Consumo Material Consignado e do CONMED COMRJ, pela
-        NIP do paciente. NIPs iguais são separados pela data do procedimento. Campos sem fonte
-        (UASG, NUP SIGAD etc.) podem ser preenchidos manualmente.
+        Somente leitura — espelha automaticamente o Consumo Material Consignado e o CONMED COMRJ
+        pela NIP do paciente. NIPs iguais são separados pela data do procedimento.
       </Alert>
 
       <Paper
@@ -146,43 +125,18 @@ export function DivMaterialForm({
               <TableBody>
                 {linhas.map((linha) => (
                   <TableRow key={linha.id} hover>
-                    {DIV_MATERIAL_COLUNAS.map((col) => {
-                      const raw = String(linha[col.key] ?? '')
-                      const editable = isDivMaterialEditable(col.key)
-                      return (
-                        <TableCell
-                          key={col.key}
-                          sx={{
-                            ...cellSx,
-                            minWidth: col.width,
-                            whiteSpace: col.key === 'descricaoMaterial' ? 'normal' : 'nowrap',
-                          }}
-                        >
-                          {editable ? (
-                            <TextField
-                              size="small"
-                              fullWidth
-                              value={raw}
-                              placeholder="—"
-                              onChange={(e) =>
-                                handleCellChange(linha.sourceKey, col.key, e.target.value)
-                              }
-                              variant="standard"
-                              sx={{
-                                '& .MuiInputBase-root': {
-                                  fontSize: EXCEL_SHEET.fontSize,
-                                  fontFamily: EXCEL_SHEET.fontFamily,
-                                  '&:before, &:after': { display: 'none' },
-                                },
-                                '& .MuiInputBase-input': { py: 0.35, px: 0.5 },
-                              }}
-                            />
-                          ) : (
-                            dash(raw)
-                          )}
-                        </TableCell>
-                      )
-                    })}
+                    {DIV_MATERIAL_COLUNAS.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        sx={{
+                          ...cellSx,
+                          minWidth: col.width,
+                          whiteSpace: col.key === 'descricaoMaterial' ? 'normal' : 'nowrap',
+                        }}
+                      >
+                        {dash(String(linha[col.key] ?? ''))}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>

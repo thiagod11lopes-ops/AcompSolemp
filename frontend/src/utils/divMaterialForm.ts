@@ -20,35 +20,8 @@ export interface DivMaterialLinha {
   cnpj: string
   dataProcedimento: string
   anexoAtaHomologacao: string
-  /** Chave estável nip|data|origem para overrides e dedupe */
+  /** Chave estável nip|data|origem */
   sourceKey: string
-}
-
-export type DivMaterialOverride = Partial<
-  Pick<
-    DivMaterialLinha,
-    | 'modalidadeLicitatoria'
-    | 'uasg'
-    | 'nupModalidade'
-    | 'numeroItem'
-    | 'descricaoMaterial'
-    | 'mapa'
-    | 'valeSala'
-    | 'vigencia'
-    | 'nupSigad'
-    | 'fornecedor'
-    | 'cnpj'
-    | 'anexoAtaHomologacao'
-  >
->
-
-export interface DivMaterialFormData {
-  /** Overrides manuais (campos sem fonte automática ou correções) */
-  overrides: Record<string, DivMaterialOverride>
-}
-
-export const EMPTY_DIV_MATERIAL_FORM: DivMaterialFormData = {
-  overrides: {},
 }
 
 export const DIV_MATERIAL_COLUNAS = [
@@ -74,25 +47,6 @@ export const DIV_MATERIAL_COLUNAS = [
 ] as const
 
 export type DivMaterialColunaKey = (typeof DIV_MATERIAL_COLUNAS)[number]['key']
-
-const EDITABLE_KEYS = new Set<DivMaterialColunaKey>([
-  'modalidadeLicitatoria',
-  'uasg',
-  'nupModalidade',
-  'numeroItem',
-  'descricaoMaterial',
-  'mapa',
-  'valeSala',
-  'vigencia',
-  'nupSigad',
-  'fornecedor',
-  'cnpj',
-  'anexoAtaHomologacao',
-])
-
-export function isDivMaterialEditable(key: DivMaterialColunaKey): boolean {
-  return EDITABLE_KEYS.has(key)
-}
 
 function normData(raw: string): string {
   return raw.trim()
@@ -213,34 +167,13 @@ function rowsFromConmed(
   return out
 }
 
-function applyOverride(linha: DivMaterialLinha, override?: DivMaterialOverride): DivMaterialLinha {
-  if (!override) return linha
-  return {
-    ...linha,
-    modalidadeLicitatoria: override.modalidadeLicitatoria ?? linha.modalidadeLicitatoria,
-    uasg: override.uasg ?? linha.uasg,
-    nupModalidade: override.nupModalidade ?? linha.nupModalidade,
-    numeroItem: override.numeroItem ?? linha.numeroItem,
-    descricaoMaterial: override.descricaoMaterial ?? linha.descricaoMaterial,
-    mapa: override.mapa ?? linha.mapa,
-    valeSala: override.valeSala ?? linha.valeSala,
-    vigencia: override.vigencia ?? linha.vigencia,
-    nupSigad: override.nupSigad ?? linha.nupSigad,
-    fornecedor: override.fornecedor ?? linha.fornecedor,
-    cnpj: override.cnpj ?? linha.cnpj,
-    anexoAtaHomologacao: override.anexoAtaHomologacao ?? linha.anexoAtaHomologacao,
-  }
-}
-
-/** Monta linhas da Div. Material a partir do Consumo + CONMED, diferenciando NIP iguais pela data. */
+/** Espelho somente leitura: Consumo + CONMED, diferenciando NIP iguais pela data. */
 export function buildDivMaterialLinhas(input: {
   consumoRows: ConsumoMaterialRow[]
   conmed?: ConmedComrjFormData
   empresas?: Empresa[]
-  form?: DivMaterialFormData
 }): DivMaterialLinha[] {
   const empresas = input.empresas ?? []
-  const overrides = input.form?.overrides ?? {}
   const existingKeys = new Set<string>()
   const linhas: DivMaterialLinha[] = []
 
@@ -249,12 +182,12 @@ export function buildDivMaterialLinhas(input: {
     if (!built) continue
     if (!built.nip.trim() && !built.dataProcedimento.trim()) continue
     existingKeys.add(built.sourceKey)
-    linhas.push(applyOverride(built, overrides[built.sourceKey]))
+    linhas.push(built)
   }
 
   for (const built of rowsFromConmed(input.conmed, empresas, existingKeys)) {
     if (!built.nip.trim() && !built.dataProcedimento.trim()) continue
-    linhas.push(applyOverride(built, overrides[built.sourceKey]))
+    linhas.push(built)
   }
 
   return linhas.sort((a, b) => {
@@ -264,36 +197,4 @@ export function buildDivMaterialLinhas(input: {
     if (dataCmp !== 0) return dataCmp
     return a.nomePaciente.localeCompare(b.nomePaciente, 'pt-BR')
   })
-}
-
-export function normalizeDivMaterialForm(
-  value: DivMaterialFormData | undefined,
-): DivMaterialFormData {
-  const overridesRaw = value?.overrides
-  if (!overridesRaw || typeof overridesRaw !== 'object') {
-    return { overrides: {} }
-  }
-  const overrides: Record<string, DivMaterialOverride> = {}
-  for (const [key, raw] of Object.entries(overridesRaw)) {
-    if (!raw || typeof raw !== 'object') continue
-    overrides[key] = { ...raw }
-  }
-  return { overrides }
-}
-
-export function setDivMaterialOverride(
-  form: DivMaterialFormData,
-  sourceKey: string,
-  field: keyof DivMaterialOverride,
-  value: string,
-): DivMaterialFormData {
-  return {
-    overrides: {
-      ...form.overrides,
-      [sourceKey]: {
-        ...form.overrides[sourceKey],
-        [field]: value,
-      },
-    },
-  }
 }

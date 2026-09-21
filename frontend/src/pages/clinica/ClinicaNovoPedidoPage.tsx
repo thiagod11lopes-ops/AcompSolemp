@@ -41,10 +41,6 @@ import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
 import {
-  EMPTY_DIV_MATERIAL_FORM,
-  type DivMaterialFormData,
-} from '@/utils/divMaterialForm'
-import {
   clonePacientesPmeSeed,
   type PacientePmeRow,
 } from '@/utils/pacientesPme'
@@ -72,7 +68,6 @@ type PersistPayload = {
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
   lista?: ListaMateriaisFormData
-  divMaterial?: DivMaterialFormData
 }
 
 function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
@@ -122,8 +117,6 @@ export default function ClinicaNovoPedidoPage() {
   const [pacientesPmeRows, setPacientesPmeRows] = useState<PacientePmeRow[]>([])
   const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
-  const [divMaterialForm, setDivMaterialForm] =
-    useState<DivMaterialFormData>(EMPTY_DIV_MATERIAL_FORM)
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -134,7 +127,6 @@ export default function ClinicaNovoPedidoPage() {
   const pacientesPmeRowsRef = useRef(pacientesPmeRows)
   const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
-  const divMaterialFormRef = useRef(divMaterialForm)
   const modoRef = useRef(planilhasModo)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
@@ -145,7 +137,6 @@ export default function ClinicaNovoPedidoPage() {
   pacientesPmeRowsRef.current = pacientesPmeRows
   listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
-  divMaterialFormRef.current = divMaterialForm
   modoRef.current = planilhasModo
 
   useEffect(() => {
@@ -163,7 +154,6 @@ export default function ClinicaNovoPedidoPage() {
     setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
     setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
-    setDivMaterialForm(state.divMaterial ?? EMPTY_DIV_MATERIAL_FORM)
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   useEffect(() => {
@@ -206,7 +196,6 @@ export default function ClinicaNovoPedidoPage() {
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: patch.lista ?? listaFormRef.current,
-          divMaterial: patch.divMaterial ?? divMaterialFormRef.current,
         },
         modoRef.current,
       )
@@ -302,14 +291,6 @@ export default function ClinicaNovoPedidoPage() {
     [persist],
   )
 
-  const handleDivMaterialChange = useCallback(
-    (next: DivMaterialFormData) => {
-      setDivMaterialForm(next)
-      persist({ divMaterial: next })
-    },
-    [persist],
-  )
-
   const handleChangeAba = (abaId: string) => {
     setAbaAtivaId(abaId)
     persist({ abaAtivaId: abaId })
@@ -386,8 +367,6 @@ export default function ClinicaNovoPedidoPage() {
     if (abaAtivaId === DIV_MATERIAL_ABA_ID) {
       return (
         <DivMaterialForm
-          value={divMaterialForm}
-          onChange={handleDivMaterialChange}
           consumoRows={consumoRows}
           conmed={conmedForm}
           empresas={empresas}
