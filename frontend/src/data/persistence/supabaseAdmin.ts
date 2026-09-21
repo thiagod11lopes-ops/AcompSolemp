@@ -45,11 +45,11 @@ export async function listActiveGestores(): Promise<ActiveGestorRow[]> {
   const rows = Array.isArray(data) ? data : []
   return rows
     .map((row) => ({
-      email: String(row.email ?? '').toLowerCase(),
-      tenant_id: String(row.tenant_id ?? ''),
-      org_code: String(row.org_code ?? ''),
-      paused: Boolean(row.paused),
-      team_count: Number(row.team_count ?? 0),
+      email: String(row.result_email ?? row.email ?? '').toLowerCase(),
+      tenant_id: String(row.result_tenant_id ?? row.tenant_id ?? ''),
+      org_code: String(row.result_org_code ?? row.org_code ?? ''),
+      paused: Boolean(row.result_paused ?? row.paused),
+      team_count: Number(row.result_team_count ?? row.team_count ?? 0),
     }))
     .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
 }
@@ -62,11 +62,11 @@ export async function listGestorTeamEmails(gestorEmail: string): Promise<GestorT
   const rows = Array.isArray(data) ? data : []
   return rows
     .map((row) => ({
-      email: String(row.email ?? '').toLowerCase(),
-      perfil: String(row.perfil ?? ''),
-      nome: String(row.nome ?? ''),
-      paused: Boolean(row.paused),
-      is_gestor: Boolean(row.is_gestor),
+      email: String(row.result_email ?? row.email ?? '').toLowerCase(),
+      perfil: String(row.result_perfil ?? row.perfil ?? ''),
+      nome: String(row.result_nome ?? row.nome ?? ''),
+      paused: Boolean(row.result_paused ?? row.paused),
+      is_gestor: Boolean(row.result_is_gestor ?? row.is_gestor),
     }))
     .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
 }

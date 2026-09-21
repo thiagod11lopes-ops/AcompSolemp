@@ -1,12 +1,15 @@
--- AcompSOLEMP — lista completa da equipe do gestor (email_access + usuarios no app_state)
+-- AcompSOLEMP — corrige listagem da equipe (evita sombreamento de colunas OUT "email")
+-- Execute no SQL Editor do Supabase.
+
+drop function if exists public.list_gestor_team_emails(text);
 
 create or replace function public.list_gestor_team_emails(p_gestor_email text)
 returns table (
-  email text,
-  perfil text,
-  nome text,
-  paused boolean,
-  is_gestor boolean
+  result_email text,
+  result_perfil text,
+  result_nome text,
+  result_paused boolean,
+  result_is_gestor boolean
 )
 language plpgsql
 security definer
@@ -32,82 +35,91 @@ begin
 
   return query
   select
-    q.email,
-    q.perfil,
-    q.nome,
-    q.paused,
-    q.is_gestor
+    q.em,
+    q.pf,
+    q.nm,
+    q.ps,
+    q.ig
   from (
     -- Gestor dono
     select
-      v_gestor as email,
-      'GESTOR'::text as perfil,
-      'Gestor'::text as nome,
+      v_gestor as em,
+      'GESTOR'::text as pf,
+      'Gestor'::text as nm,
       exists (
-        select 1 from public.account_pauses p where lower(p.email) = v_gestor
-      ) as paused,
-      true as is_gestor,
-      0 as sort_rank
+        select 1
+        from public.account_pauses ap
+        where lower(ap.email) = v_gestor
+      ) as ps,
+      true as ig,
+      0 as rk
 
     union all
 
     -- E-mails liberados em Cadastros (email_access)
     select
-      lower(e.email) as email,
-      coalesce(nullif(trim(e.perfil), ''), 'USUARIO')::text as perfil,
-      coalesce(e.nome, '') as nome,
+      lower(trim(ea.email)) as em,
+      coalesce(nullif(trim(ea.perfil), ''), 'USUARIO')::text as pf,
+      coalesce(ea.nome, '')::text as nm,
       exists (
-        select 1 from public.account_pauses p where lower(p.email) = lower(e.email)
-      ) as paused,
-      false as is_gestor,
-      1 as sort_rank
-    from public.email_access e
-    where e.tenant_id = v_tenant
-      and lower(e.email) <> v_super
-      and lower(e.email) <> v_gestor
-      and nullif(trim(e.email), '') is not null
+        select 1
+        from public.account_pauses ap
+        where lower(ap.email) = lower(trim(ea.email))
+      ) as ps,
+      false as ig,
+      1 as rk
+    from public.email_access ea
+    where ea.tenant_id = v_tenant
+      and lower(trim(ea.email)) <> v_super
+      and lower(trim(ea.email)) <> v_gestor
+      and nullif(trim(ea.email), '') is not null
 
     union all
 
-    -- Usuários com e-mail no app_state (pode haver cadastros ainda não espelhados em email_access)
+    -- Usuários com e-mail no app_state ainda não espelhados em email_access
     select
-      lower(trim(u.elem->>'email')) as email,
-      coalesce(nullif(trim(u.elem->>'perfil'), ''), 'USUARIO')::text as perfil,
-      coalesce(u.elem->>'nome', '') as nome,
+      lower(trim(elem.e->>'email')) as em,
+      coalesce(nullif(trim(elem.e->>'perfil'), ''), 'USUARIO')::text as pf,
+      coalesce(elem.e->>'nome', '')::text as nm,
       exists (
-        select 1 from public.account_pauses p
-        where lower(p.email) = lower(trim(u.elem->>'email'))
-      ) as paused,
-      false as is_gestor,
-      1 as sort_rank
-    from public.app_state s
-    cross join lateral jsonb_array_elements(coalesce(s.payload->'usuarios', '[]'::jsonb)) as u(elem)
-    where s.tenant_id = v_tenant
-      and nullif(trim(u.elem->>'email'), '') is not null
-      and lower(trim(u.elem->>'email')) <> v_super
-      and lower(trim(u.elem->>'email')) <> v_gestor
-      and coalesce((u.elem->>'ativo')::boolean, true) = true
+        select 1
+        from public.account_pauses ap
+        where lower(ap.email) = lower(trim(elem.e->>'email'))
+      ) as ps,
+      false as ig,
+      1 as rk
+    from public.app_state st
+    cross join lateral jsonb_array_elements(coalesce(st.payload->'usuarios', '[]'::jsonb)) as elem(e)
+    where st.tenant_id = v_tenant
+      and nullif(trim(elem.e->>'email'), '') is not null
+      and lower(trim(elem.e->>'email')) <> v_super
+      and lower(trim(elem.e->>'email')) <> v_gestor
+      and (
+        elem.e->>'ativo' is null
+        or lower(elem.e->>'ativo') in ('true', 't', '1')
+      )
       and not exists (
         select 1
-        from public.email_access e2
-        where e2.tenant_id = v_tenant
-          and lower(e2.email) = lower(trim(u.elem->>'email'))
+        from public.email_access ea2
+        where ea2.tenant_id = v_tenant
+          and lower(trim(ea2.email)) = lower(trim(elem.e->>'email'))
       )
   ) q
-  order by q.sort_rank, q.email;
+  order by q.rk, q.em;
 end;
 $$;
 
 grant execute on function public.list_gestor_team_emails(text) to authenticated;
 
--- Contagem de equipe inclui email_access + usuarios com e-mail no app_state
+drop function if exists public.list_active_gestores();
+
 create or replace function public.list_active_gestores()
 returns table (
-  email text,
-  tenant_id uuid,
-  org_code text,
-  paused boolean,
-  team_count bigint
+  result_email text,
+  result_tenant_id uuid,
+  result_org_code text,
+  result_paused boolean,
+  result_team_count bigint
 )
 language plpgsql
 security definer
@@ -122,34 +134,38 @@ begin
 
   return query
   select
-    lower(t.owner_email) as email,
-    t.id as tenant_id,
+    lower(t.owner_email),
+    t.id,
     t.org_code,
     exists (
-      select 1 from public.account_pauses p
-      where lower(p.email) = lower(t.owner_email)
-    ) as paused,
+      select 1
+      from public.account_pauses ap
+      where lower(ap.email) = lower(t.owner_email)
+    ),
     (
-      select count(distinct lower(x.email))::bigint
+      select count(distinct lower(trim(x.em)))::bigint
       from (
-        select e.email
-        from public.email_access e
-        where e.tenant_id = t.id
-          and lower(e.email) <> v_super
-          and lower(e.email) <> lower(t.owner_email)
+        select ea.email as em
+        from public.email_access ea
+        where ea.tenant_id = t.id
+          and lower(trim(ea.email)) <> v_super
+          and lower(trim(ea.email)) <> lower(t.owner_email)
 
         union
 
-        select trim(u.elem->>'email')
-        from public.app_state s
-        cross join lateral jsonb_array_elements(coalesce(s.payload->'usuarios', '[]'::jsonb)) as u(elem)
-        where s.tenant_id = t.id
-          and nullif(trim(u.elem->>'email'), '') is not null
-          and lower(trim(u.elem->>'email')) <> v_super
-          and lower(trim(u.elem->>'email')) <> lower(t.owner_email)
-          and coalesce((u.elem->>'ativo')::boolean, true) = true
+        select trim(elem.e->>'email') as em
+        from public.app_state st
+        cross join lateral jsonb_array_elements(coalesce(st.payload->'usuarios', '[]'::jsonb)) as elem(e)
+        where st.tenant_id = t.id
+          and nullif(trim(elem.e->>'email'), '') is not null
+          and lower(trim(elem.e->>'email')) <> v_super
+          and lower(trim(elem.e->>'email')) <> lower(t.owner_email)
+          and (
+            elem.e->>'ativo' is null
+            or lower(elem.e->>'ativo') in ('true', 't', '1')
+          )
       ) x
-    ) as team_count
+    )
   from public.tenants t
   where lower(t.owner_email) <> v_super
   order by lower(t.owner_email);

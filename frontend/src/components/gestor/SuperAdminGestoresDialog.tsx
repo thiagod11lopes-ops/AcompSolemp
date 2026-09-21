@@ -124,9 +124,11 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
     setTeamError('')
     try {
       let fromRpc: GestorTeamEmailRow[] = []
+      let rpcError = ''
       try {
         fromRpc = await listGestorTeamEmails(gestor.email)
-      } catch {
+      } catch (e) {
+        rpcError = e instanceof Error ? e.message : 'Falha ao listar equipe'
         fromRpc = []
       }
 
@@ -134,7 +136,6 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
       try {
         const state = await adminLoadAppState(gestor.tenant_id)
         fromApp = teamFromAppStateUsuarios(gestor.email, state?.payload ?? null)
-        // preserva paused do RPC quando existir
         const pausedByEmail = new Map(fromRpc.map((r) => [r.email, r.paused]))
         fromApp = fromApp.map((r) => ({
           ...r,
@@ -146,6 +147,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
 
       const merged = mergeTeamRows(fromRpc, fromApp)
       if (merged.length === 0) {
+        if (rpcError) setTeamError(rpcError)
         setTeam([
           {
             email: gestor.email,
