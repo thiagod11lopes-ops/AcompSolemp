@@ -27,7 +27,9 @@ import {
   useCreateClinicaPedido,
   useClinicaPedidos,
   useConsumoPlanilhaState,
+  useReenviarPlanilhaCorrigidaClinica,
 } from '@/hooks/useClinicaPedidos'
+import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { consumoPlanilhaService } from '@/services/consumoPlanilhaService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { loadAppData } from '@/mocks/seed'
@@ -51,6 +53,9 @@ import {
 } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
+import { EnviarPlanilhaDestinoModal } from '@/components/ordenador/EnviarPlanilhaDestinoModal'
+import { listarOpcoesReenvioPlanilha } from '@/utils/reenviarPlanilha'
+import type { PedidoComDetalhes } from '@/types'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -70,6 +75,7 @@ const MESES_OPCOES = [
 interface ConsumoMaterialConsignadoFormProps {
   value: ConsumoMaterialRow[]
   onChange: (next: ConsumoMaterialRow[]) => void
+  corrigirPedidoId?: string | null
 }
 
 function sheetHasContent(sheet: SpreadsheetSheetImport): boolean {
@@ -103,15 +109,18 @@ function fornecedoresDisponiveis(rows: ConsumoMaterialRow[]): string[] {
 export function ConsumoMaterialConsignadoForm({
   value,
   onChange,
+  corrigirPedidoId = null,
 }: ConsumoMaterialConsignadoFormProps) {
   const { navigatePortal } = usePortalPaths()
   const { user } = useClinicaAuth()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
   const { data: pedidos = [] } = useClinicaPedidos()
+  const { data: etapas = [] } = useWorkflowEtapas()
   const { data: consumoPlanilha } = useConsumoPlanilhaState(clinicaId)
   const createPedido = useCreateClinicaPedido()
   const adicionarFluxo = useAdicionarFluxoParalelo()
+  const reenviarPlanilha = useReenviarPlanilhaCorrigidaClinica()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
 
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
@@ -140,6 +149,11 @@ export function ConsumoMaterialConsignadoForm({
   )
   const [previewAuditoriaOpen, setPreviewAuditoriaOpen] = useState(false)
   const [previewConfeccaoOpen, setPreviewConfeccaoOpen] = useState(false)
+  const [enviarDestinoOpen, setEnviarDestinoOpen] = useState(false)
+  const [pedidoCorrecaoPendente, setPedidoCorrecaoPendente] = useState<PedidoComDetalhes | null>(
+    null,
+  )
+  const [rowsCorrecaoPendentes, setRowsCorrecaoPendentes] = useState<ConsumoMaterialRow[]>([])
 
   const mesFiltro = useMemo(
     () => getMesModeloFromParts(filtroMes, filtroAno),
@@ -404,10 +418,29 @@ export function ConsumoMaterialConsignadoForm({
       return
     }
 
+    const rowIds = novos.map((row) => row.id)
+    const pedidoExistenteRaw = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
+    const pedidoExistente = pedidoExistenteRaw
+      ? (pedidos.find((p) => p.id === pedidoExistenteRaw.id) ?? null)
+      : null
+    const pedidoCorrecao =
+      (corrigirPedidoId
+        ? pedidos.find(
+            (p) => p.id === corrigirPedidoId && p.planilhaDevolvidaParaChave === 'SOLICITACAO',
+          )
+        : null) ??
+      (pedidoExistente?.planilhaDevolvidaParaChave === 'SOLICITACAO' ? pedidoExistente : null)
+
+    if (pedidoCorrecao) {
+      setPedidoCorrecaoPendente(pedidoCorrecao)
+      setRowsCorrecaoPendentes(novos)
+      setParaleloOpen(false)
+      setEnviarDestinoOpen(true)
+      return
+    }
+
     setIsEnviando(true)
     try {
-      const rowIds = novos.map((row) => row.id)
-      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
       const planilhaImh = buildImhPlanilhaFromConsumo(novos, mesFiltro)
       const planilhaControle = buildControleSolempFromConsumo(novos, mesFiltro)
       const tituloPlanilha = planilhaImh.cabecalho.numeroRelacao?.trim() || undefined
@@ -454,6 +487,62 @@ export function ConsumoMaterialConsignadoForm({
         open: true,
         severity: 'error',
         message: 'Erro ao enviar lançamentos para Confecção Solemp/Auditoria. Tente novamente.',
+      })
+    } finally {
+      setIsEnviando(false)
+    }
+  }
+
+  const opcoesReenvioCorrecao = useMemo(() => {
+    if (!pedidoCorrecaoPendente) return null
+    const planilha = pedidoPlanilhaEnvioService.getForPedido(pedidoCorrecaoPendente.id)
+    return listarOpcoesReenvioPlanilha(
+      pedidoCorrecaoPendente,
+      etapas,
+      planilha,
+      'SOLICITACAO',
+    )
+  }, [pedidoCorrecaoPendente, etapas])
+
+  const handleConfirmarReenvioCorrecao = async (destinoIds: string[]) => {
+    if (!pedidoCorrecaoPendente || rowsCorrecaoPendentes.length === 0) return
+    setIsEnviando(true)
+    try {
+      const novos = rowsCorrecaoPendentes
+      const pedidoId = pedidoCorrecaoPendente.id
+      const planilhaImh = buildImhPlanilhaFromConsumo(novos, mesFiltro)
+      const planilhaControle = buildControleSolempFromConsumo(novos, mesFiltro)
+
+      pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
+      pedidoPlanilhaEnvioService.saveControleSolempForPedido(pedidoId, planilhaControle)
+      consumoPlanilhaService.markRowsFinalizedAuditoria(clinicaId, novos)
+      consumoPlanilhaService.markRowsFinalizedMaterial(clinicaId, novos)
+
+      await reenviarPlanilha.mutateAsync({ pedidoId, destinoIds })
+
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const row of novos) next.delete(row.id)
+        return next
+      })
+      setEnviarDestinoOpen(false)
+      setPedidoCorrecaoPendente(null)
+      setRowsCorrecaoPendentes([])
+      setParaleloRows([])
+      setParaleloPreview(null)
+      setPreviewAuditoriaOpen(false)
+      setPreviewConfeccaoOpen(false)
+      setFeedback({
+        open: true,
+        severity: 'success',
+        message: `Planilha ${pedidoCorrecaoPendente.numero} reenviada após correção.`,
+      })
+      navigatePortal(`/clinica/timeline/${pedidoId}`)
+    } catch {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Erro ao reenviar planilha corrigida. Tente novamente.',
       })
     } finally {
       setIsEnviando(false)
@@ -639,6 +728,23 @@ export function ConsumoMaterialConsignadoForm({
           onClose={handleFecharPreviewConfeccao}
           onConfirm={() => undefined}
         />
+        {opcoesReenvioCorrecao && pedidoCorrecaoPendente ? (
+          <EnviarPlanilhaDestinoModal
+            open={enviarDestinoOpen}
+            pedidoNumero={pedidoCorrecaoPendente.numero}
+            destinos={opcoesReenvioCorrecao.destinos}
+            defaultDestinoId={opcoesReenvioCorrecao.defaultDestinoId}
+            permiteParaleloClinica={opcoesReenvioCorrecao.permiteParaleloClinica}
+            loading={isEnviando || reenviarPlanilha.isPending}
+            onClose={() => {
+              if (isEnviando || reenviarPlanilha.isPending) return
+              setEnviarDestinoOpen(false)
+              setPedidoCorrecaoPendente(null)
+              setRowsCorrecaoPendentes([])
+            }}
+            onConfirmar={handleConfirmarReenvioCorrecao}
+          />
+        ) : null}
         <Snackbar
           open={feedback.open}
           autoHideDuration={5000}

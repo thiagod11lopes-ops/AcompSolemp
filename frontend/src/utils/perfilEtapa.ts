@@ -1,4 +1,5 @@
 import type { Pedido, ProcessoArquivado, UserRole, WorkflowEtapa } from '@/types'
+import { pedidoSuspensoParaSetor } from '@/utils/devolverPlanilha'
 
 /** Mapeia perfil cadastrado para a chave da etapa na timeline */
 export const PERFIL_PARA_CHAVE_ETAPA: Partial<Record<UserRole, string>> = {
@@ -65,6 +66,8 @@ export function pedidoPendenteParaChave(
 ): boolean {
   if (pedido.concluido) return false
 
+  if (pedidoSuspensoParaSetor(pedido, chave)) return false
+
   if (pedidoEtapaConcluidaParaChave(pedido, etapas, chave, processosArquivados)) {
     return false
   }
@@ -95,6 +98,7 @@ export function pedidoRelacionadoParaChave(
   chave: string,
   processosArquivados?: ProcessoArquivado[],
 ): boolean {
+  if (pedidoSuspensoParaSetor(pedido, chave)) return false
   return (
     pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados) ||
     pedidoEtapaConcluidaParaChave(pedido, etapas, chave, processosArquivados)

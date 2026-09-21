@@ -209,6 +209,26 @@ export function useClinicaReverterEtapa() {
   })
 }
 
+export function useReenviarPlanilhaCorrigidaClinica() {
+  const { user } = useClinicaAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (params: { pedidoId: string; destinoIds: string[] }) =>
+      clinicaPedidoService.reenviarPlanilhaCorrigida(
+        params.pedidoId,
+        user!.id,
+        user!.clinicaId!,
+        params.destinoIds,
+      ),
+    onSuccess: (_, { pedidoId }) => {
+      invalidatePedidoQueries(queryClient, pedidoId)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['ordenador-pedidos'] })
+    },
+  })
+}
+
 function invalidatePedidoQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   pedidoId: string,
