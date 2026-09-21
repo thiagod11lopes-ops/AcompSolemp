@@ -1,7 +1,9 @@
 import {
   Alert,
   Box,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -109,6 +111,7 @@ export function DivMaterialForm({
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
   const [filtroDia, setFiltroDia] = useState(0)
+  const [mostrarTodos, setMostrarTodos] = useState(false)
 
   const linhas = useMemo(
     () =>
@@ -130,19 +133,19 @@ export function DivMaterialForm({
   )
   const anosOptions = useMemo(() => anosDisponiveis(linhas), [linhas])
 
-  const linhasFiltradas = useMemo(
-    () =>
-      linhas.filter((linha) =>
-        dataPertenceAoDia(linha.dataProcedimento, filtroDia, mesFiltro),
-      ),
-    [linhas, filtroDia, mesFiltro],
-  )
+  const linhasFiltradas = useMemo(() => {
+    if (mostrarTodos) return linhas
+    return linhas.filter((linha) =>
+      dataPertenceAoDia(linha.dataProcedimento, filtroDia, mesFiltro),
+    )
+  }, [linhas, mostrarTodos, filtroDia, mesFiltro])
 
   const mesReferenciaLabel = useMemo(() => {
+    if (mostrarTodos) return 'todos os períodos'
     const mesNome = MESES_OPCOES.find((m) => m.value === filtroMes)?.label ?? String(filtroMes)
     if (filtroDia > 0) return `${String(filtroDia).padStart(2, '0')}/${mesNome}/${filtroAno}`
     return `${mesNome}/${filtroAno}`
-  }, [filtroDia, filtroMes, filtroAno])
+  }, [mostrarTodos, filtroDia, filtroMes, filtroAno])
 
   const handleFiltroMesChange = (mes: number) => {
     setFiltroMes(mes)
@@ -158,7 +161,7 @@ export function DivMaterialForm({
 
   const emptyHint =
     linhas.length > 0 && linhasFiltradas.length === 0
-      ? `Nenhum processo em ${mesReferenciaLabel}. Altere o dia/mês/ano do filtro.`
+      ? `Nenhum processo em ${mesReferenciaLabel}. Altere o dia/mês/ano do filtro ou marque Todos.`
       : undefined
 
   return (
@@ -193,7 +196,22 @@ export function DivMaterialForm({
             Div. Material — processos por NIP / data
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 88 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  size="small"
+                  checked={mostrarTodos}
+                  onChange={(_, checked) => setMostrarTodos(checked)}
+                />
+              }
+              label="Todos"
+              sx={{
+                mr: 0.5,
+                ml: 0,
+                '& .MuiFormControlLabel-label': { fontSize: '0.85rem', fontWeight: 600 },
+              }}
+            />
+            <FormControl size="small" sx={{ minWidth: 88 }} disabled={mostrarTodos}>
               <InputLabel id="div-mat-filtro-dia-label">Dia</InputLabel>
               <Select
                 labelId="div-mat-filtro-dia-label"
@@ -209,7 +227,7 @@ export function DivMaterialForm({
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
+            <FormControl size="small" sx={{ minWidth: 130 }} disabled={mostrarTodos}>
               <InputLabel id="div-mat-filtro-mes-label">Mês</InputLabel>
               <Select
                 labelId="div-mat-filtro-mes-label"
@@ -224,7 +242,7 @@ export function DivMaterialForm({
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 96 }}>
+            <FormControl size="small" sx={{ minWidth: 96 }} disabled={mostrarTodos}>
               <InputLabel id="div-mat-filtro-ano-label">Ano</InputLabel>
               <Select
                 labelId="div-mat-filtro-ano-label"
