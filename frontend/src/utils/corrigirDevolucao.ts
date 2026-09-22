@@ -10,7 +10,7 @@ const SETORES_ORDENADOR = new Set([
 
 export function buildCorrigirDevolucaoPath(
   pedido: Pick<PedidoComDetalhes, 'id' | 'planilhaDevolvidaParaChave' | 'clinica'>,
-  planilha: PedidoPlanilhaEnvioState | null,
+  _planilha: PedidoPlanilhaEnvioState | null,
 ): string | null {
   const destino = pedido.planilhaDevolvidaParaChave
   if (!destino) return null
