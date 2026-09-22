@@ -381,71 +381,62 @@ export default function DashboardPage() {
         subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
       />
 
-      <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Total"
-                value={metrics.totalProcessos}
-                subtitle="Clique para detalhes"
-                icon={<AssignmentIcon />}
-                onClick={() => setKpiAberto('total')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Concluídos"
-                value={metrics.concluidos}
-                subtitle="Clique para detalhes"
-                icon={<CheckCircleIcon />}
-                color={premiumTokens.green}
-                onClick={() => setKpiAberto('concluidos')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Atrasados"
-                value={metrics.atrasados}
-                subtitle="Clique para detalhes"
-                icon={<WarningIcon />}
-                color={premiumTokens.red}
-                onClick={() => setKpiAberto('atrasados')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Em andamento"
-                value={metrics.emAndamento}
-                subtitle="Clique para detalhes"
-                icon={<PendingActionsIcon />}
-                color={premiumTokens.yellow}
-                onClick={() => setKpiAberto('emAndamento')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Próx. vencimento"
-                value={metrics.proximosVencimento}
-                subtitle="Clique para detalhes"
-                icon={<ScheduleIcon />}
-                color={premiumTokens.purple}
-                onClick={() => setKpiAberto('proximos')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <KpiCard
-                title="Tempo Médio de Finalização"
-                value={`${metrics.tempoMedioPagamento}d`}
-                subtitle="Clique para detalhes"
-                icon={<ScheduleIcon />}
-                onClick={() => setKpiAberto('tempoMedio')}
-              />
-            </Grid>
-          </Grid>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <KpiCard
+            title="Total"
+            value={metrics.totalProcessos}
+            subtitle="Clique para detalhes"
+            icon={<AssignmentIcon />}
+            onClick={() => setKpiAberto('total')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <KpiCard
+            title="Atrasados"
+            value={metrics.atrasados}
+            subtitle="Clique para detalhes"
+            icon={<WarningIcon />}
+            color={premiumTokens.red}
+            onClick={() => setKpiAberto('atrasados')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <KpiCard
+            title="Próx. vencimento"
+            value={metrics.proximosVencimento}
+            subtitle="Clique para detalhes"
+            icon={<ScheduleIcon />}
+            color={premiumTokens.purple}
+            onClick={() => setKpiAberto('proximos')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <KpiCard
+            title="Tempo Médio de Finalização"
+            value={`${metrics.tempoMedioPagamento}d`}
+            subtitle="Clique para detalhes"
+            icon={<ScheduleIcon />}
+            onClick={() => setKpiAberto('tempoMedio')}
+          />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2} sx={{ mt: 1, alignItems: 'stretch' }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
+            <KpiCard
+              title="Concluídos"
+              value={metrics.concluidos}
+              subtitle="Clique para detalhes"
+              icon={<CheckCircleIcon />}
+              color={premiumTokens.green}
+              onClick={() => setKpiAberto('concluidos')}
+            />
+          </Box>
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
           <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
             <EmAndamentoCard
               total={metrics.emAndamento}
@@ -454,56 +445,69 @@ export default function DashboardPage() {
             />
           </Box>
         </Grid>
-      </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <KpiCard
-            title="Aguardando Empenho"
-            value={formatCurrency(metrics.valorAguardandoEmpenho)}
-            subtitle={subtitleAguardando}
-            icon={<HourglassTopIcon />}
-            color={premiumTokens.red}
-            onClick={() => setKpiAberto('aguardandoEmpenho')}
-          />
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              height: '100%',
+              '& > *': { flex: 1 },
+            }}
+          >
+            <KpiCard
+              title="Aguardando Empenho"
+              value={formatCurrency(metrics.valorAguardandoEmpenho)}
+              subtitle={subtitleAguardando}
+              icon={<HourglassTopIcon />}
+              color={premiumTokens.red}
+              onClick={() => setKpiAberto('aguardandoEmpenho')}
+            />
+            <KpiCard
+              title="Total empenhado do mês"
+              value={formatCurrency(mesFiltrado.valor)}
+              subtitle={subtitleMes}
+              icon={<CalendarMonthIcon />}
+              color={premiumTokens.primary}
+              onClick={() => setKpiAberto('empenhadoMes')}
+            />
+            <KpiCard
+              title="Total Empenhado"
+              value={formatCurrency(metrics.valorTotalEmpenhado)}
+              subtitle={subtitleTotalEmpenhado}
+              icon={<AccountBalanceIcon />}
+              color={premiumTokens.green}
+              onClick={() => setKpiAberto('totalEmpenhado')}
+            />
+          </Box>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <KpiCard
-            title="Total empenhado do mês"
-            value={formatCurrency(mesFiltrado.valor)}
-            subtitle={subtitleMes}
-            icon={<CalendarMonthIcon />}
-            color={premiumTokens.primary}
-            onClick={() => setKpiAberto('empenhadoMes')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <KpiCard
-            title="Total Empenhado"
-            value={formatCurrency(metrics.valorTotalEmpenhado)}
-            subtitle={subtitleTotalEmpenhado}
-            icon={<AccountBalanceIcon />}
-            color={premiumTokens.green}
-            onClick={() => setKpiAberto('totalEmpenhado')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <ValorASerIndenizadoCard
-            linhas={metrics.valorASerIndenizadoLinhas ?? []}
-            periodoTipo={indenizadoPeriodoTipo}
-            referencia={indenizadoReferencia}
-            onPeriodoTipoChange={setIndenizadoPeriodoTipo}
-            onReferenciaChange={setIndenizadoReferencia}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <TotalIndenizadoCard
-            linhas={metrics.totalIndenizadoLinhas ?? []}
-            periodoTipo={indenizadoPeriodoTipo}
-            referencia={indenizadoReferencia}
-            onPeriodoTipoChange={setIndenizadoPeriodoTipo}
-            onReferenciaChange={setIndenizadoReferencia}
-          />
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              height: '100%',
+              '& > *': { flex: 1, minHeight: 0 },
+            }}
+          >
+            <ValorASerIndenizadoCard
+              linhas={metrics.valorASerIndenizadoLinhas ?? []}
+              periodoTipo={indenizadoPeriodoTipo}
+              referencia={indenizadoReferencia}
+              onPeriodoTipoChange={setIndenizadoPeriodoTipo}
+              onReferenciaChange={setIndenizadoReferencia}
+            />
+            <TotalIndenizadoCard
+              linhas={metrics.totalIndenizadoLinhas ?? []}
+              periodoTipo={indenizadoPeriodoTipo}
+              referencia={indenizadoReferencia}
+              onPeriodoTipoChange={setIndenizadoPeriodoTipo}
+              onReferenciaChange={setIndenizadoReferencia}
+            />
+          </Box>
         </Grid>
       </Grid>
 
