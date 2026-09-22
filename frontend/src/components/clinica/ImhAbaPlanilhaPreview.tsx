@@ -1,6 +1,6 @@
 import {
   DeleteOutlined as DeleteIcon,
-  DeleteOutline as TrashIcon,
+  DeleteOutlined as TrashIcon,
   EditOutlined as EditIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'

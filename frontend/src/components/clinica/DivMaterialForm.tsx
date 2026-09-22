@@ -17,7 +17,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { useMemo, useState } from 'react'
 import type { ConmedComrjFormData, Empresa } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
@@ -317,7 +317,7 @@ export function DivMaterialForm({
                 disabled={linhas.length === 0}
                 sx={{ color: 'error.main' }}
               >
-                <DeleteOutlineIcon fontSize="small" />
+                <DeleteOutlinedIcon fontSize="small" />
               </IconButton>
             ) : null}
           </Box>
