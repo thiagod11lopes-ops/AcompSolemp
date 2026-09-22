@@ -46,6 +46,8 @@ function preservePlanilhaFlags(
   | 'encaminhadaImhEm'
   | 'recebidaImhEm'
   | 'recebidaConfeccaoEm'
+  | 'recebidaRascunhoEm'
+  | 'recebidaEmpenhadoEm'
   | 'arquivadaEm'
 > {
   return {
@@ -53,6 +55,8 @@ function preservePlanilhaFlags(
     encaminhadaImhEm: existing?.encaminhadaImhEm,
     recebidaImhEm: existing?.recebidaImhEm,
     recebidaConfeccaoEm: existing?.recebidaConfeccaoEm,
+    recebidaRascunhoEm: existing?.recebidaRascunhoEm,
+    recebidaEmpenhadoEm: existing?.recebidaEmpenhadoEm,
     arquivadaEm: existing?.arquivadaEm,
   }
 }
@@ -180,6 +184,8 @@ export const pedidoPlanilhaEnvioService = {
       encaminhadaImhEm: snapshot.encaminhadaImhEm,
       recebidaImhEm: snapshot.recebidaImhEm,
       recebidaConfeccaoEm: snapshot.recebidaConfeccaoEm,
+      recebidaRascunhoEm: snapshot.recebidaRascunhoEm,
+      recebidaEmpenhadoEm: snapshot.recebidaEmpenhadoEm,
       arquivadaEm: snapshot.arquivadaEm,
     }
   },
@@ -234,6 +240,34 @@ export const pedidoPlanilhaEnvioService = {
     const next: PedidoPlanilhaEnvioState = {
       ...current,
       recebidaConfeccaoEm: new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio![pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  markRecebidaRascunho(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    const data = readPlanilhaData()
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
+    const next: PedidoPlanilhaEnvioState = {
+      ...current,
+      recebidaRascunhoEm: new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio![pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  markRecebidaEmpenhado(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    const data = readPlanilhaData()
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
+    const next: PedidoPlanilhaEnvioState = {
+      ...current,
+      recebidaEmpenhadoEm: new Date().toISOString(),
     }
     data.pedidoPlanilhaEnvio![pedidoId] = next
     saveAppData(data)

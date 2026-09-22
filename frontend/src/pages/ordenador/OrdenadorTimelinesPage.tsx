@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
   Box,
@@ -21,9 +22,12 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { getRoleLabel } from '@/mocks/seed'
 import {
-  PERFIL_PARA_CHAVE_ETAPA,
+  CHAVES_CONFECCAO_CADEIA,
+  chavesEtapaParaPerfil,
   pedidoEtapaConcluidaParaChave,
   pedidoPendenteParaChave,
+  pedidoPendenteParaPerfil,
+  pedidoRelacionadoParaChave,
 } from '@/utils/perfilEtapa'
 import {
   contarTimelineList,
@@ -32,32 +36,65 @@ import {
 } from '@/utils/timelineListFilter'
 import type { PedidoComDetalhes } from '@/types'
 
+const ETAPA_LABEL: Record<string, string> = {
+  DIV_MAT_CONFECCAO_SOLEMP: 'Confecção de Solemp',
+  DIV_MAT_FINANCAS: 'Solemp em Rascunho',
+  DIV_MAT_EMPENHADO: 'Empenhado',
+}
+
 export default function OrdenadorTimelinesPage() {
   const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
+  const [searchParams] = useSearchParams()
   const { data: pedidos = [], isLoading } = useOrdenadorPedidos()
   const { data: etapas = [] } = useWorkflowEtapas()
   const [filtro, setFiltro] = useState<TimelineListFiltro>('EM_ANDAMENTO')
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
-  const etapaChave = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const isConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
+  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil) : []
+  const etapaFiltro = searchParams.get('etapa')
+  const etapaChaveValida =
+    etapaFiltro &&
+    (CHAVES_CONFECCAO_CADEIA as readonly string[]).includes(etapaFiltro) &&
+    isConfeccao
+      ? etapaFiltro
+      : null
+  const tituloEtapa = etapaChaveValida
+    ? (ETAPA_LABEL[etapaChaveValida] ?? perfilLabel)
+    : perfilLabel
 
   const isConcluidoSetor = useMemo(() => {
     return (pedido: PedidoComDetalhes) => {
-      if (!etapaChave) return pedido.concluido
-      return pedidoEtapaConcluidaParaChave(pedido, etapas, etapaChave)
+      if (!user) return pedido.concluido
+      if (etapaChaveValida) {
+        return pedidoEtapaConcluidaParaChave(pedido, etapas, etapaChaveValida)
+      }
+      if (isConfeccao) {
+        return pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')
+      }
+      const chave = chavesPerfil[0]
+      if (!chave) return pedido.concluido
+      return pedidoEtapaConcluidaParaChave(pedido, etapas, chave)
     }
-  }, [etapaChave, etapas])
+  }, [user, isConfeccao, chavesPerfil, etapas, etapaChaveValida])
+
+  const pedidosEscopo = useMemo(() => {
+    if (!etapaChaveValida) return pedidos
+    return pedidos.filter((p) =>
+      pedidoRelacionadoParaChave(p, etapas, etapaChaveValida),
+    )
+  }, [pedidos, etapas, etapaChaveValida])
 
   const contagens = useMemo(
-    () => contarTimelineList(pedidos, { concluido: isConcluidoSetor }),
-    [pedidos, isConcluidoSetor],
+    () => contarTimelineList(pedidosEscopo, { concluido: isConcluidoSetor }),
+    [pedidosEscopo, isConcluidoSetor],
   )
   const filtrados = useMemo(
     () =>
-      pedidos.filter((p) =>
+      pedidosEscopo.filter((p) =>
         passaFiltroTimelineList(p, filtro, { concluido: isConcluidoSetor }),
       ),
-    [pedidos, filtro, isConcluidoSetor],
+    [pedidosEscopo, filtro, isConcluidoSetor],
   )
 
   if (isLoading) return <LoadingSpinner />
@@ -65,8 +102,12 @@ export default function OrdenadorTimelinesPage() {
   return (
     <>
       <PageHeader
-        title={`Timelines — ${perfilLabel}`}
-        subtitle="Processos com etapa do seu perfil — em andamento, todas ou concluídas"
+        title={`Timelines — ${tituloEtapa}`}
+        subtitle={
+          isConfeccao
+            ? 'Confecção, Solemp em Rascunho e Empenhado — receber e enviar planilhas'
+            : 'Processos com etapa do seu perfil — em andamento, todas ou concluídas'
+        }
       />
 
       <Tabs
@@ -85,8 +126,8 @@ export default function OrdenadorTimelinesPage() {
         <Card sx={{ p: 4, textAlign: 'center' }}>
           <TimelineIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
-            {pedidos.length === 0
-              ? `Nenhum processo para ${perfilLabel} no momento.`
+            {pedidosEscopo.length === 0
+              ? `Nenhum processo para ${tituloEtapa} no momento.`
               : 'Nenhuma timeline encontrada com o filtro atual.'}
           </Typography>
         </Card>
@@ -94,9 +135,11 @@ export default function OrdenadorTimelinesPage() {
         <Grid container spacing={2}>
           {filtrados.map((pedido) => {
             const concluidoSetor = isConcluidoSetor(pedido)
-            const pendente =
-              Boolean(etapaChave) &&
-              pedidoPendenteParaChave(pedido, etapas, etapaChave!)
+            const pendente = user
+              ? etapaChaveValida
+                ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida)
+                : pedidoPendenteParaPerfil(pedido, etapas, user.perfil)
+              : false
             const etapaAtiva = pedido.etapasHistorico.find(
               (h) =>
                 (pedido.etapasAtivasIds ?? [pedido.etapaAtualId]).includes(h.etapaId) &&
@@ -139,7 +182,7 @@ export default function OrdenadorTimelinesPage() {
                       <Typography variant="body2" sx={{ mb: 1 }}>
                         <strong>Etapa:</strong>{' '}
                         {etapaAtiva?.etapaNome ?? pedido.etapaAtual.nome}
-                        {etapaChave ? ` (${perfilLabel})` : ''}
+                        {` (${tituloEtapa})`}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         <Chip

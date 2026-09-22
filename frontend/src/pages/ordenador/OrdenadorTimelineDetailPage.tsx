@@ -17,7 +17,10 @@ import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel, loadAppData } from '@/mocks/seed'
-import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import {
+  chavePendenteParaPerfil,
+  PERFIL_PARA_CHAVE_ETAPA,
+} from '@/utils/perfilEtapa'
 import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
@@ -39,6 +42,8 @@ export default function OrdenadorTimelineDetailPage() {
   const [devolverOpen, setDevolverOpen] = useState(false)
   const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
   const [planilhaRecebidaConfeccao, setPlanilhaRecebidaConfeccao] = useState(false)
+  const [planilhaRecebidaRascunho, setPlanilhaRecebidaRascunho] = useState(false)
+  const [planilhaRecebidaEmpenhado, setPlanilhaRecebidaEmpenhado] = useState(false)
   const [planilhaEncaminhadaImh, setPlanilhaEncaminhadaImh] = useState(false)
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
@@ -46,11 +51,18 @@ export default function OrdenadorTimelineDetailPage() {
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
-  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const isConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
+  const chavePendente = useMemo(() => {
+    if (!user || !pedido) return null
+    return chavePendenteParaPerfil(pedido, etapas, user.perfil)
+  }, [user, pedido, etapas])
+  const chavePerfil = chavePendente ?? (user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null)
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
-  const isAuditoria = chavePerfil === 'DIV_MAT_AUDITORIA'
-  const isContabilidade = chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
-  const isConfeccao = chavePerfil === 'DIV_MAT_CONFECCAO_SOLEMP'
+  const isAuditoria = chavePendente === 'DIV_MAT_AUDITORIA'
+  const isContabilidade = chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
+  const isConfeccaoEtapa = chavePendente === 'DIV_MAT_CONFECCAO_SOLEMP'
+  const isRascunhoEtapa = chavePendente === 'DIV_MAT_FINANCAS'
+  const isEmpenhadoEtapa = chavePendente === 'DIV_MAT_EMPENHADO'
 
   const solempDefaults = useMemo(() => {
     if (!pedido) {
@@ -120,6 +132,8 @@ export default function OrdenadorTimelineDetailPage() {
 
     setPlanilhaRecebida(Boolean(stored?.recebidaEm))
     setPlanilhaRecebidaConfeccao(Boolean(stored?.recebidaConfeccaoEm))
+    setPlanilhaRecebidaRascunho(Boolean(stored?.recebidaRascunhoEm))
+    setPlanilhaRecebidaEmpenhado(Boolean(stored?.recebidaEmpenhadoEm))
     setPlanilhaEncaminhadaImh(
       Boolean(stored?.encaminhadaImhEm) ||
         (auditoriaConcluida && Boolean(stored)) ||
@@ -128,14 +142,14 @@ export default function OrdenadorTimelineDetailPage() {
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
     // arquivadaEm é só da Contabilidade/IMH — não deve bloquear Confecção em fluxo paralelo
     const encerradoContabilidade =
-      Boolean(stored?.arquivadaEm) && chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
+      Boolean(stored?.arquivadaEm) && chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
     setFluxoEncerrado(encerradoContabilidade)
     if (encerradoContabilidade) {
       setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
     } else {
       setMensagemFluxoEncerrado(null)
     }
-  }, [pedido, etapas, chavePerfil, fluxoDiretoImh])
+  }, [pedido, etapas, chavePendente, fluxoDiretoImh])
 
   useEffect(() => {
     if (!pedido || searchParams.get('planilha') !== '1') return
@@ -174,9 +188,19 @@ export default function OrdenadorTimelineDetailPage() {
       setContabilidadeOpen(true)
       return
     }
-    if (isConfeccao) {
+    if (isConfeccaoEtapa) {
       if (!planilhaRecebidaConfeccao) return
       setConfeccaoOpen(true)
+      return
+    }
+    if (isConfeccao && isRascunhoEtapa) {
+      if (!planilhaRecebidaRascunho) return
+      assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+      return
+    }
+    if (isConfeccao && isEmpenhadoEtapa) {
+      if (!planilhaRecebidaEmpenhado) return
+      assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
       return
     }
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
@@ -210,6 +234,18 @@ export default function OrdenadorTimelineDetailPage() {
   const handleReceberPlanilhaConfeccao = () => {
     pedidoPlanilhaEnvioService.markRecebidaConfeccao(pedido.id)
     setPlanilhaRecebidaConfeccao(true)
+    setPlanilhaOpen(true)
+  }
+
+  const handleReceberPlanilhaRascunho = () => {
+    pedidoPlanilhaEnvioService.markRecebidaRascunho(pedido.id)
+    setPlanilhaRecebidaRascunho(true)
+    setPlanilhaOpen(true)
+  }
+
+  const handleReceberPlanilhaEmpenhado = () => {
+    pedidoPlanilhaEnvioService.markRecebidaEmpenhado(pedido.id)
+    setPlanilhaRecebidaEmpenhado(true)
     setPlanilhaOpen(true)
   }
 
@@ -259,6 +295,15 @@ export default function OrdenadorTimelineDetailPage() {
   const modalAberto =
     auditoriaOpen || planilhaOpen || contabilidadeOpen || confeccaoOpen
 
+  const planilhaTitle = (() => {
+    if (isContabilidade) return `Contabilidade/IMH — Planilha ${pedido.numero}`
+    if (isConfeccaoEtapa) return `Confecção de Solemp — Div. de Material ${pedido.numero}`
+    if (isRascunhoEtapa) return `Solemp em Rascunho — Div. de Material ${pedido.numero}`
+    if (isEmpenhadoEtapa) return `Empenhado — Div. de Material ${pedido.numero}`
+    if (isConfeccao) return `Cadeia Solemp — Div. de Material ${pedido.numero}`
+    return undefined
+  })()
+
   return (
     <>
       <Button
@@ -284,9 +329,13 @@ export default function OrdenadorTimelineDetailPage() {
             assinando={assinar.isPending && !modalAberto}
             onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
             onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
+            onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
+            onReceberPlanilhaEmpenhado={isConfeccao ? handleReceberPlanilhaEmpenhado : undefined}
             onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
             planilhaRecebida={planilhaRecebida}
             planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
+            planilhaRecebidaRascunho={planilhaRecebidaRascunho}
+            planilhaRecebidaEmpenhado={planilhaRecebidaEmpenhado}
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
             planilhaEncaminhadaImh={planilhaEncaminhadaImh}
             planilhaRecebidaImh={planilhaRecebidaImh}
@@ -360,13 +409,7 @@ export default function OrdenadorTimelineDetailPage() {
         pedidoNumero={pedido.numero}
         planilha={planilhaEnvio}
         preferFormato={preferFormatoPlanilha}
-        title={
-          isContabilidade
-            ? `Contabilidade/IMH — Planilha ${pedido.numero}`
-            : isConfeccao
-              ? `Confecção de Solemp — Div. de Material ${pedido.numero}`
-              : undefined
-        }
+        title={planilhaTitle}
         onClose={() => setPlanilhaOpen(false)}
         onDevolver={handleAbrirDevolver}
       />

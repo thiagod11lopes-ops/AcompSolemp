@@ -16,8 +16,10 @@ import {
   PERFIS_SETOR,
   PERFIS_SOLEMP,
   PERFIL_PARA_CHAVE_ETAPA,
+  chavePendenteParaPerfil,
   pedidoPendenteParaChave,
-  pedidoRelacionadoParaChave,
+  pedidoPendenteParaPerfil,
+  pedidoRelacionadoParaPerfil,
 } from '@/utils/perfilEtapa'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
@@ -32,32 +34,28 @@ function getContext(data: ReturnType<typeof loadAppData>) {
   }
 }
 
-function pedidoPendenteParaPerfil(
+function isPendentePerfil(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
   perfil: UserRole,
 ): boolean {
-  const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
-  if (!chave) return false
-  return pedidoPendenteParaChave(
+  return pedidoPendenteParaPerfil(
     pedido,
     data.workflowEtapas,
-    chave,
+    perfil,
     data.processosArquivados,
   )
 }
 
-function pedidoRelacionadoParaPerfil(
+function isRelacionadoPerfil(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
   perfil: UserRole,
 ): boolean {
-  const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
-  if (!chave) return false
-  return pedidoRelacionadoParaChave(
+  return pedidoRelacionadoParaPerfil(
     pedido,
     data.workflowEtapas,
-    chave,
+    perfil,
     data.processosArquivados,
   )
 }
@@ -97,7 +95,7 @@ export const ordenadorService = {
 
     const ctx = getContext(data)
     return data.pedidos
-      .filter((p) => pedidoPendenteParaPerfil(p, data, usuario.perfil))
+      .filter((p) => isPendentePerfil(p, data, usuario.perfil))
       .map((p) => enrichPedido(p, ctx))
       .filter((p): p is PedidoComDetalhes => p !== null)
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
@@ -111,7 +109,7 @@ export const ordenadorService = {
 
     const ctx = getContext(data)
     return data.pedidos
-      .filter((p) => pedidoRelacionadoParaPerfil(p, data, usuario.perfil))
+      .filter((p) => isRelacionadoPerfil(p, data, usuario.perfil))
       .map((p) => enrichPedido(p, ctx))
       .filter((p): p is PedidoComDetalhes => p !== null)
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
@@ -123,7 +121,7 @@ export const ordenadorService = {
     if (!usuario) return null
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || !pedidoRelacionadoParaPerfil(pedido, data, usuario.perfil)) return null
+    if (!pedido || !isRelacionadoPerfil(pedido, data, usuario.perfil)) return null
     return enrichPedido(pedido, getContext(data))
   },
 
@@ -151,11 +149,17 @@ export const ordenadorService = {
         assinanteNome: options?.assinanteNome,
       })
     } else {
-      const chave = PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
-      if (!chave) throw new Error('Perfil sem etapa associada')
-
       const pedido = data.pedidos.find((p) => p.id === pedidoId)
       if (!pedido) throw new Error('Pedido não encontrado')
+
+      const chave =
+        chavePendenteParaPerfil(
+          pedido,
+          data.workflowEtapas,
+          usuario.perfil,
+          data.processosArquivados,
+        ) ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
+      if (!chave) throw new Error('Perfil sem etapa associada')
 
       if (
         !pedidoPendenteParaChave(

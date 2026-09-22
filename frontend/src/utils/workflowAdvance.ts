@@ -502,9 +502,11 @@ function getEtapaAtivaPorChaves(
   return etapas.find((e) => ativas.includes(e.id) && chaves.includes(e.chave))
 }
 
-const PERFIL_PARA_ETAPA_SOLEMP: Partial<Record<User['perfil'], string>> = {
-  CONFECCAO_SOLEMP: 'DIV_MAT_CONFECCAO_SOLEMP',
-}
+const CHAVES_CADEIA_SOLEMP = [
+  'DIV_MAT_CONFECCAO_SOLEMP',
+  'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
+] as const
 
 export interface AssinarSolempOptions {
   numero?: string
@@ -521,10 +523,7 @@ export function assinarSolempForPedido(
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
 
-  const chavePerfil = PERFIL_PARA_ETAPA_SOLEMP[usuario.perfil]
-  const etapa = chavePerfil
-    ? getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [chavePerfil])
-    : getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_CONFECCAO_SOLEMP'])
+  const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, [...CHAVES_CADEIA_SOLEMP])
   if (!etapa) {
     throw new Error('Nenhuma etapa ativa correspondente ao seu perfil neste processo')
   }
@@ -567,7 +566,63 @@ export function assinarSolempForPedido(
     return data
   }
 
-  throw new Error('Este processo não está aguardando confecção da SOLEMP')
+  if (etapa.chave === 'DIV_MAT_FINANCAS') {
+    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+    const solempRef = solemp?.numero ? ` — SOLEMP ${solemp.numero}` : ''
+
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Solemp em Rascunho: planilha enviada por ${usuario.nome}${solempRef}. Encaminhado para Empenhado.`,
+      etapa.id,
+    )
+
+    data.notificacoes.push({
+      id: `notif-${Date.now()}`,
+      tipo: 'ETAPA_PENDENTE',
+      titulo: `Empenhado — ${pedido.numero}`,
+      mensagem: `${usuario.nome} enviou a planilha em Solemp em Rascunho e encaminhou para Empenhado.`,
+      pedidoId,
+      reversaoId: null,
+      perfilDestino: null,
+      etapaChave: etapa.chave,
+      lida: false,
+      data: nowIso(),
+    })
+
+    return data
+  }
+
+  if (etapa.chave === 'DIV_MAT_EMPENHADO') {
+    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
+    const solempRef = solemp?.numero ? ` — SOLEMP ${solemp.numero}` : ''
+
+    data = advancePedidoEtapa(
+      data,
+      pedidoId,
+      usuario,
+      `Empenhado: planilha enviada por ${usuario.nome}${solempRef}. Processo encerrado.`,
+      etapa.id,
+    )
+
+    data.notificacoes.push({
+      id: `notif-${Date.now()}`,
+      tipo: 'ETAPA_PENDENTE',
+      titulo: `Empenhado concluído — ${pedido.numero}`,
+      mensagem: `${usuario.nome} enviou a planilha e concluiu Empenhado.`,
+      pedidoId,
+      reversaoId: null,
+      perfilDestino: null,
+      etapaChave: etapa.chave,
+      lida: false,
+      data: nowIso(),
+    })
+
+    return data
+  }
+
+  throw new Error('Este processo não está aguardando ação da Confecção de Solemp')
 }
 
 export function registrarPagamentoForPedido(

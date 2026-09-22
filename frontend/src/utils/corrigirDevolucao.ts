@@ -1,11 +1,13 @@
 import type { AuthUser, PedidoComDetalhes, PedidoPlanilhaEnvioState } from '@/types'
 import type { TimelineNodeData } from '@/components/timeline/types'
-import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import { chavesEtapaParaPerfil } from '@/utils/perfilEtapa'
 
 const SETORES_ORDENADOR = new Set([
   'DIV_MAT_AUDITORIA',
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_CONTABILIDADE_IMH',
+  'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
 ])
 
 export function buildCorrigirDevolucaoPath(
@@ -40,7 +42,7 @@ export function usuarioPodeCorrigirDevolucao(
   }
 
   if (SETORES_ORDENADOR.has(destino)) {
-    return PERFIL_PARA_CHAVE_ETAPA[user.perfil] === destino
+    return chavesEtapaParaPerfil(user.perfil).includes(destino)
   }
 
   return false

@@ -16,7 +16,7 @@ import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import TimelineIcon from '@mui/icons-material/Timeline'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { isConfeccaoComCadeiaSolemp } from '@/utils/permissions'
@@ -34,10 +34,25 @@ const menuBase = [
 ]
 
 const menuConfeccaoCadeia = [
-  { path: '/ordenador/timelines', label: 'Confecção de Solemp', icon: <TimelineIcon /> },
-  { path: '/financeiro/pagamentos', label: 'Solemp em Rascunho', icon: <PaymentsIcon /> },
-  { path: '/financeiro/aguardando-empenho', label: 'Empenhado', icon: <HourglassTopIcon /> },
-  { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+  {
+    path: '/ordenador/timelines',
+    etapa: 'DIV_MAT_CONFECCAO_SOLEMP',
+    label: 'Confecção de Solemp',
+    icon: <TimelineIcon />,
+  },
+  {
+    path: '/ordenador/timelines',
+    etapa: 'DIV_MAT_FINANCAS',
+    label: 'Solemp em Rascunho',
+    icon: <PaymentsIcon />,
+  },
+  {
+    path: '/ordenador/timelines',
+    etapa: 'DIV_MAT_EMPENHADO',
+    label: 'Empenhado',
+    icon: <HourglassTopIcon />,
+  },
+  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface FinanceiroSidebarProps {
@@ -48,6 +63,7 @@ interface FinanceiroSidebarProps {
 export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProps) {
   const { user } = useFinanceiroAuth()
   const { mapPath, demoBannerHeight } = usePortalPaths()
+  const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const isConfeccao = Boolean(user && isConfeccaoComCadeiaSolemp(user.perfil))
@@ -81,25 +97,38 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
       )}
       <Divider />
       <List>
-        {menuItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            component={NavLink}
-            to={mapPath(item.path)}
-            end
-            onClick={isMobile ? onClose : undefined}
-            sx={{
-              '&.active': {
-                bgcolor: 'action.selected',
-                borderRight: 3,
-                borderColor: 'success.main',
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
+        {menuItems.map((item) => {
+          const etapa = 'etapa' in item ? item.etapa : undefined
+          const to = etapa
+            ? { pathname: mapPath(item.path), search: `?etapa=${etapa}` }
+            : mapPath(item.path)
+          const etapaAtual = new URLSearchParams(location.search).get('etapa')
+          const isTimelinesPath = location.pathname.includes('/ordenador/timelines')
+          const isActive = etapa
+            ? isTimelinesPath && etapaAtual === etapa
+            : location.pathname.includes(item.path.replace(/^\//, ''))
+
+          return (
+            <ListItemButton
+              key={`${item.path}-${etapa ?? 'default'}`}
+              component={NavLink}
+              to={to}
+              end={!etapa}
+              onClick={isMobile ? onClose : undefined}
+              selected={Boolean(isActive)}
+              sx={{
+                '&.active, &.Mui-selected': {
+                  bgcolor: 'action.selected',
+                  borderRight: 3,
+                  borderColor: 'success.main',
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          )
+        })}
       </List>
     </Box>
   )

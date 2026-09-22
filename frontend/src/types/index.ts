@@ -648,6 +648,10 @@ export interface PedidoPlanilhaEnvioState {
   recebidaImhEm?: string
   /** Planilha recebida pela Confecção de Solemp (trilha Div. Material) */
   recebidaConfeccaoEm?: string
+  /** Planilha recebida em Solemp em Rascunho (cadeia Confecção) */
+  recebidaRascunhoEm?: string
+  /** Planilha recebida em Empenhado (cadeia Confecção) */
+  recebidaEmpenhadoEm?: string
   /** Planilha arquivada pela Contabilidade/IMH ao finalizar */
   arquivadaEm?: string
 }

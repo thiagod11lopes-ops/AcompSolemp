@@ -7,13 +7,17 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ProcessosArquivadosTable } from '@/components/workflow/ProcessosArquivadosTable'
 import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
-import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
+import { PERFIL_PARA_CHAVE_ETAPA, chavesEtapaParaPerfil } from '@/utils/perfilEtapa'
 import { getRoleLabel } from '@/mocks/seed'
 
 export default function OrdenadorArquivadosPage() {
   const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
-  const etapaChave = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
+  const etapaChave = user
+    ? user.perfil === 'CONFECCAO_SOLEMP'
+      ? chavesEtapaParaPerfil(user.perfil)
+      : (PERFIL_PARA_CHAVE_ETAPA[user.perfil] ?? null)
+    : null
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const { data: processos = [], isLoading } = useProcessosArquivadosSetor(etapaChave)
 

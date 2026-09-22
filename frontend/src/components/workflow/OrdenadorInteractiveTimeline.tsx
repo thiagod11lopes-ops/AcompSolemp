@@ -3,7 +3,11 @@ import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
-import { PERFIL_PARA_CHAVE_ETAPA, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
+import {
+  chavesEtapaParaPerfil,
+  chavePendenteParaPerfil,
+  pedidoPendenteParaChave,
+} from '@/utils/perfilEtapa'
 import {
   filtrarEtapasParaTimeline,
   usaTrilhaAuditoriaOrdenador,
@@ -24,9 +28,13 @@ interface OrdenadorInteractiveTimelineProps {
   assinando?: boolean
   onReceberPlanilha?: () => void
   onReceberPlanilhaConfeccao?: () => void
+  onReceberPlanilhaRascunho?: () => void
+  onReceberPlanilhaEmpenhado?: () => void
   onEncaminharImh?: () => void
   planilhaRecebida?: boolean
   planilhaRecebidaConfeccao?: boolean
+  planilhaRecebidaRascunho?: boolean
+  planilhaRecebidaEmpenhado?: boolean
   onReceberPlanilhaImh?: () => void
   planilhaEncaminhadaImh?: boolean
   planilhaRecebidaImh?: boolean
@@ -42,9 +50,13 @@ export function OrdenadorInteractiveTimeline({
   assinando = false,
   onReceberPlanilha,
   onReceberPlanilhaConfeccao,
+  onReceberPlanilhaRascunho,
+  onReceberPlanilhaEmpenhado,
   onEncaminharImh,
   planilhaRecebida = false,
   planilhaRecebidaConfeccao = false,
+  planilhaRecebidaRascunho = false,
+  planilhaRecebidaEmpenhado = false,
   onReceberPlanilhaImh,
   planilhaEncaminhadaImh = false,
   planilhaRecebidaImh = false,
@@ -53,8 +65,12 @@ export function OrdenadorInteractiveTimeline({
   mensagemFluxoEncerrado = null,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
-  const chavePerfil = user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null
-  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePerfil)
+  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil) : []
+  const chavePendente = user
+    ? chavePendenteParaPerfil(pedido, etapas, user.perfil)
+    : null
+  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
+  const isCadeiaConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
 
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
   const sections = useMemo(
@@ -65,24 +81,26 @@ export function OrdenadorInteractiveTimeline({
   const header = useMemo(() => buildTimelineHeader(pedido, allNodes), [pedido, allNodes])
 
   const etapaDoPerfil = useMemo(() => {
-    if (!chavePerfil) return undefined
-    const etapa = visiveis.find((e) => e.chave === chavePerfil)
-    if (!etapa) return undefined
-    if (!pedidoPendenteParaChave(pedido, visiveis, chavePerfil)) return undefined
-    return etapa
-  }, [chavePerfil, visiveis, pedido])
+    if (!chavePendente) return undefined
+    return visiveis.find((e) => e.chave === chavePendente)
+  }, [chavePendente, visiveis])
 
   const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
   const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
-  const usaFluxoPlanilha = isAuditoriaAtiva || isContabilidadeAtiva || isConfeccaoAtiva
+  const isRascunhoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_FINANCAS'
+  const isEmpenhadoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_EMPENHADO'
+  const usaFluxoPlanilha =
+    isAuditoriaAtiva ||
+    isContabilidadeAtiva ||
+    isConfeccaoAtiva ||
+    (isCadeiaConfeccao && (isRascunhoAtivo || isEmpenhadoAtivo))
 
   const renderNodeActions = (node: TimelineNodeData) => {
     const minhaEtapa =
-      Boolean(chavePerfil) &&
-      chavePerfil === node.etapa.chave &&
-      pedidoPendenteParaChave(pedido, visiveis, chavePerfil!)
+      chavesPerfil.includes(node.etapa.chave) &&
+      pedidoPendenteParaChave(pedido, visiveis, node.etapa.chave)
 
     if (!minhaEtapa || fluxoEncerrado) return null
 
@@ -113,7 +131,7 @@ export function OrdenadorInteractiveTimeline({
 
     if (
       node.etapa.chave === 'DIV_MAT_CONTABILIDADE_IMH' &&
-      chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH' &&
+      chavePendente === 'DIV_MAT_CONTABILIDADE_IMH' &&
       onReceberPlanilhaImh &&
       onAssinar
     ) {
@@ -137,7 +155,11 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    if (isConfeccaoAtiva && onReceberPlanilhaConfeccao && onAssinar) {
+    if (
+      node.etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' &&
+      onReceberPlanilhaConfeccao &&
+      onAssinar
+    ) {
       return (
         <>
           <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
@@ -148,7 +170,51 @@ export function OrdenadorInteractiveTimeline({
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaConfeccao}
           >
-            {acaoAtual?.label ?? 'Confeccionar Solemp'}
+            {ORDENADOR_ETAPA_ACOES.DIV_MAT_CONFECCAO_SOLEMP?.label ?? 'Confeccionar Solemp'}
+          </TimelineActionButton>
+        </>
+      )
+    }
+
+    if (
+      isCadeiaConfeccao &&
+      node.etapa.chave === 'DIV_MAT_FINANCAS' &&
+      onReceberPlanilhaRascunho &&
+      onAssinar
+    ) {
+      return (
+        <>
+          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
+            Receber Planilha
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaRascunho}
+          >
+            {ORDENADOR_ETAPA_ACOES.DIV_MAT_FINANCAS?.label ?? 'Enviar Planilha'}
+          </TimelineActionButton>
+        </>
+      )
+    }
+
+    if (
+      isCadeiaConfeccao &&
+      node.etapa.chave === 'DIV_MAT_EMPENHADO' &&
+      onReceberPlanilhaEmpenhado &&
+      onAssinar
+    ) {
+      return (
+        <>
+          <TimelineActionButton onClick={onReceberPlanilhaEmpenhado} disabled={assinando}>
+            Receber Planilha
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaEmpenhado}
+          >
+            {ORDENADOR_ETAPA_ACOES.DIV_MAT_EMPENHADO?.label ?? 'Enviar Planilha'}
           </TimelineActionButton>
         </>
       )
@@ -194,6 +260,16 @@ export function OrdenadorInteractiveTimeline({
               {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (
                 <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
+                </p>
+              )}
+              {isRascunhoAtivo && !planilhaRecebidaRascunho && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                  Abra e receba a planilha antes de enviar para Empenhado.
+                </p>
+              )}
+              {isEmpenhadoAtivo && !planilhaRecebidaEmpenhado && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                  Abra e receba a planilha antes de concluir o Empenhado.
                 </p>
               )}
               {pedido.solemp && !trilhaAuditoria && (

@@ -25,6 +25,8 @@ const SETORES_CAMINHO_CLINICA = [
   'DIV_MAT_AUDITORIA',
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_CONTABILIDADE_IMH',
+  'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
 ] as const
 
 const SETORES_CAMINHO_MEDICAMENTO = [
@@ -76,6 +78,18 @@ function setorVisitado(
     return Boolean(
       planilha?.recebidaConfeccaoEm &&
         historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP'),
+    )
+  }
+  if (chave === 'DIV_MAT_FINANCAS') {
+    return Boolean(
+      planilha?.recebidaRascunhoEm ||
+        historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS')?.dataInicio,
+    )
+  }
+  if (chave === 'DIV_MAT_EMPENHADO') {
+    return Boolean(
+      planilha?.recebidaEmpenhadoEm ||
+        historicoDaEtapa(pedido, etapas, 'DIV_MAT_EMPENHADO')?.dataInicio,
     )
   }
   return false
@@ -295,6 +309,25 @@ function ajustarFlagsPlanilha(
     data.pedidoPlanilhaEnvio![pedidoId] = {
       ...atual,
       recebidaConfeccaoEm: undefined,
+      recebidaRascunhoEm: undefined,
+      recebidaEmpenhadoEm: undefined,
+    }
+    return
+  }
+
+  if (etapaChave === 'DIV_MAT_FINANCAS') {
+    data.pedidoPlanilhaEnvio![pedidoId] = {
+      ...atual,
+      recebidaRascunhoEm: undefined,
+      recebidaEmpenhadoEm: undefined,
+    }
+    return
+  }
+
+  if (etapaChave === 'DIV_MAT_EMPENHADO') {
+    data.pedidoPlanilhaEnvio![pedidoId] = {
+      ...atual,
+      recebidaEmpenhadoEm: undefined,
     }
     return
   }
@@ -323,6 +356,9 @@ function chavesAposDestino(destinoChave: string): string[] {
   }
   if (destinoChave === 'DIV_MAT_CONFECCAO_SOLEMP') {
     return ['DIV_MAT_FINANCAS', 'DIV_MAT_EMPENHADO']
+  }
+  if (destinoChave === 'DIV_MAT_FINANCAS') {
+    return ['DIV_MAT_EMPENHADO']
   }
   return []
 }

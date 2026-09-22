@@ -1,12 +1,21 @@
 import type { Pedido, ProcessoArquivado, UserRole, WorkflowEtapa } from '@/types'
 
-/** Mapeia perfil cadastrado para a chave da etapa na timeline */
+/** Mapeia perfil cadastrado para a chave principal da etapa na timeline */
 export const PERFIL_PARA_CHAVE_ETAPA: Partial<Record<UserRole, string>> = {
   AUDITORIA: 'DIV_MAT_AUDITORIA',
   CONTABILIDADE_IMH: 'DIV_MAT_CONTABILIDADE_IMH',
   CONFECCAO_SOLEMP: 'DIV_MAT_CONFECCAO_SOLEMP',
   FINANCEIRO: 'DIV_MAT_FINANCAS',
 }
+
+/** Cadeia Solemp sob responsabilidade da Confecção (receber/enviar planilha). */
+export const CHAVES_CONFECCAO_CADEIA = [
+  'DIV_MAT_CONFECCAO_SOLEMP',
+  'DIV_MAT_FINANCAS',
+  'DIV_MAT_EMPENHADO',
+] as const
+
+export type ChaveConfeccaoCadeia = (typeof CHAVES_CONFECCAO_CADEIA)[number]
 
 export const PERFIS_SOLEMP: UserRole[] = ['CONFECCAO_SOLEMP']
 
@@ -15,6 +24,50 @@ export const PERFIS_SETOR: UserRole[] = [
   'CONTABILIDADE_IMH',
   'CONFECCAO_SOLEMP',
 ]
+
+/** Etapas acionáveis pelo perfil (Confecção opera a cadeia completa). */
+export function chavesEtapaParaPerfil(perfil: UserRole): string[] {
+  if (perfil === 'CONFECCAO_SOLEMP') return [...CHAVES_CONFECCAO_CADEIA]
+  const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
+  return chave ? [chave] : []
+}
+
+export function pedidoPendenteParaPerfil(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  perfil: UserRole,
+  processosArquivados?: ProcessoArquivado[],
+): boolean {
+  return chavesEtapaParaPerfil(perfil).some((chave) =>
+    pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados),
+  )
+}
+
+export function pedidoRelacionadoParaPerfil(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  perfil: UserRole,
+  processosArquivados?: ProcessoArquivado[],
+): boolean {
+  return chavesEtapaParaPerfil(perfil).some((chave) =>
+    pedidoRelacionadoParaChave(pedido, etapas, chave, processosArquivados),
+  )
+}
+
+/** Etapa pendente atual dentro das chaves do perfil (ordem da cadeia). */
+export function chavePendenteParaPerfil(
+  pedido: Pedido,
+  etapas: WorkflowEtapa[],
+  perfil: UserRole,
+  processosArquivados?: ProcessoArquivado[],
+): string | null {
+  for (const chave of chavesEtapaParaPerfil(perfil)) {
+    if (pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados)) {
+      return chave
+    }
+  }
+  return null
+}
 
 export function getHomeRouteForPerfil(perfil: UserRole): string {
   if (perfil === 'CLINICA' || perfil === 'MEDICAMENTO' || perfil === 'EMPENHADO') return '/clinica/timelines'

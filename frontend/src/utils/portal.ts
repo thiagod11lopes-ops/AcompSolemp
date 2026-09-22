@@ -84,6 +84,14 @@ export const ORDENADOR_ETAPA_ACOES: Record<
     label: 'Confeccionar Solemp',
     descricao: 'Informe o número e o valor da SOLEMP e envie para Solemp em Rascunho.',
   },
+  DIV_MAT_FINANCAS: {
+    label: 'Enviar Planilha',
+    descricao: 'Receba a planilha e envie para Empenhado.',
+  },
+  DIV_MAT_EMPENHADO: {
+    label: 'Enviar Planilha',
+    descricao: 'Receba a planilha e conclua o Empenhado.',
+  },
 }
 
 /** Etapas aguardando outro setor — sem ação da clínica */

@@ -10,6 +10,15 @@ export const processoArquivadoService = {
       .sort((a, b) => new Date(b.concluidoEm).getTime() - new Date(a.concluidoEm).getTime())
   },
 
+  async listByEtapaChaves(etapaChaves: string[]): Promise<ProcessoArquivado[]> {
+    await delay(null)
+    const data = loadAppData()
+    const set = new Set(etapaChaves)
+    return (data.processosArquivados ?? [])
+      .filter((item) => set.has(item.etapaChave))
+      .sort((a, b) => new Date(b.concluidoEm).getTime() - new Date(a.concluidoEm).getTime())
+  },
+
   async listAll(): Promise<ProcessoArquivado[]> {
     await delay(null)
     const data = loadAppData()
