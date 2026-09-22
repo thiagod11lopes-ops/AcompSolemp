@@ -314,8 +314,17 @@ export function divMaterialLinhasToPedidoInput(
   linhas: DivMaterialLinha[],
   clinicaNome: string,
 ): import('@/services/clinicaPedidoService').CreatePedidoInput {
+  const valorTotalNumerico = linhas.reduce(
+    (sum, linha) => sum + parseValorBrasileiro(linha.valorTotal ?? ''),
+    0,
+  )
+  const valorPedido =
+    valorTotalNumerico > 0 ? valorTotalNumerico : 0.01 * Math.max(linhas.length, 1)
+
   if (linhas.length === 1) {
     const linha = linhas[0]
+    const valorLinha = parseValorBrasileiro(linha.valorTotal ?? '')
+    const valorUnit = valorLinha > 0 ? valorLinha : 0.01
     return {
       consumoRowIds: [linha.id],
       paciente: {
@@ -335,8 +344,8 @@ export function divMaterialLinhasToPedidoInput(
         pregao: linha.modalidadeLicitatoria.trim() || '—',
         materialUtilizado: linha.descricaoMaterial.trim() || 'Div. Material',
         quantidade: 1,
-        valorUnitario: 0.01,
-        valorTotal: 0.01,
+        valorUnitario: valorUnit,
+        valorTotal: valorUnit,
         folhaSala: [linha.mapa, linha.valeSala].filter(Boolean).join(' / '),
         descricaoCirurgica: `Envio Div. Material para Confecção de Solemp — ${linha.nomePaciente.trim() || 'paciente'}.`,
         etiquetas: '',
@@ -365,8 +374,8 @@ export function divMaterialLinhasToPedidoInput(
       pregao: linhas.find((l) => l.modalidadeLicitatoria.trim())?.modalidadeLicitatoria.trim() || '—',
       materialUtilizado: `${linhas.length} itens Div. Material na planilha enviada`,
       quantidade: linhas.length,
-      valorUnitario: 0.01,
-      valorTotal: 0.01 * linhas.length,
+      valorUnitario: valorPedido / linhas.length,
+      valorTotal: valorPedido,
       folhaSala: '',
       descricaoCirurgica: `Envio de Div. Material com ${linhas.length} lançamentos para Confecção de Solemp.`,
       etiquetas: '',

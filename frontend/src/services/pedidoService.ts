@@ -28,6 +28,7 @@ import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
 import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
+import { parseValorBrasileiro } from '@/utils/consumoMaterialOds'
 
 function resolveSetorOrigem(pedido: PedidoComDetalhes): Pick<
   AguardandoEmpenhoItem,
@@ -48,6 +49,32 @@ function resolveValorSolemp(pedido: PedidoComDetalhes): number {
     return pedido.solemp.valor
   }
   return pedido.valor
+}
+
+/** Soma dos Valores Totais da planilha Div. de Material anexada ao PED. */
+function somarValorTotalDivMaterial(
+  pedidoId: string,
+  planilhaEnvio: AppData['pedidoPlanilhaEnvio'],
+): number {
+  const linhas = planilhaEnvio?.[pedidoId]?.divMaterialLinhas ?? []
+  let total = 0
+  for (const linha of linhas) {
+    total += parseValorBrasileiro(linha.valorTotal ?? '')
+  }
+  return total
+}
+
+/**
+ * Valor dos cards de empenho do dashboard:
+ * prioriza Valor Total da Div. de Material; senão usa SOLEMP/pedido.
+ */
+function resolveValorEmpenhoDashboard(
+  pedido: PedidoComDetalhes,
+  planilhaEnvio: AppData['pedidoPlanilhaEnvio'],
+): number {
+  const fromDiv = somarValorTotalDivMaterial(pedido.id, planilhaEnvio)
+  if (fromDiv > 0) return fromDiv
+  return resolveValorSolemp(pedido)
 }
 
 function dataConclusaoPedido(pedido: PedidoComDetalhes): string | null {
@@ -298,6 +325,7 @@ export const pedidoService = {
     const quantidadePagoMes = valorPagoMesPedidos.length
 
     const etapas = data.workflowEtapas
+    const planilhaEnvio = data.pedidoPlanilhaEnvio
     const aguardandoEmpenhoPedidos = emAndamento.filter((p) =>
       isAguardandoEmpenhoNaSolempConfeccionada(p, etapas),
     )
@@ -308,7 +336,7 @@ export const pedidoService = {
           pedidoId: p.id,
           pedidoNumero: p.numero,
           solempNumero: p.solemp?.numero ?? '—',
-          valor: resolveValorSolemp(p),
+          valor: resolveValorEmpenhoDashboard(p, planilhaEnvio),
           ...setor,
           diasNaEtapa: p.diasNaEtapa,
           dataSolicitacao: p.dataSolicitacao,
@@ -333,7 +361,7 @@ export const pedidoService = {
           empenhoNumero: resolveEmpenhoExibicao({
             etiquetas: p.dadosClinica?.etiquetas,
           }),
-          valor: resolveValorSolemp(p),
+          valor: resolveValorEmpenhoDashboard(p, planilhaEnvio),
           dataEmpenho,
           mesChave: format(dataParsed, 'yyyy-MM'),
           mesLabel: mesLabelRaw.charAt(0).toUpperCase() + mesLabelRaw.slice(1),

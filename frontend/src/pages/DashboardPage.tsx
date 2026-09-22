@@ -126,17 +126,17 @@ export default function DashboardPage() {
   const qtdAguardando = metrics.quantidadeAguardandoEmpenho
   const subtitleAguardando =
     qtdAguardando === 0
-      ? 'Nenhuma Solemp na etapa Solemp em Rascunho — clique para detalhes'
-      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Solemp em Rascunho — clique para detalhes`
+      ? 'Nenhuma Solemp em Rascunho — soma do Valor Total Div. Material'
+      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Rascunho · Valor Total Div. Material`
 
   const subtitleTotalEmpenhado = metrics.dataPrimeiroEmpenho
-    ? `Total empenhado desde ${formatDate(metrics.dataPrimeiroEmpenho)} — clique para detalhes`
+    ? `Empenhado desde ${formatDate(metrics.dataPrimeiroEmpenho)} · Valor Total Div. Material`
     : 'Nenhum empenho registrado — clique para detalhes'
 
   const subtitleMes =
     mesFiltrado.quantidade === 0
-      ? `${mesFiltrado.mesLabel} — clique para detalhes`
-      : `${mesFiltrado.quantidade} empenho${mesFiltrado.quantidade === 1 ? '' : 's'} em ${mesFiltrado.mesLabel} — clique para detalhes`
+      ? `${mesFiltrado.mesLabel} · Valor Total Div. Material`
+      : `${mesFiltrado.quantidade} empenho${mesFiltrado.quantidade === 1 ? '' : 's'} em ${mesFiltrado.mesLabel} · Valor Total Div. Material`
 
   const modalConfig: Record<KpiKey, KpiModalConfig> = {
     total: {
