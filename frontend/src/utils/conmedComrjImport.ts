@@ -297,14 +297,21 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
       const label = norm(rawLabel).replace(/:$/, '')
       if (!label || (!isProcessLabel(rawLabel) && !isProcessLabel(label))) continue
 
-      // Valor: próxima célula não vazia que não seja outro rótulo
+      // Valor: próxima célula não vazia que não seja outro rótulo.
+      // VIGÊNCIA no MODELO fica duas colunas à direita do rótulo (c+2).
       let value = ''
-      for (let k = c + 1; k < Math.min(c + 4, row.length); k++) {
-        const candidate = cell(rows, r, k)
-        if (!candidate) continue
-        if (isProcessLabel(candidate)) break
-        value = candidate
-        break
+      if (label.includes('VIGENCIA')) {
+        const atTwoRight = cell(rows, r, c + 2)
+        if (atTwoRight && !isProcessLabel(atTwoRight)) value = atTwoRight
+      }
+      if (!value) {
+        for (let k = c + 1; k < Math.min(c + 4, row.length); k++) {
+          const candidate = cell(rows, r, k)
+          if (!candidate) continue
+          if (isProcessLabel(candidate)) break
+          value = candidate
+          break
+        }
       }
       if (!value) continue
 
@@ -344,7 +351,9 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
           out.fornecedor = value
         }
         if (!out.vigencia && label.includes('VIGENCIA')) {
-          out.vigencia = value
+          // Número de vigência: duas colunas à direita do rótulo
+          const vigenciaValue = cell(rows, r, c + 2) || value
+          if (vigenciaValue && !isProcessLabel(vigenciaValue)) out.vigencia = vigenciaValue
         }
       }
     }
