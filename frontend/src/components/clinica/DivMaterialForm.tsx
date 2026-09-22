@@ -14,6 +14,7 @@ import {
   createEmptyDivMaterialLinha,
   DIV_MATERIAL_COLUNAS,
   divMaterialLinhaHasContent,
+  sortDivMaterialLinhas,
   withNormalizedDivMaterialLinha,
   type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
@@ -84,7 +85,11 @@ export function DivMaterialForm({
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
 
   const persistLinhas = (next: DivMaterialLinha[]) => {
-    onChange(next.map(withNormalizedDivMaterialLinha).filter(divMaterialLinhaHasContent))
+    onChange(
+      sortDivMaterialLinhas(
+        next.map(withNormalizedDivMaterialLinha).filter(divMaterialLinhaHasContent),
+      ),
+    )
   }
 
   const syncDraftToList = (nextDraft: DivMaterialLinha) => {

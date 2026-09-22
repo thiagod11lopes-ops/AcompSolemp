@@ -25,6 +25,7 @@ import {
   linhaHasContent,
   normalizeImhAbaForm,
   withRecalculatedImhLinha,
+  sortImhLinhasByData,
 } from '@/utils/imhAbaForm'
 import {
   findImhSheetIndex,
@@ -177,7 +178,9 @@ export function ImhAbaForm({
   const persistLinhas = (linhas: ImhAbaLinha[]) => {
     onChange({
       ...value,
-      linhas: linhas.map(withRecalculatedImhLinha).filter((l) => linhaHasContent(l)),
+      linhas: sortImhLinhasByData(
+        linhas.map(withRecalculatedImhLinha).filter((l) => linhaHasContent(l)),
+      ),
     })
   }
 

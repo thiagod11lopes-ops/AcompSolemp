@@ -135,24 +135,26 @@ export function linhaHasContent(linha: ImhAbaLinha): boolean {
 
 export function normalizeImhAbaForm(value: ImhAbaFormData | undefined): ImhAbaFormData {
   const linhasRaw = Array.isArray(value?.linhas) ? value.linhas : []
-  const linhas = linhasRaw
-    .filter((item) => item && typeof item === 'object')
-    .map((item) =>
-      withRecalculatedImhLinha({
-        id: item.id || createEmptyImhAbaLinha().id,
-        data: item.data ?? '',
-        nip: item.nip ?? '',
-        nomeUsuario: item.nomeUsuario ?? '',
-        vinculo: item.vinculo ?? '',
-        descricao: item.descricao ?? '',
-        nipTitular: item.nipTitular ?? '',
-        valorUnit: item.valorUnit ?? '',
-        quantidade: item.quantidade ?? '',
-        valorTotal: item.valorTotal ?? '',
-        pctIndenizar: item.pctIndenizar ?? '',
-      }),
-    )
-    .filter((linha) => linhaHasContent(linha))
+  const linhas = sortImhLinhasByData(
+    linhasRaw
+      .filter((item) => item && typeof item === 'object')
+      .map((item) =>
+        withRecalculatedImhLinha({
+          id: item.id || createEmptyImhAbaLinha().id,
+          data: item.data ?? '',
+          nip: item.nip ?? '',
+          nomeUsuario: item.nomeUsuario ?? '',
+          vinculo: item.vinculo ?? '',
+          descricao: item.descricao ?? '',
+          nipTitular: item.nipTitular ?? '',
+          valorUnit: item.valorUnit ?? '',
+          quantidade: item.quantidade ?? '',
+          valorTotal: item.valorTotal ?? '',
+          pctIndenizar: item.pctIndenizar ?? '',
+        }),
+      )
+      .filter((linha) => linhaHasContent(linha)),
+  )
   const linhaIds = new Set(linhas.map((l) => l.id))
   return {
     clinica: value?.clinica ?? '',
@@ -398,7 +400,9 @@ export function syncImhAbaFromFontes(
   }
 
   const manuais = current.linhas.filter((linha) => !isImhAutoLinhaId(linha.id))
-  const linhas = [...autoLinhas, ...manuais].filter((linha) => linhaHasContent(linha))
+  const linhas = sortImhLinhasByData(
+    [...autoLinhas, ...manuais].filter((linha) => linhaHasContent(linha)),
+  )
   const linhaIds = new Set(linhas.map((l) => l.id))
   const numeroCp =
     input.conmed?.numero?.trim() || current.numeroCp.trim()
@@ -409,6 +413,30 @@ export function syncImhAbaFromFontes(
     linhas,
     finalizedImhIds: (current.finalizedImhIds ?? []).filter((id) => linhaIds.has(id)),
   }
+}
+
+/** Ordena lançamentos IMH por data (dd/mm/aa) crescente — mesma regra da Div. Material. */
+export function sortImhLinhasByData(linhas: ImhAbaLinha[]): ImhAbaLinha[] {
+  return [...linhas].sort((a, b) => {
+    const dataCmp = parseImhDataSortKey(a.data) - parseImhDataSortKey(b.data)
+    if (dataCmp !== 0) return dataCmp
+    const nipCmp = a.nip.localeCompare(b.nip, 'pt-BR')
+    if (nipCmp !== 0) return nipCmp
+    return a.nomeUsuario.localeCompare(b.nomeUsuario, 'pt-BR')
+  })
+}
+
+function parseImhDataSortKey(data: string): number {
+  const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+  if (!match) return Number.MAX_SAFE_INTEGER
+  const day = parseInt(match[1], 10)
+  const month = parseInt(match[2], 10)
+  let year = parseInt(match[3], 10)
+  if (match[3].length === 2) year += 2000
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
+    return Number.MAX_SAFE_INTEGER
+  }
+  return year * 10000 + month * 100 + day
 }
 
 export function imhFormHasPreviewContent(value: ImhAbaFormData): boolean {

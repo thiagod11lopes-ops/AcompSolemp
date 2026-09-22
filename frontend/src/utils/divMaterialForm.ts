@@ -29,6 +29,7 @@ export interface DivMaterialLinha {
 }
 
 export const DIV_MATERIAL_COLUNAS = [
+  { key: 'dataProcedimento', label: 'Data do procedimento', width: 120 },
   { key: 'modalidadeLicitatoria', label: 'Modalidade licitatória', width: 140 },
   { key: 'uasg', label: 'UASG', width: 88 },
   { key: 'nupModalidade', label: 'NUP (modalidade)', width: 130 },
@@ -42,7 +43,6 @@ export const DIV_MATERIAL_COLUNAS = [
   { key: 'nupSigad', label: 'NUP SIGAD', width: 120 },
   { key: 'fornecedor', label: 'Fornecedor', width: 140 },
   { key: 'cnpj', label: 'CNPJ', width: 130 },
-  { key: 'dataProcedimento', label: 'Data do procedimento', width: 120 },
   {
     key: 'anexoAtaHomologacao',
     label: 'Em anexo a ata ou termo de homologação',
@@ -54,6 +54,33 @@ export type DivMaterialColunaKey = (typeof DIV_MATERIAL_COLUNAS)[number]['key']
 
 function normData(raw: string): string {
   return raw.trim()
+}
+
+/** Chave numérica aaaammdd para ordenar datas dd/mm/aa(aa) como na IMH. */
+export function parseDivMaterialDataSortKey(data: string): number {
+  const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
+  if (!match) return Number.MAX_SAFE_INTEGER
+  const day = parseInt(match[1], 10)
+  const month = parseInt(match[2], 10)
+  let year = parseInt(match[3], 10)
+  if (match[3].length === 2) year += 2000
+  if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)) {
+    return Number.MAX_SAFE_INTEGER
+  }
+  return year * 10000 + month * 100 + day
+}
+
+/** Mesma lógica de ordem por data da planilha IMH (cronológica crescente). */
+export function sortDivMaterialLinhas(linhas: DivMaterialLinha[]): DivMaterialLinha[] {
+  return [...linhas].sort((a, b) => {
+    const dataCmp =
+      parseDivMaterialDataSortKey(a.dataProcedimento) -
+      parseDivMaterialDataSortKey(b.dataProcedimento)
+    if (dataCmp !== 0) return dataCmp
+    const nipCmp = a.nip.localeCompare(b.nip, 'pt-BR')
+    if (nipCmp !== 0) return nipCmp
+    return a.nomePaciente.localeCompare(b.nomePaciente, 'pt-BR')
+  })
 }
 
 function buildSourceKey(nip: string, data: string, originId: string): string {
@@ -231,13 +258,7 @@ export function buildDivMaterialLinhas(input: {
     linhas.push(built)
   }
 
-  return linhas.sort((a, b) => {
-    const nipCmp = a.nip.localeCompare(b.nip, 'pt-BR')
-    if (nipCmp !== 0) return nipCmp
-    const dataCmp = a.dataProcedimento.localeCompare(b.dataProcedimento, 'pt-BR')
-    if (dataCmp !== 0) return dataCmp
-    return a.nomePaciente.localeCompare(b.nomePaciente, 'pt-BR')
-  })
+  return sortDivMaterialLinhas(linhas)
 }
 
 export function divMaterialLinhasToPedidoInput(
