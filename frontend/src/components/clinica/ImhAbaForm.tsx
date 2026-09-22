@@ -45,7 +45,7 @@ interface ImhAbaFormProps {
   onRequestClear?: () => void
 }
 
-const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
+const VINCULOS = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO', 'OUTROS'] as const
 
 const compactFieldSx = {
   '& .MuiInputBase-root': { fontSize: '0.78rem' },
@@ -439,9 +439,9 @@ export function ImhAbaForm({
             <TextField
               label="% A INDENIZAR"
               value={linhaDraft.pctIndenizar}
-              onChange={(e) => updateDraft({ pctIndenizar: e.target.value })}
               size="small"
               fullWidth
+              slotProps={{ input: { readOnly: true } }}
               sx={compactFieldSx}
             />
           </Box>

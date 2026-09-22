@@ -43,13 +43,13 @@ export const IMH_ABA_COLUNAS = [
   { key: 'data', label: 'DATA', width: 88 },
   { key: 'nip', label: 'NIP', width: 108 },
   { key: 'nomeUsuario', label: 'NOME DO USUÁRIO', width: 220 },
-  { key: 'vinculo', label: 'VÍNCULO', width: 100 },
+  { key: 'vinculo', label: 'VÍNCULO', width: 140 },
   { key: 'descricao', label: 'DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO', width: 280 },
   { key: 'nipTitular', label: 'NIP DO TITULAR', width: 108 },
   { key: 'valorUnit', label: 'VALOR UNIT', width: 110 },
   { key: 'quantidade', label: 'QUANTI.', width: 72 },
   { key: 'valorTotal', label: 'VALOR TOTAL', width: 110 },
-  { key: 'pctIndenizar', label: '% A INDENIZAR', width: 100 },
+  { key: 'pctIndenizar', label: '% A INDENIZAR', width: 120 },
 ] as const
 
 export type ImhAbaColunaKey = (typeof IMH_ABA_COLUNAS)[number]['key']
@@ -61,17 +61,54 @@ export function isVinculoTitular(vinculo: string): boolean {
   return vinculo.trim().toUpperCase() === 'TITULAR'
 }
 
+/** Normaliza rótulos legados de vínculo da IMH. */
+export function normalizeImhVinculo(vinculo: string): string {
+  const n = vinculo
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!n) return ''
+  if (n === 'OUTRO' || n === 'OUTROS') return 'OUTROS'
+  if (n.includes('INDIRETO')) return 'DEPENDENTE INDIRETO'
+  if (n.includes('DIRETO') || n === 'DEPENDENTE') return 'DEPENDENTE DIRETO'
+  if (n === 'TITULAR') return 'TITULAR'
+  return vinculo.trim().toUpperCase()
+}
+
+/**
+ * % A INDENIZAR = fatia do VALOR TOTAL conforme vínculo:
+ * TITULAR / DEPENDENTE DIRETO → 20%; DEPENDENTE INDIRETO → 100%; OUTROS → vazio.
+ */
+export function pctIndenizarFromVinculoETotal(vinculo: string, valorTotal: string): string {
+  const n = normalizeImhVinculo(vinculo)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!n || n === 'OUTROS') return ''
+  const total = parseValorBrasileiro(valorTotal)
+  if (total <= 0) return ''
+  if (n.includes('INDIRETO')) return formatValorBrasileiro(total)
+  if (n === 'TITULAR' || n.includes('DEPENDENTE DIRETO')) {
+    return formatValorBrasileiro(total * 0.2)
+  }
+  return ''
+}
+
 export function withRecalculatedImhLinha(linha: ImhAbaLinha): ImhAbaLinha {
   const qtd = parseQuantidade(linha.quantidade)
   const unit = parseValorBrasileiro(linha.valorUnit)
   const total = qtd > 0 && unit > 0 ? unit * qtd : parseValorBrasileiro(linha.valorTotal)
   const nip = linha.nip.trim()
-  const nipTitular = isVinculoTitular(linha.vinculo) ? nip : linha.nipTitular.trim()
+  const vinculo = normalizeImhVinculo(linha.vinculo)
+  const nipTitular = isVinculoTitular(vinculo) ? nip : linha.nipTitular.trim()
+  const valorTotal = total > 0 ? formatValorBrasileiro(total) : linha.valorTotal.trim()
   return {
     ...linha,
     nip,
+    vinculo,
     nipTitular,
-    valorTotal: total > 0 ? formatValorBrasileiro(total) : linha.valorTotal.trim(),
+    valorTotal,
+    pctIndenizar: pctIndenizarFromVinculoETotal(vinculo, valorTotal),
   }
 }
 
