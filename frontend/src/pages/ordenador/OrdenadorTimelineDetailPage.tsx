@@ -22,7 +22,6 @@ import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
-import { buildControleSolempFromConsumo } from '@/utils/controleSolempTemplate'
 import { listarDestinosDevolucaoPlanilha, type DestinoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import type { PedidoPlanilhaEnvioState } from '@/types'
 
@@ -68,24 +67,10 @@ export default function OrdenadorTimelineDetailPage() {
     if (!pedido) return null
     const stored = pedidoPlanilhaEnvioService.getForPedido(pedido.id)
     if (stored) return stored
+    // Sem snapshot: não recriar Controle a partir do consumo — a Div. Material
+    // precisa vir do envio da clínica.
+    if (isConfeccao) return null
     const row = pedidoToConsumoRow(pedido)
-    if (isConfeccao) {
-      const built = buildControleSolempFromConsumo([row])
-      return {
-        formato: 'controleSolemp',
-        cabecalho: {
-          numeroRelacao: '',
-          pregaoTad: '',
-          data: '',
-          vigencia: '',
-          processo: '',
-          fornecedor: '',
-        },
-        linhas: [],
-        controleSolempLinhas: built.linhas,
-        enviadoEm: pedido.dataSolicitacao,
-      }
-    }
     const built = buildImhPlanilhaFromConsumo([row])
     return {
       formato: 'imh',
@@ -94,6 +79,13 @@ export default function OrdenadorTimelineDetailPage() {
       enviadoEm: pedido.dataSolicitacao,
     }
   }, [pedido, isConfeccao])
+
+  const preferFormatoPlanilha = useMemo(() => {
+    if (isConfeccao) {
+      return planilhaEnvio?.divMaterialLinhas?.length ? 'divMaterial' : 'controleSolemp'
+    }
+    return 'imh' as const
+  }, [isConfeccao, planilhaEnvio])
 
   const fluxoDiretoImh = useMemo(() => {
     if (!pedido) return false
@@ -367,12 +359,12 @@ export default function OrdenadorTimelineDetailPage() {
         open={planilhaOpen}
         pedidoNumero={pedido.numero}
         planilha={planilhaEnvio}
-        preferFormato={isConfeccao ? 'controleSolemp' : 'imh'}
+        preferFormato={preferFormatoPlanilha}
         title={
           isContabilidade
             ? `Contabilidade/IMH — Planilha ${pedido.numero}`
             : isConfeccao
-              ? `Confecção de Solemp — Planilha ${pedido.numero}`
+              ? `Confecção de Solemp — Div. de Material ${pedido.numero}`
               : undefined
         }
         onClose={() => setPlanilhaOpen(false)}

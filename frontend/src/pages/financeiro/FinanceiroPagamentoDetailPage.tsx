@@ -4,16 +4,19 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { Box, Button, Grid, Paper, Typography, Chip, Alert } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArchiveIcon from '@mui/icons-material/Archive'
+import DescriptionIcon from '@mui/icons-material/Description'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { FinanceiroInteractiveTimeline } from '@/components/workflow/FinanceiroInteractiveTimeline'
 import { FinanceiroPagamentoModal } from '@/components/financeiro/FinanceiroPagamentoModal'
+import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import {
   useFinanceiroPedido,
   useMarcarAguardandoEmpenho,
   useRegistrarPagamento,
 } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { financeiroPagamentoConcluido } from '@/utils/portal'
 import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
@@ -26,6 +29,7 @@ export default function FinanceiroPagamentoDetailPage() {
   const registrar = useRegistrarPagamento()
   const marcarAguardando = useMarcarAguardandoEmpenho()
   const [modalOpen, setModalOpen] = useState(false)
+  const [planilhaOpen, setPlanilhaOpen] = useState(false)
   const [erro, setErro] = useState('')
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
 
@@ -33,6 +37,11 @@ export default function FinanceiroPagamentoDetailPage() {
     if (!pedido) return fluxoEncerrado
     return fluxoEncerrado || financeiroPagamentoConcluido(pedido, etapas)
   }, [pedido, etapas, fluxoEncerrado])
+
+  const planilhaEnvio = useMemo(
+    () => (pedido ? pedidoPlanilhaEnvioService.getForPedido(pedido.id) : null),
+    [pedido],
+  )
 
   if (isLoading) return <LoadingSpinner />
 
@@ -129,6 +138,7 @@ export default function FinanceiroPagamentoDetailPage() {
             etapas={etapas}
             onPagamento={pagamentoConcluido ? undefined : abrirModal}
             onAguardandoEmpenhar={pagamentoConcluido ? undefined : handleAguardandoEmpenhar}
+            onVerPlanilha={planilhaEnvio ? () => setPlanilhaOpen(true) : undefined}
             registrando={registrar.isPending && !modalOpen}
             marcandoAguardando={marcarAguardando.isPending}
             mensagemFluxoEncerrado={
@@ -137,6 +147,16 @@ export default function FinanceiroPagamentoDetailPage() {
                 : null
             }
           />
+          {planilhaEnvio && (
+            <Button
+              variant="outlined"
+              startIcon={<DescriptionIcon />}
+              sx={{ mt: 2, mr: 1 }}
+              onClick={() => setPlanilhaOpen(true)}
+            >
+              Ver Div. de Material
+            </Button>
+          )}
           {pagamentoConcluido && (
             <Button
               variant="contained"
@@ -223,6 +243,17 @@ export default function FinanceiroPagamentoDetailPage() {
         pedidoNumero={pedido.numero}
         solempNumero={pedido.solemp?.numero ?? 'Não informada'}
         empresaSugerida={pedido.empresa.nomeFantasia}
+      />
+
+      <AuditoriaPlanilhaModal
+        open={planilhaOpen}
+        pedidoNumero={pedido.numero}
+        planilha={planilhaEnvio}
+        preferFormato={
+          planilhaEnvio?.divMaterialLinhas?.length ? 'divMaterial' : 'controleSolemp'
+        }
+        title={`Solemp em Rascunho — Div. de Material ${pedido.numero}`}
+        onClose={() => setPlanilhaOpen(false)}
       />
     </>
   )

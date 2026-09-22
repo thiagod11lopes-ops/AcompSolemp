@@ -34,7 +34,10 @@ export function ProcessosArquivadosTable({
 
   const podeAbrirPlanilha = (processo: ProcessoArquivado) =>
     processo.etapaChave === 'DIV_MAT_AUDITORIA' ||
-    processo.etapaChave === 'DIV_MAT_CONTABILIDADE_IMH'
+    processo.etapaChave === 'DIV_MAT_CONTABILIDADE_IMH' ||
+    processo.etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+    processo.etapaChave === 'DIV_MAT_FINANCAS' ||
+    processo.etapaChave === 'DIV_MAT_EMPENHADO'
 
   const colunas = useMemo<ColumnDef<ProcessoArquivado>[]>(() => {
     const base: ColumnDef<ProcessoArquivado>[] = [
@@ -107,6 +110,15 @@ export function ProcessosArquivadosTable({
         open={planilhaOpen}
         pedidoNumero={processoSelecionado?.pedidoNumero ?? ''}
         planilha={planilhaSelecionada}
+        preferFormato={
+          planilhaSelecionada?.divMaterialLinhas?.length
+            ? 'divMaterial'
+            : processoSelecionado?.etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+                processoSelecionado?.etapaChave === 'DIV_MAT_FINANCAS' ||
+                processoSelecionado?.etapaChave === 'DIV_MAT_EMPENHADO'
+              ? 'controleSolemp'
+              : 'imh'
+        }
         title={
           processoSelecionado
             ? `${processoSelecionado.arquivoNome} — ${processoSelecionado.pedidoNumero}`

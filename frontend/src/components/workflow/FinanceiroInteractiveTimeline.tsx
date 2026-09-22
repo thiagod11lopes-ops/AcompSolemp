@@ -21,6 +21,7 @@ interface FinanceiroInteractiveTimelineProps {
   etapas: WorkflowEtapa[]
   onPagamento?: () => void
   onAguardandoEmpenhar?: () => void
+  onVerPlanilha?: () => void
   registrando?: boolean
   marcandoAguardando?: boolean
   mensagemFluxoEncerrado?: string | null
@@ -31,6 +32,7 @@ export function FinanceiroInteractiveTimeline({
   etapas,
   onPagamento,
   onAguardandoEmpenhar,
+  onVerPlanilha,
   registrando = false,
   marcandoAguardando = false,
   mensagemFluxoEncerrado = null,
@@ -72,10 +74,25 @@ export function FinanceiroInteractiveTimeline({
   ) : null
 
   const renderNodeActions = (node: TimelineNodeData) => {
+    const verPlanilhaBtn =
+      onVerPlanilha &&
+      (node.etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+        node.etapa.chave === 'DIV_MAT_FINANCAS' ||
+        node.etapa.chave === 'DIV_MAT_EMPENHADO') ? (
+        <TimelineActionButton onClick={onVerPlanilha} variant="ghost">
+          Ver planilha
+        </TimelineActionButton>
+      ) : null
+
+    if (node.etapa.chave === 'DIV_MAT_CONFECCAO_SOLEMP' || node.etapa.chave === 'DIV_MAT_EMPENHADO') {
+      return verPlanilhaBtn
+    }
+
     if (node.etapa.chave !== 'DIV_MAT_FINANCAS') return null
 
     return (
       <>
+        {verPlanilhaBtn}
         {botaoAguardando}
         <TimelineActionButton
           onClick={pagamentoConcluido ? undefined : onPagamento}
