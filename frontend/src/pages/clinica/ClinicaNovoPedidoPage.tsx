@@ -83,6 +83,7 @@ import {
   buildControleSolempFromDivMaterial,
   buildDivMaterialLinhas,
   divMaterialLinhasToPedidoInput,
+  type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 
@@ -160,6 +161,7 @@ export default function ClinicaNovoPedidoPage() {
   )
   const [pacientesPmeRows, setPacientesPmeRows] = useState<PacientePmeRow[]>([])
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
+  const [divMaterialLinhas, setDivMaterialLinhas] = useState<DivMaterialLinha[]>([])
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [selectedDivMaterialIds, setSelectedDivMaterialIds] = useState<Set<string>>(
     () => new Set(),
@@ -194,6 +196,7 @@ export default function ClinicaNovoPedidoPage() {
   const listaMedicamentosFormRef = useRef(listaMedicamentosForm)
   const pacientesPmeRowsRef = useRef(pacientesPmeRows)
   const consumoRowsRef = useRef(consumoRows)
+  const divMaterialLinhasRef = useRef(divMaterialLinhas)
   const finalizedDivMaterialIdsRef = useRef(finalizedDivMaterialIds)
   const modoRef = useRef(planilhasModo)
   abasRef.current = abas
@@ -204,6 +207,7 @@ export default function ClinicaNovoPedidoPage() {
   listaMedicamentosFormRef.current = listaMedicamentosForm
   pacientesPmeRowsRef.current = pacientesPmeRows
   consumoRowsRef.current = consumoRows
+  divMaterialLinhasRef.current = divMaterialLinhas
   finalizedDivMaterialIdsRef.current = finalizedDivMaterialIds
   modoRef.current = planilhasModo
 
@@ -229,9 +233,19 @@ export default function ClinicaNovoPedidoPage() {
         consumoRows: [],
       })
       setImhForm(syncedImh)
+      setDivMaterialLinhas(
+        buildDivMaterialLinhas({
+          consumoRows: [],
+          conmed,
+          empresas,
+        }),
+      )
     } else {
       setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
+      setDivMaterialLinhas([])
     }
+    // empresas: resolve CNPJ no build quando já carregado; reimporta após cadastro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate uma vez por clínica/modo
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   useEffect(() => {
@@ -296,16 +310,6 @@ export default function ClinicaNovoPedidoPage() {
     [abas, abaAtivaId],
   )
 
-  const divMaterialLinhas = useMemo(
-    () =>
-      buildDivMaterialLinhas({
-        consumoRows,
-        conmed: conmedForm,
-        empresas,
-      }),
-    [consumoRows, conmedForm, empresas],
-  )
-
   const selectedImhCount = useMemo(() => {
     const finalized = new Set(imhForm.finalizedImhIds ?? [])
     return imhForm.linhas.filter(
@@ -347,10 +351,16 @@ export default function ClinicaNovoPedidoPage() {
         conmed: nextConmed,
         consumoRows: nextConsumo,
       })
+      const nextDiv = buildDivMaterialLinhas({
+        consumoRows: nextConsumo,
+        conmed: nextConmed,
+        empresas,
+      })
 
       setConmedForm(nextConmed)
       setConsumoRows(nextConsumo)
       setImhForm(nextImh)
+      setDivMaterialLinhas(nextDiv)
       setSelectedImhIds(new Set())
       setSelectedDivMaterialIds(new Set())
 
@@ -365,16 +375,10 @@ export default function ClinicaNovoPedidoPage() {
         ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
       })
 
-      const divCount = buildDivMaterialLinhas({
-        consumoRows: nextConsumo,
-        conmed: nextConmed,
-        empresas,
-      }).length
-
       setFeedback({
         open: true,
         severity: 'success',
-        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${divCount} na Div. Material.`,
+        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material.`,
       })
     },
     [empresas, persist],
@@ -441,6 +445,7 @@ export default function ClinicaNovoPedidoPage() {
       setSelectedImhIds(new Set())
       setSelectedDivMaterialIds(new Set())
       setFinalizedDivMaterialIds(new Set())
+      setDivMaterialLinhas([])
       persist({
         conmed: EMPTY_CONMED_COMRJ_FORM,
         consumo: [],
@@ -478,13 +483,12 @@ export default function ClinicaNovoPedidoPage() {
       conmed: nextConmed,
       consumoRows: nextConsumo,
     })
-    const keptDivIds = new Set(
-      buildDivMaterialLinhas({
-        consumoRows: nextConsumo,
-        conmed: nextConmed,
-        empresas,
-      }).map((l) => l.id),
-    )
+    const nextDiv = buildDivMaterialLinhas({
+      consumoRows: nextConsumo,
+      conmed: nextConmed,
+      empresas,
+    })
+    const keptDivIds = new Set(nextDiv.map((l) => l.id))
     const nextFinalizedDiv = [...finalizedDivMaterialIdsRef.current].filter((id) =>
       keptDivIds.has(id),
     )
@@ -492,6 +496,7 @@ export default function ClinicaNovoPedidoPage() {
     setConmedForm(nextConmed)
     setConsumoRows(nextConsumo)
     setImhForm(nextImh)
+    setDivMaterialLinhas(nextDiv)
     setFinalizedDivMaterialIds(new Set(nextFinalizedDiv))
     setSelectedImhIds((prev) => {
       const next = new Set(prev)
@@ -778,9 +783,8 @@ export default function ClinicaNovoPedidoPage() {
     if (abaAtivaId === DIV_MATERIAL_ABA_ID) {
       return (
         <DivMaterialForm
-          consumoRows={consumoRows}
-          conmed={conmedForm}
-          empresas={empresas}
+          linhas={divMaterialLinhas}
+          onChange={setDivMaterialLinhas}
           selectedIds={selectedDivMaterialIds}
           onSelectedIdsChange={setSelectedDivMaterialIds}
           finalizedIds={finalizedDivMaterialIds}

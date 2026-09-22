@@ -305,6 +305,46 @@ export function divMaterialLinhasToPedidoInput(
   }
 }
 
+export function createEmptyDivMaterialLinha(): DivMaterialLinha {
+  return {
+    id: `div-mat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    modalidadeLicitatoria: '',
+    uasg: '',
+    nupModalidade: '',
+    numeroItem: '',
+    descricaoMaterial: '',
+    nomePaciente: '',
+    nip: '',
+    mapa: '',
+    valeSala: '',
+    vigencia: '',
+    nupSigad: '',
+    fornecedor: '',
+    cnpj: '',
+    dataProcedimento: '',
+    anexoAtaHomologacao: '',
+    sourceKey: '',
+  }
+}
+
+export function divMaterialLinhaHasContent(linha: DivMaterialLinha): boolean {
+  return DIV_MATERIAL_COLUNAS.some((col) => String(linha[col.key] ?? '').trim())
+}
+
+export function withNormalizedDivMaterialLinha(linha: DivMaterialLinha): DivMaterialLinha {
+  const nip = formatNip(linha.nip.trim()) || linha.nip.trim()
+  const data = linha.dataProcedimento.trim()
+  const sourceKey =
+    linha.sourceKey.trim() ||
+    buildSourceKey(nip || linha.nip, data, linha.id)
+  return {
+    ...linha,
+    nip,
+    dataProcedimento: data,
+    sourceKey,
+  }
+}
+
 export function buildControleSolempFromDivMaterial(
   linhas: DivMaterialLinha[],
 ): ControleSolempPlanilha {
