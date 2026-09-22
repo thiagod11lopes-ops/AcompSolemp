@@ -66,30 +66,148 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
-/** Quebra o texto exatamente a cada `size` caracteres (só quebras explícitas). */
-function wrapEvery(value: string, size: number): string {
-  // Normaliza quebras já existentes para não “adiantar” a linha antes dos 50.
-  const flat = value.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim()
-  if (!flat) return '—'
-  if (flat.length <= size) return flat
-  const parts: string[] = []
-  for (let i = 0; i < flat.length; i += size) {
-    parts.push(flat.slice(i, i + size))
-  }
-  return parts.join('\n')
+const PT_VOGAIS = new Set(
+  'aeiouáéíóúâêôãõàäëïöüyAEIOUÁÉÍÓÚÂÊÔÃÕÀÄËÏÖÜY'.split(''),
+)
+
+/** Dígrafos que não se separam na silabação. */
+const PT_DIGRAFOS = ['ch', 'lh', 'nh', 'rr', 'ss', 'gu', 'qu'] as const
+
+function isPtVogal(ch: string): boolean {
+  return PT_VOGAIS.has(ch)
 }
 
 /**
- * Exibe a descrição com quebra fixa a cada 50 caracteres.
- * Usa `white-space: pre` (sem soft-wrap) para o CSS não quebrar antes dos 50.
+ * Separação silábica aproximada (PT-BR) para quebra de linha.
+ * Evita cortar dígrafos e tenta manter ditongos juntos.
+ */
+function splitSilabasPt(word: string): string[] {
+  if (!word) return []
+  if (word.length <= 2) return [word]
+
+  const lower = word.toLowerCase()
+  // Marca dígrafos como um único “caractere” lógico
+  type Unit = { text: string; vowel: boolean }
+  const units: Unit[] = []
+  let i = 0
+  while (i < word.length) {
+    const two = lower.slice(i, i + 2)
+    const dig = PT_DIGRAFOS.find((d) => two === d)
+    if (dig) {
+      units.push({ text: word.slice(i, i + 2), vowel: false })
+      i += 2
+      continue
+    }
+    const ch = word[i]
+    units.push({ text: ch, vowel: isPtVogal(lower[i]) })
+    i += 1
+  }
+
+  // Núcleos = sequências de vogais (ditongo/tritongo)
+  const nuclei: number[] = []
+  for (let u = 0; u < units.length; u++) {
+    if (!units[u].vowel) continue
+    if (u > 0 && units[u - 1].vowel) continue
+    nuclei.push(u)
+  }
+  if (nuclei.length <= 1) return [word]
+
+  const breaks: number[] = [] // índices em units onde começa a próxima sílaba
+  for (let n = 1; n < nuclei.length; n++) {
+    const prev = nuclei[n - 1]
+    const curr = nuclei[n]
+    // quantas unidades vogais no núcleo anterior
+    let prevNucleusEnd = prev
+    while (prevNucleusEnd + 1 < curr && units[prevNucleusEnd + 1].vowel) {
+      prevNucleusEnd += 1
+    }
+    const consStart = prevNucleusEnd + 1
+    const consCount = curr - consStart
+    if (consCount <= 0) {
+      breaks.push(curr)
+    } else if (consCount === 1) {
+      // VCV → consoante com a sílaba seguinte
+      breaks.push(consStart)
+    } else {
+      // VCC+V → 1ª consoante com a anterior, resto com a seguinte
+      breaks.push(consStart + 1)
+    }
+  }
+
+  const silabas: string[] = []
+  let start = 0
+  for (const b of breaks) {
+    silabas.push(units.slice(start, b).map((u) => u.text).join(''))
+    start = b
+  }
+  silabas.push(units.slice(start).map((u) => u.text).join(''))
+  return silabas.filter(Boolean)
+}
+
+/**
+ * Quebra perto de `target` caracteres, respeitando palavras/sílabas.
+ * Pode ultrapassar o alvo para não cortar sílaba incorretamente.
+ */
+function wrapDescricaoMaterial(value: string, target = 50): string {
+  const flat = value.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim()
+  if (!flat) return '—'
+
+  const words = flat.split(' ').filter(Boolean)
+  const lines: string[] = []
+  let current = ''
+
+  const pushCurrent = () => {
+    if (current) lines.push(current)
+    current = ''
+  }
+
+  const wrapLongWord = (word: string) => {
+    const silabas = splitSilabasPt(word)
+    let part = ''
+    for (let s = 0; s < silabas.length; s++) {
+      const sil = silabas[s]
+      const next = part + sil
+      const hasMore = s < silabas.length - 1
+      if (part && next.length > target && hasMore) {
+        lines.push(`${part}-`)
+        part = sil
+      } else {
+        part = next
+      }
+    }
+    return part
+  }
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length <= target) {
+      current = candidate
+      continue
+    }
+
+    if (!current) {
+      current = word.length <= target ? word : wrapLongWord(word)
+      continue
+    }
+
+    pushCurrent()
+    current = word.length <= target ? word : wrapLongWord(word)
+  }
+  pushCurrent()
+  return lines.join('\n')
+}
+
+/**
+ * Descrição alinhada à esquerda; quebra por sílaba/palavra (~50, podendo ultrapassar).
  */
 function DescricaoMaterialCell({ text }: { text: string }) {
   return (
     <Box
       component="div"
+      lang="pt-BR"
       sx={{
         display: 'block',
-        textAlign: 'center',
+        textAlign: 'left',
         whiteSpace: 'pre !important',
         wordBreak: 'normal !important',
         overflowWrap: 'normal !important',
@@ -97,7 +215,7 @@ function DescricaoMaterialCell({ text }: { text: string }) {
         lineHeight: 1.35,
       }}
     >
-      {wrapEvery(text, 50)}
+      {wrapDescricaoMaterial(text, 50)}
     </Box>
   )
 }
@@ -112,7 +230,7 @@ const descricaoMaterialCellSx = {
     color: EXCEL_SHEET.text,
     bgcolor: EXCEL_SHEET.cellBg,
   } as const),
-  textAlign: 'center' as const,
+  textAlign: 'left' as const,
   whiteSpace: 'pre !important',
   overflow: 'visible !important',
   textOverflow: 'unset',
