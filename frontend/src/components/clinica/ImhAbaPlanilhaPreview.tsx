@@ -56,6 +56,7 @@ const cellSx = {
   px: 1,
   color: EXCEL_SHEET.text,
   bgcolor: EXCEL_SHEET.cellBg,
+  textAlign: 'center' as const,
   verticalAlign: 'middle' as const,
   whiteSpace: 'nowrap' as const,
 } as const
@@ -411,6 +412,8 @@ export function ImhAbaPlanilhaPreview({
                                     whiteSpace: 'pre-wrap',
                                     maxWidth: col.width + 40,
                                     minWidth: 120,
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle',
                                   }
                                 : null),
                             }}

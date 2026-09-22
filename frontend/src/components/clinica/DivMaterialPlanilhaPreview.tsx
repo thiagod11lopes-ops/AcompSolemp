@@ -89,6 +89,7 @@ function DescricaoMaterialCell({ text }: { text: string }) {
       component="div"
       sx={{
         display: 'block',
+        textAlign: 'center',
         whiteSpace: 'pre !important',
         wordBreak: 'normal !important',
         overflowWrap: 'normal !important',
@@ -111,12 +112,13 @@ const descricaoMaterialCellSx = {
     color: EXCEL_SHEET.text,
     bgcolor: EXCEL_SHEET.cellBg,
   } as const),
+  textAlign: 'center' as const,
   whiteSpace: 'pre !important',
   overflow: 'visible !important',
   textOverflow: 'unset',
   wordBreak: 'normal !important',
   overflowWrap: 'normal !important',
-  verticalAlign: 'top' as const,
+  verticalAlign: 'middle' as const,
   lineHeight: 1.35,
 } as const
 
@@ -153,6 +155,7 @@ const cellSx = {
   px: 1,
   color: EXCEL_SHEET.text,
   bgcolor: EXCEL_SHEET.cellBg,
+  textAlign: 'center' as const,
   verticalAlign: 'middle' as const,
   whiteSpace: 'nowrap' as const,
 } as const
