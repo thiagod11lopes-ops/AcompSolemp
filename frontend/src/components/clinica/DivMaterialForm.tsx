@@ -210,9 +210,9 @@ export function DivMaterialForm({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
-        Somente leitura — espelha automaticamente o Consumo Material Consignado e o CONMED COMRJ
-        (MODELO). Mapa de Sala → Vale de sala; PROCEDIMENTO e DESCRIÇÃO DO MATERIAL no que couber.
-        Campos sem origem no MODELO (UASG, NUP SIGAD, ata, nome completo, etc.) ficam vazios.
+        Somente leitura — preenchida automaticamente pela planilha MODELO importada. Mapa de Sala →
+        Vale de sala; demais campos no que couber. Marque o checklist para enviar à Confecção de
+        Solemp.
       </Alert>
 
       <Paper

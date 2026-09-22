@@ -1,6 +1,5 @@
 import type { AuthUser, PedidoComDetalhes, PedidoPlanilhaEnvioState } from '@/types'
 import type { TimelineNodeData } from '@/components/timeline/types'
-import { origemProducaoPlanilha } from '@/utils/devolverPlanilha'
 import { PERFIL_PARA_CHAVE_ETAPA } from '@/utils/perfilEtapa'
 
 const SETORES_ORDENADOR = new Set([
@@ -17,9 +16,7 @@ export function buildCorrigirDevolucaoPath(
   if (!destino) return null
 
   if (destino === 'SOLICITACAO') {
-    const origem = origemProducaoPlanilha(pedido as PedidoComDetalhes, planilha)
-    const aba = origem === 'medicamento' ? 'imh' : 'consumo-material-consignado'
-    return `/clinica/pedidos/novo?corrigir=${encodeURIComponent(pedido.id)}&aba=${encodeURIComponent(aba)}`
+    return `/clinica/pedidos/novo?corrigir=${encodeURIComponent(pedido.id)}&aba=${encodeURIComponent('imh')}`
   }
 
   if (SETORES_ORDENADOR.has(destino)) {

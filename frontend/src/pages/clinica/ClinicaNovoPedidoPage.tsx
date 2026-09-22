@@ -9,6 +9,7 @@ import {
   alpha,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
@@ -20,26 +21,19 @@ import {
   useCreateClinicaPedido,
   useClinicaPedidos,
 } from '@/hooks/useClinicaPedidos'
-import { PlanilhaBrancaSpreadsheet } from '@/components/clinica/PlanilhaBrancaSpreadsheet'
-import { ConmedComrjForm } from '@/components/clinica/ConmedComrjForm'
-import { ConsumoMaterialConsignadoForm } from '@/components/clinica/ConsumoMaterialConsignadoForm'
+import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { DivMaterialForm } from '@/components/clinica/DivMaterialForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
 import { ImhDivMaterialEnvioModal } from '@/components/clinica/ImhDivMaterialEnvioModal'
 import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
-import { ListaMateriaisForm } from '@/components/clinica/ListaMateriaisForm'
 import { ListaMedicamentosForm } from '@/components/clinica/ListaMedicamentosForm'
 import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpreadsheet'
-import {
-  clinicaPlanilhasLivresService,
-  resolveAbaSheet,
-} from '@/services/clinicaPlanilhasLivresService'
+import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
   ImhMedicamentoFormData,
-  ListaMateriaisFormData,
   ListaMedicamentosFormData,
   PlanilhaLivreAba,
 } from '@/types'
@@ -47,7 +41,15 @@ import {
   getFixedPlanilhas,
   type PlanilhasModo,
 } from '@/utils/planilhasFixas'
-import { EMPTY_CONMED_COMRJ_FORM } from '@/utils/conmedComrjForm'
+import {
+  EMPTY_CONMED_COMRJ_FORM,
+  normalizeConmedComrjForm,
+} from '@/utils/conmedComrjForm'
+import {
+  loadConmedSheetsFromFile,
+  mergeConmedImport,
+  parseConmedComrjFromGrid,
+} from '@/utils/conmedComrjImport'
 import {
   buildImhPlanilhaFromAbaForm,
   EMPTY_IMH_ABA_FORM,
@@ -57,7 +59,6 @@ import {
   syncImhAbaFromFontes,
 } from '@/utils/imhAbaForm'
 import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
-import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
 import {
   clonePacientesPmeSeed,
@@ -66,6 +67,7 @@ import {
 import {
   normalizeConsumoMaterialRows,
   type ConsumoMaterialRow,
+  type SpreadsheetSheetImport,
 } from '@/utils/consumoMaterialOds'
 import {
   createPedidoLoteId,
@@ -76,13 +78,10 @@ import {
   buildDivMaterialLinhas,
   divMaterialLinhasToPedidoInput,
 } from '@/utils/divMaterialForm'
-import { type PlanilhaSheetData } from '@/utils/planilhaBrancaGrid'
+import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 
-const CONMED_ABA_ID = 'conmed-comrj'
-const CONSUMO_ABA_ID = 'consumo-material-consignado'
 const IMH_ABA_ID = 'imh'
 const DIV_MATERIAL_ABA_ID = 'div-material'
-const LISTA_MATERIAIS_ABA_ID = 'lista-de-materiais'
 const LISTA_MEDICAMENTOS_ABA_ID = 'lista-de-medicamentos'
 const PACIENTES_ABA_ID = 'pacientes'
 
@@ -95,7 +94,6 @@ type PersistPayload = {
   imhMedicamento?: ImhMedicamentoFormData
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
-  lista?: ListaMateriaisFormData
   finalizedDivMaterialIds?: string[]
 }
 
@@ -119,6 +117,13 @@ function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
       </Typography>
     </Box>
   )
+}
+
+function preferModeloSheetIndex(sheets: SpreadsheetSheetImport[]): number {
+  const exact = sheets.findIndex((s) => s.nome.trim().toUpperCase() === 'MODELO')
+  if (exact >= 0) return exact
+  const partial = sheets.findIndex((s) => s.nome.toUpperCase().includes('MODELO'))
+  return partial >= 0 ? partial : 0
 }
 
 export default function ClinicaNovoPedidoPage() {
@@ -148,7 +153,6 @@ export default function ClinicaNovoPedidoPage() {
     EMPTY_LISTA_MEDICAMENTOS_FORM,
   )
   const [pacientesPmeRows, setPacientesPmeRows] = useState<PacientePmeRow[]>([])
-  const [listaForm, setListaForm] = useState<ListaMateriaisFormData>(EMPTY_LISTA_MATERIAIS_FORM)
   const [consumoRows, setConsumoRows] = useState<ConsumoMaterialRow[]>([])
   const [selectedImhIds, setSelectedImhIds] = useState<Set<string>>(() => new Set())
   const [selectedDivMaterialIds, setSelectedDivMaterialIds] = useState<Set<string>>(
@@ -159,12 +163,20 @@ export default function ClinicaNovoPedidoPage() {
   )
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [sheetPicker, setSheetPicker] = useState<{
+    open: boolean
+    fileName: string
+    sheets: SpreadsheetSheetImport[]
+    initialSheetIndex: number
+  }>({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
   const [feedback, setFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
 
+  const importInputRef = useRef<HTMLInputElement | null>(null)
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -173,7 +185,6 @@ export default function ClinicaNovoPedidoPage() {
   const imhMedicamentoFormRef = useRef(imhMedicamentoForm)
   const listaMedicamentosFormRef = useRef(listaMedicamentosForm)
   const pacientesPmeRowsRef = useRef(pacientesPmeRows)
-  const listaFormRef = useRef(listaForm)
   const consumoRowsRef = useRef(consumoRows)
   const finalizedDivMaterialIdsRef = useRef(finalizedDivMaterialIds)
   const modoRef = useRef(planilhasModo)
@@ -184,7 +195,6 @@ export default function ClinicaNovoPedidoPage() {
   imhMedicamentoFormRef.current = imhMedicamentoForm
   listaMedicamentosFormRef.current = listaMedicamentosForm
   pacientesPmeRowsRef.current = pacientesPmeRows
-  listaFormRef.current = listaForm
   consumoRowsRef.current = consumoRows
   finalizedDivMaterialIdsRef.current = finalizedDivMaterialIds
   modoRef.current = planilhasModo
@@ -198,19 +208,21 @@ export default function ClinicaNovoPedidoPage() {
     setAbas(state.abas)
     setAbaAtivaId(state.abaAtivaId ?? fixedPlanilhas[0]?.id ?? null)
     setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
-    setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
     setImhMedicamentoForm(state.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM)
     setListaMedicamentosForm(state.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM)
     setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
-    setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
-    setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
+    const consumo = normalizeConsumoMaterialRows(state.consumoMaterialConsignado)
+    setConsumoRows(isMedicamento ? consumo : [])
     setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
     if (!isMedicamento) {
+      const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
       const syncedImh = syncImhAbaFromFontes(state.imh ?? EMPTY_IMH_ABA_FORM, {
-        conmed: state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM,
-        consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+        conmed,
+        consumoRows: [],
       })
       setImhForm(syncedImh)
+    } else {
+      setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
     }
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
@@ -261,10 +273,9 @@ export default function ClinicaNovoPedidoPage() {
           },
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
-          listaMateriais: patch.lista ?? listaFormRef.current,
+          listaMateriais: stored.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM,
           finalizedDivMaterialIds:
-            patch.finalizedDivMaterialIds ??
-            [...finalizedDivMaterialIdsRef.current],
+            patch.finalizedDivMaterialIds ?? [...finalizedDivMaterialIdsRef.current],
         },
         modoRef.current,
       )
@@ -300,48 +311,113 @@ export default function ClinicaNovoPedidoPage() {
     ).length
   }, [divMaterialLinhas, selectedDivMaterialIds, finalizedDivMaterialIds])
 
-  const handleSheetChange = useCallback(
-    (sheet: PlanilhaSheetData) => {
-      const ativaId = abaAtivaIdRef.current
-      if (
-        !ativaId ||
-        ativaId === CONMED_ABA_ID ||
-        ativaId === CONSUMO_ABA_ID ||
-        ativaId === LISTA_MATERIAIS_ABA_ID ||
-        ativaId === DIV_MATERIAL_ABA_ID ||
-        (ativaId === IMH_ABA_ID && modoRef.current === 'clinica')
-      ) {
+  const applyModeloSheet = useCallback(
+    (sheet: SpreadsheetSheetImport) => {
+      const parsed = normalizeConmedComrjForm(parseConmedComrjFromGrid(sheet.rows))
+      const hasProcess = Boolean(
+        parsed.numero ||
+          parsed.data ||
+          parsed.processo ||
+          parsed.pregaoTad ||
+          parsed.vigencia ||
+          parsed.fornecedor,
+      )
+      const hasPatients = parsed.pacientes.length > 0
+      if (!hasProcess && !hasPatients) {
+        setFeedback({
+          open: true,
+          severity: 'error',
+          message:
+            'Não foi possível identificar o MODELO nessa aba. Use a planilha CONMED (aba MODELO).',
+        })
         return
       }
-      if (modoRef.current === 'medicamento') return
 
-      setAbas((prev) => {
-        const next = prev.map((aba) =>
-          aba.id === ativaId ? { ...aba, sheet, grid: undefined } : aba,
-        )
-        persist({ abas: next, abaAtivaId: ativaId })
-        return next
-      })
-    },
-    [persist],
-  )
-
-  const handleConmedChange = useCallback(
-    (next: ConmedComrjFormData) => {
-      setConmedForm(next)
-      if (modoRef.current === 'medicamento') {
-        persist({ conmed: next })
-        return
-      }
+      const nextConmed = mergeConmedImport(EMPTY_CONMED_COMRJ_FORM, parsed)
+      const nextConsumo: ConsumoMaterialRow[] = []
       const nextImh = syncImhAbaFromFontes(imhFormRef.current, {
-        conmed: next,
-        consumoRows: consumoRowsRef.current,
+        conmed: nextConmed,
+        consumoRows: nextConsumo,
       })
+
+      setConmedForm(nextConmed)
+      setConsumoRows(nextConsumo)
       setImhForm(nextImh)
-      persist({ conmed: next, imh: nextImh })
+      setSelectedImhIds(new Set())
+      setSelectedDivMaterialIds(new Set())
+
+      const goToImh =
+        abaAtivaIdRef.current !== IMH_ABA_ID && abaAtivaIdRef.current !== DIV_MATERIAL_ABA_ID
+      if (goToImh) setAbaAtivaId(IMH_ABA_ID)
+
+      persist({
+        conmed: nextConmed,
+        consumo: nextConsumo,
+        imh: nextImh,
+        ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
+      })
+
+      const divCount = buildDivMaterialLinhas({
+        consumoRows: nextConsumo,
+        conmed: nextConmed,
+        empresas,
+      }).length
+
+      setFeedback({
+        open: true,
+        severity: 'success',
+        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${divCount} na Div. Material.`,
+      })
     },
-    [persist],
+    [empresas, persist],
   )
+
+  const handleImportClick = () => {
+    importInputRef.current?.click()
+  }
+
+  const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    setImporting(true)
+    try {
+      const sheets = await loadConmedSheetsFromFile(file)
+      if (sheets.length === 0) {
+        setFeedback({
+          open: true,
+          severity: 'error',
+          message: 'O arquivo não contém abas legíveis.',
+        })
+        return
+      }
+      if (sheets.length === 1) {
+        applyModeloSheet(sheets[0])
+        return
+      }
+      setSheetPicker({
+        open: true,
+        fileName: file.name,
+        sheets,
+        initialSheetIndex: preferModeloSheetIndex(sheets),
+      })
+    } catch (err) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: err instanceof Error ? err.message : 'Falha ao ler a planilha.',
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleConfirmSheet = (sheetIndex: number) => {
+    const sheet = sheetPicker.sheets[sheetIndex]
+    setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+    if (sheet) applyModeloSheet(sheet)
+  }
 
   const handleImhChange = useCallback(
     (next: ImhAbaFormData) => {
@@ -371,31 +447,6 @@ export default function ClinicaNovoPedidoPage() {
     (next: PacientePmeRow[]) => {
       setPacientesPmeRows(next)
       persist({ pacientesPme: next })
-    },
-    [persist],
-  )
-
-  const handleListaChange = useCallback(
-    (next: ListaMateriaisFormData) => {
-      setListaForm(next)
-      persist({ lista: next })
-    },
-    [persist],
-  )
-
-  const handleConsumoChange = useCallback(
-    (next: ConsumoMaterialRow[]) => {
-      setConsumoRows(next)
-      if (modoRef.current === 'medicamento') {
-        persist({ consumo: next })
-        return
-      }
-      const nextImh = syncImhAbaFromFontes(imhFormRef.current, {
-        conmed: conmedFormRef.current,
-        consumoRows: next,
-      })
-      setImhForm(nextImh)
-      persist({ consumo: next, imh: nextImh })
     },
     [persist],
   )
@@ -447,8 +498,7 @@ export default function ClinicaNovoPedidoPage() {
 
     const temImh = imhSelecionadas.length > 0
     const temDiv = divSelecionadas.length > 0
-    const fluxo =
-      temImh && temDiv ? 'paralelo' : temImh ? 'auditoria' : 'confeccao'
+    const fluxo = temImh && temDiv ? 'paralelo' : temImh ? 'auditoria' : 'confeccao'
 
     setIsEnviando(true)
     try {
@@ -593,19 +643,9 @@ export default function ClinicaNovoPedidoPage() {
           />
         )
       }
-      return abaAtiva ? (
-        <AbaVaziaPlaceholder titulo={abaAtiva.nome} />
-      ) : null
+      return abaAtiva ? <AbaVaziaPlaceholder titulo={abaAtiva.nome} /> : null
     }
 
-    if (abaAtivaId === CONSUMO_ABA_ID) {
-      return (
-        <ConsumoMaterialConsignadoForm value={consumoRows} onChange={handleConsumoChange} />
-      )
-    }
-    if (abaAtivaId === CONMED_ABA_ID) {
-      return <ConmedComrjForm value={conmedForm} onChange={handleConmedChange} />
-    }
     if (abaAtivaId === IMH_ABA_ID) {
       return (
         <ImhAbaForm
@@ -613,6 +653,7 @@ export default function ClinicaNovoPedidoPage() {
           onChange={handleImhChange}
           selectedImhIds={selectedImhIds}
           onSelectedImhIdsChange={setSelectedImhIds}
+          hideImport
         />
       )
     }
@@ -628,19 +669,7 @@ export default function ClinicaNovoPedidoPage() {
         />
       )
     }
-    if (abaAtivaId === LISTA_MATERIAIS_ABA_ID) {
-      return <ListaMateriaisForm value={listaForm} onChange={handleListaChange} />
-    }
-    if (abaAtiva) {
-      return (
-        <PlanilhaBrancaSpreadsheet
-          nome={abaAtiva.nome}
-          sheet={resolveAbaSheet(abaAtiva)}
-          onSheetChange={handleSheetChange}
-        />
-      )
-    }
-    return null
+    return abaAtiva ? <AbaVaziaPlaceholder titulo={abaAtiva.nome} /> : null
   }
 
   return (
@@ -659,29 +688,49 @@ export default function ClinicaNovoPedidoPage() {
             flexWrap: 'wrap',
           })}
         >
-        <Tabs
+          {!isMedicamento ? (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
+              onClick={handleImportClick}
+              disabled={importing || isEnviando}
+              sx={{
+                ml: 0.5,
+                my: 0.5,
+                flexShrink: 0,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {importing ? 'Importando…' : 'Importar Planilha'}
+            </Button>
+          ) : null}
+          <Tabs
             value={tabValue}
             onChange={(_, value: string) => handleChangeAba(value)}
             variant="scrollable"
             scrollButtons="auto"
-          sx={{
+            sx={{
               flex: 1,
               minHeight: 42,
               minWidth: 0,
-            '& .MuiTab-root': {
+              '& .MuiTab-root': {
                 minHeight: 42,
-              textTransform: 'none',
-              fontWeight: 600,
+                textTransform: 'none',
+                fontWeight: 600,
                 fontSize: '0.85rem',
                 px: 1.5,
-            },
-          }}
-        >
+              },
+            }}
+          >
             {tabsSource.map((aba) => (
               <Tab key={aba.id} value={aba.id} label={aba.nome} />
             ))}
-        </Tabs>
-          {!isMedicamento && tabsSource.some((a) => a.id === DIV_MATERIAL_ABA_ID) ? (
+          </Tabs>
+          {!isMedicamento ? (
             <Button
               size="small"
               variant="contained"
@@ -705,6 +754,30 @@ export default function ClinicaNovoPedidoPage() {
       </Box>
 
       {renderContent()}
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+        hidden
+        onChange={handleImportFileChange}
+      />
+
+      <ConmedEscolherAbaModal
+        open={sheetPicker.open}
+        sheetNames={sheetPicker.sheets.map((s) => s.nome)}
+        fileName={sheetPicker.fileName}
+        initialSheetIndex={sheetPicker.initialSheetIndex}
+        description={
+          sheetPicker.fileName
+            ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha a aba MODELO para preencher IMH e Div. Material.`
+            : 'O arquivo tem várias abas. Escolha a aba MODELO para preencher IMH e Div. Material.'
+        }
+        onCancel={() =>
+          setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+        }
+        onConfirm={handleConfirmSheet}
+      />
 
       <ImhDivMaterialEnvioModal
         open={envioModalOpen}

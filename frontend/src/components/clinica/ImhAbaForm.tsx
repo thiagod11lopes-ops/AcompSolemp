@@ -39,6 +39,8 @@ interface ImhAbaFormProps {
   onChange: (next: ImhAbaFormData) => void
   selectedImhIds?: Set<string>
   onSelectedImhIdsChange?: (next: Set<string>) => void
+  /** Oculta o import local (quando há Importar Planilha na barra de abas). */
+  hideImport?: boolean
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
@@ -74,6 +76,7 @@ export function ImhAbaForm({
   onChange,
   selectedImhIds,
   onSelectedImhIdsChange,
+  hideImport = false,
 }: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -244,8 +247,8 @@ export function ImhAbaForm({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
-        Preenchimento automático a partir do CONMED/Consumo (MODELO): descrição ← PROCEDIMENTO;
-        NIP, data, iniciais, QT e valores quando existirem. Clínica, vínculo, NIP do titular e % a
+        Use Importar Planilha na barra de abas para carregar o MODELO. Descrição ← PROCEDIMENTO;
+        NIP, data, iniciais e valores quando existirem. Clínica, vínculo, NIP do titular e % a
         indenizar não vêm do MODELO.
       </Alert>
     <Box
@@ -468,25 +471,27 @@ export function ImhAbaForm({
           importing={importing}
           selectedImhIds={selectedImhIds}
           onSelectedImhIdsChange={onSelectedImhIdsChange}
-          onImportClick={handleImportClick}
+          onImportClick={hideImport ? undefined : handleImportClick}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
         />
-        <ConmedEscolherAbaModal
-          open={sheetPicker.open}
-          sheetNames={sheetPicker.sheets.map((s) => s.nome)}
-          fileName={sheetPicker.fileName}
-          initialSheetIndex={sheetPicker.initialSheetIndex}
-          description={
-            sheetPicker.fileName
-              ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar.`
-              : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
-          }
-          onCancel={() =>
-            setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
-          }
-          onConfirm={handleConfirmSheet}
-        />
+        {!hideImport ? (
+          <ConmedEscolherAbaModal
+            open={sheetPicker.open}
+            sheetNames={sheetPicker.sheets.map((s) => s.nome)}
+            fileName={sheetPicker.fileName}
+            initialSheetIndex={sheetPicker.initialSheetIndex}
+            description={
+              sheetPicker.fileName
+                ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar.`
+                : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
+            }
+            onCancel={() =>
+              setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+            }
+            onConfirm={handleConfirmSheet}
+          />
+        ) : null}
         <Snackbar
           open={importFeedback.open}
           autoHideDuration={5000}

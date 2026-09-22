@@ -8,10 +8,6 @@ import type { PlanilhaLivreAba } from '@/types'
 
 /** Abas fixas do portal clínica (material consignado). */
 export const FIXED_PLANILHAS = [
-  { id: 'consumo-material-consignado', nome: 'Consumo Material Consignado' },
-  { id: 'conmed-comrj', nome: 'CONMED COMRJ' },
-  { id: 'lista-de-materiais', nome: 'Lista de Materiais' },
-  { id: 'plan1', nome: 'Plan1' },
   { id: 'imh', nome: 'IMH' },
   { id: 'div-material', nome: 'Div. Material' },
 ] as const
@@ -54,14 +50,7 @@ export function ensureFixedPlanilhas(
   return fixedList.map((fixed) => {
     const byExactId = byId.get(fixed.id)
     const byExactNome = byNome.get(normalizeNome(fixed.nome))
-    const fallbackPrimeira =
-      modo === 'clinica' &&
-      fixed.id === 'consumo-material-consignado' &&
-      !byExactId &&
-      !byExactNome
-        ? abas[0]
-        : undefined
-    const source = byExactId ?? byExactNome ?? fallbackPrimeira
+    const source = byExactId ?? byExactNome
     return {
       id: fixed.id,
       nome: fixed.nome,
