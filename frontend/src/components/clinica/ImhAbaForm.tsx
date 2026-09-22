@@ -371,7 +371,14 @@ export function ImhAbaForm({
               select
               label="VÍNCULO"
               value={linhaDraft.vinculo || ''}
-              onChange={(e) => updateDraft({ vinculo: formatImhUppercase(e.target.value) })}
+              onChange={(e) => {
+                const vinculo = formatImhUppercase(e.target.value)
+                updateDraft(
+                  isVinculoTitular(vinculo)
+                    ? { vinculo }
+                    : { vinculo, nipTitular: '' },
+                )
+              }}
               size="small"
               fullWidth
               sx={compactFieldSx}
@@ -398,7 +405,9 @@ export function ImhAbaForm({
               helperText={
                 isVinculoTitular(linhaDraft.vinculo)
                   ? 'Igual ao NIP quando o vínculo é TITULAR'
-                  : undefined
+                  : linhaDraft.vinculo
+                    ? 'Preencha manualmente o NIP do titular'
+                    : undefined
               }
               sx={compactFieldSx}
             />
