@@ -135,8 +135,7 @@ export function mapSupabaseAuthError(error: unknown): Error {
     return new Error(
       'URL de redirecionamento não autorizada no Supabase. ' +
         (attempted ? `Enviada: ${attempted}. ` : '') +
-        'Em Authentication → URL Configuration, Site URL deve ser exatamente a URL do Pages ' +
-        '(sem /redefinir-senha). Redirect URLs pode incluir: ' +
+        'Em Authentication → URL Configuration, Site URL = URL do Pages; Redirect URLs deve incluir: ' +
         passwordResetUrlHints() +
         '. Erro original: ' +
         message,
