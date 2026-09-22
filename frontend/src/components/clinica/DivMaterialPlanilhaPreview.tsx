@@ -66,31 +66,32 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
-/** Quebra o texto a cada `size` caracteres para exibição na grade. */
+/** Quebra o texto exatamente a cada `size` caracteres (só quebras explícitas). */
 function wrapEvery(value: string, size: number): string {
-  const trimmed = value.trim()
-  if (!trimmed) return '—'
-  if (trimmed.length <= size) return trimmed
+  // Normaliza quebras já existentes para não “adiantar” a linha antes dos 50.
+  const flat = value.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim()
+  if (!flat) return '—'
+  if (flat.length <= size) return flat
   const parts: string[] = []
-  for (let i = 0; i < trimmed.length; i += size) {
-    parts.push(trimmed.slice(i, i + size))
+  for (let i = 0; i < flat.length; i += size) {
+    parts.push(flat.slice(i, i + size))
   }
   return parts.join('\n')
 }
 
-/** Conteúdo com quebra forçada (vence o nowrap do .excel-sheet-grid). */
+/**
+ * Exibe a descrição com quebra fixa a cada 50 caracteres.
+ * Usa `white-space: pre` (sem soft-wrap) para o CSS não quebrar antes dos 50.
+ */
 function DescricaoMaterialCell({ text }: { text: string }) {
   return (
     <Box
       component="div"
-      className="excel-cell-wrap"
       sx={{
         display: 'block',
-        width: '50ch',
-        maxWidth: '50ch',
-        whiteSpace: 'pre-wrap !important',
-        wordBreak: 'break-all',
-        overflowWrap: 'anywhere',
+        whiteSpace: 'pre !important',
+        wordBreak: 'normal !important',
+        overflowWrap: 'normal !important',
         overflow: 'visible !important',
         lineHeight: 1.35,
       }}
@@ -110,14 +111,11 @@ const descricaoMaterialCellSx = {
     color: EXCEL_SHEET.text,
     bgcolor: EXCEL_SHEET.cellBg,
   } as const),
-  width: '50ch',
-  maxWidth: '50ch',
-  minWidth: '50ch',
-  whiteSpace: 'pre-wrap !important',
+  whiteSpace: 'pre !important',
   overflow: 'visible !important',
   textOverflow: 'unset',
-  wordBreak: 'break-all',
-  overflowWrap: 'anywhere',
+  wordBreak: 'normal !important',
+  overflowWrap: 'normal !important',
   verticalAlign: 'top' as const,
   lineHeight: 1.35,
 } as const
@@ -399,7 +397,7 @@ export function DivMaterialPlanilhaPreview({
             }}
           >
             <Box
-              className="excel-sheet-grid excel-sheet-wrap"
+              className="excel-sheet-grid"
               sx={{
                 width: 'fit-content',
                 maxWidth: '100%',
@@ -459,10 +457,7 @@ export function DivMaterialPlanilhaPreview({
                         key={col.key}
                         sx={{
                           ...headerSx,
-                          minWidth: col.key === 'descricaoMaterial' ? '50ch' : col.width,
-                          maxWidth: col.key === 'descricaoMaterial' ? '50ch' : undefined,
-                          whiteSpace:
-                            col.key === 'descricaoMaterial' ? 'normal' : headerSx.whiteSpace,
+                          minWidth: col.key === 'descricaoMaterial' ? 280 : col.width,
                         }}
                       >
                         {col.label}
