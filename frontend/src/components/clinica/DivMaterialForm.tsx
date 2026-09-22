@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -165,18 +164,21 @@ export function DivMaterialForm({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
         Preenchida pelo MODELO importado (Mapa ← Processo, Vigência ← J:K:L, Fornecedor/CNPJ
-        separados). Edite à esquerda; a planilha atualiza ao vivo. Marque o checklist para enviar à
-        Confecção de Solemp.
+        separados). Clique em Editar na linha para abrir o formulário. Marque o checklist para
+        enviar à Confecção de Solemp.
       </Alert>
 
       <Box
         sx={{
           display: 'grid',
           gap: 2,
-          gridTemplateColumns: { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' },
+          gridTemplateColumns: editingLinhaId
+            ? { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' }
+            : '1fr',
           alignItems: 'start',
         }}
       >
+        {editingLinhaId ? (
         <Paper
           elevation={0}
           sx={(theme) => ({
@@ -197,10 +199,10 @@ export function DivMaterialForm({
               variant="subtitle2"
               sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
             >
-              Entrada — Div. Material
+              Editando — Div. Material
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-              Lançamentos no mesmo formato da planilha. A grade à direita atualiza ao vivo.
+              Altere o lançamento selecionado. A planilha atualiza ao vivo.
             </Typography>
           </Box>
 
@@ -209,7 +211,7 @@ export function DivMaterialForm({
               variant="overline"
               sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
             >
-              {editingLinhaId ? 'Editando lançamento' : 'Novo lançamento'}
+              Lançamento
             </Typography>
             <Box
               sx={{
@@ -252,25 +254,23 @@ export function DivMaterialForm({
               <Button
                 size="small"
                 variant="contained"
-                startIcon={<AddIcon />}
                 onClick={handleAdicionarLinha}
                 sx={{ textTransform: 'none', fontWeight: 700 }}
               >
-                {editingLinhaId ? 'Salvar lançamento' : 'Adicionar lançamento'}
+                Salvar lançamento
               </Button>
-              {editingLinhaId ? (
-                <Button
-                  size="small"
-                  variant="text"
-                  onClick={handleCancelLinha}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Cancelar
-                </Button>
-              ) : null}
+              <Button
+                size="small"
+                variant="text"
+                onClick={handleCancelLinha}
+                sx={{ textTransform: 'none' }}
+              >
+                Cancelar
+              </Button>
             </Box>
           </Box>
         </Paper>
+        ) : null}
 
         <Box sx={{ minWidth: 0 }}>
           <DivMaterialPlanilhaPreview

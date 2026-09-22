@@ -66,6 +66,18 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
+/** Quebra o texto a cada `size` caracteres para exibição na grade. */
+function wrapEvery(value: string, size: number): string {
+  const trimmed = value.trim()
+  if (!trimmed) return '—'
+  if (trimmed.length <= size) return trimmed
+  const parts: string[] = []
+  for (let i = 0; i < trimmed.length; i += size) {
+    parts.push(trimmed.slice(i, i + size))
+  }
+  return parts.join('\n')
+}
+
 function diasNoMes(mes: number, ano: number): number {
   return new Date(ano, mes, 0).getDate()
 }
@@ -469,10 +481,14 @@ export function DivMaterialPlanilhaPreview({
                                 minWidth: col.width,
                                 whiteSpace:
                                   col.key === 'descricaoMaterial' ? 'pre-wrap' : 'nowrap',
-                                maxWidth: col.key === 'descricaoMaterial' ? col.width + 40 : undefined,
+                                maxWidth:
+                                  col.key === 'descricaoMaterial' ? col.width + 80 : undefined,
+                                lineHeight: col.key === 'descricaoMaterial' ? 1.35 : undefined,
                               }}
                             >
-                              {dash(String(linha[col.key] ?? ''))}
+                              {col.key === 'descricaoMaterial'
+                                ? wrapEvery(String(linha[col.key] ?? ''), 50)
+                                : dash(String(linha[col.key] ?? ''))}
                             </TableCell>
                           ))}
                           <TableCell sx={{ ...cellSx, textAlign: 'center' }}>

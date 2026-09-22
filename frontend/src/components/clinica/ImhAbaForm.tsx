@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { Add as AddIcon } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -251,17 +250,20 @@ export function ImhAbaForm({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
         Use Importar Planilha na barra de abas para carregar o MODELO. Descrição ← PROCEDIMENTO;
-        NIP, data, iniciais e valores quando existirem. Clínica, vínculo, NIP do titular e % a
-        indenizar não vêm do MODELO.
+        NIP, data, iniciais e valores quando existirem. Clique em Editar na linha para abrir o
+        formulário à esquerda.
       </Alert>
     <Box
       sx={{
         display: 'grid',
         gap: 2,
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' },
+        gridTemplateColumns: editingLinhaId
+          ? { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' }
+          : '1fr',
         alignItems: 'start',
       }}
     >
+      {editingLinhaId ? (
       <Paper
         elevation={0}
         sx={(theme) => ({
@@ -282,11 +284,10 @@ export function ImhAbaForm({
             variant="subtitle2"
             sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
           >
-            Entrada — IMH
+            Editando — IMH
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Cabeçalho (Clínica / Nº CP) e lançamentos. A planilha segue o modelo da aba IMH e
-            atualiza ao vivo.
+            Altere o lançamento selecionado. A planilha atualiza ao vivo.
           </Typography>
         </Box>
 
@@ -331,7 +332,7 @@ export function ImhAbaForm({
             variant="overline"
             sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
           >
-            {editingLinhaId ? 'Editando lançamento' : 'Novo lançamento'}
+            Lançamento
           </Typography>
           <Box
             sx={{
@@ -459,25 +460,23 @@ export function ImhAbaForm({
             <Button
               size="small"
               variant="contained"
-              startIcon={<AddIcon />}
               onClick={handleAdicionarLinha}
               sx={{ textTransform: 'none', fontWeight: 700 }}
             >
-              {editingLinhaId ? 'Salvar lançamento' : 'Adicionar lançamento'}
+              Salvar lançamento
             </Button>
-            {editingLinhaId ? (
-              <Button
-                size="small"
-                variant="text"
-                onClick={handleCancelLinha}
-                sx={{ textTransform: 'none' }}
-              >
-                Cancelar
-              </Button>
-            ) : null}
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleCancelLinha}
+              sx={{ textTransform: 'none' }}
+            >
+              Cancelar
+            </Button>
           </Box>
         </Box>
       </Paper>
+      ) : null}
 
       <Box sx={{ minWidth: 0 }}>
         <input
