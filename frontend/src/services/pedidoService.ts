@@ -23,6 +23,7 @@ import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
 import { coletarLinhasTotalIndenizado } from '@/utils/totalIndenizado'
+import { etapaVisivelNaTimeline } from '@/utils/timelineFlow'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
 import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
@@ -57,7 +58,29 @@ function dataConclusaoPedido(pedido: PedidoComDetalhes): string | null {
   return datas.reduce((max, d) => (d > max ? d : max), datas[0])
 }
 
-function toDashboardPedidoItem(pedido: PedidoComDetalhes): DashboardPedidoItem {
+function getEtapasAtivasPedido(
+  pedido: PedidoComDetalhes,
+  etapas: WorkflowEtapa[],
+): WorkflowEtapa[] {
+  const ids =
+    (pedido.etapasAtivasIds?.length ?? 0) > 0
+      ? pedido.etapasAtivasIds!
+      : pedido.etapaAtualId
+        ? [pedido.etapaAtualId]
+        : [pedido.etapaAtual.id]
+
+  const ativas = etapas
+    .filter((e) => ids.includes(e.id) && etapaVisivelNaTimeline(e))
+    .sort((a, b) => a.ordem - b.ordem)
+
+  if (ativas.length > 0) return ativas
+  return pedido.etapaAtual ? [pedido.etapaAtual] : []
+}
+
+function toDashboardPedidoItem(
+  pedido: PedidoComDetalhes,
+  etapas?: WorkflowEtapa[],
+): DashboardPedidoItem {
   const setor = resolveSetorOrigem(pedido)
   const dataConclusao = pedido.concluido ? dataConclusaoPedido(pedido) : null
   const diasAteConclusao =
@@ -65,13 +88,16 @@ function toDashboardPedidoItem(pedido: PedidoComDetalhes): DashboardPedidoItem {
       ? differenceInCalendarDays(parseISO(dataConclusao), parseISO(pedido.dataSolicitacao))
       : undefined
 
+  const ativas = etapas ? getEtapasAtivasPedido(pedido, etapas) : [pedido.etapaAtual]
+  const etapasAtivasNomes = ativas.map((e) => e.nome).join(' · ')
+
   return {
     pedidoId: pedido.id,
     pedidoNumero: pedido.numero,
     clinicaNome: pedido.clinica.nome,
     empresaNome: pedido.empresa.nomeFantasia,
     materialDescricao: pedido.material.descricao,
-    etapaAtual: pedido.etapaAtual.nome,
+    etapaAtual: etapasAtivasNomes || pedido.etapaAtual.nome,
     valor: pedido.valor,
     solempNumero: pedido.solemp?.numero ?? null,
     prazoStatus: pedido.prazoStatus,
@@ -79,6 +105,7 @@ function toDashboardPedidoItem(pedido: PedidoComDetalhes): DashboardPedidoItem {
     diasRestantes: pedido.diasRestantes,
     dataSolicitacao: pedido.dataSolicitacao,
     concluido: pedido.concluido,
+    etapasAtivasNomes,
     ...setor,
     ...(diasAteConclusao !== undefined ? { diasAteConclusao } : {}),
   }
@@ -357,12 +384,14 @@ export const pedidoService = {
       })
     }
 
-    const todosItens = pedidos.map(toDashboardPedidoItem)
-    const emAndamentoItens = emAndamento.map(toDashboardPedidoItem)
-    const concluidosItens = concluidos.map(toDashboardPedidoItem)
-    const atrasadosItens = atrasados.map(toDashboardPedidoItem)
-    const proximosVencimentoItens = proximosVencimento.map(toDashboardPedidoItem)
-    const pagoMesItens = valorPagoMesPedidos.map(toDashboardPedidoItem)
+    const todosItens = pedidos.map((p) => toDashboardPedidoItem(p, etapas))
+    const emAndamentoItens = emAndamento.map((p) => toDashboardPedidoItem(p, etapas))
+    const concluidosItens = concluidos.map((p) => toDashboardPedidoItem(p, etapas))
+    const atrasadosItens = atrasados.map((p) => toDashboardPedidoItem(p, etapas))
+    const proximosVencimentoItens = proximosVencimento.map((p) =>
+      toDashboardPedidoItem(p, etapas),
+    )
+    const pagoMesItens = valorPagoMesPedidos.map((p) => toDashboardPedidoItem(p, etapas))
 
     const clinicaRanking = new Map<string, { total: number; valor: number }>()
     pedidos.forEach((p) => {
@@ -415,6 +444,25 @@ export const pedidoService = {
       )
     })
 
+    const emAndamentoPorEtapaMap = new Map<
+      string,
+      { etapa: string; quantidade: number; ordem: number }
+    >()
+    for (const p of emAndamento) {
+      for (const etapa of getEtapasAtivasPedido(p, etapas)) {
+        const current = emAndamentoPorEtapaMap.get(etapa.id) ?? {
+          etapa: etapa.nome,
+          quantidade: 0,
+          ordem: etapa.ordem,
+        }
+        current.quantidade += 1
+        emAndamentoPorEtapaMap.set(etapa.id, current)
+      }
+    }
+    const emAndamentoPorEtapa = Array.from(emAndamentoPorEtapaMap.values()).sort(
+      (a, b) => a.ordem - b.ordem || a.etapa.localeCompare(b.etapa, 'pt-BR'),
+    )
+
     return {
       totalProcessos: pedidos.length,
       emAndamento: emAndamento.length,
@@ -464,6 +512,7 @@ export const pedidoService = {
         etapa,
         valor,
       })),
+      emAndamentoPorEtapa,
       totalIndenizadoLinhas: (() => {
         try {
           return coletarLinhasTotalIndenizado(data)

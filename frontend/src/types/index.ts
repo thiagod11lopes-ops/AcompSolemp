@@ -293,6 +293,8 @@ export interface DashboardPedidoItem {
   setorNome: string
   /** Dias até conclusão (apenas processos concluídos) */
   diasAteConclusao?: number
+  /** Nomes dos cards da timeline em que o PED está ativo (paralelos inclusos) */
+  etapasAtivasNomes?: string
 }
 
 export interface DashboardEmpenhadoItem {
@@ -356,6 +358,8 @@ export interface DashboardMetrics {
   rankingGargalos: { etapa: string; mediaDias: number; atrasados: number }[]
   processosPorMes: { mes: string; total: number; concluidos: number }[]
   valorPorEtapa: { etapa: string; valor: number }[]
+  /** PEDs ativos por card da timeline (etapas ativas, ordenadas) */
+  emAndamentoPorEtapa: { etapa: string; quantidade: number; ordem: number }[]
   /** Linhas indenizáveis das planilhas (medicamento + OPME) para o card Total Indenizado */
   totalIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
 }

@@ -51,6 +51,8 @@ interface KpiDetalheDialogProps {
   onSelectMes?: (mesChave: string) => void
   /** Tempo médio — breakdown por etapa */
   tempoPorEtapa?: { etapa: string; dias: number }[]
+  /** Em andamento — PEDs por card da timeline */
+  quantidadePorEtapa?: { etapa: string; quantidade: number }[]
 }
 
 function prazoChipColor(
@@ -95,6 +97,7 @@ export function KpiDetalheDialog({
   mesSelecionado,
   onSelectMes,
   tempoPorEtapa,
+  quantidadePorEtapa,
 }: KpiDetalheDialogProps) {
   const theme = useTheme()
   const color = accent ?? theme.palette.primary.main
@@ -172,7 +175,10 @@ export function KpiDetalheDialog({
       </Box>
 
       <DialogContent sx={{ px: 3, py: 2.5 }}>
-        {(summaries.length > 0 || meses || (tempoPorEtapa && tempoPorEtapa.length > 0)) && (
+        {(summaries.length > 0 ||
+          meses ||
+          (tempoPorEtapa && tempoPorEtapa.length > 0) ||
+          (quantidadePorEtapa && quantidadePorEtapa.length > 0)) && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 2.5, alignItems: 'center' }}>
             {summaries.map((s) => (
               <Chip
@@ -213,6 +219,24 @@ export function KpiDetalheDialog({
                 ))}
               </TextField>
             )}
+          </Box>
+        )}
+
+        {quantidadePorEtapa && quantidadePorEtapa.length > 0 && (
+          <Box sx={{ mb: 2.5 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+              PEDs por card da timeline
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {quantidadePorEtapa.map((item) => (
+                <Chip
+                  key={item.etapa}
+                  size="small"
+                  variant="outlined"
+                  label={`${item.etapa}: ${item.quantidade} PED${item.quantidade === 1 ? '' : 's'}`}
+                />
+              ))}
+            </Box>
           </Box>
         )}
 
@@ -337,8 +361,9 @@ export const kpiCol = {
   },
   etapa: {
     id: 'etapa',
-    label: 'Etapa atual',
-    render: (row: Record<string, unknown>) => String(row.etapaAtual ?? '—'),
+    label: 'Card da timeline',
+    render: (row: Record<string, unknown>) =>
+      String(row.etapasAtivasNomes ?? row.etapaAtual ?? '—'),
   },
   valor: {
     id: 'valor',

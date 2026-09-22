@@ -17,6 +17,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
 import { TotalIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
+import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
 import type { TotalIndenizadoPeriodoTipo } from '@/utils/totalIndenizado'
 import {
   KpiDetalheDialog,
@@ -50,6 +51,7 @@ interface KpiModalConfig {
   emptyMessage: string
   showMesFilter?: boolean
   showTempoEtapa?: boolean
+  showQuantidadePorEtapa?: boolean
 }
 
 export default function DashboardPage() {
@@ -166,16 +168,20 @@ export default function DashboardPage() {
     },
     emAndamento: {
       title: 'Processos em andamento',
-      subtitle: 'Processos ainda não finalizados',
+      subtitle: 'PEDs ativos nos cards da timeline',
       accent: premiumTokens.yellow,
       icon: <PendingActionsIcon />,
       summaries: [
-        { label: 'Quantidade', value: metrics.emAndamento },
+        { label: 'PEDs ativos', value: metrics.emAndamento },
         {
           label: 'Valor',
           value: formatCurrency(metrics.emAndamentoItens.reduce((a, i) => a + i.valor, 0)),
         },
         { label: 'Atrasados', value: metrics.atrasados },
+        {
+          label: 'Cards com PED',
+          value: (metrics.emAndamentoPorEtapa ?? []).length,
+        },
       ],
       columns: [
         kpiCol.pedido,
@@ -188,6 +194,7 @@ export default function DashboardPage() {
       ],
       rows: metrics.emAndamentoItens as unknown as Record<string, unknown>[],
       emptyMessage: 'Nenhum processo em andamento.',
+      showQuantidadePorEtapa: true,
     },
     concluidos: {
       title: 'Processos concluídos',
@@ -388,7 +395,13 @@ export default function DashboardPage() {
           <KpiCard
             title="Em andamento"
             value={metrics.emAndamento}
-            subtitle="Clique para detalhes"
+            subtitle={
+              (metrics.emAndamentoPorEtapa ?? []).length === 0
+                ? 'Nenhum PED ativo — clique para detalhes'
+                : `${(metrics.emAndamentoPorEtapa ?? []).length} card${
+                    (metrics.emAndamentoPorEtapa ?? []).length === 1 ? '' : 's'
+                  } da timeline com PED — clique para detalhes`
+            }
             icon={<PendingActionsIcon />}
             color={premiumTokens.yellow}
             onClick={() => setKpiAberto('emAndamento')}
@@ -436,6 +449,13 @@ export default function DashboardPage() {
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <EmAndamentoCard
+            total={metrics.emAndamento}
+            porEtapa={metrics.emAndamentoPorEtapa ?? []}
+            onClick={() => setKpiAberto('emAndamento')}
+          />
+        </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
             title="Aguardando Empenho"
@@ -498,6 +518,9 @@ export default function DashboardPage() {
           mesSelecionado={ativo.showMesFilter ? mesFiltrado.mesChave : undefined}
           onSelectMes={ativo.showMesFilter ? setMesSelecionado : undefined}
           tempoPorEtapa={ativo.showTempoEtapa ? metrics.tempoMedioPorEtapa : undefined}
+          quantidadePorEtapa={
+            ativo.showQuantidadePorEtapa ? metrics.emAndamentoPorEtapa : undefined
+          }
         />
       )}
     </>
