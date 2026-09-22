@@ -23,8 +23,10 @@ interface OrdenadorInteractiveTimelineProps {
   onAssinar?: () => void
   assinando?: boolean
   onReceberPlanilha?: () => void
+  onReceberPlanilhaConfeccao?: () => void
   onEncaminharImh?: () => void
   planilhaRecebida?: boolean
+  planilhaRecebidaConfeccao?: boolean
   onReceberPlanilhaImh?: () => void
   planilhaEncaminhadaImh?: boolean
   planilhaRecebidaImh?: boolean
@@ -39,8 +41,10 @@ export function OrdenadorInteractiveTimeline({
   onAssinar,
   assinando = false,
   onReceberPlanilha,
+  onReceberPlanilhaConfeccao,
   onEncaminharImh,
   planilhaRecebida = false,
+  planilhaRecebidaConfeccao = false,
   onReceberPlanilhaImh,
   planilhaEncaminhadaImh = false,
   planilhaRecebidaImh = false,
@@ -133,16 +137,16 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    if (isConfeccaoAtiva && onReceberPlanilha && onAssinar) {
+    if (isConfeccaoAtiva && onReceberPlanilhaConfeccao && onAssinar) {
       return (
         <>
-          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
+          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
             onClick={onAssinar}
-            disabled={assinando || !planilhaRecebida}
+            disabled={assinando || !planilhaRecebidaConfeccao}
           >
             {acaoAtual?.label ?? 'Confeccionar Solemp'}
           </TimelineActionButton>
@@ -187,7 +191,7 @@ export function OrdenadorInteractiveTimeline({
                   Abra a planilha antes de concluir a Contabilidade/IMH.
                 </p>
               )}
-              {isConfeccaoAtiva && !planilhaRecebida && (
+              {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (
                 <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                   Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
                 </p>

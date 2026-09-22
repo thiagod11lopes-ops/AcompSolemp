@@ -74,7 +74,8 @@ function setorVisitado(
   }
   if (chave === 'DIV_MAT_CONFECCAO_SOLEMP') {
     return Boolean(
-      planilha?.recebidaEm && historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP'),
+      planilha?.recebidaConfeccaoEm &&
+        historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP'),
     )
   }
   return false
@@ -273,18 +274,27 @@ function ajustarFlagsPlanilha(
       recebidaEm: undefined,
       encaminhadaImhEm: undefined,
       recebidaImhEm: undefined,
+      recebidaConfeccaoEm: undefined,
       arquivadaEm: undefined,
     }
     return
   }
 
-  if (etapaChave === 'DIV_MAT_AUDITORIA' || etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP') {
+  if (etapaChave === 'DIV_MAT_AUDITORIA') {
     data.pedidoPlanilhaEnvio![pedidoId] = {
       ...atual,
       recebidaEm: undefined,
       encaminhadaImhEm: undefined,
       recebidaImhEm: undefined,
       arquivadaEm: undefined,
+    }
+    return
+  }
+
+  if (etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP') {
+    data.pedidoPlanilhaEnvio![pedidoId] = {
+      ...atual,
+      recebidaConfeccaoEm: undefined,
     }
     return
   }

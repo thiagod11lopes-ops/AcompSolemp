@@ -38,6 +38,25 @@ const EMPTY_IMH_CABECALHO = {
   fornecedor: '',
 }
 
+function preservePlanilhaFlags(
+  existing: PedidoPlanilhaEnvioState | undefined,
+): Pick<
+  PedidoPlanilhaEnvioState,
+  | 'recebidaEm'
+  | 'encaminhadaImhEm'
+  | 'recebidaImhEm'
+  | 'recebidaConfeccaoEm'
+  | 'arquivadaEm'
+> {
+  return {
+    recebidaEm: existing?.recebidaEm,
+    encaminhadaImhEm: existing?.encaminhadaImhEm,
+    recebidaImhEm: existing?.recebidaImhEm,
+    recebidaConfeccaoEm: existing?.recebidaConfeccaoEm,
+    arquivadaEm: existing?.arquivadaEm,
+  }
+}
+
 export const pedidoPlanilhaEnvioService = {
   saveForPedido(pedidoId: string, planilha: ImhPlanilha, rowId?: string): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
@@ -52,10 +71,7 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: existing?.controleSolempLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
-      recebidaEm: existing?.recebidaEm,
-      encaminhadaImhEm: existing?.encaminhadaImhEm,
-      recebidaImhEm: existing?.recebidaImhEm,
-      arquivadaEm: existing?.arquivadaEm,
+      ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -81,10 +97,7 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: existing?.controleSolempLinhas,
       imhMedicamentoLinhas: linhas.map((linha) => ({ ...linha })),
       enviadoEm: new Date().toISOString(),
-      recebidaEm: existing?.recebidaEm,
-      encaminhadaImhEm: existing?.encaminhadaImhEm,
-      recebidaImhEm: existing?.recebidaImhEm,
-      arquivadaEm: existing?.arquivadaEm,
+      ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -112,10 +125,7 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: filtered.linhas.map((linha) => ({ ...linha })),
       divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
-      recebidaEm: existing?.recebidaEm,
-      encaminhadaImhEm: existing?.encaminhadaImhEm,
-      recebidaImhEm: existing?.recebidaImhEm,
-      arquivadaEm: existing?.arquivadaEm,
+      ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -142,10 +152,7 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: controle.linhas.map((linha) => ({ ...linha })),
       divMaterialLinhas: linhas.map((linha) => ({ ...linha })),
       enviadoEm: new Date().toISOString(),
-      recebidaEm: existing?.recebidaEm,
-      encaminhadaImhEm: existing?.encaminhadaImhEm,
-      recebidaImhEm: existing?.recebidaImhEm,
-      arquivadaEm: existing?.arquivadaEm,
+      ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -172,6 +179,7 @@ export const pedidoPlanilhaEnvioService = {
       recebidaEm: snapshot.recebidaEm,
       encaminhadaImhEm: snapshot.encaminhadaImhEm,
       recebidaImhEm: snapshot.recebidaImhEm,
+      recebidaConfeccaoEm: snapshot.recebidaConfeccaoEm,
       arquivadaEm: snapshot.arquivadaEm,
     }
   },
@@ -212,6 +220,20 @@ export const pedidoPlanilhaEnvioService = {
     const next: PedidoPlanilhaEnvioState = {
       ...current,
       recebidaImhEm: new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio![pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  markRecebidaConfeccao(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    const data = readPlanilhaData()
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
+    const next: PedidoPlanilhaEnvioState = {
+      ...current,
+      recebidaConfeccaoEm: new Date().toISOString(),
     }
     data.pedidoPlanilhaEnvio![pedidoId] = next
     saveAppData(data)

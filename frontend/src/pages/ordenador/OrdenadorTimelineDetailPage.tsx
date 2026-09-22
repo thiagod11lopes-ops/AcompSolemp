@@ -39,6 +39,7 @@ export default function OrdenadorTimelineDetailPage() {
   const [planilhaOpen, setPlanilhaOpen] = useState(false)
   const [devolverOpen, setDevolverOpen] = useState(false)
   const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
+  const [planilhaRecebidaConfeccao, setPlanilhaRecebidaConfeccao] = useState(false)
   const [planilhaEncaminhadaImh, setPlanilhaEncaminhadaImh] = useState(false)
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
@@ -126,15 +127,21 @@ export default function OrdenadorTimelineDetailPage() {
       : false
 
     setPlanilhaRecebida(Boolean(stored?.recebidaEm))
+    setPlanilhaRecebidaConfeccao(Boolean(stored?.recebidaConfeccaoEm))
     setPlanilhaEncaminhadaImh(
       Boolean(stored?.encaminhadaImhEm) ||
         (auditoriaConcluida && Boolean(stored)) ||
         (fluxoDiretoImh && (Boolean(stored?.enviadoEm) || contabilidadeAberta)),
     )
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
-    setFluxoEncerrado(Boolean(stored?.arquivadaEm))
-    if (stored?.arquivadaEm && chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH') {
+    // arquivadaEm é só da Contabilidade/IMH — não deve bloquear Confecção em fluxo paralelo
+    const encerradoContabilidade =
+      Boolean(stored?.arquivadaEm) && chavePerfil === 'DIV_MAT_CONTABILIDADE_IMH'
+    setFluxoEncerrado(encerradoContabilidade)
+    if (encerradoContabilidade) {
       setMensagemFluxoEncerrado(MENSAGENS_ARQUIVAMENTO.DIV_MAT_CONTABILIDADE_IMH)
+    } else {
+      setMensagemFluxoEncerrado(null)
     }
   }, [pedido, etapas, chavePerfil, fluxoDiretoImh])
 
@@ -176,7 +183,7 @@ export default function OrdenadorTimelineDetailPage() {
       return
     }
     if (isConfeccao) {
-      if (!planilhaRecebida) return
+      if (!planilhaRecebidaConfeccao) return
       setConfeccaoOpen(true)
       return
     }
@@ -205,6 +212,12 @@ export default function OrdenadorTimelineDetailPage() {
   const handleReceberPlanilha = () => {
     pedidoPlanilhaEnvioService.markRecebida(pedido.id)
     setPlanilhaRecebida(true)
+    setPlanilhaOpen(true)
+  }
+
+  const handleReceberPlanilhaConfeccao = () => {
+    pedidoPlanilhaEnvioService.markRecebidaConfeccao(pedido.id)
+    setPlanilhaRecebidaConfeccao(true)
     setPlanilhaOpen(true)
   }
 
@@ -277,9 +290,11 @@ export default function OrdenadorTimelineDetailPage() {
             etapas={etapas}
             onAssinar={handleAssinar}
             assinando={assinar.isPending && !modalAberto}
-            onReceberPlanilha={isAuditoria || isConfeccao ? handleReceberPlanilha : undefined}
+            onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
+            onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
             onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
             planilhaRecebida={planilhaRecebida}
+            planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
             planilhaEncaminhadaImh={planilhaEncaminhadaImh}
             planilhaRecebidaImh={planilhaRecebidaImh}

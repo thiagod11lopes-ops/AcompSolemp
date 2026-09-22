@@ -646,6 +646,8 @@ export interface PedidoPlanilhaEnvioState {
   encaminhadaImhEm?: string
   /** Planilha recebida pela Contabilidade/IMH */
   recebidaImhEm?: string
+  /** Planilha recebida pela Confecção de Solemp (trilha Div. Material) */
+  recebidaConfeccaoEm?: string
   /** Planilha arquivada pela Contabilidade/IMH ao finalizar */
   arquivadaEm?: string
 }
