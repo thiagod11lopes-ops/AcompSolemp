@@ -54,6 +54,7 @@ import {
   imhAbaLinhasToPedidoInput,
   linhaHasContent,
   markImhAbaLinhasFinalized,
+  syncImhAbaFromFontes,
 } from '@/utils/imhAbaForm'
 import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
@@ -204,6 +205,13 @@ export default function ClinicaNovoPedidoPage() {
     setListaForm(state.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM)
     setConsumoRows(normalizeConsumoMaterialRows(state.consumoMaterialConsignado))
     setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
+    if (!isMedicamento) {
+      const syncedImh = syncImhAbaFromFontes(state.imh ?? EMPTY_IMH_ABA_FORM, {
+        conmed: state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM,
+        consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+      })
+      setImhForm(syncedImh)
+    }
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   useEffect(() => {
@@ -321,7 +329,16 @@ export default function ClinicaNovoPedidoPage() {
   const handleConmedChange = useCallback(
     (next: ConmedComrjFormData) => {
       setConmedForm(next)
-      persist({ conmed: next })
+      if (modoRef.current === 'medicamento') {
+        persist({ conmed: next })
+        return
+      }
+      const nextImh = syncImhAbaFromFontes(imhFormRef.current, {
+        conmed: next,
+        consumoRows: consumoRowsRef.current,
+      })
+      setImhForm(nextImh)
+      persist({ conmed: next, imh: nextImh })
     },
     [persist],
   )
@@ -369,7 +386,16 @@ export default function ClinicaNovoPedidoPage() {
   const handleConsumoChange = useCallback(
     (next: ConsumoMaterialRow[]) => {
       setConsumoRows(next)
-      persist({ consumo: next })
+      if (modoRef.current === 'medicamento') {
+        persist({ consumo: next })
+        return
+      }
+      const nextImh = syncImhAbaFromFontes(imhFormRef.current, {
+        conmed: conmedFormRef.current,
+        consumoRows: next,
+      })
+      setImhForm(nextImh)
+      persist({ consumo: next, imh: nextImh })
     },
     [persist],
   )

@@ -211,8 +211,8 @@ export function DivMaterialForm({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
         Somente leitura — espelha automaticamente o Consumo Material Consignado e o CONMED COMRJ
-        pela NIP do paciente. NIPs iguais são separados pela data do procedimento. Marque o
-        checklist para enviar à Confecção de Solemp.
+        (MODELO). Mapa de Sala → Vale de sala; PROCEDIMENTO e DESCRIÇÃO DO MATERIAL no que couber.
+        Campos sem origem no MODELO (UASG, NUP SIGAD, ata, nome completo, etc.) ficam vazios.
       </Alert>
 
       <Paper

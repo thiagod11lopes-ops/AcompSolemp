@@ -61,8 +61,22 @@ function buildSourceKey(nip: string, data: string, originId: string): string {
   return `${nipKey}|${normData(data)}|${originId}`
 }
 
+function extractCnpjFromText(raw: string): string {
+  const match = raw.match(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/)
+  if (!match) return ''
+  const digits = match[0].replace(/\D/g, '')
+  if (digits.length !== 14) return match[0].trim()
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`
+}
+
 function resolveCnpj(fornecedor: string, empresas: Empresa[]): string {
-  const nome = fornecedor.trim().toLowerCase()
+  const fromText = extractCnpjFromText(fornecedor)
+  if (fromText) return fromText
+  const nome = fornecedor
+    .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
+    .replace(/[–—-]/g, ' ')
+    .trim()
+    .toLowerCase()
   if (!nome) return ''
   const match = empresas.find(
     (e) =>
@@ -83,7 +97,12 @@ function rowFromConsumo(
   const data = normData(row.data)
   if (!nip && !row.nome.trim() && !data) return null
 
-  const fornecedor = row.fornecedor.trim() || conmed?.fornecedor?.trim() || ''
+  const fornecedorRaw = row.fornecedor.trim() || conmed?.fornecedor?.trim() || ''
+  const fornecedor =
+    fornecedorRaw.replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '').replace(/[–—-]/g, ' ').trim() ||
+    fornecedorRaw
+  // Mapa de Sala → Vale de sala; coluna Mapa fica vazia (sem fonte no MODELO).
+  const valeSala = row.mapaSala.trim() || row.mapa.trim()
   return {
     id: `div-mat-consumo-${row.id}`,
     sourceKey: buildSourceKey(nip || row.nip, data, `consumo:${row.id}`),
@@ -92,14 +111,14 @@ function rowFromConsumo(
     nupModalidade: conmed?.processo?.trim() || '',
     numeroItem: row.numero.trim(),
     descricaoMaterial: row.materiais.trim() || row.itemPme.trim(),
-    nomePaciente: row.nome.trim(),
+    nomePaciente: row.nome.trim() || row.iniciais.trim(),
     nip: nip || row.nip.trim(),
-    mapa: row.mapa.trim(),
-    valeSala: row.mapaSala.trim(),
+    mapa: '',
+    valeSala,
     vigencia: conmed?.vigencia?.trim() || '',
     nupSigad: '',
     fornecedor,
-    cnpj: resolveCnpj(fornecedor, empresas),
+    cnpj: resolveCnpj(fornecedorRaw, empresas),
     dataProcedimento: data,
     anexoAtaHomologacao: row.ata.trim(),
   }
@@ -119,7 +138,12 @@ function rowsFromConmed(
     if (materiais.length === 0) {
       const sourceKey = buildSourceKey(nip || paciente.nip, data, `conmed-pac:${paciente.id}`)
       if (existingKeys.has(sourceKey)) continue
-      const fornecedor = conmed.fornecedor.trim()
+      const fornecedorRaw = conmed.fornecedor.trim()
+      const fornecedor =
+        fornecedorRaw
+          .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
+          .replace(/[–—-]/g, ' ')
+          .trim() || fornecedorRaw
       out.push({
         id: `div-mat-conmed-${paciente.id}`,
         sourceKey,
@@ -135,7 +159,7 @@ function rowsFromConmed(
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
         fornecedor,
-        cnpj: resolveCnpj(fornecedor, empresas),
+        cnpj: resolveCnpj(fornecedorRaw, empresas),
         dataProcedimento: data,
         anexoAtaHomologacao: '',
       })
@@ -145,7 +169,12 @@ function rowsFromConmed(
     for (const mat of materiais) {
       const sourceKey = buildSourceKey(nip || paciente.nip, data, `conmed-mat:${mat.id}`)
       if (existingKeys.has(sourceKey)) continue
-      const fornecedor = conmed.fornecedor.trim()
+      const fornecedorRaw = conmed.fornecedor.trim()
+      const fornecedor =
+        fornecedorRaw
+          .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
+          .replace(/[–—-]/g, ' ')
+          .trim() || fornecedorRaw
       out.push({
         id: `div-mat-conmed-${mat.id}`,
         sourceKey,
@@ -161,7 +190,7 @@ function rowsFromConmed(
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
         fornecedor,
-        cnpj: resolveCnpj(fornecedor, empresas),
+        cnpj: resolveCnpj(fornecedorRaw, empresas),
         dataProcedimento: data,
         anexoAtaHomologacao: '',
       })

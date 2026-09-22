@@ -1,4 +1,4 @@
-import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
+import type { ConmedComrjFormData, ImhAbaFormData, ImhAbaLinha } from '@/types'
 import type { CreatePedidoInput } from '@/services/clinicaPedidoService'
 import {
   formatConmedData,
@@ -11,8 +11,10 @@ import {
 import {
   formatValorBrasileiro,
   parseValorBrasileiro,
+  type ConsumoMaterialRow,
 } from '@/utils/consumoMaterialOds'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+import { formatNip } from '@/utils/format'
 
 export function createEmptyImhAbaLinha(): ImhAbaLinha {
   return {
@@ -245,6 +247,123 @@ export function markImhAbaLinhasFinalized(
 ): ImhAbaFormData {
   const next = new Set([...(form.finalizedImhIds ?? []), ...ids])
   return { ...form, finalizedImhIds: [...next] }
+}
+
+const IMH_AUTO_PREFIX = 'imh-auto-'
+
+function isImhAutoLinhaId(id: string): boolean {
+  return id.startsWith(IMH_AUTO_PREFIX)
+}
+
+/**
+ * Preenche a aba IMH a partir do MODELO (CONMED / Consumo), só com o que couber:
+ * - descricao ← PROCEDIMENTO
+ * - nomeUsuario ← INICIAIS (ou nome, se houver no Consumo)
+ * - data, nip, valorUnit, quantidade, valorTotal quando existirem
+ * - numeroCp ← Nº do cabeçalho CONMED
+ * Não preenche: clínica, vínculo, NIP titular, % a indenizar.
+ * Linhas manuais (sem prefixo imh-auto-) são preservadas.
+ */
+export function syncImhAbaFromFontes(
+  current: ImhAbaFormData,
+  input: {
+    conmed?: ConmedComrjFormData
+    consumoRows?: ConsumoMaterialRow[]
+  },
+): ImhAbaFormData {
+  const autoLinhas: ImhAbaLinha[] = []
+  const seen = new Set<string>()
+
+  for (const row of input.consumoRows ?? []) {
+    const nip = formatNip(row.nip.trim()) || row.nip.trim()
+    const data = row.data.trim()
+    const procedimento = row.procedimento.trim()
+    if (!nip && !data && !procedimento && !row.nome.trim() && !row.iniciais.trim()) continue
+    const key = `consumo:${row.id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const qtd = row.qtd.trim() || '1'
+    const unit =
+      row.valorUnitario.trim() ||
+      (row.valorNumerico > 0 ? formatValorBrasileiro(row.valorNumerico) : row.valor.trim())
+    autoLinhas.push(
+      withRecalculatedImhLinha({
+        id: `${IMH_AUTO_PREFIX}${key}`,
+        data,
+        nip,
+        nomeUsuario: row.nome.trim() || row.iniciais.trim(),
+        vinculo: '',
+        descricao: procedimento,
+        nipTitular: '',
+        valorUnit: unit,
+        quantidade: qtd,
+        valorTotal: '',
+        pctIndenizar: '',
+      }),
+    )
+  }
+
+  for (const paciente of input.conmed?.pacientes ?? []) {
+    const nip = formatNip(paciente.nip.trim()) || paciente.nip.trim()
+    const data = paciente.data.trim()
+    const procedimento = paciente.procedimento.trim()
+    const materiais = paciente.materiais ?? []
+    if (materiais.length === 0) {
+      const key = `conmed-pac:${paciente.id}`
+      if (seen.has(key)) continue
+      if (!nip && !data && !procedimento && !paciente.iniciais.trim()) continue
+      seen.add(key)
+      autoLinhas.push(
+        withRecalculatedImhLinha({
+          id: `${IMH_AUTO_PREFIX}${key}`,
+          data,
+          nip,
+          nomeUsuario: paciente.iniciais.trim(),
+          vinculo: '',
+          descricao: procedimento,
+          nipTitular: '',
+          valorUnit: '',
+          quantidade: '1',
+          valorTotal: '',
+          pctIndenizar: '',
+        }),
+      )
+      continue
+    }
+    for (const mat of materiais) {
+      const key = `conmed-mat:${mat.id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      autoLinhas.push(
+        withRecalculatedImhLinha({
+          id: `${IMH_AUTO_PREFIX}${key}`,
+          data,
+          nip,
+          nomeUsuario: paciente.iniciais.trim(),
+          vinculo: '',
+          descricao: procedimento,
+          nipTitular: '',
+          valorUnit: mat.valorUnit.trim(),
+          quantidade: mat.qt.trim() || '1',
+          valorTotal: mat.valorTotal.trim(),
+          pctIndenizar: '',
+        }),
+      )
+    }
+  }
+
+  const manuais = current.linhas.filter((linha) => !isImhAutoLinhaId(linha.id))
+  const linhas = [...autoLinhas, ...manuais].filter((linha) => linhaHasContent(linha))
+  const linhaIds = new Set(linhas.map((l) => l.id))
+  const numeroCp =
+    input.conmed?.numero?.trim() || current.numeroCp.trim()
+
+  return {
+    clinica: current.clinica,
+    numeroCp,
+    linhas,
+    finalizedImhIds: (current.finalizedImhIds ?? []).filter((id) => linhaIds.has(id)),
+  }
 }
 
 export function imhFormHasPreviewContent(value: ImhAbaFormData): boolean {

@@ -242,6 +242,12 @@ export function ImhAbaForm({
   }
 
   return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Alert severity="info" sx={{ py: 0.5 }}>
+        Preenchimento automático a partir do CONMED/Consumo (MODELO): descrição ← PROCEDIMENTO;
+        NIP, data, iniciais, QT e valores quando existirem. Clínica, vínculo, NIP do titular e % a
+        indenizar não vêm do MODELO.
+      </Alert>
     <Box
       sx={{
         display: 'grid',
@@ -496,6 +502,7 @@ export function ImhAbaForm({
           </Alert>
         </Snackbar>
       </Box>
+    </Box>
     </Box>
   )
 }
