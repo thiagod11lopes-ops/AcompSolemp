@@ -85,6 +85,13 @@ import {
   divMaterialLinhasToPedidoInput,
   type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
+import {
+  createDefaultPlanilhaDataFiltro,
+  normalizePlanilhaDataFiltro,
+  normalizePlanilhaFiltrosPersistidos,
+  type PlanilhaDataFiltro,
+  type PlanilhaFiltrosPersistidos,
+} from '@/utils/planilhaDataFiltro'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
 
 const IMH_ABA_ID = 'imh'
@@ -102,6 +109,7 @@ type PersistPayload = {
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
   finalizedDivMaterialIds?: string[]
+  planilhaFiltros?: PlanilhaFiltrosPersistidos
 }
 
 function AbaVaziaPlaceholder({ titulo }: { titulo: string }) {
@@ -169,6 +177,12 @@ export default function ClinicaNovoPedidoPage() {
   const [finalizedDivMaterialIds, setFinalizedDivMaterialIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const [imhDataFiltro, setImhDataFiltro] = useState<PlanilhaDataFiltro>(() =>
+    createDefaultPlanilhaDataFiltro(),
+  )
+  const [divMaterialDataFiltro, setDivMaterialDataFiltro] = useState<PlanilhaDataFiltro>(() =>
+    createDefaultPlanilhaDataFiltro(),
+  )
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
   const [apagarOpen, setApagarOpen] = useState(false)
@@ -198,6 +212,8 @@ export default function ClinicaNovoPedidoPage() {
   const consumoRowsRef = useRef(consumoRows)
   const divMaterialLinhasRef = useRef(divMaterialLinhas)
   const finalizedDivMaterialIdsRef = useRef(finalizedDivMaterialIds)
+  const imhDataFiltroRef = useRef(imhDataFiltro)
+  const divMaterialDataFiltroRef = useRef(divMaterialDataFiltro)
   const modoRef = useRef(planilhasModo)
   abasRef.current = abas
   abaAtivaIdRef.current = abaAtivaId
@@ -209,6 +225,8 @@ export default function ClinicaNovoPedidoPage() {
   consumoRowsRef.current = consumoRows
   divMaterialLinhasRef.current = divMaterialLinhas
   finalizedDivMaterialIdsRef.current = finalizedDivMaterialIds
+  imhDataFiltroRef.current = imhDataFiltro
+  divMaterialDataFiltroRef.current = divMaterialDataFiltro
   modoRef.current = planilhasModo
 
   useEffect(() => {
@@ -226,6 +244,9 @@ export default function ClinicaNovoPedidoPage() {
     const consumo = normalizeConsumoMaterialRows(state.consumoMaterialConsignado)
     setConsumoRows(isMedicamento ? consumo : [])
     setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
+    const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
+    setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
+    setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
     if (!isMedicamento) {
       const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
       const syncedImh = syncImhAbaFromFontes(state.imh ?? EMPTY_IMH_ABA_FORM, {
@@ -298,11 +319,43 @@ export default function ClinicaNovoPedidoPage() {
           listaMateriais: stored.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM,
           finalizedDivMaterialIds:
             patch.finalizedDivMaterialIds ?? [...finalizedDivMaterialIdsRef.current],
+          planilhaFiltros: patch.planilhaFiltros ?? {
+            imh: imhDataFiltroRef.current,
+            divMaterial: divMaterialDataFiltroRef.current,
+          },
         },
         modoRef.current,
       )
     },
     [clinicaId],
+  )
+
+  const handleImhDataFiltroChange = useCallback(
+    (next: PlanilhaDataFiltro) => {
+      const normalized = normalizePlanilhaDataFiltro(next)
+      setImhDataFiltro(normalized)
+      persist({
+        planilhaFiltros: {
+          imh: normalized,
+          divMaterial: divMaterialDataFiltroRef.current,
+        },
+      })
+    },
+    [persist],
+  )
+
+  const handleDivMaterialDataFiltroChange = useCallback(
+    (next: PlanilhaDataFiltro) => {
+      const normalized = normalizePlanilhaDataFiltro(next)
+      setDivMaterialDataFiltro(normalized)
+      persist({
+        planilhaFiltros: {
+          imh: imhDataFiltroRef.current,
+          divMaterial: normalized,
+        },
+      })
+    },
+    [persist],
   )
 
   const abaAtiva = useMemo(
@@ -777,6 +830,8 @@ export default function ClinicaNovoPedidoPage() {
           onSelectedImhIdsChange={setSelectedImhIds}
           hideImport
           onRequestClear={() => handleRequestClear('IMH')}
+          dataFiltro={imhDataFiltro}
+          onDataFiltroChange={handleImhDataFiltroChange}
         />
       )
     }
@@ -789,6 +844,8 @@ export default function ClinicaNovoPedidoPage() {
           onSelectedIdsChange={setSelectedDivMaterialIds}
           finalizedIds={finalizedDivMaterialIds}
           onRequestClear={() => handleRequestClear('Div. Material')}
+          dataFiltro={divMaterialDataFiltro}
+          onDataFiltroChange={handleDivMaterialDataFiltroChange}
         />
       )
     }

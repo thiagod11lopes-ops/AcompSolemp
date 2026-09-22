@@ -7,13 +7,8 @@ import {
   Box,
   Checkbox,
   Chip,
-  FormControl,
-  FormControlLabel,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Table,
   TableBody,
   TableCell,
@@ -21,18 +16,17 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
-import {
-  ANOS_PLANILHA_DISPONIVEIS,
-  dataPertenceAoMes,
-  getMesModeloFromParts,
-  type MesConsumoModelo,
-} from '@/utils/consumoMaterialTemplate'
 import {
   DIV_MATERIAL_COLUNAS,
   type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
+import {
+  linhaPassaNoFiltroData,
+  type PlanilhaDataFiltro,
+} from '@/utils/planilhaDataFiltro'
 import '@/components/clinica/spreadsheet-excel.css'
 
 interface DivMaterialPlanilhaPreviewProps {
@@ -44,22 +38,9 @@ interface DivMaterialPlanilhaPreviewProps {
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onRequestClear?: () => void
+  dataFiltro: PlanilhaDataFiltro
+  onDataFiltroChange: (next: PlanilhaDataFiltro) => void
 }
-
-const MESES_OPCOES = [
-  { value: 1, label: 'Janeiro' },
-  { value: 2, label: 'Fevereiro' },
-  { value: 3, label: 'Março' },
-  { value: 4, label: 'Abril' },
-  { value: 5, label: 'Maio' },
-  { value: 6, label: 'Junho' },
-  { value: 7, label: 'Julho' },
-  { value: 8, label: 'Agosto' },
-  { value: 9, label: 'Setembro' },
-  { value: 10, label: 'Outubro' },
-  { value: 11, label: 'Novembro' },
-  { value: 12, label: 'Dezembro' },
-] as const
 
 function dash(value: string): string {
   const trimmed = value.trim()
@@ -240,31 +221,6 @@ const descricaoMaterialCellSx = {
   lineHeight: 1.35,
 } as const
 
-function diasNoMes(mes: number, ano: number): number {
-  return new Date(ano, mes, 0).getDate()
-}
-
-function dataPertenceAoDia(data: string, dia: number, mesModelo: MesConsumoModelo): boolean {
-  if (!dataPertenceAoMes(data, mesModelo)) return false
-  if (dia <= 0) return true
-  const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
-  if (!match) return false
-  return parseInt(match[1], 10) === dia
-}
-
-function anosDisponiveis(linhas: DivMaterialLinha[]): number[] {
-  const anos = new Set<number>(ANOS_PLANILHA_DISPONIVEIS)
-  anos.add(new Date().getFullYear())
-  for (const linha of linhas) {
-    const match = linha.dataProcedimento.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
-    if (!match) continue
-    const yearRaw = match[3]
-    const year = yearRaw.length === 2 ? 2000 + parseInt(yearRaw, 10) : parseInt(yearRaw, 10)
-    if (Number.isFinite(year)) anos.add(year)
-  }
-  return [...anos].sort((a, b) => b - a)
-}
-
 const cellSx = {
   border: EXCEL_SHEET.border,
   fontFamily: EXCEL_SHEET.fontFamily,
@@ -305,28 +261,14 @@ export function DivMaterialPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
   onRequestClear,
+  dataFiltro,
+  onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
-  const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
-  const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
-  const [filtroDia, setFiltroDia] = useState(0)
-  const [mostrarTodos, setMostrarTodos] = useState(false)
-
-  const mesFiltro = useMemo(
-    () => getMesModeloFromParts(filtroMes, filtroAno),
-    [filtroMes, filtroAno],
+  const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
+  const linhasFiltradas = useMemo(
+    () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
+    [linhas, dataFiltro],
   )
-  const diasOptions = useMemo(
-    () => Array.from({ length: diasNoMes(filtroMes, filtroAno) }, (_, i) => i + 1),
-    [filtroMes, filtroAno],
-  )
-  const anosOptions = useMemo(() => anosDisponiveis(linhas), [linhas])
-
-  const linhasFiltradas = useMemo(() => {
-    if (mostrarTodos) return linhas
-    return linhas.filter((linha) =>
-      dataPertenceAoDia(linha.dataProcedimento, filtroDia, mesFiltro),
-    )
-  }, [linhas, mostrarTodos, filtroDia, mesFiltro])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const selection = selectedIds ?? new Set<string>()
@@ -337,16 +279,6 @@ export function DivMaterialPlanilhaPreview({
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
   const visible = linhas.length > 0
   const colCount = DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + 1
-
-  const handleFiltroMesChange = (mes: number) => {
-    setFiltroMes(mes)
-    if (filtroDia > diasNoMes(mes, filtroAno)) setFiltroDia(0)
-  }
-
-  const handleFiltroAnoChange = (ano: number) => {
-    setFiltroAno(ano)
-    if (filtroDia > diasNoMes(filtroMes, ano)) setFiltroDia(0)
-  }
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -424,70 +356,12 @@ export function DivMaterialPlanilhaPreview({
             />
           ) : null}
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={mostrarTodos}
-                onChange={(_, checked) => setMostrarTodos(checked)}
-              />
-            }
-            label="Todos"
-            sx={{
-              ml: 0.5,
-              mr: 0,
-              '& .MuiFormControlLabel-label': { fontSize: '0.8rem', fontWeight: 600 },
-            }}
+          <PlanilhaDataFiltros
+            idPrefix="div-mat-prev"
+            value={dataFiltro}
+            onChange={onDataFiltroChange}
+            datas={datas}
           />
-          <FormControl size="small" sx={{ minWidth: 80 }} disabled={mostrarTodos}>
-            <InputLabel id="div-mat-prev-dia">Dia</InputLabel>
-            <Select
-              labelId="div-mat-prev-dia"
-              label="Dia"
-              value={filtroDia}
-              onChange={(e) => setFiltroDia(Number(e.target.value))}
-              sx={{ height: 32, fontSize: '0.8rem' }}
-            >
-              <MenuItem value={0}>Todos</MenuItem>
-              {diasOptions.map((dia) => (
-                <MenuItem key={dia} value={dia}>
-                  {String(dia).padStart(2, '0')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 120 }} disabled={mostrarTodos}>
-            <InputLabel id="div-mat-prev-mes">Mês</InputLabel>
-            <Select
-              labelId="div-mat-prev-mes"
-              label="Mês"
-              value={filtroMes}
-              onChange={(e) => handleFiltroMesChange(Number(e.target.value))}
-              sx={{ height: 32, fontSize: '0.8rem' }}
-            >
-              {MESES_OPCOES.map((mes) => (
-                <MenuItem key={mes.value} value={mes.value}>
-                  {mes.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 88 }} disabled={mostrarTodos}>
-            <InputLabel id="div-mat-prev-ano">Ano</InputLabel>
-            <Select
-              labelId="div-mat-prev-ano"
-              label="Ano"
-              value={filtroAno}
-              onChange={(e) => handleFiltroAnoChange(Number(e.target.value))}
-              sx={{ height: 32, fontSize: '0.8rem' }}
-            >
-              {anosOptions.map((ano) => (
-                <MenuItem key={ano} value={ano}>
-                  {ano}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
 
           {onRequestClear ? (
             <IconButton

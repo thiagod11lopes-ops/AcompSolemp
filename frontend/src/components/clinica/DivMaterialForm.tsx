@@ -27,6 +27,8 @@ interface DivMaterialFormProps {
   onSelectedIdsChange?: (next: Set<string>) => void
   finalizedIds?: Set<string>
   onRequestClear?: () => void
+  dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
+  onDataFiltroChange: (next: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro) => void
 }
 
 const compactFieldSx = {
@@ -78,6 +80,8 @@ export function DivMaterialForm({
   onSelectedIdsChange,
   finalizedIds,
   onRequestClear,
+  dataFiltro,
+  onDataFiltroChange,
 }: DivMaterialFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<DivMaterialLinha>(() => createEmptyDivMaterialLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -287,6 +291,8 @@ export function DivMaterialForm({
             onEditLinha={handleEditLinha}
             onDeleteLinha={handleDeleteLinha}
             onRequestClear={onRequestClear}
+            dataFiltro={dataFiltro}
+            onDataFiltroChange={onDataFiltroChange}
           />
         </Box>
       </Box>

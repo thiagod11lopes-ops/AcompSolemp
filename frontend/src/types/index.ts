@@ -609,6 +609,8 @@ export interface ClinicaPlanilhasLivresState {
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
   /** Linhas da Div. Material já enviadas para Confecção de Solemp. */
   finalizedDivMaterialIds?: string[]
+  /** Últimos filtros Todos/data das planilhas IMH e Div. Material. */
+  planilhaFiltros?: import('@/utils/planilhaDataFiltro').PlanilhaFiltrosPersistidos
 }
 
 export interface PedidoPlanilhaEnvioState {

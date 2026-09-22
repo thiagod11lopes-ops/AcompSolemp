@@ -43,6 +43,8 @@ interface ImhAbaFormProps {
   /** Oculta o import local (quando há Importar Planilha na barra de abas). */
   hideImport?: boolean
   onRequestClear?: () => void
+  dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
+  onDataFiltroChange: (next: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro) => void
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO', 'OUTROS'] as const
@@ -80,6 +82,8 @@ export function ImhAbaForm({
   onSelectedImhIdsChange,
   hideImport = false,
   onRequestClear,
+  dataFiltro,
+  onDataFiltroChange,
 }: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -499,6 +503,8 @@ export function ImhAbaForm({
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
           onRequestClear={onRequestClear}
+          dataFiltro={dataFiltro}
+          onDataFiltroChange={onDataFiltroChange}
         />
         {!hideImport ? (
           <ConmedEscolherAbaModal

@@ -15,6 +15,7 @@ import {
 import { normalizeListaMateriaisForm } from '@/utils/listaMateriaisForm'
 import { normalizeConsumoMaterialRows } from '@/utils/consumoMaterialOds'
 import { medicamentosPrecosService } from '@/services/medicamentosPrecosService'
+import { normalizePlanilhaFiltrosPersistidos } from '@/utils/planilhaDataFiltro'
 import {
   clonePacientesPmeSeed,
   normalizePacientesPmeRows,
@@ -58,6 +59,7 @@ function normalizeState(
     finalizedDivMaterialIds: Array.isArray(state?.finalizedDivMaterialIds)
       ? state.finalizedDivMaterialIds.filter((id) => typeof id === 'string')
       : [],
+    planilhaFiltros: normalizePlanilhaFiltrosPersistidos(state?.planilhaFiltros),
   }
 }
 

@@ -18,7 +18,9 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import { useMemo } from 'react'
 import type { ImhAbaFormData } from '@/types'
+import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
@@ -29,6 +31,10 @@ import {
   imhNumeroCpChip,
 } from '@/utils/imhAbaForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
+import {
+  linhaPassaNoFiltroData,
+  type PlanilhaDataFiltro,
+} from '@/utils/planilhaDataFiltro'
 import '@/components/clinica/spreadsheet-excel.css'
 
 interface ImhAbaPlanilhaPreviewProps {
@@ -41,6 +47,8 @@ interface ImhAbaPlanilhaPreviewProps {
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onRequestClear?: () => void
+  dataFiltro: PlanilhaDataFiltro
+  onDataFiltroChange: (next: PlanilhaDataFiltro) => void
 }
 
 function dash(value: string): string {
@@ -97,13 +105,20 @@ export function ImhAbaPlanilhaPreview({
   onEditLinha,
   onDeleteLinha,
   onRequestClear,
+  dataFiltro,
+  onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const visible = imhFormHasPreviewContent(value)
   const total = calcImhTotalGeral(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
-  const selecionaveis = value.linhas.filter((l) => !finalizedIds.has(l.id))
+  const datas = useMemo(() => value.linhas.map((l) => l.data), [value.linhas])
+  const linhasFiltradas = useMemo(
+    () => value.linhas.filter((linha) => linhaPassaNoFiltroData(linha.data, dataFiltro)),
+    [value.linhas, dataFiltro],
+  )
+  const selecionaveis = linhasFiltradas.filter((l) => !finalizedIds.has(l.id))
   const allSelected =
     selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
@@ -184,7 +199,7 @@ export function ImhAbaPlanilhaPreview({
           <Chip
             size="small"
             variant="outlined"
-            label={`${value.linhas.length} lançamento(s)`}
+            label={`${linhasFiltradas.length} de ${value.linhas.length} lançamento(s)`}
             sx={{ height: 22, fontWeight: 600 }}
           />
           {selectionEnabled && selection.size > 0 ? (
@@ -203,6 +218,14 @@ export function ImhAbaPlanilhaPreview({
               sx={{ height: 22, fontWeight: 600 }}
             />
           ) : null}
+
+          <PlanilhaDataFiltros
+            idPrefix="imh-prev"
+            value={dataFiltro}
+            onChange={onDataFiltroChange}
+            datas={datas}
+          />
+
           {onImportClick ? (
             <Button
               size="small"
@@ -357,7 +380,14 @@ export function ImhAbaPlanilhaPreview({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {value.linhas.map((linha, index) => {
+                  {linhasFiltradas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
+                        Nenhum registro no período filtrado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    linhasFiltradas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
                     const finalizado = finalizedIds.has(linha.id)
                     const checked = finalizado || selection.has(linha.id)
@@ -442,14 +472,8 @@ export function ImhAbaPlanilhaPreview({
                         </TableCell>
                       </TableRow>
                     )
-                  })}
-                  {value.linhas.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                        Nenhum lançamento
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
+                  })
+                  )}
                 </TableBody>
               </Table>
             </Box>
