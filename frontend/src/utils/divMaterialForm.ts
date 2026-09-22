@@ -69,14 +69,19 @@ function extractCnpjFromText(raw: string): string {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`
 }
 
+/** Nome do fornecedor sem CNPJ (00.000.000/0000-00) nem traços soltos. */
+function nomeFornecedorSemCnpj(raw: string): string {
+  return raw
+    .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
+    .replace(/[–—\-|,;]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function resolveCnpj(fornecedor: string, empresas: Empresa[]): string {
   const fromText = extractCnpjFromText(fornecedor)
   if (fromText) return fromText
-  const nome = fornecedor
-    .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
-    .replace(/[–—-]/g, ' ')
-    .trim()
-    .toLowerCase()
+  const nome = nomeFornecedorSemCnpj(fornecedor).toLowerCase()
   if (!nome) return ''
   const match = empresas.find(
     (e) =>
@@ -86,6 +91,16 @@ function resolveCnpj(fornecedor: string, empresas: Empresa[]): string {
       e.nomeFantasia.toLowerCase().includes(nome),
   )
   return match?.cnpj?.trim() ?? ''
+}
+
+function splitFornecedorCampos(
+  fornecedorRaw: string,
+  empresas: Empresa[],
+): { fornecedor: string; cnpj: string } {
+  return {
+    fornecedor: nomeFornecedorSemCnpj(fornecedorRaw),
+    cnpj: resolveCnpj(fornecedorRaw, empresas),
+  }
 }
 
 function rowFromConsumo(
@@ -98,9 +113,7 @@ function rowFromConsumo(
   if (!nip && !row.nome.trim() && !data) return null
 
   const fornecedorRaw = row.fornecedor.trim() || conmed?.fornecedor?.trim() || ''
-  const fornecedor =
-    fornecedorRaw.replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '').replace(/[–—-]/g, ' ').trim() ||
-    fornecedorRaw
+  const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
   // Mapa de Sala → Vale de sala; Processo → Mapa; Vigência → Vigência.
   const valeSala = row.mapaSala.trim() || row.mapa.trim()
   const processo = conmed?.processo?.trim() || ''
@@ -119,7 +132,7 @@ function rowFromConsumo(
     vigencia: conmed?.vigencia?.trim() || '',
     nupSigad: '',
     fornecedor,
-    cnpj: resolveCnpj(fornecedorRaw, empresas),
+    cnpj,
     dataProcedimento: data,
     anexoAtaHomologacao: row.ata.trim(),
   }
@@ -140,11 +153,7 @@ function rowsFromConmed(
       const sourceKey = buildSourceKey(nip || paciente.nip, data, `conmed-pac:${paciente.id}`)
       if (existingKeys.has(sourceKey)) continue
       const fornecedorRaw = conmed.fornecedor.trim()
-      const fornecedor =
-        fornecedorRaw
-          .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
-          .replace(/[–—-]/g, ' ')
-          .trim() || fornecedorRaw
+      const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
       const processo = conmed.processo.trim()
       out.push({
         id: `div-mat-conmed-${paciente.id}`,
@@ -161,7 +170,7 @@ function rowsFromConmed(
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
         fornecedor,
-        cnpj: resolveCnpj(fornecedorRaw, empresas),
+        cnpj,
         dataProcedimento: data,
         anexoAtaHomologacao: '',
       })
@@ -172,11 +181,7 @@ function rowsFromConmed(
       const sourceKey = buildSourceKey(nip || paciente.nip, data, `conmed-mat:${mat.id}`)
       if (existingKeys.has(sourceKey)) continue
       const fornecedorRaw = conmed.fornecedor.trim()
-      const fornecedor =
-        fornecedorRaw
-          .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
-          .replace(/[–—-]/g, ' ')
-          .trim() || fornecedorRaw
+      const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
       const processo = conmed.processo.trim()
       out.push({
         id: `div-mat-conmed-${mat.id}`,
@@ -193,7 +198,7 @@ function rowsFromConmed(
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
         fornecedor,
-        cnpj: resolveCnpj(fornecedorRaw, empresas),
+        cnpj,
         dataProcedimento: data,
         anexoAtaHomologacao: '',
       })

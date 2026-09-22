@@ -95,6 +95,23 @@ function isProcessLabel(label: string): boolean {
   )
 }
 
+/**
+ * MODELO: rótulos PREGÃO/VIGÊNCIA/FORNECEDOR em F:G:H (mesclado);
+ * valor na mescla J:K:L (coluna J = índice 9) da mesma linha.
+ */
+function valueFromModeloJkl(rows: string[][], r: number, labelCol: number): string {
+  const atJ = cell(rows, r, 9)
+  if (atJ && !isProcessLabel(atJ)) return atJ
+  const rowLen = rows[r]?.length ?? 0
+  for (let k = labelCol + 1; k < Math.min(labelCol + 7, rowLen); k++) {
+    const candidate = cell(rows, r, k)
+    if (!candidate) continue
+    if (isProcessLabel(candidate)) break
+    return candidate
+  }
+  return ''
+}
+
 /** Datas do MODELO: 24/06/26, 6/7/2026, serial, ou só dígitos. */
 function normalizeImportDate(raw: string): string {
   const trimmed = raw.trim()
@@ -298,20 +315,15 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
       if (!label || (!isProcessLabel(rawLabel) && !isProcessLabel(label))) continue
 
       // Valor: próxima célula não vazia que não seja outro rótulo.
-      // VIGÊNCIA no MODELO: rótulo mesclado F:G:H; número na mescla J:K:L (col. J = índice 9).
+      // PREGÃO / VIGÊNCIA / FORNECEDOR: valor na mescla J:K:L (col. J).
       let value = ''
-      if (label.includes('VIGENCIA')) {
-        const atJ = cell(rows, r, 9)
-        if (atJ && !isProcessLabel(atJ)) value = atJ
-        if (!value) {
-          for (let k = c + 1; k < Math.min(c + 7, row.length); k++) {
-            const candidate = cell(rows, r, k)
-            if (!candidate) continue
-            if (isProcessLabel(candidate)) break
-            value = candidate
-            break
-          }
-        }
+      if (
+        label.includes('VIGENCIA') ||
+        label.includes('FORNECEDOR') ||
+        label.includes('PREGAO') ||
+        label.includes('TAD')
+      ) {
+        value = valueFromModeloJkl(rows, r, c)
       } else {
         for (let k = c + 1; k < Math.min(c + 4, row.length); k++) {
           const candidate = cell(rows, r, k)
@@ -356,7 +368,9 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
           out.pregaoTad = formatConmedPregaoTad(value.includes('/') ? value : cell(rows, r, c + 3) || value)
         }
         if (!out.fornecedor && label.includes('FORNECEDOR')) {
-          out.fornecedor = value
+          // Nome+CNPJ na mescla J:K:L (índice 9), linha 3 do MODELO
+          const fornecedorValue = cell(rows, r, 9) || cell(rows, r, c + 4) || value
+          if (fornecedorValue && !isProcessLabel(fornecedorValue)) out.fornecedor = fornecedorValue
         }
         if (!out.vigencia && label.includes('VIGENCIA')) {
           // Número na mescla J:K:L (índice 9), mesma linha do rótulo
@@ -390,21 +404,28 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
     for (let r = 0; r < Math.min(endExclusive, 5); r++) {
       for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
         if (!norm(cell(rows, r, c)).includes('VIGENCIA')) continue
-        const atJ = cell(rows, r, 9)
-        if (atJ && !isProcessLabel(atJ)) {
-          out.vigencia = atJ
+        const v = valueFromModeloJkl(rows, r, c)
+        if (v) {
+          out.vigencia = v
           break
         }
-        for (let k = c + 1; k < Math.min(c + 7, rows[r].length); k++) {
-          const v = cell(rows, r, k)
-          if (v && !isProcessLabel(v)) {
-            out.vigencia = v
-            break
-          }
-        }
-        if (out.vigencia) break
       }
       if (out.vigencia) break
+    }
+  }
+
+  // FORNECEDOR: valor na mescla J:K:L da linha do rótulo (MODELO linha 3)
+  if (!out.fornecedor) {
+    for (let r = 0; r < Math.min(endExclusive, 5); r++) {
+      for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
+        if (!norm(cell(rows, r, c)).includes('FORNECEDOR')) continue
+        const v = valueFromModeloJkl(rows, r, c)
+        if (v) {
+          out.fornecedor = v
+          break
+        }
+      }
+      if (out.fornecedor) break
     }
   }
 

@@ -215,8 +215,8 @@ export function DivMaterialForm({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Alert severity="info" sx={{ py: 0.5 }}>
         Somente leitura — preenchida automaticamente pela planilha MODELO importada. Mapa de Sala →
-        Vale de sala; Processo → Mapa; Vigência → Vigência. Marque o checklist para enviar à
-        Confecção de Solemp.
+        Vale de sala; Processo → Mapa; Vigência → Vigência; Fornecedor → nome (CNPJ à parte).
+        Marque o checklist para enviar à Confecção de Solemp.
       </Alert>
 
       <Paper
