@@ -345,8 +345,9 @@ function cleanCell(value: string): string {
   return trimmed
 }
 
-export function parseValorBrasileiro(value: string): number {
-  const trimmed = value.trim()
+export function parseValorBrasileiro(value: string | null | undefined): number {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) return 0
   if (/^\d+(\.\d+)?$/.test(trimmed)) {
     const direct = parseFloat(trimmed)
     if (Number.isFinite(direct)) return direct
@@ -357,8 +358,8 @@ export function parseValorBrasileiro(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function parsePctIndenizar(raw: string): number {
-  const cleaned = raw.trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
+function parsePctIndenizar(raw: string | null | undefined): number {
+  const cleaned = (raw ?? '').trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
   const n = parseFloat(cleaned)
   if (!Number.isFinite(n) || n < 0) return 0
   if (n > 1) return n / 100
@@ -366,7 +367,10 @@ function parsePctIndenizar(raw: string): number {
   return n
 }
 
-export function calcValorIndenizar(valorTotal: number, pctRaw: string): string {
+export function calcValorIndenizar(
+  valorTotal: number,
+  pctRaw: string | null | undefined,
+): string {
   const pct = parsePctIndenizar(pctRaw)
   if (valorTotal <= 0 || pct <= 0) return ''
   return formatValorBrasileiro(valorTotal * pct)

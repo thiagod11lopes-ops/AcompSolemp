@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Box, Grid } from '@mui/material'
+import { Alert, Box, Button, Grid } from '@mui/material'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
@@ -53,7 +53,7 @@ interface KpiModalConfig {
 }
 
 export default function DashboardPage() {
-  const { data: metrics, isPending } = useDashboardMetrics()
+  const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics()
   const [kpiAberto, setKpiAberto] = useState<KpiKey | null>(null)
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'))
   const [indenizadoPeriodoTipo, setIndenizadoPeriodoTipo] =
@@ -99,6 +99,26 @@ export default function DashboardPage() {
   }, [metrics, mesFiltrado.mesChave])
 
   if (isPending && !metrics) return <LoadingSpinner />
+  if (isError) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <PageHeader
+          title="Dashboard do Gestor"
+          subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
+        />
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void refetch()}>
+              Tentar de novo
+            </Button>
+          }
+        >
+          {error instanceof Error ? error.message : 'Falha ao carregar as métricas do dashboard.'}
+        </Alert>
+      </Box>
+    )
+  }
   if (!metrics) return <LoadingSpinner />
 
   const qtdAguardando = metrics.quantidadeAguardandoEmpenho

@@ -2,8 +2,11 @@ import type { AppData, ImhAbaLinha, ImhMedicamentoLinha } from '@/types'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   calcValorIndenizar,
+  normalizeConsumoMaterialRows,
   parseValorBrasileiro,
 } from '@/utils/consumoMaterialOds'
+import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
+import { normalizeImhMedicamentoForm } from '@/utils/imhMedicamentoForm'
 import { dateMatchesBalancoPeriodo, type BalancoPeriodoTipo } from '@/utils/medicamentoBalanco'
 import { normalizePacienteNipKey } from '@/utils/pacientesPme'
 
@@ -49,8 +52,12 @@ function parsePctIndenizar(raw: string | undefined | null): number {
   return n > 1 ? n / 100 : n
 }
 
-function valorIndenizadoFromParts(total: number, pctRaw: string, valorIndenizarRaw?: string): number {
-  const direto = parseValorBrasileiro(valorIndenizarRaw ?? '')
+function valorIndenizadoFromParts(
+  total: number,
+  pctRaw: string | null | undefined,
+  valorIndenizarRaw?: string | null,
+): number {
+  const direto = parseValorBrasileiro(valorIndenizarRaw)
   if (direto > 0) return direto
   if (total <= 0) return 0
   const pct = parsePctIndenizar(pctRaw)
@@ -69,7 +76,7 @@ function nipContabilizavel(raw: string | undefined | null): string | null {
 }
 
 function linhaMedicamentoIndenizado(linha: ImhMedicamentoLinha): number {
-  const total = parseValorBrasileiro(linha.total)
+  const total = parseValorBrasileiro(linha.total ?? '')
   return valorIndenizadoFromParts(total, linha.pctIndenizar, linha.valorIndenizar)
 }
 
@@ -80,16 +87,17 @@ function parseQtdConsumo(raw: string | undefined | null): number {
 }
 
 function linhaConsumoIndenizado(row: ConsumoMaterialRow): number {
+  const valorNumerico = typeof row.valorNumerico === 'number' ? row.valorNumerico : 0
   const total =
-    row.valorNumerico > 0
-      ? row.valorNumerico
+    valorNumerico > 0
+      ? valorNumerico
       : parseValorBrasileiro(row.valor) ||
         parseValorBrasileiro(row.valorUnitario) * parseQtdConsumo(row.qtd)
   return valorIndenizadoFromParts(total, row.pctIndenizar, row.valorIndenizar)
 }
 
 function linhaImhAbaIndenizado(linha: ImhAbaLinha): number {
-  const total = parseValorBrasileiro(linha.valorTotal)
+  const total = parseValorBrasileiro(linha.valorTotal ?? '')
   return valorIndenizadoFromParts(total, linha.pctIndenizar)
 }
 
@@ -142,11 +150,12 @@ function registrarLinha(
   if (excluidos.has(linhaKey)) return
   const nipKey = nipContabilizavel(nip)
   if (!nipKey || valorIndenizado <= 0) return
-  if (!data.trim()) return
+  const dataTrimmed = (data ?? '').trim()
+  if (!dataTrimmed) return
 
   map.set(linhaKey, {
     linhaKey,
-    data: data.trim(),
+    data: dataTrimmed,
     valorIndenizado,
     nip: nipKey,
   })
@@ -158,10 +167,11 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
   const excluidos = buildExclusoesDevolucao(data)
 
   for (const [clinicaId, consumo] of Object.entries(data.consumoPlanilha ?? {})) {
-    const rows: ConsumoMaterialRow[] = [
-      ...(consumo.extraRows ?? []),
-      ...(consumo.abasExtras ?? []).flatMap((aba) => aba.extraRows ?? []),
-    ]
+    const abasExtras = Array.isArray(consumo.abasExtras) ? consumo.abasExtras : []
+    const rows: ConsumoMaterialRow[] = normalizeConsumoMaterialRows([
+      ...(Array.isArray(consumo.extraRows) ? consumo.extraRows : []),
+      ...abasExtras.flatMap((aba) => (Array.isArray(aba?.extraRows) ? aba.extraRows : [])),
+    ])
     for (const row of rows) {
       registrarLinha(map, {
         clinicaId,
@@ -174,8 +184,12 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
     }
   }
 
-  for (const [clinicaId, state] of Object.entries(data.planilhasLivres ?? {})) {
-    for (const row of state.consumoMaterialConsignado ?? []) {
+  for (const [clinicaId, raw] of Object.entries(data.planilhasLivres ?? {})) {
+    const consumoRows = normalizeConsumoMaterialRows(raw?.consumoMaterialConsignado)
+    const imhMedicamento = normalizeImhMedicamentoForm(raw?.imhMedicamento)
+    const imh = normalizeImhAbaForm(raw?.imh)
+
+    for (const row of consumoRows) {
       registrarLinha(map, {
         clinicaId,
         linhaId: row.id,
@@ -186,7 +200,7 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
       })
     }
 
-    for (const linha of state.imhMedicamento?.linhas ?? []) {
+    for (const linha of imhMedicamento.linhas) {
       registrarLinha(map, {
         clinicaId,
         linhaId: linha.id,
@@ -197,7 +211,7 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
       })
     }
 
-    for (const linha of state.imh?.linhas ?? []) {
+    for (const linha of imh.linhas) {
       registrarLinha(map, {
         clinicaId,
         linhaId: linha.id,

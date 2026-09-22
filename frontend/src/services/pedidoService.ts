@@ -280,7 +280,7 @@ export const pedidoService = {
         return {
           pedidoId: p.id,
           pedidoNumero: p.numero,
-          solempNumero: p.solemp!.numero,
+          solempNumero: p.solemp?.numero ?? '—',
           valor: resolveValorSolemp(p),
           ...setor,
           diasNaEtapa: p.diasNaEtapa,
@@ -464,7 +464,14 @@ export const pedidoService = {
         etapa,
         valor,
       })),
-      totalIndenizadoLinhas: coletarLinhasTotalIndenizado(data),
+      totalIndenizadoLinhas: (() => {
+        try {
+          return coletarLinhasTotalIndenizado(data)
+        } catch (err) {
+          console.error('Falha ao coletar total indenizado para o dashboard:', err)
+          return []
+        }
+      })(),
     }
   },
 

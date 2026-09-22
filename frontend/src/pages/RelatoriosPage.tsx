@@ -1,4 +1,4 @@
-import { Grid, Paper, Typography } from '@mui/material'
+import { Alert, Button, Grid, Paper, Typography } from '@mui/material'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
@@ -15,9 +15,30 @@ import {
 } from 'recharts'
 
 export default function RelatoriosPage() {
-  const { data: metrics, isLoading } = useDashboardMetrics()
+  const { data: metrics, isLoading, isError, error, refetch } = useDashboardMetrics()
 
-  if (isLoading || !metrics) return <LoadingSpinner />
+  if (isLoading) return <LoadingSpinner />
+  if (isError) {
+    return (
+      <>
+        <PageHeader
+          title="Relatórios"
+          subtitle="Indicadores consolidados para análise gerencial"
+        />
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => void refetch()}>
+              Tentar de novo
+            </Button>
+          }
+        >
+          {error instanceof Error ? error.message : 'Falha ao carregar os relatórios.'}
+        </Alert>
+      </>
+    )
+  }
+  if (!metrics) return <LoadingSpinner />
 
   const relatorioResumo = [
     { indicador: 'Total de processos', valor: metrics.totalProcessos },
