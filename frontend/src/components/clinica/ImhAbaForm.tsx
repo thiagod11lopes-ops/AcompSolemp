@@ -41,6 +41,7 @@ interface ImhAbaFormProps {
   onSelectedImhIdsChange?: (next: Set<string>) => void
   /** Oculta o import local (quando há Importar Planilha na barra de abas). */
   hideImport?: boolean
+  onRequestClear?: () => void
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE', 'OUTRO'] as const
@@ -77,6 +78,7 @@ export function ImhAbaForm({
   selectedImhIds,
   onSelectedImhIdsChange,
   hideImport = false,
+  onRequestClear,
 }: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -474,6 +476,7 @@ export function ImhAbaForm({
           onImportClick={hideImport ? undefined : handleImportClick}
           onEditLinha={handleEditLinha}
           onDeleteLinha={handleDeleteLinha}
+          onRequestClear={onRequestClear}
         />
         {!hideImport ? (
           <ConmedEscolherAbaModal

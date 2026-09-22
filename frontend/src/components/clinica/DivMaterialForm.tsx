@@ -4,6 +4,7 @@ import {
   Checkbox,
   FormControl,
   FormControlLabel,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -16,6 +17,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { useMemo, useState } from 'react'
 import type { ConmedComrjFormData, Empresa } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
@@ -40,6 +42,7 @@ interface DivMaterialFormProps {
   selectedIds?: Set<string>
   onSelectedIdsChange?: (next: Set<string>) => void
   finalizedIds?: Set<string>
+  onRequestClear?: () => void
 }
 
 const MESES_OPCOES = [
@@ -124,6 +127,7 @@ export function DivMaterialForm({
   selectedIds,
   onSelectedIdsChange,
   finalizedIds,
+  onRequestClear,
 }: DivMaterialFormProps) {
   const [filtroMes, setFiltroMes] = useState(() => new Date().getMonth() + 1)
   const [filtroAno, setFiltroAno] = useState(() => new Date().getFullYear())
@@ -305,6 +309,17 @@ export function DivMaterialForm({
               {linhasFiltradas.length} de {linhas.length} registro(s)
               {selectionEnabled && selection.size > 0 ? ` · ${selection.size} marcado(s)` : ''}
             </Typography>
+            {onRequestClear ? (
+              <IconButton
+                size="small"
+                aria-label="Apagar lançamentos Div. Material"
+                onClick={onRequestClear}
+                disabled={linhas.length === 0}
+                sx={{ color: 'error.main' }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            ) : null}
           </Box>
         </Box>
 

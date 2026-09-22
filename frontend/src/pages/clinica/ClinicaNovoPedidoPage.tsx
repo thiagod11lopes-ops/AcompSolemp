@@ -25,6 +25,10 @@ import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaMo
 import { DivMaterialForm } from '@/components/clinica/DivMaterialForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
 import { ImhDivMaterialEnvioModal } from '@/components/clinica/ImhDivMaterialEnvioModal'
+import {
+  PlanilhaApagarModal,
+  type PlanilhaApagarConfirmacao,
+} from '@/components/clinica/PlanilhaApagarModal'
 import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
 import { ListaMedicamentosForm } from '@/components/clinica/ListaMedicamentosForm'
 import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpreadsheet'
@@ -71,7 +75,9 @@ import {
 } from '@/utils/consumoMaterialOds'
 import {
   createPedidoLoteId,
+  dataPertenceAoMes,
   findPedidoParaMesmasLinhas,
+  getMesModeloFromParts,
 } from '@/utils/consumoMaterialTemplate'
 import {
   buildControleSolempFromDivMaterial,
@@ -163,6 +169,8 @@ export default function ClinicaNovoPedidoPage() {
   )
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
+  const [apagarOpen, setApagarOpen] = useState(false)
+  const [apagarAbaNome, setApagarAbaNome] = useState('IMH')
   const [importing, setImporting] = useState(false)
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
@@ -419,6 +427,115 @@ export default function ClinicaNovoPedidoPage() {
     if (sheet) applyModeloSheet(sheet)
   }
 
+  const handleRequestClear = (abaNome: string) => {
+    setApagarAbaNome(abaNome)
+    setApagarOpen(true)
+  }
+
+  const handleConfirmApagar = (opts: PlanilhaApagarConfirmacao) => {
+    if (opts.apagarTudo) {
+      const nextImh = EMPTY_IMH_ABA_FORM
+      setConmedForm(EMPTY_CONMED_COMRJ_FORM)
+      setConsumoRows([])
+      setImhForm(nextImh)
+      setSelectedImhIds(new Set())
+      setSelectedDivMaterialIds(new Set())
+      setFinalizedDivMaterialIds(new Set())
+      persist({
+        conmed: EMPTY_CONMED_COMRJ_FORM,
+        consumo: [],
+        imh: nextImh,
+        finalizedDivMaterialIds: [],
+      })
+      setApagarOpen(false)
+      setFeedback({
+        open: true,
+        severity: 'success',
+        message: 'Todo o conteúdo das abas IMH e Div. Material foi apagado.',
+      })
+      return
+    }
+
+    const mesModelo = getMesModeloFromParts(opts.mes, opts.ano)
+    const nextConmed: ConmedComrjFormData = {
+      ...conmedFormRef.current,
+      pacientes: (conmedFormRef.current.pacientes ?? []).filter(
+        (p) => !dataPertenceAoMes(p.data, mesModelo),
+      ),
+    }
+    const nextConsumo = consumoRowsRef.current.filter(
+      (row) => !dataPertenceAoMes(row.data, mesModelo),
+    )
+    const manuaisForaPeriodo = imhFormRef.current.linhas.filter(
+      (linha) =>
+        !linha.id.startsWith('imh-auto-') && !dataPertenceAoMes(linha.data, mesModelo),
+    )
+    const baseImh: ImhAbaFormData = {
+      ...imhFormRef.current,
+      linhas: manuaisForaPeriodo,
+    }
+    const nextImh = syncImhAbaFromFontes(baseImh, {
+      conmed: nextConmed,
+      consumoRows: nextConsumo,
+    })
+    const keptDivIds = new Set(
+      buildDivMaterialLinhas({
+        consumoRows: nextConsumo,
+        conmed: nextConmed,
+        empresas,
+      }).map((l) => l.id),
+    )
+    const nextFinalizedDiv = [...finalizedDivMaterialIdsRef.current].filter((id) =>
+      keptDivIds.has(id),
+    )
+
+    setConmedForm(nextConmed)
+    setConsumoRows(nextConsumo)
+    setImhForm(nextImh)
+    setFinalizedDivMaterialIds(new Set(nextFinalizedDiv))
+    setSelectedImhIds((prev) => {
+      const next = new Set(prev)
+      for (const id of prev) {
+        if (!nextImh.linhas.some((l) => l.id === id)) next.delete(id)
+      }
+      return next
+    })
+    setSelectedDivMaterialIds((prev) => {
+      const next = new Set(prev)
+      for (const id of prev) {
+        if (!keptDivIds.has(id)) next.delete(id)
+      }
+      return next
+    })
+    persist({
+      conmed: nextConmed,
+      consumo: nextConsumo,
+      imh: nextImh,
+      finalizedDivMaterialIds: nextFinalizedDiv,
+    })
+    setApagarOpen(false)
+    const mesNome =
+      [
+        'Janeiro',
+        'Fevereiro',
+        'Março',
+        'Abril',
+        'Maio',
+        'Junho',
+        'Julho',
+        'Agosto',
+        'Setembro',
+        'Outubro',
+        'Novembro',
+        'Dezembro',
+      ][opts.mes - 1] ?? String(opts.mes)
+    setFeedback({
+      open: true,
+      severity: 'success',
+      message: `Lançamentos de ${mesNome}/${opts.ano} removidos de IMH e Div. Material.`,
+    })
+  }
+
   const handleImhChange = useCallback(
     (next: ImhAbaFormData) => {
       setImhForm(next)
@@ -654,6 +771,7 @@ export default function ClinicaNovoPedidoPage() {
           selectedImhIds={selectedImhIds}
           onSelectedImhIdsChange={setSelectedImhIds}
           hideImport
+          onRequestClear={() => handleRequestClear('IMH')}
         />
       )
     }
@@ -666,6 +784,7 @@ export default function ClinicaNovoPedidoPage() {
           selectedIds={selectedDivMaterialIds}
           onSelectedIdsChange={setSelectedDivMaterialIds}
           finalizedIds={finalizedDivMaterialIds}
+          onRequestClear={() => handleRequestClear('Div. Material')}
         />
       )
     }
@@ -788,6 +907,13 @@ export default function ClinicaNovoPedidoPage() {
           if (!isEnviando) setEnvioModalOpen(false)
         }}
         onEnviar={handleEnviarPlanilhas}
+      />
+
+      <PlanilhaApagarModal
+        open={apagarOpen}
+        abaNome={apagarAbaNome}
+        onClose={() => setApagarOpen(false)}
+        onConfirm={handleConfirmApagar}
       />
 
       <Snackbar

@@ -1,5 +1,6 @@
 import {
   DeleteOutlined as DeleteIcon,
+  DeleteOutline as TrashIcon,
   EditOutlined as EditIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
@@ -39,6 +40,7 @@ interface ImhAbaPlanilhaPreviewProps {
   onImportClick?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
+  onRequestClear?: () => void
 }
 
 function dash(value: string): string {
@@ -93,6 +95,7 @@ export function ImhAbaPlanilhaPreview({
   onImportClick,
   onEditLinha,
   onDeleteLinha,
+  onRequestClear,
 }: ImhAbaPlanilhaPreviewProps) {
   const visible = imhFormHasPreviewContent(value)
   const total = calcImhTotalGeral(value)
@@ -223,6 +226,17 @@ export function ImhAbaPlanilhaPreview({
             >
               {importing ? 'Importando…' : 'Importar planilha'}
             </Button>
+          ) : null}
+          {onRequestClear ? (
+            <IconButton
+              size="small"
+              aria-label="Apagar lançamentos IMH"
+              onClick={onRequestClear}
+              disabled={value.linhas.length === 0 && !value.clinica.trim() && !value.numeroCp.trim()}
+              sx={{ ml: 'auto', color: 'error.main' }}
+            >
+              <TrashIcon fontSize="small" />
+            </IconButton>
           ) : null}
         </Box>
 
