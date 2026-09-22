@@ -456,8 +456,16 @@ export default function DashboardPage() {
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1, alignItems: 'stretch' }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              height: '100%',
+              '& > *': { flex: 1, minHeight: 0 },
+            }}
+          >
             <ValorASerIndenizadoCard
               linhas={metrics.valorASerIndenizadoLinhas ?? []}
               periodoTipo={indenizadoPeriodoTipo}
@@ -465,10 +473,6 @@ export default function DashboardPage() {
               onPeriodoTipoChange={setIndenizadoPeriodoTipo}
               onReferenciaChange={setIndenizadoReferencia}
             />
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
             <TotalIndenizadoCard
               linhas={metrics.totalIndenizadoLinhas ?? []}
               periodoTipo={indenizadoPeriodoTipo}
@@ -478,17 +482,21 @@ export default function DashboardPage() {
             />
           </Box>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              height: '100%',
+              '& > *': { flex: 1, minHeight: 0 },
+            }}
+          >
             <EmAndamentoCard
               total={metrics.emAndamento}
               porEtapa={metrics.emAndamentoPorEtapa ?? []}
               onClick={() => setKpiAberto('emAndamento')}
             />
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
             <KpiCard
               title="Concluídos"
               value={metrics.concluidos}
