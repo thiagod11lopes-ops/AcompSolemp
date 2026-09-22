@@ -111,9 +111,21 @@ export const supabaseAuthAdapter = {
   },
 
   /** Aguarda sessão de recovery (link do e-mail) ou sessão já ativa. */
-  async waitForPasswordRecoverySession(timeoutMs = 8000): Promise<Session | null> {
+  async waitForPasswordRecoverySession(timeoutMs = 15000): Promise<Session | null> {
     if (!useSupabaseDataSource()) return null
     const client = getSupabaseClient()
+
+    // PKCE: troca ?code= por sessão (detectSessionInUrl às vezes ainda não terminou)
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (code) {
+      try {
+        const { data, error } = await client.auth.exchangeCodeForSession(code)
+        if (!error && data.session) return data.session
+      } catch {
+        // Pode já ter sido consumido pelo detectSessionInUrl
+      }
+    }
+
     const existing = (await client.auth.getSession()).data.session
     if (existing) return existing
 

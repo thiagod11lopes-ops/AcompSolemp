@@ -17,6 +17,7 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
   const [sessionOk, setSessionOk] = useState(false)
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -37,6 +38,7 @@ export default function ResetPasswordPage() {
       const session = await authService.waitForPasswordRecoverySession()
       if (!cancelled) {
         setSessionOk(Boolean(session))
+        setEmail(session?.user?.email?.trim().toLowerCase() ?? '')
         setReady(true)
       }
     }
@@ -80,7 +82,7 @@ export default function ResetPasswordPage() {
           Redefinir senha
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Defina uma nova senha para o seu e-mail @marinha.mil.br
+          Informe a nova senha para o e-mail do link de recuperação
         </Typography>
       </Box>
 
@@ -112,21 +114,32 @@ export default function ResetPasswordPage() {
         <form onSubmit={(e) => void handleSubmit(e)}>
           <TextField
             fullWidth
+            type="email"
+            label="E-mail"
+            margin="normal"
+            value={email}
+            slotProps={{ input: { readOnly: true } }}
+            helperText="E-mail do link de recuperação (não editável)"
+          />
+          <TextField
+            fullWidth
             type="password"
-            label="Nova senha"
+            label="Nova Senha"
             margin="normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             helperText="Mínimo de 6 caracteres"
             autoFocus
+            autoComplete="new-password"
           />
           <TextField
             fullWidth
             type="password"
-            label="Confirmar senha"
+            label="Repetir senha"
             margin="normal"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
           />
           <Button
             fullWidth
@@ -142,9 +155,7 @@ export default function ResetPasswordPage() {
       )}
 
       <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
-        <RouterLink to="/login">Voltar ao login do gestor</RouterLink>
-        {' · '}
-        <RouterLink to="/clinica/timeline">Timeline</RouterLink>
+        <RouterLink to="/login">Voltar ao login</RouterLink>
       </Typography>
     </Box>
   )

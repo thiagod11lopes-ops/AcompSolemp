@@ -11,24 +11,22 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { RouteErrorBoundary } from '@/components/common/RouteErrorBoundary'
 import { PasswordRecoveryGate } from '@/components/auth/PasswordRecoveryGate'
 import { useAuth } from '@/contexts/AuthContext'
-
-function looksLikePasswordRecoveryLanding(): boolean {
-  if (typeof window === 'undefined') return false
-  const hash = window.location.hash.toLowerCase()
-  const search = window.location.search.toLowerCase()
-  return (
-    hash.includes('type=recovery') ||
-    search.includes('type=recovery') ||
-    hash.includes('type%3drecovery') ||
-    search.includes('type%3drecovery')
-  )
-}
+import { looksLikePasswordRecoveryUrl } from '@/utils/email'
 
 function HomeRedirect() {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
-  // Mantém a home ocupada até o PasswordRecoveryGate processar o hash do e-mail.
-  if (looksLikePasswordRecoveryLanding()) {
-    return <LoadingSpinner />
+  // Encaminha o link do e-mail de recuperação preservando token (hash/query).
+  if (looksLikePasswordRecoveryUrl()) {
+    return (
+      <Navigate
+        to={{
+          pathname: '/redefinir-senha',
+          search: typeof window !== 'undefined' ? window.location.search : '',
+          hash: typeof window !== 'undefined' ? window.location.hash : '',
+        }}
+        replace
+      />
+    )
   }
   if (gestorUser) return <Navigate to="/gestor/dashboard" replace />
   if (financeiroUser) return <Navigate to="/financeiro/pagamentos" replace />

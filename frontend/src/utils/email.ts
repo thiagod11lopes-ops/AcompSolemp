@@ -41,12 +41,11 @@ export function assertMarinhaEmail(email: string): string {
 }
 
 /**
- * Redirect após clicar no link do e-mail.
- * Usa a Site URL (sem /redefinir-senha): ela é sempre permitida no Supabase.
- * PasswordRecoveryGate encaminha para /redefinir-senha.
+ * Redirect após clicar no link do e-mail de recuperação.
+ * Aponta para /redefinir-senha (incluir essa URL em Redirect URLs no Supabase).
  */
 export function passwordResetRedirectUrl(): string {
-  const productionSite = 'https://thiagod11lopes-ops.github.io/AcompSolemp'
+  const productionSite = 'https://thiagod11lopes-ops.github.io/AcompSolemp/redefinir-senha'
 
   if (typeof window === 'undefined') return productionSite
 
@@ -55,5 +54,27 @@ export function passwordResetRedirectUrl(): string {
   }
 
   const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
-  return `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
+  const origin = `${window.location.origin}${base === '/' ? '' : base}`.replace(/\/$/, '')
+  return `${origin}/redefinir-senha`
+}
+
+/** Detecta se a URL atual veio do link de recuperação de senha do Supabase. */
+export function looksLikePasswordRecoveryUrl(
+  hash = typeof window !== 'undefined' ? window.location.hash : '',
+  search = typeof window !== 'undefined' ? window.location.search : '',
+  pathname = typeof window !== 'undefined' ? window.location.pathname : '',
+): boolean {
+  const h = hash.toLowerCase()
+  const s = search.toLowerCase()
+  const path = pathname.toLowerCase()
+  if (
+    h.includes('type=recovery') ||
+    s.includes('type=recovery') ||
+    h.includes('type%3drecovery') ||
+    s.includes('type%3drecovery')
+  ) {
+    return true
+  }
+  // PKCE: o redirect aponta para /redefinir-senha com ?code=
+  return s.includes('code=') && path.includes('redefinir-senha')
 }
