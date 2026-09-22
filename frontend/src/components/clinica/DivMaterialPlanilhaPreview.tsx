@@ -78,6 +78,50 @@ function wrapEvery(value: string, size: number): string {
   return parts.join('\n')
 }
 
+/** Conteúdo com quebra forçada (vence o nowrap do .excel-sheet-grid). */
+function DescricaoMaterialCell({ text }: { text: string }) {
+  return (
+    <Box
+      component="div"
+      className="excel-cell-wrap"
+      sx={{
+        display: 'block',
+        width: '50ch',
+        maxWidth: '50ch',
+        whiteSpace: 'pre-wrap !important',
+        wordBreak: 'break-all',
+        overflowWrap: 'anywhere',
+        overflow: 'visible !important',
+        lineHeight: 1.35,
+      }}
+    >
+      {wrapEvery(text, 50)}
+    </Box>
+  )
+}
+
+const descricaoMaterialCellSx = {
+  ...({
+    border: EXCEL_SHEET.border,
+    fontFamily: EXCEL_SHEET.fontFamily,
+    fontSize: EXCEL_SHEET.fontSize,
+    py: 0.75,
+    px: 1,
+    color: EXCEL_SHEET.text,
+    bgcolor: EXCEL_SHEET.cellBg,
+  } as const),
+  width: '50ch',
+  maxWidth: '50ch',
+  minWidth: '50ch',
+  whiteSpace: 'pre-wrap !important',
+  overflow: 'visible !important',
+  textOverflow: 'unset',
+  wordBreak: 'break-all',
+  overflowWrap: 'anywhere',
+  verticalAlign: 'top' as const,
+  lineHeight: 1.35,
+} as const
+
 function diasNoMes(mes: number, ano: number): number {
   return new Date(ano, mes, 0).getDate()
 }
@@ -355,7 +399,7 @@ export function DivMaterialPlanilhaPreview({
             }}
           >
             <Box
-              className="excel-sheet-grid"
+              className="excel-sheet-grid excel-sheet-wrap"
               sx={{
                 width: 'fit-content',
                 maxWidth: '100%',
@@ -411,7 +455,16 @@ export function DivMaterialPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {DIV_MATERIAL_COLUNAS.map((col) => (
-                      <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
+                      <TableCell
+                        key={col.key}
+                        sx={{
+                          ...headerSx,
+                          minWidth: col.key === 'descricaoMaterial' ? '50ch' : col.width,
+                          maxWidth: col.key === 'descricaoMaterial' ? '50ch' : undefined,
+                          whiteSpace:
+                            col.key === 'descricaoMaterial' ? 'normal' : headerSx.whiteSpace,
+                        }}
+                      >
                         {col.label}
                       </TableCell>
                     ))}
@@ -473,24 +526,23 @@ export function DivMaterialPlanilhaPreview({
                               />
                             </TableCell>
                           ) : null}
-                          {DIV_MATERIAL_COLUNAS.map((col) => (
-                            <TableCell
-                              key={col.key}
-                              sx={{
-                                ...cellSx,
-                                minWidth: col.width,
-                                whiteSpace:
-                                  col.key === 'descricaoMaterial' ? 'pre-wrap' : 'nowrap',
-                                maxWidth:
-                                  col.key === 'descricaoMaterial' ? col.width + 80 : undefined,
-                                lineHeight: col.key === 'descricaoMaterial' ? 1.35 : undefined,
-                              }}
-                            >
-                              {col.key === 'descricaoMaterial'
-                                ? wrapEvery(String(linha[col.key] ?? ''), 50)
-                                : dash(String(linha[col.key] ?? ''))}
-                            </TableCell>
-                          ))}
+                          {DIV_MATERIAL_COLUNAS.map((col) =>
+                            col.key === 'descricaoMaterial' ? (
+                              <TableCell key={col.key} sx={descricaoMaterialCellSx}>
+                                <DescricaoMaterialCell text={String(linha[col.key] ?? '')} />
+                              </TableCell>
+                            ) : (
+                              <TableCell
+                                key={col.key}
+                                sx={{
+                                  ...cellSx,
+                                  minWidth: col.width,
+                                }}
+                              >
+                                {dash(String(linha[col.key] ?? ''))}
+                              </TableCell>
+                            ),
+                          )}
                           <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
                             <IconButton
                               size="small"
