@@ -115,6 +115,9 @@ export const supabaseAuthAdapter = {
     if (!useSupabaseDataSource()) return null
     const client = getSupabaseClient()
 
+    const fromHash = await sessionFromRecoveryHash(client)
+    if (fromHash) return fromHash
+
     // PKCE: troca ?code= por sessão (detectSessionInUrl às vezes ainda não terminou)
     const code = new URLSearchParams(window.location.search).get('code')
     if (code) {
@@ -130,20 +133,57 @@ export const supabaseAuthAdapter = {
     if (existing) return existing
 
     return new Promise((resolve) => {
-      const timer = window.setTimeout(() => {
+      let settled = false
+      const finish = (session: Session | null) => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(timer)
         subscription.unsubscribe()
-        void client.auth.getSession().then(({ data }) => resolve(data.session))
+        resolve(session)
+      }
+
+      const timer = window.setTimeout(() => {
+        void client.auth.getSession().then(({ data }) => finish(data.session))
       }, timeoutMs)
 
       const {
         data: { subscription },
       } = client.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-          window.clearTimeout(timer)
-          subscription.unsubscribe()
-          resolve(session)
+          finish(session)
         }
+      })
+
+      // Segunda tentativa no hash (client pode ter processado o detectSessionInUrl)
+      void sessionFromRecoveryHash(client).then((session) => {
+        if (session) finish(session)
       })
     })
   },
+}
+
+/** Tokens implícitos do e-mail: #access_token=...&type=recovery */
+async function sessionFromRecoveryHash(
+  client: ReturnType<typeof getSupabaseClient>,
+): Promise<Session | null> {
+  const raw = window.location.hash.replace(/^#/, '')
+  if (!raw) return null
+  const params = new URLSearchParams(raw)
+  const access_token = params.get('access_token')
+  const refresh_token = params.get('refresh_token')
+  const type = params.get('type')
+  if (!access_token || !refresh_token) return null
+  if (type && type !== 'recovery' && type !== 'invite' && type !== 'magiclink') {
+    return null
+  }
+  try {
+    const { data, error } = await client.auth.setSession({ access_token, refresh_token })
+    if (error || !data.session) return null
+    // Limpa o hash para não reprocessar ao salvar a senha
+    const path = `${window.location.pathname}${window.location.search}`
+    window.history.replaceState(null, '', path)
+    return data.session
+  } catch {
+    return null
+  }
 }
