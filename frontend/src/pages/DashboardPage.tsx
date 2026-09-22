@@ -381,81 +381,82 @@ export default function DashboardPage() {
         subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
       />
 
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Total"
-            value={metrics.totalProcessos}
-            subtitle="Clique para detalhes"
-            icon={<AssignmentIcon />}
-            onClick={() => setKpiAberto('total')}
-          />
+      <Grid container spacing={2} alignItems="stretch">
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Total"
+                value={metrics.totalProcessos}
+                subtitle="Clique para detalhes"
+                icon={<AssignmentIcon />}
+                onClick={() => setKpiAberto('total')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Concluídos"
+                value={metrics.concluidos}
+                subtitle="Clique para detalhes"
+                icon={<CheckCircleIcon />}
+                color={premiumTokens.green}
+                onClick={() => setKpiAberto('concluidos')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Atrasados"
+                value={metrics.atrasados}
+                subtitle="Clique para detalhes"
+                icon={<WarningIcon />}
+                color={premiumTokens.red}
+                onClick={() => setKpiAberto('atrasados')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Em andamento"
+                value={metrics.emAndamento}
+                subtitle="Clique para detalhes"
+                icon={<PendingActionsIcon />}
+                color={premiumTokens.yellow}
+                onClick={() => setKpiAberto('emAndamento')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Próx. vencimento"
+                value={metrics.proximosVencimento}
+                subtitle="Clique para detalhes"
+                icon={<ScheduleIcon />}
+                color={premiumTokens.purple}
+                onClick={() => setKpiAberto('proximos')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <KpiCard
+                title="Tempo Médio de Finalização"
+                value={`${metrics.tempoMedioPagamento}d`}
+                subtitle="Clique para detalhes"
+                icon={<ScheduleIcon />}
+                onClick={() => setKpiAberto('tempoMedio')}
+              />
+            </Grid>
+          </Grid>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Em andamento"
-            value={metrics.emAndamento}
-            subtitle={
-              (metrics.emAndamentoPorEtapa ?? []).length === 0
-                ? 'Nenhum PED ativo — clique para detalhes'
-                : `${(metrics.emAndamentoPorEtapa ?? []).length} card${
-                    (metrics.emAndamentoPorEtapa ?? []).length === 1 ? '' : 's'
-                  } da timeline com PED — clique para detalhes`
-            }
-            icon={<PendingActionsIcon />}
-            color={premiumTokens.yellow}
-            onClick={() => setKpiAberto('emAndamento')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Concluídos"
-            value={metrics.concluidos}
-            subtitle="Clique para detalhes"
-            icon={<CheckCircleIcon />}
-            color={premiumTokens.green}
-            onClick={() => setKpiAberto('concluidos')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Próx. vencimento"
-            value={metrics.proximosVencimento}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            color={premiumTokens.purple}
-            onClick={() => setKpiAberto('proximos')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Atrasados"
-            value={metrics.atrasados}
-            subtitle="Clique para detalhes"
-            icon={<WarningIcon />}
-            color={premiumTokens.red}
-            onClick={() => setKpiAberto('atrasados')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-          <KpiCard
-            title="Tempo Médio de Finalização"
-            value={`${metrics.tempoMedioPagamento}d`}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            onClick={() => setKpiAberto('tempoMedio')}
-          />
+
+        <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
+            <EmAndamentoCard
+              total={metrics.emAndamento}
+              porEtapa={metrics.emAndamentoPorEtapa ?? []}
+              onClick={() => setKpiAberto('emAndamento')}
+            />
+          </Box>
         </Grid>
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <EmAndamentoCard
-            total={metrics.emAndamento}
-            porEtapa={metrics.emAndamentoPorEtapa ?? []}
-            onClick={() => setKpiAberto('emAndamento')}
-          />
-        </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
             title="Aguardando Empenho"

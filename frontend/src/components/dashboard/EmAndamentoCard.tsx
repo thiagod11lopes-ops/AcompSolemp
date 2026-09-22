@@ -78,8 +78,10 @@ export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardPro
               display: 'flex',
               flexDirection: 'column',
               gap: 0.75,
-              maxHeight: 220,
+              maxHeight: { xs: 220, lg: 'none' },
               overflowY: 'auto',
+              flex: 1,
+              minHeight: 0,
             }}
           >
             {porEtapa.map((item) => (
