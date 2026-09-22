@@ -19,6 +19,7 @@ import {
   type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
 import { formatImhData, formatImhNip, formatImhUppercase } from '@/utils/imhAbaForm'
+import { formatValorBrasileiro, parseValorBrasileiro } from '@/utils/consumoMaterialOds'
 
 interface DivMaterialFormProps {
   linhas: DivMaterialLinha[]
@@ -61,6 +62,10 @@ function formatFieldValue(key: keyof DivMaterialLinha, raw: string): string {
   if (key === 'nip') return formatImhNip(raw)
   if (key === 'cnpj') return formatCnpj(raw) || raw.replace(/\D/g, '').slice(0, 14)
   if (key === 'dataProcedimento') return formatImhData(raw)
+  if (key === 'valorTotal') {
+    const n = parseValorBrasileiro(raw)
+    return n > 0 ? formatValorBrasileiro(n) : raw
+  }
   if (
     key === 'modalidadeLicitatoria' ||
     key === 'descricaoMaterial' ||

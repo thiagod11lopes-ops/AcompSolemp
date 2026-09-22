@@ -1,6 +1,10 @@
 import type { ConmedComrjFormData, Empresa } from '@/types'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
+  formatValorBrasileiro,
+  parseValorBrasileiro,
+} from '@/utils/consumoMaterialOds'
+import {
   CONTROLE_SOLEMP_DIVISAO_PADRAO,
   type ControleSolempPlanilha,
 } from '@/utils/controleSolempTemplate'
@@ -24,6 +28,8 @@ export interface DivMaterialLinha {
   cnpj: string
   dataProcedimento: string
   anexoAtaHomologacao: string
+  /** Mesmo VALOR TOTAL da aba IMH (unitário × quantidade). */
+  valorTotal: string
   /** Chave estável nip|data|origem */
   sourceKey: string
 }
@@ -48,9 +54,39 @@ export const DIV_MATERIAL_COLUNAS = [
     label: 'Em anexo a ata ou termo de homologação',
     width: 200,
   },
+  { key: 'valorTotal', label: 'Valor Total', width: 110 },
 ] as const
 
 export type DivMaterialColunaKey = (typeof DIV_MATERIAL_COLUNAS)[number]['key']
+
+function parseQuantidadeLikeImh(raw: string | undefined | null): number {
+  const cleaned = (raw ?? '').trim().replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(cleaned)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/**
+ * Mesma regra de VALOR TOTAL da IMH (`withRecalculatedImhLinha`):
+ * unitário × quantidade; se não houver unitário, usa o valor total informado.
+ */
+export function resolveValorTotalLikeImh(parts: {
+  valorUnit?: string
+  quantidade?: string
+  valorTotal?: string
+  valorNumerico?: number
+  valor?: string
+}): string {
+  const unitStr =
+    (parts.valorUnit ?? '').trim() ||
+    (typeof parts.valorNumerico === 'number' && parts.valorNumerico > 0
+      ? formatValorBrasileiro(parts.valorNumerico)
+      : (parts.valor ?? '').trim())
+  const unit = parseValorBrasileiro(unitStr)
+  const qtd = parseQuantidadeLikeImh(parts.quantidade) || (unit > 0 ? 1 : 0)
+  const total =
+    qtd > 0 && unit > 0 ? unit * qtd : parseValorBrasileiro(parts.valorTotal ?? '')
+  return total > 0 ? formatValorBrasileiro(total) : ''
+}
 
 function normData(raw: string): string {
   return raw.trim()
@@ -162,6 +198,13 @@ function rowFromConsumo(
     cnpj,
     dataProcedimento: data,
     anexoAtaHomologacao: row.ata.trim(),
+    valorTotal: resolveValorTotalLikeImh({
+      valorUnit: row.valorUnitario,
+      quantidade: row.qtd.trim() || '1',
+      valorTotal: row.valor,
+      valorNumerico: row.valorNumerico,
+      valor: row.valor,
+    }),
   }
 }
 
@@ -200,6 +243,7 @@ function rowsFromConmed(
         cnpj,
         dataProcedimento: data,
         anexoAtaHomologacao: '',
+        valorTotal: '',
       })
       existingKeys.add(sourceKey)
       continue
@@ -228,6 +272,11 @@ function rowsFromConmed(
         cnpj,
         dataProcedimento: data,
         anexoAtaHomologacao: '',
+        valorTotal: resolveValorTotalLikeImh({
+          valorUnit: mat.valorUnit,
+          quantidade: mat.qt.trim() || '1',
+          valorTotal: mat.valorTotal,
+        }),
       })
       existingKeys.add(sourceKey)
     }
@@ -344,6 +393,7 @@ export function createEmptyDivMaterialLinha(): DivMaterialLinha {
     cnpj: '',
     dataProcedimento: '',
     anexoAtaHomologacao: '',
+    valorTotal: '',
     sourceKey: '',
   }
 }
@@ -358,11 +408,14 @@ export function withNormalizedDivMaterialLinha(linha: DivMaterialLinha): DivMate
   const sourceKey =
     linha.sourceKey.trim() ||
     buildSourceKey(nip || linha.nip, data, linha.id)
+  const valorTotalRaw = (linha.valorTotal ?? '').trim()
+  const valorTotalParsed = parseValorBrasileiro(valorTotalRaw)
   return {
     ...linha,
     nip,
     dataProcedimento: data,
     sourceKey,
+    valorTotal: valorTotalParsed > 0 ? formatValorBrasileiro(valorTotalParsed) : valorTotalRaw,
   }
 }
 
