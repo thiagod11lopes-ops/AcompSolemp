@@ -26,7 +26,7 @@ import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
   IMH_ABA_INSTITUICAO,
-  calcImhTotalGeral,
+  calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
 } from '@/utils/imhAbaForm'
@@ -109,7 +109,6 @@ export function ImhAbaPlanilhaPreview({
   onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const visible = imhFormHasPreviewContent(value)
-  const total = calcImhTotalGeral(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
@@ -117,6 +116,10 @@ export function ImhAbaPlanilhaPreview({
   const linhasFiltradas = useMemo(
     () => value.linhas.filter((linha) => linhaPassaNoFiltroData(linha.data, dataFiltro)),
     [value.linhas, dataFiltro],
+  )
+  const somas = useMemo(
+    () => calcImhSomasValorEIndenizar(linhasFiltradas),
+    [linhasFiltradas],
   )
   const selecionaveis = linhasFiltradas.filter((l) => !finalizedIds.has(l.id))
   const allSelected =
@@ -210,13 +213,21 @@ export function ImhAbaPlanilhaPreview({
               sx={{ height: 22, fontWeight: 600, borderColor: EXCEL_SHEET.selectedCheck }}
             />
           ) : null}
-          {total > 0 ? (
-            <Chip
-              size="small"
-              variant="outlined"
-              label={formatValorBrasileiro(total)}
-              sx={{ height: 22, fontWeight: 600 }}
-            />
+          {somas.valorTotal > 0 || somas.pctIndenizar > 0 ? (
+            <>
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`VALOR TOTAL ${formatValorBrasileiro(somas.valorTotal)}`}
+                sx={{ height: 22, fontWeight: 600 }}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`% A INDENIZAR ${formatValorBrasileiro(somas.pctIndenizar)}`}
+                sx={{ height: 22, fontWeight: 600 }}
+              />
+            </>
           ) : null}
 
           <PlanilhaDataFiltros

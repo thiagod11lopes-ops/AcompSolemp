@@ -475,3 +475,17 @@ export function formatImhMoeda(raw: string): string {
 export function calcImhTotalGeral(value: ImhAbaFormData): number {
   return value.linhas.reduce((sum, linha) => sum + parseValorBrasileiro(linha.valorTotal), 0)
 }
+
+/** Somas das colunas VALOR TOTAL e % A INDENIZAR (valores monetários). */
+export function calcImhSomasValorEIndenizar(linhas: ImhAbaLinha[]): {
+  valorTotal: number
+  pctIndenizar: number
+} {
+  return linhas.reduce(
+    (acc, linha) => ({
+      valorTotal: acc.valorTotal + parseValorBrasileiro(linha.valorTotal),
+      pctIndenizar: acc.pctIndenizar + parseValorBrasileiro(linha.pctIndenizar),
+    }),
+    { valorTotal: 0, pctIndenizar: 0 },
+  )
+}
