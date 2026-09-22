@@ -57,12 +57,20 @@ export type ImhAbaColunaKey = (typeof IMH_ABA_COLUNAS)[number]['key']
 export const IMH_ABA_INSTITUICAO = 'MARINHA DO BRASIL'
 export const IMH_ABA_HOSPITAL = 'HOSPITAL NAVAL MARCÍLIO DIAS'
 
+export function isVinculoTitular(vinculo: string): boolean {
+  return vinculo.trim().toUpperCase() === 'TITULAR'
+}
+
 export function withRecalculatedImhLinha(linha: ImhAbaLinha): ImhAbaLinha {
   const qtd = parseQuantidade(linha.quantidade)
   const unit = parseValorBrasileiro(linha.valorUnit)
   const total = qtd > 0 && unit > 0 ? unit * qtd : parseValorBrasileiro(linha.valorTotal)
+  const nip = linha.nip.trim()
+  const nipTitular = isVinculoTitular(linha.vinculo) ? nip : linha.nipTitular.trim()
   return {
     ...linha,
+    nip,
+    nipTitular,
     valorTotal: total > 0 ? formatValorBrasileiro(total) : linha.valorTotal.trim(),
   }
 }

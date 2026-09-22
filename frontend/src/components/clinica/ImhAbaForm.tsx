@@ -22,6 +22,7 @@ import {
   formatImhNumeroCp,
   formatImhQuantidade,
   formatImhUppercase,
+  isVinculoTitular,
   linhaHasContent,
   normalizeImhAbaForm,
   withRecalculatedImhLinha,
@@ -384,11 +385,21 @@ export function ImhAbaForm({
             </TextField>
             <TextField
               label="NIP DO TITULAR"
-              value={linhaDraft.nipTitular}
+              value={
+                isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
+              }
               onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
               placeholder="00.0000.00"
               size="small"
               fullWidth
+              slotProps={{
+                input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
+              }}
+              helperText={
+                isVinculoTitular(linhaDraft.vinculo)
+                  ? 'Igual ao NIP quando o vínculo é TITULAR'
+                  : undefined
+              }
               sx={compactFieldSx}
             />
             <TextField
