@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { flushSync } from 'react-dom'
-import type { AuthUser, LoginCredentials } from '@/types'
+import type { AuthUser, LoginCredentials, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { authService, type DemoModeState, type TimelineLoginResult } from '@/services/authService'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -23,8 +23,16 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials, portal: Portal) => Promise<AuthUser>
   loginGestorSemSenha: () => Promise<AuthUser>
   registerGestor: (credentials: LoginCredentials) => Promise<AuthUser>
-  loginWithEmailTimeline: (email: string, password?: string) => Promise<TimelineLoginResult>
-  registerWithEmailTimeline: (email: string, password: string) => Promise<TimelineLoginResult>
+  loginWithEmailTimeline: (
+    email: string,
+    password?: string,
+    expectedPerfil?: UserRole,
+  ) => Promise<TimelineLoginResult>
+  registerWithEmailTimeline: (
+    email: string,
+    password: string,
+    expectedPerfil?: UserRole,
+  ) => Promise<TimelineLoginResult>
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
@@ -115,17 +123,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser
   }, [])
 
-  const loginWithEmailTimeline = useCallback(async (email: string, password?: string) => {
-    const result = await authService.loginWithEmailTimeline(email, password)
-    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
-    return result
-  }, [])
+  const loginWithEmailTimeline = useCallback(
+    async (email: string, password?: string, expectedPerfil?: UserRole) => {
+      const result = await authService.loginWithEmailTimeline(email, password, expectedPerfil)
+      applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+      return result
+    },
+    [],
+  )
 
-  const registerWithEmailTimeline = useCallback(async (email: string, password: string) => {
-    const result = await authService.registerWithEmailTimeline(email, password)
-    applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
-    return result
-  }, [])
+  const registerWithEmailTimeline = useCallback(
+    async (email: string, password: string, expectedPerfil?: UserRole) => {
+      const result = await authService.registerWithEmailTimeline(email, password, expectedPerfil)
+      applyTimelineLogin({ setClinicaUser, setOrdenadorUser, setFinanceiroUser }, result)
+      return result
+    },
+    [],
+  )
 
   const logout = useCallback(async (portal: Portal) => {
     const current =

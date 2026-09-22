@@ -1,4 +1,4 @@
-import type { AuthUser, LoginCredentials, CredencialUsuario, User } from '@/types'
+import type { AuthUser, LoginCredentials, CredencialUsuario, User, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
 import {
   assertMarinhaEmail,
@@ -24,6 +24,7 @@ import {
   isConfeccaoComCadeiaSolemp,
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
 import { ensureDemoUserById, initDemoAppData } from '@/services/demoCadastrosService'
@@ -43,7 +44,6 @@ import {
   provisionGestorTenant,
 } from '@/data/persistence/supabaseTenant'
 import { assertAccountNotPaused, resolveImpersonation } from '@/data/persistence/supabaseAdmin'
-import type { UserRole } from '@/types'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { getSupabaseClient } from '@/supabase/client'
 import { getAuthErrorMessage, mapSupabaseAuthError } from '@/supabase/authErrors'
@@ -415,6 +415,7 @@ export const authService = {
   async loginWithEmailTimeline(
     email: string,
     password?: string,
+    expectedPerfil?: UserRole,
   ): Promise<TimelineLoginResult> {
     const marinhaEmail = assertMarinhaEmail(email)
 
@@ -427,7 +428,15 @@ export const authService = {
 
       const access = await getEmailAccess(marinhaEmail)
       if (!access) {
-        throw new Error('Email não cadastrado pelo gestor')
+        throw new Error(
+          'E-mail não cadastrado pelo gestor. Peça para liberá-lo na aba Cadastros.',
+        )
+      }
+
+      if (expectedPerfil && access.perfil !== expectedPerfil) {
+        throw new Error(
+          `Este e-mail está cadastrado como ${loginPerfilLabel(access.perfil as UserRole)}. Selecione o perfil correto no login.`,
+        )
       }
 
       const authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
@@ -436,7 +445,13 @@ export const authService = {
 
     const user = findLocalUserByEmail(marinhaEmail)
     if (!user) {
-      throw new Error('Email não cadastrado')
+      throw new Error('E-mail não cadastrado pelo gestor')
+    }
+
+    if (expectedPerfil && user.perfil !== expectedPerfil) {
+      throw new Error(
+        `Este e-mail está cadastrado como ${loginPerfilLabel(user.perfil)}. Selecione o perfil correto no login.`,
+      )
     }
 
     const portal = portalForPerfil(user.perfil)
@@ -448,7 +463,11 @@ export const authService = {
     }
   },
 
-  async registerWithEmailTimeline(email: string, password: string): Promise<TimelineLoginResult> {
+  async registerWithEmailTimeline(
+    email: string,
+    password: string,
+    expectedPerfil?: UserRole,
+  ): Promise<TimelineLoginResult> {
     const marinhaEmail = assertMarinhaEmail(email)
     if (!useSupabaseDataSource()) {
       throw new Error('O cadastro com senha está disponível apenas com autenticação em nuvem.')
@@ -463,6 +482,12 @@ export const authService = {
     if (!access) {
       throw new Error(
         'E-mail não liberado. Peça ao gestor para cadastrá-lo em Cadastros antes de criar a senha.',
+      )
+    }
+
+    if (expectedPerfil && access.perfil !== expectedPerfil) {
+      throw new Error(
+        `Este e-mail está cadastrado como ${loginPerfilLabel(access.perfil as UserRole)}. Selecione o perfil correto no login.`,
       )
     }
 

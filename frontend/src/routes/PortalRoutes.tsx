@@ -3,7 +3,6 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { canAccessGestorRoute, canAccessOrdenadorRoute, canAccessFinanceiroRoute } from '@/utils/permissions'
-import type { Portal } from '@/utils/portal'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { syncRemoteDataWhenAuthenticated } from '@/data/initDataLayer'
@@ -54,7 +53,7 @@ export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
       }
       return <LoadingSpinner />
     }
-    return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <>{children}</>
@@ -83,7 +82,7 @@ export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
       }
       return <LoadingSpinner />
     }
-    return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <>{children}</>
@@ -121,29 +120,22 @@ export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) 
       }
       return <LoadingSpinner />
     }
-    return <Navigate to="/clinica/timeline" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
   return <>{children}</>
 }
 
-export function GuestRoute({
-  children,
-  portal,
-}: {
-  children: ReactNode
-  portal: Portal
-}) {
+export function GuestRoute({ children }: { children: ReactNode }) {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser, isLoading } = useAuth()
 
   if (isLoading) return <LoadingSpinner />
 
-  if (portal === 'gestor' && gestorUser && canAccessGestorRoute(gestorUser.perfil)) {
+  // Login unificado: qualquer sessão ativa volta para o portal correspondente
+  if (gestorUser && canAccessGestorRoute(gestorUser.perfil)) {
     return <Navigate to="/gestor/dashboard" replace />
   }
-
   if (
-    portal === 'clinica' &&
     clinicaUser &&
     (clinicaUser.perfil === 'CLINICA' ||
       clinicaUser.perfil === 'MEDICAMENTO' ||
@@ -151,12 +143,10 @@ export function GuestRoute({
   ) {
     return <Navigate to="/clinica/timelines" replace />
   }
-
-  if (portal === 'ordenador' && ordenadorUser && canAccessOrdenadorRoute(ordenadorUser.perfil)) {
+  if (ordenadorUser && canAccessOrdenadorRoute(ordenadorUser.perfil)) {
     return <Navigate to="/ordenador/timelines" replace />
   }
-
-  if (portal === 'financeiro' && financeiroUser && canAccessFinanceiroRoute(financeiroUser.perfil)) {
+  if (financeiroUser && canAccessFinanceiroRoute(financeiroUser.perfil)) {
     return <Navigate to="/financeiro/pagamentos" replace />
   }
 

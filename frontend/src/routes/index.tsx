@@ -39,7 +39,6 @@ function HomeRedirect() {
 
 const LoginGestorPage = lazy(() => import('@/pages/LoginGestorPage'))
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'))
-const TimelineEntryPage = lazy(() => import('@/pages/clinica/TimelineEntryPage'))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
 const ProcessosPage = lazy(() => import('@/pages/ProcessosPage'))
 const ProcessoDetailPage = lazy(() => import('@/pages/ProcessoDetailPage'))
@@ -92,7 +91,7 @@ export function AppRoutes() {
           <Route
             path="/login"
             element={
-              <GuestRoute portal="gestor">
+              <GuestRoute>
                 <LazyPage>
                   <LoginGestorPage />
                 </LazyPage>
@@ -109,35 +108,21 @@ export function AppRoutes() {
           />
           <Route
             path="/clinica/login"
-            element={<Navigate to="/clinica/timeline" replace />}
+            element={<Navigate to="/login" replace />}
           />
           <Route
             path="/ordenador/login"
-            element={<Navigate to="/clinica/timeline" replace />}
+            element={<Navigate to="/login" replace />}
           />
           <Route
             path="/financeiro/login"
-            element={<Navigate to="/clinica/timeline" replace />}
+            element={<Navigate to="/login" replace />}
           />
         </Route>
 
-        {/* Entrada pública — sempre abre o modal de perfil + senha */}
-        <Route
-          path="/clinica/timeline"
-          element={
-            <LazyPage>
-              <TimelineEntryPage />
-            </LazyPage>
-          }
-        />
-        <Route
-          path="/clinica/timeline/"
-          element={
-            <LazyPage>
-              <TimelineEntryPage />
-            </LazyPage>
-          }
-        />
+        {/* Compatível: porta antiga da Timeline redireciona ao login unificado */}
+        <Route path="/clinica/timeline" element={<Navigate to="/login" replace />} />
+        <Route path="/clinica/timeline/" element={<Navigate to="/login" replace />} />
 
         {/* Portal do Gestor — acesso total */}
         <Route
