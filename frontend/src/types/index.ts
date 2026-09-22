@@ -360,7 +360,15 @@ export interface DashboardMetrics {
   valorPorEtapa: { etapa: string; valor: number }[]
   /** PEDs ativos por card da timeline (etapas ativas, ordenadas) */
   emAndamentoPorEtapa: { etapa: string; quantidade: number; ordem: number }[]
-  /** Linhas indenizáveis das planilhas (medicamento + OPME) para o card Total Indenizado */
+  /**
+   * Valores da coluna % A INDENIZAR ainda em Auditoria ou Contabilidade/IMH
+   * (a serem indenizados).
+   */
+  valorASerIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
+  /**
+   * Valores da coluna % A INDENIZAR já finalizados em Contabilidade/IMH
+   * (total indenizado).
+   */
   totalIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
 }
 

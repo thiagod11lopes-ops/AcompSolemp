@@ -16,7 +16,7 @@ import { KpiCard } from '@/components/common/KpiCard'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
-import { TotalIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
+import { TotalIndenizadoCard, ValorASerIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
 import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
 import type { TotalIndenizadoPeriodoTipo } from '@/utils/totalIndenizado'
 import {
@@ -484,6 +484,15 @@ export default function DashboardPage() {
             icon={<AccountBalanceIcon />}
             color={premiumTokens.green}
             onClick={() => setKpiAberto('totalEmpenhado')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <ValorASerIndenizadoCard
+            linhas={metrics.valorASerIndenizadoLinhas ?? []}
+            periodoTipo={indenizadoPeriodoTipo}
+            referencia={indenizadoReferencia}
+            onPeriodoTipoChange={setIndenizadoPeriodoTipo}
+            onReferenciaChange={setIndenizadoReferencia}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>

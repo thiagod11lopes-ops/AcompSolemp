@@ -328,7 +328,7 @@ export function buildPlanilhaLancamentos(
   return [...fromPedidos, ...extras]
 }
 
-function pedidoPlanilhaArquivada(
+export function pedidoPlanilhaArquivada(
   pedidoId: string,
   planilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>,
   processosArquivados?: ProcessoArquivado[],

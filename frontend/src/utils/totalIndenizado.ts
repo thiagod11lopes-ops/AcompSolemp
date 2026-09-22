@@ -1,16 +1,24 @@
-import type { AppData, ImhAbaLinha, ImhMedicamentoLinha } from '@/types'
+import type { AppData, ImhAbaLinha, ImhMedicamentoLinha, Pedido, WorkflowEtapa } from '@/types'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import {
   calcValorIndenizar,
   normalizeConsumoMaterialRows,
   parseValorBrasileiro,
 } from '@/utils/consumoMaterialOds'
+import { pedidoPlanilhaArquivada } from '@/utils/consumoMaterialTemplate'
 import { normalizeImhAbaForm } from '@/utils/imhAbaForm'
 import { normalizeImhMedicamentoForm } from '@/utils/imhMedicamentoForm'
 import { dateMatchesBalancoPeriodo, type BalancoPeriodoTipo } from '@/utils/medicamentoBalanco'
 import { normalizePacienteNipKey } from '@/utils/pacientesPme'
+import {
+  pedidoEtapaConcluidaParaChave,
+  pedidoPendenteParaChave,
+} from '@/utils/perfilEtapa'
 
 export type TotalIndenizadoPeriodoTipo = BalancoPeriodoTipo
+
+/** Já finalizado em Contabilidade/IMH vs ainda em Auditoria ou Contabilidade/IMH */
+export type IndenizadoLinhaStatus = 'a_indenizar' | 'indenizado'
 
 export interface TotalIndenizadoLinha {
   /** Chave única para deduplicação entre fontes */
@@ -18,11 +26,18 @@ export interface TotalIndenizadoLinha {
   data: string
   valorIndenizado: number
   nip: string
+  status: IndenizadoLinhaStatus
+  pedidoId?: string
 }
 
 export interface TotalIndenizadoFiltro {
   tipo: TotalIndenizadoPeriodoTipo
   referencia: Date
+}
+
+export interface LinhasIndenizadoPorStatus {
+  aIndenizar: TotalIndenizadoLinha[]
+  indenizado: TotalIndenizadoLinha[]
 }
 
 function parseIsoOrBrDate(raw: string | undefined | null): Date | null {
@@ -52,6 +67,11 @@ function parsePctIndenizar(raw: string | undefined | null): number {
   return n > 1 ? n / 100 : n
 }
 
+/**
+ * Valor da coluna % A INDENIZAR:
+ * - se houver valorIndenizar monetário, usa-o;
+ * - senão aplica o percentual sobre o total.
+ */
 function valorIndenizadoFromParts(
   total: number,
   pctRaw: string | null | undefined,
@@ -96,9 +116,12 @@ function linhaConsumoIndenizado(row: ConsumoMaterialRow): number {
   return valorIndenizadoFromParts(total, row.pctIndenizar, row.valorIndenizar)
 }
 
+/** Na aba IMH, a coluna % A INDENIZAR já guarda o valor monetário a indenizar. */
 function linhaImhAbaIndenizado(linha: ImhAbaLinha): number {
+  const direto = parseValorBrasileiro(linha.pctIndenizar)
+  if (direto > 0) return direto
   const total = parseValorBrasileiro(linha.valorTotal ?? '')
-  return valorIndenizadoFromParts(total, linha.pctIndenizar)
+  return valorIndenizadoFromParts(total, '', '')
 }
 
 function buildExclusoesDevolucao(data: AppData): Set<string> {
@@ -134,6 +157,52 @@ function buildExclusoesDevolucao(data: AppData): Set<string> {
   return excluidos
 }
 
+function buildLinhaPedidoIndex(data: AppData): Map<string, Pedido> {
+  const map = new Map<string, Pedido>()
+  for (const pedido of data.pedidos) {
+    const clinicaId = pedido.clinicaId
+    for (const rowId of pedido.consumoRowIds ?? []) {
+      map.set(`${clinicaId}:${rowId}`, pedido)
+    }
+    const planilha = data.pedidoPlanilhaEnvio?.[pedido.id]
+    for (const linha of planilha?.imhMedicamentoLinhas ?? []) {
+      map.set(`${clinicaId}:${linha.id}`, pedido)
+    }
+  }
+  return map
+}
+
+function classificarStatusIndenizado(
+  pedido: Pedido | undefined,
+  etapas: WorkflowEtapa[],
+  data: AppData,
+): IndenizadoLinhaStatus | null {
+  if (!pedido) return null
+
+  const processos = data.processosArquivados
+  const finalizadoImh =
+    pedidoPlanilhaArquivada(pedido.id, data.pedidoPlanilhaEnvio, processos) ||
+    pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH', processos)
+
+  if (finalizadoImh) return 'indenizado'
+
+  const emAuditoria = pedidoPendenteParaChave(
+    pedido,
+    etapas,
+    'DIV_MAT_AUDITORIA',
+    processos,
+  )
+  const emContabilidade = pedidoPendenteParaChave(
+    pedido,
+    etapas,
+    'DIV_MAT_CONTABILIDADE_IMH',
+    processos,
+  )
+
+  if (emAuditoria || emContabilidade) return 'a_indenizar'
+  return null
+}
+
 function registrarLinha(
   map: Map<string, TotalIndenizadoLinha>,
   params: {
@@ -143,9 +212,22 @@ function registrarLinha(
     nip: string
     valorIndenizado: number
     excluidos: Set<string>
+    linhaPedidoIndex: Map<string, Pedido>
+    etapas: WorkflowEtapa[]
+    appData: AppData
   },
 ): void {
-  const { clinicaId, linhaId, data, nip, valorIndenizado, excluidos } = params
+  const {
+    clinicaId,
+    linhaId,
+    data,
+    nip,
+    valorIndenizado,
+    excluidos,
+    linhaPedidoIndex,
+    etapas,
+    appData,
+  } = params
   const linhaKey = `${clinicaId}:${linhaId}`
   if (excluidos.has(linhaKey)) return
   const nipKey = nipContabilizavel(nip)
@@ -153,18 +235,26 @@ function registrarLinha(
   const dataTrimmed = (data ?? '').trim()
   if (!dataTrimmed) return
 
+  const pedido = linhaPedidoIndex.get(linhaKey)
+  const status = classificarStatusIndenizado(pedido, etapas, appData)
+  if (!status) return
+
   map.set(linhaKey, {
     linhaKey,
     data: dataTrimmed,
     valorIndenizado,
     nip: nipKey,
+    status,
+    ...(pedido ? { pedidoId: pedido.id } : {}),
   })
 }
 
-/** Coleta todas as linhas indenizáveis de planilhas medicamento e OPME (sem filtro de período). */
+/** Coleta linhas com valor da coluna % A INDENIZAR, classificadas por etapa IMH. */
 export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinha[] {
   const map = new Map<string, TotalIndenizadoLinha>()
   const excluidos = buildExclusoesDevolucao(data)
+  const linhaPedidoIndex = buildLinhaPedidoIndex(data)
+  const etapas = data.workflowEtapas ?? []
 
   for (const [clinicaId, consumo] of Object.entries(data.consumoPlanilha ?? {})) {
     const abasExtras = Array.isArray(consumo.abasExtras) ? consumo.abasExtras : []
@@ -180,6 +270,9 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
         nip: row.nip,
         valorIndenizado: linhaConsumoIndenizado(row),
         excluidos,
+        linhaPedidoIndex,
+        etapas,
+        appData: data,
       })
     }
   }
@@ -197,6 +290,9 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
         nip: row.nip,
         valorIndenizado: linhaConsumoIndenizado(row),
         excluidos,
+        linhaPedidoIndex,
+        etapas,
+        appData: data,
       })
     }
 
@@ -208,6 +304,9 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
         nip: linha.nip,
         valorIndenizado: linhaMedicamentoIndenizado(linha),
         excluidos,
+        linhaPedidoIndex,
+        etapas,
+        appData: data,
       })
     }
 
@@ -219,11 +318,26 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
         nip: linha.nip,
         valorIndenizado: linhaImhAbaIndenizado(linha),
         excluidos,
+        linhaPedidoIndex,
+        etapas,
+        appData: data,
       })
     }
   }
 
   return [...map.values()]
+}
+
+export function separarLinhasIndenizadoPorStatus(
+  linhas: TotalIndenizadoLinha[],
+): LinhasIndenizadoPorStatus {
+  const aIndenizar: TotalIndenizadoLinha[] = []
+  const indenizado: TotalIndenizadoLinha[] = []
+  for (const linha of linhas) {
+    if (linha.status === 'indenizado') indenizado.push(linha)
+    else aIndenizar.push(linha)
+  }
+  return { aIndenizar, indenizado }
 }
 
 export function calcularTotalIndenizado(

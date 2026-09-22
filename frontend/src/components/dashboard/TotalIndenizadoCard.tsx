@@ -14,6 +14,8 @@ import {
   alpha,
 } from '@mui/material'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined'
+import type { ReactNode } from 'react'
 import type { TotalIndenizadoLinha, TotalIndenizadoPeriodoTipo } from '@/utils/totalIndenizado'
 import {
   calcularTotalIndenizado,
@@ -37,12 +39,19 @@ const MESES = [
   { value: 11, label: 'Dezembro' },
 ] as const
 
-interface TotalIndenizadoCardProps {
+export interface IndenizadoValorCardProps {
+  title: string
+  description: string
   linhas: TotalIndenizadoLinha[]
   periodoTipo: TotalIndenizadoPeriodoTipo
   referencia: Date
   onPeriodoTipoChange: (tipo: TotalIndenizadoPeriodoTipo) => void
   onReferenciaChange: (referencia: Date) => void
+  accent?: string
+  icon?: ReactNode
+  showPeriodoControls?: boolean
+  /** Prefixo único para ids de label (acessibilidade quando há 2 cards) */
+  controlIdPrefix?: string
 }
 
 function toDateInputValue(date: Date): string {
@@ -65,15 +74,19 @@ function anosDisponiveis(linhas: TotalIndenizadoLinha[], referencia: Date): numb
   return [...anos].sort((a, b) => b - a)
 }
 
-export function TotalIndenizadoCard({
+export function IndenizadoValorCard({
+  title,
+  description,
   linhas,
   periodoTipo,
   referencia,
   onPeriodoTipoChange,
   onReferenciaChange,
-}: TotalIndenizadoCardProps) {
-  const accent = premiumTokens.purple
-
+  accent = premiumTokens.purple,
+  icon,
+  showPeriodoControls = true,
+  controlIdPrefix = 'indenizado',
+}: IndenizadoValorCardProps) {
   const total = useMemo(
     () => calcularTotalIndenizado(linhas, { tipo: periodoTipo, referencia }),
     [linhas, periodoTipo, referencia],
@@ -102,7 +115,7 @@ export function TotalIndenizadoCard({
             color="text.secondary"
             sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
           >
-            Total Indenizado
+            {title}
           </Typography>
           <Box
             sx={{
@@ -117,7 +130,7 @@ export function TotalIndenizadoCard({
               border: `1px solid ${alpha(accent, 0.2)}`,
             }}
           >
-            <PaidOutlinedIcon />
+            {icon ?? <PaidOutlinedIcon />}
           </Box>
         </Box>
 
@@ -126,66 +139,91 @@ export function TotalIndenizadoCard({
         </Typography>
 
         <Typography variant="caption" color="text.secondary">
-          Soma do valor a indenizar (IMH) por NIP nas planilhas — {periodoLabel}
+          {description} — {periodoLabel}
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 'auto' }}>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={periodoTipo}
-            onChange={handleTipoChange}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            <ToggleButton value="dia">Dia</ToggleButton>
-            <ToggleButton value="mes">Mês</ToggleButton>
-            <ToggleButton value="ano">Ano</ToggleButton>
-          </ToggleButtonGroup>
-
-          {periodoTipo === 'dia' ? (
-            <TextField
+        {showPeriodoControls ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, mt: 'auto' }}>
+            <ToggleButtonGroup
               size="small"
-              label="Data"
-              type="date"
-              value={toDateInputValue(referencia)}
-              onChange={(e) => {
-                const next = new Date(`${e.target.value}T12:00:00`)
-                if (!Number.isNaN(next.getTime())) onReferenciaChange(next)
-              }}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-          ) : null}
+              exclusive
+              value={periodoTipo}
+              onChange={handleTipoChange}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              <ToggleButton value="dia">Dia</ToggleButton>
+              <ToggleButton value="mes">Mês</ToggleButton>
+              <ToggleButton value="ano">Ano</ToggleButton>
+            </ToggleButtonGroup>
 
-          {periodoTipo === 'mes' ? (
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <FormControl size="small" sx={{ minWidth: 130, flex: 1 }}>
-                <InputLabel id="total-indenizado-mes-label">Mês</InputLabel>
+            {periodoTipo === 'dia' ? (
+              <TextField
+                size="small"
+                label="Data"
+                type="date"
+                value={toDateInputValue(referencia)}
+                onChange={(e) => {
+                  const next = new Date(`${e.target.value}T12:00:00`)
+                  if (!Number.isNaN(next.getTime())) onReferenciaChange(next)
+                }}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+            ) : null}
+
+            {periodoTipo === 'mes' ? (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <FormControl size="small" sx={{ minWidth: 130, flex: 1 }}>
+                  <InputLabel id={`${controlIdPrefix}-mes-label`}>Mês</InputLabel>
+                  <Select
+                    labelId={`${controlIdPrefix}-mes-label`}
+                    label="Mês"
+                    value={referencia.getMonth()}
+                    onChange={(e) => {
+                      const next = new Date(referencia)
+                      next.setMonth(Number(e.target.value))
+                      onReferenciaChange(next)
+                    }}
+                  >
+                    {MESES.map((mes) => (
+                      <MenuItem key={mes.value} value={mes.value}>
+                        {mes.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 96 }}>
+                  <InputLabel id={`${controlIdPrefix}-ano-mes-label`}>Ano</InputLabel>
+                  <Select
+                    labelId={`${controlIdPrefix}-ano-mes-label`}
+                    label="Ano"
+                    value={referencia.getFullYear()}
+                    onChange={(e) => {
+                      const next = new Date(referencia)
+                      next.setFullYear(Number(e.target.value))
+                      onReferenciaChange(next)
+                    }}
+                  >
+                    {anosOptions.map((ano) => (
+                      <MenuItem key={ano} value={ano}>
+                        {ano}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            ) : null}
+
+            {periodoTipo === 'ano' ? (
+              <FormControl size="small" sx={{ maxWidth: 120 }}>
+                <InputLabel id={`${controlIdPrefix}-ano-label`}>Ano</InputLabel>
                 <Select
-                  labelId="total-indenizado-mes-label"
-                  label="Mês"
-                  value={referencia.getMonth()}
-                  onChange={(e) => {
-                    const next = new Date(referencia)
-                    next.setMonth(Number(e.target.value))
-                    onReferenciaChange(next)
-                  }}
-                >
-                  {MESES.map((mes) => (
-                    <MenuItem key={mes.value} value={mes.value}>
-                      {mes.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 96 }}>
-                <InputLabel id="total-indenizado-ano-mes-label">Ano</InputLabel>
-                <Select
-                  labelId="total-indenizado-ano-mes-label"
+                  labelId={`${controlIdPrefix}-ano-label`}
                   label="Ano"
                   value={referencia.getFullYear()}
                   onChange={(e) => {
                     const next = new Date(referencia)
                     next.setFullYear(Number(e.target.value))
+                    next.setMonth(0, 1)
                     onReferenciaChange(next)
                   }}
                 >
@@ -196,33 +234,44 @@ export function TotalIndenizadoCard({
                   ))}
                 </Select>
               </FormControl>
-            </Box>
-          ) : null}
-
-          {periodoTipo === 'ano' ? (
-            <FormControl size="small" sx={{ maxWidth: 120 }}>
-              <InputLabel id="total-indenizado-ano-label">Ano</InputLabel>
-              <Select
-                labelId="total-indenizado-ano-label"
-                label="Ano"
-                value={referencia.getFullYear()}
-                onChange={(e) => {
-                  const next = new Date(referencia)
-                  next.setFullYear(Number(e.target.value))
-                  next.setMonth(0, 1)
-                  onReferenciaChange(next)
-                }}
-              >
-                {anosOptions.map((ano) => (
-                  <MenuItem key={ano} value={ano}>
-                    {ano}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ) : null}
-        </Box>
+            ) : null}
+          </Box>
+        ) : (
+          <Box sx={{ mt: 'auto' }} />
+        )}
       </CardContent>
     </Card>
+  )
+}
+
+/** Card: valores ainda em Auditoria ou Contabilidade/IMH */
+export function ValorASerIndenizadoCard(
+  props: Omit<IndenizadoValorCardProps, 'title' | 'description' | 'accent' | 'icon'>,
+) {
+  return (
+    <IndenizadoValorCard
+      {...props}
+      title="Valor a ser indenizado"
+      description="Coluna % A INDENIZAR nos cards Auditoria e Contabilidade/IMH"
+      accent={premiumTokens.orange}
+      icon={<RequestQuoteOutlinedIcon />}
+      controlIdPrefix={props.controlIdPrefix ?? 'a-indenizar'}
+    />
+  )
+}
+
+/** Card: valores já finalizados em Contabilidade/IMH */
+export function TotalIndenizadoCard(
+  props: Omit<IndenizadoValorCardProps, 'title' | 'description' | 'accent' | 'icon'>,
+) {
+  return (
+    <IndenizadoValorCard
+      {...props}
+      title="Total Indenizado"
+      description="Coluna % A INDENIZAR finalizada em Contabilidade/IMH"
+      accent={premiumTokens.purple}
+      icon={<PaidOutlinedIcon />}
+      controlIdPrefix={props.controlIdPrefix ?? 'total-indenizado'}
+    />
   )
 }

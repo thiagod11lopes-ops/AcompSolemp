@@ -22,7 +22,7 @@ import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
-import { coletarLinhasTotalIndenizado } from '@/utils/totalIndenizado'
+import { coletarLinhasTotalIndenizado, separarLinhasIndenizadoPorStatus } from '@/utils/totalIndenizado'
 import { etapaVisivelNaTimeline } from '@/utils/timelineFlow'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
@@ -513,12 +513,20 @@ export const pedidoService = {
         valor,
       })),
       emAndamentoPorEtapa,
-      totalIndenizadoLinhas: (() => {
+      ...(() => {
         try {
-          return coletarLinhasTotalIndenizado(data)
+          const todas = coletarLinhasTotalIndenizado(data)
+          const { aIndenizar, indenizado } = separarLinhasIndenizadoPorStatus(todas)
+          return {
+            valorASerIndenizadoLinhas: aIndenizar,
+            totalIndenizadoLinhas: indenizado,
+          }
         } catch (err) {
-          console.error('Falha ao coletar total indenizado para o dashboard:', err)
-          return []
+          console.error('Falha ao coletar totais de indenização para o dashboard:', err)
+          return {
+            valorASerIndenizadoLinhas: [],
+            totalIndenizadoLinhas: [],
+          }
         }
       })(),
     }
