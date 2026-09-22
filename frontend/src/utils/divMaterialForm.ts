@@ -101,19 +101,20 @@ function rowFromConsumo(
   const fornecedor =
     fornecedorRaw.replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '').replace(/[–—-]/g, ' ').trim() ||
     fornecedorRaw
-  // Mapa de Sala → Vale de sala; coluna Mapa fica vazia (sem fonte no MODELO).
+  // Mapa de Sala → Vale de sala; Processo → Mapa; Vigência → Vigência.
   const valeSala = row.mapaSala.trim() || row.mapa.trim()
+  const processo = conmed?.processo?.trim() || ''
   return {
     id: `div-mat-consumo-${row.id}`,
     sourceKey: buildSourceKey(nip || row.nip, data, `consumo:${row.id}`),
     modalidadeLicitatoria: row.ref.trim() || conmed?.pregaoTad?.trim() || '',
     uasg: '',
-    nupModalidade: conmed?.processo?.trim() || '',
+    nupModalidade: processo,
     numeroItem: row.numero.trim(),
     descricaoMaterial: row.materiais.trim() || row.itemPme.trim(),
     nomePaciente: row.nome.trim() || row.iniciais.trim(),
     nip: nip || row.nip.trim(),
-    mapa: '',
+    mapa: processo,
     valeSala,
     vigencia: conmed?.vigencia?.trim() || '',
     nupSigad: '',
@@ -144,17 +145,18 @@ function rowsFromConmed(
           .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
           .replace(/[–—-]/g, ' ')
           .trim() || fornecedorRaw
+      const processo = conmed.processo.trim()
       out.push({
         id: `div-mat-conmed-${paciente.id}`,
         sourceKey,
         modalidadeLicitatoria: conmed.pregaoTad.trim(),
         uasg: '',
-        nupModalidade: conmed.processo.trim(),
+        nupModalidade: processo,
         numeroItem: '',
         descricaoMaterial: paciente.procedimento.trim(),
         nomePaciente: paciente.iniciais.trim(),
         nip: nip || paciente.nip.trim(),
-        mapa: '',
+        mapa: processo,
         valeSala: '',
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
@@ -175,17 +177,18 @@ function rowsFromConmed(
           .replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/g, '')
           .replace(/[–—-]/g, ' ')
           .trim() || fornecedorRaw
+      const processo = conmed.processo.trim()
       out.push({
         id: `div-mat-conmed-${mat.id}`,
         sourceKey,
         modalidadeLicitatoria: conmed.pregaoTad.trim(),
         uasg: '',
-        nupModalidade: conmed.processo.trim(),
+        nupModalidade: processo,
         numeroItem: mat.item.trim(),
         descricaoMaterial: mat.descricao.trim(),
         nomePaciente: paciente.iniciais.trim(),
         nip: nip || paciente.nip.trim(),
-        mapa: '',
+        mapa: processo,
         valeSala: mat.mapaDaSala.trim(),
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
