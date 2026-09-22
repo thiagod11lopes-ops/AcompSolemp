@@ -298,13 +298,21 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
       if (!label || (!isProcessLabel(rawLabel) && !isProcessLabel(label))) continue
 
       // Valor: próxima célula não vazia que não seja outro rótulo.
-      // VIGÊNCIA no MODELO fica duas colunas à direita do rótulo (c+2).
+      // VIGÊNCIA no MODELO: rótulo mesclado F:G:H; número na mescla J:K:L (col. J = índice 9).
       let value = ''
       if (label.includes('VIGENCIA')) {
-        const atTwoRight = cell(rows, r, c + 2)
-        if (atTwoRight && !isProcessLabel(atTwoRight)) value = atTwoRight
-      }
-      if (!value) {
+        const atJ = cell(rows, r, 9)
+        if (atJ && !isProcessLabel(atJ)) value = atJ
+        if (!value) {
+          for (let k = c + 1; k < Math.min(c + 7, row.length); k++) {
+            const candidate = cell(rows, r, k)
+            if (!candidate) continue
+            if (isProcessLabel(candidate)) break
+            value = candidate
+            break
+          }
+        }
+      } else {
         for (let k = c + 1; k < Math.min(c + 4, row.length); k++) {
           const candidate = cell(rows, r, k)
           if (!candidate) continue
@@ -351,8 +359,8 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
           out.fornecedor = value
         }
         if (!out.vigencia && label.includes('VIGENCIA')) {
-          // Número de vigência: duas colunas à direita do rótulo
-          const vigenciaValue = cell(rows, r, c + 2) || value
+          // Número na mescla J:K:L (índice 9), mesma linha do rótulo
+          const vigenciaValue = cell(rows, r, 9) || cell(rows, r, c + 4) || value
           if (vigenciaValue && !isProcessLabel(vigenciaValue)) out.vigencia = vigenciaValue
         }
       }
@@ -374,6 +382,29 @@ function parseProcessoFromRows(rows: string[][]): Partial<ConmedComrjFormData> {
           }
         }
       }
+    }
+  }
+
+  // VIGÊNCIA: valor na mescla J:K:L da linha do rótulo (MODELO linha 2)
+  if (!out.vigencia) {
+    for (let r = 0; r < Math.min(endExclusive, 5); r++) {
+      for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
+        if (!norm(cell(rows, r, c)).includes('VIGENCIA')) continue
+        const atJ = cell(rows, r, 9)
+        if (atJ && !isProcessLabel(atJ)) {
+          out.vigencia = atJ
+          break
+        }
+        for (let k = c + 1; k < Math.min(c + 7, rows[r].length); k++) {
+          const v = cell(rows, r, k)
+          if (v && !isProcessLabel(v)) {
+            out.vigencia = v
+            break
+          }
+        }
+        if (out.vigencia) break
+      }
+      if (out.vigencia) break
     }
   }
 
