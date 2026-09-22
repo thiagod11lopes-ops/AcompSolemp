@@ -8,11 +8,14 @@ import {
 } from '@mui/material'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import { premiumTokens } from '@/theme/tokens'
+import { formatCurrency } from '@/utils/format'
 
 export interface EmAndamentoPorEtapaItem {
   etapa: string
   quantidade: number
   ordem: number
+  /** Soma % A INDENIZAR quando a etapa é Auditoria ou Contabilidade/IMH */
+  valor?: number
 }
 
 interface EmAndamentoCardProps {
@@ -100,9 +103,23 @@ export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardPro
                   border: `1px solid ${alpha(accent, 0.14)}`,
                 }}
               >
-                <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 0 }}>
-                  {item.etapa}
-                </Typography>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {item.etapa}
+                  </Typography>
+                  {item.valor != null && item.valor > 0 ? (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: accent,
+                        fontWeight: 700,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      % a indenizar {formatCurrency(item.valor)}
+                    </Typography>
+                  ) : null}
+                </Box>
                 <Typography
                   variant="body2"
                   sx={{

@@ -22,7 +22,7 @@ import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
-import { coletarLinhasTotalIndenizado, separarLinhasIndenizadoPorStatus } from '@/utils/totalIndenizado'
+import { coletarLinhasTotalIndenizado, separarLinhasIndenizadoPorStatus, somarPctIndenizarDoPedido } from '@/utils/totalIndenizado'
 import { etapaVisivelNaTimeline } from '@/utils/timelineFlow'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
@@ -474,7 +474,7 @@ export const pedidoService = {
 
     const emAndamentoPorEtapaMap = new Map<
       string,
-      { etapa: string; quantidade: number; ordem: number }
+      { etapa: string; quantidade: number; ordem: number; valor: number }
     >()
     for (const p of emAndamento) {
       for (const etapa of getEtapasAtivasPedido(p, etapas)) {
@@ -482,14 +482,25 @@ export const pedidoService = {
           etapa: etapa.nome,
           quantidade: 0,
           ordem: etapa.ordem,
+          valor: 0,
         }
         current.quantidade += 1
+        if (
+          etapa.chave === 'DIV_MAT_AUDITORIA' ||
+          etapa.chave === 'DIV_MAT_CONTABILIDADE_IMH'
+        ) {
+          current.valor += somarPctIndenizarDoPedido(data, p)
+        }
         emAndamentoPorEtapaMap.set(etapa.id, current)
       }
     }
-    const emAndamentoPorEtapa = Array.from(emAndamentoPorEtapaMap.values()).sort(
-      (a, b) => a.ordem - b.ordem || a.etapa.localeCompare(b.etapa, 'pt-BR'),
-    )
+    const emAndamentoPorEtapa = Array.from(emAndamentoPorEtapaMap.values())
+      .map((item) =>
+        item.valor > 0
+          ? item
+          : { etapa: item.etapa, quantidade: item.quantidade, ordem: item.ordem },
+      )
+      .sort((a, b) => a.ordem - b.ordem || a.etapa.localeCompare(b.etapa, 'pt-BR'))
 
     return {
       totalProcessos: pedidos.length,

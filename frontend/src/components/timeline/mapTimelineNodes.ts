@@ -16,6 +16,30 @@ import type { PedidoPlanilhaEnvioState } from '@/types'
 import { resolvePlanilhaEdgeState } from './timelinePlanilhaPath'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { resolveJustificativaDevolucaoPedido } from '@/utils/devolverPlanilha'
+import { loadAppData } from '@/mocks/seed'
+import { somarPctIndenizarDoPedido } from '@/utils/totalIndenizado'
+
+const ETAPAS_COM_INDENIZAR_NO_CARD = new Set([
+  'DIV_MAT_AUDITORIA',
+  'DIV_MAT_CONTABILIDADE_IMH',
+])
+
+function resolveValorIndenizarNoCard(
+  pedido: PedidoComDetalhes,
+  etapa: WorkflowEtapa,
+  etapas: WorkflowEtapa[],
+  cache: Map<string, number>,
+): number | null {
+  if (!ETAPAS_COM_INDENIZAR_NO_CARD.has(etapa.chave)) return null
+  if (!etapaIniciadaNoPedido(pedido, etapas, etapa.chave)) return null
+
+  let valor = cache.get(pedido.id)
+  if (valor === undefined) {
+    valor = somarPctIndenizarDoPedido(loadAppData(), pedido)
+    cache.set(pedido.id, valor)
+  }
+  return valor > 0 ? valor : null
+}
 
 function resolveHistorico(
   pedido: PedidoComDetalhes,
@@ -126,7 +150,7 @@ export function buildTimelineNode(
   etapa: WorkflowEtapa,
   etapas: WorkflowEtapa[],
   etapasAtivasIds: string[],
-  options?: { isHighlighted?: boolean },
+  options?: { isHighlighted?: boolean; valorIndenizarCache?: Map<string, number> },
 ): TimelineNodeData {
   const historico = resolveHistorico(pedido, etapa, etapas)
   const dispensavel =
@@ -142,6 +166,12 @@ export function buildTimelineNode(
     etapa.chave === 'DIV_MAT_EMPENHADO' || pedido.clinica.tipo === 'empenhado'
       ? resolveEmpenhoExibicao({ etiquetas: pedido.dadosClinica?.etiquetas })
       : null
+  const valorIndenizar = resolveValorIndenizarNoCard(
+    pedido,
+    etapa,
+    etapas,
+    options?.valorIndenizarCache ?? new Map(),
+  )
 
   if (dispensavel) {
     return {
@@ -158,6 +188,7 @@ export function buildTimelineNode(
       processoNumero: resolveProcessoNumero(pedido, etapa),
       solempNumero,
       solempValor,
+      valorIndenizar: null,
       empenhoExibicao,
       observacaoResumo: null,
       edgeAfter: 'waiting',
@@ -218,6 +249,7 @@ export function buildTimelineNode(
     processoNumero: resolveProcessoNumero(pedido, etapa),
     solempNumero,
     solempValor,
+    valorIndenizar,
     empenhoExibicao,
     observacaoResumo: historico?.observacao?.slice(0, 120) ?? null,
     edgeAfter: 'waiting',
@@ -241,10 +273,12 @@ export function buildLinearTimelineNodes(
     : filtrarEtapasParaTimeline(etapas)
   const etapasAtivasIds =
     pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
+  const valorIndenizarCache = new Map<string, number>()
 
   return visiveis.map((etapa) =>
     buildTimelineNode(pedido, etapa, visiveis, etapasAtivasIds, {
       isHighlighted: highlightChave ? etapa.chave === highlightChave : undefined,
+      valorIndenizarCache,
     }),
   )
 }
@@ -258,6 +292,7 @@ export function buildSectionedTimeline(
     pedido.etapasAtivasIds?.length > 0 ? pedido.etapasAtivasIds : [pedido.etapaAtualId]
   const blocos = buildTimelineBlocos(visiveis)
   const sections: TimelineSection[] = []
+  const valorIndenizarCache = new Map<string, number>()
 
   blocos.forEach((bloco, index) => {
     if (bloco.tipo === 'etapa') {
@@ -267,7 +302,9 @@ export function buildSectionedTimeline(
           {
             id: `lane-${bloco.etapa.id}`,
             nodes: [
-              buildTimelineNode(pedido, bloco.etapa, visiveis, etapasAtivasIds),
+              buildTimelineNode(pedido, bloco.etapa, visiveis, etapasAtivasIds, {
+                valorIndenizarCache,
+              }),
             ],
           },
         ],
@@ -282,7 +319,9 @@ export function buildSectionedTimeline(
         id: `${bloco.nome}-${divisao.trilha}`,
         title: tituloGrupoOcultoNaTimeline(bloco.nome) ? undefined : divisao.nome,
         nodes: divisao.etapas.map(({ etapa }) =>
-          buildTimelineNode(pedido, etapa, visiveis, etapasAtivasIds),
+          buildTimelineNode(pedido, etapa, visiveis, etapasAtivasIds, {
+            valorIndenizarCache,
+          }),
         ),
       })),
     })

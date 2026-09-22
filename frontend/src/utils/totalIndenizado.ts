@@ -95,6 +95,71 @@ function nipContabilizavel(raw: string | undefined | null): string | null {
   return key.length >= 4 ? key : null
 }
 
+/** Chave de NIP; se ausente, usa o id da linha para não perder o valor no fluxo. */
+function nipOuLinhaKey(nip: string | undefined | null, linhaId: string): string {
+  return nipContabilizavel(nip) ?? `linha:${linhaId}`
+}
+
+/**
+ * Soma a coluna % A INDENIZAR das linhas vinculadas ao pedido
+ * (IMH aba, IMH medicamento e consumo consignado).
+ */
+export function somarPctIndenizarDoPedido(data: AppData, pedido: Pedido): number {
+  const rowIds = new Set(pedido.consumoRowIds ?? [])
+  const planilha = data.pedidoPlanilhaEnvio?.[pedido.id]
+  for (const linha of planilha?.imhMedicamentoLinhas ?? []) {
+    rowIds.add(linha.id)
+  }
+
+  if (rowIds.size === 0 && !planilha) return 0
+
+  let total = 0
+  const clinicaId = pedido.clinicaId
+
+  const consumo = data.consumoPlanilha?.[clinicaId]
+  if (consumo) {
+    const abasExtras = Array.isArray(consumo.abasExtras) ? consumo.abasExtras : []
+    const rows = normalizeConsumoMaterialRows([
+      ...(Array.isArray(consumo.extraRows) ? consumo.extraRows : []),
+      ...abasExtras.flatMap((aba) => (Array.isArray(aba?.extraRows) ? aba.extraRows : [])),
+    ])
+    for (const row of rows) {
+      if (!rowIds.has(row.id)) continue
+      total += linhaConsumoIndenizado(row)
+    }
+  }
+
+  const livres = data.planilhasLivres?.[clinicaId]
+  if (livres) {
+    const consumoRows = normalizeConsumoMaterialRows(livres.consumoMaterialConsignado)
+    for (const row of consumoRows) {
+      if (!rowIds.has(row.id)) continue
+      total += linhaConsumoIndenizado(row)
+    }
+
+    const imhMedicamento = normalizeImhMedicamentoForm(livres.imhMedicamento)
+    for (const linha of imhMedicamento.linhas) {
+      if (!rowIds.has(linha.id)) continue
+      total += linhaMedicamentoIndenizado(linha)
+    }
+
+    const imh = normalizeImhAbaForm(livres.imh)
+    for (const linha of imh.linhas) {
+      if (!rowIds.has(linha.id)) continue
+      total += linhaImhAbaIndenizado(linha)
+    }
+  }
+
+  // Fallback: planilha IMH medicamento anexada ao pedido
+  if (total <= 0) {
+    for (const linha of planilha?.imhMedicamentoLinhas ?? []) {
+      total += linhaMedicamentoIndenizado(linha)
+    }
+  }
+
+  return total
+}
+
 function linhaMedicamentoIndenizado(linha: ImhMedicamentoLinha): number {
   const total = parseValorBrasileiro(linha.total ?? '')
   return valorIndenizadoFromParts(total, linha.pctIndenizar, linha.valorIndenizar)
@@ -230,8 +295,8 @@ function registrarLinha(
   } = params
   const linhaKey = `${clinicaId}:${linhaId}`
   if (excluidos.has(linhaKey)) return
-  const nipKey = nipContabilizavel(nip)
-  if (!nipKey || valorIndenizado <= 0) return
+  const nipKey = nipOuLinhaKey(nip, linhaId)
+  if (valorIndenizado <= 0) return
   const dataTrimmed = (data ?? '').trim()
   if (!dataTrimmed) return
 
@@ -323,6 +388,34 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
         appData: data,
       })
     }
+  }
+
+  // Pedidos em Auditoria/Contabilidade: garante o valor do fluxo mesmo se a linha
+  // individual falhar filtros (NIP/data) — espelha o card da timeline.
+  for (const pedido of data.pedidos) {
+    const status = classificarStatusIndenizado(pedido, etapas, data)
+    if (!status) continue
+    const jaTem = [...map.values()].some((l) => l.pedidoId === pedido.id)
+    if (jaTem) continue
+    const valor = somarPctIndenizarDoPedido(data, pedido)
+    if (valor <= 0) continue
+    const dataPedido = (() => {
+      const iso = pedido.dataSolicitacao?.trim()
+      if (!iso) return ''
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return ''
+      return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+    })()
+    if (!dataPedido) continue
+    const linhaKey = `pedido:${pedido.id}:indenizar`
+    map.set(linhaKey, {
+      linhaKey,
+      data: dataPedido,
+      valorIndenizado: valor,
+      nip: nipOuLinhaKey(pedido.paciente?.nip, pedido.id),
+      status,
+      pedidoId: pedido.id,
+    })
   }
 
   return [...map.values()]

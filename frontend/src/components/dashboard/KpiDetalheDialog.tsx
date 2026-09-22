@@ -52,7 +52,7 @@ interface KpiDetalheDialogProps {
   /** Tempo médio — breakdown por etapa */
   tempoPorEtapa?: { etapa: string; dias: number }[]
   /** Em andamento — PEDs por card da timeline */
-  quantidadePorEtapa?: { etapa: string; quantidade: number }[]
+  quantidadePorEtapa?: { etapa: string; quantidade: number; valor?: number }[]
 }
 
 function prazoChipColor(
@@ -233,7 +233,11 @@ export function KpiDetalheDialog({
                   key={item.etapa}
                   size="small"
                   variant="outlined"
-                  label={`${item.etapa}: ${item.quantidade} PED${item.quantidade === 1 ? '' : 's'}`}
+                  label={
+                    item.valor != null && item.valor > 0
+                      ? `${item.etapa}: ${item.quantidade} PED${item.quantidade === 1 ? '' : 's'} · ${formatCurrency(item.valor)}`
+                      : `${item.etapa}: ${item.quantidade} PED${item.quantidade === 1 ? '' : 's'}`
+                  }
                 />
               ))}
             </Box>

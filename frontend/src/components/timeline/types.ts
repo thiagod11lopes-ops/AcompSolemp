@@ -21,6 +21,10 @@ export interface TimelineNodeData {
   solempNumero: string | null
   /** Valor da SOLEMP (quando já confeccionada). */
   solempValor: number | null
+  /**
+   * Soma da coluna % A INDENIZAR — exibida nos cards Auditoria e Contabilidade/IMH.
+   */
+  valorIndenizar: number | null
   /** Empenho formatado como `NE (número)` — setor Empenhado. */
   empenhoExibicao: string | null
   observacaoResumo: string | null

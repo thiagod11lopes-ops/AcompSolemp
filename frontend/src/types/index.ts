@@ -359,7 +359,7 @@ export interface DashboardMetrics {
   processosPorMes: { mes: string; total: number; concluidos: number }[]
   valorPorEtapa: { etapa: string; valor: number }[]
   /** PEDs ativos por card da timeline (etapas ativas, ordenadas) */
-  emAndamentoPorEtapa: { etapa: string; quantidade: number; ordem: number }[]
+  emAndamentoPorEtapa: { etapa: string; quantidade: number; ordem: number; valor?: number }[]
   /**
    * Valores da coluna % A INDENIZAR ainda em Auditoria ou Contabilidade/IMH
    * (a serem indenizados).

@@ -55,8 +55,9 @@ export const TimelineCard = memo(function TimelineCard({
   const showSolempMeta =
     ETAPAS_COM_SOLEMP_NO_CARD.has(node.etapa.chave) &&
     Boolean(node.solempNumero || node.solempValor != null)
+  const showIndenizarMeta = Boolean(node.valorIndenizar != null && node.valorIndenizar > 0)
   const showEmpenhoMeta = Boolean(node.empenhoExibicao)
-  const showExtraMeta = showSolempMeta || showEmpenhoMeta
+  const showExtraMeta = showSolempMeta || showEmpenhoMeta || showIndenizarMeta
 
   const cardBody = (
     <motion.article
@@ -153,6 +154,17 @@ export const TimelineCard = memo(function TimelineCard({
               {formatCurrency(node.solempValor)}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {showIndenizarMeta ? (
+        <div className="timeline-card-solemp-meta">
+          <p className="timeline-card-solemp-numero" style={{ color: timelineTheme.text }}>
+            % a indenizar
+          </p>
+          <p className="timeline-card-solemp-valor" style={{ color: timelineTheme.blue }}>
+            {formatCurrency(node.valorIndenizar!)}
+          </p>
         </div>
       ) : null}
 
