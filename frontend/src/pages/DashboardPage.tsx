@@ -435,22 +435,22 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
-            title="Total Empenhado"
-            value={formatCurrency(metrics.valorTotalEmpenhado)}
-            subtitle={subtitleTotalEmpenhado}
-            icon={<AccountBalanceIcon />}
-            color={premiumTokens.green}
-            onClick={() => setKpiAberto('totalEmpenhado')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <KpiCard
             title="Total empenhado do mês"
             value={formatCurrency(mesFiltrado.valor)}
             subtitle={subtitleMes}
             icon={<CalendarMonthIcon />}
             color={premiumTokens.primary}
             onClick={() => setKpiAberto('empenhadoMes')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <KpiCard
+            title="Total Empenhado"
+            value={formatCurrency(metrics.valorTotalEmpenhado)}
+            subtitle={subtitleTotalEmpenhado}
+            icon={<AccountBalanceIcon />}
+            color={premiumTokens.green}
+            onClick={() => setKpiAberto('totalEmpenhado')}
           />
         </Grid>
       </Grid>
@@ -482,21 +482,17 @@ export default function DashboardPage() {
             />
           </Box>
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              height: '100%',
-              '& > *': { flex: 1, minHeight: 0 },
-            }}
-          >
+        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
             <EmAndamentoCard
               total={metrics.emAndamento}
               porEtapa={metrics.emAndamentoPorEtapa ?? []}
               onClick={() => setKpiAberto('emAndamento')}
             />
+          </Box>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
             <KpiCard
               title="Concluídos"
               value={metrics.concluidos}
