@@ -11,6 +11,8 @@ export const EXCEL_SHEET = {
   cellBg: '#ffffff',
   emptyRowBg: '#fafafa',
   selectedBg: '#d6eaf8',
+  /** Linha em edição no formulário (verde opaco) */
+  editingBg: '#a5d6a7',
   hoverBg: '#eef6fc',
   text: '#000000',
   mutedText: '#595959',

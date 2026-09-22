@@ -365,18 +365,25 @@ export function ImhAbaPlanilhaPreview({
                         key={linha.id}
                         sx={{
                           bgcolor: editing
-                            ? EXCEL_SHEET.selectedBg
+                            ? EXCEL_SHEET.editingBg
                             : selection.has(linha.id)
                               ? EXCEL_SHEET.selectedBg
                               : undefined,
-                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                          '& > .MuiTableCell-root': editing
+                            ? { bgcolor: EXCEL_SHEET.editingBg }
+                            : undefined,
+                          '&:hover > .MuiTableCell-root': {
+                            bgcolor: editing ? EXCEL_SHEET.editingBg : EXCEL_SHEET.hoverBg,
+                          },
                         }}
                       >
                         {selectionEnabled ? (
                           <TableCell
                             sx={{
                               ...cellSx,
-                              bgcolor: EXCEL_SHEET.selectHeaderBg,
+                              bgcolor: editing
+                                ? EXCEL_SHEET.editingBg
+                                : EXCEL_SHEET.selectHeaderBg,
                               textAlign: 'center',
                               px: 0.5,
                             }}
