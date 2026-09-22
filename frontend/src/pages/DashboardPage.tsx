@@ -381,7 +381,7 @@ export default function DashboardPage() {
         subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
       />
 
-      <Grid container spacing={2} alignItems="stretch">
+      <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
         <Grid size={{ xs: 12, lg: 8 }}>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 4 }}>
