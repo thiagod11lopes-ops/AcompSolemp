@@ -139,19 +139,25 @@ export function GlobalProcessSearch({ portal, dense = false }: GlobalProcessSear
         <TextField
           {...params}
           placeholder="PED, SOLEMP ou NF"
-          InputProps={{
-            ...params.InputProps,
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" color="action" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <>
-                {isFetching ? <CircularProgress color="inherit" size={16} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
+          slotProps={{
+            ...params.slotProps,
+            input: {
+              ...params.slotProps.input,
+              startAdornment: (
+                <>
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" color="action" />
+                  </InputAdornment>
+                  {params.slotProps.input.startAdornment}
+                </>
+              ),
+              endAdornment: (
+                <>
+                  {isFetching ? <CircularProgress color="inherit" size={16} /> : null}
+                  {params.slotProps.input.endAdornment}
+                </>
+              ),
+            },
           }}
         />
       )}

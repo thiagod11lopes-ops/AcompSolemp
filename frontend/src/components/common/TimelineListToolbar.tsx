@@ -99,7 +99,7 @@ export function TimelineListToolbar({
           size="small"
           type="date"
           label="De"
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
           value={extras.dataDe ?? ''}
           onChange={(e) =>
             onExtrasChange({
@@ -113,7 +113,7 @@ export function TimelineListToolbar({
           size="small"
           type="date"
           label="Até"
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
           value={extras.dataAte ?? ''}
           onChange={(e) =>
             onExtrasChange({
