@@ -22,6 +22,7 @@ import { useAuth, useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
 
@@ -117,7 +118,9 @@ export function ClinicaTopBar() {
           </Typography>
         </Box>
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', px: 1, minWidth: 0 }}>
+          <GlobalProcessSearch portal="clinica" dense />
+        </Box>
 
         <NotificationPanel />
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 0.5 }}>

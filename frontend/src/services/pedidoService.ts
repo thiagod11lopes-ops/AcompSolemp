@@ -231,7 +231,9 @@ function filterPedidos(pedidos: PedidoComDetalhes[], filters?: PedidoFilters) {
         p.numero.toLowerCase().includes(term) ||
         p.clinica.nome.toLowerCase().includes(term) ||
         p.empresa.nomeFantasia.toLowerCase().includes(term) ||
-        p.material.descricao.toLowerCase().includes(term)
+        p.material.descricao.toLowerCase().includes(term) ||
+        Boolean(p.solemp?.numero?.toLowerCase().includes(term)) ||
+        Boolean(p.notaFiscal?.numero?.toLowerCase().includes(term))
       if (!match) return false
     }
     return true

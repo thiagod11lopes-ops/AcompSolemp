@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth, useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
 
@@ -57,9 +58,15 @@ export function FinanceiroTopBar({
         <IconButton edge="start" onClick={onMenuClick} sx={{ mr: 2, display: { md: 'none' } }}>
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
+        <Typography
+          variant="h6"
+          sx={{ flexGrow: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
+        >
           {title}
         </Typography>
+        <Box sx={{ mr: 1.5, display: 'flex', justifyContent: 'flex-end', flexGrow: { xs: 1, sm: 0 } }}>
+          <GlobalProcessSearch portal="financeiro" />
+        </Box>
         <NotificationPanel />
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1 }}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: 'success.main', fontSize: 14 }}>

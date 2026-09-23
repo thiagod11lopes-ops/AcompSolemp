@@ -21,6 +21,7 @@ import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
@@ -82,9 +83,17 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+        <Typography
+          variant="h6"
+          noWrap
+          component="div"
+          sx={{ flexGrow: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
+        >
           {title}
         </Typography>
+        <Box sx={{ flexGrow: { xs: 1, sm: 0 }, mr: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <GlobalProcessSearch portal="gestor" />
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Demonstração da Timeline">
             <IconButton onClick={() => setDemoOpen(true)} color="inherit">
