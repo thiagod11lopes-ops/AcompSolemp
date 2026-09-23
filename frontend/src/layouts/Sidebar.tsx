@@ -20,6 +20,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import UndoIcon from '@mui/icons-material/Undo'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import ScheduleIcon from '@mui/icons-material/Schedule'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -38,6 +39,7 @@ const menuItems = [
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
   { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
   { path: '/gestor/prazos', label: 'Configurar Prazos', icon: <ScheduleIcon /> },
+  { path: '/gestor/balanco', label: 'Balanço', icon: <AccountBalanceWalletIcon /> },
 ]
 
 interface SidebarProps {

@@ -46,6 +46,7 @@ const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
 const GestorArquivadosPage = lazy(() => import('@/pages/GestorArquivadosPage'))
 const ConfigurarPrazosPage = lazy(() => import('@/pages/ConfigurarPrazosPage'))
+const GestorBalancoPage = lazy(() => import('@/pages/GestorBalancoPage'))
 const DemoEntryPage = lazy(() => import('@/pages/gestor/DemoEntryPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
@@ -143,6 +144,7 @@ export function AppRoutes() {
           <Route path="/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
           <Route path="/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
           <Route path="/gestor/prazos" element={<LazyPage><ConfigurarPrazosPage /></LazyPage>} />
+          <Route path="/gestor/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
         </Route>
 
         {/* Demonstração da Timeline — abre em nova aba */}
@@ -217,6 +219,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/gestor/timeline/:id" element={<LazyPage><GestorTimelineDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
             <Route path="/gestor/demo/gestor/prazos" element={<LazyPage><ConfigurarPrazosPage /></LazyPage>} />
+            <Route path="/gestor/demo/gestor/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
           </Route>
           </Route>
         </Route>
