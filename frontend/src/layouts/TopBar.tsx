@@ -71,13 +71,20 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const handleToggleFictional = () => {
     if (fictionalBusy) return
     setFictionalBusy(true)
-    try {
-      const active = toggleFictionalDashboardSeed()
-      setFictionalActive(active)
-      void queryClient.invalidateQueries()
-    } finally {
-      setFictionalBusy(false)
-    }
+    void (async () => {
+      try {
+        const wasActive = isFictionalDashboardSeedActive()
+        const active = await toggleFictionalDashboardSeed()
+        setFictionalActive(active)
+        if (wasActive && !active) {
+          queryClient.setQueriesData({ queryKey: ['demo-pedidos'] }, [])
+          queryClient.removeQueries({ queryKey: ['demo-pedido'] })
+        }
+        await queryClient.invalidateQueries()
+      } finally {
+        setFictionalBusy(false)
+      }
+    })()
   }
 
   return (
@@ -124,7 +131,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
           <Tooltip
             title={
               fictionalActive
-                ? 'Remover dados fictícios e voltar aos dados reais'
+                ? 'Remover dados fictícios, limpar aba Demonstração e voltar aos dados reais'
                 : 'Preencher o sistema com dados fictícios (dashboard)'
             }
           >

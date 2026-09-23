@@ -188,6 +188,17 @@ export function storageRemove(key: string): void {
   })
 }
 
+/** Remove da memória e aguarda exclusão no IndexedDB. */
+export async function storageRemoveAndWait(key: string): Promise<void> {
+  memory.delete(key)
+  try {
+    await idbDelete(key)
+  } catch (err) {
+    console.error('Falha ao remover do IndexedDB', key, err)
+    throw err
+  }
+}
+
 export async function storageClearAll(): Promise<void> {
   memory.clear()
   await idbClear()

@@ -11,6 +11,7 @@ import {
   STORAGE_KEYS,
   storageGet,
   storageRemove,
+  storageRemoveAndWait,
   storageReloadKey,
   storageSet,
   storageSetAndWait,
@@ -873,6 +874,18 @@ export async function clearDemoTimelines(): Promise<void> {
   }
 
   await saveDemoAppDataAndWait(data)
+}
+
+/**
+ * Apaga por completo o armazenamento local de demonstração (IndexedDB).
+ * A aba Timeline → Demonstração fica vazia até a próxima sessão demo.
+ */
+export async function wipeDemoAppDataStore(): Promise<void> {
+  await storageRemoveAndWait(STORAGE_KEYS.DEMO_APP_DATA)
+  if (isDemoDataSession()) {
+    appDataCache = null
+  }
+  notifyDemoAppDataChanged()
 }
 
 export function saveAppData(data: AppData): void {

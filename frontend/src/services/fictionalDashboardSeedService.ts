@@ -10,6 +10,7 @@ import type {
 import {
   loadAppData,
   replaceAppDataCache,
+  wipeDemoAppDataStore,
 } from '@/mocks/seed'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
@@ -348,8 +349,12 @@ export function activateFictionalDashboardSeed(): void {
   replaceAppDataCache(fictional)
 }
 
-export function deactivateFictionalDashboardSeed(): void {
-  if (!isFictionalDashboardSeedActive()) return
+export async function deactivateFictionalDashboardSeed(): Promise<void> {
+  if (!isFictionalDashboardSeedActive()) {
+    // Mesmo sem seed ativo, zera timelines da aba Demonstração se o usuário pediu limpar.
+    await wipeDemoAppDataStore()
+    return
+  }
 
   const raw = storageGet(STORAGE_KEYS.FICTIONAL_BACKUP)
   storageRemove(STORAGE_KEYS.FICTIONAL_ACTIVE)
@@ -360,17 +365,20 @@ export function deactivateFictionalDashboardSeed(): void {
     try {
       const real = JSON.parse(raw) as AppData
       replaceAppDataCache(real)
-      return
     } catch {
-      // fallthrough
+      replaceAppDataCache(loadAppData())
     }
+  } else {
+    replaceAppDataCache(loadAppData())
   }
-  replaceAppDataCache(loadAppData())
+
+  // Dados fictícios do dashboard ≠ aba Demonstração — limpa as duas.
+  await wipeDemoAppDataStore()
 }
 
-export function toggleFictionalDashboardSeed(): boolean {
+export async function toggleFictionalDashboardSeed(): Promise<boolean> {
   if (isFictionalDashboardSeedActive()) {
-    deactivateFictionalDashboardSeed()
+    await deactivateFictionalDashboardSeed()
     return false
   }
   activateFictionalDashboardSeed()

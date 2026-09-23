@@ -10,7 +10,7 @@ import { setOpenAccessSession, useSupabaseDataSource } from '@/config/dataSource
 import {
   applyRemoteAppData,
   clearAppDataCache,
-  clearDemoTimelines,
+  wipeDemoAppDataStore,
   delay,
   generateEmptyTenantData,
   loadAppData,
@@ -802,8 +802,8 @@ export const authService = {
   },
 
   async endDemoMode(): Promise<void> {
-    // Remove timelines criadas na demonstração (IndexedDB local) e sincroniza outras abas.
-    await clearDemoTimelines()
+    // Apaga o armazenamento local da demonstração (aba Timeline → Demonstração).
+    await wipeDemoAppDataStore()
     // Evita que o cache em memória continue com dados da sessão demo.
     clearAppDataCache()
     writeDemoMode(null)
