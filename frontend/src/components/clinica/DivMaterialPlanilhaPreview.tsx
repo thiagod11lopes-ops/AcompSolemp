@@ -1,10 +1,12 @@
 import {
   DeleteOutlined as DeleteIcon,
   DeleteOutlined as TrashIcon,
+  DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
 } from '@mui/icons-material'
 import {
   Box,
+  Button,
   Checkbox,
   Chip,
   IconButton,
@@ -16,13 +18,15 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   DIV_MATERIAL_COLUNAS,
   type DivMaterialLinha,
 } from '@/utils/divMaterialForm'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import {
   linhaPassaNoFiltroData,
   type PlanilhaDataFiltro,
@@ -264,6 +268,7 @@ export function DivMaterialPlanilhaPreview({
   dataFiltro,
   onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
+  const [gerarOpen, setGerarOpen] = useState(false)
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
@@ -362,6 +367,23 @@ export function DivMaterialPlanilhaPreview({
             onChange={onDataFiltroChange}
             datas={datas}
           />
+
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<GerarDocIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setGerarOpen(true)}
+            disabled={linhasFiltradas.length === 0}
+            sx={{
+              ml: 0.5,
+              height: 26,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Gerar Documento
+          </Button>
 
           {onRequestClear ? (
             <IconButton
@@ -562,6 +584,26 @@ export function DivMaterialPlanilhaPreview({
           </Box>
         )}
       </Paper>
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={linhasFiltradas.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          await downloadGerarDocumento(
+            {
+              titulo: 'Divisão de Material',
+              fileBaseName: 'Div-Material',
+              headers: DIV_MATERIAL_COLUNAS.map((c) => c.label),
+              columnWidths: DIV_MATERIAL_COLUNAS.map((c) => c.width),
+              rows: linhasFiltradas.map((linha) =>
+                DIV_MATERIAL_COLUNAS.map((c) => String(linha[c.key] ?? '').trim()),
+              ),
+            },
+            formato,
+          )
+        }}
+      />
     </Box>
   )
 }

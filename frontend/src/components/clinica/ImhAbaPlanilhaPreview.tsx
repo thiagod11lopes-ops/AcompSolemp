@@ -1,6 +1,7 @@
 import {
   DeleteOutlined as DeleteIcon,
   DeleteOutlined as TrashIcon,
+  DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
@@ -18,19 +19,20 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ImhAbaFormData } from '@/types'
+import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
-  IMH_ABA_INSTITUICAO,
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
 } from '@/utils/imhAbaForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
+import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
 import {
   linhaPassaNoFiltroData,
   type PlanilhaDataFiltro,
@@ -108,6 +110,7 @@ export function ImhAbaPlanilhaPreview({
   dataFiltro,
   onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
+  const [gerarOpen, setGerarOpen] = useState(false)
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const selection = selectedImhIds ?? new Set<string>()
@@ -262,6 +265,22 @@ export function ImhAbaPlanilhaPreview({
               {importing ? 'Importando…' : 'Importar planilha'}
             </Button>
           ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<GerarDocIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setGerarOpen(true)}
+            disabled={linhasFiltradas.length === 0}
+            sx={{
+              ml: 0.5,
+              height: 26,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Gerar Documento
+          </Button>
           {onRequestClear ? (
             <IconButton
               size="small"
@@ -491,6 +510,34 @@ export function ImhAbaPlanilhaPreview({
           </Box>
         )}
       </Paper>
+
+      <GerarDocumentoModal
+        open={gerarOpen}
+        disabled={linhasFiltradas.length === 0}
+        onClose={() => setGerarOpen(false)}
+        onConfirm={async (formato) => {
+          const cp = value.numeroCp.trim()
+          const clinica = value.clinica.trim()
+          const tituloParts = [
+            'IMH',
+            clinica || null,
+            cp ? `CP ${cp}` : null,
+            IMH_ABA_HOSPITAL,
+          ].filter(Boolean)
+          await downloadGerarDocumento(
+            {
+              titulo: tituloParts.join(' — '),
+              fileBaseName: 'IMH',
+              headers: IMH_ABA_COLUNAS.map((c) => c.label),
+              columnWidths: IMH_ABA_COLUNAS.map((c) => c.width),
+              rows: linhasFiltradas.map((linha) =>
+                IMH_ABA_COLUNAS.map((c) => String(linha[c.key] ?? '').trim()),
+              ),
+            },
+            formato,
+          )
+        }}
+      />
     </Box>
   )
 }
