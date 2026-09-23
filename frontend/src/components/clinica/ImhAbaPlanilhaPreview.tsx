@@ -27,6 +27,7 @@ import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
+  IMH_ABA_INSTITUICAO,
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
