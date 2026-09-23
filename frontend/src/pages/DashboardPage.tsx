@@ -8,7 +8,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import { format } from 'date-fns'
+import { format, isValid, parseISO, subYears, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { ReactNode } from 'react'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -28,6 +28,7 @@ import {
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { premiumTokens } from '@/theme/tokens'
+import type { DashboardEmpenhadoItem } from '@/types'
 
 type KpiKey =
   | 'total'
@@ -50,14 +51,43 @@ interface KpiModalConfig {
   rows: Record<string, unknown>[]
   emptyMessage: string
   showMesFilter?: boolean
+  showPeriodoFilter?: boolean
   showTempoEtapa?: boolean
   showQuantidadePorEtapa?: boolean
+}
+
+function toDateInputValue(date: Date): string {
+  return format(date, 'yyyy-MM-dd')
+}
+
+function periodoAnoCorrente(): { inicio: string; fim: string } {
+  const fim = endOfDay(new Date())
+  const inicio = startOfDay(subYears(fim, 1))
+  return { inicio: toDateInputValue(inicio), fim: toDateInputValue(fim) }
+}
+
+function filtrarEmpenhadoPorPeriodo(
+  itens: DashboardEmpenhadoItem[],
+  dataInicio: string,
+  dataFim: string,
+): DashboardEmpenhadoItem[] {
+  const inicio = dataInicio ? startOfDay(parseISO(dataInicio)) : null
+  const fim = dataFim ? endOfDay(parseISO(dataFim)) : null
+
+  return itens.filter((item) => {
+    const data = parseISO(item.dataEmpenho)
+    if (!isValid(data)) return false
+    if (inicio && isValid(inicio) && data < inicio) return false
+    if (fim && isValid(fim) && data > fim) return false
+    return true
+  })
 }
 
 export default function DashboardPage() {
   const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics()
   const [kpiAberto, setKpiAberto] = useState<KpiKey | null>(null)
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [empenhadoPeriodo, setEmpenhadoPeriodo] = useState(periodoAnoCorrente)
   const [indenizadoPeriodoTipo, setIndenizadoPeriodoTipo] =
     useState<TotalIndenizadoPeriodoTipo>('ano')
   const [indenizadoReferencia, setIndenizadoReferencia] = useState(() => {
@@ -100,6 +130,43 @@ export default function DashboardPage() {
     return metrics.empenhadoItens.filter((item) => item.mesChave === mesFiltrado.mesChave)
   }, [metrics, mesFiltrado.mesChave])
 
+  /** Card: sempre últimos 12 meses a partir de hoje. */
+  const empenhadoAnoCard = useMemo(() => {
+    if (!metrics) return { itens: [] as DashboardEmpenhadoItem[], valor: 0, quantidade: 0 }
+    const janela = periodoAnoCorrente()
+    const itens = filtrarEmpenhadoPorPeriodo(
+      metrics.empenhadoItens,
+      janela.inicio,
+      janela.fim,
+    )
+    return {
+      itens,
+      valor: itens.reduce((acc, i) => acc + i.valor, 0),
+      quantidade: itens.length,
+    }
+  }, [metrics])
+
+  /** Modal: filtro Data início / Data fim (padrão = últimos 12 meses). */
+  const empenhadoPeriodoFiltrado = useMemo(() => {
+    if (!metrics) return { itens: [] as DashboardEmpenhadoItem[], valor: 0, quantidade: 0 }
+    const itens = filtrarEmpenhadoPorPeriodo(
+      metrics.empenhadoItens,
+      empenhadoPeriodo.inicio,
+      empenhadoPeriodo.fim,
+    )
+    return {
+      itens,
+      valor: itens.reduce((acc, i) => acc + i.valor, 0),
+      quantidade: itens.length,
+    }
+  }, [metrics, empenhadoPeriodo.inicio, empenhadoPeriodo.fim])
+
+  const abrirKpi = (key: KpiKey) => {
+    if (key === 'totalEmpenhado') {
+      setEmpenhadoPeriodo(periodoAnoCorrente())
+    }
+    setKpiAberto(key)
+  }
   if (isPending && !metrics) return <LoadingSpinner />
   if (isError) {
     return (
@@ -129,14 +196,20 @@ export default function DashboardPage() {
       ? 'Nenhuma Solemp em Rascunho — soma do Valor Total Div. Material'
       : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Rascunho · Valor Total Div. Material`
 
-  const subtitleTotalEmpenhado = metrics.dataPrimeiroEmpenho
-    ? `Empenhado desde ${formatDate(metrics.dataPrimeiroEmpenho)} · Valor Total Div. Material`
-    : 'Nenhum empenho registrado — clique para detalhes'
+  const subtitleTotalEmpenhado =
+    empenhadoAnoCard.quantidade === 0
+      ? 'Últimos 12 meses · nenhum empenho no período'
+      : `${empenhadoAnoCard.quantidade} empenho${empenhadoAnoCard.quantidade === 1 ? '' : 's'} · últimos 12 meses`
 
   const subtitleMes =
     mesFiltrado.quantidade === 0
       ? `${mesFiltrado.mesLabel} · Valor Total Div. Material`
       : `${mesFiltrado.quantidade} empenho${mesFiltrado.quantidade === 1 ? '' : 's'} em ${mesFiltrado.mesLabel} · Valor Total Div. Material`
+
+  const periodoLabel =
+    empenhadoPeriodo.inicio && empenhadoPeriodo.fim
+      ? `${formatDate(empenhadoPeriodo.inicio)} a ${formatDate(empenhadoPeriodo.fim)}`
+      : 'período selecionado'
 
   const modalConfig: Record<KpiKey, KpiModalConfig> = {
     total: {
@@ -324,15 +397,13 @@ export default function DashboardPage() {
       emptyMessage: 'Nenhuma Solemp em Rascunho aguardando empenho.',
     },
     totalEmpenhado: {
-      title: 'Total Empenhado',
-      subtitle: metrics.dataPrimeiroEmpenho
-        ? `Todos os empenhos desde ${formatDate(metrics.dataPrimeiroEmpenho)}`
-        : 'Todos os empenhos registrados',
+      title: 'Total empenhado no ano',
+      subtitle: `Empenhos de ${periodoLabel}`,
       accent: premiumTokens.green,
       icon: <AccountBalanceIcon />,
       summaries: [
-        { label: 'Valor total', value: formatCurrency(metrics.valorTotalEmpenhado) },
-        { label: 'Quantidade', value: metrics.quantidadeTotalEmpenhado },
+        { label: 'Valor no período', value: formatCurrency(empenhadoPeriodoFiltrado.valor) },
+        { label: 'Quantidade', value: empenhadoPeriodoFiltrado.quantidade },
       ],
       columns: [
         kpiCol.empenho,
@@ -345,8 +416,9 @@ export default function DashboardPage() {
         kpiCol.mes,
         kpiCol.pedido,
       ],
-      rows: metrics.empenhadoItens as unknown as Record<string, unknown>[],
-      emptyMessage: 'Nenhum empenho registrado ainda.',
+      rows: empenhadoPeriodoFiltrado.itens as unknown as Record<string, unknown>[],
+      emptyMessage: 'Nenhum empenho no período selecionado.',
+      showPeriodoFilter: true,
     },
     empenhadoMes: {
       title: 'Total empenhado do mês',
@@ -445,12 +517,12 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <KpiCard
-            title="Total Empenhado"
-            value={formatCurrency(metrics.valorTotalEmpenhado)}
+            title="Total empenhado no ano"
+            value={formatCurrency(empenhadoAnoCard.valor)}
             subtitle={subtitleTotalEmpenhado}
             icon={<AccountBalanceIcon />}
             color={premiumTokens.green}
-            onClick={() => setKpiAberto('totalEmpenhado')}
+            onClick={() => abrirKpi('totalEmpenhado')}
           />
         </Grid>
       </Grid>
@@ -525,6 +597,19 @@ export default function DashboardPage() {
           meses={ativo.showMesFilter ? metrics.totaisEmpenhadoPorMes : undefined}
           mesSelecionado={ativo.showMesFilter ? mesFiltrado.mesChave : undefined}
           onSelectMes={ativo.showMesFilter ? setMesSelecionado : undefined}
+          showPeriodoFilter={ativo.showPeriodoFilter}
+          periodoInicio={ativo.showPeriodoFilter ? empenhadoPeriodo.inicio : undefined}
+          periodoFim={ativo.showPeriodoFilter ? empenhadoPeriodo.fim : undefined}
+          onPeriodoInicioChange={
+            ativo.showPeriodoFilter
+              ? (value) => setEmpenhadoPeriodo((prev) => ({ ...prev, inicio: value }))
+              : undefined
+          }
+          onPeriodoFimChange={
+            ativo.showPeriodoFilter
+              ? (value) => setEmpenhadoPeriodo((prev) => ({ ...prev, fim: value }))
+              : undefined
+          }
           tempoPorEtapa={ativo.showTempoEtapa ? metrics.tempoMedioPorEtapa : undefined}
           quantidadePorEtapa={
             ativo.showQuantidadePorEtapa ? metrics.emAndamentoPorEtapa : undefined

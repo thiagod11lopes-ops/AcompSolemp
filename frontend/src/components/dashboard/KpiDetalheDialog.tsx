@@ -49,6 +49,12 @@ interface KpiDetalheDialogProps {
   meses?: EmpenhadoMesTotal[]
   mesSelecionado?: string
   onSelectMes?: (mesChave: string) => void
+  /** Filtro de período (data início / data fim) — Total empenhado no ano */
+  showPeriodoFilter?: boolean
+  periodoInicio?: string
+  periodoFim?: string
+  onPeriodoInicioChange?: (value: string) => void
+  onPeriodoFimChange?: (value: string) => void
   /** Tempo médio — breakdown por etapa */
   tempoPorEtapa?: { etapa: string; dias: number }[]
   /** Em andamento — PEDs por card da timeline */
@@ -96,6 +102,11 @@ export function KpiDetalheDialog({
   meses,
   mesSelecionado,
   onSelectMes,
+  showPeriodoFilter = false,
+  periodoInicio = '',
+  periodoFim = '',
+  onPeriodoInicioChange,
+  onPeriodoFimChange,
   tempoPorEtapa,
   quantidadePorEtapa,
 }: KpiDetalheDialogProps) {
@@ -177,6 +188,7 @@ export function KpiDetalheDialog({
       <DialogContent sx={{ px: 3, py: 2.5 }}>
         {(summaries.length > 0 ||
           meses ||
+          showPeriodoFilter ||
           (tempoPorEtapa && tempoPorEtapa.length > 0) ||
           (quantidadePorEtapa && quantidadePorEtapa.length > 0)) && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, mb: 2.5, alignItems: 'center' }}>
@@ -203,6 +215,37 @@ export function KpiDetalheDialog({
               />
             ))}
 
+            {showPeriodoFilter && onPeriodoInicioChange && onPeriodoFimChange ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 1.25,
+                  ml: { sm: 'auto' },
+                  alignItems: 'center',
+                }}
+              >
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Data início"
+                  value={periodoInicio}
+                  onChange={(e) => onPeriodoInicioChange(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ minWidth: 160 }}
+                />
+                <TextField
+                  size="small"
+                  type="date"
+                  label="Data fim"
+                  value={periodoFim}
+                  onChange={(e) => onPeriodoFimChange(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ minWidth: 160 }}
+                />
+              </Box>
+            ) : null}
+
             {meses && onSelectMes && mesSelecionado && (
               <TextField
                 select
@@ -210,7 +253,7 @@ export function KpiDetalheDialog({
                 label="Mês"
                 value={mesSelecionado}
                 onChange={(e) => onSelectMes(e.target.value)}
-                sx={{ minWidth: 200, ml: 'auto' }}
+                sx={{ minWidth: 200, ml: showPeriodoFilter ? 0 : 'auto' }}
               >
                 {meses.map((mes) => (
                   <MenuItem key={mes.mesChave} value={mes.mesChave}>
