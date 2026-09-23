@@ -243,6 +243,9 @@ const headerSx = {
   bgcolor: EXCEL_SHEET.headerBg,
   fontWeight: 700,
   color: EXCEL_SHEET.mutedText,
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 2,
 } as const
 
 const finalizedCheckboxSx = {
@@ -419,13 +422,16 @@ export function DivMaterialPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               width: '100%',
               maxWidth: '100%',
+              // Viewport fixo: barra horizontal fica na base da área visível,
+              // sem precisar rolar até o fim da planilha.
+              maxHeight: 'min(70vh, calc(100vh - 220px))',
               overflowX: 'auto',
-              overflowY: 'visible',
+              overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
-              // Garante barra horizontal visível no Windows/Chrome
               scrollbarGutter: 'stable',
               '&::-webkit-scrollbar': {
                 height: 10,
+                width: 10,
               },
               '&::-webkit-scrollbar-thumb': {
                 backgroundColor: 'rgba(15, 23, 42, 0.28)',
@@ -447,6 +453,7 @@ export function DivMaterialPlanilhaPreview({
             >
               <Table
                 size="small"
+                stickyHeader
                 sx={{
                   width: tableMinWidth,
                   minWidth: tableMinWidth,
