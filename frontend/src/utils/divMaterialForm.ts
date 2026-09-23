@@ -456,36 +456,46 @@ export function buildControleSolempFromDivMaterial(
   }
 
   return {
-    linhas: linhas.map((linha, index) => ({
-      id: `controle-solemp-div-${linha.id}`,
-      pacienteGrupoId: linha.id,
-      numero: String(index + 1),
-      divisao: CONTROLE_SOLEMP_DIVISAO_PADRAO,
-      solemp: '',
-      dataEnvioSolempFinancas: '',
-      mesAnoReferencia: mesAnoFromData(linha.dataProcedimento),
-      pi: '',
-      descricao: [linha.descricaoMaterial, linha.nomePaciente, linha.nip]
-        .map((p) => p.trim())
-        .filter(Boolean)
-        .join(' — '),
-      tipoContratacao: linha.modalidadeLicitatoria,
-      qtdSol: '1',
-      valorUnitario: '',
-      total: '',
-      cnpj: linha.cnpj,
-      ne: '',
-      restosAPagar: '',
-      dataEnvioNeFornecedor: '',
-      dataEntregaFornecedor: '',
-      prazoEntregaDias: '',
-      statusEmpenho: '',
-      nf: '',
-      statusPagamento: '',
-      valorPago: '',
-      valorCancelado: '',
-      pendencia: '',
-      statusProcesso: 'EM ANDAMENTO',
-    })),
+    linhas: linhas.map((linha, index) => {
+      const totalStr = (linha.valorTotal ?? '').trim()
+      const totalNum = parseValorBrasileiro(totalStr)
+      return {
+        id: `controle-solemp-div-${linha.id}`,
+        pacienteGrupoId: linha.id,
+        numero: String(index + 1),
+        divisao: CONTROLE_SOLEMP_DIVISAO_PADRAO,
+        solemp: '',
+        dataEnvioSolempFinancas: '',
+        mesAnoReferencia: mesAnoFromData(linha.dataProcedimento),
+        pi: '',
+        descricao: [
+          linha.descricaoMaterial,
+          linha.nomePaciente,
+          linha.nip,
+          linha.modalidadeLicitatoria,
+          linha.fornecedor,
+        ]
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .join(' — '),
+        tipoContratacao: linha.modalidadeLicitatoria,
+        qtdSol: '1',
+        valorUnitario: totalNum > 0 ? formatValorBrasileiro(totalNum) : '',
+        total: totalNum > 0 ? formatValorBrasileiro(totalNum) : totalStr,
+        cnpj: linha.cnpj,
+        ne: '',
+        restosAPagar: '',
+        dataEnvioNeFornecedor: '',
+        dataEntregaFornecedor: '',
+        prazoEntregaDias: '',
+        statusEmpenho: '',
+        nf: '',
+        statusPagamento: '',
+        valorPago: '',
+        valorCancelado: '',
+        pendencia: '',
+        statusProcesso: 'EM ANDAMENTO',
+      }
+    }),
   }
 }

@@ -80,7 +80,6 @@ import {
   getMesModeloFromParts,
 } from '@/utils/consumoMaterialTemplate'
 import {
-  buildControleSolempFromDivMaterial,
   buildDivMaterialLinhas,
   divMaterialLinhasToPedidoInput,
   type DivMaterialLinha,
@@ -706,12 +705,16 @@ export default function ClinicaNovoPedidoPage() {
         pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
       }
       if (temDiv) {
-        const planilhaControle = buildControleSolempFromDivMaterial(divSelecionadas)
-        pedidoPlanilhaEnvioService.saveDivMaterialForPedido(
-          pedidoId,
-          divSelecionadas,
-          planilhaControle,
-        )
+        // Envia a Div. Material exatamente como na aba (linhas marcadas, colunas intactas).
+        pedidoPlanilhaEnvioService.saveDivMaterialForPedido(pedidoId, divSelecionadas)
+      }
+
+      // Garante que o snapshot da planilha suba à nuvem após o pedido.
+      try {
+        const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+        await flushSupabaseAppDataSync()
+      } catch {
+        // Local/demo: sync opcional
       }
 
       const nextImh = temImh

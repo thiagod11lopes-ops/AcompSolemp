@@ -142,19 +142,24 @@ export const pedidoPlanilhaEnvioService = {
   saveDivMaterialForPedido(
     pedidoId: string,
     linhas: import('@/utils/divMaterialForm').DivMaterialLinha[],
-    controle: ControleSolempPlanilha,
+    controle?: ControleSolempPlanilha,
   ): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
 
     const existing = data.pedidoPlanilhaEnvio[pedidoId]
     const hasImh = Boolean(existing?.linhas?.length)
+    // Snapshot fiel das linhas da aba Div. Material (mesmas colunas/valores).
+    const divSnapshot = linhas.map((linha) => ({ ...linha }))
     const snapshot: PedidoPlanilhaEnvioState = {
       formato: hasImh ? existing?.formato ?? 'imh' : 'divMaterial',
       cabecalho: existing?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
       linhas: existing?.linhas ?? [],
-      controleSolempLinhas: controle.linhas.map((linha) => ({ ...linha })),
-      divMaterialLinhas: linhas.map((linha) => ({ ...linha })),
+      // Controle Solemp fica só como legado/backup; a UI das 3 etapas usa divMaterialLinhas.
+      controleSolempLinhas: controle?.linhas?.length
+        ? controle.linhas.map((linha) => ({ ...linha }))
+        : existing?.controleSolempLinhas,
+      divMaterialLinhas: divSnapshot,
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,

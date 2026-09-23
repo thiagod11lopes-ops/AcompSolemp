@@ -148,9 +148,9 @@ export function AuditoriaPlanilhaModal({
 
   const divLinhas = planilha.divMaterialLinhas ?? []
   const hasDiv = divLinhas.length > 0
-  // Div. Material é a fonte da verdade no fluxo Confecção → Rascunho → Empenhado
-  const showDivMaterial =
-    hasDiv && preferFormato !== 'imh' && preferFormato !== 'controleSolemp'
+  // Div. Material enviada pela clínica é a fonte da verdade no fluxo
+  // Confecção → Solemp em Rascunho → Empenhado (não usar o remap Controle Solemp).
+  const showDivMaterial = hasDiv && preferFormato !== 'imh'
 
   if (showDivMaterial) {
     return (

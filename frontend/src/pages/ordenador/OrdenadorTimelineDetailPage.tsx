@@ -93,11 +93,13 @@ export default function OrdenadorTimelineDetailPage() {
   }, [pedido, isConfeccao])
 
   const preferFormatoPlanilha = useMemo(() => {
-    if (isConfeccao) {
-      return planilhaEnvio?.divMaterialLinhas?.length ? 'divMaterial' : 'controleSolemp'
+    // Sempre preferir a Div. Material exatamente como enviada pela clínica.
+    if (planilhaEnvio?.divMaterialLinhas?.length) return 'divMaterial' as const
+    if (isConfeccao || isConfeccaoEtapa || isRascunhoEtapa || isEmpenhadoEtapa) {
+      return 'controleSolemp' as const
     }
     return 'imh' as const
-  }, [isConfeccao, planilhaEnvio])
+  }, [isConfeccao, isConfeccaoEtapa, isRascunhoEtapa, isEmpenhadoEtapa, planilhaEnvio])
 
   const fluxoDiretoImh = useMemo(() => {
     if (!pedido) return false
