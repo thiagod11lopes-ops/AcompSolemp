@@ -279,8 +279,10 @@ export default function GestorBalancoPage() {
           <Stack
             direction={{ xs: 'column', md: 'row' }}
             spacing={2}
-            alignItems={{ xs: 'stretch', md: 'center' }}
-            justifyContent="space-between"
+            sx={{
+              alignItems: { xs: 'stretch', md: 'center' },
+              justifyContent: 'space-between',
+            }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <AccountBalanceWalletIcon sx={{ color: premiumTokens.primary }} />
@@ -307,7 +309,7 @@ export default function GestorBalancoPage() {
               <ToggleButton value="12m">12 meses</ToggleButton>
             </ToggleButtonGroup>
 
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <TextField
                 label="Início"
                 type="date"
@@ -317,7 +319,7 @@ export default function GestorBalancoPage() {
                   setPreset('custom')
                   setDataInicio(e.target.value)
                 }}
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ minWidth: 150 }}
               />
               <TextField
@@ -329,11 +331,13 @@ export default function GestorBalancoPage() {
                   setPreset('custom')
                   setDataFim(e.target.value)
                 }}
-                inputProps={{
-                  min: dataInicio || undefined,
-                  max: toDateInputValue(endOfMonth(new Date())),
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: {
+                    min: dataInicio || undefined,
+                    max: toDateInputValue(endOfMonth(new Date())),
+                  },
                 }}
-                InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 150 }}
               />
             </Stack>
@@ -404,7 +408,7 @@ export default function GestorBalancoPage() {
             </Grid>
           </Grid>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2.5, flexWrap: 'wrap' }}>
             {balanco.statusDistribuicao.map((s) => (
               <Chip
                 key={s.name}
