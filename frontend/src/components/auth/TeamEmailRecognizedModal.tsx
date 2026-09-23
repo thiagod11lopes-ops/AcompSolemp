@@ -18,15 +18,18 @@ interface TeamEmailRecognizedModalProps {
   open: boolean
   email: string
   gestorEmail: string | null
+  /** Perfil cadastrado pelo gestor (ex.: Clínica, Confecção de Solemp). */
+  perfilLabel?: string | null
   onAccept: () => void
   onDecline: () => Promise<void>
 }
 
-/** Modal de convite quando o e-mail já foi liberado pelo gestor em Cadastros. */
+/** Modal de convite no primeiro acesso: e-mail liberado pelo gestor em Cadastros. */
 export function TeamEmailRecognizedModal({
   open,
   email,
   gestorEmail,
+  perfilLabel,
   onAccept,
   onDecline,
 }: TeamEmailRecognizedModalProps) {
@@ -140,7 +143,7 @@ export function TeamEmailRecognizedModal({
             mb: 1,
           }}
         >
-          Convite do gestor
+          Cadastro do gestor
         </Typography>
 
         <Typography
@@ -153,7 +156,7 @@ export function TeamEmailRecognizedModal({
             color: '#FFFFFF',
           }}
         >
-          Você já faz parte do sistema
+          Você foi cadastrado no AcompSOLEMP
         </Typography>
 
         <Typography
@@ -164,7 +167,8 @@ export function TeamEmailRecognizedModal({
             mb: 1.5,
           }}
         >
-          O gestor abaixo cadastrou o seu e-mail para integrar o AcompSOLEMP:
+          Um gestor liberou o seu e-mail para o primeiro acesso. Aceite para entrar na
+          organização ou recuse para sair desse cadastro.
         </Typography>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
@@ -202,6 +206,23 @@ export function TeamEmailRecognizedModal({
               {email}
             </Typography>
           </Box>
+          {perfilLabel ? (
+            <Box
+              sx={{
+                px: 1.75,
+                py: 1,
+                borderRadius: 2,
+                bgcolor: 'rgba(0,0,0,0.12)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                textAlign: 'left',
+              }}
+            >
+              <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
+                Perfil cadastrado
+              </Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{perfilLabel}</Typography>
+            </Box>
+          ) : null}
         </Box>
 
         <Typography
@@ -212,10 +233,10 @@ export function TeamEmailRecognizedModal({
             lineHeight: 1.5,
           }}
         >
-          <strong>Aceitar</strong> — entra na Timeline dessa organização.
+          <strong>Aceitar</strong> — confirma o cadastro e segue para criar a senha ou entrar.
           <br />
           <strong>Não fazer parte</strong> — remove seu e-mail do cadastro do gestor para você
-          poder criar o próprio banco de dados (Portal do Gestor).
+          poder criar o próprio banco (Portal do Gestor).
         </Typography>
 
         {error && (
@@ -246,7 +267,7 @@ export function TeamEmailRecognizedModal({
               },
             }}
           >
-            Aceitar e continuar
+            Aceitar cadastro
           </Button>
           <Button
             fullWidth

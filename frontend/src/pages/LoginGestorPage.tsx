@@ -30,6 +30,11 @@ import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { LOGIN_PERFIL_OPCOES, loginPerfilLabel } from '@/utils/loginPerfis'
+import {
+  clearTeamInviteAccepted,
+  isTeamInviteAccepted,
+  markTeamInviteAccepted,
+} from '@/utils/teamInviteAcceptance'
 import type { UserRole } from '@/types'
 
 const PERFIS_LOGIN = [
@@ -76,9 +81,12 @@ export default function LoginGestorPage() {
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [recognizedEmail, setRecognizedEmail] = useState('')
   const [gestorEmail, setGestorEmail] = useState<string | null>(null)
+  const [recognizedPerfil, setRecognizedPerfil] = useState<UserRole | null>(null)
+  /** E-mail da equipe reconhecido e ainda sem aceite neste navegador. */
+  const [pendingTeamInvite, setPendingTeamInvite] = useState(false)
   const [info, setInfo] = useState('')
   const [signUpOpenSignal, setSignUpOpenSignal] = useState(0)
-  const lastAnnouncedEmail = useRef('')
+  const emailLookupSeq = useRef(0)
 
   const {
     register: registerField,
@@ -103,22 +111,44 @@ export default function LoginGestorPage() {
     [perfilSelecionado],
   )
 
+  const recognizedPerfilLabel = useMemo(
+    () => (recognizedPerfil ? loginPerfilLabel(recognizedPerfil) : null),
+    [recognizedPerfil],
+  )
+
+  /** E-mail liberado pelo gestor: modal no primeiro acesso (qualquer perfil) até aceitar. */
   useEffect(() => {
-    if (!isSupabase || !isGestorSelecionado) return
+    if (!isSupabase) return
 
     const raw = emailHint?.trim() ?? ''
-    if (!isMarinhaEmail(raw)) return
+    if (!isMarinhaEmail(raw)) {
+      setPendingTeamInvite(false)
+      return
+    }
 
     const normalized = normalizeEmailKey(raw)
+    if (isTeamInviteAccepted(normalized)) {
+      setPendingTeamInvite(false)
+      return
+    }
+
+    const seq = ++emailLookupSeq.current
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
           const access = await authService.getTeamEmailAccess(normalized)
-          if (!access) return
-          if (lastAnnouncedEmail.current === normalized) return
-          lastAnnouncedEmail.current = normalized
+          if (seq !== emailLookupSeq.current) return
+          if (!access) {
+            setPendingTeamInvite(false)
+            return
+          }
           setRecognizedEmail(normalized)
           setGestorEmail(access.gestor_email)
+          const perfil = access.perfil as UserRole
+          setRecognizedPerfil(
+            (PERFIS_LOGIN as readonly string[]).includes(perfil) ? perfil : null,
+          )
+          setPendingTeamInvite(true)
           setInfo('')
           setTeamModalOpen(true)
         } catch {
@@ -128,25 +158,55 @@ export default function LoginGestorPage() {
     }, 450)
 
     return () => window.clearTimeout(timer)
-  }, [emailHint, isSupabase, isGestorSelecionado])
+  }, [emailHint, isSupabase])
+
+  const openTeamInviteModal = (
+    email: string,
+    access: { gestor_email: string | null; perfil: string },
+  ) => {
+    setRecognizedEmail(email)
+    setGestorEmail(access.gestor_email)
+    const perfil = access.perfil as UserRole
+    setRecognizedPerfil((PERFIS_LOGIN as readonly string[]).includes(perfil) ? perfil : null)
+    setPendingTeamInvite(true)
+    setTeamModalOpen(true)
+  }
+
+  const ensureTeamInviteAccepted = async (email: string): Promise<boolean> => {
+    if (!isSupabase) return true
+    if (!isMarinhaEmail(email)) return true
+    const normalized = normalizeEmailKey(email)
+    if (isTeamInviteAccepted(normalized)) {
+      setPendingTeamInvite(false)
+      return true
+    }
+    const access = await authService.getTeamEmailAccess(normalized)
+    if (!access) return true
+    openTeamInviteModal(normalized, access)
+    setError('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
+    return false
+  }
 
   const handleAcceptTeamInvite = () => {
+    markTeamInviteAccepted(recognizedEmail)
+    setPendingTeamInvite(false)
     setTeamModalOpen(false)
-    void authService.getTeamEmailAccess(recognizedEmail).then((access) => {
-      const perfil = access?.perfil
-      if (perfil && (PERFIS_LOGIN as readonly string[]).includes(perfil)) {
-        setValue('perfil', perfil as LoginForm['perfil'])
-      }
-    })
-    setInfo('Convite aceito. Selecione o perfil cadastrado e defina sua senha em Cadastrar-se.')
+    if (recognizedPerfil) {
+      setValue('perfil', recognizedPerfil as LoginForm['perfil'])
+    }
+    setInfo(
+      'Cadastro aceito. Defina sua senha em Cadastrar-se (primeiro acesso) ou use Entrar se já tiver senha.',
+    )
     setSignUpOpenSignal((n) => n + 1)
   }
 
   const handleDeclineTeamInvite = async () => {
     await authService.declineTeamInvite(recognizedEmail)
-    lastAnnouncedEmail.current = ''
+    clearTeamInviteAccepted(recognizedEmail)
     setTeamModalOpen(false)
     setGestorEmail(null)
+    setRecognizedPerfil(null)
+    setPendingTeamInvite(false)
     setValue('perfil', 'GESTOR')
     setInfo(
       'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor e montar o seu banco de dados.',
@@ -171,6 +231,11 @@ export default function LoginGestorPage() {
         if (isSupabase) {
           const teamAccess = await authService.getTeamEmailAccess(data.login)
           if (teamAccess) {
+            const ok = await ensureTeamInviteAccepted(data.login)
+            if (!ok) {
+              setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
+              return
+            }
             setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
             throw new Error(
               `Este e-mail está na equipe de um gestor (${loginPerfilLabel(teamAccess.perfil as UserRole)}). Selecione esse perfil para entrar.`,
@@ -181,6 +246,9 @@ export default function LoginGestorPage() {
         await finishGestorLogin()
         return
       }
+
+      const ok = await ensureTeamInviteAccepted(data.login)
+      if (!ok) return
 
       const result = await loginWithEmailTimeline(
         data.login,
@@ -220,6 +288,11 @@ export default function LoginGestorPage() {
       if (isSupabase) {
         const teamAccess = await authService.getTeamEmailAccess(values.email)
         if (teamAccess) {
+          const ok = await ensureTeamInviteAccepted(values.email)
+          if (!ok) {
+            setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
+            return
+          }
           throw new Error(
             `Este e-mail já foi liberado por um gestor como ${loginPerfilLabel(teamAccess.perfil as UserRole)}. Selecione esse perfil e use Cadastrar-se.`,
           )
@@ -230,11 +303,15 @@ export default function LoginGestorPage() {
       return
     }
 
+    const ok = await ensureTeamInviteAccepted(values.email)
+    if (!ok) return
+
     const result = await registerWithEmailTimeline(values.email, values.senha, perfil)
     navigate(result.route, { replace: true })
   }
 
   const busy = isSubmitting || openAccessLoading
+  const blockUntilInviteAccepted = pendingTeamInvite
 
   return (
     <Box>
@@ -342,7 +419,7 @@ export default function LoginGestorPage() {
           variant="contained"
           size="large"
           sx={{ mt: isSupabase ? 1 : 3 }}
-          disabled={busy}
+          disabled={busy || blockUntilInviteAccepted}
         >
           {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
@@ -354,7 +431,7 @@ export default function LoginGestorPage() {
           variant="outlined"
           size="large"
           sx={{ mt: 1.5 }}
-          disabled={busy}
+          disabled={busy || blockUntilInviteAccepted}
           onClick={() => void onEntrarSemSenha()}
         >
           {openAccessLoading ? 'Entrando...' : 'Entrar sem senha'}
@@ -366,10 +443,13 @@ export default function LoginGestorPage() {
           <SignUpButton
             emailHint={recognizedEmail || emailHint}
             openSignal={signUpOpenSignal}
+            disabled={blockUntilInviteAccepted}
             helperText={
-              isGestorSelecionado
-                ? 'Cadastrar-se como Gestor cria o seu banco. Só funciona se o e-mail ainda não foi liberado em Cadastros por outro gestor.'
-                : `Primeiro acesso: o gestor já deve ter cadastrado seu e-mail como ${loginPerfilLabel(perfilSelecionado)}.`
+              blockUntilInviteAccepted
+                ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
+                : isGestorSelecionado
+                  ? 'Cadastrar-se como Gestor cria o seu banco. Só funciona se o e-mail ainda não foi liberado em Cadastros por outro gestor.'
+                  : `Primeiro acesso: o gestor já deve ter cadastrado seu e-mail como ${loginPerfilLabel(perfilSelecionado)}.`
             }
             onSubmit={handleSignUp}
           />
@@ -388,6 +468,7 @@ export default function LoginGestorPage() {
         open={teamModalOpen}
         email={recognizedEmail}
         gestorEmail={gestorEmail}
+        perfilLabel={recognizedPerfilLabel}
         onAccept={handleAcceptTeamInvite}
         onDecline={handleDeclineTeamInvite}
       />
