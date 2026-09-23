@@ -36,6 +36,10 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   const isDevolvido = detail?.node.statusBand === 'devolvido'
   const justificativaDevolucao = detail?.node.justificativaDevolucao?.trim() || null
   const corDevolvido = '#c2410c'
+  const devolucoes = detail?.pedido.planilhaDevolucoes ?? []
+  const devolucoesOrdenadas = [...devolucoes].sort(
+    (a, b) => new Date(b.em).getTime() - new Date(a.em).getTime(),
+  )
 
   const planilhaEnvio = detail
     ? pedidoPlanilhaEnvioService.getForPedido(detail.pedido.id)
@@ -251,6 +255,54 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   </div>
                 ) : null}
               </Section>
+
+              {devolucoesOrdenadas.length > 0 && (
+                <Section title="Devoluções da planilha" icon={Clock3}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {devolucoesOrdenadas.map((item, index) => {
+                      const isLatest = index === 0
+                      return (
+                        <div
+                          key={item.id}
+                          style={{
+                            padding: '12px 14px',
+                            borderRadius: 10,
+                            border: `1px solid ${
+                              isLatest ? 'rgba(194, 65, 12, 0.45)' : timelineTheme.border
+                            }`,
+                            background: isLatest ? 'rgba(194, 65, 12, 0.08)' : 'transparent',
+                            fontSize: '0.85rem',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: timelineTheme.textSecondary,
+                              fontSize: '0.75rem',
+                              marginBottom: 6,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {formatDateTime(item.em)}
+                            {isLatest ? ' · mais recente' : ''}
+                          </div>
+                          <div style={{ marginBottom: 4 }}>
+                            <strong>{item.deEtapaNome}</strong>
+                            {' → '}
+                            <strong>{item.paraEtapaNome}</strong>
+                          </div>
+                          <div style={{ color: timelineTheme.textSecondary, marginBottom: 8 }}>
+                            Por {item.porUsuarioNome}
+                          </div>
+                          <div style={{ color: isLatest ? corDevolvido : undefined, fontWeight: 600 }}>
+                            {item.justificativa}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Section>
+              )}
 
               <Section title="Alterações" icon={Clock3}>
                 {historico?.observacao ? (

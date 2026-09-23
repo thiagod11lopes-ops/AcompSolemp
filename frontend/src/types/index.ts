@@ -231,6 +231,24 @@ export interface Pedido {
   planilhaDevolvidaEm?: string | null
   /** Texto informado na devolução da planilha (exibido nos detalhes da etapa). */
   planilhaDevolvidaJustificativa?: string | null
+  /**
+   * Trilha append-only das devoluções da planilha (não é limpa no reenvio).
+   * Exibe quem devolveu, para quem e o motivo.
+   */
+  planilhaDevolucoes?: PlanilhaDevolucaoRegistro[]
+}
+
+/** Registro permanente de uma devolução de planilha. */
+export interface PlanilhaDevolucaoRegistro {
+  id: string
+  em: string
+  deEtapaChave: string | null
+  deEtapaNome: string
+  paraEtapaChave: string
+  paraEtapaNome: string
+  porUsuarioId: string
+  porUsuarioNome: string
+  justificativa: string
 }
 
 export interface Notification {

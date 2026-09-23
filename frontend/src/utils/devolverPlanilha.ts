@@ -254,6 +254,7 @@ export function resolveJustificativaDevolucaoPedido(
   return extrairJustificativaDevolucao(historico?.observacao)
 }
 
+/** Limpa tarja/estado atual da devolução (reenvio). Mantém `planilhaDevolucoes` (histórico). */
 export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): void {
   const index = data.pedidos.findIndex((item) => item.id === pedidoId)
   if (index >= 0) {
@@ -431,6 +432,25 @@ export function devolverPlanilhaParaDestino(
   )
   if (!ativas.includes(etapaDestino.id)) ativas.unshift(etapaDestino.id)
 
+  const etapaAtual =
+    data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId) ??
+    data.workflowEtapas.find((e) => e.id === (pedido.etapasAtivasIds?.[0] ?? ''))
+  const clinicaNome =
+    data.clinicas.find((c) => c.id === pedido.clinicaId)?.nome ?? destino.label
+  const reversaoId = `rev-planilha-${Date.now()}`
+  const devolucaoEm = nowIso()
+  const devolucaoRegistro = {
+    id: `dev-planilha-${Date.now()}`,
+    em: devolucaoEm,
+    deEtapaChave: etapaAtual?.chave ?? null,
+    deEtapaNome: etapaAtual?.nome ?? 'Setor atual',
+    paraEtapaChave: destino.etapaChave,
+    paraEtapaNome: destino.label,
+    porUsuarioId: usuario.id,
+    porUsuarioNome: usuario.nome,
+    justificativa: justificativaLimpa,
+  }
+
   data.pedidos[pedidoIndex] = {
     ...pedido,
     etapaAtualId: etapaDestino.id,
@@ -440,8 +460,9 @@ export function devolverPlanilhaParaDestino(
     etapasHistorico: proximoHistorico,
     dataEntrega: destino.etapaChave === 'SOLICITACAO' ? null : pedido.dataEntrega,
     planilhaDevolvidaParaChave: destino.etapaChave,
-    planilhaDevolvidaEm: nowIso(),
+    planilhaDevolvidaEm: devolucaoEm,
     planilhaDevolvidaJustificativa: justificativaLimpa,
+    planilhaDevolucoes: [...(pedido.planilhaDevolucoes ?? []), devolucaoRegistro],
   }
 
   if (data.processosArquivados) {
@@ -457,7 +478,7 @@ export function devolverPlanilhaParaDestino(
   if (planilhaAtual) {
     data.pedidoPlanilhaEnvio![pedidoId] = {
       ...planilhaAtual,
-      devolvidaEm: nowIso(),
+      devolvidaEm: devolucaoEm,
       devolvidaParaChave: destino.etapaChave,
     }
   }
@@ -467,13 +488,6 @@ export function devolverPlanilhaParaDestino(
       ...data.pedidos[pedidoIndex],
     })
   }
-
-  const etapaAtual =
-    data.workflowEtapas.find((e) => e.id === pedido.etapaAtualId) ??
-    data.workflowEtapas.find((e) => e.id === (pedido.etapasAtivasIds?.[0] ?? ''))
-  const clinicaNome =
-    data.clinicas.find((c) => c.id === pedido.clinicaId)?.nome ?? destino.label
-  const reversaoId = `rev-planilha-${Date.now()}`
 
   if (!data.reversoes) data.reversoes = []
   data.reversoes.push({
@@ -486,7 +500,7 @@ export function devolverPlanilhaParaDestino(
     motivo: justificativaLimpa,
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
-    data: nowIso(),
+    data: devolucaoEm,
     status: 'PENDENTE',
     respostaGestor: null,
     dataResposta: null,
@@ -500,7 +514,7 @@ export function devolverPlanilhaParaDestino(
     etapaNome: etapaDestino.nome,
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
-    data: nowIso(),
+    data: devolucaoEm,
     observacao,
   })
 
