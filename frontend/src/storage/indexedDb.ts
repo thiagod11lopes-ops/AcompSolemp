@@ -157,6 +157,30 @@ export function storageSet(key: string, value: string): void {
   })
 }
 
+/** Grava na memória e aguarda a persistência no IndexedDB. */
+export async function storageSetAndWait(key: string, value: string): Promise<void> {
+  memory.set(key, value)
+  try {
+    await idbSet(key, value)
+  } catch (err) {
+    console.error('Falha ao gravar no IndexedDB', key, err)
+    throw err
+  }
+}
+
+/** Recarrega uma chave do IndexedDB para o cache em memória desta aba. */
+export async function storageReloadKey(key: string): Promise<string | null> {
+  try {
+    const value = await idbGet(key)
+    if (value !== null) memory.set(key, value)
+    else memory.delete(key)
+    return value
+  } catch (err) {
+    console.error('Falha ao recarregar do IndexedDB', key, err)
+    return memory.get(key) ?? null
+  }
+}
+
 export function storageRemove(key: string): void {
   memory.delete(key)
   void idbDelete(key).catch((err) => {

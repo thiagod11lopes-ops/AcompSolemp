@@ -33,13 +33,17 @@ export function buildDemoEnterUrl(userId: string, titulo: string): string {
   return buildAbsoluteAppUrl(`/gestor/demo/entrar?${params.toString()}`)
 }
 
-export function exitDemoTab(endDemo: () => void, onFallback: () => void): void {
-  endDemo()
-  if (window.opener) {
-    window.close()
-    return
-  }
-  onFallback()
+export function exitDemoTab(
+  endDemo: () => void | Promise<void>,
+  onFallback: () => void,
+): void {
+  void Promise.resolve(endDemo()).finally(() => {
+    if (window.opener) {
+      window.close()
+      return
+    }
+    onFallback()
+  })
 }
 
 export function stripDemoRouteBase(pathname: string): string {

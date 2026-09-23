@@ -11,7 +11,9 @@ import {
   STORAGE_KEYS,
   storageGet,
   storageRemove,
+  storageReloadKey,
   storageSet,
+  storageSetAndWait,
 } from '@/storage/indexedDb'
 import {
   isDemoDataSession,
@@ -802,18 +804,39 @@ export function saveDemoAppData(data: AppData): void {
   notifyDemoAppDataChanged()
 }
 
+/** Persiste demo data e aguarda IndexedDB (para sincronizar outras abas). */
+export async function saveDemoAppDataAndWait(data: AppData): Promise<void> {
+  const cloned = cloneData(data)
+  await storageSetAndWait(
+    STORAGE_KEYS.DEMO_APP_DATA,
+    JSON.stringify({ ...cloned, _version: SEED_VERSION }),
+  )
+  if (isDemoDataSession()) {
+    appDataCache = cloned
+  }
+  notifyDemoAppDataChanged()
+}
+
 export function subscribeDemoAppDataChanged(listener: () => void): () => void {
   if (typeof window === 'undefined') return () => undefined
-  window.addEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+
+  const handleLocal = () => {
+    listener()
+  }
+
+  window.addEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
   let channel: BroadcastChannel | null = null
   try {
     channel = new BroadcastChannel(DEMO_DATA_BROADCAST)
-    channel.onmessage = () => listener()
+    channel.onmessage = () => {
+      // Outra aba alterou o demo: recarrega IndexedDB nesta aba e notifica.
+      void storageReloadKey(STORAGE_KEYS.DEMO_APP_DATA).then(() => listener())
+    }
   } catch {
     channel = null
   }
   return () => {
-    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
     channel?.close()
   }
 }
@@ -835,21 +858,21 @@ export function peekDemoAppData(): AppData | null {
 
 /**
  * Remove todas as timelines (pedidos e vínculos) do armazenamento de demonstração.
- * Usado ao sair do modo demonstração.
+ * Usado ao sair do modo demonstração — deixa a aba Demonstração zerada.
  */
-export function clearDemoTimelines(): void {
+export async function clearDemoTimelines(): Promise<void> {
   const data = peekDemoAppData()
-  if (!data) return
-
-  if (data.pedidos.length === 0) {
-    // Garante invalidação de caches mesmo se já estiver vazio.
+  if (!data) {
     notifyDemoAppDataChanged()
     return
   }
 
-  const ids = new Set(data.pedidos.map((pedido) => pedido.id))
-  removePedidosFromAppData(data, ids)
-  saveDemoAppData(data)
+  if (data.pedidos.length > 0) {
+    const ids = new Set(data.pedidos.map((pedido) => pedido.id))
+    removePedidosFromAppData(data, ids)
+  }
+
+  await saveDemoAppDataAndWait(data)
 }
 
 export function saveAppData(data: AppData): void {

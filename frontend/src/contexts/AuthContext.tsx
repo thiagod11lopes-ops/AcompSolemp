@@ -36,7 +36,7 @@ interface AuthContextValue {
   logout: (portal: Portal) => Promise<void>
   startDemo: (userId: string, tabTitle?: string) => Promise<{ route: string }>
   startDemoGestorOverview: (tabTitle?: string) => Promise<{ route: string }>
-  endDemo: () => void
+  endDemo: () => Promise<void>
   startImpersonation: (email: string) => Promise<{ route: string }>
   endImpersonation: () => Promise<{ route: string }>
   impersonationTargetEmail: string | null
@@ -187,8 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { route: result.route }
   }, [])
 
-  const endDemo = useCallback(() => {
-    authService.endDemoMode()
+  const endDemo = useCallback(async () => {
+    await authService.endDemoMode()
     setDemoMode(null)
   }, [])
 
@@ -294,7 +294,7 @@ export function useClinicaAuth() {
     isDemo,
     logout: isDemo
       ? async () => {
-          endDemo()
+          await endDemo()
         }
       : () => logout('clinica'),
   }
@@ -316,7 +316,7 @@ export function useOrdenadorAuth() {
     isDemo,
     logout: isDemo
       ? async () => {
-          endDemo()
+          await endDemo()
         }
       : () => logout('ordenador'),
   }
@@ -338,7 +338,7 @@ export function useFinanceiroAuth() {
     isDemo,
     logout: isDemo
       ? async () => {
-          endDemo()
+          await endDemo()
         }
       : () => logout('financeiro'),
   }

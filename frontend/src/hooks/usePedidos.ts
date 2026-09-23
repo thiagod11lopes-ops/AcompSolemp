@@ -4,7 +4,7 @@ import type { PedidoFilters } from '@/types'
 import { pedidoService } from '@/services/pedidoService'
 import { notificationService } from '@/services/cadastroService'
 import { useGestorAuth } from '@/contexts/AuthContext'
-import { subscribeDemoAppDataChanged } from '@/mocks/seed'
+import { subscribeDemoAppDataChanged, peekDemoAppData } from '@/mocks/seed'
 
 const PEDIDOS_QUERY_OPTS = {
   staleTime: 30_000,
@@ -26,17 +26,24 @@ export function useDemoPedidos(filters?: PedidoFilters) {
 
   useEffect(() => {
     return subscribeDemoAppDataChanged(() => {
-      queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
-      queryClient.invalidateQueries({ queryKey: ['demo-historico'] })
+      const snapshot = peekDemoAppData()
+      // Ao sair da demo (0 pedidos), zera a aba Demonstração na hora.
+      if (!snapshot || snapshot.pedidos.length === 0) {
+        queryClient.setQueriesData({ queryKey: ['demo-pedidos'] }, [])
+      }
+      void queryClient.invalidateQueries({ queryKey: ['demo-pedidos'] })
+      void queryClient.invalidateQueries({ queryKey: ['demo-pedido'] })
+      void queryClient.invalidateQueries({ queryKey: ['demo-workflow-etapas'] })
+      void queryClient.invalidateQueries({ queryKey: ['demo-historico'] })
     })
   }, [queryClient])
 
   return useQuery({
     queryKey: ['demo-pedidos', filters],
     queryFn: () => pedidoService.listDemo(filters),
-    ...PEDIDOS_QUERY_OPTS,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 

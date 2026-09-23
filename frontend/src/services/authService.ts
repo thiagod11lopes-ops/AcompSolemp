@@ -801,9 +801,9 @@ export const authService = {
     }
   },
 
-  endDemoMode(): void {
-    // Remove timelines criadas na demonstração (IndexedDB local).
-    clearDemoTimelines()
+  async endDemoMode(): Promise<void> {
+    // Remove timelines criadas na demonstração (IndexedDB local) e sincroniza outras abas.
+    await clearDemoTimelines()
     // Evita que o cache em memória continue com dados da sessão demo.
     clearAppDataCache()
     writeDemoMode(null)
