@@ -778,10 +778,18 @@ function persistAppData(data: AppData, options?: { silent?: boolean }): void {
 }
 
 const DEMO_DATA_CHANGED_EVENT = 'acomp-demo-data-changed'
+const DEMO_DATA_BROADCAST = 'acomp-demo-data'
 
 export function notifyDemoAppDataChanged(): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT))
+  try {
+    const channel = new BroadcastChannel(DEMO_DATA_BROADCAST)
+    channel.postMessage({ type: DEMO_DATA_CHANGED_EVENT })
+    channel.close()
+  } catch {
+    // BroadcastChannel indisponível — evento local já notificou esta aba.
+  }
 }
 
 /** Persiste AppData de demonstração sem depender da rota atual. */
@@ -797,7 +805,17 @@ export function saveDemoAppData(data: AppData): void {
 export function subscribeDemoAppDataChanged(listener: () => void): () => void {
   if (typeof window === 'undefined') return () => undefined
   window.addEventListener(DEMO_DATA_CHANGED_EVENT, listener)
-  return () => window.removeEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+  let channel: BroadcastChannel | null = null
+  try {
+    channel = new BroadcastChannel(DEMO_DATA_BROADCAST)
+    channel.onmessage = () => listener()
+  } catch {
+    channel = null
+  }
+  return () => {
+    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, listener)
+    channel?.close()
+  }
 }
 
 /** Lê snapshot de demonstração no IndexedDB (sem exigir sessão demo ativa). */
@@ -813,6 +831,25 @@ export function peekDemoAppData(): AppData | null {
   } catch {
     return null
   }
+}
+
+/**
+ * Remove todas as timelines (pedidos e vínculos) do armazenamento de demonstração.
+ * Usado ao sair do modo demonstração.
+ */
+export function clearDemoTimelines(): void {
+  const data = peekDemoAppData()
+  if (!data) return
+
+  if (data.pedidos.length === 0) {
+    // Garante invalidação de caches mesmo se já estiver vazio.
+    notifyDemoAppDataChanged()
+    return
+  }
+
+  const ids = new Set(data.pedidos.map((pedido) => pedido.id))
+  removePedidosFromAppData(data, ids)
+  saveDemoAppData(data)
 }
 
 export function saveAppData(data: AppData): void {

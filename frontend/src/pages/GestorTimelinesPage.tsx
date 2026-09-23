@@ -191,9 +191,9 @@ export default function GestorTimelinesPage() {
 
       {!isDemo && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Timelines criadas na demonstração (clínica, auditoria etc.) aparecem na aba
-          &quot;Demonstração&quot; abaixo ou ao abrir &quot;Gestor — Visão Geral&quot; no modal de
-          exemplo.
+          Timelines criadas na demonstração ficam só no armazenamento local e são excluídas ao sair
+          do modo demonstração (banner amarelo ou &quot;Voltar ao gestor&quot;). Enquanto a sessão demo
+          estiver ativa, elas aparecem na aba &quot;Demonstração&quot; abaixo.
         </Alert>
       )}
 
