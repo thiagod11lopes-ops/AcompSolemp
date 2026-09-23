@@ -763,6 +763,8 @@ export function reloadAppDataFromStorage(): AppData {
 
 function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   if (useCloudAppDataSync()) {
+    // Seed fictício do dashboard: nunca sobe para o Supabase.
+    if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') return
     void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
       scheduleSupabaseAppDataSync(data, SEED_VERSION)
     })
@@ -868,6 +870,11 @@ export async function reloadFreshAppData(): Promise<AppData> {
 
 /** Carrega AppData atualizado antes de listagens compartilhadas entre portais/abas */
 export async function loadFreshAppData(): Promise<AppData> {
+  // Com seed fictício ativo, mantém o snapshot em memória (não volta ao remoto/IDB real).
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1' && appDataCache) {
+    return cloneData(appDataCache)
+  }
+
   if (useCloudAppDataSync()) {
     // Preferência: cache em memória já hidratado — evita refetch na nuvem a cada listagem,
     // que deixava a UI do gestor "piscando" enquanto esperava a rede.
@@ -875,6 +882,30 @@ export async function loadFreshAppData(): Promise<AppData> {
     return reloadFreshAppData()
   }
   return reloadAppDataFromStorage()
+}
+
+/**
+ * Aplica AppData no cache (e no IndexedDB local). Não sincroniza com Supabase
+ * enquanto o seed fictício estiver ativo.
+ */
+export function replaceAppDataCache(data: AppData): void {
+  appDataCache = cloneData(data)
+  persistAppData(appDataCache, { silent: true })
+}
+
+/** Reaplica o snapshot fictício após boot (ex.: reload da página). */
+export function tryRestoreFictionalSnapshotIntoCache(): boolean {
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) !== '1') return false
+  const raw = storageGet(STORAGE_KEYS.FICTIONAL_SNAPSHOT)
+  if (!raw) return false
+  try {
+    const parsed = JSON.parse(raw) as AppData
+    const { data } = normalizeAppData(parsed)
+    appDataCache = data
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function delay<T>(value: T, ms = 400): Promise<T> {

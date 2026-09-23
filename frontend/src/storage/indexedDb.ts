@@ -17,6 +17,11 @@ export const STORAGE_KEYS = {
   THEME: 'acomp_solemp_theme',
   TENANT_ID: 'acomp_solemp_tenant_id',
   ORG_CODE: 'acomp_solemp_org_code',
+  /** Backup dos dados reais enquanto o seed fictício do dashboard está ativo */
+  FICTIONAL_BACKUP: 'acomp_solemp_fictional_backup',
+  /** Snapshot dos dados fictícios (sobrevive a reload) */
+  FICTIONAL_SNAPSHOT: 'acomp_solemp_fictional_snapshot',
+  FICTIONAL_ACTIVE: 'acomp_solemp_fictional_active',
 } as const
 
 const ALL_KEYS = Object.values(STORAGE_KEYS)

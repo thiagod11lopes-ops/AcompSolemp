@@ -5,7 +5,7 @@ import {
   useSupabaseDataSource,
 } from '@/config/dataSource'
 import { getRepositories } from '@/data/repositories'
-import { applyRemoteAppData, initAppData } from '@/mocks/seed'
+import { applyRemoteAppData, initAppData, tryRestoreFictionalSnapshotIntoCache } from '@/mocks/seed'
 import { getProfileForCurrentUser } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { supabaseAuthAdapter } from '@/supabase/authAdapter'
@@ -22,6 +22,7 @@ export async function initDataLayer(): Promise<void> {
 
   if (!useCloudAppDataSync()) {
     initAppData()
+    tryRestoreFictionalSnapshotIntoCache()
     if (import.meta.env.DEV) {
       console.info(`[AcompSolemp] Fonte de dados: ${getActiveDataSourceLabel()}`)
     }
@@ -43,6 +44,9 @@ export async function initDataLayer(): Promise<void> {
   } catch (error) {
     console.warn('[AcompSolemp] Hidratação Supabase adiada:', error)
   }
+
+  // Depois da nuvem: se o seed fictício estava ativo, reaplicamos o snapshot local.
+  tryRestoreFictionalSnapshotIntoCache()
 
   if (import.meta.env.DEV) {
     console.info(`[AcompSolemp] Fonte de dados: ${getActiveDataSourceLabel()}`)

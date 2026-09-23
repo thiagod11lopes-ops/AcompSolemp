@@ -13,10 +13,12 @@ import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import ScienceIcon from '@mui/icons-material/Science'
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import LogoutIcon from '@mui/icons-material/Logout'
 import GroupsIcon from '@mui/icons-material/Groups'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
@@ -30,6 +32,10 @@ import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 import { isSuperAdminEmail } from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { loadAppData } from '@/mocks/seed'
+import {
+  isFictionalDashboardSeedActive,
+  toggleFictionalDashboardSeed,
+} from '@/services/fictionalDashboardSeedService'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -43,9 +49,12 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const { demoBannerHeight } = usePortalPaths()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [demoOpen, setDemoOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
+  const [fictionalActive, setFictionalActive] = useState(() => isFictionalDashboardSeedActive())
+  const [fictionalBusy, setFictionalBusy] = useState(false)
 
   const sessionEmail =
     user?.email?.trim().toLowerCase() ||
@@ -57,6 +66,18 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const handleLogout = async () => {
     await logout()
     navigate('/login')
+  }
+
+  const handleToggleFictional = () => {
+    if (fictionalBusy) return
+    setFictionalBusy(true)
+    try {
+      const active = toggleFictionalDashboardSeed()
+      setFictionalActive(active)
+      void queryClient.invalidateQueries()
+    } finally {
+      setFictionalBusy(false)
+    }
   }
 
   return (
@@ -98,6 +119,22 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
           <Tooltip title="Demonstração da Timeline">
             <IconButton onClick={() => setDemoOpen(true)} color="inherit">
               <ScienceIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip
+            title={
+              fictionalActive
+                ? 'Remover dados fictícios e voltar aos dados reais'
+                : 'Preencher o sistema com dados fictícios (dashboard)'
+            }
+          >
+            <IconButton
+              onClick={handleToggleFictional}
+              color={fictionalActive ? 'warning' : 'inherit'}
+              disabled={fictionalBusy}
+              aria-pressed={fictionalActive}
+            >
+              <AutoFixHighIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Alternar tema">
