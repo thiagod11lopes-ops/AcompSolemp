@@ -284,6 +284,13 @@ export function DivMaterialPlanilhaPreview({
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
   const visible = linhas.length > 0
   const colCount = DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + 1
+  const tableMinWidth =
+    DIV_MATERIAL_COLUNAS.reduce(
+      (sum, col) => sum + (col.key === 'descricaoMaterial' ? 280 : col.width),
+      0,
+    ) +
+    (selectionEnabled ? 52 : 0) +
+    72
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -406,25 +413,46 @@ export function DivMaterialPlanilhaPreview({
           </Box>
         ) : (
           <Box
+            className="excel-sheet-grid"
             sx={{
               p: 1.5,
               borderTop: EXCEL_SHEET.border,
-              width: 'fit-content',
+              width: '100%',
               maxWidth: '100%',
+              overflowX: 'auto',
+              overflowY: 'visible',
+              WebkitOverflowScrolling: 'touch',
+              // Garante barra horizontal visível no Windows/Chrome
+              scrollbarGutter: 'stable',
+              '&::-webkit-scrollbar': {
+                height: 10,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(15, 23, 42, 0.28)',
+                borderRadius: 999,
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'rgba(15, 23, 42, 0.06)',
+              },
             }}
           >
             <Box
-              className="excel-sheet-grid"
               sx={{
-                width: 'fit-content',
-                maxWidth: '100%',
-                overflowX: 'auto',
+                width: 'max-content',
+                minWidth: '100%',
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
               }}
             >
-              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
+              <Table
+                size="small"
+                sx={{
+                  width: tableMinWidth,
+                  minWidth: tableMinWidth,
+                  tableLayout: 'fixed',
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     {selectionEnabled ? (
@@ -432,6 +460,7 @@ export function DivMaterialPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
+                          width: 52,
                           minWidth: 52,
                           textAlign: 'center',
                           px: 0.5,
@@ -469,18 +498,24 @@ export function DivMaterialPlanilhaPreview({
                         </Box>
                       </TableCell>
                     ) : null}
-                    {DIV_MATERIAL_COLUNAS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        sx={{
-                          ...headerSx,
-                          minWidth: col.key === 'descricaoMaterial' ? 280 : col.width,
-                        }}
-                      >
-                        {col.label}
-                      </TableCell>
-                    ))}
-                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                    {DIV_MATERIAL_COLUNAS.map((col) => {
+                      const colWidth = col.key === 'descricaoMaterial' ? 280 : col.width
+                      return (
+                        <TableCell
+                          key={col.key}
+                          sx={{
+                            ...headerSx,
+                            width: colWidth,
+                            minWidth: colWidth,
+                          }}
+                        >
+                          {col.label}
+                        </TableCell>
+                      )
+                    })}
+                    <TableCell
+                      sx={{ ...headerSx, textAlign: 'center', width: 72, minWidth: 72 }}
+                    >
                       AÇÕES
                     </TableCell>
                   </TableRow>
@@ -523,6 +558,8 @@ export function DivMaterialPlanilhaPreview({
                                   : EXCEL_SHEET.selectHeaderBg,
                                 textAlign: 'center',
                                 px: 0.5,
+                                width: 52,
+                                minWidth: 52,
                               }}
                             >
                               <Checkbox
@@ -540,7 +577,10 @@ export function DivMaterialPlanilhaPreview({
                           ) : null}
                           {DIV_MATERIAL_COLUNAS.map((col) =>
                             col.key === 'descricaoMaterial' ? (
-                              <TableCell key={col.key} sx={descricaoMaterialCellSx}>
+                              <TableCell
+                                key={col.key}
+                                sx={{ ...descricaoMaterialCellSx, width: 280, minWidth: 280 }}
+                              >
                                 <DescricaoMaterialCell text={String(linha[col.key] ?? '')} />
                               </TableCell>
                             ) : (
@@ -548,6 +588,7 @@ export function DivMaterialPlanilhaPreview({
                                 key={col.key}
                                 sx={{
                                   ...cellSx,
+                                  width: col.width,
                                   minWidth: col.width,
                                 }}
                               >
@@ -555,7 +596,9 @@ export function DivMaterialPlanilhaPreview({
                               </TableCell>
                             ),
                           )}
-                          <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                          <TableCell
+                            sx={{ ...cellSx, textAlign: 'center', width: 72, minWidth: 72 }}
+                          >
                             <IconButton
                               size="small"
                               aria-label={`Editar linha Div. Material ${index + 1}`}
