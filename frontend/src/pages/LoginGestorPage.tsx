@@ -30,6 +30,7 @@ import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { LOGIN_PERFIL_OPCOES, loginPerfilLabel } from '@/utils/loginPerfis'
+import { premiumTokens } from '@/theme/tokens'
 import {
   clearTeamInviteAccepted,
   isTeamInviteAccepted,
@@ -315,12 +316,32 @@ export default function LoginGestorPage() {
 
   return (
     <Box>
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <AnchorIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+      <Box sx={{ textAlign: 'center', mb: 3.5 }}>
+        <Box
+          sx={{
+            width: 64,
+            height: 64,
+            mx: 'auto',
+            mb: 1.75,
+            borderRadius: '18px',
+            display: 'grid',
+            placeItems: 'center',
+            background: `linear-gradient(145deg, ${premiumTokens.primary} 0%, ${premiumTokens.primaryDark} 100%)`,
+            boxShadow: `0 12px 28px rgba(37, 99, 235, 0.35)`,
+          }}
+        >
+          <AnchorIcon sx={{ fontSize: 34, color: '#FFFFFF' }} />
+        </Box>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 800, letterSpacing: '-0.03em', color: '#0F172A' }}
+        >
           AcompSOLEMP
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{ mt: 0.75, color: '#475569', lineHeight: 1.5, px: 1 }}
+        >
           Entre com o e-mail cadastrado e o perfil correspondente
         </Typography>
       </Box>
@@ -400,7 +421,11 @@ export default function LoginGestorPage() {
             input: {
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
                     {showPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
                 </InputAdornment>
@@ -418,7 +443,12 @@ export default function LoginGestorPage() {
           type="submit"
           variant="contained"
           size="large"
-          sx={{ mt: isSupabase ? 1 : 3 }}
+          sx={{
+            mt: isSupabase ? 1 : 3,
+            py: 1.35,
+            fontWeight: 700,
+            borderRadius: 2,
+          }}
           disabled={busy || blockUntilInviteAccepted}
         >
           {isSubmitting ? 'Entrando...' : 'Entrar'}
@@ -430,7 +460,7 @@ export default function LoginGestorPage() {
           fullWidth
           variant="outlined"
           size="large"
-          sx={{ mt: 1.5 }}
+          sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
           disabled={busy || blockUntilInviteAccepted}
           onClick={() => void onEntrarSemSenha()}
         >
@@ -456,9 +486,12 @@ export default function LoginGestorPage() {
         </Stack>
       )}
 
-      <Divider sx={{ my: 2 }} />
+      <Divider sx={{ my: 2.5, borderColor: 'rgba(15, 23, 42, 0.1)' }} />
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+      <Typography
+        variant="caption"
+        sx={{ display: 'block', color: '#64748B', lineHeight: 1.55 }}
+      >
         {isSupabase
           ? 'Equipe: e-mail liberado pelo gestor + perfil correto. Gestor: Cadastrar-se cria o banco da organização.'
           : 'Demo Gestor: gestor / gestor123. Demais perfis: e-mail cadastrado no AppData local.'}
