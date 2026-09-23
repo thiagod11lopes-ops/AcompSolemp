@@ -7,33 +7,52 @@ import {
   CardContent,
   Chip,
   Grid,
-  Tab,
-  Tabs,
   Typography,
 } from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatusChip } from '@/components/common/StatusChip'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { TimelineListToolbar } from '@/components/common/TimelineListToolbar'
 import { useClinicaPedidos } from '@/hooks/useClinicaPedidos'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { formatDate, formatNip } from '@/utils/format'
 import {
   contarTimelineList,
-  passaFiltroTimelineList,
+  filtrarTimelineList,
+  type TimelineListExtraFilters,
   type TimelineListFiltro,
 } from '@/utils/timelineListFilter'
+import type { PedidoComDetalhes } from '@/types'
 
 export default function ClinicaTimelinePage() {
   const { navigatePortal } = usePortalPaths()
   const { user } = useClinicaAuth()
   const { data: pedidos = [], isLoading } = useClinicaPedidos()
   const [filtro, setFiltro] = useState<TimelineListFiltro>('EM_ANDAMENTO')
+  const [extras, setExtras] = useState<TimelineListExtraFilters>({})
   const isMedicamento = user?.perfil === 'MEDICAMENTO'
-  const contagens = useMemo(() => contarTimelineList(pedidos), [pedidos])
+
+  /** Clínica: “minhas pendências” = processos que precisam de atenção (atraso ou perto do prazo). */
+  const isPendenteClinica = useMemo(
+    () => (pedido: PedidoComDetalhes) =>
+      !pedido.concluido &&
+      (pedido.prazoStatus === 'ATRASADO' || pedido.prazoStatus === 'PROXIMO_VENCIMENTO'),
+    [],
+  )
+
+  const filterOpts = useMemo(
+    () => ({ pendente: isPendenteClinica }),
+    [isPendenteClinica],
+  )
+
+  const contagens = useMemo(
+    () => contarTimelineList(pedidos, filterOpts, extras),
+    [pedidos, filterOpts, extras],
+  )
   const filtrados = useMemo(
-    () => pedidos.filter((p) => passaFiltroTimelineList(p, filtro)),
-    [pedidos, filtro],
+    () => filtrarTimelineList(pedidos, filtro, filterOpts, extras),
+    [pedidos, filtro, filterOpts, extras],
   )
 
   if (isLoading) return <LoadingSpinner />
@@ -44,22 +63,19 @@ export default function ClinicaTimelinePage() {
         title="Timelines"
         subtitle={
           isMedicamento
-            ? 'Timelines de pedidos enviados pelo medicamento'
-            : 'Todas as timelines de pedidos criados pela sua clínica'
+            ? 'Fila do medicamento: atenção, atrasos e filtro por data'
+            : 'Fila da clínica: atenção, atrasos e filtro por data'
         }
       />
 
-      <Tabs
-        value={filtro}
-        onChange={(_, value: TimelineListFiltro) => setFiltro(value)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 3 }}
-      >
-        <Tab value="EM_ANDAMENTO" label={`Em andamento (${contagens.emAndamento})`} />
-        <Tab value="TODAS" label={`Todas (${contagens.todas})`} />
-        <Tab value="CONCLUIDAS" label={`Concluídas (${contagens.concluidas})`} />
-      </Tabs>
+      <TimelineListToolbar
+        filtro={filtro}
+        onFiltroChange={setFiltro}
+        contagens={contagens}
+        extras={extras}
+        onExtrasChange={setExtras}
+        showClinicaFilter={false}
+      />
 
       {filtrados.length === 0 ? (
         <Card sx={{ p: 4, textAlign: 'center' }}>
@@ -78,6 +94,13 @@ export default function ClinicaTimelinePage() {
                 variant="outlined"
                 sx={{
                   height: '100%',
+                  borderLeft: 4,
+                  borderColor:
+                    pedido.prazoStatus === 'ATRASADO'
+                      ? 'error.main'
+                      : pedido.prazoStatus === 'PROXIMO_VENCIMENTO'
+                        ? 'warning.main'
+                        : 'divider',
                   transition: 'box-shadow 0.2s',
                   '&:hover': { boxShadow: 4 },
                 }}
@@ -87,7 +110,7 @@ export default function ClinicaTimelinePage() {
                   sx={{ height: '100%' }}
                 >
                   <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, gap: 1 }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                         {pedido.numero}
                       </Typography>
@@ -108,6 +131,13 @@ export default function ClinicaTimelinePage() {
                         size="small"
                         variant="outlined"
                       />
+                      {!pedido.concluido && pedido.diasRestantes < 0 && (
+                        <Chip
+                          label={`Atrasado ${Math.abs(pedido.diasRestantes)}d`}
+                          size="small"
+                          color="error"
+                        />
+                      )}
                     </Box>
                   </CardContent>
                 </CardActionArea>

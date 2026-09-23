@@ -8,13 +8,12 @@ import {
   CardContent,
   Chip,
   Grid,
-  Tab,
-  Tabs,
   Typography,
 } from '@mui/material'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { TimelineListToolbar } from '@/components/common/TimelineListToolbar'
 import { useOrdenadorPedidos } from '@/hooks/useOrdenadorPedidos'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
@@ -30,8 +29,10 @@ import {
   pedidoRelacionadoParaChave,
 } from '@/utils/perfilEtapa'
 import {
+  clinicasFromPedidos,
   contarTimelineList,
-  passaFiltroTimelineList,
+  filtrarTimelineList,
+  type TimelineListExtraFilters,
   type TimelineListFiltro,
 } from '@/utils/timelineListFilter'
 import type { PedidoComDetalhes } from '@/types'
@@ -48,7 +49,8 @@ export default function OrdenadorTimelinesPage() {
   const [searchParams] = useSearchParams()
   const { data: pedidos = [], isLoading } = useOrdenadorPedidos()
   const { data: etapas = [] } = useWorkflowEtapas()
-  const [filtro, setFiltro] = useState<TimelineListFiltro>('EM_ANDAMENTO')
+  const [filtro, setFiltro] = useState<TimelineListFiltro>('MINHAS_PENDENCIAS')
+  const [extras, setExtras] = useState<TimelineListExtraFilters>({})
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const isConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil) : []
@@ -78,6 +80,15 @@ export default function OrdenadorTimelinesPage() {
     }
   }, [user, isConfeccao, chavesPerfil, etapas, etapaChaveValida])
 
+  const isPendenteSetor = useMemo(() => {
+    return (pedido: PedidoComDetalhes) => {
+      if (!user) return false
+      return etapaChaveValida
+        ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida)
+        : pedidoPendenteParaPerfil(pedido, etapas, user.perfil)
+    }
+  }, [user, etapas, etapaChaveValida])
+
   const pedidosEscopo = useMemo(() => {
     if (!etapaChaveValida) return pedidos
     return pedidos.filter((p) =>
@@ -85,16 +96,20 @@ export default function OrdenadorTimelinesPage() {
     )
   }, [pedidos, etapas, etapaChaveValida])
 
+  const clinicas = useMemo(() => clinicasFromPedidos(pedidosEscopo), [pedidosEscopo])
+
+  const filterOpts = useMemo(
+    () => ({ concluido: isConcluidoSetor, pendente: isPendenteSetor }),
+    [isConcluidoSetor, isPendenteSetor],
+  )
+
   const contagens = useMemo(
-    () => contarTimelineList(pedidosEscopo, { concluido: isConcluidoSetor }),
-    [pedidosEscopo, isConcluidoSetor],
+    () => contarTimelineList(pedidosEscopo, filterOpts, extras),
+    [pedidosEscopo, filterOpts, extras],
   )
   const filtrados = useMemo(
-    () =>
-      pedidosEscopo.filter((p) =>
-        passaFiltroTimelineList(p, filtro, { concluido: isConcluidoSetor }),
-      ),
-    [pedidosEscopo, filtro, isConcluidoSetor],
+    () => filtrarTimelineList(pedidosEscopo, filtro, filterOpts, extras),
+    [pedidosEscopo, filtro, filterOpts, extras],
   )
 
   if (isLoading) return <LoadingSpinner />
@@ -105,22 +120,19 @@ export default function OrdenadorTimelinesPage() {
         title={`Timelines — ${tituloEtapa}`}
         subtitle={
           isConfeccao
-            ? 'Confecção, Solemp em Rascunho e Empenhado — receber e enviar planilhas'
-            : 'Processos com etapa do seu perfil — em andamento, todas ou concluídas'
+            ? 'Fila do setor: pendências, atrasos e filtros por clínica/data'
+            : 'Fila do setor — minhas pendências, atrasadas e filtros'
         }
       />
 
-      <Tabs
-        value={filtro}
-        onChange={(_, value: TimelineListFiltro) => setFiltro(value)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 3 }}
-      >
-        <Tab value="EM_ANDAMENTO" label={`Em andamento (${contagens.emAndamento})`} />
-        <Tab value="TODAS" label={`Todas (${contagens.todas})`} />
-        <Tab value="CONCLUIDAS" label={`Concluídas (${contagens.concluidas})`} />
-      </Tabs>
+      <TimelineListToolbar
+        filtro={filtro}
+        onFiltroChange={setFiltro}
+        contagens={contagens}
+        extras={extras}
+        onExtrasChange={setExtras}
+        clinicas={clinicas}
+      />
 
       {filtrados.length === 0 ? (
         <Card sx={{ p: 4, textAlign: 'center' }}>
@@ -135,11 +147,8 @@ export default function OrdenadorTimelinesPage() {
         <Grid container spacing={2}>
           {filtrados.map((pedido) => {
             const concluidoSetor = isConcluidoSetor(pedido)
-            const pendente = user
-              ? etapaChaveValida
-                ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida)
-                : pedidoPendenteParaPerfil(pedido, etapas, user.perfil)
-              : false
+            const pendente = isPendenteSetor(pedido)
+            const atrasado = !concluidoSetor && pedido.prazoStatus === 'ATRASADO'
             const etapaAtiva = pedido.etapasHistorico.find(
               (h) =>
                 (pedido.etapasAtivasIds ?? [pedido.etapaAtualId]).includes(h.etapaId) &&
@@ -153,9 +162,11 @@ export default function OrdenadorTimelinesPage() {
                     borderLeft: 4,
                     borderColor: concluidoSetor
                       ? 'success.main'
-                      : pendente
-                        ? 'warning.main'
-                        : 'divider',
+                      : atrasado
+                        ? 'error.main'
+                        : pendente
+                          ? 'warning.main'
+                          : 'divider',
                     opacity: concluidoSetor ? 0.85 : 1,
                   }}
                 >
@@ -167,7 +178,21 @@ export default function OrdenadorTimelinesPage() {
                         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                           {pedido.numero}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {pendente && !concluidoSetor && (
+                            <Chip label="Pendente" color="warning" size="small" />
+                          )}
+                          {atrasado && (
+                            <Chip
+                              label={
+                                pedido.diasRestantes < 0
+                                  ? `Atrasado ${Math.abs(pedido.diasRestantes)}d`
+                                  : 'Atrasado'
+                              }
+                              color="error"
+                              size="small"
+                            />
+                          )}
                           {concluidoSetor && (
                             <Chip label="Concluída" color="success" size="small" />
                           )}

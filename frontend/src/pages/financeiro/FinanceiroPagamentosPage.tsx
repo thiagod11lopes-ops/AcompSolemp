@@ -7,21 +7,25 @@ import {
   CardContent,
   Chip,
   Grid,
-  Tab,
-  Tabs,
   Typography,
 } from '@mui/material'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { TimelineListToolbar } from '@/components/common/TimelineListToolbar'
 import { useFinanceiroPedidos } from '@/hooks/useFinanceiroPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
-import { pedidoEtapaConcluidaParaChave } from '@/utils/perfilEtapa'
 import {
+  pedidoEtapaConcluidaParaChave,
+  pedidoPendenteParaChave,
+} from '@/utils/perfilEtapa'
+import {
+  clinicasFromPedidos,
   contarTimelineList,
-  passaFiltroTimelineList,
+  filtrarTimelineList,
+  type TimelineListExtraFilters,
   type TimelineListFiltro,
 } from '@/utils/timelineListFilter'
 import type { PedidoComDetalhes } from '@/types'
@@ -30,7 +34,8 @@ export default function FinanceiroPagamentosPage() {
   const { navigatePortal } = usePortalPaths()
   const { data: pedidos = [], isLoading } = useFinanceiroPedidos()
   const { data: etapas = [] } = useWorkflowEtapas()
-  const [filtro, setFiltro] = useState<TimelineListFiltro>('EM_ANDAMENTO')
+  const [filtro, setFiltro] = useState<TimelineListFiltro>('MINHAS_PENDENCIAS')
+  const [extras, setExtras] = useState<TimelineListExtraFilters>({})
 
   const isConcluidoFinanceiro = useMemo(
     () => (pedido: PedidoComDetalhes) =>
@@ -38,16 +43,26 @@ export default function FinanceiroPagamentosPage() {
     [etapas],
   )
 
+  const isPendenteFinanceiro = useMemo(
+    () => (pedido: PedidoComDetalhes) =>
+      pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_FINANCAS'),
+    [etapas],
+  )
+
+  const clinicas = useMemo(() => clinicasFromPedidos(pedidos), [pedidos])
+
+  const filterOpts = useMemo(
+    () => ({ concluido: isConcluidoFinanceiro, pendente: isPendenteFinanceiro }),
+    [isConcluidoFinanceiro, isPendenteFinanceiro],
+  )
+
   const contagens = useMemo(
-    () => contarTimelineList(pedidos, { concluido: isConcluidoFinanceiro }),
-    [pedidos, isConcluidoFinanceiro],
+    () => contarTimelineList(pedidos, filterOpts, extras),
+    [pedidos, filterOpts, extras],
   )
   const filtrados = useMemo(
-    () =>
-      pedidos.filter((p) =>
-        passaFiltroTimelineList(p, filtro, { concluido: isConcluidoFinanceiro }),
-      ),
-    [pedidos, filtro, isConcluidoFinanceiro],
+    () => filtrarTimelineList(pedidos, filtro, filterOpts, extras),
+    [pedidos, filtro, filterOpts, extras],
   )
 
   if (isLoading) return <LoadingSpinner />
@@ -56,20 +71,17 @@ export default function FinanceiroPagamentosPage() {
     <>
       <PageHeader
         title="Timelines — Solemp em Rascunho"
-        subtitle="Processos em Solemp em Rascunho — em andamento, todas ou concluídas"
+        subtitle="Fila financeira: minhas pendências, atrasadas e filtros por clínica/data"
       />
 
-      <Tabs
-        value={filtro}
-        onChange={(_, value: TimelineListFiltro) => setFiltro(value)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 3 }}
-      >
-        <Tab value="EM_ANDAMENTO" label={`Em andamento (${contagens.emAndamento})`} />
-        <Tab value="TODAS" label={`Todas (${contagens.todas})`} />
-        <Tab value="CONCLUIDAS" label={`Concluídas (${contagens.concluidas})`} />
-      </Tabs>
+      <TimelineListToolbar
+        filtro={filtro}
+        onFiltroChange={setFiltro}
+        contagens={contagens}
+        extras={extras}
+        onExtrasChange={setExtras}
+        clinicas={clinicas}
+      />
 
       {filtrados.length === 0 ? (
         <Card sx={{ p: 4, textAlign: 'center' }}>
@@ -84,6 +96,8 @@ export default function FinanceiroPagamentosPage() {
         <Grid container spacing={2}>
           {filtrados.map((pedido) => {
             const concluido = isConcluidoFinanceiro(pedido)
+            const pendente = isPendenteFinanceiro(pedido)
+            const atrasado = !concluido && pedido.prazoStatus === 'ATRASADO'
             const empenhoLabel = resolveEmpenhoExibicao({
               etiquetas: pedido.dadosClinica?.etiquetas,
             })
@@ -93,7 +107,13 @@ export default function FinanceiroPagamentosPage() {
                   variant="outlined"
                   sx={{
                     borderLeft: 4,
-                    borderColor: concluido ? 'success.main' : 'info.main',
+                    borderColor: concluido
+                      ? 'success.main'
+                      : atrasado
+                        ? 'error.main'
+                        : pendente
+                          ? 'warning.main'
+                          : 'info.main',
                     opacity: concluido ? 0.85 : 1,
                   }}
                 >
@@ -105,7 +125,21 @@ export default function FinanceiroPagamentosPage() {
                         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                           {pedido.numero}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {pendente && !concluido && (
+                            <Chip label="Pendente" color="warning" size="small" />
+                          )}
+                          {atrasado && (
+                            <Chip
+                              label={
+                                pedido.diasRestantes < 0
+                                  ? `Atrasado ${Math.abs(pedido.diasRestantes)}d`
+                                  : 'Atrasado'
+                              }
+                              color="error"
+                              size="small"
+                            />
+                          )}
                           {concluido && (
                             <Chip label="Concluída" color="success" size="small" />
                           )}
