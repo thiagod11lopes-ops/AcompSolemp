@@ -319,7 +319,7 @@ export interface DashboardPedidoItem {
   setorTipo: 'clinica' | 'medicamento' | 'empenhado'
   setorLabel: string
   setorNome: string
-  /** Dias até conclusão (apenas processos concluídos) */
+  /** Dias do envio da planilha (clínica/medicamento) até a conclusão na timeline */
   diasAteConclusao?: number
   /** Nomes dos cards da timeline em que o PED está ativo (paralelos inclusos) */
   etapasAtivasNomes?: string

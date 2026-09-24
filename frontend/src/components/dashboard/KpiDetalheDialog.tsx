@@ -443,7 +443,7 @@ export const kpiCol = {
   },
   diasConclusao: {
     id: 'diasConclusao',
-    label: 'Dias até conclusão',
+    label: 'Dias (envio → conclusão)',
     align: 'right' as const,
     render: (row: Record<string, unknown>) =>
       row.diasAteConclusao != null ? `${row.diasAteConclusao}d` : '—',

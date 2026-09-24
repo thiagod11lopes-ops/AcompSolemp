@@ -400,7 +400,7 @@ export default function DashboardPage() {
     },
     tempoMedio: {
       title: 'Tempo Médio de Finalização',
-      subtitle: `Média de ${metrics.tempoMedioPagamento} dias entre solicitação e conclusão`,
+      subtitle: `Média de ${metrics.tempoMedioPagamento} dias do envio da planilha até a conclusão na timeline`,
       accent: premiumTokens.primary,
       icon: <ScheduleIcon />,
       summaries: [

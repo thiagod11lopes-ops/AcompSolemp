@@ -91,6 +91,33 @@ function dataConclusaoPedido(pedido: PedidoComDetalhes): string | null {
   return datas.reduce((max, d) => (d > max ? d : max), datas[0])
 }
 
+/** Momento em que clínica/medicamento enviou a planilha (fallback: data da solicitação). */
+function dataEnvioPlanilhaPedido(
+  pedido: PedidoComDetalhes,
+  planilhaEnvio: AppData['pedidoPlanilhaEnvio'] | undefined,
+): string {
+  const enviado = planilhaEnvio?.[pedido.id]?.enviadoEm?.trim()
+  if (enviado) return enviado
+  return pedido.dataSolicitacao
+}
+
+/**
+ * Dias de calendário do envio da planilha até a conclusão completa na timeline.
+ * Retorna null se o processo não estiver concluído ou as datas forem inválidas.
+ */
+function diasEnvioAteConclusao(
+  pedido: PedidoComDetalhes,
+  planilhaEnvio: AppData['pedidoPlanilhaEnvio'] | undefined,
+): number | null {
+  if (!pedido.concluido) return null
+  const fim = dataConclusaoPedido(pedido)
+  if (!fim) return null
+  const inicio = dataEnvioPlanilhaPedido(pedido, planilhaEnvio)
+  const dias = differenceInCalendarDays(parseISO(fim), parseISO(inicio))
+  if (!Number.isFinite(dias) || dias < 0) return null
+  return dias
+}
+
 function getEtapasAtivasPedido(
   pedido: PedidoComDetalhes,
   etapas: WorkflowEtapa[],
@@ -113,13 +140,10 @@ function getEtapasAtivasPedido(
 function toDashboardPedidoItem(
   pedido: PedidoComDetalhes,
   etapas?: WorkflowEtapa[],
+  planilhaEnvio?: AppData['pedidoPlanilhaEnvio'],
 ): DashboardPedidoItem {
   const setor = resolveSetorOrigem(pedido)
-  const dataConclusao = pedido.concluido ? dataConclusaoPedido(pedido) : null
-  const diasAteConclusao =
-    dataConclusao != null
-      ? differenceInCalendarDays(parseISO(dataConclusao), parseISO(pedido.dataSolicitacao))
-      : undefined
+  const diasAteConclusao = diasEnvioAteConclusao(pedido, planilhaEnvio) ?? undefined
 
   const ativas = etapas ? getEtapasAtivasPedido(pedido, etapas) : [pedido.etapaAtual]
   const etapasAtivasNomes = ativas.map((e) => e.nome).join(' · ')
@@ -320,15 +344,15 @@ export const pedidoService = {
     }
     correcoesVencidasItens.sort((a, b) => b.diasEmAtraso - a.diasEmAtraso)
 
+    const etapas = data.workflowEtapas
+    const planilhaEnvio = data.pedidoPlanilhaEnvio
+
+    const diasFinalizacaoPlanilha = concluidos
+      .map((p) => diasEnvioAteConclusao(p, planilhaEnvio))
+      .filter((d): d is number => d != null)
     const tempoMedioPagamento =
-      concluidos.length > 0
-        ? concluidos.reduce((acc, p) => {
-            const dias = differenceInCalendarDays(
-              new Date(),
-              parseISO(p.dataSolicitacao),
-            )
-            return acc + dias
-          }, 0) / concluidos.length
+      diasFinalizacaoPlanilha.length > 0
+        ? diasFinalizacaoPlanilha.reduce((acc, d) => acc + d, 0) / diasFinalizacaoPlanilha.length
         : 0
 
     const etapaMap = new Map<string, number[]>()
@@ -357,8 +381,6 @@ export const pedidoService = {
     const valorPagoMes = valorPagoMesPedidos.reduce((acc, p) => acc + p.valor, 0)
     const quantidadePagoMes = valorPagoMesPedidos.length
 
-    const etapas = data.workflowEtapas
-    const planilhaEnvio = data.pedidoPlanilhaEnvio
     const aguardandoEmpenhoPedidos = emAndamento.filter((p) =>
       isAguardandoEmpenhoNaSolempConfeccionada(p, etapas),
     )
@@ -445,14 +467,22 @@ export const pedidoService = {
       })
     }
 
-    const todosItens = pedidos.map((p) => toDashboardPedidoItem(p, etapas))
-    const emAndamentoItens = emAndamento.map((p) => toDashboardPedidoItem(p, etapas))
-    const concluidosItens = concluidos.map((p) => toDashboardPedidoItem(p, etapas))
-    const atrasadosItens = atrasados.map((p) => toDashboardPedidoItem(p, etapas))
-    const proximosVencimentoItens = proximosVencimento.map((p) =>
-      toDashboardPedidoItem(p, etapas),
+    const todosItens = pedidos.map((p) => toDashboardPedidoItem(p, etapas, planilhaEnvio))
+    const emAndamentoItens = emAndamento.map((p) =>
+      toDashboardPedidoItem(p, etapas, planilhaEnvio),
     )
-    const pagoMesItens = valorPagoMesPedidos.map((p) => toDashboardPedidoItem(p, etapas))
+    const concluidosItens = concluidos.map((p) =>
+      toDashboardPedidoItem(p, etapas, planilhaEnvio),
+    )
+    const atrasadosItens = atrasados.map((p) =>
+      toDashboardPedidoItem(p, etapas, planilhaEnvio),
+    )
+    const proximosVencimentoItens = proximosVencimento.map((p) =>
+      toDashboardPedidoItem(p, etapas, planilhaEnvio),
+    )
+    const pagoMesItens = valorPagoMesPedidos.map((p) =>
+      toDashboardPedidoItem(p, etapas, planilhaEnvio),
+    )
 
     const clinicaRanking = new Map<string, { total: number; valor: number }>()
     pedidos.forEach((p) => {
