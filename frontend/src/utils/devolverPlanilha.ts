@@ -159,6 +159,8 @@ function rowIdsDoPedido(data: AppData, pedido: Pedido): string[] {
   const planilha = data.pedidoPlanilhaEnvio?.[pedido.id]
   const fromMed = uniqueStrings(planilha?.imhMedicamentoLinhas?.map((linha) => linha.id))
   if (fromMed.length) return fromMed
+  const fromImhAba = uniqueStrings(planilha?.imhAbaLinhas?.map((linha) => linha.id))
+  if (fromImhAba.length) return fromImhAba
   const fromDiv = uniqueStrings(planilha?.divMaterialLinhas?.map((linha) => linha.id))
   if (fromDiv.length) return fromDiv
   return uniqueStrings(

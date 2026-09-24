@@ -93,13 +93,31 @@ export default function OrdenadorTimelineDetailPage() {
   }, [pedido, isConfeccao])
 
   const preferFormatoPlanilha = useMemo(() => {
-    // Sempre preferir a Div. Material exatamente como enviada pela clínica.
+    // Auditoria / Contabilidade: IMH exatamente como enviada pela clínica.
+    if (isAuditoria || isContabilidade) {
+      if (
+        planilhaEnvio?.imhAbaLinhas?.length ||
+        planilhaEnvio?.imhMedicamentoLinhas?.length ||
+        planilhaEnvio?.linhas?.length
+      ) {
+        return 'imh' as const
+      }
+    }
+    // Confecção e seguintes: Div. Material exatamente como enviada pela clínica.
     if (planilhaEnvio?.divMaterialLinhas?.length) return 'divMaterial' as const
     if (isConfeccao || isConfeccaoEtapa || isRascunhoEtapa || isEmpenhadoEtapa) {
       return 'controleSolemp' as const
     }
     return 'imh' as const
-  }, [isConfeccao, isConfeccaoEtapa, isRascunhoEtapa, isEmpenhadoEtapa, planilhaEnvio])
+  }, [
+    isAuditoria,
+    isContabilidade,
+    isConfeccao,
+    isConfeccaoEtapa,
+    isRascunhoEtapa,
+    isEmpenhadoEtapa,
+    planilhaEnvio,
+  ])
 
   const fluxoDiretoImh = useMemo(() => {
     if (!pedido) return false

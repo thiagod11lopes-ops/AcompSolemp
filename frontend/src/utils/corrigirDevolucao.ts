@@ -29,10 +29,13 @@ export function resolveCorrigirLinhaIds(
   for (const linha of planilha?.divMaterialLinhas ?? []) {
     if (linha.id) ids.add(linha.id)
   }
+  for (const linha of planilha?.imhAbaLinhas ?? []) {
+    if (linha.id) ids.add(linha.id)
+  }
   for (const linha of planilha?.imhMedicamentoLinhas ?? []) {
     if (linha.id) ids.add(linha.id)
   }
-  // Snapshot IMH OPME: id da linha da aba está em pacienteGrupoId
+  // Snapshot IMH OPME legado: id da linha da aba está em pacienteGrupoId
   for (const linha of planilha?.linhas ?? []) {
     const rowId = linha.pacienteGrupoId || linha.id
     if (rowId) ids.add(rowId)
@@ -65,9 +68,9 @@ export function resolveCorrigirAbaPreferida(
   linhaIds: Set<string>,
 ): CorrigirPlanilhaAba {
   const hasDiv = (planilha?.divMaterialLinhas ?? []).some((l) => linhaIds.has(l.id))
-  const hasImhAba = (planilha?.linhas ?? []).some((l) =>
-    linhaIds.has(l.pacienteGrupoId || l.id),
-  )
+  const hasImhAba =
+    (planilha?.imhAbaLinhas ?? []).some((l) => linhaIds.has(l.id)) ||
+    (planilha?.linhas ?? []).some((l) => linhaIds.has(l.pacienteGrupoId || l.id))
   const hasImhMed = (planilha?.imhMedicamentoLinhas ?? []).some((l) => linhaIds.has(l.id))
 
   if (hasDiv && !hasImhAba && !hasImhMed) return 'div-material'

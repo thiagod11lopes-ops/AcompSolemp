@@ -1,9 +1,10 @@
 import { isDemoDataSession } from '@/config/dataSource'
 import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
-import type { ImhMedicamentoLinha, PedidoPlanilhaEnvioState } from '@/types'
+import type { ImhAbaFormData, ImhAbaLinha, ImhMedicamentoLinha, PedidoPlanilhaEnvioState } from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
+import { buildImhPlanilhaFromAbaForm } from '@/utils/imhAbaForm'
 import { buildImhPlanilhaFromMedicamentoLinhas } from '@/utils/imhMedicamentoForm'
 
 function readPlanilhaData() {
@@ -73,6 +74,43 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: filtered.cabecalho,
       linhas: filtered.linhas.map((linha) => ({ ...linha })),
       controleSolempLinhas: existing?.controleSolempLinhas,
+      imhAbaLinhas: existing?.imhAbaLinhas,
+      imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
+      divMaterialLinhas: existing?.divMaterialLinhas,
+      enviadoEm: new Date().toISOString(),
+      ...preservePlanilhaFlags(existing),
+      devolvidaEm: undefined,
+      devolvidaParaChave: undefined,
+    }
+
+    data.pedidoPlanilhaEnvio[pedidoId] = snapshot
+    saveAppData(data)
+    return snapshot
+  },
+
+  saveImhAbaForPedido(
+    pedidoId: string,
+    form: Pick<ImhAbaFormData, 'clinica' | 'numeroCp'>,
+    linhas: ImhAbaLinha[],
+  ): PedidoPlanilhaEnvioState {
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
+    // Snapshot fiel das linhas da aba IMH (mesmas colunas/valores).
+    const abaSnapshot = linhas.map((linha) => ({ ...linha }))
+    // Legado OPME mantido só como backup para exportações antigas.
+    const legacy = buildImhPlanilhaFromAbaForm(
+      { clinica: form.clinica, numeroCp: form.numeroCp, linhas },
+      linhas,
+    )
+    const snapshot: PedidoPlanilhaEnvioState = {
+      formato: 'imhAba',
+      cabecalho: legacy.cabecalho,
+      linhas: legacy.linhas.map((linha) => ({ ...linha })),
+      controleSolempLinhas: existing?.controleSolempLinhas,
+      imhAbaLinhas: abaSnapshot,
+      imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
@@ -99,7 +137,9 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: converted.cabecalho,
       linhas: converted.linhas.map((linha) => ({ ...linha })),
       controleSolempLinhas: existing?.controleSolempLinhas,
+      imhAbaLinhas: existing?.imhAbaLinhas,
       imhMedicamentoLinhas: linhas.map((linha) => ({ ...linha })),
+      divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -127,6 +167,8 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: existing?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
       linhas: existing?.linhas ?? [],
       controleSolempLinhas: filtered.linhas.map((linha) => ({ ...linha })),
+      imhAbaLinhas: existing?.imhAbaLinhas,
+      imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
@@ -148,7 +190,7 @@ export const pedidoPlanilhaEnvioService = {
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
 
     const existing = data.pedidoPlanilhaEnvio[pedidoId]
-    const hasImh = Boolean(existing?.linhas?.length)
+    const hasImh = Boolean(existing?.imhAbaLinhas?.length || existing?.linhas?.length)
     // Snapshot fiel das linhas da aba Div. Material (mesmas colunas/valores).
     const divSnapshot = linhas.map((linha) => ({ ...linha }))
     const snapshot: PedidoPlanilhaEnvioState = {
@@ -159,6 +201,8 @@ export const pedidoPlanilhaEnvioService = {
       controleSolempLinhas: controle?.linhas?.length
         ? controle.linhas.map((linha) => ({ ...linha }))
         : existing?.controleSolempLinhas,
+      imhAbaLinhas: existing?.imhAbaLinhas,
+      imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: divSnapshot,
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
@@ -180,6 +224,7 @@ export const pedidoPlanilhaEnvioService = {
       cabecalho: { ...snapshot.cabecalho },
       linhas: (snapshot.linhas ?? []).map((linha) => ({ ...linha })),
       controleSolempLinhas: snapshot.controleSolempLinhas?.map((linha) => ({ ...linha })),
+      imhAbaLinhas: snapshot.imhAbaLinhas?.map((linha) => ({ ...linha })),
       imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
       divMaterialLinhas: snapshot.divMaterialLinhas?.map((linha) => ({ ...linha })),
       enviadoEm: snapshot.enviadoEm,

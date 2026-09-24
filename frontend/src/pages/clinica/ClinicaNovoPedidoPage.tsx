@@ -90,7 +90,6 @@ import {
   resolveCorrigirLinhaIds,
 } from '@/utils/corrigirDevolucao'
 import {
-  buildImhPlanilhaFromAbaForm,
   EMPTY_IMH_ABA_FORM,
   imhAbaLinhasToPedidoInput,
   linhaHasContent,
@@ -703,25 +702,28 @@ export default function ClinicaNovoPedidoPage() {
     }
 
     const existingImh = new Set(imhFormRef.current.linhas.map((l) => l.id))
-    const fromImhSnap: ImhAbaLinha[] = (planilha?.linhas ?? [])
-      .map((linha) => {
-        const id = linha.pacienteGrupoId || linha.id
-        if (!id || !idsCorrigir.has(id) || existingImh.has(id)) return null
-        return {
-          id,
-          data: linha.data ?? '',
-          nip: linha.nip ?? '',
-          nomeUsuario: linha.iniciais ?? '',
-          vinculo: '',
-          descricao: linha.descricaoMaterial || linha.procedimento || '',
-          nipTitular: '',
-          valorUnit: linha.valorUnit ?? '',
-          quantidade: linha.qt ?? '',
-          valorTotal: linha.valorTotal ?? '',
-          pctIndenizar: '',
-        } satisfies ImhAbaLinha
-      })
+    const fromImhSnap: ImhAbaLinha[] = (planilha?.imhAbaLinhas?.length
+      ? planilha.imhAbaLinhas
+      : (planilha?.linhas ?? []).map((linha) => {
+          const id = linha.pacienteGrupoId || linha.id
+          if (!id) return null
+          return {
+            id,
+            data: linha.data ?? '',
+            nip: linha.nip ?? '',
+            nomeUsuario: linha.iniciais ?? '',
+            vinculo: '',
+            descricao: linha.descricaoMaterial || linha.procedimento || '',
+            nipTitular: '',
+            valorUnit: linha.valorUnit ?? '',
+            quantidade: linha.qt ?? '',
+            valorTotal: linha.valorTotal ?? '',
+            pctIndenizar: '',
+          } satisfies ImhAbaLinha
+        })
+    )
       .filter((l): l is ImhAbaLinha => Boolean(l))
+      .filter((l) => idsCorrigir.has(l.id) && !existingImh.has(l.id))
 
     if (fromImhSnap.length > 0) {
       const nextImh: ImhAbaFormData = {
@@ -924,8 +926,12 @@ export default function ClinicaNovoPedidoPage() {
       }
 
       if (temImh) {
-        const planilhaImh = buildImhPlanilhaFromAbaForm(imhForm, imhSelecionadas)
-        pedidoPlanilhaEnvioService.saveForPedido(pedidoId, planilhaImh)
+        // Envia a IMH exatamente como na aba (linhas marcadas, colunas intactas).
+        pedidoPlanilhaEnvioService.saveImhAbaForPedido(
+          pedidoId,
+          { clinica: imhForm.clinica, numeroCp: imhForm.numeroCp },
+          imhSelecionadas,
+        )
       }
       if (temDiv) {
         // Envia a Div. Material exatamente como na aba (linhas marcadas, colunas intactas).

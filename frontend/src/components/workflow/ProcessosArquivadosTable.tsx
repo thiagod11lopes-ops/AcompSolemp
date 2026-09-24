@@ -111,13 +111,16 @@ export function ProcessosArquivadosTable({
         pedidoNumero={processoSelecionado?.pedidoNumero ?? ''}
         planilha={planilhaSelecionada}
         preferFormato={
-          planilhaSelecionada?.divMaterialLinhas?.length
-            ? 'divMaterial'
-            : processoSelecionado?.etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
-                processoSelecionado?.etapaChave === 'DIV_MAT_FINANCAS' ||
-                processoSelecionado?.etapaChave === 'DIV_MAT_EMPENHADO'
-              ? 'controleSolemp'
-              : 'imh'
+          processoSelecionado?.etapaChave === 'DIV_MAT_AUDITORIA' ||
+          processoSelecionado?.etapaChave === 'DIV_MAT_CONTABILIDADE_IMH'
+            ? 'imh'
+            : planilhaSelecionada?.divMaterialLinhas?.length
+              ? 'divMaterial'
+              : processoSelecionado?.etapaChave === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+                  processoSelecionado?.etapaChave === 'DIV_MAT_FINANCAS' ||
+                  processoSelecionado?.etapaChave === 'DIV_MAT_EMPENHADO'
+                ? 'controleSolemp'
+                : 'imh'
         }
         title={
           processoSelecionado

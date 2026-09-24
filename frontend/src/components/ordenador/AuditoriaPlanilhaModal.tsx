@@ -4,10 +4,12 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import CloseIcon from '@mui/icons-material/Close'
 import { PlanilhaEnvioModalShell } from '@/components/clinica/PlanilhaEnvioModalShell'
 import { MaterialEnvioModal } from '@/components/clinica/MaterialEnvioModal'
+import { ImhAbaPlanilhaPreview } from '@/components/clinica/ImhAbaPlanilhaPreview'
 import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamentoPlanilhaPreview'
 import { DivMaterialPlanilhaPreview } from '@/components/clinica/DivMaterialPlanilhaPreview'
 import { DevolverPlanilhaButton } from '@/components/ordenador/DevolverPlanilhaButton'
-import type { PedidoPlanilhaEnvioState } from '@/types'
+import type { ImhAbaFormData, PedidoPlanilhaEnvioState } from '@/types'
+import { calcImhSomasValorEIndenizar } from '@/utils/imhAbaForm'
 import { calcImhMedicamentoTotalGeral } from '@/utils/imhMedicamentoForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import {
@@ -114,6 +116,21 @@ function DivMaterialPlanilhaModalBody({
   )
 }
 
+function ImhAbaPlanilhaModalBody({ value }: { value: ImhAbaFormData }) {
+  const [dataFiltro, setDataFiltro] = useState<PlanilhaDataFiltro>(() => ({
+    ...createDefaultPlanilhaDataFiltro(),
+    mostrarTodos: true,
+  }))
+
+  return (
+    <ImhAbaPlanilhaPreview
+      value={value}
+      dataFiltro={dataFiltro}
+      onDataFiltroChange={setDataFiltro}
+    />
+  )
+}
+
 export function AuditoriaPlanilhaModal({
   open,
   pedidoNumero,
@@ -142,6 +159,36 @@ export function AuditoriaPlanilhaModal({
         onDevolver={onDevolver}
       >
         <ImhMedicamentoPlanilhaPreview value={{ linhas: pmeLinhas }} readOnly />
+      </PlanilhaFullscreenShell>
+    )
+  }
+
+  const imhAbaLinhas = planilha.imhAbaLinhas ?? []
+  const hasImhAba = imhAbaLinhas.length > 0
+  // Snapshot fiel da aba IMH: mesma grade vista na clínica (Auditoria / Contabilidade).
+  const showImhAba =
+    hasImhAba &&
+    preferFormato !== 'divMaterial' &&
+    preferFormato !== 'controleSolemp'
+
+  if (showImhAba) {
+    const formValue: ImhAbaFormData = {
+      clinica: planilha.cabecalho.fornecedor ?? '',
+      numeroCp: planilha.cabecalho.numeroRelacao ?? '',
+      linhas: imhAbaLinhas,
+    }
+    const somas = calcImhSomasValorEIndenizar(imhAbaLinhas)
+    return (
+      <PlanilhaFullscreenShell
+        open={open}
+        onClose={onClose}
+        title={modalTitle}
+        subtitle={`IMH · ${imhAbaLinhas.length} lançamento(s)${
+          somas.valorTotal > 0 ? ` · Total ${formatValorBrasileiro(somas.valorTotal)}` : ''
+        }`}
+        onDevolver={onDevolver}
+      >
+        <ImhAbaPlanilhaModalBody value={formValue} />
       </PlanilhaFullscreenShell>
     )
   }
