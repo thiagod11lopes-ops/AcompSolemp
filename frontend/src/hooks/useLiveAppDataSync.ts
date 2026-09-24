@@ -27,6 +27,9 @@ const LIVE_QUERY_KEYS = [
   'reversoes',
   'consumo-planilha',
   'processos-arquivados',
+  'chat-unread',
+  'chat-threads',
+  'chat-messages',
 ] as const
 
 function invalidateLiveQueries(queryClient: ReturnType<typeof useQueryClient>): void {

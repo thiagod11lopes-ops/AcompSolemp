@@ -460,6 +460,11 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   if (!data.credenciais) data.credenciais = {}
   if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
   if (!data.processosArquivados) data.processosArquivados = []
+  if (!data.chatMensagens) data.chatMensagens = []
+  data.chatMensagens = (data.chatMensagens ?? []).map((m) => ({
+    ...m,
+    lidasPor: Array.isArray(m.lidasPor) ? m.lidasPor : [],
+  }))
   const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
   const bootstrapEmailChanged = ensureBootstrapGoogleEmails(data)
   data.pedidos = (data.pedidos ?? []).map((p) => ({

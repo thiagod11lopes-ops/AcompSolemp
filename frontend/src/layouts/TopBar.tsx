@@ -23,6 +23,7 @@ import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
@@ -150,6 +151,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
             </IconButton>
           </Tooltip>
           <NotificationPanel excludeTipos={TIPOS_NOTIFICACAO_REVERSAO} />
+          <ChatPanel />
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
               {user?.nome.charAt(0)}

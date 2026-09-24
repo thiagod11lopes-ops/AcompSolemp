@@ -751,6 +751,23 @@ export interface AppData {
   medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
   processosArquivados?: ProcessoArquivado[]
+  /** Mensagens do bate-papo entre setores (DM + grupo geral) */
+  chatMensagens?: ChatMessage[]
   /** Metadados da organização (multi-tenant) */
   tenantMeta?: TenantMeta
+}
+
+export type ChatThreadKind = 'grupo' | 'dm'
+
+export interface ChatMessage {
+  id: string
+  /** `grupo` ou `dm:PERFIL_A:PERFIL_B` (perfis em ordem alfabética) */
+  threadId: string
+  autorId: string
+  autorNome: string
+  autorPerfil: UserRole
+  texto: string
+  data: string
+  /** IDs de usuários que já leram a mensagem */
+  lidasPor: string[]
 }
