@@ -516,6 +516,8 @@ export interface ImhAbaFormData {
   linhas: ImhAbaLinha[]
   /** Linhas já enviadas para Auditoria (checklist cinza). */
   finalizedImhIds?: string[]
+  /** Linhas desmarcadas após devolução da planilha (checkbox laranja). */
+  devolvidosImhIds?: string[]
 }
 
 /** Linha da planilha IMH do portal medicamento (Modelo IHM — PME) */
@@ -639,6 +641,8 @@ export interface ClinicaPlanilhasLivresState {
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
   /** Linhas da Div. Material já enviadas para Confecção de Solemp. */
   finalizedDivMaterialIds?: string[]
+  /** Linhas da Div. Material desmarcadas após devolução (reenvio). */
+  devolvidosDivMaterialIds?: string[]
   /** Últimos filtros Todos/data das planilhas IMH e Div. Material. */
   planilhaFiltros?: import('@/utils/planilhaDataFiltro').PlanilhaFiltrosPersistidos
 }

@@ -157,7 +157,13 @@ function uniqueStrings(values: string[] | undefined): string[] {
 function rowIdsDoPedido(data: AppData, pedido: Pedido): string[] {
   if (pedido.consumoRowIds?.length) return [...pedido.consumoRowIds]
   const planilha = data.pedidoPlanilhaEnvio?.[pedido.id]
-  return uniqueStrings(planilha?.imhMedicamentoLinhas?.map((linha) => linha.id))
+  const fromMed = uniqueStrings(planilha?.imhMedicamentoLinhas?.map((linha) => linha.id))
+  if (fromMed.length) return fromMed
+  const fromDiv = uniqueStrings(planilha?.divMaterialLinhas?.map((linha) => linha.id))
+  if (fromDiv.length) return fromDiv
+  return uniqueStrings(
+    planilha?.linhas?.map((linha) => linha.pacienteGrupoId || linha.id).filter(Boolean) as string[],
+  )
 }
 
 function moverIdsParaDevolvidos(
@@ -204,20 +210,53 @@ function desmarcarCheckboxesOrigem(data: AppData, pedido: Pedido): void {
 
   if (!data.planilhasLivres) data.planilhasLivres = {}
   const livres = data.planilhasLivres[pedido.clinicaId]
-  if (livres?.imhMedicamento) {
-    const imh = moverIdsParaDevolvidos(
-      livres.imhMedicamento.finalizedImhIds,
-      livres.imhMedicamento.devolvidosImhIds,
+  if (livres) {
+    let nextLivres = { ...livres }
+
+    if (livres.imhMedicamento) {
+      const imhMed = moverIdsParaDevolvidos(
+        livres.imhMedicamento.finalizedImhIds,
+        livres.imhMedicamento.devolvidosImhIds,
+        ids,
+      )
+      nextLivres = {
+        ...nextLivres,
+        imhMedicamento: {
+          ...livres.imhMedicamento,
+          finalizedImhIds: imhMed.finalized,
+          devolvidosImhIds: imhMed.devolvidos,
+        },
+      }
+    }
+
+    if (livres.imh) {
+      const imh = moverIdsParaDevolvidos(
+        livres.imh.finalizedImhIds,
+        livres.imh.devolvidosImhIds,
+        ids,
+      )
+      nextLivres = {
+        ...nextLivres,
+        imh: {
+          ...livres.imh,
+          finalizedImhIds: imh.finalized,
+          devolvidosImhIds: imh.devolvidos,
+        },
+      }
+    }
+
+    const div = moverIdsParaDevolvidos(
+      livres.finalizedDivMaterialIds,
+      livres.devolvidosDivMaterialIds,
       ids,
     )
-    data.planilhasLivres[pedido.clinicaId] = {
-      ...livres,
-      imhMedicamento: {
-        ...livres.imhMedicamento,
-        finalizedImhIds: imh.finalized,
-        devolvidosImhIds: imh.devolvidos,
-      },
+    nextLivres = {
+      ...nextLivres,
+      finalizedDivMaterialIds: div.finalized,
+      devolvidosDivMaterialIds: div.devolvidos,
     }
+
+    data.planilhasLivres[pedido.clinicaId] = nextLivres
   }
 }
 

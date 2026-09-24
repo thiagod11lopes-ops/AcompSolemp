@@ -39,6 +39,8 @@ interface DivMaterialPlanilhaPreviewProps {
   selectedIds?: Set<string>
   onSelectedIdsChange?: (next: Set<string>) => void
   finalizedIds?: Set<string>
+  /** Linhas devolvidas (checkbox laranja) liberadas para reenvio. */
+  devolvidosIds?: Set<string>
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onRequestClear?: () => void
@@ -254,6 +256,11 @@ const finalizedCheckboxSx = {
   opacity: 0.55,
 } as const
 
+const devolvidoCheckboxSx = {
+  color: EXCEL_SHEET.devolvidoCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.devolvidoCheck },
+} as const
+
 const selectedCheckboxSx = {
   color: EXCEL_SHEET.selectedCheck,
   '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
@@ -265,6 +272,7 @@ export function DivMaterialPlanilhaPreview({
   selectedIds,
   onSelectedIdsChange,
   finalizedIds,
+  devolvidosIds,
   onEditLinha,
   onDeleteLinha,
   onRequestClear,
@@ -281,6 +289,7 @@ export function DivMaterialPlanilhaPreview({
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const selection = selectedIds ?? new Set<string>()
   const finalized = finalizedIds ?? new Set<string>()
+  const devolvidos = devolvidosIds ?? new Set<string>()
   const selecionaveis = linhasFiltradas.filter((l) => !finalized.has(l.id))
   const allSelected =
     selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
@@ -538,6 +547,7 @@ export function DivMaterialPlanilhaPreview({
                     linhasFiltradas.map((linha, index) => {
                       const editing = editingLinhaId === linha.id
                       const finalizado = finalized.has(linha.id)
+                      const devolvido = !finalizado && devolvidos.has(linha.id)
                       const checked = finalizado || selection.has(linha.id)
                       return (
                         <TableRow
@@ -571,13 +581,24 @@ export function DivMaterialPlanilhaPreview({
                             >
                               <Checkbox
                                 size="small"
+                                className={
+                                  finalizado
+                                    ? 'excel-checkbox-finalizado'
+                                    : devolvido
+                                      ? 'excel-checkbox-devolvido'
+                                      : undefined
+                                }
                                 checked={checked}
                                 disabled={finalizado}
                                 onClick={(e) => e.stopPropagation()}
                                 onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
                                 sx={{
                                   p: 0,
-                                  ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                                  ...(finalizado
+                                    ? finalizedCheckboxSx
+                                    : devolvido
+                                      ? devolvidoCheckboxSx
+                                      : selectedCheckboxSx),
                                 }}
                               />
                             </TableCell>

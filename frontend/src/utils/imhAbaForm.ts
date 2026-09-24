@@ -37,6 +37,7 @@ export const EMPTY_IMH_ABA_FORM: ImhAbaFormData = {
   numeroCp: '',
   linhas: [],
   finalizedImhIds: [],
+  devolvidosImhIds: [],
 }
 
 export const IMH_ABA_COLUNAS = [
@@ -161,6 +162,7 @@ export function normalizeImhAbaForm(value: ImhAbaFormData | undefined): ImhAbaFo
     numeroCp: value?.numeroCp ?? '',
     linhas,
     finalizedImhIds: (value?.finalizedImhIds ?? []).filter((id) => linhaIds.has(id)),
+    devolvidosImhIds: (value?.devolvidosImhIds ?? []).filter((id) => linhaIds.has(id)),
   }
 }
 
@@ -293,7 +295,12 @@ export function markImhAbaLinhasFinalized(
   ids: string[],
 ): ImhAbaFormData {
   const next = new Set([...(form.finalizedImhIds ?? []), ...ids])
-  return { ...form, finalizedImhIds: [...next] }
+  const enviados = new Set(ids)
+  return {
+    ...form,
+    finalizedImhIds: [...next],
+    devolvidosImhIds: (form.devolvidosImhIds ?? []).filter((id) => !enviados.has(id)),
+  }
 }
 
 const IMH_AUTO_PREFIX = 'imh-auto-'

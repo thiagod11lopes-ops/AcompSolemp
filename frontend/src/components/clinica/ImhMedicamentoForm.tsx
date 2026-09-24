@@ -95,6 +95,10 @@ interface ImhMedicamentoFormProps {
   onPacientesChange?: (next: PacientePmeRow[]) => void
   listaMedicamentos?: ListaMedicamentosFormData
   onListaMedicamentosChange?: (next: ListaMedicamentosFormData) => void
+  /** Pedido devolvido sendo corrigido (reenvio no mesmo pedido). */
+  corrigirPedidoId?: string | null
+  /** Quando definido, a grade já vem filtrada; pré-seleciona e reabre o pedido. */
+  corrigirLinhaIds?: Set<string> | null
 }
 
 const VINCULOS = [
@@ -230,6 +234,8 @@ export function ImhMedicamentoForm({
   onPacientesChange,
   listaMedicamentos,
   onListaMedicamentosChange,
+  corrigirPedidoId = null,
+  corrigirLinhaIds = null,
 }: ImhMedicamentoFormProps) {
   const { navigatePortal } = usePortalPaths()
   const { user } = useClinicaAuth()
@@ -320,24 +326,37 @@ export function ImhMedicamentoForm({
     [filtroMes, filtroAno],
   )
   const anosOptions = useMemo(() => anosDisponiveisImh(value.linhas), [value.linhas])
-  const linhasFiltradas = useMemo(
-    () =>
-      value.linhas.filter((linha) => dataPertenceAoDia(linha.data, filtroDia, mesFiltro)),
-    [value.linhas, filtroDia, mesFiltro],
-  )
+  const linhasFiltradas = useMemo(() => {
+    if (corrigirLinhaIds && corrigirLinhaIds.size > 0) {
+      return value.linhas.filter((linha) => corrigirLinhaIds.has(linha.id))
+    }
+    return value.linhas.filter((linha) =>
+      dataPertenceAoDia(linha.data, filtroDia, mesFiltro),
+    )
+  }, [value.linhas, filtroDia, mesFiltro, corrigirLinhaIds])
   const valueFiltrado = useMemo(
     () => ({ ...value, linhas: linhasFiltradas }),
     [value, linhasFiltradas],
   )
   const mesReferenciaLabel = useMemo(() => {
+    if (corrigirLinhaIds && corrigirLinhaIds.size > 0) {
+      return 'linhas devolvidas para correção'
+    }
     const mesNome = MESES_OPCOES.find((m) => m.value === filtroMes)?.label ?? String(filtroMes)
     if (filtroDia > 0) return `${String(filtroDia).padStart(2, '0')}/${mesNome}/${filtroAno}`
     return `${mesNome}/${filtroAno}`
-  }, [filtroDia, filtroMes, filtroAno])
+  }, [filtroDia, filtroMes, filtroAno, corrigirLinhaIds])
   const emptyHint =
     value.linhas.length > 0 && linhasFiltradas.length === 0
       ? `Nenhum lançamento em ${mesReferenciaLabel}. Altere o dia/mês/ano ou adicione um lançamento com data neste período.`
       : undefined
+
+  useEffect(() => {
+    if (!corrigirLinhaIds || corrigirLinhaIds.size === 0) return
+    setSelectedImhIds(new Set([...corrigirLinhaIds].filter((id) =>
+      value.linhas.some((l) => l.id === id),
+    )))
+  }, [corrigirPedidoId, corrigirLinhaIds, value.linhas])
 
   const handleFiltroMesChange = (mes: number) => {
     setFiltroMes(mes)
@@ -484,19 +503,24 @@ export function ImhMedicamentoForm({
     setIsEnviando(true)
     try {
       const ids = selecionadas.map((l) => l.id)
-      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, ids, clinicaId)
       let pedidoId: string
 
-      if (pedidoExistente) {
-        pedidoId = pedidoExistente.id
+      if (corrigirPedidoId && pedidos.some((p) => p.id === corrigirPedidoId)) {
+        pedidoId = corrigirPedidoId
         await reabrirImh.mutateAsync({ pedidoId })
       } else {
-        pedidoId = createPedidoLoteId()
-        await createPedido.mutateAsync({
-          ...imhMedicamentoLinhasToPedidoInput(selecionadas, clinicaNome),
-          id: pedidoId,
-          fluxo: 'imh',
-        })
+        const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, ids, clinicaId)
+        if (pedidoExistente) {
+          pedidoId = pedidoExistente.id
+          await reabrirImh.mutateAsync({ pedidoId })
+        } else {
+          pedidoId = createPedidoLoteId()
+          await createPedido.mutateAsync({
+            ...imhMedicamentoLinhasToPedidoInput(selecionadas, clinicaNome),
+            id: pedidoId,
+            fluxo: 'imh',
+          })
+        }
       }
       pedidoPlanilhaEnvioService.saveImhMedicamentoForPedido(pedidoId, selecionadas)
 

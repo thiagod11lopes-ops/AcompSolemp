@@ -59,6 +59,9 @@ function normalizeState(
     finalizedDivMaterialIds: Array.isArray(state?.finalizedDivMaterialIds)
       ? state.finalizedDivMaterialIds.filter((id) => typeof id === 'string')
       : [],
+    devolvidosDivMaterialIds: Array.isArray(state?.devolvidosDivMaterialIds)
+      ? state.devolvidosDivMaterialIds.filter((id) => typeof id === 'string')
+      : [],
     planilhaFiltros: normalizePlanilhaFiltrosPersistidos(state?.planilhaFiltros),
   }
 }

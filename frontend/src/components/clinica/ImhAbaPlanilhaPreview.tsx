@@ -93,6 +93,11 @@ const finalizedCheckboxSx = {
   opacity: 0.55,
 } as const
 
+const devolvidoCheckboxSx = {
+  color: EXCEL_SHEET.devolvidoCheck,
+  '&.Mui-checked': { color: EXCEL_SHEET.devolvidoCheck },
+} as const
+
 const selectedCheckboxSx = {
   color: EXCEL_SHEET.selectedCheck,
   '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
@@ -116,6 +121,10 @@ export function ImhAbaPlanilhaPreview({
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
+  const devolvidosIds = useMemo(
+    () => new Set(value.devolvidosImhIds ?? []),
+    [value.devolvidosImhIds],
+  )
   const datas = useMemo(() => value.linhas.map((l) => l.data), [value.linhas])
   const linhasFiltradas = useMemo(
     () => value.linhas.filter((linha) => linhaPassaNoFiltroData(linha.data, dataFiltro)),
@@ -421,6 +430,7 @@ export function ImhAbaPlanilhaPreview({
                     linhasFiltradas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
                     const finalizado = finalizedIds.has(linha.id)
+                    const devolvido = !finalizado && devolvidosIds.has(linha.id)
                     const checked = finalizado || selection.has(linha.id)
                     return (
                       <TableRow
@@ -452,13 +462,24 @@ export function ImhAbaPlanilhaPreview({
                           >
                             <Checkbox
                               size="small"
+                              className={
+                                finalizado
+                                  ? 'excel-checkbox-finalizado'
+                                  : devolvido
+                                    ? 'excel-checkbox-devolvido'
+                                    : undefined
+                              }
                               checked={checked}
                               disabled={finalizado}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
                               sx={{
                                 p: 0,
-                                ...(finalizado ? finalizedCheckboxSx : selectedCheckboxSx),
+                                ...(finalizado
+                                  ? finalizedCheckboxSx
+                                  : devolvido
+                                    ? devolvidoCheckboxSx
+                                    : selectedCheckboxSx),
                               }}
                             />
                           </TableCell>

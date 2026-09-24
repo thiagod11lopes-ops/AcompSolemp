@@ -37,7 +37,9 @@ import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioServic
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
+  ImhAbaLinha,
   ImhMedicamentoFormData,
+  ImhMedicamentoLinha,
   ListaMedicamentosFormData,
   PlanilhaLivreAba,
 } from '@/types'
@@ -54,14 +56,6 @@ import {
   mergeConmedImport,
   parseConmedComrjFromGrid,
 } from '@/utils/conmedComrjImport'
-import {
-  buildImhPlanilhaFromAbaForm,
-  EMPTY_IMH_ABA_FORM,
-  imhAbaLinhasToPedidoInput,
-  linhaHasContent,
-  markImhAbaLinhasFinalized,
-  syncImhAbaFromFontes,
-} from '@/utils/imhAbaForm'
 import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
 import {
@@ -92,6 +86,19 @@ import {
   type PlanilhaFiltrosPersistidos,
 } from '@/utils/planilhaDataFiltro'
 import { EMPTY_LISTA_MATERIAIS_FORM } from '@/utils/listaMateriaisForm'
+import {
+  mergeLinhasCorrigir,
+  resolveCorrigirLinhaIds,
+} from '@/utils/corrigirDevolucao'
+import {
+  buildImhPlanilhaFromAbaForm,
+  EMPTY_IMH_ABA_FORM,
+  imhAbaLinhasToPedidoInput,
+  linhaHasContent,
+  markImhAbaLinhasFinalized,
+  sortImhLinhasByData,
+  syncImhAbaFromFontes,
+} from '@/utils/imhAbaForm'
 
 const IMH_ABA_ID = 'imh'
 const DIV_MATERIAL_ABA_ID = 'div-material'
@@ -108,6 +115,7 @@ type PersistPayload = {
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
   finalizedDivMaterialIds?: string[]
+  devolvidosDivMaterialIds?: string[]
   planilhaFiltros?: PlanilhaFiltrosPersistidos
 }
 
@@ -176,6 +184,9 @@ export default function ClinicaNovoPedidoPage() {
   const [finalizedDivMaterialIds, setFinalizedDivMaterialIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const [devolvidosDivMaterialIds, setDevolvidosDivMaterialIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [imhDataFiltro, setImhDataFiltro] = useState<PlanilhaDataFiltro>(() =>
     createDefaultPlanilhaDataFiltro(),
   )
@@ -211,6 +222,7 @@ export default function ClinicaNovoPedidoPage() {
   const consumoRowsRef = useRef(consumoRows)
   const divMaterialLinhasRef = useRef(divMaterialLinhas)
   const finalizedDivMaterialIdsRef = useRef(finalizedDivMaterialIds)
+  const devolvidosDivMaterialIdsRef = useRef(devolvidosDivMaterialIds)
   const imhDataFiltroRef = useRef(imhDataFiltro)
   const divMaterialDataFiltroRef = useRef(divMaterialDataFiltro)
   const modoRef = useRef(planilhasModo)
@@ -224,6 +236,7 @@ export default function ClinicaNovoPedidoPage() {
   consumoRowsRef.current = consumoRows
   divMaterialLinhasRef.current = divMaterialLinhas
   finalizedDivMaterialIdsRef.current = finalizedDivMaterialIds
+  devolvidosDivMaterialIdsRef.current = devolvidosDivMaterialIds
   imhDataFiltroRef.current = imhDataFiltro
   divMaterialDataFiltroRef.current = divMaterialDataFiltro
   modoRef.current = planilhasModo
@@ -243,6 +256,7 @@ export default function ClinicaNovoPedidoPage() {
     const consumo = normalizeConsumoMaterialRows(state.consumoMaterialConsignado)
     setConsumoRows(isMedicamento ? consumo : [])
     setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
+    setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds ?? []))
     const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
     setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
     setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
@@ -280,14 +294,18 @@ export default function ClinicaNovoPedidoPage() {
           devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
         }))
       }
-      if (state.imh?.finalizedImhIds) {
+      if (state.imh) {
         setImhForm((prev) => ({
           ...prev,
           finalizedImhIds: state.imh?.finalizedImhIds ?? prev.finalizedImhIds,
+          devolvidosImhIds: state.imh?.devolvidosImhIds ?? prev.devolvidosImhIds,
         }))
       }
       if (state.finalizedDivMaterialIds) {
         setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds))
+      }
+      if (state.devolvidosDivMaterialIds) {
+        setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds))
       }
     })
   }, [clinicaId])
@@ -318,6 +336,8 @@ export default function ClinicaNovoPedidoPage() {
           listaMateriais: stored.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM,
           finalizedDivMaterialIds:
             patch.finalizedDivMaterialIds ?? [...finalizedDivMaterialIdsRef.current],
+          devolvidosDivMaterialIds:
+            patch.devolvidosDivMaterialIds ?? [...devolvidosDivMaterialIdsRef.current],
           planilhaFiltros: patch.planilhaFiltros ?? {
             imh: imhDataFiltroRef.current,
             divMaterial: divMaterialDataFiltroRef.current,
@@ -362,18 +382,48 @@ export default function ClinicaNovoPedidoPage() {
     [abas, abaAtivaId],
   )
 
+  const corrigirPedidoId = searchParams.get('corrigir')
+  const abaCorrigir = searchParams.get('aba')
+  const corrigirHydratedRef = useRef<string | null>(null)
+
+  const pedidoCorrigir = useMemo(
+    () =>
+      corrigirPedidoId ? (pedidos.find((p) => p.id === corrigirPedidoId) ?? null) : null,
+    [corrigirPedidoId, pedidos],
+  )
+
+  const planilhaCorrigir = useMemo(
+    () =>
+      corrigirPedidoId ? pedidoPlanilhaEnvioService.getForPedido(corrigirPedidoId) : null,
+    [corrigirPedidoId, pedidos],
+  )
+
+  const idsCorrigir = useMemo(() => {
+    if (!pedidoCorrigir) return null
+    const ids = resolveCorrigirLinhaIds(pedidoCorrigir, planilhaCorrigir)
+    return ids.size > 0 ? ids : null
+  }, [pedidoCorrigir, planilhaCorrigir])
+
+  const modoCorrigir = Boolean(idsCorrigir)
+
   const selectedImhCount = useMemo(() => {
     const finalized = new Set(imhForm.finalizedImhIds ?? [])
-    return imhForm.linhas.filter(
+    const linhas = idsCorrigir
+      ? imhForm.linhas.filter((l) => idsCorrigir.has(l.id))
+      : imhForm.linhas
+    return linhas.filter(
       (l) => selectedImhIds.has(l.id) && !finalized.has(l.id) && linhaHasContent(l),
     ).length
-  }, [imhForm, selectedImhIds])
+  }, [imhForm, selectedImhIds, idsCorrigir])
 
   const selectedDivCount = useMemo(() => {
-    return divMaterialLinhas.filter(
+    const linhas = idsCorrigir
+      ? divMaterialLinhas.filter((l) => idsCorrigir.has(l.id))
+      : divMaterialLinhas
+    return linhas.filter(
       (l) => selectedDivMaterialIds.has(l.id) && !finalizedDivMaterialIds.has(l.id),
     ).length
-  }, [divMaterialLinhas, selectedDivMaterialIds, finalizedDivMaterialIds])
+  }, [divMaterialLinhas, selectedDivMaterialIds, finalizedDivMaterialIds, idsCorrigir])
 
   const applyModeloSheet = useCallback(
     (sheet: SpreadsheetSheetImport) => {
@@ -630,6 +680,174 @@ export default function ClinicaNovoPedidoPage() {
     persist({ abaAtivaId: abaId })
   }
 
+  // Hidrata linhas ausentes a partir do snapshot enviado e pré-seleciona para reenvio.
+  useEffect(() => {
+    if (!corrigirPedidoId || !idsCorrigir) return
+    if (corrigirHydratedRef.current === corrigirPedidoId) return
+    corrigirHydratedRef.current = corrigirPedidoId
+
+    const planilha = planilhaCorrigir
+    if (isMedicamento) {
+      const existing = new Set(imhMedicamentoFormRef.current.linhas.map((l) => l.id))
+      const fromSnap = (planilha?.imhMedicamentoLinhas ?? []).filter(
+        (l) => idsCorrigir.has(l.id) && !existing.has(l.id),
+      )
+      if (fromSnap.length > 0) {
+        const next: ImhMedicamentoFormData = {
+          ...imhMedicamentoFormRef.current,
+          linhas: [...imhMedicamentoFormRef.current.linhas, ...fromSnap],
+        }
+        setImhMedicamentoForm(next)
+        persist({ imhMedicamento: next })
+      }
+      return
+    }
+
+    const existingImh = new Set(imhFormRef.current.linhas.map((l) => l.id))
+    const fromImhSnap: ImhAbaLinha[] = (planilha?.linhas ?? [])
+      .map((linha) => {
+        const id = linha.pacienteGrupoId || linha.id
+        if (!id || !idsCorrigir.has(id) || existingImh.has(id)) return null
+        return {
+          id,
+          data: linha.data ?? '',
+          nip: linha.nip ?? '',
+          nomeUsuario: linha.iniciais ?? '',
+          vinculo: '',
+          descricao: linha.descricaoMaterial || linha.procedimento || '',
+          nipTitular: '',
+          valorUnit: linha.valorUnit ?? '',
+          quantidade: linha.qt ?? '',
+          valorTotal: linha.valorTotal ?? '',
+          pctIndenizar: '',
+        } satisfies ImhAbaLinha
+      })
+      .filter((l): l is ImhAbaLinha => Boolean(l))
+
+    if (fromImhSnap.length > 0) {
+      const nextImh: ImhAbaFormData = {
+        ...imhFormRef.current,
+        linhas: sortImhLinhasByData([...imhFormRef.current.linhas, ...fromImhSnap]),
+      }
+      setImhForm(nextImh)
+      persist({ imh: nextImh })
+    }
+
+    const existingDiv = new Set(divMaterialLinhasRef.current.map((l) => l.id))
+    const fromDivSnap = (planilha?.divMaterialLinhas ?? []).filter(
+      (l) => idsCorrigir.has(l.id) && !existingDiv.has(l.id),
+    )
+    if (fromDivSnap.length > 0) {
+      setDivMaterialLinhas([...divMaterialLinhasRef.current, ...fromDivSnap])
+    }
+
+    const imhIds = new Set<string>()
+    const divIds = new Set<string>()
+    for (const id of idsCorrigir) {
+      if (
+        imhFormRef.current.linhas.some((l) => l.id === id) ||
+        fromImhSnap.some((l) => l.id === id)
+      ) {
+        imhIds.add(id)
+      }
+      if (
+        divMaterialLinhasRef.current.some((l) => l.id === id) ||
+        fromDivSnap.some((l) => l.id === id)
+      ) {
+        divIds.add(id)
+      }
+    }
+    if (imhIds.size > 0) setSelectedImhIds(imhIds)
+    if (divIds.size > 0) setSelectedDivMaterialIds(divIds)
+  }, [corrigirPedidoId, idsCorrigir, isMedicamento, persist, planilhaCorrigir])
+
+  useEffect(() => {
+    if (!abaCorrigir) return
+    const ids = new Set([
+      ...fixedPlanilhas.map((f) => f.id),
+      ...abasRef.current.map((a) => a.id),
+    ])
+    if (!ids.has(abaCorrigir)) return
+    setAbaAtivaId(abaCorrigir)
+    persist({ abaAtivaId: abaCorrigir })
+  }, [abaCorrigir, fixedPlanilhas, persist, corrigirPedidoId])
+
+  const imhFormVisivel = useMemo(() => {
+    if (!idsCorrigir) return imhForm
+    return {
+      ...imhForm,
+      linhas: sortImhLinhasByData(imhForm.linhas.filter((l) => idsCorrigir.has(l.id))),
+    }
+  }, [imhForm, idsCorrigir])
+
+  const imhMedicamentoFormVisivel = useMemo(() => {
+    if (!idsCorrigir) return imhMedicamentoForm
+    return {
+      ...imhMedicamentoForm,
+      linhas: imhMedicamentoForm.linhas.filter((l) => idsCorrigir.has(l.id)),
+    }
+  }, [imhMedicamentoForm, idsCorrigir])
+
+  const divMaterialLinhasVisiveis = useMemo(() => {
+    if (!idsCorrigir) return divMaterialLinhas
+    return divMaterialLinhas.filter((l) => idsCorrigir.has(l.id))
+  }, [divMaterialLinhas, idsCorrigir])
+
+  const handleImhChangeCorrigir = useCallback(
+    (next: ImhAbaFormData) => {
+      if (!idsCorrigir) {
+        handleImhChange(next)
+        return
+      }
+      const merged: ImhAbaFormData = {
+        ...next,
+        linhas: sortImhLinhasByData(
+          mergeLinhasCorrigir(imhFormRef.current.linhas, next.linhas, idsCorrigir),
+        ),
+        finalizedImhIds: next.finalizedImhIds ?? imhFormRef.current.finalizedImhIds,
+        devolvidosImhIds: next.devolvidosImhIds ?? imhFormRef.current.devolvidosImhIds,
+      }
+      handleImhChange(merged)
+    },
+    [handleImhChange, idsCorrigir],
+  )
+
+  const handleImhMedicamentoChangeCorrigir = useCallback(
+    (next: ImhMedicamentoFormData) => {
+      if (!idsCorrigir) {
+        handleImhMedicamentoChange(next)
+        return
+      }
+      const merged: ImhMedicamentoFormData = {
+        ...next,
+        linhas: mergeLinhasCorrigir(
+          imhMedicamentoFormRef.current.linhas,
+          next.linhas,
+          idsCorrigir,
+        ),
+        finalizedImhIds:
+          next.finalizedImhIds ?? imhMedicamentoFormRef.current.finalizedImhIds,
+        devolvidosImhIds:
+          next.devolvidosImhIds ?? imhMedicamentoFormRef.current.devolvidosImhIds,
+      }
+      handleImhMedicamentoChange(merged)
+    },
+    [handleImhMedicamentoChange, idsCorrigir],
+  )
+
+  const handleDivMaterialChangeCorrigir = useCallback(
+    (next: DivMaterialLinha[]) => {
+      if (!idsCorrigir) {
+        setDivMaterialLinhas(next)
+        return
+      }
+      setDivMaterialLinhas(
+        mergeLinhasCorrigir(divMaterialLinhasRef.current, next, idsCorrigir),
+      )
+    },
+    [idsCorrigir],
+  )
+
   const handleAbrirEnvio = () => {
     if (selectedImhCount === 0 && selectedDivCount === 0) {
       setFeedback({
@@ -680,24 +898,30 @@ export default function ClinicaNovoPedidoPage() {
         ...imhSelecionadas.map((l) => l.id),
         ...divSelecionadas.map((l) => l.id),
       ]
-      const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
       let pedidoId: string
 
-      if (pedidoExistente) {
-        pedidoId = pedidoExistente.id
+      if (corrigirPedidoId && pedidos.some((p) => p.id === corrigirPedidoId)) {
+        pedidoId = corrigirPedidoId
         if (temImh) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
         if (temDiv) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
       } else {
-        pedidoId = createPedidoLoteId()
-        const baseInput = temImh
-          ? imhAbaLinhasToPedidoInput(imhSelecionadas, clinicaNome)
-          : divMaterialLinhasToPedidoInput(divSelecionadas, clinicaNome)
-        await createPedido.mutateAsync({
-          ...baseInput,
-          id: pedidoId,
-          fluxo,
-          consumoRowIds: rowIds,
-        })
+        const pedidoExistente = findPedidoParaMesmasLinhas(pedidos, rowIds, clinicaId)
+        if (pedidoExistente) {
+          pedidoId = pedidoExistente.id
+          if (temImh) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
+          if (temDiv) await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
+        } else {
+          pedidoId = createPedidoLoteId()
+          const baseInput = temImh
+            ? imhAbaLinhasToPedidoInput(imhSelecionadas, clinicaNome)
+            : divMaterialLinhasToPedidoInput(divSelecionadas, clinicaNome)
+          await createPedido.mutateAsync({
+            ...baseInput,
+            id: pedidoId,
+            fluxo,
+            consumoRowIds: rowIds,
+          })
+        }
       }
 
       if (temImh) {
@@ -724,13 +948,25 @@ export default function ClinicaNovoPedidoPage() {
           )
         : imhForm
       const nextDivFinalized = new Set(finalizedDivMaterialIds)
-      for (const linha of divSelecionadas) nextDivFinalized.add(linha.id)
+      const nextDivDevolvidos = new Set(devolvidosDivMaterialIds)
+      for (const linha of divSelecionadas) {
+        nextDivFinalized.add(linha.id)
+        nextDivDevolvidos.delete(linha.id)
+      }
 
       if (temImh) setImhForm(nextImh)
-      if (temDiv) setFinalizedDivMaterialIds(nextDivFinalized)
+      if (temDiv) {
+        setFinalizedDivMaterialIds(nextDivFinalized)
+        setDevolvidosDivMaterialIds(nextDivDevolvidos)
+      }
       persist({
         ...(temImh ? { imh: nextImh } : {}),
-        ...(temDiv ? { finalizedDivMaterialIds: [...nextDivFinalized] } : {}),
+        ...(temDiv
+          ? {
+              finalizedDivMaterialIds: [...nextDivFinalized],
+              devolvidosDivMaterialIds: [...nextDivDevolvidos],
+            }
+          : {}),
       })
 
       if (temImh) {
@@ -769,20 +1005,6 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const corrigirPedidoId = searchParams.get('corrigir')
-  const abaCorrigir = searchParams.get('aba')
-
-  useEffect(() => {
-    if (!abaCorrigir) return
-    const ids = new Set([
-      ...fixedPlanilhas.map((f) => f.id),
-      ...abasRef.current.map((a) => a.id),
-    ])
-    if (!ids.has(abaCorrigir)) return
-    setAbaAtivaId(abaCorrigir)
-    persist({ abaAtivaId: abaCorrigir })
-  }, [abaCorrigir, fixedPlanilhas, persist, corrigirPedidoId])
-
   const tabsSource = abas.length
     ? abas
     : fixedPlanilhas.map((f) => ({ id: f.id, nome: f.nome }))
@@ -796,12 +1018,14 @@ export default function ClinicaNovoPedidoPage() {
       if (abaAtivaId === IMH_ABA_ID) {
         return (
           <ImhMedicamentoForm
-            value={imhMedicamentoForm}
-            onChange={handleImhMedicamentoChange}
+            value={imhMedicamentoFormVisivel}
+            onChange={handleImhMedicamentoChangeCorrigir}
             pacientes={pacientesPmeRows}
             onPacientesChange={handlePacientesPmeChange}
             listaMedicamentos={listaMedicamentosForm}
             onListaMedicamentosChange={handleListaMedicamentosChange}
+            corrigirPedidoId={corrigirPedidoId}
+            corrigirLinhaIds={idsCorrigir}
           />
         )
       }
@@ -827,13 +1051,15 @@ export default function ClinicaNovoPedidoPage() {
     if (abaAtivaId === IMH_ABA_ID) {
       return (
         <ImhAbaForm
-          value={imhForm}
-          onChange={handleImhChange}
+          value={imhFormVisivel}
+          onChange={handleImhChangeCorrigir}
           selectedImhIds={selectedImhIds}
           onSelectedImhIdsChange={setSelectedImhIds}
           hideImport
-          onRequestClear={() => handleRequestClear('IMH')}
-          dataFiltro={imhDataFiltro}
+          onRequestClear={modoCorrigir ? undefined : () => handleRequestClear('IMH')}
+          dataFiltro={
+            modoCorrigir ? { ...imhDataFiltro, mostrarTodos: true } : imhDataFiltro
+          }
           onDataFiltroChange={handleImhDataFiltroChange}
         />
       )
@@ -841,13 +1067,20 @@ export default function ClinicaNovoPedidoPage() {
     if (abaAtivaId === DIV_MATERIAL_ABA_ID) {
       return (
         <DivMaterialForm
-          linhas={divMaterialLinhas}
-          onChange={setDivMaterialLinhas}
+          linhas={divMaterialLinhasVisiveis}
+          onChange={handleDivMaterialChangeCorrigir}
           selectedIds={selectedDivMaterialIds}
           onSelectedIdsChange={setSelectedDivMaterialIds}
           finalizedIds={finalizedDivMaterialIds}
-          onRequestClear={() => handleRequestClear('Div. Material')}
-          dataFiltro={divMaterialDataFiltro}
+          devolvidosIds={devolvidosDivMaterialIds}
+          onRequestClear={
+            modoCorrigir ? undefined : () => handleRequestClear('Div. Material')
+          }
+          dataFiltro={
+            modoCorrigir
+              ? { ...divMaterialDataFiltro, mostrarTodos: true }
+              : divMaterialDataFiltro
+          }
           onDataFiltroChange={handleDivMaterialDataFiltroChange}
         />
       )
@@ -871,7 +1104,7 @@ export default function ClinicaNovoPedidoPage() {
             flexWrap: 'wrap',
           })}
         >
-          {!isMedicamento ? (
+          {!isMedicamento && !modoCorrigir ? (
             <Button
               size="small"
               variant="outlined"
@@ -930,11 +1163,18 @@ export default function ClinicaNovoPedidoPage() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Enviar planilha
+              {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}
             </Button>
           ) : null}
         </Box>
       </Box>
+
+      {modoCorrigir && idsCorrigir ? (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          Corrigindo planilha devolvida — exibindo apenas as {idsCorrigir.size} linha(s)
+          enviadas neste pedido. Corrija o necessário e reenvie.
+        </Alert>
+      ) : null}
 
       {renderContent()}
 
