@@ -53,7 +53,7 @@ export function useLiveAppDataSync(): void {
   useEffect(() => {
     if (!cloud) return
 
-    let unsubscribe = () => undefined
+    let unsubscribe: () => void = () => undefined
     let cancelled = false
 
     const applyIfNewer = async () => {
