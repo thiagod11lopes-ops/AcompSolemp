@@ -1,5 +1,12 @@
 import type { AppData, ChatMessage, User, UserRole } from '@/types'
-import { delay, loadAppData, loadFreshAppData, saveAppData, getRoleLabel } from '@/mocks/seed'
+import {
+  delay,
+  loadAppData,
+  loadLatestAppData,
+  saveAppData,
+  getRoleLabel,
+} from '@/mocks/seed'
+import { useCloudAppDataSync } from '@/config/dataSource'
 
 export const CHAT_GRUPO_THREAD_ID = 'grupo'
 
@@ -67,10 +74,21 @@ function peerLabel(user: User): string {
   return posto ? `${posto} ${user.nome}` : user.nome
 }
 
+async function persistChatSend(data: AppData): Promise<void> {
+  saveAppData(data)
+  if (!useCloudAppDataSync()) return
+  try {
+    const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+    await flushSupabaseAppDataSync()
+  } catch {
+    // Persistência local já gravou; a próxima sync cobre falhas transitórias.
+  }
+}
+
 export const chatService = {
   async listThreads(user: User): Promise<ChatThreadSummary[]> {
-    await delay(null, 120)
-    const data = await loadFreshAppData()
+    await delay(null, 80)
+    const data = await loadLatestAppData()
     const mensagens = ensureChat(data)
     const peers = listChatParticipants(data, user)
 
@@ -119,9 +137,9 @@ export const chatService = {
   },
 
   async listMessages(threadId: string, user: User): Promise<ChatMessage[]> {
-    await delay(null, 80)
+    await delay(null, 50)
     if (!chatThreadInvolvesUser(threadId, user.id)) return []
-    const data = await loadFreshAppData()
+    const data = await loadLatestAppData()
     return ensureChat(data)
       .filter((m) => m.threadId === threadId)
       .sort((a, b) => a.data.localeCompare(b.data))
@@ -132,7 +150,7 @@ export const chatService = {
     threadId: string,
     texto: string,
   ): Promise<ChatMessage> {
-    await delay(null, 100)
+    await delay(null, 60)
     const limpo = texto.trim()
     if (!limpo) throw new Error('Digite uma mensagem.')
     if (limpo.length > 2000) throw new Error('Mensagem muito longa (máx. 2000 caracteres).')
@@ -158,12 +176,12 @@ export const chatService = {
       lidasPor: [user.id],
     }
     mensagens.push(msg)
-    saveAppData(data)
+    await persistChatSend(data)
     return msg
   },
 
   async markThreadRead(user: User, threadId: string): Promise<void> {
-    await delay(null, 40)
+    await delay(null, 30)
     if (!chatThreadInvolvesUser(threadId, user.id)) return
     const data = loadAppData()
     const mensagens = ensureChat(data)
@@ -176,7 +194,7 @@ export const chatService = {
         changed = true
       }
     }
-    if (changed) saveAppData(data)
+    if (changed) await persistChatSend(data)
   },
 
   /**
@@ -184,8 +202,7 @@ export const chatService = {
    * (grupo geral + DMs em que ele participa) — alimenta o badge do ícone.
    */
   async unreadCount(user: User): Promise<number> {
-    await delay(null, 60)
-    const data = await loadFreshAppData()
+    const data = await loadLatestAppData()
     const mensagens = ensureChat(data)
     return mensagens.filter(
       (m) =>

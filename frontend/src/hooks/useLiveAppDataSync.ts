@@ -89,7 +89,7 @@ export function useLiveAppDataSync(): void {
     // Apoio caso realtime não esteja habilitado no projeto Supabase.
     const pollId = window.setInterval(() => {
       void applyIfNewer()
-    }, 5_000)
+    }, 2_500)
 
     return () => {
       cancelled = true

@@ -26,7 +26,21 @@ export function ChatPanel({ size = 'medium', stopClickPropagation = false }: Cha
             setOpen(true)
           }}
         >
-          <Badge color="error" badgeContent={unread} max={99} invisible={!unread}>
+          <Badge
+            color="error"
+            badgeContent={unread}
+            max={99}
+            overlap="circular"
+            invisible={unread < 1}
+            sx={{
+              '& .MuiBadge-badge': {
+                fontWeight: 800,
+                minWidth: 18,
+                height: 18,
+                fontSize: '0.65rem',
+              },
+            }}
+          >
             <ChatBubbleOutlineRoundedIcon fontSize={size === 'small' ? 'small' : 'medium'} />
           </Badge>
         </IconButton>

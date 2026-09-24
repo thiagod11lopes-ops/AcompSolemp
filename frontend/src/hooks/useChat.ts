@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { User } from '@/types'
 import { chatService } from '@/services/chatService'
 import { useAuth } from '@/contexts/AuthContext'
+import { subscribeAppDataChanged } from '@/mocks/seed'
 
 export function useActiveChatUser(): User | null {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
@@ -11,13 +12,24 @@ export function useActiveChatUser(): User | null {
 
 export function useChatUnreadCount() {
   const user = useActiveChatUser()
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    return subscribeAppDataChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: ['chat-unread'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat-threads'] })
+      void queryClient.invalidateQueries({ queryKey: ['chat-messages'] })
+    })
+  }, [queryClient])
+
   return useQuery({
     queryKey: ['chat-unread', user?.id],
     queryFn: () => chatService.unreadCount(user!),
     enabled: Boolean(user?.id),
     staleTime: 0,
-    refetchInterval: 2_500,
+    refetchInterval: 2_000,
     refetchOnWindowFocus: true,
+    refetchIntervalInBackground: true,
   })
 }
 
@@ -28,7 +40,7 @@ export function useChatThreads(enabled: boolean) {
     queryFn: () => chatService.listThreads(user!),
     enabled: enabled && Boolean(user?.id),
     staleTime: 0,
-    refetchInterval: enabled ? 4_000 : false,
+    refetchInterval: enabled ? 3_000 : false,
   })
 }
 
@@ -39,7 +51,7 @@ export function useChatMessages(threadId: string | null, enabled: boolean) {
     queryFn: () => chatService.listMessages(threadId!, user!),
     enabled: enabled && Boolean(threadId && user?.id),
     staleTime: 0,
-    refetchInterval: enabled && threadId ? 2_500 : false,
+    refetchInterval: enabled && threadId ? 2_000 : false,
   })
 }
 

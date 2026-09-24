@@ -1044,6 +1044,23 @@ export async function loadFreshAppData(): Promise<AppData> {
 }
 
 /**
+ * Sempre busca a versão mais recente (nuvem ou IndexedDB).
+ * Usar em polling de chat/badge — `loadFreshAppData` pode devolver cache obsoleto.
+ */
+export async function loadLatestAppData(): Promise<AppData> {
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1' && appDataCache) {
+    return cloneData(appDataCache)
+  }
+
+  if (useCloudAppDataSync()) {
+    return reloadFreshAppData()
+  }
+
+  await storageReloadKey(getAppDataStorageKey())
+  return reloadAppDataFromStorage()
+}
+
+/**
  * Aplica AppData no cache (e no IndexedDB local). Não sincroniza com Supabase
  * enquanto o seed fictício estiver ativo.
  */
