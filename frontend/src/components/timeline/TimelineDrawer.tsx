@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X, User, FileText, FolderOpen, Clock3, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -14,11 +14,29 @@ import {
   buildCorrigirDevolucaoPath,
   usuarioPodeCorrigirDevolucao,
 } from '@/utils/corrigirDevolucao'
+import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
+import type { PedidoPlanilhaEnvioState } from '@/types'
 
 interface TimelineDrawerProps {
   detail: TimelineDrawerDetail | null
   onClose: () => void
   actions?: React.ReactNode
+}
+
+function resolvePreferFormatoPlanilha(
+  planilha: PedidoPlanilhaEnvioState | null,
+): 'imh' | 'divMaterial' | 'controleSolemp' {
+  if (!planilha) return 'imh'
+  if (
+    planilha.imhAbaLinhas?.length ||
+    planilha.imhMedicamentoLinhas?.length ||
+    planilha.linhas?.length
+  ) {
+    return 'imh'
+  }
+  if (planilha.divMaterialLinhas?.length) return 'divMaterial'
+  if (planilha.controleSolempLinhas?.length) return 'controleSolemp'
+  return 'imh'
 }
 
 export const TimelineDrawer = memo(function TimelineDrawer({
@@ -53,13 +71,33 @@ export const TimelineDrawer = memo(function TimelineDrawer({
       ? usuarioPodeCorrigirDevolucao(detail.pedido, detail.node, authUser)
       : false
 
+  const isGestor =
+    authUser?.perfil === 'GESTOR' || authUser?.perfil === 'ADMINISTRADOR'
+  const podeVerPlanilha = Boolean(isGestor && planilhaEnvio)
+
+  const [planilhaModal, setPlanilhaModal] = useState<{
+    open: boolean
+    pedidoNumero: string
+    planilha: PedidoPlanilhaEnvioState | null
+  }>({ open: false, pedidoNumero: '', planilha: null })
+
   const handleCorrigir = () => {
     if (!corrigirPath) return
     navigate(mapPath(corrigirPath))
     onClose()
   }
 
+  const handleVerPlanilha = () => {
+    if (!detail || !planilhaEnvio) return
+    setPlanilhaModal({
+      open: true,
+      pedidoNumero: detail.pedido.numero,
+      planilha: planilhaEnvio,
+    })
+  }
+
   return (
+    <>
     <AnimatePresence>
       {detail && (
         <>
@@ -138,6 +176,14 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               <Section title="Pedido" icon={FileText}>
                 PED {detail.node.numeroPedido}
               </Section>
+
+              {podeVerPlanilha ? (
+                <section style={{ marginBottom: 22 }}>
+                  <TimelineActionButton onClick={handleVerPlanilha} variant="ghost">
+                    Ver planilha
+                  </TimelineActionButton>
+                </section>
+              ) : null}
 
               {actions && (
                 <section style={{ marginBottom: 22 }}>
@@ -351,6 +397,22 @@ export const TimelineDrawer = memo(function TimelineDrawer({
         </>
       )}
     </AnimatePresence>
+
+    <AuditoriaPlanilhaModal
+      open={planilhaModal.open}
+      pedidoNumero={planilhaModal.pedidoNumero}
+      planilha={planilhaModal.planilha}
+      preferFormato={resolvePreferFormatoPlanilha(planilhaModal.planilha)}
+      title={
+        planilhaModal.pedidoNumero
+          ? `Planilha — ${planilhaModal.pedidoNumero}`
+          : undefined
+      }
+      onClose={() =>
+        setPlanilhaModal({ open: false, pedidoNumero: '', planilha: null })
+      }
+    />
+    </>
   )
 })
 
