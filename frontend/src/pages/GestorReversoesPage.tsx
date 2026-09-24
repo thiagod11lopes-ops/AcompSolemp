@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Box,
   Card,
@@ -16,22 +16,37 @@ import {
 import UndoIcon from '@mui/icons-material/Undo'
 import CheckIcon from '@mui/icons-material/Check'
 import ReplyIcon from '@mui/icons-material/Reply'
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import {
   useReversoes,
   useMarcarReversaoCiente,
   useResponderReversao,
 } from '@/hooks/useReversoes'
 import { formatDateTime } from '@/utils/format'
-import type { ReversaoTimeline } from '@/types'
+import type { PedidoPlanilhaEnvioState, ReversaoTimeline } from '@/types'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 
 const statusLabel: Record<ReversaoTimeline['status'], { label: string; color: 'warning' | 'success' | 'info' }> = {
   PENDENTE: { label: 'Pendente', color: 'warning' },
   CIENTE: { label: 'Ciência registrada', color: 'success' },
   RESPONDIDO: { label: 'Respondido', color: 'info' },
+}
+
+function resolvePreferFormatoPlanilha(
+  planilha: PedidoPlanilhaEnvioState | null,
+): 'imh' | 'divMaterial' | 'controleSolemp' {
+  if (!planilha) return 'imh'
+  if (planilha.imhAbaLinhas?.length || planilha.imhMedicamentoLinhas?.length || planilha.linhas?.length) {
+    return 'imh'
+  }
+  if (planilha.divMaterialLinhas?.length) return 'divMaterial'
+  if (planilha.controleSolempLinhas?.length) return 'controleSolemp'
+  return 'imh'
 }
 
 export default function GestorReversoesPage() {
@@ -43,6 +58,18 @@ export default function GestorReversoesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selected, setSelected] = useState<ReversaoTimeline | null>(null)
   const [resposta, setResposta] = useState('')
+  const [planilhaOpen, setPlanilhaOpen] = useState(false)
+  const [planilhaRev, setPlanilhaRev] = useState<ReversaoTimeline | null>(null)
+
+  const planilhaEnvio = useMemo(() => {
+    if (!planilhaRev) return null
+    return pedidoPlanilhaEnvioService.getForPedido(planilhaRev.pedidoId)
+  }, [planilhaRev])
+
+  const handleVerPlanilha = (rev: ReversaoTimeline) => {
+    setPlanilhaRev(rev)
+    setPlanilhaOpen(true)
+  }
 
   const handleResponder = () => {
     if (!selected || resposta.trim().length < 5) return
@@ -83,6 +110,7 @@ export default function GestorReversoesPage() {
         <Box sx={{ display: 'grid', gap: 2 }}>
           {reversoes.map((rev) => {
             const st = statusLabel[rev.status]
+            const temPlanilha = Boolean(pedidoPlanilhaEnvioService.getForPedido(rev.pedidoId))
             return (
               <Card
                 key={rev.id}
@@ -128,31 +156,43 @@ export default function GestorReversoesPage() {
                     </Typography>
                   )}
 
-                  {rev.status === 'PENDENTE' && (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        size="small"
-                        startIcon={<CheckIcon />}
-                        onClick={() => marcarCiente.mutate(rev.id)}
-                        disabled={marcarCiente.isPending}
-                      >
-                        OK — Situação compreendida
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<ReplyIcon />}
-                        onClick={() => {
-                          setSelected(rev)
-                          setDialogOpen(true)
-                        }}
-                      >
-                        Responder
-                      </Button>
-                    </Box>
-                  )}
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<DescriptionOutlinedIcon />}
+                      onClick={() => handleVerPlanilha(rev)}
+                      disabled={!temPlanilha}
+                      sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                      Ver planilha
+                    </Button>
+                    {rev.status === 'PENDENTE' ? (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          startIcon={<CheckIcon />}
+                          onClick={() => marcarCiente.mutate(rev.id)}
+                          disabled={marcarCiente.isPending}
+                        >
+                          OK — Situação compreendida
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<ReplyIcon />}
+                          onClick={() => {
+                            setSelected(rev)
+                            setDialogOpen(true)
+                          }}
+                        >
+                          Responder
+                        </Button>
+                      </>
+                    ) : null}
+                  </Box>
                 </CardContent>
               </Card>
             )
@@ -186,6 +226,22 @@ export default function GestorReversoesPage() {
           </Box>
         </DialogContent>
       </Dialog>
+
+      <AuditoriaPlanilhaModal
+        open={planilhaOpen}
+        pedidoNumero={planilhaRev?.pedidoNumero ?? ''}
+        planilha={planilhaEnvio}
+        preferFormato={resolvePreferFormatoPlanilha(planilhaEnvio)}
+        title={
+          planilhaRev
+            ? `Planilha — ${planilhaRev.pedidoNumero} (${planilhaRev.clinicaNome})`
+            : undefined
+        }
+        onClose={() => {
+          setPlanilhaOpen(false)
+          setPlanilhaRev(null)
+        }}
+      />
     </>
   )
 }
