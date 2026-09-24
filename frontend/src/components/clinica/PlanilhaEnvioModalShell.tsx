@@ -203,7 +203,7 @@ export function PlanilhaEnvioModalShell({
       </Box>
 
       <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-        <Table stickyHeader size="small" sx={{ minWidth: 1600 + ACOES_COL_WIDTH }}>
+        <Table stickyHeader size="small" sx={{ minWidth: 1600 + (disabled ? 0 : ACOES_COL_WIDTH) }}>
           <TableHead>
             <TableRow>
               <TableCell
@@ -238,25 +238,27 @@ export function PlanilhaEnvioModalShell({
               >
                 DADOS DO MATERIAL
               </TableCell>
-              <TableCell
-                rowSpan={2}
-                align="center"
-                sx={{
-                  bgcolor: alpha('#000', 0.7),
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '0.68rem',
-                  minWidth: ACOES_COL_WIDTH,
-                  width: ACOES_COL_WIDTH,
-                  py: 0.75,
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 4,
-                  verticalAlign: 'middle',
-                }}
-              >
-                AÇÕES
-              </TableCell>
+              {!disabled ? (
+                <TableCell
+                  rowSpan={2}
+                  align="center"
+                  sx={{
+                    bgcolor: alpha('#000', 0.7),
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    minWidth: ACOES_COL_WIDTH,
+                    width: ACOES_COL_WIDTH,
+                    py: 0.75,
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 4,
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  AÇÕES
+                </TableCell>
+              ) : null}
             </TableRow>
             <TableRow>
               {IMH_COLUNAS.map((col) => (
@@ -331,31 +333,33 @@ export function PlanilhaEnvioModalShell({
                     </TableCell>
                   )
                 })}
-                <TableCell
-                  align="center"
-                  onContextMenu={(e) => handleContextMenu(e, linha.id)}
-                  sx={{
-                    p: 0.5,
-                    width: ACOES_COL_WIDTH,
-                    minWidth: ACOES_COL_WIDTH,
-                    position: 'sticky',
-                    right: 0,
-                    bgcolor: 'background.paper',
-                    borderLeft: 1,
-                    borderColor: 'divider',
-                    zIndex: 2,
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    color="error"
-                    disabled={disabled || linhas.length <= 1}
-                    onClick={() => onExcluirLinha(linha.id)}
-                    aria-label="Excluir linha"
+                {!disabled ? (
+                  <TableCell
+                    align="center"
+                    onContextMenu={(e) => handleContextMenu(e, linha.id)}
+                    sx={{
+                      p: 0.5,
+                      width: ACOES_COL_WIDTH,
+                      minWidth: ACOES_COL_WIDTH,
+                      position: 'sticky',
+                      right: 0,
+                      bgcolor: 'background.paper',
+                      borderLeft: 1,
+                      borderColor: 'divider',
+                      zIndex: 2,
+                    }}
                   >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      disabled={linhas.length <= 1}
+                      onClick={() => onExcluirLinha(linha.id)}
+                      aria-label="Excluir linha"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>
@@ -381,9 +385,11 @@ export function PlanilhaEnvioModalShell({
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             Total: {formatValorBrasileiro(totalGeral)}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Clique com o botão direito em uma linha para adicionar acima ou abaixo
-          </Typography>
+          {!disabled ? (
+            <Typography variant="caption" color="text.secondary">
+              Clique com o botão direito em uma linha para adicionar acima ou abaixo
+            </Typography>
+          ) : null}
           {exportError && (
             <Typography variant="body2" color="error">
               {exportError}

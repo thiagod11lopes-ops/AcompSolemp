@@ -287,6 +287,7 @@ export function DivMaterialPlanilhaPreview({
   )
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
+  const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
   const selection = selectedIds ?? new Set<string>()
   const finalized = finalizedIds ?? new Set<string>()
   const devolvidos = devolvidosIds ?? new Set<string>()
@@ -295,14 +296,15 @@ export function DivMaterialPlanilhaPreview({
     selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
   const visible = linhas.length > 0
-  const colCount = DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + 1
+  const colCount =
+    DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
   const tableMinWidth =
     DIV_MATERIAL_COLUNAS.reduce(
       (sum, col) => sum + (col.key === 'descricaoMaterial' ? 280 : col.width),
       0,
     ) +
     (selectionEnabled ? 52 : 0) +
-    72
+    (actionsEnabled ? 72 : 0)
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -529,11 +531,13 @@ export function DivMaterialPlanilhaPreview({
                         </TableCell>
                       )
                     })}
-                    <TableCell
-                      sx={{ ...headerSx, textAlign: 'center', width: 72, minWidth: 72 }}
-                    >
-                      AÇÕES
-                    </TableCell>
+                    {actionsEnabled ? (
+                      <TableCell
+                        sx={{ ...headerSx, textAlign: 'center', width: 72, minWidth: 72 }}
+                      >
+                        AÇÕES
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -624,27 +628,29 @@ export function DivMaterialPlanilhaPreview({
                               </TableCell>
                             ),
                           )}
-                          <TableCell
-                            sx={{ ...cellSx, textAlign: 'center', width: 72, minWidth: 72 }}
-                          >
-                            <IconButton
-                              size="small"
-                              aria-label={`Editar linha Div. Material ${index + 1}`}
-                              onClick={() => onEditLinha?.(linha.id)}
-                              sx={{ p: 0.35 }}
+                          {actionsEnabled ? (
+                            <TableCell
+                              sx={{ ...cellSx, textAlign: 'center', width: 72, minWidth: 72 }}
                             >
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Excluir linha Div. Material ${index + 1}`}
-                              onClick={() => onDeleteLinha?.(linha.id)}
-                              sx={{ p: 0.35 }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </TableCell>
+                              <IconButton
+                                size="small"
+                                aria-label={`Editar linha Div. Material ${index + 1}`}
+                                onClick={() => onEditLinha?.(linha.id)}
+                                sx={{ p: 0.35 }}
+                              >
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label={`Excluir linha Div. Material ${index + 1}`}
+                                onClick={() => onDeleteLinha?.(linha.id)}
+                                sx={{ p: 0.35 }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </TableCell>
+                          ) : null}
                         </TableRow>
                       )
                     })

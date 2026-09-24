@@ -119,6 +119,7 @@ export function ImhAbaPlanilhaPreview({
   const [gerarOpen, setGerarOpen] = useState(false)
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
+  const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
   const devolvidosIds = useMemo(
@@ -138,7 +139,8 @@ export function ImhAbaPlanilhaPreview({
   const allSelected =
     selecionaveis.length > 0 && selecionaveis.every((l) => selection.has(l.id))
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
-  const colCount = IMH_ABA_COLUNAS.length + 1 + (selectionEnabled ? 1 : 0)
+  const colCount =
+    IMH_ABA_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedImhIdsChange) return
@@ -414,9 +416,11 @@ export function ImhAbaPlanilhaPreview({
                         {col.label}
                       </TableCell>
                     ))}
-                    <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
-                      AÇÕES
-                    </TableCell>
+                    {actionsEnabled ? (
+                      <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                        AÇÕES
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -503,25 +507,27 @@ export function ImhAbaPlanilhaPreview({
                             {dash(String(linha[col.key] ?? ''))}
                           </TableCell>
                         ))}
-                        <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
-                          <IconButton
-                            size="small"
-                            aria-label={`Editar linha IMH ${index + 1}`}
-                            onClick={() => onEditLinha?.(linha.id)}
-                            sx={{ p: 0.35 }}
-                          >
-                            <EditIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            aria-label={`Excluir linha IMH ${index + 1}`}
-                            onClick={() => onDeleteLinha?.(linha.id)}
-                            sx={{ p: 0.35 }}
-                          >
-                            <DeleteIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                        </TableCell>
+                        {actionsEnabled ? (
+                          <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                            <IconButton
+                              size="small"
+                              aria-label={`Editar linha IMH ${index + 1}`}
+                              onClick={() => onEditLinha?.(linha.id)}
+                              sx={{ p: 0.35 }}
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Excluir linha IMH ${index + 1}`}
+                              onClick={() => onDeleteLinha?.(linha.id)}
+                              sx={{ p: 0.35 }}
+                            >
+                              <DeleteIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </TableCell>
+                        ) : null}
                       </TableRow>
                     )
                   })
