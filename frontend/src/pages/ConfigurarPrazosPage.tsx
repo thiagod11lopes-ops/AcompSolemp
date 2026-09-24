@@ -20,6 +20,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useUpdateWorkflowPrazos, useWorkflowEtapas } from '@/hooks/useCadastros'
 import type { WorkflowEtapa } from '@/types'
+import { PRAZO_CORRECAO_PADRAO_DIAS } from '@/types'
 
 export default function ConfigurarPrazosPage() {
   const theme = useTheme()
@@ -33,6 +34,7 @@ export default function ConfigurarPrazosPage() {
   const [setorId, setSetorId] = useState('')
   const [dias, setDias] = useState('')
   const [alertaDias, setAlertaDias] = useState('')
+  const [correcaoDias, setCorrecaoDias] = useState('')
   const [feedback, setFeedback] = useState<{
     open: boolean
     severity: 'success' | 'error'
@@ -48,8 +50,9 @@ export default function ConfigurarPrazosPage() {
     setSetorId(id)
     const etapa = etapas.find((item) => item.id === id)
     setDias(etapa ? String(etapa.prazoDias) : '')
-    setAlertaDias(
-      etapa ? String(etapa.alertaVencimentoDias ?? 2) : '',
+    setAlertaDias(etapa ? String(etapa.alertaVencimentoDias ?? 2) : '')
+    setCorrecaoDias(
+      etapa ? String(etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS) : '',
     )
   }
 
@@ -76,7 +79,7 @@ export default function ConfigurarPrazosPage() {
       setFeedback({
         open: true,
         severity: 'error',
-        message: 'Informe a partir de quantos dias restantes o processo entra em Próx. vencimento.',
+        message: 'Informe Prox do vencimento (dias restantes para o alerta).',
       })
       return
     }
@@ -84,21 +87,33 @@ export default function ConfigurarPrazosPage() {
       setFeedback({
         open: true,
         severity: 'error',
-        message: 'O alerta de próximo vencimento não pode ser maior que os dias para vencer.',
+        message: 'Prox do vencimento não pode ser maior que os dias para vencer.',
+      })
+      return
+    }
+    const prazoCorrecaoDias = Number(correcaoDias)
+    if (!Number.isFinite(prazoCorrecaoDias) || prazoCorrecaoDias < 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: 'Informe o Prazo de correção em dias (0 ou mais).',
       })
       return
     }
 
     try {
-      await updatePrazos.mutateAsync([{ id: setorSelecionado.id, prazoDias, alertaVencimentoDias }])
+      await updatePrazos.mutateAsync([
+        { id: setorSelecionado.id, prazoDias, alertaVencimentoDias, prazoCorrecaoDias },
+      ])
       setFeedback({
         open: true,
         severity: 'success',
-        message: `${setorSelecionado.nome}: ${prazoDias} dia(s) para vencer · alerta com ${alertaVencimentoDias} dia(s) restantes.`,
+        message: `${setorSelecionado.nome}: ${prazoDias}d p/ vencer · Prox ${alertaVencimentoDias}d · Correção ${prazoCorrecaoDias}d.`,
       })
       setSetorId('')
       setDias('')
       setAlertaDias('')
+      setCorrecaoDias('')
     } catch (error) {
       setFeedback({
         open: true,
@@ -124,13 +139,13 @@ export default function ConfigurarPrazosPage() {
     <>
       <PageHeader
         title="Configurar Prazos"
-        subtitle="Prazos em dias por setor e alerta de próximo do vencimento"
+        subtitle="Prazos por setor, Prox do vencimento e Prazo de correção após devolução"
         titleVariant="h6"
       />
 
       <Box
         sx={{
-          maxWidth: 880,
+          maxWidth: 980,
           display: 'grid',
           gap: 2.25,
         }}
@@ -195,7 +210,7 @@ export default function ConfigurarPrazosPage() {
               sx={{
                 display: setorSelecionado ? 'block' : 'none',
                 minWidth: 0,
-                flex: { sm: '1 1 360px' },
+                flex: { sm: '1 1 420px' },
                 pt: 0.75,
               }}
             >
@@ -211,7 +226,7 @@ export default function ConfigurarPrazosPage() {
                     }}
                     placeholder="3"
                     autoFocus
-                    sx={{ ...fieldSx, width: { xs: '100%', sm: 168 } }}
+                    sx={{ ...fieldSx, width: { xs: '100%', sm: 140 } }}
                     slotProps={{
                       inputLabel: { shrink: true },
                       htmlInput: {
@@ -223,7 +238,7 @@ export default function ConfigurarPrazosPage() {
                     }}
                   />
                   <TextField
-                    label="A partir de quantos dias restantes"
+                    label="Prox do vencimento"
                     size="small"
                     value={alertaDias}
                     onChange={(e) => {
@@ -231,7 +246,29 @@ export default function ConfigurarPrazosPage() {
                       setAlertaDias(raw)
                     }}
                     placeholder="2"
-                    sx={{ ...fieldSx, width: { xs: '100%', sm: 280 } }}
+                    helperText="Dias restantes p/ alerta"
+                    sx={{ ...fieldSx, width: { xs: '100%', sm: 168 } }}
+                    slotProps={{
+                      inputLabel: { shrink: true },
+                      htmlInput: {
+                        min: 0,
+                        max: 365,
+                        inputMode: 'numeric',
+                        style: { textAlign: 'center', fontWeight: 700 },
+                      },
+                    }}
+                  />
+                  <TextField
+                    label="Prazo de correção"
+                    size="small"
+                    value={correcaoDias}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 3)
+                      setCorrecaoDias(raw)
+                    }}
+                    placeholder="3"
+                    helperText="Após devolução da planilha"
+                    sx={{ ...fieldSx, width: { xs: '100%', sm: 168 } }}
                     slotProps={{
                       inputLabel: { shrink: true },
                       htmlInput: {
@@ -248,7 +285,12 @@ export default function ConfigurarPrazosPage() {
                     disableElevation
                     startIcon={<AddRoundedIcon sx={{ fontSize: 16 }} />}
                     onClick={handleAplicar}
-                    disabled={!dias.trim() || !alertaDias.trim() || updatePrazos.isPending}
+                    disabled={
+                      !dias.trim() ||
+                      !alertaDias.trim() ||
+                      !correcaoDias.trim() ||
+                      updatePrazos.isPending
+                    }
                     sx={{
                       height: 38,
                       px: 1.5,
@@ -273,7 +315,7 @@ export default function ConfigurarPrazosPage() {
               color="text.secondary"
               sx={{ display: 'block', mt: 1, fontSize: '0.7rem' }}
             >
-              Selecione o setor para informar os dias para vencer e o alerta de próximo do vencimento.
+              Selecione o setor para informar prazo da etapa, Prox do vencimento e Prazo de correção.
             </Typography>
           )}
         </Box>
@@ -401,7 +443,22 @@ export default function ConfigurarPrazosPage() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      alerta {etapa.alertaVencimentoDias ?? 2}d
+                      Prox {etapa.alertaVencimentoDias ?? 2}d
+                    </Box>
+                    <Box
+                      sx={{
+                        px: 0.9,
+                        py: 0.35,
+                        borderRadius: 999,
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                        color: 'error.dark',
+                        fontWeight: 800,
+                        fontSize: '0.72rem',
+                        letterSpacing: 0.2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Correção {etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS}d
                     </Box>
                   </Box>
                 </Box>

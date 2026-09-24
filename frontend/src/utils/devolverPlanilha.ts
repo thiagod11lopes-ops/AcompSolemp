@@ -8,6 +8,12 @@ import type {
   WorkflowEtapa,
 } from '@/types'
 import { getResponsavelParaEtapa } from '@/utils/workflow'
+import {
+  formatMensagemPrazoCorrecao,
+  marcarPrazoCorrecaoNotificationsLidas,
+  resolvePrazoCorrecaoDias,
+  resolveStatusPrazoCorrecao,
+} from '@/utils/prazoCorrecao'
 
 export type DestinoDevolucaoId = 'clinica' | 'medicamento' | string
 export type OrigemPlanilha = 'clinica' | 'medicamento'
@@ -306,6 +312,7 @@ export function limparEstadoDevolucaoPlanilha(data: AppData, pedidoId: string): 
       planilhaDevolvidaJustificativa: null,
     }
   }
+  marcarPrazoCorrecaoNotificationsLidas(data, pedidoId)
   const atual = data.pedidoPlanilhaEnvio?.[pedidoId]
   if (!atual) return
   data.pedidoPlanilhaEnvio![pedidoId] = {
@@ -559,11 +566,18 @@ export function devolverPlanilhaParaDestino(
     observacao,
   })
 
+  const pedidoAposDevolucao = data.pedidos[pedidoIndex]
+  const statusPrazo = resolveStatusPrazoCorrecao(data, pedidoAposDevolucao, devolucaoEm)
+  const prazoDiasFallback = resolvePrazoCorrecaoDias(etapaAtual)
+  const mensagemPrazo = statusPrazo
+    ? formatMensagemPrazoCorrecao(statusPrazo)
+    : `Prazo de correção: ${prazoDiasFallback} dia(s).`
+
   data.notificacoes.push({
     id: `notif-devolver-${pedidoId}-${destino.id}-${Date.now()}`,
     tipo: 'PLANILHA_DEVOLVIDA',
     titulo: `Planilha devolvida — ${pedido.numero}`,
-    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. Justificativa: ${justificativaLimpa}`,
+    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. Justificativa: ${justificativaLimpa}. ${mensagemPrazo}`,
     pedidoId,
     reversaoId,
     perfilDestino: destino.perfilNotificar,
@@ -576,7 +590,7 @@ export function devolverPlanilhaParaDestino(
     id: `notif-devolver-gestor-${pedidoId}-${Date.now()}`,
     tipo: 'REVERSAO_TIMELINE',
     titulo: `Devolução de planilha — ${pedido.numero}`,
-    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. ${justificativaLimpa}`,
+    mensagem: `${usuario.nome} devolveu a planilha para ${destino.label}. ${justificativaLimpa}. ${mensagemPrazo}`,
     pedidoId,
     reversaoId,
     perfilDestino: null,

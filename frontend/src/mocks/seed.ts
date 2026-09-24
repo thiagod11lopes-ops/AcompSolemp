@@ -1,11 +1,13 @@
 import {
   ALERTA_VENCIMENTO_PADRAO_DIAS,
+  PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
   type User,
   type UserRole,
   type WorkflowEtapa,
 } from '@/types'
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
+import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
 import { asStringArray } from '@/utils/format'
 import {
   STORAGE_KEYS,
@@ -83,6 +85,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 1,
     prazoDias: 2,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
@@ -93,6 +96,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 2,
     prazoDias: 3,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'AUDITORIA',
     ativo: true,
   },
@@ -102,6 +106,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 3,
     prazoDias: 3,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
@@ -112,6 +117,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 4,
     prazoDias: 3,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'CONFECCAO_SOLEMP',
     ativo: true,
   },
@@ -121,6 +127,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 5,
     prazoDias: 4,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'FINANCEIRO',
     ativo: true,
   },
@@ -130,6 +137,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     ordem: 6,
     prazoDias: 4,
     alertaVencimentoDias: 2,
+    prazoCorrecaoDias: 3,
     perfilResponsavel: 'EMPENHADO',
     ativo: true,
   },
@@ -480,6 +488,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   }))
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)
+  syncPrazoCorrecaoNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
   return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged || workflowChanged }
 }
@@ -525,6 +534,13 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
       existente.alertaVencimentoDias = def.alertaVencimentoDias ?? ALERTA_VENCIMENTO_PADRAO_DIAS
       changed = true
     }
+    if (
+      typeof existente.prazoCorrecaoDias !== 'number' ||
+      !Number.isFinite(existente.prazoCorrecaoDias)
+    ) {
+      existente.prazoCorrecaoDias = def.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS
+      changed = true
+    }
   }
 
   // Garante sincronização mesmo se chave já existir com nome legado
@@ -543,6 +559,13 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
       !Number.isFinite(etapa.alertaVencimentoDias)
     ) {
       etapa.alertaVencimentoDias = ALERTA_VENCIMENTO_PADRAO_DIAS
+      changed = true
+    }
+    if (
+      typeof etapa.prazoCorrecaoDias !== 'number' ||
+      !Number.isFinite(etapa.prazoCorrecaoDias)
+    ) {
+      etapa.prazoCorrecaoDias = PRAZO_CORRECAO_PADRAO_DIAS
       changed = true
     }
   }

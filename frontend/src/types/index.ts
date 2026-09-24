@@ -29,6 +29,7 @@ export type NotificationType =
   | 'ETAPA_PENDENTE'
   | 'PLANILHA_DEVOLVIDA'
   | 'PLANILHA_CORRIGIDA_REENVIADA'
+  | 'PRAZO_CORRECAO_VENCIDO'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 
@@ -91,14 +92,22 @@ export interface Material {
 /** Dias restantes padrão para o card Próx. vencimento (quando a etapa não tem valor próprio). */
 export const ALERTA_VENCIMENTO_PADRAO_DIAS = 2
 
+/** Dias padrão para corrigir planilha após devolução (quando a etapa não tem valor próprio). */
+export const PRAZO_CORRECAO_PADRAO_DIAS = 3
+
 export interface WorkflowEtapa {
   id: string
   chave: string
   nome: string
   ordem: number
   prazoDias: number
-  /** A partir de quantos dias restantes o processo entra em Próx. vencimento. */
+  /** Dias restantes para o processo entrar em Próx. vencimento. */
   alertaVencimentoDias: number
+  /**
+   * Dias úteis de calendário para o setor corrigir a planilha após devolução.
+   * Contado a partir de `planilhaDevolvidaEm`.
+   */
+  prazoCorrecaoDias: number
   perfilResponsavel: UserRole
   ativo: boolean
 }
@@ -333,6 +342,19 @@ export interface DashboardEmpenhadoItem {
   dataSolicitacao: string
 }
 
+export interface DashboardCorrecaoVencidaItem {
+  pedidoId: string
+  pedidoNumero: string
+  clinicaNome: string
+  valor: number
+  devolvidaEm: string
+  prazoCorrecaoDias: number
+  diasEmAtraso: number
+  vencimentoEm: string
+  corretorPerfil: 'CLINICA' | 'MEDICAMENTO' | string
+  etapaDevolveuNome: string
+}
+
 export interface EmpenhadoMesTotal {
   /** Chave YYYY-MM */
   mesChave: string
@@ -348,6 +370,8 @@ export interface DashboardMetrics {
   concluidos: number
   atrasados: number
   proximosVencimento: number
+  /** Planilhas devolvidas com prazo de correção ultrapassado */
+  correcoesVencidas: number
   tempoMedioPagamento: number
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
   valorPagoMes: number
@@ -369,6 +393,7 @@ export interface DashboardMetrics {
   concluidosItens: DashboardPedidoItem[]
   atrasadosItens: DashboardPedidoItem[]
   proximosVencimentoItens: DashboardPedidoItem[]
+  correcoesVencidasItens: DashboardCorrecaoVencidaItem[]
   pagoMesItens: DashboardPedidoItem[]
   empenhadoItens: DashboardEmpenhadoItem[]
   rankingClinicas: { nome: string; total: number; valor: number }[]

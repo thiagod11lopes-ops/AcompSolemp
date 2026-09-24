@@ -8,6 +8,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import BuildCircleIcon from '@mui/icons-material/BuildCircle'
 import { format, isValid, parseISO, subYears, startOfDay, endOfDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { ReactNode } from 'react'
@@ -36,6 +37,7 @@ type KpiKey =
   | 'concluidos'
   | 'atrasados'
   | 'proximos'
+  | 'correcoesVencidas'
   | 'tempoMedio'
   | 'aguardandoEmpenho'
   | 'totalEmpenhado'
@@ -342,6 +344,60 @@ export default function DashboardPage() {
       rows: metrics.proximosVencimentoItens as unknown as Record<string, unknown>[],
       emptyMessage: 'Nenhum processo próximo do vencimento.',
     },
+    correcoesVencidas: {
+      title: 'Prazos de correção vencidos',
+      subtitle: 'Planilhas devolvidas com prazo de correção ultrapassado',
+      accent: premiumTokens.red,
+      icon: <BuildCircleIcon />,
+      summaries: [
+        { label: 'Quantidade', value: metrics.correcoesVencidas },
+        {
+          label: 'Valor',
+          value: formatCurrency(metrics.correcoesVencidasItens.reduce((a, i) => a + i.valor, 0)),
+        },
+      ],
+      columns: [
+        kpiCol.pedido,
+        kpiCol.clinica,
+        {
+          id: 'etapaDevolveu',
+          label: 'Devolvida por',
+          render: (row) => String(row.etapaDevolveuNome ?? '—'),
+        },
+        {
+          id: 'corretor',
+          label: 'Quem corrige',
+          render: (row) => String(row.corretorPerfil ?? '—'),
+        },
+        kpiCol.valor,
+        {
+          id: 'prazoCorrecao',
+          label: 'Prazo',
+          align: 'right' as const,
+          render: (row) => `${Number(row.prazoCorrecaoDias ?? 0)}d`,
+        },
+        {
+          id: 'diasAtraso',
+          label: 'Dias em atraso',
+          align: 'right' as const,
+          render: (row) => String(row.diasEmAtraso ?? '—'),
+        },
+        {
+          id: 'vencimento',
+          label: 'Venceu em',
+          render: (row) =>
+            row.vencimentoEm ? formatDate(String(row.vencimentoEm)) : '—',
+        },
+        {
+          id: 'devolvida',
+          label: 'Devolvida em',
+          render: (row) =>
+            row.devolvidaEm ? formatDate(String(row.devolvidaEm)) : '—',
+        },
+      ],
+      rows: metrics.correcoesVencidasItens as unknown as Record<string, unknown>[],
+      emptyMessage: 'Nenhum prazo de correção vencido.',
+    },
     tempoMedio: {
       title: 'Tempo Médio de Finalização',
       subtitle: `Média de ${metrics.tempoMedioPagamento} dias entre solicitação e conclusão`,
@@ -481,6 +537,16 @@ export default function DashboardPage() {
             icon={<ScheduleIcon />}
             color={premiumTokens.purple}
             onClick={() => setKpiAberto('proximos')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <KpiCard
+            title="Correções vencidas"
+            value={metrics.correcoesVencidas}
+            subtitle="Prazo de correção ultrapassado"
+            icon={<BuildCircleIcon />}
+            color={premiumTokens.red}
+            onClick={() => setKpiAberto('correcoesVencidas')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>

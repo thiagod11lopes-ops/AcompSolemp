@@ -1,6 +1,7 @@
 import type {
   AppData,
   AguardandoEmpenhoItem,
+  DashboardCorrecaoVencidaItem,
   DashboardEmpenhadoItem,
   DashboardMetrics,
   DashboardPedidoItem,
@@ -29,6 +30,11 @@ import { authService } from '@/services/authService'
 import { pedidoEtapaConcluidaParaChave, pedidoPendenteParaChave } from '@/utils/perfilEtapa'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { parseValorBrasileiro } from '@/utils/consumoMaterialOds'
+import {
+  resolveCorretorPerfil,
+  resolveStatusPrazoCorrecao,
+  syncPrazoCorrecaoNotifications,
+} from '@/utils/prazoCorrecao'
 
 function resolveSetorOrigem(pedido: PedidoComDetalhes): Pick<
   AguardandoEmpenhoItem,
@@ -276,6 +282,11 @@ export const pedidoService = {
 
   async getDashboardMetrics(clinicaId?: string | null): Promise<DashboardMetrics> {
     const data = await loadFreshAppData()
+    const beforeNotif = data.notificacoes.length
+    syncPrazoCorrecaoNotifications(data)
+    if (data.notificacoes.length !== beforeNotif) {
+      saveAppData(data)
+    }
     let pedidos = enrichAll(data)
 
     if (clinicaId) {
@@ -288,6 +299,26 @@ export const pedidoService = {
     const proximosVencimento = emAndamento.filter(
       (p) => p.prazoStatus === 'PROXIMO_VENCIMENTO',
     )
+
+    const correcoesVencidasItens: DashboardCorrecaoVencidaItem[] = []
+    for (const p of emAndamento) {
+      const status = resolveStatusPrazoCorrecao(data, p)
+      if (!status?.vencido) continue
+      const corretor = resolveCorretorPerfil(data, p)
+      correcoesVencidasItens.push({
+        pedidoId: p.id,
+        pedidoNumero: p.numero,
+        clinicaNome: p.clinica.nome,
+        valor: p.valor,
+        devolvidaEm: status.devolvidaEm,
+        prazoCorrecaoDias: status.prazoDias,
+        diasEmAtraso: Math.max(0, status.diasDecorridos - status.prazoDias),
+        vencimentoEm: status.vencimentoEm,
+        corretorPerfil: corretor ?? '—',
+        etapaDevolveuNome: status.etapaDevolveu?.nome ?? '—',
+      })
+    }
+    correcoesVencidasItens.sort((a, b) => b.diasEmAtraso - a.diasEmAtraso)
 
     const tempoMedioPagamento =
       concluidos.length > 0
@@ -510,6 +541,7 @@ export const pedidoService = {
       concluidos: concluidos.length,
       atrasados: atrasados.length,
       proximosVencimento: proximosVencimento.length,
+      correcoesVencidas: correcoesVencidasItens.length,
       tempoMedioPagamento: Math.round(tempoMedioPagamento),
       tempoMedioPorEtapa,
       valorPagoMes,
@@ -526,6 +558,7 @@ export const pedidoService = {
       concluidosItens,
       atrasadosItens,
       proximosVencimentoItens,
+      correcoesVencidasItens,
       pagoMesItens,
       empenhadoItens,
       rankingClinicas: Array.from(clinicaRanking.entries())

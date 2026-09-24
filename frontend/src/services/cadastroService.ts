@@ -1,5 +1,6 @@
 import {
   ALERTA_VENCIMENTO_PADRAO_DIAS,
+  PRAZO_CORRECAO_PADRAO_DIAS,
   type Clinica,
   type Empresa,
   type HistoricoEvento,
@@ -12,6 +13,7 @@ import {
 import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
+import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -137,9 +139,14 @@ export const workflowService = {
     return etapas
   },
 
-  /** Atualiza prazo e alerta de vencimento das etapas, preservando o restante do workflow. */
+  /** Atualiza prazo, alerta de vencimento e prazo de correção das etapas. */
   async updatePrazos(
-    prazos: Array<{ id: string; prazoDias: number; alertaVencimentoDias?: number }>,
+    prazos: Array<{
+      id: string
+      prazoDias: number
+      alertaVencimentoDias?: number
+      prazoCorrecaoDias?: number
+    }>,
   ): Promise<WorkflowEtapa[]> {
     await delay(null, 300)
     const data = loadAppData()
@@ -150,7 +157,11 @@ export const workflowService = {
           item.alertaVencimentoDias === undefined
             ? undefined
             : Math.max(0, Math.min(365, Math.round(Number(item.alertaVencimentoDias)) || 0))
-        return [item.id, { prazoDias, alertaInformado }] as const
+        const correcaoInformada =
+          item.prazoCorrecaoDias === undefined
+            ? undefined
+            : Math.max(0, Math.min(365, Math.round(Number(item.prazoCorrecaoDias)) || 0))
+        return [item.id, { prazoDias, alertaInformado, correcaoInformada }] as const
       }),
     )
     data.workflowEtapas = data.workflowEtapas.map((etapa) => {
@@ -160,7 +171,11 @@ export const workflowService = {
         update.alertaInformado === undefined
           ? Math.min(etapa.alertaVencimentoDias ?? ALERTA_VENCIMENTO_PADRAO_DIAS, update.prazoDias)
           : Math.min(update.alertaInformado, update.prazoDias)
-      return { ...etapa, prazoDias: update.prazoDias, alertaVencimentoDias }
+      const prazoCorrecaoDias =
+        update.correcaoInformada === undefined
+          ? (etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS)
+          : update.correcaoInformada
+      return { ...etapa, prazoDias: update.prazoDias, alertaVencimentoDias, prazoCorrecaoDias }
     })
     saveAppData(data)
     return filtrarEtapasParaTimeline(data.workflowEtapas)
@@ -182,7 +197,13 @@ export const historicoService = {
 export const notificationService = {
   async list(perfil?: Notification['perfilDestino']): Promise<Notification[]> {
     await delay(null, 300)
-    const all = loadAppData().notificacoes.sort(
+    const data = loadAppData()
+    const before = data.notificacoes.length
+    syncPrazoCorrecaoNotifications(data)
+    if (data.notificacoes.length !== before) {
+      saveAppData(data)
+    }
+    const all = data.notificacoes.sort(
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
     )
 

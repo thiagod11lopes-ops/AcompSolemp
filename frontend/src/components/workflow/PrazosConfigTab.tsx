@@ -26,6 +26,7 @@ import { workflowService } from '@/services/cadastroService'
 import { getRoleLabel, resetAppData } from '@/mocks/seed'
 import { hasPermission } from '@/utils/permissions'
 import type { WorkflowEtapa } from '@/types'
+import { PRAZO_CORRECAO_PADRAO_DIAS } from '@/types'
 
 const PRAZO_MAX = 30
 
@@ -79,6 +80,16 @@ export function PrazosConfigTab() {
     )
   }
 
+  const updateCorrecao = (id: string, prazoCorrecaoDias: number) => {
+    setLocalEtapas(
+      current.map((e) => {
+        if (e.id !== id) return e
+        const valor = Math.max(0, Math.min(PRAZO_MAX, prazoCorrecaoDias))
+        return { ...e, prazoCorrecaoDias: valor }
+      }),
+    )
+  }
+
   const handleReset = () => {
     resetAppData()
     queryClient.invalidateQueries()
@@ -91,8 +102,9 @@ export function PrazosConfigTab() {
   return (
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
-        Defina <strong>quantos dias</strong> cada etapa pode permanecer em andamento antes de
-        vencer e a partir de quantos dias restantes ela entra em <strong>próximo do vencimento</strong>.
+        Defina <strong>quantos dias</strong> cada etapa pode permanecer em andamento,
+        o <strong>Prox do vencimento</strong> (dias restantes para o alerta) e o{' '}
+        <strong>Prazo de correção</strong> após devolução da planilha.
       </Alert>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -164,8 +176,9 @@ export function PrazosConfigTab() {
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                   Responsável: {getRoleLabel(etapa.perfilResponsavel)} · Vence após{' '}
-                  <strong>{etapa.prazoDias} dias</strong> · alerta com{' '}
-                  <strong>{etapa.alertaVencimentoDias ?? 2} dias</strong> restantes
+                  <strong>{etapa.prazoDias} dias</strong> · Prox{' '}
+                  <strong>{etapa.alertaVencimentoDias ?? 2}d</strong> · Correção{' '}
+                  <strong>{etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS}d</strong>
                 </Typography>
 
                 {canEdit ? (
@@ -198,19 +211,30 @@ export function PrazosConfigTab() {
                       <TextField
                         type="number"
                         size="small"
-                        label="Próx. vencimento a partir de"
+                        label="Prox do vencimento"
                         value={etapa.alertaVencimentoDias ?? 2}
                         onChange={(e) => updateAlerta(etapa.id, Number(e.target.value))}
                         slotProps={{ htmlInput: { min: 0, max: etapa.prazoDias } }}
                         helperText="Dias restantes"
-                        sx={{ width: 220 }}
+                        sx={{ width: 180 }}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Prazo de correção"
+                        value={etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS}
+                        onChange={(e) => updateCorrecao(etapa.id, Number(e.target.value))}
+                        slotProps={{ htmlInput: { min: 0, max: PRAZO_MAX } }}
+                        helperText="Após devolução"
+                        sx={{ width: 180 }}
                       />
                     </Box>
                   </Box>
                 ) : (
                   <Typography variant="body2">
-                    Prazo configurado: <strong>{etapa.prazoDias} dias</strong> · alerta com{' '}
-                    <strong>{etapa.alertaVencimentoDias ?? 2} dias</strong> restantes
+                    Prazo: <strong>{etapa.prazoDias} dias</strong> · Prox{' '}
+                    <strong>{etapa.alertaVencimentoDias ?? 2}d</strong> · Correção{' '}
+                    <strong>{etapa.prazoCorrecaoDias ?? PRAZO_CORRECAO_PADRAO_DIAS}d</strong>
                   </Typography>
                 )}
               </CardContent>

@@ -16,7 +16,8 @@ export function EtapasWorkflowTab() {
       { accessorKey: 'nome', header: 'Etapa' },
       { accessorKey: 'chave', header: 'Chave' },
       { accessorKey: 'prazoDias', header: 'Prazo (dias)' },
-      { accessorKey: 'alertaVencimentoDias', header: 'Próx. vencimento (dias)' },
+      { accessorKey: 'alertaVencimentoDias', header: 'Prox do vencimento (dias)' },
+      { accessorKey: 'prazoCorrecaoDias', header: 'Prazo de correção (dias)' },
       {
         accessorKey: 'perfilResponsavel',
         header: 'Responsável',

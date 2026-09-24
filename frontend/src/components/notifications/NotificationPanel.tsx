@@ -24,7 +24,10 @@ import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import type { Notification, NotificationType } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
-  if (n.tipo === 'PLANILHA_DEVOLVIDA' && n.pedidoId) {
+  if (
+    (n.tipo === 'PLANILHA_DEVOLVIDA' || n.tipo === 'PRAZO_CORRECAO_VENCIDO') &&
+    n.pedidoId
+  ) {
     if (n.perfilDestino === 'CLINICA' || n.perfilDestino === 'MEDICAMENTO' || n.perfilDestino === 'EMPENHADO') {
       return `/clinica/timeline/${n.pedidoId}`
     }
