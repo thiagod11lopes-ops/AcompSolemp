@@ -39,7 +39,6 @@ import type {
   ImhAbaFormData,
   ImhAbaLinha,
   ImhMedicamentoFormData,
-  ImhMedicamentoLinha,
   ListaMedicamentosFormData,
   PlanilhaLivreAba,
 } from '@/types'
