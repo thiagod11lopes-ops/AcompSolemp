@@ -446,6 +446,18 @@ export function calcularTotalIndenizado(
   return total
 }
 
+/** Linhas cuja data cai no período (dia/mês/ano) informado. */
+export function filtrarLinhasTotalIndenizado(
+  linhas: TotalIndenizadoLinha[],
+  filtro: TotalIndenizadoFiltro,
+): TotalIndenizadoLinha[] {
+  return linhas.filter((linha) => {
+    const data = parseIsoOrBrDate(linha.data)
+    if (!data) return false
+    return dateMatchesBalancoPeriodo(data, filtro.tipo, filtro.referencia)
+  })
+}
+
 export function formatTotalIndenizadoPeriodoLabel(
   tipo: TotalIndenizadoPeriodoTipo,
   referencia: Date,

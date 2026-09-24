@@ -19,7 +19,6 @@ import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
 import { TotalIndenizadoCard, ValorASerIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
 import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
-import type { TotalIndenizadoPeriodoTipo } from '@/utils/totalIndenizado'
 import {
   KpiDetalheDialog,
   kpiCol,
@@ -90,13 +89,6 @@ export default function DashboardPage() {
   const [kpiAberto, setKpiAberto] = useState<KpiKey | null>(null)
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'))
   const [empenhadoPeriodo, setEmpenhadoPeriodo] = useState(periodoAnoCorrente)
-  const [indenizadoPeriodoTipo, setIndenizadoPeriodoTipo] =
-    useState<TotalIndenizadoPeriodoTipo>('ano')
-  const [indenizadoReferencia, setIndenizadoReferencia] = useState(() => {
-    const d = new Date()
-    d.setMonth(0, 1)
-    return d
-  })
 
   const mesAtual = useMemo(() => {
     const chave = format(new Date(), 'yyyy-MM')
@@ -606,17 +598,9 @@ export default function DashboardPage() {
           >
             <ValorASerIndenizadoCard
               linhas={metrics.valorASerIndenizadoLinhas ?? []}
-              periodoTipo={indenizadoPeriodoTipo}
-              referencia={indenizadoReferencia}
-              onPeriodoTipoChange={setIndenizadoPeriodoTipo}
-              onReferenciaChange={setIndenizadoReferencia}
             />
             <TotalIndenizadoCard
               linhas={metrics.totalIndenizadoLinhas ?? []}
-              periodoTipo={indenizadoPeriodoTipo}
-              referencia={indenizadoReferencia}
-              onPeriodoTipoChange={setIndenizadoPeriodoTipo}
-              onReferenciaChange={setIndenizadoReferencia}
             />
           </Box>
         </Grid>
