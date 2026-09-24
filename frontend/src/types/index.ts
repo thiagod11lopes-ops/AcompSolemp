@@ -761,7 +761,7 @@ export type ChatThreadKind = 'grupo' | 'dm'
 
 export interface ChatMessage {
   id: string
-  /** `grupo` ou `dm:PERFIL_A:PERFIL_B` (perfis em ordem alfabética) */
+  /** `grupo` ou `dm:userIdA:userIdB` (ids em ordem alfabética) */
   threadId: string
   autorId: string
   autorNome: string

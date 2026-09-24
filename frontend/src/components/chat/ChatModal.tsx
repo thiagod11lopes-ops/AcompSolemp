@@ -150,7 +150,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
             Bate-papo
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
-            Converse com setores ou no grupo geral
+            Gestor e usuários cadastrados · individual ou grupo
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" aria-label="Fechar">
@@ -193,7 +193,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 color="text.secondary"
                 sx={{ display: 'block', mt: 0.75, px: 0.25 }}
               >
-                Todos leem e escrevem no mesmo canal
+                Todos os cadastrados leem e escrevem no mesmo canal
               </Typography>
             </Box>
 
@@ -201,7 +201,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
               variant="overline"
               sx={{ px: 2, pt: 0.5, fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}
             >
-              Setores
+              Participantes
             </Typography>
 
             <List dense sx={{ flex: 1, overflow: 'auto', py: 0.5, px: 1 }}>
@@ -209,6 +209,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 .filter((t) => t.kind === 'dm')
                 .map((t) => {
                   const selected = t.threadId === threadId
+                  const preview = t.lastMessage
+                    ? t.lastMessage.texto.slice(0, 42) +
+                      (t.lastMessage.texto.length > 42 ? '…' : '')
+                    : t.subtitle
                   return (
                     <ListItemButton
                       key={t.threadId}
@@ -245,12 +249,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       </Badge>
                       <ListItemText
                         primary={t.label}
-                        secondary={
-                          t.lastMessage
-                            ? t.lastMessage.texto.slice(0, 42) +
-                              (t.lastMessage.texto.length > 42 ? '…' : '')
-                            : 'Nenhuma mensagem'
-                        }
+                        secondary={preview}
                         slotProps={{
                           primary: { sx: { fontWeight: 700, fontSize: '0.86rem' } },
                           secondary: { sx: { fontSize: '0.72rem' }, noWrap: true },
@@ -306,8 +305,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
                   {activeThread?.kind === 'grupo'
-                    ? 'Canal aberto para todos os setores'
-                    : `Você · ${getRoleLabel(user?.perfil ?? 'GESTOR')}`}
+                    ? 'Canal aberto para gestor e cadastrados'
+                    : activeThread?.subtitle
+                      ? `${activeThread.subtitle}`
+                      : 'Conversa individual'}
                 </Typography>
               </Box>
             </Box>

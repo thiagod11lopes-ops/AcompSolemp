@@ -1,43 +1,28 @@
 import type { AppData, ChatMessage, User, UserRole } from '@/types'
 import { delay, loadAppData, loadFreshAppData, saveAppData, getRoleLabel } from '@/mocks/seed'
 
-/** Setores disponíveis para conversa individual no bate-papo. */
-export const CHAT_SETORES: UserRole[] = [
-  'GESTOR',
-  'CLINICA',
-  'MEDICAMENTO',
-  'AUDITORIA',
-  'CONTABILIDADE_IMH',
-  'CONFECCAO_SOLEMP',
-  'FINANCEIRO',
-  'EMPENHADO',
-  'ASSINATURA_1_SOLEMP',
-  'ASSINATURA_2_SOLEMP',
-  'SDA',
-  'ASSINANTE',
-]
-
 export const CHAT_GRUPO_THREAD_ID = 'grupo'
 
-export function chatDmThreadId(a: UserRole, b: UserRole): string {
-  const [x, y] = [a, b].sort((p, q) => p.localeCompare(q))
+/** Conversa 1:1 entre dois usuários (ids ordenados). */
+export function chatDmThreadId(userIdA: string, userIdB: string): string {
+  const [x, y] = [userIdA, userIdB].sort((a, b) => a.localeCompare(b))
   return `dm:${x}:${y}`
 }
 
-export function parseChatDmPeer(threadId: string, meuPerfil: UserRole): UserRole | null {
+export function parseChatDmPeerId(threadId: string, meuId: string): string | null {
   if (!threadId.startsWith('dm:')) return null
   const parts = threadId.split(':')
   if (parts.length !== 3) return null
   const [, a, b] = parts
-  if (a === meuPerfil) return b as UserRole
-  if (b === meuPerfil) return a as UserRole
+  if (a === meuId) return b
+  if (b === meuId) return a
   return null
 }
 
-export function chatThreadLabel(threadId: string, meuPerfil: UserRole): string {
-  if (threadId === CHAT_GRUPO_THREAD_ID) return 'Grupo geral'
-  const peer = parseChatDmPeer(threadId, meuPerfil)
-  return peer ? getRoleLabel(peer) : 'Conversa'
+/** Thread em que o usuário participa (grupo ou DM próprio). */
+export function chatThreadInvolvesUser(threadId: string, userId: string): boolean {
+  if (threadId === CHAT_GRUPO_THREAD_ID) return true
+  return parseChatDmPeerId(threadId, userId) != null
 }
 
 function ensureChat(data: AppData): ChatMessage[] {
@@ -45,10 +30,24 @@ function ensureChat(data: AppData): ChatMessage[] {
   return data.chatMensagens
 }
 
+/** Participantes: gestores ativos + usuários cadastrados ativos. */
+export function listChatParticipants(data: AppData, me: User): User[] {
+  return (data.usuarios ?? [])
+    .filter((u) => u.ativo && u.id !== me.id)
+    .sort((a, b) => {
+      const ga = a.perfil === 'GESTOR' || a.perfil === 'ADMINISTRADOR' ? 0 : 1
+      const gb = b.perfil === 'GESTOR' || b.perfil === 'ADMINISTRADOR' ? 0 : 1
+      if (ga !== gb) return ga - gb
+      return a.nome.localeCompare(b.nome, 'pt-BR')
+    })
+}
+
 export interface ChatThreadSummary {
   threadId: string
   kind: 'grupo' | 'dm'
   label: string
+  subtitle: string
+  peerUserId: string | null
   peerPerfil: UserRole | null
   lastMessage: ChatMessage | null
   unread: number
@@ -63,43 +62,52 @@ function unreadInThread(mensagens: ChatMessage[], threadId: string, user: User):
   ).length
 }
 
+function peerLabel(user: User): string {
+  const posto = user.posto?.trim()
+  return posto ? `${posto} ${user.nome}` : user.nome
+}
+
 export const chatService = {
   async listThreads(user: User): Promise<ChatThreadSummary[]> {
     await delay(null, 120)
     const data = await loadFreshAppData()
     const mensagens = ensureChat(data)
+    const peers = listChatParticipants(data, user)
 
     const grupoMsgs = mensagens
       .filter((m) => m.threadId === CHAT_GRUPO_THREAD_ID)
       .sort((a, b) => a.data.localeCompare(b.data))
+
     const threads: ChatThreadSummary[] = [
       {
         threadId: CHAT_GRUPO_THREAD_ID,
         kind: 'grupo',
         label: 'Grupo geral',
+        subtitle: 'Todos os cadastrados',
+        peerUserId: null,
         peerPerfil: null,
         lastMessage: grupoMsgs.length ? grupoMsgs[grupoMsgs.length - 1] : null,
         unread: unreadInThread(mensagens, CHAT_GRUPO_THREAD_ID, user),
       },
     ]
 
-    for (const peer of CHAT_SETORES) {
-      if (peer === user.perfil) continue
-      const threadId = chatDmThreadId(user.perfil, peer)
+    for (const peer of peers) {
+      const threadId = chatDmThreadId(user.id, peer.id)
       const msgs = mensagens
         .filter((m) => m.threadId === threadId)
         .sort((a, b) => a.data.localeCompare(b.data))
       threads.push({
         threadId,
         kind: 'dm',
-        label: getRoleLabel(peer),
-        peerPerfil: peer,
+        label: peerLabel(peer),
+        subtitle: getRoleLabel(peer.perfil),
+        peerUserId: peer.id,
+        peerPerfil: peer.perfil,
         lastMessage: msgs.length ? msgs[msgs.length - 1] : null,
         unread: unreadInThread(mensagens, threadId, user),
       })
     }
 
-    // Grupo primeiro; depois DMs com atividade, depois alfabetico
     const [grupo, ...dms] = threads
     dms.sort((a, b) => {
       const ta = a.lastMessage?.data ?? ''
@@ -110,8 +118,9 @@ export const chatService = {
     return [grupo, ...dms]
   },
 
-  async listMessages(threadId: string): Promise<ChatMessage[]> {
+  async listMessages(threadId: string, user: User): Promise<ChatMessage[]> {
     await delay(null, 80)
+    if (!chatThreadInvolvesUser(threadId, user.id)) return []
     const data = await loadFreshAppData()
     return ensureChat(data)
       .filter((m) => m.threadId === threadId)
@@ -129,8 +138,11 @@ export const chatService = {
     if (limpo.length > 2000) throw new Error('Mensagem muito longa (máx. 2000 caracteres).')
 
     if (threadId !== CHAT_GRUPO_THREAD_ID) {
-      const peer = parseChatDmPeer(threadId, user.perfil)
-      if (!peer) throw new Error('Conversa inválida.')
+      const peerId = parseChatDmPeerId(threadId, user.id)
+      if (!peerId) throw new Error('Conversa inválida.')
+      const dataCheck = loadAppData()
+      const peer = dataCheck.usuarios.find((u) => u.id === peerId && u.ativo)
+      if (!peer) throw new Error('Participante não encontrado.')
     }
 
     const data = loadAppData()
@@ -152,6 +164,7 @@ export const chatService = {
 
   async markThreadRead(user: User, threadId: string): Promise<void> {
     await delay(null, 40)
+    if (!chatThreadInvolvesUser(threadId, user.id)) return
     const data = loadAppData()
     const mensagens = ensureChat(data)
     let changed = false
@@ -166,12 +179,19 @@ export const chatService = {
     if (changed) saveAppData(data)
   },
 
+  /**
+   * Conta mensagens não lidas apenas nas conversas do usuário
+   * (grupo geral + DMs em que ele participa) — alimenta o badge do ícone.
+   */
   async unreadCount(user: User): Promise<number> {
     await delay(null, 60)
     const data = await loadFreshAppData()
     const mensagens = ensureChat(data)
     return mensagens.filter(
-      (m) => m.autorId !== user.id && !(m.lidasPor ?? []).includes(user.id),
+      (m) =>
+        chatThreadInvolvesUser(m.threadId, user.id) &&
+        m.autorId !== user.id &&
+        !(m.lidasPor ?? []).includes(user.id),
     ).length
   },
 }

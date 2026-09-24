@@ -16,7 +16,7 @@ export function useChatUnreadCount() {
     queryFn: () => chatService.unreadCount(user!),
     enabled: Boolean(user?.id),
     staleTime: 0,
-    refetchInterval: 5_000,
+    refetchInterval: 2_500,
     refetchOnWindowFocus: true,
   })
 }
@@ -36,10 +36,10 @@ export function useChatMessages(threadId: string | null, enabled: boolean) {
   const user = useActiveChatUser()
   return useQuery({
     queryKey: ['chat-messages', threadId, user?.id],
-    queryFn: () => chatService.listMessages(threadId!),
+    queryFn: () => chatService.listMessages(threadId!, user!),
     enabled: enabled && Boolean(threadId && user?.id),
     staleTime: 0,
-    refetchInterval: enabled && threadId ? 3_000 : false,
+    refetchInterval: enabled && threadId ? 2_500 : false,
   })
 }
 
