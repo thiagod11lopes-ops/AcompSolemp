@@ -46,6 +46,34 @@ export function formatRelative(date: string): string {
   return formatDistanceToNow(parsed, { addSuffix: true, locale: ptBR })
 }
 
+/**
+ * Duração entre duas datas ISO (ex.: tempo até corrigir planilha devolvida).
+ * Retorna algo como "45min", "2h 15min", "1d 3h".
+ */
+export function formatDuracaoEntre(
+  inicioIso: string | null | undefined,
+  fimIso: string | null | undefined = new Date().toISOString(),
+): string | null {
+  if (!inicioIso || !fimIso) return null
+  const inicio = parseDateSafe(inicioIso)
+  const fim = parseDateSafe(fimIso)
+  if (!inicio || !fim) return null
+  const ms = fim.getTime() - inicio.getTime()
+  if (!Number.isFinite(ms) || ms < 0) return null
+  const totalMin = Math.max(0, Math.round(ms / 60_000))
+  if (totalMin < 1) return 'menos de 1 min'
+  const days = Math.floor(totalMin / (60 * 24))
+  const hours = Math.floor((totalMin % (60 * 24)) / 60)
+  const mins = totalMin % 60
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`
+  }
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
+  }
+  return `${mins}min`
+}
+
 export function formatCnpj(cnpj: string): string {
   const digits = cnpj.replace(/\D/g, '')
   return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')

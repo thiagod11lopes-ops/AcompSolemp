@@ -28,6 +28,7 @@ export type NotificationType =
   | 'RESPOSTA_GESTOR'
   | 'ETAPA_PENDENTE'
   | 'PLANILHA_DEVOLVIDA'
+  | 'PLANILHA_CORRIGIDA_REENVIADA'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 

@@ -16,8 +16,12 @@ import { CLINICA_ETAPA_ACOES } from '@/utils/portal'
 import { getSolempDefaults, type SolempNumeroParts } from '@/utils/solemp'
 import { delay, loadAppData, loadFreshAppData, saveAppData } from '@/mocks/seed'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
-import { notifySetoresEtapasAtivas } from '@/utils/workflowAdvance'
+import {
+  notifyPlanilhaCorrigidaReenviada,
+  notifySetoresEtapasAtivas,
+} from '@/utils/workflowAdvance'
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
+import { formatDuracaoEntre } from '@/utils/format'
 
 export interface CreatePedidoInput {
   id?: string
@@ -80,13 +84,25 @@ export interface ExecutarAcaoInput {
   notaFiscalNumero?: string
 }
 
+function resolvePlanilhaDevolvidaEm(
+  pedido: ReturnType<typeof loadAppData>['pedidos'][number],
+): string | null {
+  if (pedido.planilhaDevolvidaEm) return pedido.planilhaDevolvidaEm
+  const historico = pedido.planilhaDevolucoes
+  if (!historico?.length) return null
+  return historico[historico.length - 1]?.em ?? null
+}
+
 function reabrirPedidoAposDevolucaoOrigem(
   data: ReturnType<typeof loadAppData>,
   pedido: ReturnType<typeof loadAppData>['pedidos'][number],
   novaEtapaId: string,
   agora: string,
-): boolean {
-  if (pedido.planilhaDevolvidaParaChave !== 'SOLICITACAO') return false
+): { reabriu: boolean; devolvidaEm: string | null } {
+  if (pedido.planilhaDevolvidaParaChave !== 'SOLICITACAO') {
+    return { reabriu: false, devolvidaEm: null }
+  }
+  const devolvidaEm = resolvePlanilhaDevolvidaEm(pedido)
   limparEstadoDevolucaoPlanilha(data, pedido.id)
   pedido.planilhaDevolvidaParaChave = null
   pedido.planilhaDevolvidaEm = null
@@ -100,7 +116,7 @@ function reabrirPedidoAposDevolucaoOrigem(
     pedido.etapasAtivasIds = pedido.etapasAtivasIds.filter((id) => id !== solicitacao.id)
   }
   pedido.etapaAtualId = novaEtapaId
-  return true
+  return { reabriu: true, devolvidaEm }
 }
 
 function getContext(data: ReturnType<typeof loadAppData>) {
@@ -369,16 +385,24 @@ export const clinicaPedidoService = {
       (h) => h.etapaId === targetEtapa.id && !h.dataConclusao,
     )
     const alreadyInAtivas = pedido.etapasAtivasIds.includes(targetEtapa.id)
+    const estavaDevolvidaOrigem = pedido.planilhaDevolvidaParaChave === 'SOLICITACAO'
 
-    if (hasOpenTrack && alreadyInAtivas) {
+    if (hasOpenTrack && alreadyInAtivas && !estavaDevolvidaOrigem) {
       const enriched = enrichPedido(pedido, getContext(data))
       if (!enriched) throw new Error('Erro ao atualizar pedido')
       return enriched
     }
 
     const agora = new Date().toISOString()
-    reabrirPedidoAposDevolucaoOrigem(data, pedido, targetEtapa.id, agora)
+    const { reabriu, devolvidaEm } = reabrirPedidoAposDevolucaoOrigem(
+      data,
+      pedido,
+      targetEtapa.id,
+      agora,
+    )
     const countRows = pedido.consumoRowIds?.length ?? 0
+    const tempoCorrecao = reabriu ? formatDuracaoEntre(devolvidaEm, agora) : null
+    const tempoTxt = tempoCorrecao ? ` em ${tempoCorrecao}` : ''
 
     if (!hasOpenTrack && !pedido.etapasHistorico.some((h) => h.etapaId === targetEtapa.id)) {
       pedido.etapasHistorico.push({
@@ -390,8 +414,12 @@ export const clinicaPedidoService = {
         dataConclusao: null,
         observacao:
           fluxo === 'auditoria'
-            ? 'Aguardando recebimento da planilha pela Auditoria.'
-            : 'Aguardando recebimento da planilha pela Confecção de Solemp.',
+            ? reabriu
+              ? `Planilha corrigida e reenviada${tempoTxt}. Aguardando recebimento pela Auditoria.`
+              : 'Aguardando recebimento da planilha pela Auditoria.'
+            : reabriu
+              ? `Planilha corrigida e reenviada${tempoTxt}. Aguardando recebimento pela Confecção de Solemp.`
+              : 'Aguardando recebimento da planilha pela Confecção de Solemp.',
         arquivos: [],
       })
     }
@@ -420,13 +448,24 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao:
-        fluxo === 'auditoria'
+      observacao: reabriu
+        ? fluxo === 'auditoria'
+          ? `Planilha corrigida e reenviada${tempoTxt} para Auditoria — ${pedido.numero}.`
+          : `Planilha corrigida e reenviada${tempoTxt} para Confecção de Solemp — ${pedido.numero}.`
+        : fluxo === 'auditoria'
           ? `Planilha também enviada para Auditoria — ${pedido.numero}.`
           : `Planilha também enviada para Confecção de Solemp — ${pedido.numero}.`,
     })
 
-    notifySetoresEtapasAtivas(data, pedidoId)
+    if (reabriu) {
+      notifyPlanilhaCorrigidaReenviada(data, pedidoId, {
+        usuarioNome: usuario.nome,
+        devolvidaEm,
+        agora,
+      })
+    } else {
+      notifySetoresEtapasAtivas(data, pedidoId)
+    }
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
@@ -467,7 +506,14 @@ export const clinicaPedidoService = {
       etapasAtivasIds: [...(data.pedidos[pedidoIndex].etapasAtivasIds ?? [])],
     }
     const agora = new Date().toISOString()
-    reabrirPedidoAposDevolucaoOrigem(data, pedido, contabilidade.id, agora)
+    const { reabriu, devolvidaEm } = reabrirPedidoAposDevolucaoOrigem(
+      data,
+      pedido,
+      contabilidade.id,
+      agora,
+    )
+    const tempoCorrecao = reabriu ? formatDuracaoEntre(devolvidaEm, agora) : null
+    const tempoTxt = tempoCorrecao ? ` em ${tempoCorrecao}` : ''
 
     const hasOpenTrack = pedido.etapasHistorico.some(
       (h) => h.etapaId === contabilidade.id && !h.dataConclusao,
@@ -480,7 +526,9 @@ export const clinicaPedidoService = {
         responsavelNome: null,
         dataInicio: agora,
         dataConclusao: null,
-        observacao: 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
+        observacao: reabriu
+          ? `Planilha corrigida e reenviada${tempoTxt}. Aguardando recebimento pela Contabilidade/IMH.`
+          : 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
         arquivos: [],
       })
     }
@@ -492,8 +540,12 @@ export const clinicaPedidoService = {
     const countRows = pedido.consumoRowIds?.length ?? 0
     pedido.observacoes =
       countRows > 1
-        ? `Planilha reenviada com ${countRows} lançamentos para Contabilidade/IMH.`
-        : `Lançamento reenviado diretamente para Contabilidade/IMH.`
+        ? reabriu
+          ? `Planilha corrigida e reenviada${tempoTxt} com ${countRows} lançamentos para Contabilidade/IMH.`
+          : `Planilha reenviada com ${countRows} lançamentos para Contabilidade/IMH.`
+        : reabriu
+          ? `Lançamento corrigido e reenviado${tempoTxt} para Contabilidade/IMH.`
+          : `Lançamento reenviado diretamente para Contabilidade/IMH.`
 
     data.pedidos[pedidoIndex] = pedido
     data.historico.push({
@@ -504,10 +556,20 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: `Planilha reenviada para Contabilidade/IMH — ${pedido.numero}.`,
+      observacao: reabriu
+        ? `Planilha corrigida e reenviada${tempoTxt} para Contabilidade/IMH — ${pedido.numero}.`
+        : `Planilha reenviada para Contabilidade/IMH — ${pedido.numero}.`,
     })
 
-    notifySetoresEtapasAtivas(data, pedidoId)
+    if (reabriu) {
+      notifyPlanilhaCorrigidaReenviada(data, pedidoId, {
+        usuarioNome: usuario.nome,
+        devolvidaEm,
+        agora,
+      })
+    } else {
+      notifySetoresEtapasAtivas(data, pedidoId)
+    }
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()

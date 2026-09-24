@@ -32,7 +32,11 @@ function getNotificationPath(n: Notification): string | null {
   }
   if (n.tipo === 'REVERSAO_TIMELINE') return '/gestor/reversoes'
   if (n.tipo === 'RESPOSTA_GESTOR' && n.pedidoId) return `/clinica/timeline/${n.pedidoId}`
-  if (n.tipo === 'ETAPA_PENDENTE' || n.tipo === 'PAGAMENTO_PENDENTE') {
+  if (
+    n.tipo === 'ETAPA_PENDENTE' ||
+    n.tipo === 'PAGAMENTO_PENDENTE' ||
+    n.tipo === 'PLANILHA_CORRIGIDA_REENVIADA'
+  ) {
     if (n.perfilDestino === 'FINANCEIRO') {
       return n.pedidoId
         ? `/financeiro/pagamentos/${n.pedidoId}`

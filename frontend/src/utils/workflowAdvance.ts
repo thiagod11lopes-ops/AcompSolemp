@@ -16,6 +16,8 @@ import {
 } from '@/utils/timelineFlow'
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
+import { formatDuracaoEntre } from '@/utils/format'
+
 function nowIso(): string {
   return new Date().toISOString()
 }
@@ -201,6 +203,66 @@ export function notifySetoresEtapasAtivas(data: AppData, pedidoId: string): void
       etapaChave: etapa.chave,
       lida: false,
       data: nowIso(),
+    })
+  })
+}
+
+/**
+ * Notifica os setores de destino quando a clínica/medicamento corrige e reenvia
+ * uma planilha que havia sido devolvida. Inclui o tempo gasto na correção.
+ */
+export function notifyPlanilhaCorrigidaReenviada(
+  data: AppData,
+  pedidoId: string,
+  opts: {
+    usuarioNome: string
+    devolvidaEm: string | null | undefined
+    agora?: string
+  },
+): void {
+  const pedido = data.pedidos.find((p) => p.id === pedidoId)
+  if (!pedido || pedido.concluido) return
+
+  const agora = opts.agora ?? nowIso()
+  const tempo = formatDuracaoEntre(opts.devolvidaEm, agora)
+  const tempoTxt = tempo ? ` em ${tempo}` : ''
+  const ativas = pedido.etapasAtivasIds?.length
+    ? pedido.etapasAtivasIds
+    : [pedido.etapaAtualId]
+
+  ativas.forEach((etapaId, index) => {
+    const etapa = data.workflowEtapas.find((e) => e.id === etapaId)
+    if (!etapa) return
+    if (
+      etapa.perfilResponsavel === 'CLINICA' ||
+      etapa.perfilResponsavel === 'MEDICAMENTO' ||
+      etapa.perfilResponsavel === 'EMPENHADO' ||
+      etapa.perfilResponsavel === 'GESTOR' ||
+      etapa.perfilResponsavel === 'ADMINISTRADOR' ||
+      etapa.perfilResponsavel === 'CONSULTA'
+    ) {
+      return
+    }
+
+    const temUsuarios = data.usuarios.some(
+      (u) => u.ativo && u.perfil === etapa.perfilResponsavel,
+    )
+    if (!temUsuarios) return
+
+    // Evita duplicar sino genérico + corrigida para a mesma etapa.
+    markEtapaNotificationsRead(data, pedidoId, etapa.chave)
+
+    data.notificacoes.push({
+      id: `notif-corrigida-${pedidoId}-${etapa.chave}-${Date.now()}-${index}`,
+      tipo: 'PLANILHA_CORRIGIDA_REENVIADA',
+      titulo: `Planilha corrigida e reenviada — ${pedido.numero}`,
+      mensagem: `${opts.usuarioNome} corrigiu e reenviou a planilha${tempoTxt}. O processo aguarda providência em ${etapa.nome}.`,
+      pedidoId,
+      reversaoId: null,
+      perfilDestino: etapa.perfilResponsavel,
+      etapaChave: etapa.chave,
+      lida: false,
+      data: agora,
     })
   })
 }
