@@ -549,19 +549,10 @@ export default function DashboardPage() {
             onClick={() => setKpiAberto('correcoesVencidas')}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Tempo Médio de Finalização"
-            value={`${metrics.tempoMedioPagamento}d`}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            onClick={() => setKpiAberto('tempoMedio')}
-          />
-        </Grid>
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <KpiCard
             title="Aguardando Empenho"
             value={formatCurrency(metrics.valorAguardandoEmpenho)}
@@ -571,7 +562,7 @@ export default function DashboardPage() {
             onClick={() => setKpiAberto('aguardandoEmpenho')}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <KpiCard
             title="Total empenhado do mês"
             value={formatCurrency(mesFiltrado.valor)}
@@ -581,7 +572,7 @@ export default function DashboardPage() {
             onClick={() => setKpiAberto('empenhadoMes')}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <KpiCard
             title="Total empenhado no ano"
             value={formatCurrency(empenhadoAnoCard.valor)}
@@ -589,6 +580,15 @@ export default function DashboardPage() {
             icon={<AccountBalanceIcon />}
             color={premiumTokens.green}
             onClick={() => abrirKpi('totalEmpenhado')}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <KpiCard
+            title="Tempo Médio de Finalização"
+            value={`${metrics.tempoMedioPagamento}d`}
+            subtitle="Clique para detalhes"
+            icon={<ScheduleIcon />}
+            onClick={() => setKpiAberto('tempoMedio')}
           />
         </Grid>
       </Grid>

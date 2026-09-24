@@ -6,6 +6,7 @@ import { AppRoutes } from '@/routes'
 import { initDataLayer } from '@/data/initDataLayer'
 import { authService } from '@/services/authService'
 import { initStorage } from '@/storage/indexedDb'
+import { useLiveAppDataSync } from '@/hooks/useLiveAppDataSync'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,11 @@ const bootstrapStyle: CSSProperties = {
   gap: 12,
   fontFamily: 'system-ui, sans-serif',
   color: '#555',
+}
+
+function LiveAppDataBridge() {
+  useLiveAppDataSync()
+  return null
 }
 
 function App() {
@@ -76,6 +82,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
+          <LiveAppDataBridge />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>

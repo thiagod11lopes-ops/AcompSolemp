@@ -7,6 +7,7 @@ import {
 import { APP_DATA_SEED_VERSION } from '@/data/persistence/types'
 import type { AppData } from '@/types'
 import { getTenantId } from '@/services/tenantService'
+import { getSupabaseClient } from '@/supabase/client'
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 let pendingData: AppData | null = null
@@ -44,7 +45,7 @@ export function scheduleSupabaseAppDataSync(
   syncTimer = setTimeout(() => {
     syncTimer = null
     void flushSupabaseAppDataSync()
-  }, 600)
+  }, 150)
 }
 
 export async function flushSupabaseAppDataSync(): Promise<void> {
@@ -71,4 +72,54 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
     })
 
   return flushPromise
+}
+
+/**
+ * Escuta alterações de `app_state` no Supabase e aplica o payload remoto.
+ * Necessário para que outro usuário (ex.: ordenador) veja envio/devolução na hora.
+ */
+export function subscribeAppStateRealtime(
+  onRemote: (data: AppData) => void,
+): () => void {
+  if (!useCloudAppDataSync()) return () => undefined
+  const tenantId = getTenantId()
+  if (!tenantId) return () => undefined
+
+  const client = getSupabaseClient()
+  const channel = client
+    .channel(`app_state:${tenantId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'app_state',
+        filter: `tenant_id=eq.${tenantId}`,
+      },
+      (payload) => {
+        const row = (payload.new ?? null) as {
+          payload?: unknown
+          version?: string
+        } | null
+        if (!row?.payload) return
+        try {
+          const snapshot = {
+            version: row.version ?? APP_DATA_SEED_VERSION,
+            payload:
+              typeof row.payload === 'string'
+                ? row.payload
+                : JSON.stringify(row.payload),
+            updatedAt: new Date().toISOString(),
+          }
+          onRemote(deserializeAppData(snapshot))
+        } catch (error) {
+          console.warn('[AcompSolemp] Falha ao aplicar app_state remoto', error)
+        }
+      },
+    )
+    .subscribe()
+
+  return () => {
+    void client.removeChannel(channel)
+  }
 }

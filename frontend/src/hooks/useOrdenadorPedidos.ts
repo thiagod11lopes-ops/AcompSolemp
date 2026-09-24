@@ -11,6 +11,8 @@ export function useOrdenadorPedidos() {
     enabled: Boolean(user?.id),
     staleTime: 0,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 8_000,
   })
 }
 
@@ -22,6 +24,8 @@ export function useOrdenadorPedido(id: string) {
     enabled: Boolean(id && user?.id),
     staleTime: 0,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 8_000,
   })
 }
 

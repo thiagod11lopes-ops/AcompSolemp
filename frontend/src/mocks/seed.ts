@@ -794,28 +794,110 @@ function persistAppData(data: AppData, options?: { silent?: boolean }): void {
     void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
       scheduleSupabaseAppDataSync(data, SEED_VERSION)
     })
+    // Notifica abas locais imediatamente; outras sessões entram via realtime.
+    if (!options?.silent) notifyAppDataChanged()
     return
   }
 
   storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
-  if (!options?.silent && getAppDataStorageKey() === STORAGE_KEYS.DEMO_APP_DATA) {
-    notifyDemoAppDataChanged()
+  if (!options?.silent) {
+    notifyAppDataChanged()
   }
 }
 
+const APP_DATA_CHANGED_EVENT = 'acomp-app-data-changed'
+const APP_DATA_BROADCAST = 'acomp-app-data'
+/** @deprecated alias — mantido para listeners antigos */
 const DEMO_DATA_CHANGED_EVENT = 'acomp-demo-data-changed'
 const DEMO_DATA_BROADCAST = 'acomp-demo-data'
 
-export function notifyDemoAppDataChanged(): void {
+const APP_DATA_TAB_ID =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+export function notifyAppDataChanged(): void {
   if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(APP_DATA_CHANGED_EVENT))
+  // Compat: listeners de demo ainda escutam o evento legado.
   window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT))
+  const message = { type: APP_DATA_CHANGED_EVENT, tabId: APP_DATA_TAB_ID }
   try {
-    const channel = new BroadcastChannel(DEMO_DATA_BROADCAST)
-    channel.postMessage({ type: DEMO_DATA_CHANGED_EVENT })
+    const channel = new BroadcastChannel(APP_DATA_BROADCAST)
+    channel.postMessage(message)
     channel.close()
   } catch {
-    // BroadcastChannel indisponível — evento local já notificou esta aba.
+    // BroadcastChannel indisponível
   }
+  try {
+    const demoChannel = new BroadcastChannel(DEMO_DATA_BROADCAST)
+    demoChannel.postMessage({ type: DEMO_DATA_CHANGED_EVENT, tabId: APP_DATA_TAB_ID })
+    demoChannel.close()
+  } catch {
+    // ignore
+  }
+}
+
+export function notifyDemoAppDataChanged(): void {
+  notifyAppDataChanged()
+}
+
+async function reloadCacheFromPeerStorage(): Promise<void> {
+  if (useCloudAppDataSync()) return
+  const key = getAppDataStorageKey()
+  await storageReloadKey(key)
+  reloadAppDataFromStorage()
+}
+
+/**
+ * Escuta alterações de AppData nesta aba e em outras abas do mesmo origin.
+ * Em modo nuvem, use também `subscribeAppStateRealtime` (Supabase).
+ */
+export function subscribeAppDataChanged(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined
+
+  const handleLocal = () => {
+    listener()
+  }
+
+  const handlePeerMessage = (event: MessageEvent) => {
+    const tabId =
+      event.data && typeof event.data === 'object' && 'tabId' in event.data
+        ? String((event.data as { tabId?: unknown }).tabId ?? '')
+        : ''
+    // Ignora eco da própria aba (evita sobrescrever cache com IDB ainda não gravado).
+    if (tabId && tabId === APP_DATA_TAB_ID) return
+    void reloadCacheFromPeerStorage().then(() => listener())
+  }
+
+  window.addEventListener(APP_DATA_CHANGED_EVENT, handleLocal)
+  window.addEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
+
+  let channel: BroadcastChannel | null = null
+  let demoChannel: BroadcastChannel | null = null
+  try {
+    channel = new BroadcastChannel(APP_DATA_BROADCAST)
+    channel.onmessage = handlePeerMessage
+  } catch {
+    channel = null
+  }
+  try {
+    demoChannel = new BroadcastChannel(DEMO_DATA_BROADCAST)
+    demoChannel.onmessage = handlePeerMessage
+  } catch {
+    demoChannel = null
+  }
+
+  return () => {
+    window.removeEventListener(APP_DATA_CHANGED_EVENT, handleLocal)
+    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
+    channel?.close()
+    demoChannel?.close()
+  }
+}
+
+export function subscribeDemoAppDataChanged(listener: () => void): () => void {
+  return subscribeAppDataChanged(listener)
 }
 
 /** Persiste AppData de demonstração sem depender da rota atual. */
@@ -839,30 +921,6 @@ export async function saveDemoAppDataAndWait(data: AppData): Promise<void> {
     appDataCache = cloned
   }
   notifyDemoAppDataChanged()
-}
-
-export function subscribeDemoAppDataChanged(listener: () => void): () => void {
-  if (typeof window === 'undefined') return () => undefined
-
-  const handleLocal = () => {
-    listener()
-  }
-
-  window.addEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
-  let channel: BroadcastChannel | null = null
-  try {
-    channel = new BroadcastChannel(DEMO_DATA_BROADCAST)
-    channel.onmessage = () => {
-      // Outra aba alterou o demo: recarrega IndexedDB nesta aba e notifica.
-      void storageReloadKey(STORAGE_KEYS.DEMO_APP_DATA).then(() => listener())
-    }
-  } catch {
-    channel = null
-  }
-  return () => {
-    window.removeEventListener(DEMO_DATA_CHANGED_EVENT, handleLocal)
-    channel?.close()
-  }
 }
 
 /** Lê snapshot de demonstração no IndexedDB (sem exigir sessão demo ativa). */

@@ -32,6 +32,7 @@ export function useClinicaPedidos() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: 8_000,
   })
 }
 
@@ -49,6 +50,7 @@ export function useClinicaPedido(id: string) {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: 8_000,
   })
 }
 

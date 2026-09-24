@@ -136,6 +136,8 @@ export function useNotifications(perfil?: Parameters<typeof notificationService.
   return useQuery({
     queryKey: ['notifications', perfil ?? 'all'],
     queryFn: () => notificationService.list(perfil),
-    refetchInterval: 30000,
+    staleTime: 0,
+    refetchInterval: 8_000,
+    refetchOnWindowFocus: true,
   })
 }
