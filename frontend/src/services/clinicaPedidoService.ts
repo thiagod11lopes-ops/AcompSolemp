@@ -21,7 +21,7 @@ import {
   notifySetoresEtapasAtivas,
 } from '@/utils/workflowAdvance'
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
-import { formatDuracaoEntre } from '@/utils/format'
+import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
 
 export interface CreatePedidoInput {
   id?: string
@@ -402,7 +402,7 @@ export const clinicaPedidoService = {
     )
     const countRows = pedido.consumoRowIds?.length ?? 0
     const tempoCorrecao = reabriu ? formatDuracaoEntre(devolvidaEm, agora) : null
-    const tempoTxt = tempoCorrecao ? ` em ${tempoCorrecao}` : ''
+    const tempoTxt = formatTempoCorrecaoPrefixo(tempoCorrecao)
 
     if (!hasOpenTrack && !pedido.etapasHistorico.some((h) => h.etapaId === targetEtapa.id)) {
       pedido.etapasHistorico.push({
@@ -513,7 +513,7 @@ export const clinicaPedidoService = {
       agora,
     )
     const tempoCorrecao = reabriu ? formatDuracaoEntre(devolvidaEm, agora) : null
-    const tempoTxt = tempoCorrecao ? ` em ${tempoCorrecao}` : ''
+    const tempoTxt = formatTempoCorrecaoPrefixo(tempoCorrecao)
 
     const hasOpenTrack = pedido.etapasHistorico.some(
       (h) => h.etapaId === contabilidade.id && !h.dataConclusao,

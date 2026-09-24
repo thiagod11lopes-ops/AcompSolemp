@@ -47,8 +47,10 @@ export function formatRelative(date: string): string {
 }
 
 /**
- * Duração entre duas datas ISO (ex.: tempo até corrigir planilha devolvida).
- * Retorna algo como "45min", "2h 15min", "1d 3h".
+ * Tempo de correção de planilha devolvida em dias de calendário.
+ * - mesmo dia → "no mesmo dia"
+ * - dia seguinte → "1 dia"
+ * - demais → "N dias"
  */
 export function formatDuracaoEntre(
   inicioIso: string | null | undefined,
@@ -58,20 +60,21 @@ export function formatDuracaoEntre(
   const inicio = parseDateSafe(inicioIso)
   const fim = parseDateSafe(fimIso)
   if (!inicio || !fim) return null
-  const ms = fim.getTime() - inicio.getTime()
-  if (!Number.isFinite(ms) || ms < 0) return null
-  const totalMin = Math.max(0, Math.round(ms / 60_000))
-  if (totalMin < 1) return 'menos de 1 min'
-  const days = Math.floor(totalMin / (60 * 24))
-  const hours = Math.floor((totalMin % (60 * 24)) / 60)
-  const mins = totalMin % 60
-  if (days > 0) {
-    return hours > 0 ? `${days}d ${hours}h` : `${days}d`
-  }
-  if (hours > 0) {
-    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
-  }
-  return `${mins}min`
+  if (fim.getTime() < inicio.getTime()) return null
+
+  const inicioDia = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate())
+  const fimDia = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate())
+  const dias = Math.round((fimDia.getTime() - inicioDia.getTime()) / 86_400_000)
+  if (dias <= 0) return 'no mesmo dia'
+  if (dias === 1) return '1 dia'
+  return `${dias} dias`
+}
+
+/** Prefixo para encaixar o tempo de correção em frases (" no mesmo dia" / " em 2 dias"). */
+export function formatTempoCorrecaoPrefixo(tempo: string | null | undefined): string {
+  if (!tempo) return ''
+  if (tempo === 'no mesmo dia') return ` ${tempo}`
+  return ` em ${tempo}`
 }
 
 export function formatCnpj(cnpj: string): string {

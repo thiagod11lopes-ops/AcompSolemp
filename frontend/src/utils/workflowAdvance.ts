@@ -16,7 +16,7 @@ import {
 } from '@/utils/timelineFlow'
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
-import { formatDuracaoEntre } from '@/utils/format'
+import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -225,7 +225,7 @@ export function notifyPlanilhaCorrigidaReenviada(
 
   const agora = opts.agora ?? nowIso()
   const tempo = formatDuracaoEntre(opts.devolvidaEm, agora)
-  const tempoTxt = tempo ? ` em ${tempo}` : ''
+  const tempoTxt = formatTempoCorrecaoPrefixo(tempo)
   const ativas = pedido.etapasAtivasIds?.length
     ? pedido.etapasAtivasIds
     : [pedido.etapaAtualId]
