@@ -162,25 +162,22 @@ export async function upsertEmailAccess(input: {
     )
   }
 
-  const { error } = await getSupabaseClient().from('email_access').upsert(
-    {
-      email,
-      tenant_id: input.tenantId,
-      app_user_id: input.appUserId,
-      perfil: input.perfil,
-      clinica_id: input.clinicaId ?? null,
-      nome: input.nome ?? null,
-    },
-    { onConflict: 'email' },
-  )
+  // RPC security definer: evita falha de RLS no UPSERT (ON CONFLICT → UPDATE).
+  const { error } = await getSupabaseClient().rpc('upsert_email_access_for_tenant', {
+    p_email: email,
+    p_tenant_id: input.tenantId,
+    p_app_user_id: input.appUserId,
+    p_perfil: input.perfil,
+    p_clinica_id: input.clinicaId ?? null,
+    p_nome: input.nome ?? null,
+  })
   if (error) throw new Error(error.message)
 }
 
 export async function removeEmailAccess(email: string): Promise<void> {
-  const { error } = await getSupabaseClient()
-    .from('email_access')
-    .delete()
-    .eq('email', email.trim().toLowerCase())
+  const { error } = await getSupabaseClient().rpc('remove_email_access_for_tenant', {
+    p_email: email.trim().toLowerCase(),
+  })
   if (error) throw new Error(error.message)
 }
 

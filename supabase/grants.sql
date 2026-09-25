@@ -18,3 +18,5 @@ grant select on table public.email_access to anon;
 
 grant execute on function public.current_tenant_id() to anon, authenticated, service_role;
 grant execute on function public.lookup_email_access(text) to anon, authenticated, service_role;
+grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text) to authenticated, service_role;
+grant execute on function public.remove_email_access_for_tenant(text) to authenticated, service_role;

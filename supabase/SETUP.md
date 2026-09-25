@@ -21,6 +21,10 @@ No Supabase → **SQL Editor** → **New query**:
 Sem isso, o cadastro autenticará mas falhará com *Invalid path specified in request URL*
 (as tabelas `tenants`, `profiles`, `app_state`, `email_access` ainda não existem).
 
+Se o projeto **já tinha** o schema aplicado e o cadastro de equipe falha com
+*new row violates row-level security policy … email_access*, execute também no SQL Editor:
+[`migration_email_access_upsert_rpc.sql`](./migration_email_access_upsert_rpc.sql).
+
 ## 3. Auth
 
 Em **Authentication → Providers**:

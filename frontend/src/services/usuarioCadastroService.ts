@@ -195,7 +195,7 @@ export const usuarioCadastroService = {
       )
       if (existingIdx >= 0) {
         const existing = data.usuarios[existingIdx]
-        if (useSupabaseDataSource() && existing.email && existing.email !== email) {
+        if (useCloudAppDataSync() && existing.email && existing.email !== email) {
           await removeEmailAccess(existing.email)
         }
         existing.nome = nome
@@ -255,7 +255,8 @@ export const usuarioCadastroService = {
       await flushSupabaseAppDataSync()
     }
 
-    if (useSupabaseDataSource() && tenantId) {
+    // Demo / acesso sem senha: não grava email_access na nuvem.
+    if (useCloudAppDataSync() && tenantId) {
       await upsertEmailAccess({
         email,
         tenantId,
@@ -291,7 +292,7 @@ export const usuarioCadastroService = {
         await flushSupabaseAppDataSync()
       }
 
-      if (useSupabaseDataSource()) {
+      if (useCloudAppDataSync()) {
         for (const user of usersToRevoke) {
           if (user.email) await removeEmailAccess(user.email)
         }
@@ -306,7 +307,7 @@ export const usuarioCadastroService = {
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
     }
-    if (useSupabaseDataSource() && user.email) {
+    if (useCloudAppDataSync() && user.email) {
       await removeEmailAccess(user.email)
     }
   },
