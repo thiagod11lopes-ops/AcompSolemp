@@ -12,6 +12,7 @@ import {
   useTheme,
 } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import PaymentsIcon from '@mui/icons-material/Payments'
@@ -24,11 +25,13 @@ import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 const DRAWER_WIDTH = 240
 
 const menuBase = [
+  { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/ordenador/timelines', label: 'Timelines pendentes', icon: <TimelineIcon /> },
   { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 const menuConfeccaoCadeia = [
+  { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   {
     path: '/ordenador/timelines',
     etapa: 'DIV_MAT_CONFECCAO_SOLEMP',
