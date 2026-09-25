@@ -3,7 +3,6 @@ import {
   usuarioCadastroService,
   type CreatePortalUserInput,
 } from '@/services/usuarioCadastroService'
-import { isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
 import { loadAppData } from '@/mocks/seed'
 
 function syncCadastroQueries(
@@ -22,14 +21,12 @@ export function useCreatePortalUser() {
   return useMutation({
     mutationFn: (input: CreatePortalUserInput) =>
       usuarioCadastroService.createPortalUser(input),
-    onSuccess: async (_result, variables) => {
-      const refreshClinicas = variables.opcoes.some((o) => isCadastroEntidadeClinica(o))
-      // Atualiza a lista imediatamente a partir do cache local (sem esperar o refetch).
-      syncCadastroQueries(queryClient, { refreshClinicas })
+    // Sempre sincroniza usuários + clínicas: o 1º cadastro de entidade precisa
+    // das duas listas, e onSettled cobre sucesso mesmo com latência de rede.
+    onSettled: async () => {
+      syncCadastroQueries(queryClient, { refreshClinicas: true })
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      if (refreshClinicas) {
-        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
-      }
+      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
     },
   })
 }
@@ -41,12 +38,10 @@ export function useDeleteCadastro() {
       usuarioCadastroService.deleteCadastro(input),
     // Soft-delete local roda antes do revoke na nuvem: atualiza a lista mesmo se
     // a RPC falhar (evita card "Cadastrados" mostrar quem já foi excluído).
-    onSettled: async (_result, _error, variables) => {
-      syncCadastroQueries(queryClient, { refreshClinicas: variables.isEntidadeClinica })
+    onSettled: async () => {
+      syncCadastroQueries(queryClient, { refreshClinicas: true })
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      if (variables.isEntidadeClinica) {
-        await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
-      }
+      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
     },
   })
 }
