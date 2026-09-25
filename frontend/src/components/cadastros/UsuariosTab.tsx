@@ -310,13 +310,12 @@ export function UsuariosTab() {
         </Alert>
       )}
 
-      <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
-        <Grid size={{ xs: 12, md: mostraSelectClinica ? 6 : 5 }}>
+      <Grid container spacing={3}>
+        <Grid size={12}>
           <Paper
             sx={{
               p: 3,
               borderRadius: 3,
-              height: '100%',
               background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${theme.palette.background.paper} 50%)`,
             }}
           >
@@ -407,8 +406,8 @@ export function UsuariosTab() {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, md: mostraSelectClinica ? 6 : 7 }}>
-          <Paper sx={{ p: 2, borderRadius: 3, height: '100%' }}>
+        <Grid size={12}>
+          <Paper sx={{ p: 2, borderRadius: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
               {tituloLista}
             </Typography>
