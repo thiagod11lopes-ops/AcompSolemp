@@ -9,13 +9,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  FormControl,
   Grid,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   TextField,
   Tooltip,
   Typography,
@@ -38,7 +34,7 @@ import {
   DEMO_EMPENHADO_EXEMPLO_ID,
   isDemoExampleUser,
 } from '@/services/demoCadastrosService'
-import type { Clinica, User } from '@/types'
+import type { Clinica, User, UserRole } from '@/types'
 import { userHasPerfil, userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 
@@ -51,8 +47,6 @@ interface RegistroCadastro {
   /** Exclusão de clínica/medicamento/empenhado usa o id da entidade */
   isEntidadeClinica: boolean
 }
-
-const FILTRO_TODOS_ID = '__todos__'
 
 function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilOpcao): boolean {
   if (atuais.some((o) => o.id === nova.id)) return true
@@ -106,33 +100,31 @@ function buildRegistrosEntidade(
     })
 }
 
-function buildRegistrosSetor(
-  perfil: CadastroPerfilOpcao['perfil'] | null,
-  usuarios: User[],
-): RegistroCadastro[] {
-  return usuarios
-    .filter(
-      (u) =>
-        u.ativo &&
-        !isDemoExampleUser(u) &&
-        u.perfil !== 'GESTOR' &&
-        u.perfil !== 'ADMINISTRADOR' &&
-        !u.clinicaId &&
-        (perfil == null || userHasPerfil(u, perfil)),
-    )
-    .map((u) => ({
+function buildRegistrosSetor(perfis: UserRole[], usuarios: User[]): RegistroCadastro[] {
+  if (perfis.length === 0) return []
+  const vistos = new Set<string>()
+  const resultado: RegistroCadastro[] = []
+  for (const u of usuarios) {
+    if (!u.ativo || isDemoExampleUser(u)) continue
+    if (u.perfil === 'GESTOR' || u.perfil === 'ADMINISTRADOR') continue
+    if (u.clinicaId) continue
+    if (!perfis.some((perfil) => userHasPerfil(u, perfil))) continue
+    if (vistos.has(u.id)) continue
+    vistos.add(u.id)
+    resultado.push({
       id: u.id,
       nome: u.nome,
       email: u.email?.trim() || '—',
       ativo: u.ativo,
       tiposLabel: userPerfis(u).map((p) => loginPerfilLabel(p)).join(', '),
       isEntidadeClinica: false,
-    }))
+    })
+  }
+  return resultado.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
 }
 
 export function UsuariosTab() {
   const theme = useTheme()
-  const [filtroPerfilId, setFiltroPerfilId] = useState(FILTRO_TODOS_ID)
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([
     CADASTRO_PERFIS[0]!,
   ])
@@ -141,10 +133,6 @@ export function UsuariosTab() {
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
 
-  const filtroOpcao =
-    filtroPerfilId === FILTRO_TODOS_ID
-      ? null
-      : (CADASTRO_PERFIS.find((p) => p.id === filtroPerfilId) ?? null)
   const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
 
   const [nome, setNome] = useState('')
@@ -153,29 +141,19 @@ export function UsuariosTab() {
   const [erro, setErro] = useState('')
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
-  const resetFormFeedback = () => {
-    setErro('')
-    setSucesso('')
-    setNome('')
-    setEmail('')
-    setRegistroExcluir(null)
-  }
-
   const registros = useMemo<RegistroCadastro[]>(() => {
-    if (!filtroOpcao) {
-      const entidades = CADASTRO_PERFIS.filter((o) => isCadastroEntidadeClinica(o)).flatMap(
-        (opcao) => buildRegistrosEntidade(opcao, clinicas, usuarios),
-      )
-      const setores = buildRegistrosSetor(null, usuarios)
-      return [...entidades, ...setores].sort((a, b) =>
-        a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }),
-      )
+    if (opcoesSelecionadas.length === 0) return []
+
+    const entidade = opcoesSelecionadas.find((o) => isCadastroEntidadeClinica(o))
+    if (entidade) {
+      return buildRegistrosEntidade(entidade, clinicas, usuarios)
     }
-    if (filtroOpcao.isClinica || filtroOpcao.isMedicamento || filtroOpcao.isEmpenhado) {
-      return buildRegistrosEntidade(filtroOpcao, clinicas, usuarios)
-    }
-    return buildRegistrosSetor(filtroOpcao.perfil, usuarios)
-  }, [filtroOpcao, clinicas, usuarios])
+
+    return buildRegistrosSetor(
+      opcoesSelecionadas.map((o) => o.perfil),
+      usuarios,
+    )
+  }, [opcoesSelecionadas, clinicas, usuarios])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
@@ -228,8 +206,6 @@ export function UsuariosTab() {
         opcoes: opcoesSelecionadas,
       })
       const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
-      // Garante que o novo cadastro fique visível na lista imediatamente.
-      setFiltroPerfilId(FILTRO_TODOS_ID)
       setSucesso(
         `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
       )
@@ -259,11 +235,15 @@ export function UsuariosTab() {
 
   const labelsSelecionados = opcoesSelecionadas.map((o) => o.label).join(', ')
   const tituloLista =
-    filtroOpcao == null ? 'Todos os cadastrados' : `${filtroOpcao.label} cadastrado(s)`
+    opcoesSelecionadas.length === 0
+      ? 'Cadastrado(s)'
+      : opcoesSelecionadas.length === 1
+        ? `${opcoesSelecionadas[0]!.label} cadastrado(s)`
+        : `${labelsSelecionados} — cadastrado(s)`
   const emptyMessage =
-    filtroOpcao == null
-      ? 'Nenhum cadastro ainda.'
-      : `Nenhum cadastro de ${filtroOpcao.label} ainda.`
+    opcoesSelecionadas.length === 0
+      ? 'Selecione um tipo de cadastro para ver a lista.'
+      : `Nenhum cadastro de ${labelsSelecionados} ainda.`
 
   return (
     <Box>
@@ -273,27 +253,6 @@ export function UsuariosTab() {
         O gestor pode autorizar <strong>mais de um tipo</strong> no mesmo usuário (ex.: Confecção de
         Solemp + Solemp em Rascunho).
       </Alert>
-
-      <FormControl fullWidth size="small" sx={{ mb: 3, maxWidth: { sm: 420 } }}>
-        <InputLabel id="cadastro-filtro-select-label">Filtrar lista por tipo</InputLabel>
-        <Select
-          labelId="cadastro-filtro-select-label"
-          id="cadastro-filtro-select"
-          label="Filtrar lista por tipo"
-          value={filtroPerfilId}
-          onChange={(e) => {
-            setFiltroPerfilId(String(e.target.value))
-            resetFormFeedback()
-          }}
-        >
-          <MenuItem value={FILTRO_TODOS_ID}>Todos</MenuItem>
-          {CADASTRO_PERFIS.map((p) => (
-            <MenuItem key={p.id} value={p.id}>
-              {p.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
 
       {erro && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -321,7 +280,8 @@ export function UsuariosTab() {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Selecione um ou mais tipos que o usuário poderá acessar. Clínica, Medicamento e
-              Empenhado são exclusivos; setores da Div. de Material podem ser combinados.
+              Empenhado são exclusivos; setores da Div. de Material podem ser combinados. A lista ao
+              lado mostra todos os cadastros do tipo selecionado.
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12 }}>
@@ -335,6 +295,8 @@ export function UsuariosTab() {
                   onChange={(_, next) => {
                     if (next.length === 0) {
                       setOpcoesSelecionadas([])
+                      setErro('')
+                      setSucesso('')
                       return
                     }
                     const last = next[next.length - 1]!
@@ -348,6 +310,7 @@ export function UsuariosTab() {
                       return
                     }
                     setErro('')
+                    setSucesso('')
                     setOpcoesSelecionadas(next)
                   }}
                   slotProps={{ chip: { size: 'small' } }}
