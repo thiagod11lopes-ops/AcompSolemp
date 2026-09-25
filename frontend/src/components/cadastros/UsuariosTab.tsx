@@ -9,9 +9,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   TextField,
   Tooltip,
   Typography,
@@ -49,6 +53,10 @@ interface RegistroCadastro {
   tiposLabel: string
   /** Exclusão de clínica/medicamento/empenhado usa o id da entidade */
   isEntidadeClinica: boolean
+}
+
+function isOpcaoClinica(opcao: CadastroPerfilOpcao): boolean {
+  return opcao.isClinica === true || opcao.id === 'clinica' || opcao.perfil === 'CLINICA'
 }
 
 function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilOpcao): boolean {
@@ -92,12 +100,10 @@ function buildRegistrosEntidade(
       const user =
         usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
         usuariosEntidade.find((u) => u.clinicaId === c.id)
-      const responsavel =
-        user?.nome?.trim() || c.responsavel?.trim() || '—'
+      const responsavel = user?.nome?.trim() || c.responsavel?.trim() || '—'
       return {
         id: c.id,
-        // Clínica: setor = nome da clínica; demais entidades: rótulo do tipo
-        setor: filtroOpcao.isClinica ? c.nome : filtroOpcao.label,
+        setor: isOpcaoClinica(filtroOpcao) ? c.nome : filtroOpcao.label,
         responsavel,
         email: user?.email?.trim() || '—',
         ativo: user?.ativo ?? false,
@@ -141,18 +147,15 @@ function buildRegistrosSetor(
 
 export function UsuariosTab() {
   const theme = useTheme()
-  const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([
-    CADASTRO_PERFIS[0]!,
-  ])
+  /** Inicia vazio — o gestor escolhe o tipo ao abrir a página. */
+  const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([])
   const createUser = useCreatePortalUser()
   const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
 
-  const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
-  const mostraSelectClinica = opcoesSelecionadas.some(
-    (o) => o.isClinica === true || o.id === 'clinica' || o.perfil === 'CLINICA',
-  )
+  const primaria = opcoesSelecionadas[0] ?? null
+  const mostraSelectClinica = opcoesSelecionadas.some(isOpcaoClinica)
 
   const [nomeResponsavel, setNomeResponsavel] = useState('')
   const [clinicaSelecionada, setClinicaSelecionada] = useState('')
@@ -215,6 +218,32 @@ export function UsuariosTab() {
     [],
   )
 
+  const handleTiposChange = (_: unknown, next: CadastroPerfilOpcao[]) => {
+    if (next.length === 0) {
+      setOpcoesSelecionadas([])
+      setClinicaSelecionada('')
+      setErro('')
+      setSucesso('')
+      return
+    }
+    const last = next[next.length - 1]!
+    const prev = next.slice(0, -1)
+    if (!podeCombinarOpcoes(prev, last)) {
+      setErro(
+        isCadastroEntidadeClinica(last)
+          ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
+          : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
+      )
+      return
+    }
+    setErro('')
+    setSucesso('')
+    setOpcoesSelecionadas(next)
+    if (!next.some(isOpcaoClinica)) {
+      setClinicaSelecionada('')
+    }
+  }
+
   const handleSubmit = async () => {
     setErro('')
     setSucesso('')
@@ -273,9 +302,13 @@ export function UsuariosTab() {
       : `Nenhum cadastro de ${labelsSelecionados} ainda.`
 
   const labelResponsavel =
-    opcoesSelecionadas.length <= 1
-      ? primaria.campoNomeLabel
-      : `Nome do Responsável (${labelsSelecionados})`
+    opcoesSelecionadas.length === 0
+      ? 'Nome do Responsável'
+      : opcoesSelecionadas.length === 1
+        ? (primaria?.campoNomeLabel ?? 'Nome do Responsável')
+        : `Nome do Responsável (${labelsSelecionados})`
+  const placeholderResponsavel =
+    primaria?.campoNomePlaceholder ?? 'Ex.: Cap. Ana Paula'
 
   return (
     <Box>
@@ -298,7 +331,7 @@ export function UsuariosTab() {
       )}
 
       <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
-        <Grid size={{ xs: 12, md: 5 }}>
+        <Grid size={{ xs: 12, md: mostraSelectClinica ? 6 : 5 }}>
           <Paper
             sx={{
               p: 3,
@@ -316,97 +349,61 @@ export function UsuariosTab() {
               lado mostra todos os cadastros do tipo selecionado.
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={12}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    gap: 2,
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <Autocomplete
-                    multiple
-                    options={CADASTRO_PERFIS}
-                    value={opcoesSelecionadas}
-                    disableCloseOnSelect
-                    getOptionLabel={(option) => option.label}
-                    isOptionEqualToValue={(a, b) => a.id === b.id}
-                    sx={{ flex: 1, minWidth: 0, width: '100%' }}
-                    onChange={(_, next) => {
-                      if (next.length === 0) {
-                        setOpcoesSelecionadas([])
-                        setClinicaSelecionada('')
-                        setErro('')
-                        setSucesso('')
-                        return
+              <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
+                <Autocomplete
+                  multiple
+                  options={CADASTRO_PERFIS}
+                  value={opcoesSelecionadas}
+                  disableCloseOnSelect
+                  getOptionLabel={(option) => option.label}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  onChange={handleTiposChange}
+                  slotProps={{ chip: { size: 'small' } }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tipos de cadastro"
+                      placeholder="Selecione um ou mais"
+                      helperText={
+                        labelsSelecionados
+                          ? `Autorizado: ${labelsSelecionados}`
+                          : 'Escolha ao menos um tipo'
                       }
-                      const last = next[next.length - 1]!
-                      const prev = next.slice(0, -1)
-                      if (!podeCombinarOpcoes(prev, last)) {
-                        setErro(
-                          isCadastroEntidadeClinica(last)
-                            ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
-                            : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
-                        )
-                        return
-                      }
-                      setErro('')
-                      setSucesso('')
-                      setOpcoesSelecionadas(next)
-                      if (
-                        !next.some(
-                          (o) =>
-                            o.isClinica === true ||
-                            o.id === 'clinica' ||
-                            o.perfil === 'CLINICA',
-                        )
-                      ) {
-                        setClinicaSelecionada('')
-                      }
-                    }}
-                    slotProps={{ chip: { size: 'small' } }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Tipos de cadastro"
-                        placeholder="Selecione um ou mais"
-                        helperText={
-                          labelsSelecionados
-                            ? `Autorizado: ${labelsSelecionados}`
-                            : 'Escolha ao menos um tipo'
-                        }
-                      />
-                    )}
-                  />
-                  {mostraSelectClinica ? (
-                    <Autocomplete
-                      options={CLINICAS_HOSPITAL}
-                      value={clinicaSelecionada || null}
-                      onChange={(_, value) => setClinicaSelecionada(value ?? '')}
-                      sx={{ flex: 1, minWidth: 0, width: '100%' }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Clínica"
-                          placeholder="Selecione a clínica"
-                          required
-                        />
-                      )}
                     />
-                  ) : null}
-                </Box>
+                  )}
+                />
               </Grid>
-              <Grid size={{ xs: 12 }}>
+              {mostraSelectClinica ? (
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth required>
+                    <InputLabel id="cadastro-clinica-select-label">Clínica</InputLabel>
+                    <Select
+                      labelId="cadastro-clinica-select-label"
+                      id="cadastro-clinica-select"
+                      label="Clínica"
+                      value={clinicaSelecionada}
+                      onChange={(e) => setClinicaSelecionada(String(e.target.value))}
+                    >
+                      {CLINICAS_HOSPITAL.map((nomeClinica) => (
+                        <MenuItem key={nomeClinica} value={nomeClinica}>
+                          {nomeClinica}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              ) : null}
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   label={labelResponsavel}
                   value={nomeResponsavel}
                   onChange={(e) => setNomeResponsavel(e.target.value)}
-                  placeholder={primaria.campoNomePlaceholder}
+                  placeholder={placeholderResponsavel}
+                  disabled={opcoesSelecionadas.length === 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12 }}>
+              <Grid size={12}>
                 <TextField
                   fullWidth
                   type="email"
@@ -415,9 +412,10 @@ export function UsuariosTab() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seuemail@marinha.mil.br"
                   helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
+                  disabled={opcoesSelecionadas.length === 0}
                 />
               </Grid>
-              <Grid size={{ xs: 12 }}>
+              <Grid size={12}>
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
@@ -434,7 +432,7 @@ export function UsuariosTab() {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 7 }}>
+        <Grid size={{ xs: 12, md: mostraSelectClinica ? 6 : 7 }}>
           <Paper sx={{ p: 2, borderRadius: 3, height: '100%' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
               {tituloLista}
