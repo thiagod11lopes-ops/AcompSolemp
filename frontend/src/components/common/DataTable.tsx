@@ -38,7 +38,9 @@ export function DataTable<T>({
   })
 
   const rows = table.getRowModel().rows
-  const paginatedRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage) || 1)
+  const safePage = Math.min(page, pageCount - 1)
+  const paginatedRows = rows.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage)
 
   return (
     <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -81,7 +83,7 @@ export function DataTable<T>({
       <TablePagination
         component="div"
         count={rows.length}
-        page={page}
+        page={safePage}
         onPageChange={(_, newPage) => setPage(newPage)}
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={(e) => {

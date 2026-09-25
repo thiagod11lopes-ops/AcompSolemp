@@ -38,6 +38,7 @@ import {
   DEMO_EMPENHADO_EXEMPLO_ID,
   isDemoExampleUser,
 } from '@/services/demoCadastrosService'
+import type { Clinica, User } from '@/types'
 import { userHasPerfil, userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 
@@ -47,7 +48,11 @@ interface RegistroCadastro {
   email: string
   ativo: boolean
   tiposLabel: string
+  /** Exclusão de clínica/medicamento/empenhado usa o id da entidade */
+  isEntidadeClinica: boolean
 }
+
+const FILTRO_TODOS_ID = '__todos__'
 
 function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilOpcao): boolean {
   if (atuais.some((o) => o.id === nova.id)) return true
@@ -59,9 +64,75 @@ function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilO
   return true
 }
 
+function buildRegistrosEntidade(
+  filtroOpcao: CadastroPerfilOpcao,
+  clinicas: Clinica[],
+  usuarios: User[],
+): RegistroCadastro[] {
+  const perfilEntidade = filtroOpcao.isMedicamento
+    ? 'MEDICAMENTO'
+    : filtroOpcao.isEmpenhado
+      ? 'EMPENHADO'
+      : 'CLINICA'
+  const tipoEntidade = filtroOpcao.isMedicamento
+    ? 'medicamento'
+    : filtroOpcao.isEmpenhado
+      ? 'empenhado'
+      : 'clinica'
+  const usuariosEntidade = usuarios.filter(
+    (u) => userHasPerfil(u, perfilEntidade) && u.ativo && !isDemoExampleUser(u),
+  )
+  return clinicas
+    .filter(
+      (clinica) =>
+        clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
+        clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
+        clinica.id !== DEMO_EMPENHADO_EXEMPLO_ID &&
+        (clinica.tipo ?? 'clinica') === tipoEntidade &&
+        usuariosEntidade.some((u) => u.clinicaId === clinica.id),
+    )
+    .map((c) => {
+      const user =
+        usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
+        usuariosEntidade.find((u) => u.clinicaId === c.id)
+      return {
+        id: c.id,
+        nome: c.nome,
+        email: user?.email?.trim() || '—',
+        ativo: user?.ativo ?? false,
+        tiposLabel: loginPerfilLabel(perfilEntidade),
+        isEntidadeClinica: true,
+      }
+    })
+}
+
+function buildRegistrosSetor(
+  perfil: CadastroPerfilOpcao['perfil'] | null,
+  usuarios: User[],
+): RegistroCadastro[] {
+  return usuarios
+    .filter(
+      (u) =>
+        u.ativo &&
+        !isDemoExampleUser(u) &&
+        u.perfil !== 'GESTOR' &&
+        u.perfil !== 'ADMINISTRADOR' &&
+        !u.clinicaId &&
+        (perfil == null || userHasPerfil(u, perfil)),
+    )
+    .map((u) => ({
+      id: u.id,
+      nome: u.nome,
+      email: u.email?.trim() || '—',
+      ativo: u.ativo,
+      tiposLabel: userPerfis(u).map((p) => loginPerfilLabel(p)).join(', '),
+      isEntidadeClinica: false,
+    }))
+}
+
 export function UsuariosTab() {
   const theme = useTheme()
-  const [filtroPerfilId, setFiltroPerfilId] = useState(CADASTRO_PERFIS[0]!.id)
+  const [filtroPerfilId, setFiltroPerfilId] = useState(FILTRO_TODOS_ID)
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([
     CADASTRO_PERFIS[0]!,
   ])
@@ -71,7 +142,9 @@ export function UsuariosTab() {
   const { data: usuarios = [] } = useUsuarios()
 
   const filtroOpcao =
-    CADASTRO_PERFIS.find((p) => p.id === filtroPerfilId) ?? CADASTRO_PERFIS[0]!
+    filtroPerfilId === FILTRO_TODOS_ID
+      ? null
+      : (CADASTRO_PERFIS.find((p) => p.id === filtroPerfilId) ?? null)
   const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
 
   const [nome, setNome] = useState('')
@@ -89,53 +162,19 @@ export function UsuariosTab() {
   }
 
   const registros = useMemo<RegistroCadastro[]>(() => {
-    if (filtroOpcao.isClinica || filtroOpcao.isMedicamento || filtroOpcao.isEmpenhado) {
-      const perfilEntidade = filtroOpcao.isMedicamento
-        ? 'MEDICAMENTO'
-        : filtroOpcao.isEmpenhado
-          ? 'EMPENHADO'
-          : 'CLINICA'
-      const tipoEntidade = filtroOpcao.isMedicamento
-        ? 'medicamento'
-        : filtroOpcao.isEmpenhado
-          ? 'empenhado'
-          : 'clinica'
-      const usuariosEntidade = usuarios.filter(
-        (u) => userHasPerfil(u, perfilEntidade) && u.ativo && !isDemoExampleUser(u),
+    if (!filtroOpcao) {
+      const entidades = CADASTRO_PERFIS.filter((o) => isCadastroEntidadeClinica(o)).flatMap(
+        (opcao) => buildRegistrosEntidade(opcao, clinicas, usuarios),
       )
-      return clinicas
-        .filter(
-          (clinica) =>
-            clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
-            clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
-            clinica.id !== DEMO_EMPENHADO_EXEMPLO_ID &&
-            (clinica.tipo ?? 'clinica') === tipoEntidade &&
-            usuariosEntidade.some((u) => u.clinicaId === clinica.id),
-        )
-        .map((c) => {
-          const user =
-            usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
-            usuariosEntidade.find((u) => u.clinicaId === c.id)
-          return {
-            id: c.id,
-            nome: c.nome,
-            email: user?.email?.trim() || '—',
-            ativo: user?.ativo ?? false,
-            tiposLabel: loginPerfilLabel(perfilEntidade),
-          }
-        })
+      const setores = buildRegistrosSetor(null, usuarios)
+      return [...entidades, ...setores].sort((a, b) =>
+        a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }),
+      )
     }
-    return usuarios
-      .filter(
-        (u) => userHasPerfil(u, filtroOpcao.perfil) && u.ativo && !isDemoExampleUser(u),
-      )
-      .map((u) => ({
-        id: u.id,
-        nome: u.nome,
-        email: u.email?.trim() || '—',
-        ativo: u.ativo,
-        tiposLabel: userPerfis(u).map((p) => loginPerfilLabel(p)).join(', '),
-      }))
+    if (filtroOpcao.isClinica || filtroOpcao.isMedicamento || filtroOpcao.isEmpenhado) {
+      return buildRegistrosEntidade(filtroOpcao, clinicas, usuarios)
+    }
+    return buildRegistrosSetor(filtroOpcao.perfil, usuarios)
   }, [filtroOpcao, clinicas, usuarios])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
@@ -189,6 +228,8 @@ export function UsuariosTab() {
         opcoes: opcoesSelecionadas,
       })
       const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
+      // Garante que o novo cadastro fique visível na lista imediatamente.
+      setFiltroPerfilId(FILTRO_TODOS_ID)
       setSucesso(
         `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
       )
@@ -205,7 +246,7 @@ export function UsuariosTab() {
     setSucesso('')
     try {
       await deleteCadastro.mutateAsync({
-        isEntidadeClinica: isCadastroEntidadeClinica(filtroOpcao),
+        isEntidadeClinica: registroExcluir.isEntidadeClinica,
         id: registroExcluir.id,
       })
       setSucesso(`Cadastro "${registroExcluir.nome}" excluído com sucesso.`)
@@ -217,6 +258,12 @@ export function UsuariosTab() {
   }
 
   const labelsSelecionados = opcoesSelecionadas.map((o) => o.label).join(', ')
+  const tituloLista =
+    filtroOpcao == null ? 'Todos os cadastrados' : `${filtroOpcao.label} cadastrado(s)`
+  const emptyMessage =
+    filtroOpcao == null
+      ? 'Nenhum cadastro ainda.'
+      : `Nenhum cadastro de ${filtroOpcao.label} ainda.`
 
   return (
     <Box>
@@ -239,6 +286,7 @@ export function UsuariosTab() {
             resetFormFeedback()
           }}
         >
+          <MenuItem value={FILTRO_TODOS_ID}>Todos</MenuItem>
           {CADASTRO_PERFIS.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.label}
@@ -353,12 +401,12 @@ export function UsuariosTab() {
         <Grid size={{ xs: 12, md: 7 }}>
           <Paper sx={{ p: 2, borderRadius: 3, height: '100%' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
-              {filtroOpcao.label} cadastrado(s)
+              {tituloLista}
             </Typography>
             <DataTable
               data={registros}
               columns={colunas}
-              emptyMessage={`Nenhum cadastro de ${filtroOpcao.label} ainda.`}
+              emptyMessage={emptyMessage}
             />
           </Paper>
         </Grid>
