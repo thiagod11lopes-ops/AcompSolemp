@@ -29,6 +29,12 @@ Se a exclusão de cadastro falha com *Sem permissão para remover este e-mail* (
 ainda lista excluídos), execute:
 [`migration_gestor_remove_email_access.sql`](./migration_gestor_remove_email_access.sql).
 
+Se o cadastro falha com *Este e-mail já está vinculado a outra organização* e a lista
+está vazia, execute:
+[`migration_reclaim_orphan_email_access.sql`](./migration_reclaim_orphan_email_access.sql)
+(e, se precisar liberar um e-mail na hora:
+`delete from public.email_access where lower(email) = 'seuemail@marinha.mil.br';`).
+
 ## 3. Auth
 
 Em **Authentication → Providers**:

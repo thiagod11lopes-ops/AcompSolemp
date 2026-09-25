@@ -348,7 +348,38 @@ begin
 
   if v_existing_tenant is not null
      and v_existing_tenant is distinct from p_tenant_id then
-    raise exception 'Este e-mail já está vinculado a outra organização';
+    -- Realoca se o gestor controla o tenant antigo OU se não há usuário ativo
+    -- com esse e-mail lá (vínculo órfão após exclusão incompleta).
+    if not (
+      exists (
+        select 1
+        from public.tenants t
+        where t.id = v_existing_tenant
+          and (
+            t.owner_user_id = v_uid
+            or (v_jwt_email <> '' and lower(t.owner_email) = v_jwt_email)
+            or t.id = public.current_tenant_id()
+          )
+      )
+      or exists (
+        select 1
+        from public.profiles p
+        where p.id = v_uid
+          and p.tenant_id = v_existing_tenant
+      )
+      or not exists (
+        select 1
+        from public.app_state s
+        cross join lateral jsonb_array_elements(
+          coalesce(s.payload->'usuarios', '[]'::jsonb)
+        ) u
+        where s.tenant_id = v_existing_tenant
+          and lower(coalesce(u->>'email', '')) = v_email
+          and coalesce((u->>'ativo')::boolean, false) = true
+      )
+    ) then
+      raise exception 'Este e-mail já está vinculado a outra organização';
+    end if;
   end if;
 
   insert into public.email_access (
@@ -464,7 +495,7 @@ begin
             case
               when lower(coalesce(u->>'email', '')) = v_email
                 or (v_app_user is not null and u->>'id' = v_app_user)
-              then u || jsonb_build_object('ativo', false, 'email', null)
+              then u || jsonb_build_object('ativo', false)
               else u
             end
           ), '[]'::jsonb)

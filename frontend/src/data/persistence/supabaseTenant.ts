@@ -162,15 +162,28 @@ export async function upsertEmailAccess(input: {
     )
   }
 
-  // RPC security definer: evita falha de RLS no UPSERT (ON CONFLICT → UPDATE).
-  const { error } = await getSupabaseClient().rpc('upsert_email_access_for_tenant', {
+  const client = getSupabaseClient()
+  const args = {
     p_email: email,
     p_tenant_id: input.tenantId,
     p_app_user_id: input.appUserId,
     p_perfil: input.perfil,
     p_clinica_id: input.clinicaId ?? null,
     p_nome: input.nome ?? null,
-  })
+  }
+
+  let { error } = await client.rpc('upsert_email_access_for_tenant', args)
+
+  // Vínculo órfão em outra organização (ex.: exclusão antiga falhou): libera e tenta de novo.
+  if (error && /vinculado a outra organização/i.test(error.message)) {
+    const { error: freeError } = await client.rpc('decline_team_email_invite', {
+      p_email: email,
+    })
+    if (!freeError) {
+      ;({ error } = await client.rpc('upsert_email_access_for_tenant', args))
+    }
+  }
+
   if (error) throw new Error(error.message)
 }
 

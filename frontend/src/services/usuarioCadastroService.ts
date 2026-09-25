@@ -180,7 +180,7 @@ export const usuarioCadastroService = {
       ativo: true,
     }
 
-    // Reativa cadastro anterior do mesmo e-mail (dados preservados na exclusão)
+    // Reativa cadastro anterior do mesmo e-mail (inclusive inativo após exclusão)
     const inactiveSameEmail = data.usuarios.find(
       (u) =>
         !u.ativo &&
@@ -300,11 +300,10 @@ export const usuarioCadastroService = {
         .map((u) => u.email?.trim() ?? '')
         .filter(Boolean)
 
-      // Mantém clínica e histórico; só revoga acesso e desativa o e-mail
+      // Mantém clínica e histórico; só revoga acesso e desativa (mantém e-mail para reativação)
       for (const user of data.usuarios) {
         if (user.clinicaId === input.id) {
           user.ativo = false
-          user.email = null
         }
       }
 
@@ -321,7 +320,6 @@ export const usuarioCadastroService = {
     if (!user) throw new Error('Usuário não encontrado')
     const email = user.email?.trim() ?? ''
     user.ativo = false
-    user.email = null
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
