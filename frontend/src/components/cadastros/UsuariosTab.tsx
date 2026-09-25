@@ -39,7 +39,7 @@ import {
   isDemoExampleUser,
 } from '@/services/demoCadastrosService'
 import type { Clinica, User } from '@/types'
-import { userHasPerfil, userPerfis } from '@/utils/userPerfis'
+import { userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { CLINICAS_HOSPITAL } from '@/utils/clinicasHospital'
 
@@ -69,77 +69,78 @@ function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilO
   return true
 }
 
-function buildRegistrosEntidade(
-  filtroOpcao: CadastroPerfilOpcao,
-  clinicas: Clinica[],
-  usuarios: User[],
-): RegistroCadastro[] {
-  const perfilEntidade = filtroOpcao.isMedicamento
-    ? 'MEDICAMENTO'
-    : filtroOpcao.isEmpenhado
-      ? 'EMPENHADO'
-      : 'CLINICA'
-  const tipoEntidade = filtroOpcao.isMedicamento
-    ? 'medicamento'
-    : filtroOpcao.isEmpenhado
-      ? 'empenhado'
-      : 'clinica'
-  const usuariosEntidade = usuarios.filter(
-    (u) => userHasPerfil(u, perfilEntidade) && u.ativo && !isDemoExampleUser(u),
-  )
-  return clinicas
-    .filter(
-      (clinica) =>
-        clinica.id !== DEMO_CLINICA_EXEMPLO_ID &&
-        clinica.id !== DEMO_MEDICAMENTO_EXEMPLO_ID &&
-        clinica.id !== DEMO_EMPENHADO_EXEMPLO_ID &&
-        (clinica.tipo ?? 'clinica') === tipoEntidade &&
-        usuariosEntidade.some((u) => u.clinicaId === clinica.id),
-    )
-    .map((c) => {
-      const user =
-        usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
-        usuariosEntidade.find((u) => u.clinicaId === c.id)
-      const responsavel = user?.nome?.trim() || c.responsavel?.trim() || '—'
-      return {
-        id: c.id,
-        setor: isOpcaoClinica(filtroOpcao) ? c.nome : filtroOpcao.label,
-        responsavel,
-        email: user?.email?.trim() || '—',
-        ativo: user?.ativo ?? false,
-        tiposLabel: loginPerfilLabel(perfilEntidade),
-        isEntidadeClinica: true,
-      }
-    })
-    .sort((a, b) => a.setor.localeCompare(b.setor, 'pt-BR', { sensitivity: 'base' }))
+function labelTipoEntidade(tipo: Clinica['tipo']): string {
+  if (tipo === 'medicamento') return 'Medicamento'
+  if (tipo === 'empenhado') return 'Empenhado'
+  return 'Clínica'
 }
 
-function buildRegistrosSetor(
-  opcoes: CadastroPerfilOpcao[],
-  usuarios: User[],
-): RegistroCadastro[] {
-  const perfis = opcoes.map((o) => o.perfil)
-  if (perfis.length === 0) return []
-  const vistos = new Set<string>()
+/** Lista completa de cadastros ativos (não depende do tipo selecionado no formulário). */
+function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCadastro[] {
   const resultado: RegistroCadastro[] = []
-  for (const u of usuarios) {
-    if (!u.ativo || isDemoExampleUser(u)) continue
-    if (u.perfil === 'GESTOR' || u.perfil === 'ADMINISTRADOR') continue
-    if (u.clinicaId) continue
-    if (!perfis.some((perfil) => userHasPerfil(u, perfil))) continue
-    if (vistos.has(u.id)) continue
-    vistos.add(u.id)
+  const clinicasJaListadas = new Set<string>()
+
+  const usuariosAtivos = usuarios.filter(
+    (u) => u.ativo && !isDemoExampleUser(u) && u.perfil !== 'GESTOR' && u.perfil !== 'ADMINISTRADOR',
+  )
+
+  for (const clinica of clinicas) {
+    if (
+      clinica.id === DEMO_CLINICA_EXEMPLO_ID ||
+      clinica.id === DEMO_MEDICAMENTO_EXEMPLO_ID ||
+      clinica.id === DEMO_EMPENHADO_EXEMPLO_ID
+    ) {
+      continue
+    }
+    const usersDaClinica = usuariosAtivos.filter((u) => u.clinicaId === clinica.id)
+    if (usersDaClinica.length === 0) continue
+
+    const user =
+      usersDaClinica.find((u) => u.email?.trim()) ?? usersDaClinica[0]!
+    const tipo = clinica.tipo ?? 'clinica'
+    const tipoLabel = labelTipoEntidade(tipo)
+    const tiposDoUsuario = userPerfis(user).map((p) => loginPerfilLabel(p))
+    clinicasJaListadas.add(clinica.id)
+    resultado.push({
+      id: clinica.id,
+      setor: tipo === 'clinica' ? clinica.nome : tipoLabel,
+      responsavel: user.nome?.trim() || clinica.responsavel?.trim() || '—',
+      email: user.email?.trim() || '—',
+      ativo: true,
+      tiposLabel: tiposDoUsuario.length > 0 ? tiposDoUsuario.join(', ') : tipoLabel,
+      isEntidadeClinica: true,
+    })
+  }
+
+  for (const u of usuariosAtivos) {
+    if (u.clinicaId) {
+      // Já listado pela entidade clínica/medicamento/empenhado
+      if (clinicasJaListadas.has(u.clinicaId)) continue
+      const tiposDoUsuario = userPerfis(u).map((p) => loginPerfilLabel(p))
+      clinicasJaListadas.add(u.clinicaId)
+      resultado.push({
+        id: u.clinicaId,
+        setor: tiposDoUsuario.join(', ') || '—',
+        responsavel: u.nome?.trim() || '—',
+        email: u.email?.trim() || '—',
+        ativo: true,
+        tiposLabel: tiposDoUsuario.join(', '),
+        isEntidadeClinica: true,
+      })
+      continue
+    }
     const tiposDoUsuario = userPerfis(u).map((p) => loginPerfilLabel(p))
     resultado.push({
       id: u.id,
-      setor: tiposDoUsuario.join(', '),
+      setor: tiposDoUsuario.join(', ') || '—',
       responsavel: u.nome?.trim() || '—',
       email: u.email?.trim() || '—',
-      ativo: u.ativo,
+      ativo: true,
       tiposLabel: tiposDoUsuario.join(', '),
       isEntidadeClinica: false,
     })
   }
+
   return resultado.sort((a, b) =>
     a.setor.localeCompare(b.setor, 'pt-BR', { sensitivity: 'base' }),
   )
@@ -164,16 +165,10 @@ export function UsuariosTab() {
   const [erro, setErro] = useState('')
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
-  const registros = useMemo<RegistroCadastro[]>(() => {
-    if (opcoesSelecionadas.length === 0) return []
-
-    const entidade = opcoesSelecionadas.find((o) => isCadastroEntidadeClinica(o))
-    if (entidade) {
-      return buildRegistrosEntidade(entidade, clinicas, usuarios)
-    }
-
-    return buildRegistrosSetor(opcoesSelecionadas, usuarios)
-  }, [opcoesSelecionadas, clinicas, usuarios])
+  const registros = useMemo<RegistroCadastro[]>(
+    () => buildTodosRegistros(clinicas, usuarios),
+    [clinicas, usuarios],
+  )
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
@@ -290,16 +285,8 @@ export function UsuariosTab() {
   }
 
   const labelsSelecionados = opcoesSelecionadas.map((o) => o.label).join(', ')
-  const tituloLista =
-    opcoesSelecionadas.length === 0
-      ? 'Cadastrado(s)'
-      : opcoesSelecionadas.length === 1
-        ? `${opcoesSelecionadas[0]!.label} cadastrado(s)`
-        : `${labelsSelecionados} — cadastrado(s)`
-  const emptyMessage =
-    opcoesSelecionadas.length === 0
-      ? 'Selecione um tipo de cadastro para ver a lista.'
-      : `Nenhum cadastro de ${labelsSelecionados} ainda.`
+  const tituloLista = 'Cadastrado(s)'
+  const emptyMessage = 'Nenhum cadastro efetuado ainda.'
 
   const labelResponsavel =
     opcoesSelecionadas.length === 0
@@ -346,7 +333,7 @@ export function UsuariosTab() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Selecione um ou mais tipos que o usuário poderá acessar. Clínica, Medicamento e
               Empenhado são exclusivos; setores da Div. de Material podem ser combinados. A lista ao
-              lado mostra todos os cadastros do tipo selecionado.
+              lado mostra todos os cadastros efetuados.
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
