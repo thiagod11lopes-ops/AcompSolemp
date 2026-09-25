@@ -180,7 +180,7 @@ export function UsuariosTab() {
       },
       {
         accessorKey: 'email',
-        header: 'E-mail institucional',
+        header: 'E-mail',
         cell: ({ row }) => row.original.email,
       },
       {
