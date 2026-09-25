@@ -396,12 +396,16 @@ function chavesAposDestino(destinoChave: string): string[] {
       'DIV_MAT_AUDITORIA',
       'DIV_MAT_CONFECCAO_SOLEMP',
       'DIV_MAT_CONTABILIDADE_IMH',
+      'DIV_MAT_INDENIZADO',
       'DIV_MAT_FINANCAS',
       'DIV_MAT_EMPENHADO',
     ]
   }
   if (destinoChave === 'DIV_MAT_AUDITORIA') {
-    return ['DIV_MAT_CONTABILIDADE_IMH']
+    return ['DIV_MAT_CONTABILIDADE_IMH', 'DIV_MAT_INDENIZADO']
+  }
+  if (destinoChave === 'DIV_MAT_CONTABILIDADE_IMH') {
+    return ['DIV_MAT_INDENIZADO']
   }
   if (destinoChave === 'DIV_MAT_CONFECCAO_SOLEMP') {
     return ['DIV_MAT_FINANCAS', 'DIV_MAT_EMPENHADO']

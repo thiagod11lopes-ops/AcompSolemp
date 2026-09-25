@@ -39,9 +39,14 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Auditoria → Contabilidade/IMH | Direita: Confecção → Solemp em Rascunho → Empenhado
+  // Esquerda: Auditoria → Contabilidade/IMH → Indenizado | Direita: Confecção → Solemp em Rascunho → Empenhado
   DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
   DIV_MAT_CONTABILIDADE_IMH: {
+    grupo: 'Div. de Material',
+    divisao: 'Auditoria',
+    trilha: 'auditoria',
+  },
+  DIV_MAT_INDENIZADO: {
     grupo: 'Div. de Material',
     divisao: 'Auditoria',
     trilha: 'auditoria',
@@ -64,7 +69,11 @@ export const TIMELINE_ETAPA_META: Record<
 }
 
 /** Fluxos paralelos / sequenciais */
-export const DIVISAO_1_CHAVES = ['DIV_MAT_AUDITORIA', 'DIV_MAT_CONTABILIDADE_IMH'] as const
+export const DIVISAO_1_CHAVES = [
+  'DIV_MAT_AUDITORIA',
+  'DIV_MAT_CONTABILIDADE_IMH',
+  'DIV_MAT_INDENIZADO',
+] as const
 
 /** Etapas visíveis para Auditoria e Contabilidade/IMH no portal ordenador */
 export const ORDENADOR_TRILHA_AUDITORIA_CHAVES = [
@@ -121,6 +130,8 @@ export function ordenarDivisoesTimeline<T extends { trilha: string }>(divisoes: 
 export function timelineConnectorVisivel(fromChave: string, toChave: string): boolean {
   return (
     fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONTABILIDADE_IMH'
+  ) || (
+    fromChave === 'DIV_MAT_CONTABILIDADE_IMH' && toChave === 'DIV_MAT_INDENIZADO'
   ) || (
     fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONFECCAO_SOLEMP'
   ) || (

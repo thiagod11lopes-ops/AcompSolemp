@@ -85,11 +85,9 @@ function isDivMaterialConcluida(
 
   if (!imhIniciada && !materialIniciada) return false
 
-  const imhFinalizada = etapaConcluidaNoHistorico(
-    pedido,
-    etapas,
-    'DIV_MAT_CONTABILIDADE_IMH',
-  )
+  const imhFinalizada =
+    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_INDENIZADO') ||
+    etapaConcluidaNoHistorico(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
   const materialFinalizada = etapaConcluidaNoHistorico(
     pedido,
     etapas,
@@ -318,10 +316,12 @@ export function advancePedidoEtapa(
   const proximasChaves =
     etapaAtual.chave === 'DIV_MAT_AUDITORIA'
       ? getDestinosEncaminhamentoAuditoria()
-      : (() => {
-          const unica = getProximaChaveNaDivisao(etapaAtual.chave)
-          return unica ? [unica] : []
-        })()
+      : etapaAtual.chave === 'DIV_MAT_CONTABILIDADE_IMH'
+        ? [] // Indenizado é concluído automaticamente abaixo
+        : (() => {
+            const unica = getProximaChaveNaDivisao(etapaAtual.chave)
+            return unica && unica !== 'DIV_MAT_INDENIZADO' ? [unica] : []
+          })()
 
   for (const proximaChave of proximasChaves) {
     const proxima = getEtapaByChave(etapas, proximaChave)
@@ -349,6 +349,42 @@ export function advancePedidoEtapa(
     }
     if (!etapasAtivasIds.includes(proxima.id)) {
       etapasAtivasIds.push(proxima.id)
+    }
+  }
+
+  // Contabilidade/IMH concluída → Indenizado já entra como concluído (mesma planilha).
+  if (etapaAtual.chave === 'DIV_MAT_CONTABILIDADE_IMH') {
+    const indenizado = getEtapaByChave(etapas, 'DIV_MAT_INDENIZADO')
+    if (indenizado) {
+      const agora = nowIso()
+      const contabHist = etapasHistorico.find((h) => h.etapaId === etapaAtual.id)
+      const histExistente = etapasHistorico.find((h) => h.etapaId === indenizado.id)
+      const obsIndenizado =
+        'Indenizado concluído automaticamente com a Contabilidade/IMH — planilha recebida e finalizada.'
+      if (!histExistente) {
+        etapasHistorico = [
+          ...etapasHistorico,
+          {
+            etapaId: indenizado.id,
+            etapaNome: indenizado.nome,
+            responsavelId: contabHist?.responsavelId ?? usuario.id,
+            responsavelNome: contabHist?.responsavelNome ?? usuario.nome,
+            dataInicio: agora,
+            dataConclusao: agora,
+            observacao: obsIndenizado,
+            arquivos: [],
+          },
+        ]
+      } else {
+        histExistente.dataInicio = histExistente.dataInicio || agora
+        histExistente.dataConclusao = agora
+        histExistente.observacao = obsIndenizado
+        histExistente.responsavelId =
+          histExistente.responsavelId ?? contabHist?.responsavelId ?? usuario.id
+        histExistente.responsavelNome =
+          histExistente.responsavelNome ?? contabHist?.responsavelNome ?? usuario.nome
+      }
+      etapasAtivasIds = etapasAtivasIds.filter((id) => id !== indenizado.id)
     }
   }
 

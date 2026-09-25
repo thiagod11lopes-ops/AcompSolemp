@@ -110,11 +110,21 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CONTABILIDADE_IMH',
     ativo: true,
   },
+  {
+    chave: 'DIV_MAT_INDENIZADO',
+    nome: 'Indenizado',
+    ordem: 4,
+    prazoDias: 1,
+    alertaVencimentoDias: 1,
+    prazoCorrecaoDias: 3,
+    perfilResponsavel: 'CONTABILIDADE_IMH',
+    ativo: true,
+  },
   // Div. de Material — trilha Material (Solemp)
   {
     chave: 'DIV_MAT_CONFECCAO_SOLEMP',
     nome: 'Confecção de Solemp',
-    ordem: 4,
+    ordem: 5,
     prazoDias: 3,
     alertaVencimentoDias: 2,
     prazoCorrecaoDias: 3,
@@ -124,7 +134,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   {
     chave: 'DIV_MAT_FINANCAS',
     nome: 'Solemp em Rascunho',
-    ordem: 5,
+    ordem: 6,
     prazoDias: 4,
     alertaVencimentoDias: 2,
     prazoCorrecaoDias: 3,
@@ -134,7 +144,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   {
     chave: 'DIV_MAT_EMPENHADO',
     nome: 'Empenhado',
-    ordem: 6,
+    ordem: 7,
     prazoDias: 4,
     alertaVencimentoDias: 2,
     prazoCorrecaoDias: 3,
@@ -576,7 +586,46 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
   }
 
   if (backfillEmpenhadoHistorico(data)) changed = true
+  if (backfillIndenizadoHistorico(data)) changed = true
 
+  return changed
+}
+
+/** Pedidos com Contabilidade/IMH concluída passam a ter Indenizado concluído no histórico. */
+function backfillIndenizadoHistorico(data: AppData): boolean {
+  const contabilidade = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
+  const indenizado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_INDENIZADO')
+  if (!contabilidade || !indenizado) return false
+
+  let changed = false
+  for (const pedido of data.pedidos) {
+    const contabHist = pedido.etapasHistorico.find((h) => h.etapaId === contabilidade.id)
+    if (!contabHist?.dataConclusao) continue
+
+    const indenizadoHist = pedido.etapasHistorico.find((h) => h.etapaId === indenizado.id)
+    if (indenizadoHist) {
+      if (!indenizadoHist.dataConclusao) {
+        indenizadoHist.dataConclusao = contabHist.dataConclusao
+        indenizadoHist.observacao =
+          indenizadoHist.observacao ||
+          'Indenizado registrado automaticamente com a conclusão da Contabilidade/IMH.'
+        changed = true
+      }
+      continue
+    }
+
+    pedido.etapasHistorico.push({
+      etapaId: indenizado.id,
+      etapaNome: indenizado.nome,
+      responsavelId: contabHist.responsavelId,
+      responsavelNome: contabHist.responsavelNome,
+      dataInicio: contabHist.dataConclusao,
+      dataConclusao: contabHist.dataConclusao,
+      observacao: 'Indenizado registrado automaticamente com a conclusão da Contabilidade/IMH.',
+      arquivos: [],
+    })
+    changed = true
+  }
   return changed
 }
 

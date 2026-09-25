@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   Boxes,
+  CircleDollarSign,
   ClipboardList,
   FileText,
   FolderOpen,
@@ -14,6 +15,7 @@ const ETAPA_ICON_MAP: Record<string, LucideIcon> = {
   SOLICITACAO: ClipboardList,
   DIV_MAT_AUDITORIA: ShieldCheck,
   DIV_MAT_CONTABILIDADE_IMH: FileText,
+  DIV_MAT_INDENIZADO: CircleDollarSign,
   DIV_MAT_CONFECCAO_SOLEMP: Package,
   DIV_MAT_FINANCAS: BadgeCheck,
   DIV_MAT_EMPENHADO: FolderOpen,

@@ -76,6 +76,12 @@ export function planilhaEnviadaEntre(
       return Boolean(auditoria?.dataConclusao && contabilidade?.dataInicio)
     }
 
+    case 'DIV_MAT_CONTABILIDADE_IMH->DIV_MAT_INDENIZADO': {
+      const indenizado = historicoDaEtapa(pedido, etapas, 'DIV_MAT_INDENIZADO')
+      const contabilidade = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')
+      return Boolean(contabilidade?.dataConclusao && indenizado?.dataConclusao)
+    }
+
     case 'DIV_MAT_CONFECCAO_SOLEMP->DIV_MAT_FINANCAS': {
       const confeccao = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')
       const financas = historicoDaEtapa(pedido, etapas, 'DIV_MAT_FINANCAS')
