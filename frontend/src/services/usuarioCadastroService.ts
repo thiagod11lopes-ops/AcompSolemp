@@ -196,7 +196,7 @@ export const usuarioCadastroService = {
       if (existingIdx >= 0) {
         const existing = data.usuarios[existingIdx]
         if (useCloudAppDataSync() && existing.email && existing.email !== email) {
-          await removeEmailAccess(existing.email)
+          await removeEmailAccess(existing.email, tenantId)
         }
         existing.nome = nome
         existing.email = email
@@ -273,17 +273,38 @@ export const usuarioCadastroService = {
   async deleteCadastro(input: { isEntidadeClinica: boolean; id: string }): Promise<void> {
     await delay(null, 300)
     const data = loadAppData()
+    const tenantId = getTenantId()
+
+    const revokeEmails = async (emails: string[]) => {
+      if (!useCloudAppDataSync()) return
+      const unique = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))]
+      for (const email of unique) {
+        try {
+          await removeEmailAccess(email, tenantId)
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          // Já removido / inexistente: exclusão local já concluiu.
+          if (/não autenticado|sem permissão|pertence a outra/i.test(message)) {
+            throw err instanceof Error ? err : new Error(message)
+          }
+        }
+      }
+    }
 
     if (input.isEntidadeClinica) {
       const clinica = data.clinicas.find((c) => c.id === input.id)
       if (!clinica) throw new Error('Cadastro não encontrado')
 
       const usersToRevoke = data.usuarios.filter((u) => u.clinicaId === input.id && u.ativo)
+      const emails = usersToRevoke
+        .map((u) => u.email?.trim() ?? '')
+        .filter(Boolean)
 
       // Mantém clínica e histórico; só revoga acesso e desativa o e-mail
       for (const user of data.usuarios) {
         if (user.clinicaId === input.id) {
           user.ativo = false
+          user.email = null
         }
       }
 
@@ -292,23 +313,21 @@ export const usuarioCadastroService = {
         await flushSupabaseAppDataSync()
       }
 
-      if (useCloudAppDataSync()) {
-        for (const user of usersToRevoke) {
-          if (user.email) await removeEmailAccess(user.email)
-        }
-      }
+      await revokeEmails(emails)
       return
     }
 
     const user = data.usuarios.find((u) => u.id === input.id)
     if (!user) throw new Error('Usuário não encontrado')
+    const email = user.email?.trim() ?? ''
     user.ativo = false
+    user.email = null
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
     }
-    if (useCloudAppDataSync() && user.email) {
-      await removeEmailAccess(user.email)
+    if (email) {
+      await revokeEmails([email])
     }
   },
 }

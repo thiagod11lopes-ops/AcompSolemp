@@ -39,7 +39,9 @@ export function useDeleteCadastro() {
   return useMutation({
     mutationFn: (input: { isEntidadeClinica: boolean; id: string }) =>
       usuarioCadastroService.deleteCadastro(input),
-    onSuccess: async (_result, variables) => {
+    // Soft-delete local roda antes do revoke na nuvem: atualiza a lista mesmo se
+    // a RPC falhar (evita card "Cadastrados" mostrar quem já foi excluído).
+    onSettled: async (_result, _error, variables) => {
       syncCadastroQueries(queryClient, { refreshClinicas: variables.isEntidadeClinica })
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
       if (variables.isEntidadeClinica) {

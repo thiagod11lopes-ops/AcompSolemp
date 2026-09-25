@@ -25,6 +25,10 @@ Se o projeto **já tinha** o schema aplicado e o cadastro de equipe falha com
 *new row violates row-level security policy … email_access*, execute também no SQL Editor:
 [`migration_email_access_upsert_rpc.sql`](./migration_email_access_upsert_rpc.sql).
 
+Se a exclusão de cadastro falha com *Sem permissão para remover este e-mail* (ou o card
+ainda lista excluídos), execute:
+[`migration_gestor_remove_email_access.sql`](./migration_gestor_remove_email_access.sql).
+
 ## 3. Auth
 
 Em **Authentication → Providers**:

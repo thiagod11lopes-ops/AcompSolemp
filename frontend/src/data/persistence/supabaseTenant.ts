@@ -174,9 +174,15 @@ export async function upsertEmailAccess(input: {
   if (error) throw new Error(error.message)
 }
 
-export async function removeEmailAccess(email: string): Promise<void> {
+export async function removeEmailAccess(
+  email: string,
+  tenantId?: string | null,
+): Promise<void> {
+  const trimmed = email.trim().toLowerCase()
+  if (!trimmed) return
   const { error } = await getSupabaseClient().rpc('remove_email_access_for_tenant', {
-    p_email: email.trim().toLowerCase(),
+    p_email: trimmed,
+    p_tenant_id: tenantId ?? null,
   })
   if (error) throw new Error(error.message)
 }

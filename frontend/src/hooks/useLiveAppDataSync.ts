@@ -30,6 +30,8 @@ const LIVE_QUERY_KEYS = [
   'chat-unread',
   'chat-threads',
   'chat-messages',
+  'usuarios',
+  'clinicas',
 ] as const
 
 function invalidateLiveQueries(queryClient: ReturnType<typeof useQueryClient>): void {
