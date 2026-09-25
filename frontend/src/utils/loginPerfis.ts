@@ -33,7 +33,7 @@ export const LOGIN_PERFIL_OPCOES: LoginPerfilOpcao[] = [
   },
   {
     id: 'contabilidade',
-    label: 'Contabilidade/IMH',
+    label: 'IMH',
     perfil: 'CONTABILIDADE_IMH',
   },
   {

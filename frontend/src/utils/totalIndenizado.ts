@@ -17,7 +17,7 @@ import {
 
 export type TotalIndenizadoPeriodoTipo = BalancoPeriodoTipo
 
-/** Já finalizado em Contabilidade/IMH vs ainda em Auditoria ou Contabilidade/IMH */
+/** Já finalizado em IMH vs ainda em Auditoria ou IMH */
 export type IndenizadoLinhaStatus = 'a_indenizar' | 'indenizado'
 
 export interface TotalIndenizadoLinha {

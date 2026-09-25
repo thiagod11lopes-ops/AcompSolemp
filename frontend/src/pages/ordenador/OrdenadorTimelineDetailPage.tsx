@@ -161,7 +161,7 @@ export default function OrdenadorTimelineDetailPage() {
         (fluxoDiretoImh && (Boolean(stored?.enviadoEm) || contabilidadeAberta)),
     )
     setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
-    // arquivadaEm é só da Contabilidade/IMH — não deve bloquear Confecção em fluxo paralelo
+    // arquivadaEm é só da IMH — não deve bloquear Confecção em fluxo paralelo
     const encerradoContabilidade =
       Boolean(stored?.arquivadaEm) && chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
     setFluxoEncerrado(encerradoContabilidade)
@@ -317,7 +317,7 @@ export default function OrdenadorTimelineDetailPage() {
     auditoriaOpen || planilhaOpen || contabilidadeOpen || confeccaoOpen
 
   const planilhaTitle = (() => {
-    if (isContabilidade) return `Contabilidade/IMH — Planilha ${pedido.numero}`
+    if (isContabilidade) return `IMH — Planilha ${pedido.numero}`
     if (isConfeccaoEtapa) return `Confecção de Solemp — Div. de Material ${pedido.numero}`
     if (isRascunhoEtapa) return `Solemp em Rascunho — Div. de Material ${pedido.numero}`
     if (isEmpenhadoEtapa) return `Empenhado — Div. de Material ${pedido.numero}`

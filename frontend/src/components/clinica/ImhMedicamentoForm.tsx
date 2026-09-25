@@ -533,7 +533,7 @@ export function ImhMedicamentoForm({
       setImportFeedback({
         open: true,
         severity: 'success',
-        message: `${selecionadas.length} lançamento(s) enviados para Contabilidade/IMH.`,
+        message: `${selecionadas.length} lançamento(s) enviados para IMH.`,
       })
       navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {

@@ -41,7 +41,7 @@ const IMH_PASSOS = [
   {
     titulo: 'Enviar para a timeline',
     texto:
-      'Marque a coluna IMH (à esquerda da DATA), como o checklist do Consumo Material. O botão Enviar para IMH cria o processo e leva a planilha direto ao card Contabilidade/IMH na timeline. Linhas já enviadas ficam com o checklist cinza.',
+      'Marque a coluna IMH (à esquerda da DATA), como o checklist do Consumo Material. O botão Enviar para IMH cria o processo e leva a planilha direto ao card IMH na timeline. Linhas já enviadas ficam com o checklist cinza.',
   },
 ]
 

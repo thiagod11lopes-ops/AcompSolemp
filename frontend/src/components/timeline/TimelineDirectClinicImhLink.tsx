@@ -72,7 +72,7 @@ function pointsToPolyline(points: PathPoint[]): string {
   return points.map((point) => `${point.x},${point.y}`).join(' ')
 }
 
-/** Rota futura: clínica → Contabilidade/IMH sem passar pela auditoria. */
+/** Rota futura: clínica → IMH sem passar pela auditoria. */
 export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImhLink({
   containerRef,
   clinicNodeId,

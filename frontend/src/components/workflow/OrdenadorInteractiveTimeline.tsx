@@ -150,7 +150,7 @@ export function OrdenadorInteractiveTimeline({
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaImh}
           >
-            {acaoAtual?.label ?? 'Concluir Contabilidade/IMH'}
+            {acaoAtual?.label ?? 'Concluir IMH'}
           </TimelineActionButton>
         </>
       )
@@ -255,7 +255,7 @@ export function OrdenadorInteractiveTimeline({
               )}
               {isContabilidadeAtiva && planilhaEncaminhadaImh && !planilhaRecebidaImh && (
                 <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra a planilha antes de concluir a Contabilidade/IMH.
+                  Abra a planilha antes de concluir a IMH.
                 </p>
               )}
               {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (

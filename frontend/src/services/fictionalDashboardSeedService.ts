@@ -232,7 +232,9 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
       linhas: [],
       imhMedicamentoLinhas: [emptyImhMedLinha(`fic-imh-${i + 1}`, dataBr, valorInd)],
       enviadoEm: dataSolic,
-      arquivadaEm: historico.find((h) => h.etapaNome.includes('Contabilidade'))?.dataConclusao
+      arquivadaEm: historico.find(
+        (h) => h.etapaNome.includes('IMH') || h.etapaNome.includes('Contabilidade'),
+      )?.dataConclusao
         ?? historico[Math.min(2, historico.length - 1)]?.dataConclusao
         ?? dataSolic,
     }

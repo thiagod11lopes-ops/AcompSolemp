@@ -14,7 +14,7 @@ export interface EmAndamentoPorEtapaItem {
   etapa: string
   quantidade: number
   ordem: number
-  /** Soma % A INDENIZAR quando a etapa é Auditoria ou Contabilidade/IMH */
+  /** Soma % A INDENIZAR quando a etapa é Auditoria ou IMH */
   valor?: number
 }
 

@@ -730,7 +730,7 @@ export function consumoRowsToPedidoInput(
     destino === 'confeccao'
       ? `Envio de planilha com ${rows.length} lançamentos para Confecção de Solemp.`
       : destino === 'imh'
-        ? `Envio de planilha com ${rows.length} lançamentos diretamente para Contabilidade/IMH.`
+        ? `Envio de planilha com ${rows.length} lançamentos diretamente para IMH.`
         : `Envio de planilha com ${rows.length} lançamentos para auditoria.`
 
   return {

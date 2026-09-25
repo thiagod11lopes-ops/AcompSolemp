@@ -74,7 +74,7 @@ export interface Clinica {
   nome: string
   responsavel: string
   telefone: string
-  /** medicamento = envio direto Contabilidade/IMH; empenhado = portal clínica com NE no card */
+  /** medicamento = envio direto IMH; empenhado = portal clínica com NE no card */
   tipo?: 'clinica' | 'medicamento' | 'empenhado'
 }
 
@@ -411,12 +411,12 @@ export interface DashboardMetrics {
   /** PEDs ativos por card da timeline (etapas ativas, ordenadas) */
   emAndamentoPorEtapa: { etapa: string; quantidade: number; ordem: number; valor?: number }[]
   /**
-   * Valores da coluna % A INDENIZAR ainda em Auditoria ou Contabilidade/IMH
+   * Valores da coluna % A INDENIZAR ainda em Auditoria ou IMH
    * (a serem indenizados).
    */
   valorASerIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
   /**
-   * Valores da coluna % A INDENIZAR já finalizados em Contabilidade/IMH
+   * Valores da coluna % A INDENIZAR já finalizados em IMH
    * (total indenizado).
    */
   totalIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
@@ -588,7 +588,7 @@ export interface ImhMedicamentoLinha {
 /** Formulário + planilha unificada da aba IMH (medicamento / PME) */
 export interface ImhMedicamentoFormData {
   linhas: ImhMedicamentoLinha[]
-  /** Linhas já enviadas para o card Contabilidade/IMH na timeline */
+  /** Linhas já enviadas para o card IMH na timeline */
   finalizedImhIds?: string[]
   /** Linhas desmarcadas após devolução da planilha (checkbox laranja). */
   devolvidosImhIds?: string[]
@@ -686,9 +686,9 @@ export interface PedidoPlanilhaEnvioState {
   linhas: ImhLinha[]
   /** Linhas no formato Controle SOLEMP (envio Confecção de Solemp). */
   controleSolempLinhas?: ControleSolempLinha[]
-  /** Planilha PME enviada da aba IMH de medicamentos (subconjunto de colunas para Contabilidade/IMH). */
+  /** Planilha PME enviada da aba IMH de medicamentos (subconjunto de colunas para IMH). */
   imhMedicamentoLinhas?: ImhMedicamentoLinha[]
-  /** Snapshot fiel da aba IMH da clínica (mesmas colunas/valores para Auditoria e Contabilidade/IMH). */
+  /** Snapshot fiel da aba IMH da clínica (mesmas colunas/valores para Auditoria e IMH). */
   imhAbaLinhas?: ImhAbaLinha[]
   /** Linhas da aba Div. Material enviadas para Confecção de Solemp. */
   divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
@@ -700,7 +700,7 @@ export interface PedidoPlanilhaEnvioState {
   recebidaEm?: string
   /** Planilha encaminhada pela Auditoria ao IMH */
   encaminhadaImhEm?: string
-  /** Planilha recebida pela Contabilidade/IMH */
+  /** Planilha recebida pela IMH */
   recebidaImhEm?: string
   /** Planilha recebida pela Confecção de Solemp (trilha Div. Material) */
   recebidaConfeccaoEm?: string
@@ -708,7 +708,7 @@ export interface PedidoPlanilhaEnvioState {
   recebidaRascunhoEm?: string
   /** Planilha recebida em Empenhado (cadeia Confecção) */
   recebidaEmpenhadoEm?: string
-  /** Planilha arquivada pela Contabilidade/IMH ao finalizar */
+  /** Planilha arquivada pela IMH ao finalizar */
   arquivadaEm?: string
 }
 

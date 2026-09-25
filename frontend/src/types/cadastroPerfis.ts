@@ -52,7 +52,7 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     campoNomeLabel: 'Nome do Responsável do Medicamento',
     campoNomePlaceholder: 'Ex.: Ten. Roberto Lima',
     descricao:
-      'Mesmo portal da clínica para lançamentos; a planilha é enviada diretamente para Contabilidade/IMH, sem passar pela Auditoria.',
+      'Mesmo portal da clínica para lançamentos; a planilha é enviada diretamente para IMH, sem passar pela Auditoria.',
     isMedicamento: true,
   },
   {
@@ -66,12 +66,12 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
   },
   {
     id: 'contabilidade',
-    label: 'Contabilidade/IMH',
+    label: 'IMH',
     perfil: 'CONTABILIDADE_IMH',
-    graduacao: 'Contabilidade/IMH',
-    campoNomeLabel: 'Nome do Responsável da Contabilidade/IMH',
+    graduacao: 'IMH',
+    campoNomeLabel: 'Nome do Responsável da IMH',
     campoNomePlaceholder: 'Ex.: Ten. Roberto Lima',
-    descricao: 'Responsável pela etapa Contabilidade/IMH na Div. de Material.',
+    descricao: 'Responsável pela etapa IMH na Div. de Material.',
   },
   {
     id: 'confeccao',
