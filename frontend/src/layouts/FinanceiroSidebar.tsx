@@ -19,7 +19,7 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { isConfeccaoComCadeiaSolemp } from '@/utils/permissions'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 const DRAWER_WIDTH = 240
 
@@ -66,7 +66,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const isConfeccao = Boolean(user && isConfeccaoComCadeiaSolemp(user.perfil))
+  const isConfeccao = Boolean(user && userTemCadeiaSolemp(user))
   const menuItems = isConfeccao ? menuConfeccaoCadeia : menuBase
 
   const drawer = (

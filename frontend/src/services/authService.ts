@@ -22,10 +22,10 @@ import {
   canAccessGestorRoute,
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
-  isConfeccaoComCadeiaSolemp,
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
+import { userHasPerfil, userPerfis, userTemCadeiaSolemp, normalizeUserPerfis } from '@/utils/userPerfis'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
 import { ensureDemoUserById, initDemoAppData } from '@/services/demoCadastrosService'
@@ -168,23 +168,35 @@ function setSession(portal: Portal, authUser: AuthUser | null): void {
 async function completePortalLogin(
   portal: Portal,
   user: User,
-  options?: { skipReload?: boolean },
+  options?: { skipReload?: boolean; activePerfil?: UserRole },
 ): Promise<AuthUser> {
-  if (!validatePortalAccess(portal, user.perfil)) {
+  const normalized = normalizeUserPerfis(user)
+  const activePerfil =
+    options?.activePerfil && userHasPerfil(normalized, options.activePerfil)
+      ? options.activePerfil
+      : normalized.perfil
+
+  if (!validatePortalAccess(portal, activePerfil)) {
     throw new Error('Este usuário não tem acesso a este portal')
   }
 
   const authUser: AuthUser = {
-    ...user,
-    token: `session-${user.id}-${Date.now()}`,
+    ...normalized,
+    perfil: activePerfil,
+    perfis: userPerfis(normalized),
+    token: `session-${normalized.id}-${Date.now()}`,
   }
 
   setSession(portal, authUser)
 
-  // Confecção de Solemp também opera Solemp em Rascunho / Empenhado (portal financeiro).
-  if (isConfeccaoComCadeiaSolemp(user.perfil)) {
-    if (portal === 'ordenador') setSession('financeiro', authUser)
-    if (portal === 'financeiro') setSession('ordenador', authUser)
+  // Dual session só quando o gestor autorizou Confecção E Solemp em Rascunho.
+  if (userTemCadeiaSolemp(authUser)) {
+    if (portal === 'ordenador') {
+      setSession('financeiro', { ...authUser, perfil: 'FINANCEIRO' })
+    }
+    if (portal === 'financeiro') {
+      setSession('ordenador', { ...authUser, perfil: 'CONFECCAO_SOLEMP' })
+    }
   }
 
   if (
@@ -435,13 +447,11 @@ export const authService = {
       }
 
       if (expectedPerfil && access.perfil !== expectedPerfil) {
-        throw new Error(
-          `Este e-mail está cadastrado como ${loginPerfilLabel(access.perfil as UserRole)}. Selecione o perfil correto no login.`,
-        )
+        // Validação definitiva ocorre após hidratar o usuário (perfis[]).
       }
 
       const authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
-      return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
+      return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, expectedPerfil)
     }
 
     const user = findLocalUserByEmail(marinhaEmail)
@@ -449,18 +459,20 @@ export const authService = {
       throw new Error('E-mail não cadastrado pelo gestor')
     }
 
-    if (expectedPerfil && user.perfil !== expectedPerfil) {
+    if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
+      const labels = userPerfis(user).map((p) => loginPerfilLabel(p)).join(', ')
       throw new Error(
-        `Este e-mail está cadastrado como ${loginPerfilLabel(user.perfil)}. Selecione o perfil correto no login.`,
+        `Este e-mail está cadastrado como: ${labels}. Selecione um desses tipos no login.`,
       )
     }
 
-    const portal = portalForPerfil(user.perfil)
-    const authUser = await completePortalLogin(portal, user)
+    const activePerfil = expectedPerfil ?? user.perfil
+    const portal = portalForPerfil(activePerfil)
+    const authUser = await completePortalLogin(portal, user, { activePerfil })
     return {
       authUser,
       portal,
-      route: getHomeRouteForPerfil(user.perfil),
+      route: getHomeRouteForPerfil(activePerfil),
     }
   },
 
@@ -487,19 +499,18 @@ export const authService = {
     }
 
     if (expectedPerfil && access.perfil !== expectedPerfil) {
-      throw new Error(
-        `Este e-mail está cadastrado como ${loginPerfilLabel(access.perfil as UserRole)}. Selecione o perfil correto no login.`,
-      )
+      // Validação definitiva ocorre após hidratar o usuário (perfis[]).
     }
 
     const authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
-    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail)
+    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, expectedPerfil)
   },
 
   async completeTimelineSupabaseSession(
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
     access: NonNullable<Awaited<ReturnType<typeof getEmailAccess>>>,
     marinhaEmail: string,
+    expectedPerfil?: UserRole,
   ): Promise<TimelineLoginResult> {
     const existingProfile = await getProfileForCurrentUser()
     if (!existingProfile) {
@@ -524,12 +535,20 @@ export const authService = {
       throw new Error('Email não cadastrado')
     }
 
-    const portal = portalForPerfil(user.perfil)
-    const authUser = await completePortalLogin(portal, user)
+    if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
+      const labels = userPerfis(user).map((p) => loginPerfilLabel(p)).join(', ')
+      throw new Error(
+        `Este e-mail está cadastrado como: ${labels}. Selecione um desses tipos no login.`,
+      )
+    }
+
+    const activePerfil = expectedPerfil ?? user.perfil
+    const portal = portalForPerfil(activePerfil)
+    const authUser = await completePortalLogin(portal, user, { activePerfil })
     return {
       authUser,
       portal,
-      route: getHomeRouteForPerfil(user.perfil),
+      route: getHomeRouteForPerfil(activePerfil),
     }
   },
 
@@ -538,7 +557,7 @@ export const authService = {
     const current = readStoredUser(sessionKey(portal))
     setSession(portal, null)
 
-    if (current && isConfeccaoComCadeiaSolemp(current.perfil)) {
+    if (current && userTemCadeiaSolemp(current)) {
       setSession('ordenador', null)
       setSession('financeiro', null)
     }
@@ -592,11 +611,12 @@ export const authService = {
   getFinanceiroUser(): AuthUser | null {
     const financeiro = readStoredUser(FINANCEIRO_AUTH_KEY)
     if (financeiro) return financeiro
-    // Sessão antiga só no ordenador: Confecção herda acesso financeiro.
+    // Sessão antiga só no ordenador: herda financeiro só com cadeia autorizada.
     const ordenador = readStoredUser(ORDENADOR_AUTH_KEY)
-    if (ordenador && isConfeccaoComCadeiaSolemp(ordenador.perfil)) {
-      setSession('financeiro', ordenador)
-      return ordenador
+    if (ordenador && userTemCadeiaSolemp(ordenador)) {
+      const inherited: AuthUser = { ...ordenador, perfil: 'FINANCEIRO' }
+      setSession('financeiro', inherited)
+      return inherited
     }
     return null
   },

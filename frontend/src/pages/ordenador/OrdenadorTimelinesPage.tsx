@@ -36,6 +36,7 @@ import {
   type TimelineListFiltro,
 } from '@/utils/timelineListFilter'
 import type { PedidoComDetalhes } from '@/types'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 const ETAPA_LABEL: Record<string, string> = {
   DIV_MAT_CONFECCAO_SOLEMP: 'Confecção de Solemp',
@@ -52,13 +53,13 @@ export default function OrdenadorTimelinesPage() {
   const [filtro, setFiltro] = useState<TimelineListFiltro>('MINHAS_PENDENCIAS')
   const [extras, setExtras] = useState<TimelineListExtraFilters>({})
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
-  const isConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
-  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil) : []
+  const isCadeia = Boolean(user && userTemCadeiaSolemp(user))
+  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const etapaFiltro = searchParams.get('etapa')
   const etapaChaveValida =
     etapaFiltro &&
     (CHAVES_CONFECCAO_CADEIA as readonly string[]).includes(etapaFiltro) &&
-    isConfeccao
+    isCadeia
       ? etapaFiltro
       : null
   const tituloEtapa = etapaChaveValida
@@ -71,21 +72,21 @@ export default function OrdenadorTimelinesPage() {
       if (etapaChaveValida) {
         return pedidoEtapaConcluidaParaChave(pedido, etapas, etapaChaveValida)
       }
-      if (isConfeccao) {
+      if (isCadeia) {
         return pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')
       }
       const chave = chavesPerfil[0]
       if (!chave) return pedido.concluido
       return pedidoEtapaConcluidaParaChave(pedido, etapas, chave)
     }
-  }, [user, isConfeccao, chavesPerfil, etapas, etapaChaveValida])
+  }, [user, etapas, etapaChaveValida, isCadeia, chavesPerfil])
 
   const isPendenteSetor = useMemo(() => {
     return (pedido: PedidoComDetalhes) => {
       if (!user) return false
       return etapaChaveValida
         ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida)
-        : pedidoPendenteParaPerfil(pedido, etapas, user.perfil)
+        : pedidoPendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
     }
   }, [user, etapas, etapaChaveValida])
 
@@ -119,7 +120,7 @@ export default function OrdenadorTimelinesPage() {
       <PageHeader
         title={`Timelines — ${tituloEtapa}`}
         subtitle={
-          isConfeccao
+          isCadeia
             ? 'Fila do setor: pendências, atrasos e filtros por clínica/data'
             : 'Fila do setor — minhas pendências, atrasadas e filtros'
         }

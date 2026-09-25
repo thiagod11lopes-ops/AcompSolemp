@@ -27,6 +27,7 @@ import {
   buildPedidosConsumoMaterialSeed,
   USUARIO_CLINICA_OPME_ID,
 } from '@/mocks/consumoMaterialPedidosSeed'
+import { normalizeUserPerfis, userHasPerfil } from '@/utils/userPerfis'
 import {
   CLINICA_CONSUMO_OPME_NOME,
   CONSUMO_MATERIAL_SEED,
@@ -391,6 +392,7 @@ export function generateSeedData(): AppData {
       graduacao: 'Confecção de Solemp',
       login: 'solemp',
       perfil: 'CONFECCAO_SOLEMP',
+      perfis: ['CONFECCAO_SOLEMP'],
       clinicaId: null,
       ativo: true,
     },
@@ -421,7 +423,7 @@ export function generateSeedData(): AppData {
 
 function ensureDefaultConfeccaoUser(data: AppData): boolean {
   if (data.tenantMeta) return false
-  if (data.usuarios.some((user) => user.perfil === 'CONFECCAO_SOLEMP' && user.ativo)) {
+  if (data.usuarios.some((user) => userHasPerfil(user, 'CONFECCAO_SOLEMP') && user.ativo)) {
     return false
   }
 
@@ -432,6 +434,7 @@ function ensureDefaultConfeccaoUser(data: AppData): boolean {
     graduacao: 'Confecção de Solemp',
     login: 'solemp',
     perfil: 'CONFECCAO_SOLEMP',
+    perfis: ['CONFECCAO_SOLEMP'],
     clinicaId: null,
     ativo: true,
   })
@@ -477,6 +480,17 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   }))
   const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
   const bootstrapEmailChanged = ensureBootstrapGoogleEmails(data)
+  let perfisChanged = false
+  data.usuarios = (data.usuarios ?? []).map((user) => {
+    const normalized = normalizeUserPerfis(user)
+    if (
+      normalized.perfil !== user.perfil ||
+      JSON.stringify(normalized.perfis ?? []) !== JSON.stringify(user.perfis ?? [])
+    ) {
+      perfisChanged = true
+    }
+    return normalized
+  })
   data.pedidos = (data.pedidos ?? []).map((p) => ({
     ...p,
     paciente: p.paciente ?? null,
@@ -505,7 +519,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   syncPagamentoPendenteNotifications(data)
   syncPrazoCorrecaoNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
-  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged || workflowChanged }
+  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged || workflowChanged || perfisChanged }
 }
 
 function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {

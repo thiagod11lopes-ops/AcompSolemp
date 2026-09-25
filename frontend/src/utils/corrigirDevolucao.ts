@@ -111,7 +111,7 @@ export function usuarioPodeCorrigirDevolucao(
   }
 
   if (SETORES_ORDENADOR.has(destino)) {
-    return chavesEtapaParaPerfil(user.perfil).includes(destino)
+    return chavesEtapaParaPerfil(user.perfil, user).includes(destino)
   }
 
   return false

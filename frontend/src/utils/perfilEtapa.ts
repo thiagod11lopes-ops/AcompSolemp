@@ -25,9 +25,21 @@ export const PERFIS_SETOR: UserRole[] = [
   'CONFECCAO_SOLEMP',
 ]
 
-/** Etapas acionáveis pelo perfil (Confecção opera a cadeia completa). */
-export function chavesEtapaParaPerfil(perfil: UserRole): string[] {
-  if (perfil === 'CONFECCAO_SOLEMP') return [...CHAVES_CONFECCAO_CADEIA]
+/** Etapas acionáveis pelo perfil ativo (cadeia só se o gestor autorizou Confecção + Rascunho). */
+export function chavesEtapaParaPerfil(
+  perfil: UserRole,
+  user?: Pick<{ perfil: UserRole; perfis?: UserRole[] }, 'perfil' | 'perfis'>,
+): string[] {
+  const perfis = user ? (user.perfis?.length ? user.perfis : [user.perfil]) : [perfil]
+  const temConfeccao = perfis.includes('CONFECCAO_SOLEMP')
+  const temFinanceiro = perfis.includes('FINANCEIRO')
+
+  if (temConfeccao && temFinanceiro && (perfil === 'CONFECCAO_SOLEMP' || perfil === 'FINANCEIRO')) {
+    return [...CHAVES_CONFECCAO_CADEIA]
+  }
+  if (perfil === 'CONFECCAO_SOLEMP') return ['DIV_MAT_CONFECCAO_SOLEMP']
+  if (perfil === 'FINANCEIRO') return ['DIV_MAT_FINANCAS', 'DIV_MAT_EMPENHADO']
+
   const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
   return chave ? [chave] : []
 }
@@ -37,8 +49,9 @@ export function pedidoPendenteParaPerfil(
   etapas: WorkflowEtapa[],
   perfil: UserRole,
   processosArquivados?: ProcessoArquivado[],
+  user?: Pick<{ perfil: UserRole; perfis?: UserRole[] }, 'perfil' | 'perfis'>,
 ): boolean {
-  return chavesEtapaParaPerfil(perfil).some((chave) =>
+  return chavesEtapaParaPerfil(perfil, user).some((chave) =>
     pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados),
   )
 }
@@ -48,8 +61,9 @@ export function pedidoRelacionadoParaPerfil(
   etapas: WorkflowEtapa[],
   perfil: UserRole,
   processosArquivados?: ProcessoArquivado[],
+  user?: Pick<{ perfil: UserRole; perfis?: UserRole[] }, 'perfil' | 'perfis'>,
 ): boolean {
-  return chavesEtapaParaPerfil(perfil).some((chave) =>
+  return chavesEtapaParaPerfil(perfil, user).some((chave) =>
     pedidoRelacionadoParaChave(pedido, etapas, chave, processosArquivados),
   )
 }
@@ -60,8 +74,9 @@ export function chavePendenteParaPerfil(
   etapas: WorkflowEtapa[],
   perfil: UserRole,
   processosArquivados?: ProcessoArquivado[],
+  user?: Pick<{ perfil: UserRole; perfis?: UserRole[] }, 'perfil' | 'perfis'>,
 ): string | null {
-  for (const chave of chavesEtapaParaPerfil(perfil)) {
+  for (const chave of chavesEtapaParaPerfil(perfil, user)) {
     if (pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados)) {
       return chave
     }

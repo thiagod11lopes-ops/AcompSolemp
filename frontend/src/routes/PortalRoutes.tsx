@@ -8,6 +8,7 @@ import { useSupabaseDataSource } from '@/config/dataSource'
 import { syncRemoteDataWhenAuthenticated } from '@/data/initDataLayer'
 import { authService } from '@/services/authService'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
+import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 export function GestorProtectedRoute({ children }: { children: ReactNode }) {
   const { gestorUser, isLoading } = useAuth()
@@ -65,13 +66,29 @@ export function OrdenadorProtectedRoute({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   const user =
-    (isDemo && demoMode?.portal === 'ordenador' ? demoMode.authUser : null) ??
+    (isDemo &&
+    demoMode &&
+    (demoMode.portal === 'ordenador' ||
+      (demoMode.portal === 'financeiro' && userTemCadeiaSolemp(demoMode.authUser)))
+      ? demoMode.portal === 'financeiro'
+        ? { ...demoMode.authUser, perfil: 'CONFECCAO_SOLEMP' as const }
+        : demoMode.authUser
+      : null) ??
     ordenadorUser ??
     authService.getOrdenadorUser()
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!user || !canAccessOrdenadorRoute(user.perfil)) {
+  if (
+    !user ||
+    !(
+      canAccessOrdenadorRoute(user.perfil) ||
+      userHasPerfil(user, 'CONFECCAO_SOLEMP') ||
+      userHasPerfil(user, 'AUDITORIA') ||
+      userHasPerfil(user, 'CONTABILIDADE_IMH') ||
+      userHasPerfil(user, 'ASSINANTE')
+    )
+  ) {
     if (impersonationTargetEmail || authService.getImpersonation()) {
       const fallback =
         authService.getClinicaUser() ??
@@ -96,20 +113,24 @@ export function FinanceiroProtectedRoute({ children }: { children: ReactNode }) 
   const user = isDemo
     ? demoMode &&
       (demoMode.portal === 'financeiro' ||
-        (demoMode.portal === 'ordenador' &&
-          demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
-      ? demoMode.authUser
+        (demoMode.portal === 'ordenador' && userTemCadeiaSolemp(demoMode.authUser)))
+      ? demoMode.portal === 'ordenador'
+        ? { ...demoMode.authUser, perfil: 'FINANCEIRO' as const }
+        : demoMode.authUser
       : null
     : financeiroUser ??
-      (ordenadorUser?.perfil === 'CONFECCAO_SOLEMP' ? ordenadorUser : null) ??
+      (ordenadorUser && userTemCadeiaSolemp(ordenadorUser)
+        ? { ...ordenadorUser, perfil: 'FINANCEIRO' as const }
+        : null) ??
       authService.getFinanceiroUser() ??
-      (authService.getOrdenadorUser()?.perfil === 'CONFECCAO_SOLEMP'
-        ? authService.getOrdenadorUser()
-        : null)
+      (() => {
+        const ord = authService.getOrdenadorUser()
+        return ord && userTemCadeiaSolemp(ord) ? { ...ord, perfil: 'FINANCEIRO' as const } : null
+      })()
 
   if (isLoading) return <LoadingSpinner />
 
-  if (!user || !canAccessFinanceiroRoute(user.perfil)) {
+  if (!user || !(canAccessFinanceiroRoute(user.perfil) || userHasPerfil(user, 'FINANCEIRO'))) {
     if (impersonationTargetEmail || authService.getImpersonation()) {
       const fallback =
         authService.getClinicaUser() ??
@@ -143,10 +164,16 @@ export function GuestRoute({ children }: { children: ReactNode }) {
   ) {
     return <Navigate to="/clinica/timelines" replace />
   }
-  if (ordenadorUser && canAccessOrdenadorRoute(ordenadorUser.perfil)) {
+  if (
+    ordenadorUser &&
+    (canAccessOrdenadorRoute(ordenadorUser.perfil) ||
+      userHasPerfil(ordenadorUser, 'CONFECCAO_SOLEMP') ||
+      userHasPerfil(ordenadorUser, 'AUDITORIA') ||
+      userHasPerfil(ordenadorUser, 'CONTABILIDADE_IMH'))
+  ) {
     return <Navigate to="/ordenador/timelines" replace />
   }
-  if (financeiroUser && canAccessFinanceiroRoute(financeiroUser.perfil)) {
+  if (financeiroUser && (canAccessFinanceiroRoute(financeiroUser.perfil) || userHasPerfil(financeiroUser, 'FINANCEIRO'))) {
     return <Navigate to="/financeiro/pagamentos" replace />
   }
 

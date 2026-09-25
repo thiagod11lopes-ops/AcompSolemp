@@ -20,6 +20,7 @@ import {
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -65,12 +66,12 @@ export function OrdenadorInteractiveTimeline({
   mensagemFluxoEncerrado = null,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
-  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil) : []
+  const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
-    ? chavePendenteParaPerfil(pedido, etapas, user.perfil)
+    ? chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
     : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
-  const isCadeiaConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
+  const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
 
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
   const sections = useMemo(

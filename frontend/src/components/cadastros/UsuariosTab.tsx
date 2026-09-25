@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -26,30 +27,52 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
 import { useClinicas, useUsuarios } from '@/hooks/useCadastros'
 import { DataTable } from '@/components/common/DataTable'
-import { CADASTRO_PERFIS, isCadastroEntidadeClinica } from '@/types/cadastroPerfis'
+import {
+  CADASTRO_PERFIS,
+  isCadastroEntidadeClinica,
+  type CadastroPerfilOpcao,
+} from '@/types/cadastroPerfis'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
   DEMO_MEDICAMENTO_EXEMPLO_ID,
   DEMO_EMPENHADO_EXEMPLO_ID,
   isDemoExampleUser,
 } from '@/services/demoCadastrosService'
+import { userHasPerfil, userPerfis } from '@/utils/userPerfis'
+import { loginPerfilLabel } from '@/utils/loginPerfis'
 
 interface RegistroCadastro {
   id: string
   nome: string
   email: string
   ativo: boolean
+  tiposLabel: string
+}
+
+function podeCombinarOpcoes(atuais: CadastroPerfilOpcao[], nova: CadastroPerfilOpcao): boolean {
+  if (atuais.some((o) => o.id === nova.id)) return true
+  const todas = [...atuais, nova]
+  const entidades = todas.filter((o) => isCadastroEntidadeClinica(o))
+  const setores = todas.filter((o) => !isCadastroEntidadeClinica(o))
+  if (entidades.length > 1) return false
+  if (entidades.length > 0 && setores.length > 0) return false
+  return true
 }
 
 export function UsuariosTab() {
   const theme = useTheme()
-  const [perfilId, setPerfilId] = useState(CADASTRO_PERFIS[0]!.id)
+  const [filtroPerfilId, setFiltroPerfilId] = useState(CADASTRO_PERFIS[0]!.id)
+  const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([
+    CADASTRO_PERFIS[0]!,
+  ])
   const createUser = useCreatePortalUser()
   const deleteCadastro = useDeleteCadastro()
   const { data: clinicas = [] } = useClinicas()
   const { data: usuarios = [] } = useUsuarios()
 
-  const opcao = CADASTRO_PERFIS.find((p) => p.id === perfilId) ?? CADASTRO_PERFIS[0]!
+  const filtroOpcao =
+    CADASTRO_PERFIS.find((p) => p.id === filtroPerfilId) ?? CADASTRO_PERFIS[0]!
+  const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
 
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -66,19 +89,19 @@ export function UsuariosTab() {
   }
 
   const registros = useMemo<RegistroCadastro[]>(() => {
-    if (opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado) {
-      const perfilEntidade = opcao.isMedicamento
+    if (filtroOpcao.isClinica || filtroOpcao.isMedicamento || filtroOpcao.isEmpenhado) {
+      const perfilEntidade = filtroOpcao.isMedicamento
         ? 'MEDICAMENTO'
-        : opcao.isEmpenhado
+        : filtroOpcao.isEmpenhado
           ? 'EMPENHADO'
           : 'CLINICA'
-      const tipoEntidade = opcao.isMedicamento
+      const tipoEntidade = filtroOpcao.isMedicamento
         ? 'medicamento'
-        : opcao.isEmpenhado
+        : filtroOpcao.isEmpenhado
           ? 'empenhado'
           : 'clinica'
       const usuariosEntidade = usuarios.filter(
-        (u) => u.perfil === perfilEntidade && u.ativo && !isDemoExampleUser(u),
+        (u) => userHasPerfil(u, perfilEntidade) && u.ativo && !isDemoExampleUser(u),
       )
       return clinicas
         .filter(
@@ -98,18 +121,22 @@ export function UsuariosTab() {
             nome: c.nome,
             email: user?.email?.trim() || '—',
             ativo: user?.ativo ?? false,
+            tiposLabel: loginPerfilLabel(perfilEntidade),
           }
         })
     }
     return usuarios
-      .filter((u) => u.perfil === opcao.perfil && u.ativo && !isDemoExampleUser(u))
+      .filter(
+        (u) => userHasPerfil(u, filtroOpcao.perfil) && u.ativo && !isDemoExampleUser(u),
+      )
       .map((u) => ({
         id: u.id,
         nome: u.nome,
         email: u.email?.trim() || '—',
         ativo: u.ativo,
+        tiposLabel: userPerfis(u).map((p) => loginPerfilLabel(p)).join(', '),
       }))
-  }, [opcao, clinicas, usuarios])
+  }, [filtroOpcao, clinicas, usuarios])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
@@ -118,6 +145,11 @@ export function UsuariosTab() {
         accessorKey: 'email',
         header: 'E-mail institucional',
         cell: ({ row }) => row.original.email,
+      },
+      {
+        accessorKey: 'tiposLabel',
+        header: 'Tipos autorizados',
+        cell: ({ row }) => row.original.tiposLabel,
       },
       {
         accessorKey: 'ativo',
@@ -148,13 +180,17 @@ export function UsuariosTab() {
     setErro('')
     setSucesso('')
     try {
+      if (opcoesSelecionadas.length === 0) {
+        throw new Error('Selecione ao menos um tipo de cadastro')
+      }
       await createUser.mutateAsync({
         nome,
         email,
-        opcao,
+        opcoes: opcoesSelecionadas,
       })
+      const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
       setSucesso(
-        `${opcao.label} cadastrado(a)! O usuário deve acessar a Timeline com este e-mail @marinha.mil.br.`,
+        `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
       )
       setNome('')
       setEmail('')
@@ -169,10 +205,10 @@ export function UsuariosTab() {
     setSucesso('')
     try {
       await deleteCadastro.mutateAsync({
-        isEntidadeClinica: isCadastroEntidadeClinica(opcao),
+        isEntidadeClinica: isCadastroEntidadeClinica(filtroOpcao),
         id: registroExcluir.id,
       })
-      setSucesso(`${opcao.label} "${registroExcluir.nome}" excluído(a) com sucesso.`)
+      setSucesso(`Cadastro "${registroExcluir.nome}" excluído com sucesso.`)
       setRegistroExcluir(null)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao excluir')
@@ -180,22 +216,26 @@ export function UsuariosTab() {
     }
   }
 
+  const labelsSelecionados = opcoesSelecionadas.map((o) => o.label).join(', ')
+
   return (
     <Box>
       <Alert severity="info" sx={{ mb: 3 }}>
         Compartilhe o link da Timeline com clínicas e setores:{' '}
         <strong>/clinica/timeline</strong>. Cada cadastro usa e-mail institucional @marinha.mil.br.
+        O gestor pode autorizar <strong>mais de um tipo</strong> no mesmo usuário (ex.: Confecção de
+        Solemp + Solemp em Rascunho).
       </Alert>
 
       <FormControl fullWidth size="small" sx={{ mb: 3, maxWidth: { sm: 420 } }}>
-        <InputLabel id="cadastro-perfil-select-label">Tipo de cadastro</InputLabel>
+        <InputLabel id="cadastro-filtro-select-label">Filtrar lista por tipo</InputLabel>
         <Select
-          labelId="cadastro-perfil-select-label"
-          id="cadastro-perfil-select"
-          label="Tipo de cadastro"
-          value={perfilId}
+          labelId="cadastro-filtro-select-label"
+          id="cadastro-filtro-select"
+          label="Filtrar lista por tipo"
+          value={filtroPerfilId}
           onChange={(e) => {
-            setPerfilId(String(e.target.value))
+            setFiltroPerfilId(String(e.target.value))
             resetFormFeedback()
           }}
         >
@@ -229,19 +269,61 @@ export function UsuariosTab() {
             }}
           >
             <Typography variant="h6" gutterBottom>
-              Cadastrar {opcao.label}
+              Novo cadastro
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              {opcao.descricao}
+              Selecione um ou mais tipos que o usuário poderá acessar. Clínica, Medicamento e
+              Empenhado são exclusivos; setores da Div. de Material podem ser combinados.
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12 }}>
+                <Autocomplete
+                  multiple
+                  options={CADASTRO_PERFIS}
+                  value={opcoesSelecionadas}
+                  disableCloseOnSelect
+                  getOptionLabel={(option) => option.label}
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  onChange={(_, next) => {
+                    if (next.length === 0) {
+                      setOpcoesSelecionadas([])
+                      return
+                    }
+                    const last = next[next.length - 1]!
+                    const prev = next.slice(0, -1)
+                    if (!podeCombinarOpcoes(prev, last)) {
+                      setErro(
+                        isCadastroEntidadeClinica(last)
+                          ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
+                          : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
+                      )
+                      return
+                    }
+                    setErro('')
+                    setOpcoesSelecionadas(next)
+                  }}
+                  slotProps={{ chip: { size: 'small' } }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tipos de cadastro"
+                      placeholder="Selecione um ou mais"
+                      helperText={
+                        labelsSelecionados
+                          ? `Autorizado: ${labelsSelecionados}`
+                          : 'Escolha ao menos um tipo'
+                      }
+                    />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
-                  label={opcao.campoNomeLabel}
+                  label={primaria.campoNomeLabel}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder={opcao.campoNomePlaceholder}
+                  placeholder={primaria.campoNomePlaceholder}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -259,11 +341,9 @@ export function UsuariosTab() {
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
-                  disabled={createUser.isPending}
+                  disabled={createUser.isPending || opcoesSelecionadas.length === 0}
                 >
-                  {createUser.isPending
-                    ? 'Cadastrando...'
-                    : `Cadastrar ${opcao.label}`}
+                  {createUser.isPending ? 'Cadastrando...' : 'Cadastrar usuário'}
                 </Button>
               </Grid>
             </Grid>
@@ -273,12 +353,12 @@ export function UsuariosTab() {
         <Grid size={{ xs: 12, md: 7 }}>
           <Paper sx={{ p: 2, borderRadius: 3, height: '100%' }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
-              {opcao.label} cadastrado(s)
+              {filtroOpcao.label} cadastrado(s)
             </Typography>
             <DataTable
               data={registros}
               columns={colunas}
-              emptyMessage={`Nenhum cadastro de ${opcao.label} ainda.`}
+              emptyMessage={`Nenhum cadastro de ${filtroOpcao.label} ainda.`}
             />
           </Paper>
         </Grid>
@@ -291,15 +371,14 @@ export function UsuariosTab() {
         <DialogTitle>Confirmar exclusão</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Deseja realmente excluir o cadastro de{' '}
-            <strong>{opcao.label}</strong> <strong>{registroExcluir?.nome}</strong>
+            Deseja realmente excluir o cadastro de <strong>{registroExcluir?.nome}</strong>
             {registroExcluir?.email && registroExcluir.email !== '—'
               ? ` (${registroExcluir.email})`
               : ''}
             ? Esta ação não pode ser desfeita.
           </DialogContentText>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions>
           <Button
             onClick={() => setRegistroExcluir(null)}
             disabled={deleteCadastro.isPending}

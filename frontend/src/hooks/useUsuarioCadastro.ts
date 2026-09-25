@@ -12,7 +12,7 @@ export function useCreatePortalUser() {
       usuarioCadastroService.createPortalUser(input),
     onSuccess: async (_result, variables) => {
       await queryClient.refetchQueries({ queryKey: ['usuarios'] })
-      if (isCadastroEntidadeClinica(variables.opcao)) {
+      if (variables.opcoes.some((o) => isCadastroEntidadeClinica(o))) {
         await queryClient.refetchQueries({ queryKey: ['clinicas'] })
       }
     },

@@ -41,6 +41,11 @@ export const LOGIN_PERFIL_OPCOES: LoginPerfilOpcao[] = [
     label: 'Confecção de Solemp',
     perfil: 'CONFECCAO_SOLEMP',
   },
+  {
+    id: 'financas',
+    label: 'Solemp em Rascunho',
+    perfil: 'FINANCEIRO',
+  },
 ]
 
 export function loginPerfilLabel(perfil: UserRole): string {

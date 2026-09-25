@@ -9,6 +9,7 @@ import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { DEFAULT_APP_TITLE, DEMO_ROUTE_BASE, mapPortalPath, portalPathFromDemo } from '@/utils/portalPaths'
 import type { Portal } from '@/utils/portal'
 import type { UserRole } from '@/types'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 const PORTAL_ROUTE_PREFIX: Record<Portal, string> = {
   gestor: '/gestor',
@@ -60,7 +61,7 @@ export function GestorDemoShell() {
   const portalPath = portalPathFromDemo(location.pathname)
   const expectedPrefix = PORTAL_ROUTE_PREFIX[demoMode.portal]
   const confeccaoCadeia =
-    demoMode.authUser.perfil === 'CONFECCAO_SOLEMP' &&
+    userTemCadeiaSolemp(demoMode.authUser) &&
     Boolean(
       portalPath?.startsWith('/ordenador') || portalPath?.startsWith('/financeiro'),
     )

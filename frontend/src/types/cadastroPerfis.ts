@@ -19,6 +19,11 @@ export function isCadastroEntidadeClinica(opcao: CadastroPerfilOpcao): boolean {
   return Boolean(opcao.isClinica || opcao.isMedicamento || opcao.isEmpenhado)
 }
 
+/** Tipos de setor que podem ser combinados no mesmo usuário. */
+export function isCadastroSetorCombinavel(opcao: CadastroPerfilOpcao): boolean {
+  return !isCadastroEntidadeClinica(opcao)
+}
+
 export type ClinicaEntidadeTipo = 'clinica' | 'medicamento' | 'empenhado'
 
 export function resolveClinicaEntidadeTipo(opcao: CadastroPerfilOpcao): ClinicaEntidadeTipo {
@@ -76,7 +81,7 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Sgt. Maria Souza',
     descricao:
-      'Responsável pela Confecção de Solemp e também pela cadeia Solemp em Rascunho e Empenhado.',
+      'Responsável pela etapa Confecção de Solemp. Para também operar Solemp em Rascunho, marque os dois tipos no cadastro.',
   },
   {
     id: 'financas',
@@ -85,7 +90,8 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     graduacao: 'Solemp em Rascunho',
     campoNomeLabel: 'Nome',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
-    descricao: 'Responsável pela etapa Solemp em Rascunho (após Confecção de Solemp).',
+    descricao:
+      'Responsável pela etapa Solemp em Rascunho. Pode ser combinado com Confecção de Solemp no mesmo usuário.',
   },
   {
     id: 'empenhado',

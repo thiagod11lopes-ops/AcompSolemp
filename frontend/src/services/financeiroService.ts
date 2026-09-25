@@ -5,6 +5,7 @@ import {
   marcarAguardandoEmpenhoForPedido,
   registrarPagamentoForPedido,
 } from '@/utils/workflowAdvance'
+import { userHasPerfil } from '@/utils/userPerfis'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -131,9 +132,7 @@ export const financeiroService = {
     await delay(null, 500)
     let data = loadAppData()
     const usuario = data.usuarios.find(
-      (u) =>
-        u.id === usuarioId &&
-        (u.perfil === 'FINANCEIRO' || u.perfil === 'CONFECCAO_SOLEMP'),
+      (u) => u.id === usuarioId && userHasPerfil(u, 'FINANCEIRO'),
     )
     if (!usuario) throw new Error('Usuário não autorizado')
 
@@ -153,9 +152,7 @@ export const financeiroService = {
     await delay(null, 300)
     let data = loadAppData()
     const usuario = data.usuarios.find(
-      (u) =>
-        u.id === usuarioId &&
-        (u.perfil === 'FINANCEIRO' || u.perfil === 'CONFECCAO_SOLEMP'),
+      (u) => u.id === usuarioId && userHasPerfil(u, 'FINANCEIRO'),
     )
     if (!usuario) throw new Error('Usuário não autorizado')
 

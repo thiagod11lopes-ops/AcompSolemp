@@ -10,7 +10,11 @@ import {
 } from '@/data/persistence/supabaseTenant'
 import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import type { CadastroPerfilOpcao, ClinicaEntidadeTipo } from '@/types/cadastroPerfis'
-import { isCadastroEntidadeClinica, resolveClinicaEntidadeTipo } from '@/types/cadastroPerfis'
+import {
+  isCadastroEntidadeClinica,
+  resolveClinicaEntidadeTipo,
+} from '@/types/cadastroPerfis'
+import { buildUserPerfis, userHasPerfil, userPerfis } from '@/utils/userPerfis'
 
 function validateEmail(email: string): string {
   return assertMarinhaEmail(email)
@@ -19,7 +23,8 @@ function validateEmail(email: string): string {
 export interface CreatePortalUserInput {
   nome: string
   email: string
-  opcao: CadastroPerfilOpcao
+  /** Um ou mais tipos autorizados pelo gestor */
+  opcoes: CadastroPerfilOpcao[]
 }
 
 export interface CreateUserResult {
@@ -95,13 +100,32 @@ function assertNotGestorOwnEmail(email: string): void {
   }
 }
 
+function validateOpcoesCadastro(opcoes: CadastroPerfilOpcao[]): CadastroPerfilOpcao[] {
+  if (!opcoes.length) throw new Error('Selecione ao menos um tipo de cadastro')
+  const entidades = opcoes.filter((o) => isCadastroEntidadeClinica(o))
+  const setores = opcoes.filter((o) => !isCadastroEntidadeClinica(o))
+  if (entidades.length > 1) {
+    throw new Error('Selecione apenas um tipo entre Clínica, Medicamento ou Empenhado.')
+  }
+  if (entidades.length > 0 && setores.length > 0) {
+    throw new Error(
+      'Tipos de clínica/medicamento/empenhado não podem ser combinados com setores da Div. de Material.',
+    )
+  }
+  const uniqueByPerfil = new Map<UserRole, CadastroPerfilOpcao>()
+  for (const opcao of opcoes) uniqueByPerfil.set(opcao.perfil, opcao)
+  return [...uniqueByPerfil.values()]
+}
+
 export const usuarioCadastroService = {
   async createPortalUser(input: CreatePortalUserInput): Promise<CreateUserResult> {
+    const opcoes = validateOpcoesCadastro(input.opcoes)
+    const primaria = opcoes[0]!
     const nome = input.nome.trim()
-    const isEntidade = isCadastroEntidadeClinica(input.opcao)
+    const isEntidade = isCadastroEntidadeClinica(primaria)
     if (nome.length < 3) {
       throw new Error(
-        isEntidade ? `Informe o nome da ${input.opcao.label.toLowerCase()}` : 'Informe o nome',
+        isEntidade ? `Informe o nome da ${primaria.label.toLowerCase()}` : 'Informe o nome',
       )
     }
 
@@ -119,20 +143,22 @@ export const usuarioCadastroService = {
     const data = loadAppData()
     const logins = getExistingLogins(data)
     const login = ensureUniqueLogin(slugLogin(nome), logins)
-    const perfil: UserRole = input.opcao.perfil
-    const tipoEntidade = resolveClinicaEntidadeTipo(input.opcao)
+    const { perfil, perfis } = buildUserPerfis(opcoes.map((o) => o.perfil))
+    const graduacao = opcoes.map((o) => o.graduacao).join(' · ')
+    const tipoEntidade = resolveClinicaEntidadeTipo(primaria)
     const clinicaId = isEntidade
       ? findOrCreateEntidadeClinica(nome, data, tipoEntidade)
       : null
 
     let user: User = {
-      id: `user-${input.opcao.id}-${Date.now()}`,
+      id: `user-${primaria.id}-${Date.now()}`,
       nome,
       posto: '',
-      graduacao: input.opcao.graduacao,
+      graduacao,
       login,
       email,
       perfil,
+      perfis,
       clinicaId,
       ativo: true,
     }
@@ -148,7 +174,7 @@ export const usuarioCadastroService = {
 
     if (isEntidade && clinicaId) {
       const existingIdx = data.usuarios.findIndex(
-        (u) => u.clinicaId === clinicaId && u.perfil === perfil,
+        (u) => u.clinicaId === clinicaId && userHasPerfil(u, perfil),
       )
       if (existingIdx >= 0) {
         const existing = data.usuarios[existingIdx]
@@ -159,13 +185,16 @@ export const usuarioCadastroService = {
         existing.email = email
         existing.ativo = true
         existing.perfil = perfil
+        existing.perfis = perfis
+        existing.graduacao = graduacao
         user = existing
       } else if (inactiveSameEmail) {
         inactiveSameEmail.nome = nome
         inactiveSameEmail.email = email
         inactiveSameEmail.perfil = perfil
+        inactiveSameEmail.perfis = perfis
         inactiveSameEmail.clinicaId = clinicaId
-        inactiveSameEmail.graduacao = input.opcao.graduacao
+        inactiveSameEmail.graduacao = graduacao
         inactiveSameEmail.ativo = true
         user = inactiveSameEmail
       } else {
@@ -175,12 +204,32 @@ export const usuarioCadastroService = {
       inactiveSameEmail.nome = nome
       inactiveSameEmail.email = email
       inactiveSameEmail.perfil = perfil
+      inactiveSameEmail.perfis = perfis
       inactiveSameEmail.clinicaId = null
-      inactiveSameEmail.graduacao = input.opcao.graduacao
+      inactiveSameEmail.graduacao = graduacao
       inactiveSameEmail.ativo = true
       user = inactiveSameEmail
     } else {
-      data.usuarios.push(user)
+      // Mesmo e-mail ativo: atualiza tipos autorizados
+      const activeSameEmail = data.usuarios.find(
+        (u) =>
+          u.ativo &&
+          u.email?.trim().toLowerCase() === email &&
+          u.perfil !== 'GESTOR' &&
+          u.perfil !== 'ADMINISTRADOR',
+      )
+      if (activeSameEmail) {
+        const merged = [...new Set([...userPerfis(activeSameEmail), ...perfis])]
+        const built = buildUserPerfis(merged, perfil)
+        activeSameEmail.nome = nome
+        activeSameEmail.perfil = built.perfil
+        activeSameEmail.perfis = built.perfis
+        activeSameEmail.graduacao = graduacao
+        activeSameEmail.clinicaId = null
+        user = activeSameEmail
+      } else {
+        data.usuarios.push(user)
+      }
     }
 
     saveAppData(data)
@@ -220,30 +269,28 @@ export const usuarioCadastroService = {
         }
       }
 
-      if (useSupabaseDataSource()) {
-        await Promise.all(
-          usersToRevoke
-            .filter((user) => user.email)
-            .map((user) => removeEmailAccess(user.email!)),
-        )
-      }
-    } else {
-      const user = data.usuarios.find((u) => u.id === input.id)
-      if (!user) throw new Error('Usuário não encontrado')
-      if (user.perfil === 'ADMINISTRADOR' || user.perfil === 'GESTOR') {
-        throw new Error('Este usuário não pode ser excluído')
+      saveAppData(data)
+      if (useCloudAppDataSync()) {
+        await flushSupabaseAppDataSync()
       }
 
-      if (useSupabaseDataSource() && user.email) {
-        await removeEmailAccess(user.email)
+      if (useSupabaseDataSource()) {
+        for (const user of usersToRevoke) {
+          if (user.email) await removeEmailAccess(user.email)
+        }
       }
-      // Mantém o registro e os dados gerados; remove só o acesso
-      user.ativo = false
+      return
     }
 
+    const user = data.usuarios.find((u) => u.id === input.id)
+    if (!user) throw new Error('Usuário não encontrado')
+    user.ativo = false
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
+    }
+    if (useSupabaseDataSource() && user.email) {
+      await removeEmailAccess(user.email)
     }
   },
 }

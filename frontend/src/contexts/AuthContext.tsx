@@ -12,6 +12,7 @@ import type { AuthUser, LoginCredentials, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
 import { authService, type DemoModeState, type TimelineLoginResult } from '@/services/authService'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface AuthContextValue {
   gestorUser: AuthUser | null
@@ -52,14 +53,17 @@ function applyTimelineLogin(
   },
   result: TimelineLoginResult,
 ): void {
-  const isConfeccao = result.authUser.perfil === 'CONFECCAO_SOLEMP'
+  const cadeia = userTemCadeiaSolemp(result.authUser)
   setters.setClinicaUser(result.portal === 'clinica' ? result.authUser : null)
-  setters.setOrdenadorUser(
-    result.portal === 'ordenador' || isConfeccao ? result.authUser : null,
-  )
-  setters.setFinanceiroUser(
-    result.portal === 'financeiro' || isConfeccao ? result.authUser : null,
-  )
+
+  if (cadeia && (result.portal === 'ordenador' || result.portal === 'financeiro')) {
+    setters.setOrdenadorUser({ ...result.authUser, perfil: 'CONFECCAO_SOLEMP' })
+    setters.setFinanceiroUser({ ...result.authUser, perfil: 'FINANCEIRO' })
+    return
+  }
+
+  setters.setOrdenadorUser(result.portal === 'ordenador' ? result.authUser : null)
+  setters.setFinanceiroUser(result.portal === 'financeiro' ? result.authUser : null)
 }
 
 function syncPortalUsersFromService(
@@ -96,9 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (portal === 'gestor') setGestorUser(authUser)
     else if (portal === 'clinica') setClinicaUser(authUser)
     else if (portal === 'ordenador' || portal === 'financeiro') {
-      if (authUser.perfil === 'CONFECCAO_SOLEMP') {
-        setOrdenadorUser(authUser)
-        setFinanceiroUser(authUser)
+      if (userTemCadeiaSolemp(authUser)) {
+        setOrdenadorUser({ ...authUser, perfil: 'CONFECCAO_SOLEMP' })
+        setFinanceiroUser({ ...authUser, perfil: 'FINANCEIRO' })
       } else if (portal === 'ordenador') {
         setOrdenadorUser(authUser)
       } else {
@@ -164,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (portal === 'gestor') setGestorUser(null)
     else if (portal === 'clinica') setClinicaUser(null)
     else if (portal === 'ordenador' || portal === 'financeiro') {
-      if (current?.perfil === 'CONFECCAO_SOLEMP') {
+      if (current && userTemCadeiaSolemp(current)) {
         setOrdenadorUser(null)
         setFinanceiroUser(null)
       } else if (portal === 'ordenador') {
@@ -307,8 +311,10 @@ export function useOrdenadorAuth() {
     isDemo &&
     demoMode &&
     (demoMode.portal === 'ordenador' ||
-      (demoMode.portal === 'financeiro' && demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
-      ? demoMode.authUser
+      (demoMode.portal === 'financeiro' && userTemCadeiaSolemp(demoMode.authUser)))
+      ? demoMode.portal === 'financeiro'
+        ? { ...demoMode.authUser, perfil: 'CONFECCAO_SOLEMP' as const }
+        : demoMode.authUser
       : ordenadorUser
   return {
     user,
@@ -329,8 +335,10 @@ export function useFinanceiroAuth() {
     isDemo &&
     demoMode &&
     (demoMode.portal === 'financeiro' ||
-      (demoMode.portal === 'ordenador' && demoMode.authUser.perfil === 'CONFECCAO_SOLEMP'))
-      ? demoMode.authUser
+      (demoMode.portal === 'ordenador' && userTemCadeiaSolemp(demoMode.authUser)))
+      ? demoMode.portal === 'ordenador'
+        ? { ...demoMode.authUser, perfil: 'FINANCEIRO' as const }
+        : demoMode.authUser
       : financeiroUser
   return {
     user,

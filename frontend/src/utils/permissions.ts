@@ -90,12 +90,15 @@ export function canAccessClinicaRoute(role: UserRole): boolean {
   return role === 'CLINICA' || role === 'MEDICAMENTO' || role === 'EMPENHADO'
 }
 
-/** Confecção de Solemp também opera Solemp em Rascunho (e Empenhado via essa cadeia). */
+/** Confecção de Solemp NÃO herda Solemp em Rascunho — só se o gestor autorizar FINANCEIRO. */
 export function canAccessFinanceiroRoute(role: UserRole): boolean {
-  return role === 'FINANCEIRO' || role === 'CONFECCAO_SOLEMP'
+  return role === 'FINANCEIRO'
 }
 
-/** Perfil que cobre Confecção → Solemp em Rascunho → Empenhado. */
+/**
+ * @deprecated Preferir `userTemCadeiaSolemp(user)`.
+ * Checagem legada só pelo role ativo — não indica autorização de cadeia.
+ */
 export function isConfeccaoComCadeiaSolemp(role: UserRole): boolean {
   return role === 'CONFECCAO_SOLEMP'
 }

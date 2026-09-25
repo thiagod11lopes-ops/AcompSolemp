@@ -66,6 +66,7 @@ function createExampleClinicaUser(clinica: Clinica, data: ReturnType<typeof load
     graduacao: 'Clínica',
     login,
     perfil: 'CLINICA',
+    perfis: ['CLINICA'],
     clinicaId: clinica.id,
     ativo: true,
   }
@@ -84,6 +85,7 @@ function createExampleMedicamentoUser(
     graduacao: 'Medicamento',
     login,
     perfil: 'MEDICAMENTO',
+    perfis: ['MEDICAMENTO'],
     clinicaId: medicamento.id,
     ativo: true,
   }
@@ -99,6 +101,7 @@ function createExampleSetorUser(opcao: CadastroPerfilOpcao, data: ReturnType<typ
     graduacao: opcao.graduacao,
     login,
     perfil: opcao.perfil,
+    perfis: [opcao.perfil],
     clinicaId: null,
     ativo: true,
   }
@@ -131,6 +134,7 @@ function createExampleEmpenhadoUser(
     graduacao: 'Empenhado',
     login,
     perfil: 'EMPENHADO',
+    perfis: ['EMPENHADO'],
     clinicaId: empenhado.id,
     ativo: true,
   }
@@ -246,6 +250,8 @@ function findOrEnsureSetorUser(opcao: CadastroPerfilOpcao, data: ReturnType<type
   const storedExample = data.usuarios.find((user) => user.id === exampleId)
   if (storedExample) {
     storedExample.ativo = true
+    storedExample.perfil = opcao.perfil
+    storedExample.perfis = [opcao.perfil]
     return storedExample
   }
 
@@ -400,10 +406,9 @@ export function buildDemoCadastroItens(): DemoCadastroItem[] {
     },
   ]
 
-  // Ordem = CADASTRO_PERFIS (sem Solemp em Rascunho / Empenhado — cobertos pela Confecção).
+  // Ordem = CADASTRO_PERFIS (Empenhado permanece entidade própria).
   for (const opcao of CADASTRO_PERFIS) {
-    // Acesso via Confecção de Solemp na demonstração.
-    if (opcao.perfil === 'FINANCEIRO' || opcao.isEmpenhado) continue
+    if (opcao.isEmpenhado) continue
 
     if (opcao.isClinica) {
       resultado.push({

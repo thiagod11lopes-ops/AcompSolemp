@@ -27,6 +27,7 @@ import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import { listarDestinosDevolucaoPlanilha, type DestinoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import type { PedidoPlanilhaEnvioState } from '@/types'
+import { userHasPerfil } from '@/utils/userPerfis'
 
 export default function OrdenadorTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -51,10 +52,10 @@ export default function OrdenadorTimelineDetailPage() {
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
-  const isConfeccao = user?.perfil === 'CONFECCAO_SOLEMP'
+  const isConfeccao = Boolean(user && userHasPerfil(user, 'CONFECCAO_SOLEMP'))
   const chavePendente = useMemo(() => {
     if (!user || !pedido) return null
-    return chavePendenteParaPerfil(pedido, etapas, user.perfil)
+    return chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
   }, [user, pedido, etapas])
   const chavePerfil = chavePendente ?? (user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null)
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)

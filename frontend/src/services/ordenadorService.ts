@@ -14,13 +14,14 @@ import {
 } from '@/utils/devolverPlanilha'
 import {
   PERFIS_SETOR,
-  PERFIS_SOLEMP,
   PERFIL_PARA_CHAVE_ETAPA,
+  CHAVES_CONFECCAO_CADEIA,
   chavePendenteParaPerfil,
   pedidoPendenteParaChave,
   pedidoPendenteParaPerfil,
   pedidoRelacionadoParaPerfil,
 } from '@/utils/perfilEtapa'
+import { userHasPerfil } from '@/utils/userPerfis'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -37,26 +38,28 @@ function getContext(data: ReturnType<typeof loadAppData>) {
 function isPendentePerfil(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
-  perfil: UserRole,
+  usuario: { perfil: UserRole; perfis?: UserRole[] },
 ): boolean {
   return pedidoPendenteParaPerfil(
     pedido,
     data.workflowEtapas,
-    perfil,
+    usuario.perfil,
     data.processosArquivados,
+    usuario,
   )
 }
 
 function isRelacionadoPerfil(
   pedido: ReturnType<typeof loadAppData>['pedidos'][0],
   data: ReturnType<typeof loadAppData>,
-  perfil: UserRole,
+  usuario: { perfil: UserRole; perfis?: UserRole[] },
 ): boolean {
   return pedidoRelacionadoParaPerfil(
     pedido,
     data.workflowEtapas,
-    perfil,
+    usuario.perfil,
     data.processosArquivados,
+    usuario,
   )
 }
 
@@ -73,7 +76,7 @@ async function resolveDataForSetor(usuarioId: string): Promise<{
     usuario = data.usuarios.find((item) => item.id === usuarioId && item.ativo) ?? null
   }
 
-  if (!usuario || !PERFIS_SETOR.includes(usuario.perfil)) {
+  if (!usuario || !PERFIS_SETOR.some((perfil) => userHasPerfil(usuario, perfil))) {
     return { data, usuario: null }
   }
 
@@ -95,7 +98,7 @@ export const ordenadorService = {
 
     const ctx = getContext(data)
     return data.pedidos
-      .filter((p) => isPendentePerfil(p, data, usuario.perfil))
+      .filter((p) => isPendentePerfil(p, data, usuario))
       .map((p) => enrichPedido(p, ctx))
       .filter((p): p is PedidoComDetalhes => p !== null)
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
@@ -109,7 +112,7 @@ export const ordenadorService = {
 
     const ctx = getContext(data)
     return data.pedidos
-      .filter((p) => isRelacionadoPerfil(p, data, usuario.perfil))
+      .filter((p) => isRelacionadoPerfil(p, data, usuario))
       .map((p) => enrichPedido(p, ctx))
       .filter((p): p is PedidoComDetalhes => p !== null)
       .sort((a, b) => new Date(b.dataSolicitacao).getTime() - new Date(a.dataSolicitacao).getTime())
@@ -121,7 +124,7 @@ export const ordenadorService = {
     if (!usuario) return null
 
     const pedido = data.pedidos.find((p) => p.id === pedidoId)
-    if (!pedido || !isRelacionadoPerfil(pedido, data, usuario.perfil)) return null
+    if (!pedido || !isRelacionadoPerfil(pedido, data, usuario)) return null
     return enrichPedido(pedido, getContext(data))
   },
 
@@ -142,28 +145,34 @@ export const ordenadorService = {
 
     const anotacoes = options?.anotacoes
 
-    if (PERFIS_SOLEMP.includes(usuario.perfil)) {
+    const pedidoAtual = data.pedidos.find((p) => p.id === pedidoId)
+    if (!pedidoAtual) throw new Error('Pedido não encontrado')
+
+    const chavePendente = chavePendenteParaPerfil(
+      pedidoAtual,
+      data.workflowEtapas,
+      usuario.perfil,
+      data.processosArquivados,
+      usuario,
+    )
+    const usaCadeiaSolemp =
+      Boolean(chavePendente) &&
+      (CHAVES_CONFECCAO_CADEIA as readonly string[]).includes(chavePendente!) &&
+      (userHasPerfil(usuario, 'CONFECCAO_SOLEMP') || userHasPerfil(usuario, 'FINANCEIRO'))
+
+    if (usaCadeiaSolemp) {
       data = assinarSolempForPedido(data, pedidoId, usuario, {
         numero: options?.solempNumero,
         valor: options?.solempValor,
         assinanteNome: options?.assinanteNome,
       })
     } else {
-      const pedido = data.pedidos.find((p) => p.id === pedidoId)
-      if (!pedido) throw new Error('Pedido não encontrado')
-
-      const chave =
-        chavePendenteParaPerfil(
-          pedido,
-          data.workflowEtapas,
-          usuario.perfil,
-          data.processosArquivados,
-        ) ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
+      const chave = chavePendente ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
       if (!chave) throw new Error('Perfil sem etapa associada')
 
       if (
         !pedidoPendenteParaChave(
-          pedido,
+          pedidoAtual,
           data.workflowEtapas,
           chave,
           data.processosArquivados,

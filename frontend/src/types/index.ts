@@ -58,7 +58,13 @@ export interface User {
   login: string
   /** E-mail institucional @marinha.mil.br autorizado para login */
   email?: string | null
+  /** Perfil ativo da sessão / principal do cadastro */
   perfil: UserRole
+  /**
+   * Tipos de cadastro autorizados pelo gestor.
+   * Se omitido, equivale a `[perfil]` (retrocompatível).
+   */
+  perfis?: UserRole[]
   clinicaId: string | null
   ativo: boolean
 }
