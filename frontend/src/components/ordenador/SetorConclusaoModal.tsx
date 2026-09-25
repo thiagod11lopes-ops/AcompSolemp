@@ -35,13 +35,14 @@ interface VarianteConfig {
 
 const VARIANTES: Record<SetorConclusaoVariante, VarianteConfig> = {
   auditoria: {
-    overline: 'Encaminhamento ao IMH',
-    title: 'Encaminhar ao IMH',
+    overline: 'Encaminhamento da Div. de Material',
+    title: 'Encaminhar planilha',
     etapaDe: 'Auditoria',
-    etapaPara: 'Contabilidade/IMH',
-    notesHint: 'Anotações são opcionais. Registre observações para a Contabilidade/IMH, se necessário.',
-    placeholder: 'Escreva anotações da auditoria, se necessário…',
-    submitLabel: 'Encaminhar ao IMH',
+    etapaPara: 'Contabilidade/IMH e Confecção de Solemp',
+    notesHint:
+      'Anotações são opcionais. A planilha será enviada para Contabilidade/IMH e Confecção de Solemp.',
+    placeholder: 'Escreva anotações para Contabilidade/IMH e Confecção, se necessário…',
+    submitLabel: 'Encaminhar (IMH + Confecção)',
     icon: <FactCheckIcon sx={{ fontSize: 28 }} />,
     accent: 'secondary',
   },

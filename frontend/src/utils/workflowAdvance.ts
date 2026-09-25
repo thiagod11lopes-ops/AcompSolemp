@@ -11,6 +11,7 @@ import type {
 import { getResponsavelParaEtapa } from '@/utils/workflow'
 import {
   getEtapaByChave,
+  getDestinosEncaminhamentoAuditoria,
   getProximaChaveNaDivisao,
   isPedidoTimelineMedicamento,
 } from '@/utils/timelineFlow'
@@ -314,17 +315,37 @@ export function advancePedidoEtapa(
   let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao)
   let etapasAtivasIds = ativas.filter((id) => id !== etapaAtual.id)
 
-  const proximaChave = getProximaChaveNaDivisao(etapaAtual.chave)
-  const proxima = proximaChave ? getEtapaByChave(etapas, proximaChave) : null
+  const proximasChaves =
+    etapaAtual.chave === 'DIV_MAT_AUDITORIA'
+      ? getDestinosEncaminhamentoAuditoria()
+      : (() => {
+          const unica = getProximaChaveNaDivisao(etapaAtual.chave)
+          return unica ? [unica] : []
+        })()
 
-  if (proxima) {
+  for (const proximaChave of proximasChaves) {
+    const proxima = getEtapaByChave(etapas, proximaChave)
+    if (!proxima) continue
     const responsavelProx = getResponsavelParaEtapa(proxima, data.usuarios, pedido.clinicaId)
-    const jaIniciada = etapasHistorico.some((h) => h.etapaId === proxima.id)
-    if (!jaIniciada) {
+    const histExistente = etapasHistorico.find((h) => h.etapaId === proxima.id)
+    if (!histExistente) {
+      const obsInicio =
+        etapaAtual.chave === 'DIV_MAT_AUDITORIA' && proximaChave === 'DIV_MAT_CONFECCAO_SOLEMP'
+          ? 'Planilha da Div. de Material encaminhada pela Auditoria — aguardando Confecção de Solemp.'
+          : etapaAtual.chave === 'DIV_MAT_AUDITORIA' &&
+              proximaChave === 'DIV_MAT_CONTABILIDADE_IMH'
+            ? 'Planilha da Div. de Material encaminhada pela Auditoria — aguardando Contabilidade/IMH.'
+            : ''
       etapasHistorico = [
         ...etapasHistorico,
-        startNovaEtapa(proxima, responsavelProx, ''),
+        startNovaEtapa(proxima, responsavelProx, obsInicio),
       ]
+    } else if (histExistente.dataConclusao) {
+      histExistente.dataConclusao = null
+      histExistente.observacao =
+        etapaAtual.chave === 'DIV_MAT_AUDITORIA'
+          ? `Planilha reencaminhada pela Auditoria — aguardando ${proxima.nome}.`
+          : histExistente.observacao
     }
     if (!etapasAtivasIds.includes(proxima.id)) {
       etapasAtivasIds.push(proxima.id)

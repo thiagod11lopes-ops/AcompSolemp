@@ -416,13 +416,12 @@ export function ConsumoMaterialConsignadoForm({
       if (pedidoExistente) {
         pedidoId = pedidoExistente.id
         await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'auditoria' })
-        await adicionarFluxo.mutateAsync({ pedidoId, fluxo: 'confeccao' })
       } else {
         pedidoId = createPedidoLoteId()
         await createPedido.mutateAsync({
           ...consumoRowsToPedidoInput(novos, clinicaNome, tituloPlanilha, 'auditoria'),
           id: pedidoId,
-          fluxo: 'paralelo',
+          fluxo: 'auditoria',
           consumoRowIds: rowIds,
         })
       }
@@ -446,14 +445,14 @@ export function ConsumoMaterialConsignadoForm({
       setFeedback({
         open: true,
         severity: 'success',
-        message: `${novos.length} lançamento(s) enviados para Confecção Solemp e Auditoria.`,
+        message: `${novos.length} lançamento(s) enviados para Auditoria.`,
       })
       navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {
       setFeedback({
         open: true,
         severity: 'error',
-        message: 'Erro ao enviar lançamentos para Confecção Solemp/Auditoria. Tente novamente.',
+        message: 'Erro ao enviar lançamentos para Auditoria. Tente novamente.',
       })
     } finally {
       setIsEnviando(false)

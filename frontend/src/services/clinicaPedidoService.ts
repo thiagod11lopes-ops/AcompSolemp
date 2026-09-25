@@ -218,7 +218,6 @@ export const clinicaPedidoService = {
 
     const empresaId = ensureEmpresaByNome(data, input.dadosClinica.empresaConsignada)
     const materialId = ensureMaterialByDescricao(data, input.dadosClinica.materialUtilizado)
-    const somenteAuditoria = input.fluxo === 'auditoria'
     const somenteConfeccao = input.fluxo === 'confeccao'
     const observacaoInicial = somenteImh
       ? input.consumoRowIds && input.consumoRowIds.length > 1
@@ -254,26 +253,23 @@ export const clinicaPedidoService = {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null as string | null,
-          observacao: somenteAuditoria
-            ? 'Aguardando recebimento da planilha pela Auditoria.'
-            : 'Fluxo paralelo — Material (Auditoria).',
+          observacao: 'Aguardando recebimento da planilha pela Auditoria.',
           arquivos: [] as never[],
         }
 
-    const historicoConfeccao = somenteAuditoria || somenteImh
-      ? null
-      : {
+    // Confecção só inicia quando a Auditoria encaminha (exceto envio direto só-Confecção).
+    const historicoConfeccao = somenteConfeccao
+      ? {
           etapaId: confeccao!.id,
           etapaNome: confeccao!.nome,
           responsavelId: null,
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null as string | null,
-          observacao: somenteConfeccao
-            ? 'Aguardando recebimento da planilha pela Confecção de Solemp.'
-            : 'Fluxo paralelo — Material (Confecção de Solemp).',
+          observacao: 'Aguardando recebimento da planilha pela Confecção de Solemp.',
           arquivos: [] as never[],
         }
+      : null
 
     const pedido = {
       id: pedidoId,
@@ -291,16 +287,14 @@ export const clinicaPedidoService = {
       dataEntrega: null,
       etapaAtualId: somenteImh
         ? contabilidade!.id
-        : somenteAuditoria
-          ? auditoria!.id
-          : confeccao!.id,
+        : somenteConfeccao
+          ? confeccao!.id
+          : auditoria!.id,
       etapasAtivasIds: somenteImh
         ? [contabilidade!.id]
-        : somenteAuditoria
-          ? [auditoria!.id]
-          : somenteConfeccao
-            ? [confeccao!.id]
-            : [confeccao!.id, auditoria!.id],
+        : somenteConfeccao
+          ? [confeccao!.id]
+          : [auditoria!.id],
       responsavelAtualId: usuario.id,
       concluido: false,
       etapasHistorico: [
@@ -331,11 +325,9 @@ export const clinicaPedidoService = {
       data: agora,
       observacao: somenteImh
         ? `Timeline iniciada — pedido ${numero} enviado diretamente para Contabilidade/IMH.`
-        : somenteAuditoria
-          ? `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
-          : somenteConfeccao
-            ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
-            : `Timeline iniciada — pedido ${numero} enviado para a Div. de Material (fluxo paralelo).`,
+        : somenteConfeccao
+          ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
+          : `Timeline iniciada — pedido ${numero} enviado para Auditoria.`,
     })
 
     notifySetoresEtapasAtivas(data, pedido.id)

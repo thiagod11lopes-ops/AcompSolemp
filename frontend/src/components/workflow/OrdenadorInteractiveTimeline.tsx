@@ -123,7 +123,7 @@ export function OrdenadorInteractiveTimeline({
             onClick={onEncaminharImh}
             disabled={assinando || !planilhaRecebida}
           >
-            Encaminhar ao IMH
+            Encaminhar (IMH + Confecção)
           </TimelineActionButton>
         </>
       )

@@ -39,7 +39,13 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Confecção → Solemp em Rascunho → Empenhado | Direita: Auditoria → Contabilidade/IMH
+  // Esquerda: Auditoria → Contabilidade/IMH | Direita: Confecção → Solemp em Rascunho → Empenhado
+  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
+  DIV_MAT_CONTABILIDADE_IMH: {
+    grupo: 'Div. de Material',
+    divisao: 'Auditoria',
+    trilha: 'auditoria',
+  },
   DIV_MAT_CONFECCAO_SOLEMP: {
     grupo: 'Div. de Material',
     divisao: 'Material',
@@ -54,12 +60,6 @@ export const TIMELINE_ETAPA_META: Record<
     grupo: 'Div. de Material',
     divisao: 'Material',
     trilha: 'confeccao',
-  },
-  DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
-  DIV_MAT_CONTABILIDADE_IMH: {
-    grupo: 'Div. de Material',
-    divisao: 'Auditoria',
-    trilha: 'auditoria',
   },
 }
 
@@ -104,7 +104,7 @@ export function usaTrilhaConfeccaoOrdenador(chavePerfil: string | null | undefin
 export const DIV_MATERIAL_CHAVES = [...DIVISAO_1_CHAVES, ...DIVISAO_2_CHAVES] as const
 
 /** Ordem visual das colunas na timeline (esquerda → direita). */
-export const TIMELINE_TRILHA_ORDER = ['confeccao', 'auditoria'] as const
+export const TIMELINE_TRILHA_ORDER = ['auditoria', 'confeccao'] as const
 
 export function ordenarDivisoesTimeline<T extends { trilha: string }>(divisoes: T[]): T[] {
   const ordem = TIMELINE_TRILHA_ORDER as readonly string[]
@@ -122,10 +122,17 @@ export function timelineConnectorVisivel(fromChave: string, toChave: string): bo
   return (
     fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONTABILIDADE_IMH'
   ) || (
+    fromChave === 'DIV_MAT_AUDITORIA' && toChave === 'DIV_MAT_CONFECCAO_SOLEMP'
+  ) || (
     fromChave === 'DIV_MAT_CONFECCAO_SOLEMP' && toChave === 'DIV_MAT_FINANCAS'
   ) || (
     fromChave === 'DIV_MAT_FINANCAS' && toChave === 'DIV_MAT_EMPENHADO'
   )
+}
+
+/** Destinos ativados quando a Auditoria encaminha a planilha da Div. de Material. */
+export function getDestinosEncaminhamentoAuditoria(): string[] {
+  return ['DIV_MAT_CONTABILIDADE_IMH', 'DIV_MAT_CONFECCAO_SOLEMP']
 }
 
 export function getProximaChaveNaDivisao(chaveAtual: string): string | null {

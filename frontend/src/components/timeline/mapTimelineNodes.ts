@@ -117,14 +117,17 @@ function resolveSolicitacaoStatus(
     return enviouImh || pedido.concluido ? 'completed' : 'active'
   }
 
-  // Clínica: tarja Concluído quando o mesmo PED já foi enviado à Auditoria e à Confecção.
+  // Clínica: tarja Concluído quando a planilha já foi enviada à Auditoria
+  // (Confecção e Contabilidade/IMH recebem depois, no encaminhamento da Auditoria).
   const enviouAuditoria = etapaIniciadaNoPedido(pedido, etapas, 'DIV_MAT_AUDITORIA')
+  if (enviouAuditoria) return 'completed'
+  // Envio direto só para Confecção (legado / fluxo isolado).
   const enviouConfeccao = etapaIniciadaNoPedido(
     pedido,
     etapas,
     'DIV_MAT_CONFECCAO_SOLEMP',
   )
-  if (enviouAuditoria && enviouConfeccao) return 'completed'
+  if (enviouConfeccao) return 'completed'
   return 'active'
 }
 

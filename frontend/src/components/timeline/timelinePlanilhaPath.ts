@@ -37,11 +37,24 @@ export function planilhaEnviadaEntre(
         Boolean(historicoDaEtapa(pedido, etapas, 'DIV_MAT_AUDITORIA')?.dataInicio)
       )
 
-    case 'SOLICITACAO->DIV_MAT_CONFECCAO_SOLEMP':
+    case 'SOLICITACAO->DIV_MAT_CONFECCAO_SOLEMP': {
+      // Só conta envio direto da clínica → Confecção (sem passagem pela Auditoria).
+      // Quando a Auditoria encaminha, a aresta usada é AUDITORIA→CONFECCAO.
+      const confeccao = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')
+      const auditoria = historicoDaEtapa(pedido, etapas, 'DIV_MAT_AUDITORIA')
       return (
         solicitacaoConcluida(pedido, etapas) &&
-        Boolean(historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')?.dataInicio)
+        Boolean(confeccao?.dataInicio) &&
+        !auditoria?.dataInicio
       )
+    }
+
+    case 'DIV_MAT_AUDITORIA->DIV_MAT_CONFECCAO_SOLEMP': {
+      const confeccao = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONFECCAO_SOLEMP')
+      const auditoria = historicoDaEtapa(pedido, etapas, 'DIV_MAT_AUDITORIA')
+      if (planilhaEnvio?.encaminhadaImhEm && confeccao?.dataInicio) return true
+      return Boolean(auditoria?.dataConclusao && confeccao?.dataInicio)
+    }
 
     case 'SOLICITACAO->DIV_MAT_CONTABILIDADE_IMH': {
       const contabilidade = historicoDaEtapa(pedido, etapas, 'DIV_MAT_CONTABILIDADE_IMH')

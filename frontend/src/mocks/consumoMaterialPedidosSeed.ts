@@ -65,8 +65,7 @@ export function buildPedidosConsumoMaterialSeed(etapas: WorkflowEtapa[]): {
 } {
   const solicitacao = etapas.find((e) => e.chave === 'SOLICITACAO')
   const auditoria = etapas.find((e) => e.chave === 'DIV_MAT_AUDITORIA')
-  const confeccao = etapas.find((e) => e.chave === 'DIV_MAT_CONFECCAO_SOLEMP')
-  if (!solicitacao || !auditoria || !confeccao) {
+  if (!solicitacao || !auditoria) {
     throw new Error('Workflow incompleto para seed de consumo material')
   }
 
@@ -97,8 +96,8 @@ export function buildPedidosConsumoMaterialSeed(etapas: WorkflowEtapa[]): {
       dadosClinica: input.dadosClinica,
       dataSolicitacao: agora,
       dataEntrega: null,
-      etapaAtualId: confeccao.id,
-      etapasAtivasIds: [confeccao.id, auditoria.id],
+      etapaAtualId: auditoria.id,
+      etapasAtivasIds: [auditoria.id],
       responsavelAtualId: USUARIO_CLINICA_OPME_ID,
       concluido: false,
       etapasHistorico: [
@@ -119,17 +118,7 @@ export function buildPedidosConsumoMaterialSeed(etapas: WorkflowEtapa[]): {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null,
-          observacao: 'Fluxo paralelo — Material (Auditoria).',
-          arquivos: [],
-        },
-        {
-          etapaId: confeccao.id,
-          etapaNome: confeccao.nome,
-          responsavelId: null,
-          responsavelNome: null,
-          dataInicio: agora,
-          dataConclusao: null,
-          observacao: 'Fluxo paralelo — Material (Confecção de Solemp).',
+          observacao: 'Aguardando recebimento da planilha pela Auditoria.',
           arquivos: [],
         },
       ],
