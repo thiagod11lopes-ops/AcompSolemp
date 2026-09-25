@@ -162,23 +162,70 @@ export async function upsertEmailAccess(input: {
     )
   }
 
-  // RPC security definer: evita falha de RLS no UPSERT (ON CONFLICT → UPDATE).
-  const { error } = await getSupabaseClient().rpc('upsert_email_access_for_tenant', {
+  const client = getSupabaseClient()
+  const args = {
     p_email: email,
     p_tenant_id: input.tenantId,
     p_app_user_id: input.appUserId,
     p_perfil: input.perfil,
     p_clinica_id: input.clinicaId ?? null,
     p_nome: input.nome ?? null,
-  })
+  }
+
+  let { error } = await client.rpc('upsert_email_access_for_tenant', args)
+
+  // Vínculo órfão em outra organização (ex.: exclusão antiga falhou): libera e tenta de novo.
+  if (error && /vinculado a outra organização/i.test(error.message)) {
+    const { error: freeError } = await client.rpc('decline_team_email_invite', {
+      p_email: email,
+    })
+    if (!freeError) {
+      ;({ error } = await client.rpc('upsert_email_access_for_tenant', args))
+    }
+  }
+
   if (error) throw new Error(error.message)
 }
 
-export async function removeEmailAccess(email: string): Promise<void> {
-  const { error } = await getSupabaseClient().rpc('remove_email_access_for_tenant', {
-    p_email: email.trim().toLowerCase(),
-  })
-  if (error) throw new Error(error.message)
+export async function removeEmailAccess(
+  email: string,
+  tenantId?: string | null,
+): Promise<void> {
+  const trimmed = email.trim().toLowerCase()
+  if (!trimmed) return
+  const client = getSupabaseClient()
+
+  const tryRemove = async (withTenant: boolean) => {
+    const args = withTenant
+      ? { p_email: trimmed, p_tenant_id: tenantId ?? null }
+      : { p_email: trimmed }
+    return client.rpc('remove_email_access_for_tenant', args)
+  }
+
+  let { error } = await tryRemove(Boolean(tenantId))
+
+  // Migration antiga só aceita (p_email) — tenta de novo sem tenant.
+  if (
+    error &&
+    tenantId &&
+    /could not find the function|does not exist|PGRST202/i.test(error.message)
+  ) {
+    ;({ error } = await tryRemove(false))
+  }
+
+  if (!error) return
+
+  // Fallback: decline_team_email_invite já existe em produção e remove email_access
+  // (security definer) — desbloqueia exclusão enquanto a migration nova não roda.
+  if (/sem permissão|não autenticado|permission/i.test(error.message)) {
+    const { error: declineError } = await client.rpc('decline_team_email_invite', {
+      p_email: trimmed,
+    })
+    if (!declineError) return
+    throw new Error(declineError.message || error.message)
+  }
+
+  throw new Error(error.message)
 }
 
 export async function getEmailAccess(email: string): Promise<{

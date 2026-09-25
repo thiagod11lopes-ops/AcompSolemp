@@ -301,7 +301,9 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_email text := lower(trim(p_email));
+  v_jwt_email text := lower(trim(coalesce(auth.jwt() ->> 'email', '')));
   v_existing_tenant uuid;
+  v_allowed boolean := false;
 begin
   if v_uid is null then
     raise exception 'Não autenticado';
@@ -315,13 +317,27 @@ begin
     raise exception 'Organização não encontrada';
   end if;
 
-  if not exists (
-    select 1
-    from public.tenants t
-    where t.id = p_tenant_id
-      and t.owner_user_id = v_uid
-  )
-  and public.current_tenant_id() is distinct from p_tenant_id then
+  select
+    exists (
+      select 1
+      from public.tenants t
+      where t.id = p_tenant_id
+        and (
+          t.owner_user_id = v_uid
+          or (v_jwt_email <> '' and lower(t.owner_email) = v_jwt_email)
+          or t.id = public.current_tenant_id()
+        )
+    )
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = v_uid
+        and p.tenant_id = p_tenant_id
+        and upper(coalesce(p.perfil, '')) in ('GESTOR', 'ADMINISTRADOR')
+    )
+  into v_allowed;
+
+  if not v_allowed then
     raise exception 'Sem permissão para cadastrar nesta organização';
   end if;
 
@@ -332,7 +348,38 @@ begin
 
   if v_existing_tenant is not null
      and v_existing_tenant is distinct from p_tenant_id then
-    raise exception 'Este e-mail já está vinculado a outra organização';
+    -- Realoca se o gestor controla o tenant antigo OU se não há usuário ativo
+    -- com esse e-mail lá (vínculo órfão após exclusão incompleta).
+    if not (
+      exists (
+        select 1
+        from public.tenants t
+        where t.id = v_existing_tenant
+          and (
+            t.owner_user_id = v_uid
+            or (v_jwt_email <> '' and lower(t.owner_email) = v_jwt_email)
+            or t.id = public.current_tenant_id()
+          )
+      )
+      or exists (
+        select 1
+        from public.profiles p
+        where p.id = v_uid
+          and p.tenant_id = v_existing_tenant
+      )
+      or not exists (
+        select 1
+        from public.app_state s
+        cross join lateral jsonb_array_elements(
+          coalesce(s.payload->'usuarios', '[]'::jsonb)
+        ) u
+        where s.tenant_id = v_existing_tenant
+          and lower(coalesce(u->>'email', '')) = v_email
+          and coalesce((u->>'ativo')::boolean, false) = true
+      )
+    ) then
+      raise exception 'Este e-mail já está vinculado a outra organização';
+    end if;
   end if;
 
   insert into public.email_access (
@@ -364,7 +411,13 @@ $$;
 grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text)
   to authenticated;
 
-create or replace function public.remove_email_access_for_tenant(p_email text)
+drop function if exists public.remove_email_access_for_tenant(text);
+drop function if exists public.remove_email_access_for_tenant(text, uuid);
+
+create or replace function public.remove_email_access_for_tenant(
+  p_email text,
+  p_tenant_id uuid default null
+)
 returns void
 language plpgsql
 security definer
@@ -373,33 +426,90 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_email text := lower(trim(p_email));
+  v_jwt_email text := lower(trim(coalesce(auth.jwt() ->> 'email', '')));
   v_tenant uuid;
+  v_app_user text;
+  v_payload jsonb;
+  v_allowed boolean := false;
 begin
   if v_uid is null then
     raise exception 'Não autenticado';
   end if;
 
-  select e.tenant_id into v_tenant
+  if v_email is null or v_email = '' then
+    return;
+  end if;
+
+  select e.tenant_id, e.app_user_id
+    into v_tenant, v_app_user
   from public.email_access e
   where lower(e.email) = v_email;
+
+  if v_tenant is null then
+    v_tenant := p_tenant_id;
+  elsif p_tenant_id is not null and p_tenant_id is distinct from v_tenant then
+    raise exception 'Este e-mail pertence a outra organização';
+  end if;
 
   if v_tenant is null then
     return;
   end if;
 
-  if not exists (
-    select 1 from public.tenants t
-    where t.id = v_tenant and t.owner_user_id = v_uid
-  )
-  and public.current_tenant_id() is distinct from v_tenant then
+  select
+    exists (
+      select 1
+      from public.tenants t
+      where t.id = v_tenant
+        and (
+          t.owner_user_id = v_uid
+          or (v_jwt_email <> '' and lower(t.owner_email) = v_jwt_email)
+          or t.id = public.current_tenant_id()
+        )
+    )
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = v_uid
+        and p.tenant_id = v_tenant
+    )
+  into v_allowed;
+
+  if not v_allowed then
     raise exception 'Sem permissão para remover este e-mail';
   end if;
 
   delete from public.email_access where lower(email) = v_email;
+
+  select payload into v_payload
+  from public.app_state
+  where tenant_id = v_tenant;
+
+  if v_payload is not null and v_payload ? 'usuarios' then
+    update public.app_state
+    set
+      payload = jsonb_set(
+        payload,
+        '{usuarios}',
+        (
+          select coalesce(jsonb_agg(
+            case
+              when lower(coalesce(u->>'email', '')) = v_email
+                or (v_app_user is not null and u->>'id' = v_app_user)
+              then u || jsonb_build_object('ativo', false)
+              else u
+            end
+          ), '[]'::jsonb)
+          from jsonb_array_elements(payload->'usuarios') u
+        ),
+        true
+      ),
+      updated_at = now()
+    where tenant_id = v_tenant;
+  end if;
 end;
 $$;
 
-grant execute on function public.remove_email_access_for_tenant(text) to authenticated;
+grant execute on function public.remove_email_access_for_tenant(text, uuid) to authenticated;
 
 -- Privileges for Data API (necessário quando "Automatically expose new tables" está desligado)
 grant usage on schema public to anon, authenticated;

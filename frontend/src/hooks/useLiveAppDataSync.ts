@@ -30,6 +30,8 @@ const LIVE_QUERY_KEYS = [
   'chat-unread',
   'chat-threads',
   'chat-messages',
+  'usuarios',
+  'clinicas',
 ] as const
 
 function invalidateLiveQueries(queryClient: ReturnType<typeof useQueryClient>): void {
@@ -63,9 +65,18 @@ export function useLiveAppDataSync(): void {
       try {
         const snapshot = await loadAppDataFromSupabase()
         if (!snapshot || cancelled) return
+        const { getLastLocalAppDataFlushAtMs } = await import(
+          '@/data/persistence/supabaseSync'
+        )
+        const localFlushMs = getLastLocalAppDataFlushAtMs()
+        const remoteMs = Date.parse(snapshot.updatedAt)
+        // Poll iniciado antes do flush pode devolver snapshot antigo — não sobrescrever.
+        if (localFlushMs && Number.isFinite(remoteMs) && remoteMs < localFlushMs) {
+          return
+        }
         if (
           lastRemoteUpdatedAt.current &&
-          snapshot.updatedAt === lastRemoteUpdatedAt.current
+          snapshot.updatedAt <= lastRemoteUpdatedAt.current
         ) {
           return
         }
