@@ -403,7 +403,7 @@ export function IndenizadoValorCard({
   )
 }
 
-/** Card: valores ainda em Auditoria ou Contabilidade/IMH */
+/** Card: valores ainda em Auditoria ou IMH */
 export function ValorASerIndenizadoCard(
   props: Omit<IndenizadoValorCardProps, 'title' | 'description' | 'accent' | 'icon'>,
 ) {
@@ -411,14 +411,14 @@ export function ValorASerIndenizadoCard(
     <IndenizadoValorCard
       {...props}
       title="Valor a ser indenizado"
-      description="Coluna % A INDENIZAR nos cards Auditoria e Contabilidade/IMH"
+      description="Coluna % A INDENIZAR nos cards Auditoria e IMH"
       accent={premiumTokens.orange}
       icon={<RequestQuoteOutlinedIcon />}
     />
   )
 }
 
-/** Card: valores já finalizados em Contabilidade/IMH */
+/** Card: valores já finalizados em IMH */
 export function TotalIndenizadoCard(
   props: Omit<IndenizadoValorCardProps, 'title' | 'description' | 'accent' | 'icon'>,
 ) {
@@ -426,7 +426,7 @@ export function TotalIndenizadoCard(
     <IndenizadoValorCard
       {...props}
       title="Total Indenizado"
-      description="Coluna % A INDENIZAR finalizada em Contabilidade/IMH"
+      description="Coluna % A INDENIZAR finalizada em IMH"
       accent={premiumTokens.purple}
       icon={<PaidOutlinedIcon />}
     />

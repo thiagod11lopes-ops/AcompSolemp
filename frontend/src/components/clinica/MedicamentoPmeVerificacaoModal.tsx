@@ -61,7 +61,7 @@ export function MedicamentoPmeVerificacaoModal({
               Verificação — Modelo IHM PME
             </Typography>
             <Typography variant="caption" sx={{ opacity: 0.9 }}>
-              {rows.length} lançamento(s) selecionado(s) · Confira antes de enviar à Contabilidade/IMH
+              {rows.length} lançamento(s) selecionado(s) · Confira antes de enviar à IMH
             </Typography>
           </Box>
           <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -177,7 +177,7 @@ export function MedicamentoPmeVerificacaoModal({
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          Revise os itens marcados na coluna IMH. Ao confirmar, a timeline inicia em Contabilidade/IMH.
+          Revise os itens marcados na coluna IMH. Ao confirmar, a timeline inicia em IMH.
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
           <Button onClick={onClose} disabled={isSubmitting} color="inherit">

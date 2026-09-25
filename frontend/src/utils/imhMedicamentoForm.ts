@@ -105,7 +105,7 @@ export const IMH_MEDICAMENTO_COLUNAS = [
 export type ImhMedicamentoColunaKey = (typeof IMH_MEDICAMENTO_COLUNAS)[number]['key']
 
 /**
- * Colunas que seguem para a planilha Contabilidade/IMH ao enviar.
+ * Colunas que seguem para a planilha IMH ao enviar.
  * Exclui LOTE, VALIDADE, UNIDADE DE FORNECIMENTO e colunas de estoque da clínica.
  */
 export const IMH_MEDICAMENTO_COLUNAS_ENVIO_KEYS = [
@@ -323,7 +323,7 @@ export function imhMedicamentoLinhasToPedidoInput(
         valorUnitario: valor / qtd,
         valorTotal: valor,
         folhaSala: '',
-        descricaoCirurgica: `Envio PME direto para Contabilidade/IMH — ${linha.nome.trim() || 'paciente'}.`,
+        descricaoCirurgica: `Envio PME direto para IMH — ${linha.nome.trim() || 'paciente'}.`,
         etiquetas: '',
         fotos: [],
       },
@@ -358,7 +358,7 @@ export function imhMedicamentoLinhasToPedidoInput(
       valorUnitario: valorTotal > 0 ? valorTotal / linhas.length : 0.01,
       valorTotal: valorTotal > 0 ? valorTotal : 0.01 * linhas.length,
       folhaSala: '',
-      descricaoCirurgica: `Envio de planilha PME com ${linhas.length} lançamentos diretamente para Contabilidade/IMH.`,
+      descricaoCirurgica: `Envio de planilha PME com ${linhas.length} lançamentos diretamente para IMH.`,
       etiquetas: '',
       fotos: [],
     },

@@ -221,8 +221,8 @@ export const clinicaPedidoService = {
     const somenteConfeccao = input.fluxo === 'confeccao'
     const observacaoInicial = somenteImh
       ? input.consumoRowIds && input.consumoRowIds.length > 1
-        ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Contabilidade/IMH.`
-        : `Lançamento enviado diretamente para Contabilidade/IMH — ${input.paciente.nome}.`
+        ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para IMH.`
+        : `Lançamento enviado diretamente para IMH — ${input.paciente.nome}.`
       : input.consumoRowIds && input.consumoRowIds.length > 1
         ? somenteConfeccao
           ? `Planilha enviada com ${input.consumoRowIds.length} lançamentos para Confecção de Solemp.`
@@ -239,7 +239,7 @@ export const clinicaPedidoService = {
           responsavelNome: null,
           dataInicio: agora,
           dataConclusao: null as string | null,
-          observacao: 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
+          observacao: 'Aguardando recebimento da planilha pela IMH.',
           arquivos: [] as never[],
         }
       : null
@@ -324,7 +324,7 @@ export const clinicaPedidoService = {
       usuarioNome: usuario.nome,
       data: agora,
       observacao: somenteImh
-        ? `Timeline iniciada — pedido ${numero} enviado diretamente para Contabilidade/IMH.`
+        ? `Timeline iniciada — pedido ${numero} enviado diretamente para IMH.`
         : somenteConfeccao
           ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
           : `Timeline iniciada — pedido ${numero} enviado para Auditoria.`,
@@ -519,8 +519,8 @@ export const clinicaPedidoService = {
         dataInicio: agora,
         dataConclusao: null,
         observacao: reabriu
-          ? `Planilha corrigida e reenviada${tempoTxt}. Aguardando recebimento pela Contabilidade/IMH.`
-          : 'Aguardando recebimento da planilha pela Contabilidade/IMH.',
+          ? `Planilha corrigida e reenviada${tempoTxt}. Aguardando recebimento pela IMH.`
+          : 'Aguardando recebimento da planilha pela IMH.',
         arquivos: [],
       })
     }
@@ -533,11 +533,11 @@ export const clinicaPedidoService = {
     pedido.observacoes =
       countRows > 1
         ? reabriu
-          ? `Planilha corrigida e reenviada${tempoTxt} com ${countRows} lançamentos para Contabilidade/IMH.`
-          : `Planilha reenviada com ${countRows} lançamentos para Contabilidade/IMH.`
+          ? `Planilha corrigida e reenviada${tempoTxt} com ${countRows} lançamentos para IMH.`
+          : `Planilha reenviada com ${countRows} lançamentos para IMH.`
         : reabriu
-          ? `Lançamento corrigido e reenviado${tempoTxt} para Contabilidade/IMH.`
-          : `Lançamento reenviado diretamente para Contabilidade/IMH.`
+          ? `Lançamento corrigido e reenviado${tempoTxt} para IMH.`
+          : `Lançamento reenviado diretamente para IMH.`
 
     data.pedidos[pedidoIndex] = pedido
     data.historico.push({
@@ -549,8 +549,8 @@ export const clinicaPedidoService = {
       usuarioNome: usuario.nome,
       data: agora,
       observacao: reabriu
-        ? `Planilha corrigida e reenviada${tempoTxt} para Contabilidade/IMH — ${pedido.numero}.`
-        : `Planilha reenviada para Contabilidade/IMH — ${pedido.numero}.`,
+        ? `Planilha corrigida e reenviada${tempoTxt} para IMH — ${pedido.numero}.`
+        : `Planilha reenviada para IMH — ${pedido.numero}.`,
     })
 
     if (reabriu) {

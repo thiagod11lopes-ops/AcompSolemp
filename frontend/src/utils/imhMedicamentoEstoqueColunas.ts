@@ -72,7 +72,7 @@ export function getImhMedicamentoColunasExibicao(mesReferencia: number): ImhEsto
   return [...before, ...extra, ...after]
 }
 
-/** Colunas da planilha recebida pela Contabilidade/IMH (sem estoque/lote/validade/UF). */
+/** Colunas da planilha recebida pela IMH (sem estoque/lote/validade/UF). */
 export function getImhMedicamentoColunasEnvio(): ImhEstoqueColunaDef[] {
   return IMH_MEDICAMENTO_COLUNAS_ENVIO.map((col) => ({ ...col }))
 }

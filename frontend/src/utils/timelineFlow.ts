@@ -39,7 +39,7 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Auditoria → Contabilidade/IMH → Indenizado | Direita: Confecção → Solemp em Rascunho → Empenhado
+  // Esquerda: Auditoria → IMH → Indenizado | Direita: Confecção → Solemp em Rascunho → Empenhado
   DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
   DIV_MAT_CONTABILIDADE_IMH: {
     grupo: 'Div. de Material',
@@ -75,7 +75,7 @@ export const DIVISAO_1_CHAVES = [
   'DIV_MAT_INDENIZADO',
 ] as const
 
-/** Etapas visíveis para Auditoria e Contabilidade/IMH no portal ordenador */
+/** Etapas visíveis para Auditoria e IMH no portal ordenador */
 export const ORDENADOR_TRILHA_AUDITORIA_CHAVES = [
   'SOLICITACAO',
   ...DIVISAO_1_CHAVES,
@@ -162,7 +162,7 @@ export function getEtapaByChave(
   return etapas.find((e) => e.chave === chave)
 }
 
-/** Etapas ignoradas em timelines de medicamento (fluxo direto Contabilidade/IMH). */
+/** Etapas ignoradas em timelines de medicamento (fluxo direto IMH). */
 export const ETAPAS_DISPENSAVEIS_MEDICAMENTO = new Set([
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_AUDITORIA',

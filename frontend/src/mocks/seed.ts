@@ -90,7 +90,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
     perfilResponsavel: 'CLINICA',
     ativo: true,
   },
-  // Div. de Material — trilha Auditoria/Contabilidade
+  // Div. de Material — trilha Auditoria/IMH
   {
     chave: 'DIV_MAT_AUDITORIA',
     nome: 'Auditoria',
@@ -103,7 +103,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_CONTABILIDADE_IMH',
-    nome: 'Contabilidade/IMH',
+    nome: 'IMH',
     ordem: 3,
     prazoDias: 3,
     alertaVencimentoDias: 2,
@@ -605,7 +605,7 @@ function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
   return changed
 }
 
-/** Pedidos com Contabilidade/IMH concluída passam a ter Indenizado concluído no histórico. */
+/** Pedidos com IMH concluída passam a ter Indenizado concluído no histórico. */
 function backfillIndenizadoHistorico(data: AppData): boolean {
   const contabilidade = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_CONTABILIDADE_IMH')
   const indenizado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_INDENIZADO')
@@ -622,7 +622,7 @@ function backfillIndenizadoHistorico(data: AppData): boolean {
         indenizadoHist.dataConclusao = contabHist.dataConclusao
         indenizadoHist.observacao =
           indenizadoHist.observacao ||
-          'Indenizado registrado automaticamente com a conclusão da Contabilidade/IMH.'
+          'Indenizado registrado automaticamente com a conclusão da IMH.'
         changed = true
       }
       continue
@@ -635,7 +635,7 @@ function backfillIndenizadoHistorico(data: AppData): boolean {
       responsavelNome: contabHist.responsavelNome,
       dataInicio: contabHist.dataConclusao,
       dataConclusao: contabHist.dataConclusao,
-      observacao: 'Indenizado registrado automaticamente com a conclusão da Contabilidade/IMH.',
+      observacao: 'Indenizado registrado automaticamente com a conclusão da IMH.',
       arquivos: [],
     })
     changed = true
@@ -1161,7 +1161,7 @@ export function getRoleLabel(role: UserRole): string {
     ASSINANTE: 'Ordenador de Despesa',
     FINANCEIRO: 'Solemp em Rascunho',
     AUDITORIA: 'Auditoria',
-    CONTABILIDADE_IMH: 'Contabilidade/IMH',
+    CONTABILIDADE_IMH: 'IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',
     ASSINATURA_1_SOLEMP: 'Assinatura 1 Solemp',
     ASSINATURA_2_SOLEMP: 'Assinatura 2 Solemp',

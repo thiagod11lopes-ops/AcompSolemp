@@ -126,10 +126,10 @@ export function ContabilidadeConfirmacaoModal({
           </Box>
           <Box>
             <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
-              Conclusão de Contabilidade/IMH
+              Conclusão de IMH
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Finalizar Contabilidade/IMH
+              Finalizar IMH
             </Typography>
             <Chip
               label={pedido.numero}
@@ -223,7 +223,7 @@ export function ContabilidadeConfirmacaoModal({
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Anotações são opcionais. Se quiser, registre observações ao concluir a Contabilidade/IMH.
+          Anotações são opcionais. Se quiser, registre observações ao concluir a IMH.
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -241,7 +241,7 @@ export function ContabilidadeConfirmacaoModal({
           maxRows={8}
           value={anotacoes}
           onChange={(e) => setAnotacoes(e.target.value)}
-          placeholder="Escreva anotações da Contabilidade/IMH, se necessário…"
+          placeholder="Escreva anotações da IMH, se necessário…"
           disabled={loading}
           sx={{
             mb: 3,

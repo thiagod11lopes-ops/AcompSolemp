@@ -188,12 +188,12 @@ export const ordenadorService = {
       let observacao: string
       if (chave === 'DIV_MAT_AUDITORIA') {
         observacao = notas
-          ? `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para Contabilidade/IMH e Confecção de Solemp. Anotações: ${notas}`
-          : `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para Contabilidade/IMH e Confecção de Solemp.`
+          ? `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para IMH e Confecção de Solemp. Anotações: ${notas}`
+          : `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para IMH e Confecção de Solemp.`
       } else if (chave === 'DIV_MAT_CONTABILIDADE_IMH') {
         observacao = notas
-          ? `Contabilidade/IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Anotações: ${notas}`
-          : `Contabilidade/IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Etapa finalizada.`
+          ? `IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Anotações: ${notas}`
+          : `IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Etapa finalizada.`
       } else {
         observacao = notas
           ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`

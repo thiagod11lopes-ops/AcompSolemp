@@ -118,7 +118,7 @@ function resolveSolicitacaoStatus(
   }
 
   // Clínica: tarja Concluído quando a planilha já foi enviada à Auditoria
-  // (Confecção e Contabilidade/IMH recebem depois, no encaminhamento da Auditoria).
+  // (Confecção e IMH recebem depois, no encaminhamento da Auditoria).
   const enviouAuditoria = etapaIniciadaNoPedido(pedido, etapas, 'DIV_MAT_AUDITORIA')
   if (enviouAuditoria) return 'completed'
   // Envio direto só para Confecção (legado / fluxo isolado).

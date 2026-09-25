@@ -71,8 +71,8 @@ function etapaConcluidaNoHistorico(
 }
 
 /** Processo encerrado quando cada trilha iniciada atingir sua etapa final.
- * Medicamento: encerra só com Contabilidade/IMH.
- * Clínica: exige Contabilidade/IMH e Empenhado para encerrar o PED;
+ * Medicamento: encerra só com IMH.
+ * Clínica: exige IMH e Empenhado para encerrar o PED;
  * se uma trilha não foi iniciada, o processo ainda não fecha pelo card da clínica
  * (mas a trilha iniciada pode ser concluída isoladamente). */
 function isDivMaterialConcluida(
@@ -334,7 +334,7 @@ export function advancePedidoEtapa(
           ? 'Planilha da Div. de Material encaminhada pela Auditoria — aguardando Confecção de Solemp.'
           : etapaAtual.chave === 'DIV_MAT_AUDITORIA' &&
               proximaChave === 'DIV_MAT_CONTABILIDADE_IMH'
-            ? 'Planilha da Div. de Material encaminhada pela Auditoria — aguardando Contabilidade/IMH.'
+            ? 'Planilha da Div. de Material encaminhada pela Auditoria — aguardando IMH.'
             : ''
       etapasHistorico = [
         ...etapasHistorico,
@@ -352,7 +352,7 @@ export function advancePedidoEtapa(
     }
   }
 
-  // Contabilidade/IMH concluída → Indenizado já entra como concluído (mesma planilha).
+  // IMH concluída → Indenizado já entra como concluído (mesma planilha).
   if (etapaAtual.chave === 'DIV_MAT_CONTABILIDADE_IMH') {
     const indenizado = getEtapaByChave(etapas, 'DIV_MAT_INDENIZADO')
     if (indenizado) {
@@ -360,7 +360,7 @@ export function advancePedidoEtapa(
       const contabHist = etapasHistorico.find((h) => h.etapaId === etapaAtual.id)
       const histExistente = etapasHistorico.find((h) => h.etapaId === indenizado.id)
       const obsIndenizado =
-        'Indenizado concluído automaticamente com a Contabilidade/IMH — planilha recebida e finalizada.'
+        'Indenizado concluído automaticamente com a IMH — planilha recebida e finalizada.'
       if (!histExistente) {
         etapasHistorico = [
           ...etapasHistorico,

@@ -77,7 +77,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
     descricao: 'Receba a planilha enviada pela clínica e, após conferir, encaminhe ao IMH.',
   },
   DIV_MAT_CONTABILIDADE_IMH: {
-    label: 'Concluir Contabilidade/IMH',
+    label: 'Concluir IMH',
     descricao: 'Receba a planilha encaminhada pela Auditoria e, após conferir, finalize a etapa.',
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
@@ -97,7 +97,7 @@ export const ORDENADOR_ETAPA_ACOES: Record<
 /** Etapas aguardando outro setor — sem ação da clínica */
 export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
-  DIV_MAT_CONTABILIDADE_IMH: 'Aguardando Contabilidade/IMH na Div. de Material.',
+  DIV_MAT_CONTABILIDADE_IMH: 'Aguardando IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
   DIV_MAT_FINANCAS: 'Aguardando Solemp em Rascunho.',
   DIV_MAT_EMPENHADO: 'Aguardando Empenhado.',

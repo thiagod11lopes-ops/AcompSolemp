@@ -86,7 +86,7 @@ export function ClinicaEnvioParaleloModal({
           </Typography>
           <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.82) }}>
             {rows.length} lançamento(s) selecionado(s) · Total {formatValorBrasileiro(total)}. A
-            Auditoria encaminhará a planilha para Contabilidade/IMH e Confecção de Solemp.
+            Auditoria encaminhará a planilha para IMH e Confecção de Solemp.
           </Typography>
         </Stack>
 
@@ -187,7 +187,7 @@ export function ClinicaEnvioParaleloModal({
             variant="caption"
             sx={{ display: 'block', mt: 1.25, textAlign: 'center', color: alpha('#cbd5e1', 0.8) }}
           >
-            Após a Auditoria, a planilha segue para Contabilidade/IMH e Confecção de Solemp.
+            Após a Auditoria, a planilha segue para IMH e Confecção de Solemp.
           </Typography>
         </Box>
       </Box>

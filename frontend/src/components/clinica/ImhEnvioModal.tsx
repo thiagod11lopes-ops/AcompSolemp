@@ -81,7 +81,7 @@ export function ImhEnvioModal({
       title={
         previewOnly
           ? 'Planilha Auditoria — Visualização'
-          : 'Planilha IMH — Envio para Contabilidade'
+          : 'Planilha IMH — Envio para IMH'
       }
       lancamentoCount={consumoRows.length}
       icon={<DescriptionIcon />}
