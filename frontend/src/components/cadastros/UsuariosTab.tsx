@@ -299,13 +299,6 @@ export function UsuariosTab() {
 
   return (
     <Box>
-      <Alert severity="info" sx={{ mb: 3 }}>
-        Compartilhe o link da Timeline com clínicas e setores:{' '}
-        <strong>/clinica/timeline</strong>. Cada cadastro usa e-mail institucional @marinha.mil.br.
-        O gestor pode autorizar <strong>mais de um tipo</strong> no mesmo usuário (ex.: Confecção de
-        Solemp + Solemp em Rascunho).
-      </Alert>
-
       {erro && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {erro}
@@ -327,13 +320,8 @@ export function UsuariosTab() {
               background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${theme.palette.background.paper} 50%)`,
             }}
           >
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" sx={{ mb: 3 }}>
               Novo cadastro
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Selecione um ou mais tipos que o usuário poderá acessar. Clínica, Medicamento e
-              Empenhado são exclusivos; setores da Div. de Material podem ser combinados. A lista ao
-              lado mostra todos os cadastros efetuados.
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
