@@ -19,9 +19,8 @@ import {
   TextField,
   Tooltip,
   Typography,
-  alpha,
-  useTheme,
 } from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useCreatePortalUser, useDeleteCadastro } from '@/hooks/useUsuarioCadastro'
@@ -147,8 +146,7 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
 }
 
 export function UsuariosTab() {
-  const theme = useTheme()
-  /** Inicia vazio — o gestor escolhe o tipo ao abrir a página. */
+  /** Inicia vazio — o gestor escolhe o tipo ao abrir o modal. */
   const [opcoesSelecionadas, setOpcoesSelecionadas] = useState<CadastroPerfilOpcao[]>([])
   const createUser = useCreatePortalUser()
   const deleteCadastro = useDeleteCadastro()
@@ -158,11 +156,13 @@ export function UsuariosTab() {
   const primaria = opcoesSelecionadas[0] ?? null
   const mostraSelectClinica = opcoesSelecionadas.some(isOpcaoClinica)
 
+  const [modalAberto, setModalAberto] = useState(false)
   const [nomeResponsavel, setNomeResponsavel] = useState('')
   const [clinicaSelecionada, setClinicaSelecionada] = useState('')
   const [email, setEmail] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
+  const [erroModal, setErroModal] = useState('')
   const [registroExcluir, setRegistroExcluir] = useState<RegistroCadastro | null>(null)
 
   const registros = useMemo<RegistroCadastro[]>(
@@ -213,26 +213,45 @@ export function UsuariosTab() {
     [],
   )
 
+  const resetFormulario = () => {
+    setOpcoesSelecionadas([])
+    setNomeResponsavel('')
+    setClinicaSelecionada('')
+    setEmail('')
+    setErroModal('')
+  }
+
+  const abrirModal = () => {
+    resetFormulario()
+    setErro('')
+    setSucesso('')
+    setModalAberto(true)
+  }
+
+  const fecharModal = () => {
+    if (createUser.isPending) return
+    setModalAberto(false)
+    resetFormulario()
+  }
+
   const handleTiposChange = (_: unknown, next: CadastroPerfilOpcao[]) => {
     if (next.length === 0) {
       setOpcoesSelecionadas([])
       setClinicaSelecionada('')
-      setErro('')
-      setSucesso('')
+      setErroModal('')
       return
     }
     const last = next[next.length - 1]!
     const prev = next.slice(0, -1)
     if (!podeCombinarOpcoes(prev, last)) {
-      setErro(
+      setErroModal(
         isCadastroEntidadeClinica(last)
           ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
           : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
       )
       return
     }
-    setErro('')
-    setSucesso('')
+    setErroModal('')
     setOpcoesSelecionadas(next)
     if (!next.some(isOpcaoClinica)) {
       setClinicaSelecionada('')
@@ -240,8 +259,7 @@ export function UsuariosTab() {
   }
 
   const handleSubmit = async () => {
-    setErro('')
-    setSucesso('')
+    setErroModal('')
     try {
       if (opcoesSelecionadas.length === 0) {
         throw new Error('Selecione ao menos um tipo de cadastro')
@@ -259,11 +277,11 @@ export function UsuariosTab() {
       setSucesso(
         `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
       )
-      setNomeResponsavel('')
-      setClinicaSelecionada('')
-      setEmail('')
+      setErro('')
+      setModalAberto(false)
+      resetFormulario()
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
+      setErroModal(e instanceof Error ? e.message : 'Erro ao cadastrar')
     }
   }
 
@@ -310,115 +328,119 @@ export function UsuariosTab() {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        <Grid size={12}>
-          <Paper
-            sx={{
-              p: 3,
-              borderRadius: 3,
-              background: `linear-gradient(145deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${theme.palette.background.paper} 50%)`,
-            }}
-          >
-            <Typography variant="h6" sx={{ mb: 3 }}>
-              Novo cadastro
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
-                <Autocomplete
-                  multiple
-                  options={CADASTRO_PERFIS}
-                  value={opcoesSelecionadas}
-                  disableCloseOnSelect
-                  getOptionLabel={(option) => option.label}
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  onChange={handleTiposChange}
-                  slotProps={{ chip: { size: 'small' } }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tipos de cadastro"
-                      placeholder="Selecione um ou mais"
-                      helperText={
-                        labelsSelecionados
-                          ? `Autorizado: ${labelsSelecionados}`
-                          : 'Escolha ao menos um tipo'
-                      }
-                    />
-                  )}
-                />
-              </Grid>
-              {mostraSelectClinica ? (
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth required>
-                    <InputLabel id="cadastro-clinica-select-label">Clínica</InputLabel>
-                    <Select
-                      labelId="cadastro-clinica-select-label"
-                      id="cadastro-clinica-select"
-                      label="Clínica"
-                      value={clinicaSelecionada}
-                      onChange={(e) => setClinicaSelecionada(String(e.target.value))}
-                    >
-                      {CLINICAS_HOSPITAL.map((nomeClinica) => (
-                        <MenuItem key={nomeClinica} value={nomeClinica}>
-                          {nomeClinica}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              ) : null}
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  label={labelResponsavel}
-                  value={nomeResponsavel}
-                  onChange={(e) => setNomeResponsavel(e.target.value)}
-                  placeholder={placeholderResponsavel}
-                  disabled={opcoesSelecionadas.length === 0}
-                />
-              </Grid>
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  type="email"
-                  label="E-mail institucional"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seuemail@marinha.mil.br"
-                  helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
-                  disabled={opcoesSelecionadas.length === 0}
-                />
-              </Grid>
-              <Grid size={12}>
-                <Button
-                  variant="contained"
-                  onClick={handleSubmit}
-                  disabled={
-                    createUser.isPending ||
-                    opcoesSelecionadas.length === 0 ||
-                    (mostraSelectClinica && !clinicaSelecionada)
-                  }
-                >
-                  {createUser.isPending ? 'Cadastrando...' : 'Cadastrar usuário'}
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={abrirModal}>
+          Novo cadastro
+        </Button>
+      </Box>
 
-        <Grid size={12}>
-          <Paper sx={{ p: 2, borderRadius: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
-              {tituloLista}
-            </Typography>
-            <DataTable
-              data={registros}
-              columns={colunas}
-              emptyMessage={emptyMessage}
-            />
-          </Paper>
-        </Grid>
-      </Grid>
+      <Paper sx={{ p: 2, borderRadius: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, px: 1 }}>
+          {tituloLista}
+        </Typography>
+        <DataTable data={registros} columns={colunas} emptyMessage={emptyMessage} />
+      </Paper>
+
+      <Dialog
+        open={modalAberto}
+        onClose={fecharModal}
+        fullWidth
+        maxWidth="sm"
+        aria-labelledby="novo-cadastro-dialog-title"
+      >
+        <DialogTitle id="novo-cadastro-dialog-title">Novo cadastro</DialogTitle>
+        <DialogContent dividers>
+          {erroModal && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {erroModal}
+            </Alert>
+          )}
+          <Grid container spacing={2} sx={{ pt: 0.5 }}>
+            <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
+              <Autocomplete
+                multiple
+                options={CADASTRO_PERFIS}
+                value={opcoesSelecionadas}
+                disableCloseOnSelect
+                getOptionLabel={(option) => option.label}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                onChange={handleTiposChange}
+                slotProps={{ chip: { size: 'small' } }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tipos de cadastro"
+                    placeholder="Selecione um ou mais"
+                    helperText={
+                      labelsSelecionados
+                        ? `Autorizado: ${labelsSelecionados}`
+                        : 'Escolha ao menos um tipo'
+                    }
+                  />
+                )}
+              />
+            </Grid>
+            {mostraSelectClinica ? (
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth required>
+                  <InputLabel id="cadastro-clinica-select-label">Clínica</InputLabel>
+                  <Select
+                    labelId="cadastro-clinica-select-label"
+                    id="cadastro-clinica-select"
+                    label="Clínica"
+                    value={clinicaSelecionada}
+                    onChange={(e) => setClinicaSelecionada(String(e.target.value))}
+                  >
+                    {CLINICAS_HOSPITAL.map((nomeClinica) => (
+                      <MenuItem key={nomeClinica} value={nomeClinica}>
+                        {nomeClinica}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            ) : null}
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label={labelResponsavel}
+                value={nomeResponsavel}
+                onChange={(e) => setNomeResponsavel(e.target.value)}
+                placeholder={placeholderResponsavel}
+                disabled={opcoesSelecionadas.length === 0}
+              />
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                type="email"
+                label="E-mail institucional"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seuemail@marinha.mil.br"
+                helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
+                disabled={opcoesSelecionadas.length === 0}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={fecharModal} disabled={createUser.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={
+              createUser.isPending ||
+              opcoesSelecionadas.length === 0 ||
+              (mostraSelectClinica && !clinicaSelecionada)
+            }
+          >
+            {createUser.isPending ? 'Cadastrando...' : 'Cadastrar usuário'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={Boolean(registroExcluir)}
