@@ -9,9 +9,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   TextField,
   Tooltip,
   Typography,
@@ -34,13 +38,16 @@ import {
   DEMO_EMPENHADO_EXEMPLO_ID,
   isDemoExampleUser,
 } from '@/services/demoCadastrosService'
-import type { Clinica, User, UserRole } from '@/types'
+import type { Clinica, User } from '@/types'
 import { userHasPerfil, userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
+import { CLINICAS_HOSPITAL } from '@/utils/clinicasHospital'
 
 interface RegistroCadastro {
   id: string
-  nome: string
+  /** Coluna Setor: tipo de cadastro, ou nome da clínica quando tipo = Clínica */
+  setor: string
+  responsavel: string
   email: string
   ativo: boolean
   tiposLabel: string
@@ -89,18 +96,27 @@ function buildRegistrosEntidade(
       const user =
         usuariosEntidade.find((u) => u.clinicaId === c.id && u.email) ??
         usuariosEntidade.find((u) => u.clinicaId === c.id)
+      const responsavel =
+        user?.nome?.trim() || c.responsavel?.trim() || '—'
       return {
         id: c.id,
-        nome: c.nome,
+        // Clínica: setor = nome da clínica; demais entidades: rótulo do tipo
+        setor: filtroOpcao.isClinica ? c.nome : filtroOpcao.label,
+        responsavel,
         email: user?.email?.trim() || '—',
         ativo: user?.ativo ?? false,
         tiposLabel: loginPerfilLabel(perfilEntidade),
         isEntidadeClinica: true,
       }
     })
+    .sort((a, b) => a.setor.localeCompare(b.setor, 'pt-BR', { sensitivity: 'base' }))
 }
 
-function buildRegistrosSetor(perfis: UserRole[], usuarios: User[]): RegistroCadastro[] {
+function buildRegistrosSetor(
+  opcoes: CadastroPerfilOpcao[],
+  usuarios: User[],
+): RegistroCadastro[] {
+  const perfis = opcoes.map((o) => o.perfil)
   if (perfis.length === 0) return []
   const vistos = new Set<string>()
   const resultado: RegistroCadastro[] = []
@@ -111,16 +127,20 @@ function buildRegistrosSetor(perfis: UserRole[], usuarios: User[]): RegistroCada
     if (!perfis.some((perfil) => userHasPerfil(u, perfil))) continue
     if (vistos.has(u.id)) continue
     vistos.add(u.id)
+    const tiposDoUsuario = userPerfis(u).map((p) => loginPerfilLabel(p))
     resultado.push({
       id: u.id,
-      nome: u.nome,
+      setor: tiposDoUsuario.join(', '),
+      responsavel: u.nome?.trim() || '—',
       email: u.email?.trim() || '—',
       ativo: u.ativo,
-      tiposLabel: userPerfis(u).map((p) => loginPerfilLabel(p)).join(', '),
+      tiposLabel: tiposDoUsuario.join(', '),
       isEntidadeClinica: false,
     })
   }
-  return resultado.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+  return resultado.sort((a, b) =>
+    a.setor.localeCompare(b.setor, 'pt-BR', { sensitivity: 'base' }),
+  )
 }
 
 export function UsuariosTab() {
@@ -134,8 +154,10 @@ export function UsuariosTab() {
   const { data: usuarios = [] } = useUsuarios()
 
   const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
+  const mostraSelectClinica = opcoesSelecionadas.some((o) => o.isClinica)
 
-  const [nome, setNome] = useState('')
+  const [nomeResponsavel, setNomeResponsavel] = useState('')
+  const [clinicaSelecionada, setClinicaSelecionada] = useState('')
   const [email, setEmail] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [erro, setErro] = useState('')
@@ -149,15 +171,17 @@ export function UsuariosTab() {
       return buildRegistrosEntidade(entidade, clinicas, usuarios)
     }
 
-    return buildRegistrosSetor(
-      opcoesSelecionadas.map((o) => o.perfil),
-      usuarios,
-    )
+    return buildRegistrosSetor(opcoesSelecionadas, usuarios)
   }, [opcoesSelecionadas, clinicas, usuarios])
 
   const colunas = useMemo<ColumnDef<RegistroCadastro>[]>(
     () => [
-      { accessorKey: 'nome', header: 'Nome' },
+      { accessorKey: 'setor', header: 'Setor' },
+      {
+        accessorKey: 'responsavel',
+        header: 'Responsável',
+        cell: ({ row }) => row.original.responsavel,
+      },
       {
         accessorKey: 'email',
         header: 'E-mail institucional',
@@ -181,7 +205,7 @@ export function UsuariosTab() {
             <IconButton
               size="small"
               color="error"
-              aria-label={`Excluir ${row.original.nome}`}
+              aria-label={`Excluir ${row.original.setor}`}
               onClick={() => setRegistroExcluir(row.original)}
             >
               <DeleteOutlinedIcon fontSize="small" />
@@ -200,16 +224,21 @@ export function UsuariosTab() {
       if (opcoesSelecionadas.length === 0) {
         throw new Error('Selecione ao menos um tipo de cadastro')
       }
+      if (mostraSelectClinica && !clinicaSelecionada) {
+        throw new Error('Selecione a clínica')
+      }
       await createUser.mutateAsync({
-        nome,
+        nome: nomeResponsavel,
         email,
         opcoes: opcoesSelecionadas,
+        clinicaNome: mostraSelectClinica ? clinicaSelecionada : undefined,
       })
       const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
       setSucesso(
         `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
       )
-      setNome('')
+      setNomeResponsavel('')
+      setClinicaSelecionada('')
       setEmail('')
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao cadastrar')
@@ -225,7 +254,7 @@ export function UsuariosTab() {
         isEntidadeClinica: registroExcluir.isEntidadeClinica,
         id: registroExcluir.id,
       })
-      setSucesso(`Cadastro "${registroExcluir.nome}" excluído com sucesso.`)
+      setSucesso(`Cadastro "${registroExcluir.setor}" excluído com sucesso.`)
       setRegistroExcluir(null)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao excluir')
@@ -244,6 +273,11 @@ export function UsuariosTab() {
     opcoesSelecionadas.length === 0
       ? 'Selecione um tipo de cadastro para ver a lista.'
       : `Nenhum cadastro de ${labelsSelecionados} ainda.`
+
+  const labelResponsavel =
+    opcoesSelecionadas.length <= 1
+      ? primaria.campoNomeLabel
+      : `Nome do Responsável (${labelsSelecionados})`
 
   return (
     <Box>
@@ -284,7 +318,7 @@ export function UsuariosTab() {
               lado mostra todos os cadastros do tipo selecionado.
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
+              <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
                 <Autocomplete
                   multiple
                   options={CADASTRO_PERFIS}
@@ -295,6 +329,7 @@ export function UsuariosTab() {
                   onChange={(_, next) => {
                     if (next.length === 0) {
                       setOpcoesSelecionadas([])
+                      setClinicaSelecionada('')
                       setErro('')
                       setSucesso('')
                       return
@@ -312,6 +347,9 @@ export function UsuariosTab() {
                     setErro('')
                     setSucesso('')
                     setOpcoesSelecionadas(next)
+                    if (!next.some((o) => o.isClinica)) {
+                      setClinicaSelecionada('')
+                    }
                   }}
                   slotProps={{ chip: { size: 'small' } }}
                   renderInput={(params) => (
@@ -328,12 +366,32 @@ export function UsuariosTab() {
                   )}
                 />
               </Grid>
+              {mostraSelectClinica && (
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <FormControl fullWidth>
+                    <InputLabel id="cadastro-clinica-select-label">Clínica</InputLabel>
+                    <Select
+                      labelId="cadastro-clinica-select-label"
+                      id="cadastro-clinica-select"
+                      label="Clínica"
+                      value={clinicaSelecionada}
+                      onChange={(e) => setClinicaSelecionada(String(e.target.value))}
+                    >
+                      {CLINICAS_HOSPITAL.map((nomeClinica) => (
+                        <MenuItem key={nomeClinica} value={nomeClinica}>
+                          {nomeClinica}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
               <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
-                  label={primaria.campoNomeLabel}
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
+                  label={labelResponsavel}
+                  value={nomeResponsavel}
+                  onChange={(e) => setNomeResponsavel(e.target.value)}
                   placeholder={primaria.campoNomePlaceholder}
                 />
               </Grid>
@@ -352,7 +410,11 @@ export function UsuariosTab() {
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
-                  disabled={createUser.isPending || opcoesSelecionadas.length === 0}
+                  disabled={
+                    createUser.isPending ||
+                    opcoesSelecionadas.length === 0 ||
+                    (mostraSelectClinica && !clinicaSelecionada)
+                  }
                 >
                   {createUser.isPending ? 'Cadastrando...' : 'Cadastrar usuário'}
                 </Button>
@@ -382,9 +444,12 @@ export function UsuariosTab() {
         <DialogTitle>Confirmar exclusão</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Deseja realmente excluir o cadastro de <strong>{registroExcluir?.nome}</strong>
+            Deseja realmente excluir o cadastro de <strong>{registroExcluir?.setor}</strong>
+            {registroExcluir?.responsavel && registroExcluir.responsavel !== '—'
+              ? ` (responsável: ${registroExcluir.responsavel})`
+              : ''}
             {registroExcluir?.email && registroExcluir.email !== '—'
-              ? ` (${registroExcluir.email})`
+              ? ` — ${registroExcluir.email}`
               : ''}
             ? Esta ação não pode ser desfeita.
           </DialogContentText>

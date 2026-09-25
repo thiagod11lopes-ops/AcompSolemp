@@ -21,10 +21,16 @@ function validateEmail(email: string): string {
 }
 
 export interface CreatePortalUserInput {
+  /** Nome do responsável pelo cadastro */
   nome: string
   email: string
   /** Um ou mais tipos autorizados pelo gestor */
   opcoes: CadastroPerfilOpcao[]
+  /**
+   * Nome da clínica (select) — obrigatório quando o tipo Clínica estiver selecionado.
+   * Grava em `Clinica.nome` (coluna Setor na lista).
+   */
+  clinicaNome?: string
 }
 
 export interface CreateUserResult {
@@ -42,21 +48,26 @@ function findOrCreateEntidadeClinica(
   nomeEntidade: string,
   data: ReturnType<typeof loadAppData>,
   tipo: ClinicaEntidadeTipo,
+  responsavel: string,
 ): string {
   const nome = nomeEntidade.trim()
+  const responsavelTrim = responsavel.trim()
   const existente = data.clinicas.find(
     (c) =>
       (c.tipo ?? 'clinica') === tipo &&
       c.nome.localeCompare(nome, 'pt-BR', { sensitivity: 'accent' }) === 0,
   )
-  if (existente) return existente.id
+  if (existente) {
+    if (responsavelTrim) existente.responsavel = responsavelTrim
+    return existente.id
+  }
 
   const prefix =
     tipo === 'medicamento' ? 'medicamento' : tipo === 'empenhado' ? 'empenhado' : 'clinica'
   const entidade = {
     id: `${prefix}-custom-${Date.now()}`,
     nome,
-    responsavel: nome,
+    responsavel: responsavelTrim || nome,
     telefone: '',
     tipo,
   }
@@ -123,10 +134,14 @@ export const usuarioCadastroService = {
     const primaria = opcoes[0]!
     const nome = input.nome.trim()
     const isEntidade = isCadastroEntidadeClinica(primaria)
+    const isClinica = Boolean(primaria.isClinica)
+    const clinicaNome = input.clinicaNome?.trim() ?? ''
+
     if (nome.length < 3) {
-      throw new Error(
-        isEntidade ? `Informe o nome da ${primaria.label.toLowerCase()}` : 'Informe o nome',
-      )
+      throw new Error('Informe o nome do responsável')
+    }
+    if (isClinica && !clinicaNome) {
+      throw new Error('Selecione a clínica')
     }
 
     const email = validateEmail(input.email)
@@ -146,8 +161,10 @@ export const usuarioCadastroService = {
     const { perfil, perfis } = buildUserPerfis(opcoes.map((o) => o.perfil))
     const graduacao = opcoes.map((o) => o.graduacao).join(' · ')
     const tipoEntidade = resolveClinicaEntidadeTipo(primaria)
+    // Clínica: entidade = select; demais entidades: nome do responsável identifica a unidade.
+    const nomeEntidade = isClinica ? clinicaNome : nome
     const clinicaId = isEntidade
-      ? findOrCreateEntidadeClinica(nome, data, tipoEntidade)
+      ? findOrCreateEntidadeClinica(nomeEntidade, data, tipoEntidade, nome)
       : null
 
     let user: User = {
