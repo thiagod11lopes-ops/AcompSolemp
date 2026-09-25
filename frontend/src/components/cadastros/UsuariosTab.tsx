@@ -49,7 +49,6 @@ interface RegistroCadastro {
   responsavel: string
   email: string
   ativo: boolean
-  tiposLabel: string
   /** Exclusão de clínica/medicamento/empenhado usa o id da entidade */
   isEntidadeClinica: boolean
 }
@@ -98,7 +97,6 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
       usersDaClinica.find((u) => u.email?.trim()) ?? usersDaClinica[0]!
     const tipo = clinica.tipo ?? 'clinica'
     const tipoLabel = labelTipoEntidade(tipo)
-    const tiposDoUsuario = userPerfis(user).map((p) => loginPerfilLabel(p))
     clinicasJaListadas.add(clinica.id)
     resultado.push({
       id: clinica.id,
@@ -106,7 +104,6 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
       responsavel: user.nome?.trim() || clinica.responsavel?.trim() || '—',
       email: user.email?.trim() || '—',
       ativo: true,
-      tiposLabel: tiposDoUsuario.length > 0 ? tiposDoUsuario.join(', ') : tipoLabel,
       isEntidadeClinica: true,
     })
   }
@@ -123,7 +120,6 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
         responsavel: u.nome?.trim() || '—',
         email: u.email?.trim() || '—',
         ativo: true,
-        tiposLabel: tiposDoUsuario.join(', '),
         isEntidadeClinica: true,
       })
       continue
@@ -135,7 +131,6 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
       responsavel: u.nome?.trim() || '—',
       email: u.email?.trim() || '—',
       ativo: true,
-      tiposLabel: tiposDoUsuario.join(', '),
       isEntidadeClinica: false,
     })
   }
@@ -182,11 +177,6 @@ export function UsuariosTab() {
         accessorKey: 'email',
         header: 'E-mail',
         cell: ({ row }) => row.original.email,
-      },
-      {
-        accessorKey: 'tiposLabel',
-        header: 'Tipos autorizados',
-        cell: ({ row }) => row.original.tiposLabel,
       },
       {
         accessorKey: 'ativo',
