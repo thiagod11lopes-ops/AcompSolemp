@@ -12,6 +12,7 @@ import {
   useTheme,
 } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
@@ -24,6 +25,7 @@ import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 const DRAWER_WIDTH = 240
 
 const menuBase = [
+  { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/financeiro/pagamentos', label: 'Pagamentos pendentes', icon: <PaymentsIcon /> },
   {
     path: '/financeiro/aguardando-empenho',
@@ -34,6 +36,7 @@ const menuBase = [
 ]
 
 const menuConfeccaoCadeia = [
+  { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   {
     path: '/ordenador/timelines',
     etapa: 'DIV_MAT_CONFECCAO_SOLEMP',

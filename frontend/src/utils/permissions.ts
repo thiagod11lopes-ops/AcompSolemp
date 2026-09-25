@@ -28,6 +28,7 @@ const ALL_GESTOR_PERMISSIONS: Permission[] = [
 ]
 
 const PROCESSO_PERMISSIONS: Permission[] = [
+  'dashboard:read',
   'processos:read',
   'processos:advance',
   'historico:read',

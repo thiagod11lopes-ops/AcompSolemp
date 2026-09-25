@@ -187,6 +187,7 @@ export function AppRoutes() {
               </OrdenadorProtectedRoute>
             }
           >
+            <Route path="/gestor/demo/ordenador/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
@@ -199,6 +200,7 @@ export function AppRoutes() {
               </FinanceiroProtectedRoute>
             }
           >
+            <Route path="/gestor/demo/financeiro/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
@@ -251,6 +253,7 @@ export function AppRoutes() {
           }
         >
           <Route path="/ordenador" element={<Navigate to="/ordenador/timelines" replace />} />
+          <Route path="/ordenador/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
           <Route path="/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
           <Route path="/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
           <Route path="/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
@@ -265,6 +268,7 @@ export function AppRoutes() {
           }
         >
           <Route path="/financeiro" element={<Navigate to="/financeiro/pagamentos" replace />} />
+          <Route path="/financeiro/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
           <Route path="/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
