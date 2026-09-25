@@ -9,13 +9,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  FormControl,
   Grid,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   TextField,
   Tooltip,
   Typography,
@@ -154,7 +150,9 @@ export function UsuariosTab() {
   const { data: usuarios = [] } = useUsuarios()
 
   const primaria = opcoesSelecionadas[0] ?? CADASTRO_PERFIS[0]!
-  const mostraSelectClinica = opcoesSelecionadas.some((o) => o.isClinica)
+  const mostraSelectClinica = opcoesSelecionadas.some(
+    (o) => o.isClinica === true || o.id === 'clinica' || o.perfil === 'CLINICA',
+  )
 
   const [nomeResponsavel, setNomeResponsavel] = useState('')
   const [clinicaSelecionada, setClinicaSelecionada] = useState('')
@@ -318,74 +316,87 @@ export function UsuariosTab() {
               lado mostra todos os cadastros do tipo selecionado.
             </Typography>
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: mostraSelectClinica ? 6 : 12 }}>
-                <Autocomplete
-                  multiple
-                  options={CADASTRO_PERFIS}
-                  value={opcoesSelecionadas}
-                  disableCloseOnSelect
-                  getOptionLabel={(option) => option.label}
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  onChange={(_, next) => {
-                    if (next.length === 0) {
-                      setOpcoesSelecionadas([])
-                      setClinicaSelecionada('')
+              <Grid size={12}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 2,
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Autocomplete
+                    multiple
+                    options={CADASTRO_PERFIS}
+                    value={opcoesSelecionadas}
+                    disableCloseOnSelect
+                    getOptionLabel={(option) => option.label}
+                    isOptionEqualToValue={(a, b) => a.id === b.id}
+                    sx={{ flex: 1, minWidth: 0, width: '100%' }}
+                    onChange={(_, next) => {
+                      if (next.length === 0) {
+                        setOpcoesSelecionadas([])
+                        setClinicaSelecionada('')
+                        setErro('')
+                        setSucesso('')
+                        return
+                      }
+                      const last = next[next.length - 1]!
+                      const prev = next.slice(0, -1)
+                      if (!podeCombinarOpcoes(prev, last)) {
+                        setErro(
+                          isCadastroEntidadeClinica(last)
+                            ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
+                            : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
+                        )
+                        return
+                      }
                       setErro('')
                       setSucesso('')
-                      return
-                    }
-                    const last = next[next.length - 1]!
-                    const prev = next.slice(0, -1)
-                    if (!podeCombinarOpcoes(prev, last)) {
-                      setErro(
-                        isCadastroEntidadeClinica(last)
-                          ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
-                          : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
-                      )
-                      return
-                    }
-                    setErro('')
-                    setSucesso('')
-                    setOpcoesSelecionadas(next)
-                    if (!next.some((o) => o.isClinica)) {
-                      setClinicaSelecionada('')
-                    }
-                  }}
-                  slotProps={{ chip: { size: 'small' } }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tipos de cadastro"
-                      placeholder="Selecione um ou mais"
-                      helperText={
-                        labelsSelecionados
-                          ? `Autorizado: ${labelsSelecionados}`
-                          : 'Escolha ao menos um tipo'
+                      setOpcoesSelecionadas(next)
+                      if (
+                        !next.some(
+                          (o) =>
+                            o.isClinica === true ||
+                            o.id === 'clinica' ||
+                            o.perfil === 'CLINICA',
+                        )
+                      ) {
+                        setClinicaSelecionada('')
                       }
+                    }}
+                    slotProps={{ chip: { size: 'small' } }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tipos de cadastro"
+                        placeholder="Selecione um ou mais"
+                        helperText={
+                          labelsSelecionados
+                            ? `Autorizado: ${labelsSelecionados}`
+                            : 'Escolha ao menos um tipo'
+                        }
+                      />
+                    )}
+                  />
+                  {mostraSelectClinica ? (
+                    <Autocomplete
+                      options={CLINICAS_HOSPITAL}
+                      value={clinicaSelecionada || null}
+                      onChange={(_, value) => setClinicaSelecionada(value ?? '')}
+                      sx={{ flex: 1, minWidth: 0, width: '100%' }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Clínica"
+                          placeholder="Selecione a clínica"
+                          required
+                        />
+                      )}
                     />
-                  )}
-                />
+                  ) : null}
+                </Box>
               </Grid>
-              {mostraSelectClinica && (
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth>
-                    <InputLabel id="cadastro-clinica-select-label">Clínica</InputLabel>
-                    <Select
-                      labelId="cadastro-clinica-select-label"
-                      id="cadastro-clinica-select"
-                      label="Clínica"
-                      value={clinicaSelecionada}
-                      onChange={(e) => setClinicaSelecionada(String(e.target.value))}
-                    >
-                      {CLINICAS_HOSPITAL.map((nomeClinica) => (
-                        <MenuItem key={nomeClinica} value={nomeClinica}>
-                          {nomeClinica}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              )}
               <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
