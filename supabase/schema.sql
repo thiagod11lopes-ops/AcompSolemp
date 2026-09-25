@@ -440,7 +440,6 @@ begin
       from public.profiles p
       where p.id = v_uid
         and p.tenant_id = v_tenant
-        and upper(coalesce(p.perfil, '')) in ('GESTOR', 'ADMINISTRADOR')
     )
   into v_allowed;
 

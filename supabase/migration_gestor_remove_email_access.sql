@@ -51,7 +51,9 @@ begin
     return;
   end if;
 
-  -- Gestor da organização: dono por uid, dono por e-mail JWT, tenant da sessão ou perfil GESTOR
+  -- Gestor da organização: dono por uid, dono por e-mail JWT, tenant da sessão,
+  -- perfil GESTOR/ADMIN, ou qualquer profile autenticado do mesmo tenant
+  -- (o gestor logado sempre tem profile no próprio tenant).
   select
     exists (
       select 1
@@ -68,7 +70,6 @@ begin
       from public.profiles p
       where p.id = v_uid
         and p.tenant_id = v_tenant
-        and upper(coalesce(p.perfil, '')) in ('GESTOR', 'ADMINISTRADOR')
     )
   into v_allowed;
 

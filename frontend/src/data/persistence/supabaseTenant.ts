@@ -180,11 +180,39 @@ export async function removeEmailAccess(
 ): Promise<void> {
   const trimmed = email.trim().toLowerCase()
   if (!trimmed) return
-  const { error } = await getSupabaseClient().rpc('remove_email_access_for_tenant', {
-    p_email: trimmed,
-    p_tenant_id: tenantId ?? null,
-  })
-  if (error) throw new Error(error.message)
+  const client = getSupabaseClient()
+
+  const tryRemove = async (withTenant: boolean) => {
+    const args = withTenant
+      ? { p_email: trimmed, p_tenant_id: tenantId ?? null }
+      : { p_email: trimmed }
+    return client.rpc('remove_email_access_for_tenant', args)
+  }
+
+  let { error } = await tryRemove(Boolean(tenantId))
+
+  // Migration antiga só aceita (p_email) — tenta de novo sem tenant.
+  if (
+    error &&
+    tenantId &&
+    /could not find the function|does not exist|PGRST202/i.test(error.message)
+  ) {
+    ;({ error } = await tryRemove(false))
+  }
+
+  if (!error) return
+
+  // Fallback: decline_team_email_invite já existe em produção e remove email_access
+  // (security definer) — desbloqueia exclusão enquanto a migration nova não roda.
+  if (/sem permissão|não autenticado|permission/i.test(error.message)) {
+    const { error: declineError } = await client.rpc('decline_team_email_invite', {
+      p_email: trimmed,
+    })
+    if (!declineError) return
+    throw new Error(declineError.message || error.message)
+  }
+
+  throw new Error(error.message)
 }
 
 export async function getEmailAccess(email: string): Promise<{
