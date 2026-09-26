@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { TimelineListToolbar } from '@/components/common/TimelineListToolbar'
 import { useOrdenadorPedidos } from '@/hooks/useOrdenadorPedidos'
+import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { formatCurrency, formatDate } from '@/utils/format'
@@ -65,37 +66,55 @@ export default function OrdenadorTimelinesPage() {
   const tituloEtapa = etapaChaveValida
     ? (ETAPA_LABEL[etapaChaveValida] ?? perfilLabel)
     : perfilLabel
+  const chavesArquivo = etapaChaveValida ? [etapaChaveValida] : chavesPerfil
+  const { data: processosArquivados = [] } = useProcessosArquivadosSetor(chavesArquivo)
 
   const isConcluidoSetor = useMemo(() => {
     return (pedido: PedidoComDetalhes) => {
       if (!user) return pedido.concluido
       if (etapaChaveValida) {
-        return pedidoEtapaConcluidaParaChave(pedido, etapas, etapaChaveValida)
+        return pedidoEtapaConcluidaParaChave(
+          pedido,
+          etapas,
+          etapaChaveValida,
+          processosArquivados,
+        )
       }
       if (isCadeia) {
-        return pedidoEtapaConcluidaParaChave(pedido, etapas, 'DIV_MAT_EMPENHADO')
+        return pedidoEtapaConcluidaParaChave(
+          pedido,
+          etapas,
+          'DIV_MAT_EMPENHADO',
+          processosArquivados,
+        )
       }
       const chave = chavesPerfil[0]
       if (!chave) return pedido.concluido
-      return pedidoEtapaConcluidaParaChave(pedido, etapas, chave)
+      return pedidoEtapaConcluidaParaChave(pedido, etapas, chave, processosArquivados)
     }
-  }, [user, etapas, etapaChaveValida, isCadeia, chavesPerfil])
+  }, [user, etapas, etapaChaveValida, isCadeia, chavesPerfil, processosArquivados])
 
   const isPendenteSetor = useMemo(() => {
     return (pedido: PedidoComDetalhes) => {
       if (!user) return false
       return etapaChaveValida
-        ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida)
-        : pedidoPendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
+        ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida, processosArquivados)
+        : pedidoPendenteParaPerfil(
+            pedido,
+            etapas,
+            user.perfil,
+            processosArquivados,
+            user,
+          )
     }
-  }, [user, etapas, etapaChaveValida])
+  }, [user, etapas, etapaChaveValida, processosArquivados])
 
   const pedidosEscopo = useMemo(() => {
     if (!etapaChaveValida) return pedidos
     return pedidos.filter((p) =>
-      pedidoRelacionadoParaChave(p, etapas, etapaChaveValida),
+      pedidoRelacionadoParaChave(p, etapas, etapaChaveValida, processosArquivados),
     )
-  }, [pedidos, etapas, etapaChaveValida])
+  }, [pedidos, etapas, etapaChaveValida, processosArquivados])
 
   const clinicas = useMemo(() => clinicasFromPedidos(pedidosEscopo), [pedidosEscopo])
 

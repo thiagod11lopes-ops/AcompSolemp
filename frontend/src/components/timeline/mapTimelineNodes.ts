@@ -131,14 +131,24 @@ function resolveSolicitacaoStatus(
   return 'active'
 }
 
+function etapaArquivadaNoPedido(pedidoId: string, etapaChave: string): boolean {
+  return Boolean(
+    loadAppData().processosArquivados?.some(
+      (arquivo) => arquivo.pedidoId === pedidoId && arquivo.etapaChave === etapaChave,
+    ),
+  )
+}
+
 function resolveNodeStatus(
   pedido: PedidoComDetalhes,
   historico: ReturnType<typeof resolveHistorico>,
   atual: boolean,
+  etapaChave?: string,
 ): TimelineNodeStatus {
   // Status por etapa: não usar pedido.concluido para pintar todos os cards.
   // Na clínica, IMH/Finanças encerram só a própria trilha.
   if (historico?.dataConclusao) return 'completed'
+  if (etapaChave && etapaArquivadaNoPedido(pedido.id, etapaChave)) return 'completed'
   if (atual) {
     if (pedido.prazoStatus === 'ATRASADO') return 'error'
     if (pedido.prazoStatus === 'PROXIMO_VENCIMENTO') return 'review'
@@ -202,12 +212,13 @@ export function buildTimelineNode(
     }
   }
 
+  const arquivada = etapaArquivadaNoPedido(pedido.id, etapa.chave)
   const atual =
-    etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao
+    etapasAtivasIds.includes(etapa.id) && !historico?.dataConclusao && !arquivada
   let status =
     etapa.chave === 'SOLICITACAO'
       ? resolveSolicitacaoStatus(pedido, etapas)
-      : resolveNodeStatus(pedido, historico, atual)
+      : resolveNodeStatus(pedido, historico, atual, etapa.chave)
 
   const aguardandoEmpenhar =
     etapa.chave === 'DIV_MAT_FINANCAS' &&
@@ -223,7 +234,9 @@ export function buildTimelineNode(
     pedido.planilhaDevolvidaParaChave === etapa.chave
 
   if (devolvidoNesteCard && status === 'completed') {
-    status = atual ? resolveNodeStatus(pedido, historico, atual) : 'active'
+    status = atual
+      ? resolveNodeStatus(pedido, historico, atual, etapa.chave)
+      : 'active'
   }
 
   const statusBand =

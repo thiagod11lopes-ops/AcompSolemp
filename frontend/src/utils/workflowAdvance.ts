@@ -8,7 +8,7 @@ import type {
   User,
   WorkflowEtapa,
 } from '@/types'
-import { getResponsavelParaEtapa } from '@/utils/workflow'
+import { getResponsavelParaEtapa, resolveEtapaFromRef } from '@/utils/workflow'
 import {
   getEtapaByChave,
   getDestinosEncaminhamentoAuditoria,
@@ -27,12 +27,32 @@ function completeEtapaById(
   pedido: Pedido,
   etapaId: string,
   observacao: string,
+  etapas: WorkflowEtapa[] = [],
 ): PedidoEtapaHistorico[] {
   const historico = pedido.etapasHistorico.map((h) => ({ ...h }))
-  const atual = historico.find((h) => h.etapaId === etapaId && h.dataConclusao === null)
-  if (atual) {
-    atual.dataConclusao = nowIso()
-    if (observacao) atual.observacao = observacao
+  const agora = nowIso()
+  let concluiu = false
+  for (const item of historico) {
+    if (item.dataConclusao) continue
+    const resolvida = resolveEtapaFromRef(item.etapaId, item.etapaNome, etapas)
+    const mesmoId = item.etapaId === etapaId
+    const mesmaEtapa = resolvida?.id === etapaId
+    if (!mesmoId && !mesmaEtapa) continue
+    item.dataConclusao = agora
+    if (observacao) item.observacao = observacao
+    // Alinha id/nome ao catálogo atual (evita pendência fantasma por id antigo).
+    if (resolvida) {
+      item.etapaId = resolvida.id
+      item.etapaNome = resolvida.nome
+    }
+    concluiu = true
+  }
+  if (!concluiu) {
+    const atual = historico.find((h) => h.etapaId === etapaId && h.dataConclusao === null)
+    if (atual) {
+      atual.dataConclusao = agora
+      if (observacao) atual.observacao = observacao
+    }
   }
   return historico
 }
@@ -310,8 +330,13 @@ export function advancePedidoEtapa(
 
   markEtapaNotificationsRead(data, pedidoId, etapaAtual.chave)
 
-  let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao)
-  let etapasAtivasIds = ativas.filter((id) => id !== etapaAtual.id)
+  let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao, etapas)
+  // Remove a etapa concluída mesmo se o id no pedido estiver defasado.
+  let etapasAtivasIds = ativas.filter((id) => {
+    if (id === etapaAtual.id) return false
+    const resolvida = resolveEtapaFromRef(id, undefined, etapas)
+    return resolvida?.id !== etapaAtual.id && resolvida?.chave !== etapaAtual.chave
+  })
 
   const proximasChaves =
     etapaAtual.chave === 'DIV_MAT_AUDITORIA'

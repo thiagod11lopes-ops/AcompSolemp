@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
 import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
 import { useAssinarSolemp, useDevolverPlanilha, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
+import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import { DevolverPlanilhaModal } from '@/components/ordenador/DevolverPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
@@ -19,6 +20,7 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import {
   chavePendenteParaPerfil,
+  chavesEtapaParaPerfil,
   pedidoPendenteParaChave,
   PERFIL_PARA_CHAVE_ETAPA,
 } from '@/utils/perfilEtapa'
@@ -54,10 +56,18 @@ export default function OrdenadorTimelineDetailPage() {
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const isConfeccao = Boolean(user && userHasPerfil(user, 'CONFECCAO_SOLEMP'))
+  const chavesArquivo = user ? chavesEtapaParaPerfil(user.perfil, user) : []
+  const { data: processosArquivados = [] } = useProcessosArquivadosSetor(chavesArquivo)
   const chavePendente = useMemo(() => {
     if (!user || !pedido) return null
-    return chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
-  }, [user, pedido, etapas])
+    return chavePendenteParaPerfil(
+      pedido,
+      etapas,
+      user.perfil,
+      processosArquivados,
+      user,
+    )
+  }, [user, pedido, etapas, processosArquivados])
   const chavePerfil = chavePendente ?? (user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null)
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
   const isAuditoria = Boolean(
@@ -65,7 +75,12 @@ export default function OrdenadorTimelineDetailPage() {
       (user &&
         userHasPerfil(user, 'AUDITORIA') &&
         pedido &&
-        pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_AUDITORIA')),
+        pedidoPendenteParaChave(
+          pedido,
+          etapas,
+          'DIV_MAT_AUDITORIA',
+          processosArquivados,
+        )),
   )
   const isContabilidade = chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoEtapa = chavePendente === 'DIV_MAT_CONFECCAO_SOLEMP'
@@ -353,6 +368,7 @@ export default function OrdenadorTimelineDetailPage() {
           <OrdenadorInteractiveTimeline
             pedido={pedido}
             etapas={etapas}
+            processosArquivados={processosArquivados}
             onAssinar={handleAssinar}
             assinando={assinar.isPending && !modalAberto}
             onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}

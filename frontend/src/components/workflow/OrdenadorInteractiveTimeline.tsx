@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
+import type { PedidoComDetalhes, ProcessoArquivado, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -26,6 +26,7 @@ import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
   etapas: WorkflowEtapa[]
+  processosArquivados?: ProcessoArquivado[]
   onAssinar?: () => void
   assinando?: boolean
   onReceberPlanilha?: () => void
@@ -48,6 +49,7 @@ interface OrdenadorInteractiveTimelineProps {
 export function OrdenadorInteractiveTimeline({
   pedido,
   etapas,
+  processosArquivados,
   onAssinar,
   assinando = false,
   onReceberPlanilha,
@@ -70,7 +72,13 @@ export function OrdenadorInteractiveTimeline({
   const [anexosModalOpen, setAnexosModalOpen] = useState(false)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
-    ? chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
+    ? chavePendenteParaPerfil(
+        pedido,
+        etapas,
+        user.perfil,
+        processosArquivados,
+        user,
+      )
     : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
@@ -111,7 +119,13 @@ export function OrdenadorInteractiveTimeline({
   const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
   const isAuditoriaAtiva =
     chavePendente === 'DIV_MAT_AUDITORIA' ||
-    (isAuditoriaUser && pedidoPendenteParaChave(pedido, visiveis, 'DIV_MAT_AUDITORIA'))
+    (isAuditoriaUser &&
+      pedidoPendenteParaChave(
+        pedido,
+        visiveis,
+        'DIV_MAT_AUDITORIA',
+        processosArquivados,
+      ))
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isRascunhoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_FINANCAS'
