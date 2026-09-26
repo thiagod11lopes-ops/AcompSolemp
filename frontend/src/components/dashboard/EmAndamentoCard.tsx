@@ -8,6 +8,7 @@ import {
 } from '@mui/material'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
 import {
+  dashboardCardIconOffsetSx,
   dashboardCardShellSx,
   dashboardCardTitleSx,
 } from '@/components/dashboard/dashboardCardStyles'
