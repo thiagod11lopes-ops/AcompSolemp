@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
   Box,
+  Card,
+  CardActionArea,
+  CardContent,
   Dialog,
   DialogContent,
   FormControl,
@@ -33,7 +36,6 @@ import {
 } from '@/utils/totalIndenizado'
 import { formatCurrency } from '@/utils/format'
 import { premiumTokens } from '@/theme/tokens'
-import { DashboardRingCard, ringScale } from '@/components/dashboard/DashboardRingCard'
 
 const MESES = [
   { value: 0, label: 'Janeiro' },
@@ -335,24 +337,58 @@ export function IndenizadoValorCard({
     () => linhas.reduce((acc, linha) => acc + (linha.valorIndenizado || 0), 0),
     [linhas],
   )
-  const cap = Math.max(totalGeral, 1)
-  const palette = accent === premiumTokens.orange ? 'warning' : 'info'
 
   return (
     <>
-      <DashboardRingCard
-        title={title}
-        value={formatCurrency(totalGeral)}
-        rings={[
-          ringScale(totalGeral, cap),
-          ringScale(totalGeral * 0.7, cap),
-          ringScale(Math.min(linhas.length, 100), 100),
-        ]}
-        palette={palette}
-        chartMinHeight={120}
-        onClick={() => setAberto(true)}
-        ariaLabel={`${title} — clique para filtrar por período`}
-      />
+      <Card
+        sx={{
+          height: '100%',
+          border: `1px solid ${alpha(accent, 0.22)}`,
+          boxShadow: premiumTokens.shadowSm,
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          '&:hover': {
+            transform: 'translateY(-3px)',
+            boxShadow: premiumTokens.shadow,
+          },
+        }}
+      >
+        <CardActionArea onClick={() => setAberto(true)} sx={{ height: '100%', alignItems: 'stretch' }}>
+          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
+              >
+                {title}
+              </Typography>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: `${premiumTokens.radiusSm}px`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: alpha(accent, 0.12),
+                  color: accent,
+                  border: `1px solid ${alpha(accent, 0.2)}`,
+                }}
+              >
+                {icon ?? <PaidOutlinedIcon />}
+              </Box>
+            </Box>
+
+            <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: accent }}>
+              {formatCurrency(totalGeral)}
+            </Typography>
+
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 'auto' }}>
+              {description} — clique para filtrar por período
+            </Typography>
+          </CardContent>
+        </CardActionArea>
+      </Card>
 
       <IndenizadoDetalheDialog
         open={aberto}
