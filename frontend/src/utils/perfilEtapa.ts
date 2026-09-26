@@ -25,7 +25,7 @@ export const PERFIS_SETOR: UserRole[] = [
   'CONFECCAO_SOLEMP',
 ]
 
-/** Etapas acionáveis pelo perfil ativo (cadeia só se o gestor autorizou Confecção + Rascunho). */
+/** Etapas acionáveis pelos tipos autorizados (perfis[]); cadeia se Confecção + Rascunho. */
 export function chavesEtapaParaPerfil(
   perfil: UserRole,
   user?: Pick<{ perfil: UserRole; perfis?: UserRole[] }, 'perfil' | 'perfis'>,
@@ -33,13 +33,36 @@ export function chavesEtapaParaPerfil(
   const perfis = user ? (user.perfis?.length ? user.perfis : [user.perfil]) : [perfil]
   const temConfeccao = perfis.includes('CONFECCAO_SOLEMP')
   const temFinanceiro = perfis.includes('FINANCEIRO')
+  const chaves = new Set<string>()
 
-  if (temConfeccao && temFinanceiro && (perfil === 'CONFECCAO_SOLEMP' || perfil === 'FINANCEIRO')) {
-    return [...CHAVES_CONFECCAO_CADEIA]
+  // União de todas as etapas dos setores cadastrados no mesmo usuário.
+  for (const p of perfis) {
+    if (p === 'CONFECCAO_SOLEMP' && temConfeccao && temFinanceiro) {
+      for (const c of CHAVES_CONFECCAO_CADEIA) chaves.add(c)
+      continue
+    }
+    if (p === 'CONFECCAO_SOLEMP') {
+      chaves.add('DIV_MAT_CONFECCAO_SOLEMP')
+      continue
+    }
+    if (p === 'FINANCEIRO') {
+      if (temConfeccao && temFinanceiro) {
+        for (const c of CHAVES_CONFECCAO_CADEIA) chaves.add(c)
+      } else {
+        chaves.add('DIV_MAT_FINANCAS')
+        chaves.add('DIV_MAT_EMPENHADO')
+      }
+      continue
+    }
+    const chave = PERFIL_PARA_CHAVE_ETAPA[p]
+    if (chave) chaves.add(chave)
   }
+
+  if (chaves.size > 0) return [...chaves]
+
+  // Fallback: só o perfil ativo (usuário sem perfis[] / papel legado).
   if (perfil === 'CONFECCAO_SOLEMP') return ['DIV_MAT_CONFECCAO_SOLEMP']
   if (perfil === 'FINANCEIRO') return ['DIV_MAT_FINANCAS', 'DIV_MAT_EMPENHADO']
-
   const chave = PERFIL_PARA_CHAVE_ETAPA[perfil]
   return chave ? [chave] : []
 }

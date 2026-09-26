@@ -17,12 +17,26 @@ import PaymentsIcon from '@mui/icons-material/Payments'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import TimelineIcon from '@mui/icons-material/Timeline'
+import FactCheckIcon from '@mui/icons-material/FactCheck'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { userTemCadeiaSolemp } from '@/utils/userPerfis'
+import {
+  setorNavItemsParaUsuario,
+  setorNavSubtitle,
+  userTemMultiSetorNav,
+} from '@/utils/setorNav'
+import type { UserRole } from '@/types'
 
 const DRAWER_WIDTH = 240
+
+const ICON_POR_PERFIL: Partial<Record<UserRole | string, React.ReactNode>> = {
+  AUDITORIA: <FactCheckIcon />,
+  CONTABILIDADE_IMH: <AccountBalanceIcon />,
+  CONFECCAO_SOLEMP: <TimelineIcon />,
+  FINANCEIRO: <PaymentsIcon />,
+  DIV_MAT_EMPENHADO: <HourglassTopIcon />,
+}
 
 const menuBase = [
   { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
@@ -33,29 +47,6 @@ const menuBase = [
     icon: <HourglassTopIcon />,
   },
   { path: '/financeiro/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
-]
-
-const menuConfeccaoCadeia = [
-  { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_CONFECCAO_SOLEMP',
-    label: 'Confecção de Solemp',
-    icon: <TimelineIcon />,
-  },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_FINANCAS',
-    label: 'Solemp em Rascunho',
-    icon: <PaymentsIcon />,
-  },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_EMPENHADO',
-    label: 'Empenhado',
-    icon: <HourglassTopIcon />,
-  },
-  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface FinanceiroSidebarProps {
@@ -69,8 +60,31 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const isConfeccao = Boolean(user && userTemCadeiaSolemp(user))
-  const menuItems = isConfeccao ? menuConfeccaoCadeia : menuBase
+  const multiSetor = Boolean(user && userTemMultiSetorNav(user))
+
+  const menuItems = (() => {
+    if (!user || !multiSetor) return menuBase
+    const setores = setorNavItemsParaUsuario(user).map((item) => ({
+      ...item,
+      icon:
+        (item.etapa === 'DIV_MAT_EMPENHADO'
+          ? ICON_POR_PERFIL.DIV_MAT_EMPENHADO
+          : item.perfil
+            ? ICON_POR_PERFIL[item.perfil]
+            : undefined) ?? <TimelineIcon />,
+    }))
+    return [
+      { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+      ...setores,
+      { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+    ]
+  })()
+
+  const titulo = multiSetor && user ? 'Meus setores' : 'Financeiro'
+  const subtitulo =
+    multiSetor && user ? setorNavSubtitle(user) : 'Pagamento de NF'
+  const perfilCaption =
+    multiSetor && user ? setorNavSubtitle(user) : 'Setor Financeiro'
 
   const drawer = (
     <Box>
@@ -79,10 +93,10 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
           <AccountBalanceIcon color="success" />
           <Box>
             <Typography variant="subtitle1" color="success.dark" sx={{ fontWeight: 700 }}>
-              {isConfeccao ? 'Cadeia Solemp' : 'Financeiro'}
+              {titulo}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {isConfeccao ? 'Confecção · Rascunho · Empenhado' : 'Pagamento de NF'}
+              {subtitulo}
             </Typography>
           </Box>
         </Box>
@@ -94,7 +108,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
             {user.nome}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {isConfeccao ? 'Confecção de Solemp' : 'Setor Financeiro'}
+            {perfilCaption}
           </Typography>
         </Box>
       )}
@@ -109,11 +123,12 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
           const isTimelinesPath = location.pathname.includes('/ordenador/timelines')
           const isActive = etapa
             ? isTimelinesPath && etapaAtual === etapa
-            : location.pathname.includes(item.path.replace(/^\//, ''))
+            : location.pathname.includes(item.path.replace(/^\//, '')) &&
+              !(multiSetor && isTimelinesPath && etapaAtual)
 
           return (
             <ListItemButton
-              key={`${item.path}-${etapa ?? 'default'}`}
+              key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
               component={NavLink}
               to={to}
               end={!etapa}

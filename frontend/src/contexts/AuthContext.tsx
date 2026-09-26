@@ -53,17 +53,30 @@ function applyTimelineLogin(
   },
   result: TimelineLoginResult,
 ): void {
-  const cadeia = userTemCadeiaSolemp(result.authUser)
-  setters.setClinicaUser(result.portal === 'clinica' ? result.authUser : null)
+  // Sessões já gravadas em completePortalLogin (multi-perfil / cadeia).
+  setters.setClinicaUser(authService.getClinicaUser())
+  setters.setOrdenadorUser(authService.getOrdenadorUser())
+  setters.setFinanceiroUser(authService.getFinanceiroUser())
 
-  if (cadeia && (result.portal === 'ordenador' || result.portal === 'financeiro')) {
-    setters.setOrdenadorUser({ ...result.authUser, perfil: 'CONFECCAO_SOLEMP' })
-    setters.setFinanceiroUser({ ...result.authUser, perfil: 'FINANCEIRO' })
-    return
+  // Fallback se storage ainda não refletiu o resultado desta chamada.
+  if (!authService.getClinicaUser() && result.portal === 'clinica') {
+    setters.setClinicaUser(result.authUser)
+  }
+  if (!authService.getOrdenadorUser() && result.portal === 'ordenador') {
+    setters.setOrdenadorUser(result.authUser)
+  }
+  if (!authService.getFinanceiroUser() && result.portal === 'financeiro') {
+    setters.setFinanceiroUser(result.authUser)
   }
 
-  setters.setOrdenadorUser(result.portal === 'ordenador' ? result.authUser : null)
-  setters.setFinanceiroUser(result.portal === 'financeiro' ? result.authUser : null)
+  if (userTemCadeiaSolemp(result.authUser)) {
+    if (!authService.getOrdenadorUser()) {
+      setters.setOrdenadorUser({ ...result.authUser, perfil: 'CONFECCAO_SOLEMP' })
+    }
+    if (!authService.getFinanceiroUser()) {
+      setters.setFinanceiroUser({ ...result.authUser, perfil: 'FINANCEIRO' })
+    }
+  }
 }
 
 function syncPortalUsersFromService(
@@ -146,14 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const logout = useCallback(async (portal: Portal) => {
-    const current =
-      portal === 'gestor'
-        ? gestorUser
-        : portal === 'clinica'
-          ? clinicaUser
-          : portal === 'ordenador'
-            ? ordenadorUser
-            : financeiroUser
     const wasImpersonating = Boolean(impersonationTargetEmail)
     await authService.logout(portal)
     if (wasImpersonating) {
@@ -166,18 +171,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     if (portal === 'gestor') setGestorUser(null)
-    else if (portal === 'clinica') setClinicaUser(null)
-    else if (portal === 'ordenador' || portal === 'financeiro') {
-      if (current && userTemCadeiaSolemp(current)) {
-        setOrdenadorUser(null)
-        setFinanceiroUser(null)
-      } else if (portal === 'ordenador') {
-        setOrdenadorUser(null)
-      } else {
-        setFinanceiroUser(null)
-      }
+    else {
+      // Multi-perfil / cadeia: logout de um portal limpa as sessões irmãs do mesmo usuário.
+      setClinicaUser(null)
+      setOrdenadorUser(null)
+      setFinanceiroUser(null)
     }
-  }, [gestorUser, clinicaUser, ordenadorUser, financeiroUser, impersonationTargetEmail])
+  }, [impersonationTargetEmail])
 
   const startDemo = useCallback(async (userId: string, tabTitle?: string) => {
     const result = await authService.startDemoMode(userId, tabTitle)

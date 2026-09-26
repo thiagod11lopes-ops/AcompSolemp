@@ -8,15 +8,11 @@ import {
   IconButton,
   Divider,
   Stack,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import AnchorIcon from '@mui/icons-material/Anchor'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -29,7 +25,7 @@ import { isMarinhaEmail, MARINHA_EMAIL_HINT, normalizeEmailKey } from '@/utils/e
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
-import { LOGIN_PERFIL_OPCOES, loginPerfilLabel } from '@/utils/loginPerfis'
+import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { premiumTokens } from '@/theme/tokens'
 import {
   clearTeamInviteAccepted,
@@ -38,23 +34,22 @@ import {
 } from '@/utils/teamInviteAcceptance'
 import type { UserRole } from '@/types'
 
-const PERFIS_LOGIN = [
-  'GESTOR',
+const PERFIS_EQUIPE = [
   'CLINICA',
   'MEDICAMENTO',
   'AUDITORIA',
   'CONTABILIDADE_IMH',
   'CONFECCAO_SOLEMP',
+  'FINANCEIRO',
+  'EMPENHADO',
 ] as const
 
 const localLoginSchema = z.object({
-  perfil: z.enum(PERFIS_LOGIN),
   login: z.string().min(1, 'Informe o e-mail ou login'),
   senha: z.string().min(1, 'Informe a senha'),
 })
 
 const supabaseLoginSchema = z.object({
-  perfil: z.enum(PERFIS_LOGIN),
   login: z
     .string()
     .min(1, 'Informe o e-mail')
@@ -65,8 +60,9 @@ const supabaseLoginSchema = z.object({
 type LoginForm = z.infer<typeof localLoginSchema>
 
 /**
- * Modal de entrada unificado: select de perfil + e-mail + senha.
- * Gestor cria o próprio banco; demais perfis usam o cadastro liberado pelo gestor.
+ * Entrada unificada: só e-mail + senha.
+ * - E-mail liberado pelo gestor → modal de aceite (1º acesso) e entra nos setores cadastrados.
+ * - E-mail livre → cria/entra como Gestor com banco próprio.
  */
 export default function LoginGestorPage() {
   const { login, loginSemSenha, register, logout } = useGestorAuth()
@@ -93,31 +89,22 @@ export default function LoginGestorPage() {
     register: registerField,
     handleSubmit,
     watch,
-    control,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(isSupabase ? supabaseLoginSchema : localLoginSchema),
     defaultValues: isSupabase
-      ? { perfil: 'GESTOR', login: '', senha: '' }
-      : { perfil: 'GESTOR', login: 'gestor', senha: 'gestor123' },
+      ? { login: '', senha: '' }
+      : { login: 'gestor', senha: 'gestor123' },
   })
 
   const emailHint = watch('login')
-  const perfilSelecionado = watch('perfil')
-  const isGestorSelecionado = perfilSelecionado === 'GESTOR'
-
-  const perfilOpcao = useMemo(
-    () => LOGIN_PERFIL_OPCOES.find((o) => o.perfil === perfilSelecionado),
-    [perfilSelecionado],
-  )
 
   const recognizedPerfilLabel = useMemo(
     () => (recognizedPerfil ? loginPerfilLabel(recognizedPerfil) : null),
     [recognizedPerfil],
   )
 
-  /** E-mail liberado pelo gestor: modal no primeiro acesso (qualquer perfil) até aceitar. */
+  /** E-mail liberado pelo gestor: modal no primeiro acesso até aceitar. */
   useEffect(() => {
     if (!isSupabase) return
 
@@ -147,7 +134,7 @@ export default function LoginGestorPage() {
           setGestorEmail(access.gestor_email)
           const perfil = access.perfil as UserRole
           setRecognizedPerfil(
-            (PERFIS_LOGIN as readonly string[]).includes(perfil) ? perfil : null,
+            (PERFIS_EQUIPE as readonly string[]).includes(perfil) ? perfil : null,
           )
           setPendingTeamInvite(true)
           setInfo('')
@@ -168,7 +155,7 @@ export default function LoginGestorPage() {
     setRecognizedEmail(email)
     setGestorEmail(access.gestor_email)
     const perfil = access.perfil as UserRole
-    setRecognizedPerfil((PERFIS_LOGIN as readonly string[]).includes(perfil) ? perfil : null)
+    setRecognizedPerfil((PERFIS_EQUIPE as readonly string[]).includes(perfil) ? perfil : null)
     setPendingTeamInvite(true)
     setTeamModalOpen(true)
   }
@@ -192,9 +179,6 @@ export default function LoginGestorPage() {
     markTeamInviteAccepted(recognizedEmail)
     setPendingTeamInvite(false)
     setTeamModalOpen(false)
-    if (recognizedPerfil) {
-      setValue('perfil', recognizedPerfil as LoginForm['perfil'])
-    }
     setInfo(
       'Cadastro aceito. Defina sua senha em Cadastrar-se (primeiro acesso) ou use Entrar se já tiver senha.',
     )
@@ -208,7 +192,6 @@ export default function LoginGestorPage() {
     setGestorEmail(null)
     setRecognizedPerfil(null)
     setPendingTeamInvite(false)
-    setValue('perfil', 'GESTOR')
     setInfo(
       'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor e montar o seu banco de dados.',
     )
@@ -218,47 +201,48 @@ export default function LoginGestorPage() {
     const authUser = authService.getGestorUser()
     if (!authUser || !canAccessGestorRoute(authUser.perfil)) {
       await logout()
-      setError('Este perfil não tem acesso de Gestor. Selecione o perfil correto.')
+      setError('Este e-mail não tem acesso de Gestor. Se foi cadastrado por um gestor, use o e-mail liberado em Cadastros.')
       return
     }
     navigate(redirectTo && redirectTo.startsWith('/gestor') ? redirectTo : '/gestor/dashboard')
+  }
+
+  const finishTimelineLogin = (route: string) => {
+    navigate(redirectTo && !redirectTo.includes('/login') ? redirectTo : route, {
+      replace: true,
+    })
   }
 
   const onSubmit = async (data: LoginForm) => {
     try {
       setError('')
 
-      if (data.perfil === 'GESTOR') {
-        if (isSupabase) {
-          const teamAccess = await authService.getTeamEmailAccess(data.login)
-          if (teamAccess) {
-            const ok = await ensureTeamInviteAccepted(data.login)
-            if (!ok) {
-              setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
-              return
-            }
-            setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
-            throw new Error(
-              `Este e-mail está na equipe de um gestor (${loginPerfilLabel(teamAccess.perfil as UserRole)}). Selecione esse perfil para entrar.`,
-            )
-          }
+      if (isSupabase) {
+        const teamAccess = await authService.getTeamEmailAccess(data.login)
+        if (teamAccess) {
+          const ok = await ensureTeamInviteAccepted(data.login)
+          if (!ok) return
+          const result = await loginWithEmailTimeline(data.login, data.senha)
+          finishTimelineLogin(result.route)
+          return
         }
         await login(data)
         await finishGestorLogin()
         return
       }
 
-      const ok = await ensureTeamInviteAccepted(data.login)
-      if (!ok) return
-
-      const result = await loginWithEmailTimeline(
-        data.login,
-        isSupabase ? data.senha : data.senha || undefined,
-        data.perfil,
-      )
-      navigate(redirectTo && !redirectTo.includes('/login') ? redirectTo : result.route, {
-        replace: true,
-      })
+      // Modo local: tenta timeline pelo e-mail; senão entra como gestor.
+      try {
+        const result = await loginWithEmailTimeline(
+          data.login,
+          data.senha || undefined,
+        )
+        finishTimelineLogin(result.route)
+        return
+      } catch {
+        await login(data)
+        await finishGestorLogin()
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao autenticar')
     }
@@ -268,9 +252,14 @@ export default function LoginGestorPage() {
     try {
       setError('')
       setOpenAccessLoading(true)
-      if (!isGestorSelecionado) {
-        setError('“Entrar sem senha” está disponível apenas para Gestor (dados locais neste navegador).')
-        return
+      if (isSupabase && emailHint?.trim() && isMarinhaEmail(emailHint)) {
+        const teamAccess = await authService.getTeamEmailAccess(emailHint)
+        if (teamAccess) {
+          setError(
+            '“Entrar sem senha” é só para Gestor com dados locais. Este e-mail está na equipe de um gestor — use senha após aceitar o cadastro.',
+          )
+          return
+        }
       }
       await loginSemSenha()
       await finishGestorLogin()
@@ -283,32 +272,23 @@ export default function LoginGestorPage() {
 
   const handleSignUp = async (values: { email: string; senha: string }) => {
     setError('')
-    const perfil = perfilSelecionado
 
-    if (perfil === 'GESTOR') {
-      if (isSupabase) {
-        const teamAccess = await authService.getTeamEmailAccess(values.email)
-        if (teamAccess) {
-          const ok = await ensureTeamInviteAccepted(values.email)
-          if (!ok) {
-            setValue('perfil', teamAccess.perfil as LoginForm['perfil'])
-            return
-          }
-          throw new Error(
-            `Este e-mail já foi liberado por um gestor como ${loginPerfilLabel(teamAccess.perfil as UserRole)}. Selecione esse perfil e use Cadastrar-se.`,
-          )
-        }
+    if (isSupabase) {
+      const teamAccess = await authService.getTeamEmailAccess(values.email)
+      if (teamAccess) {
+        const ok = await ensureTeamInviteAccepted(values.email)
+        if (!ok) return
+        const result = await registerWithEmailTimeline(values.email, values.senha)
+        finishTimelineLogin(result.route)
+        return
       }
       await register({ login: values.email, senha: values.senha })
       await finishGestorLogin()
       return
     }
 
-    const ok = await ensureTeamInviteAccepted(values.email)
-    if (!ok) return
-
-    const result = await registerWithEmailTimeline(values.email, values.senha, perfil)
-    navigate(result.route, { replace: true })
+    await register({ login: values.email, senha: values.senha })
+    await finishGestorLogin()
   }
 
   const busy = isSubmitting || openAccessLoading
@@ -342,7 +322,8 @@ export default function LoginGestorPage() {
           variant="body2"
           sx={{ mt: 0.75, color: '#475569', lineHeight: 1.5, px: 1 }}
         >
-          Entre com o e-mail cadastrado e o perfil correspondente
+          Entre com o e-mail institucional. O sistema reconhece se você é Gestor ou
+          equipe cadastrada.
         </Typography>
       </Box>
 
@@ -359,52 +340,21 @@ export default function LoginGestorPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl fullWidth margin="normal" error={Boolean(errors.perfil)}>
-          <InputLabel id="login-perfil-label">Entrar como</InputLabel>
-          <Controller
-            name="perfil"
-            control={control}
-            render={({ field }) => (
-              <Select
-                {...field}
-                labelId="login-perfil-label"
-                label="Entrar como"
-                disabled={busy}
-              >
-                {LOGIN_PERFIL_OPCOES.map((opcao) => (
-                  <MenuItem key={opcao.id} value={opcao.perfil}>
-                    {opcao.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            )}
-          />
-        </FormControl>
-
-        {perfilOpcao?.isGestor && (
-          <Alert severity="info" sx={{ mt: 1, mb: 0.5 }}>
-            Como Gestor você cria o seu banco de dados e cadastra a equipe na aba Cadastros.
-          </Alert>
-        )}
-
-        {!isGestorSelecionado && (
-          <Alert severity="info" sx={{ mt: 1, mb: 0.5 }}>
-            Use o e-mail @marinha.mil.br liberado pelo gestor em Cadastros como{' '}
-            <strong>{loginPerfilLabel(perfilSelecionado)}</strong>.
+        {!pendingTeamInvite && (
+          <Alert severity="info" sx={{ mb: 1.5 }}>
+            E-mail ainda não liberado por um gestor cria o seu próprio banco (Portal do
+            Gestor). E-mail cadastrado em Cadastros entra nos setores autorizados.
           </Alert>
         )}
 
         <TextField
           fullWidth
-          label={isSupabase || !isGestorSelecionado ? 'E-mail institucional' : 'Login'}
-          type={isSupabase || !isGestorSelecionado ? 'email' : 'text'}
+          label={isSupabase ? 'E-mail institucional' : 'E-mail ou login'}
+          type={isSupabase ? 'email' : 'text'}
           margin="normal"
-          placeholder={
-            isSupabase || !isGestorSelecionado ? 'seuemail@marinha.mil.br' : undefined
-          }
+          placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
           helperText={
-            errors.login?.message ??
-            (isSupabase || !isGestorSelecionado ? MARINHA_EMAIL_HINT : undefined)
+            errors.login?.message ?? (isSupabase ? MARINHA_EMAIL_HINT : undefined)
           }
           {...registerField('login')}
           error={Boolean(errors.login)}
@@ -455,18 +405,16 @@ export default function LoginGestorPage() {
         </Button>
       </form>
 
-      {isGestorSelecionado && (
-        <Button
-          fullWidth
-          variant="outlined"
-          size="large"
-          sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
-          disabled={busy || blockUntilInviteAccepted}
-          onClick={() => void onEntrarSemSenha()}
-        >
-          {openAccessLoading ? 'Entrando...' : 'Entrar sem senha'}
-        </Button>
-      )}
+      <Button
+        fullWidth
+        variant="outlined"
+        size="large"
+        sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
+        disabled={busy || blockUntilInviteAccepted}
+        onClick={() => void onEntrarSemSenha()}
+      >
+        {openAccessLoading ? 'Entrando...' : 'Entrar sem senha'}
+      </Button>
 
       {isSupabase && (
         <Stack spacing={1.5} sx={{ mt: 1.5 }}>
@@ -477,9 +425,7 @@ export default function LoginGestorPage() {
             helperText={
               blockUntilInviteAccepted
                 ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
-                : isGestorSelecionado
-                  ? 'Cadastrar-se como Gestor cria o seu banco. Só funciona se o e-mail ainda não foi liberado em Cadastros por outro gestor.'
-                  : `Primeiro acesso: o gestor já deve ter cadastrado seu e-mail como ${loginPerfilLabel(perfilSelecionado)}.`
+                : 'Cadastrar-se: se o e-mail foi liberado pelo gestor, entra na equipe; senão, cria o banco do Gestor.'
             }
             onSubmit={handleSignUp}
           />
@@ -493,7 +439,7 @@ export default function LoginGestorPage() {
         sx={{ display: 'block', color: '#64748B', lineHeight: 1.55 }}
       >
         {isSupabase
-          ? 'Equipe: e-mail liberado pelo gestor + perfil correto. Gestor: Cadastrar-se cria o banco da organização.'
+          ? 'Equipe: e-mail liberado pelo gestor. Gestor: Cadastrar-se com e-mail livre cria o banco da organização. Vários setores no mesmo cadastro aparecem como abas à esquerda após o login.'
           : 'Demo Gestor: gestor / gestor123. Demais perfis: e-mail cadastrado no AppData local.'}
       </Typography>
 

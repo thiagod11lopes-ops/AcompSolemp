@@ -23,6 +23,7 @@ import {
   canAccessGestorRoute,
   canAccessOrdenadorRoute,
   canAccessFinanceiroRoute,
+  canAccessClinicaRoute,
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
@@ -190,7 +191,27 @@ async function completePortalLogin(
 
   setSession(portal, authUser)
 
-  // Dual session só quando o gestor autorizou Confecção E Solemp em Rascunho.
+  // Sessões paralelas para todos os portais autorizados em perfis[].
+  const perfisAuth = userPerfis(authUser)
+  const temClinica = perfisAuth.some((p) => canAccessClinicaRoute(p))
+  const temOrdenador = perfisAuth.some((p) => canAccessOrdenadorRoute(p))
+  const temFinanceiro = perfisAuth.some((p) => canAccessFinanceiroRoute(p))
+
+  if (temClinica && portal !== 'clinica') {
+    const perfilClinica =
+      perfisAuth.find((p) => canAccessClinicaRoute(p)) ?? 'CLINICA'
+    setSession('clinica', { ...authUser, perfil: perfilClinica })
+  }
+  if (temOrdenador && portal !== 'ordenador') {
+    const perfilOrd =
+      perfisAuth.find((p) => canAccessOrdenadorRoute(p)) ?? 'CONFECCAO_SOLEMP'
+    setSession('ordenador', { ...authUser, perfil: perfilOrd })
+  }
+  if (temFinanceiro && portal !== 'financeiro') {
+    setSession('financeiro', { ...authUser, perfil: 'FINANCEIRO' })
+  }
+
+  // Dual session da cadeia Confecção + Solemp em Rascunho.
   if (userTemCadeiaSolemp(authUser)) {
     if (portal === 'ordenador') {
       setSession('financeiro', { ...authUser, perfil: 'FINANCEIRO' })
@@ -307,7 +328,7 @@ export const authService = {
     const teamAccess = await getEmailAccess(marinhaEmail)
     if (teamAccess) {
       throw new Error(
-        'Este e-mail foi cadastrado pelo gestor para a Timeline. Use Entrar na Timeline (não no Portal do Gestor).',
+        'Este e-mail foi cadastrado por um gestor na equipe. Use Entrar após aceitar o cadastro (não cria Portal do Gestor).',
       )
     }
 
@@ -334,7 +355,7 @@ export const authService = {
     const teamAccess = await getEmailAccess(marinhaEmail)
     if (teamAccess) {
       throw new Error(
-        'Este e-mail foi cadastrado pelo gestor. Use Cadastrar-se na Timeline para criar a senha — não cria Portal do Gestor.',
+        'Este e-mail foi cadastrado por um gestor. Aceite o cadastro e use Cadastrar-se para criar a senha — não cria Portal do Gestor.',
       )
     }
 
@@ -463,7 +484,7 @@ export const authService = {
     if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
       const labels = userPerfis(user).map((p) => loginPerfilLabel(p)).join(', ')
       throw new Error(
-        `Este e-mail está cadastrado como: ${labels}. Selecione um desses tipos no login.`,
+        `Este e-mail está cadastrado como: ${labels}. Não é necessário escolher o tipo — entre só com e-mail e senha.`,
       )
     }
 
@@ -588,7 +609,7 @@ export const authService = {
     if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
       const labels = userPerfis(user).map((p) => loginPerfilLabel(p)).join(', ')
       throw new Error(
-        `Este e-mail está cadastrado como: ${labels}. Selecione um desses tipos no login.`,
+        `Este e-mail está cadastrado como: ${labels}. Não é necessário escolher o tipo — entre só com e-mail e senha.`,
       )
     }
 
@@ -606,6 +627,18 @@ export const authService = {
     await delay(null, 100)
     const current = readStoredUser(sessionKey(portal))
     setSession(portal, null)
+
+    // Multi-perfil: limpa sessões irmãs do mesmo usuário.
+    if (current) {
+      const siblings: Portal[] = ['clinica', 'ordenador', 'financeiro']
+      for (const sibling of siblings) {
+        if (sibling === portal) continue
+        const other = readStoredUser(sessionKey(sibling))
+        if (other && other.id === current.id) {
+          setSession(sibling, null)
+        }
+      }
+    }
 
     if (current && userTemCadeiaSolemp(current)) {
       setSession('ordenador', null)

@@ -22,7 +22,6 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { getRoleLabel } from '@/mocks/seed'
 import {
-  CHAVES_CONFECCAO_CADEIA,
   chavesEtapaParaPerfil,
   pedidoEtapaConcluidaParaChave,
   pedidoPendenteParaChave,
@@ -38,8 +37,12 @@ import {
 } from '@/utils/timelineListFilter'
 import type { PedidoComDetalhes } from '@/types'
 import { userTemCadeiaSolemp } from '@/utils/userPerfis'
+import { etapasNavPermitidas } from '@/utils/setorNav'
+import { loginPerfilLabel } from '@/utils/loginPerfis'
 
 const ETAPA_LABEL: Record<string, string> = {
+  DIV_MAT_AUDITORIA: 'Auditoria',
+  DIV_MAT_CONTABILIDADE_IMH: 'IMH',
   DIV_MAT_CONFECCAO_SOLEMP: 'Confecção de Solemp',
   DIV_MAT_FINANCAS: 'Solemp em Rascunho',
   DIV_MAT_EMPENHADO: 'Empenhado',
@@ -56,17 +59,20 @@ export default function OrdenadorTimelinesPage() {
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const isCadeia = Boolean(user && userTemCadeiaSolemp(user))
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
+  const etapasPermitidas = user ? etapasNavPermitidas(user) : []
   const etapaFiltro = searchParams.get('etapa')
   const etapaChaveValida =
-    etapaFiltro &&
-    (CHAVES_CONFECCAO_CADEIA as readonly string[]).includes(etapaFiltro) &&
-    isCadeia
-      ? etapaFiltro
-      : null
+    etapaFiltro && etapasPermitidas.includes(etapaFiltro) ? etapaFiltro : null
   const tituloEtapa = etapaChaveValida
-    ? (ETAPA_LABEL[etapaChaveValida] ?? perfilLabel)
-    : perfilLabel
-  const chavesArquivo = etapaChaveValida ? [etapaChaveValida] : chavesPerfil
+    ? (ETAPA_LABEL[etapaChaveValida] ?? loginPerfilLabel(user!.perfil) ?? perfilLabel)
+    : user && etapasPermitidas.length > 1
+      ? 'Meus setores'
+      : perfilLabel
+  const chavesArquivo = etapaChaveValida
+    ? [etapaChaveValida]
+    : etapasPermitidas.length > 0
+      ? etapasPermitidas
+      : chavesPerfil
   const { data: processosArquivados = [] } = useProcessosArquivadosSetor(chavesArquivo)
 
   const isConcluidoSetor = useMemo(() => {
@@ -97,24 +103,39 @@ export default function OrdenadorTimelinesPage() {
   const isPendenteSetor = useMemo(() => {
     return (pedido: PedidoComDetalhes) => {
       if (!user) return false
-      return etapaChaveValida
-        ? pedidoPendenteParaChave(pedido, etapas, etapaChaveValida, processosArquivados)
-        : pedidoPendenteParaPerfil(
-            pedido,
-            etapas,
-            user.perfil,
-            processosArquivados,
-            user,
-          )
+      if (etapaChaveValida) {
+        return pedidoPendenteParaChave(pedido, etapas, etapaChaveValida, processosArquivados)
+      }
+      if (etapasPermitidas.length > 1) {
+        return etapasPermitidas.some((chave) =>
+          pedidoPendenteParaChave(pedido, etapas, chave, processosArquivados),
+        )
+      }
+      return pedidoPendenteParaPerfil(
+        pedido,
+        etapas,
+        user.perfil,
+        processosArquivados,
+        user,
+      )
     }
-  }, [user, etapas, etapaChaveValida, processosArquivados])
+  }, [user, etapas, etapaChaveValida, etapasPermitidas, processosArquivados])
 
   const pedidosEscopo = useMemo(() => {
-    if (!etapaChaveValida) return pedidos
-    return pedidos.filter((p) =>
-      pedidoRelacionadoParaChave(p, etapas, etapaChaveValida, processosArquivados),
-    )
-  }, [pedidos, etapas, etapaChaveValida, processosArquivados])
+    if (etapaChaveValida) {
+      return pedidos.filter((p) =>
+        pedidoRelacionadoParaChave(p, etapas, etapaChaveValida, processosArquivados),
+      )
+    }
+    if (etapasPermitidas.length > 1) {
+      return pedidos.filter((p) =>
+        etapasPermitidas.some((chave) =>
+          pedidoRelacionadoParaChave(p, etapas, chave, processosArquivados),
+        ),
+      )
+    }
+    return pedidos
+  }, [pedidos, etapas, etapaChaveValida, etapasPermitidas, processosArquivados])
 
   const clinicas = useMemo(() => clinicasFromPedidos(pedidosEscopo), [pedidosEscopo])
 

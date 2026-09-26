@@ -17,39 +17,32 @@ import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
+import FactCheckIcon from '@mui/icons-material/FactCheck'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { userTemCadeiaSolemp } from '@/utils/userPerfis'
+import { loginPerfilLabel } from '@/utils/loginPerfis'
+import {
+  setorNavItemsParaUsuario,
+  setorNavSubtitle,
+  userTemMultiSetorNav,
+} from '@/utils/setorNav'
+import type { UserRole } from '@/types'
 
 const DRAWER_WIDTH = 240
+
+const ICON_POR_PERFIL: Partial<Record<UserRole | string, React.ReactNode>> = {
+  AUDITORIA: <FactCheckIcon />,
+  CONTABILIDADE_IMH: <AccountBalanceIcon />,
+  CONFECCAO_SOLEMP: <TimelineIcon />,
+  FINANCEIRO: <PaymentsIcon />,
+  DIV_MAT_EMPENHADO: <HourglassTopIcon />,
+}
 
 const menuBase = [
   { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/ordenador/timelines', label: 'Timelines pendentes', icon: <TimelineIcon /> },
-  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
-]
-
-const menuConfeccaoCadeia = [
-  { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_CONFECCAO_SOLEMP',
-    label: 'Confecção de Solemp',
-    icon: <TimelineIcon />,
-  },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_FINANCAS',
-    label: 'Solemp em Rascunho',
-    icon: <PaymentsIcon />,
-  },
-  {
-    path: '/ordenador/timelines',
-    etapa: 'DIV_MAT_EMPENHADO',
-    label: 'Empenhado',
-    icon: <HourglassTopIcon />,
-  },
   { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
@@ -64,8 +57,31 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const isConfeccao = Boolean(user && userTemCadeiaSolemp(user))
-  const menuItems = isConfeccao ? menuConfeccaoCadeia : menuBase
+  const multiSetor = Boolean(user && userTemMultiSetorNav(user))
+
+  const menuItems = (() => {
+    if (!user || !multiSetor) return menuBase
+    const setores = setorNavItemsParaUsuario(user).map((item) => ({
+      ...item,
+      icon:
+        (item.etapa === 'DIV_MAT_EMPENHADO'
+          ? ICON_POR_PERFIL.DIV_MAT_EMPENHADO
+          : item.perfil
+            ? ICON_POR_PERFIL[item.perfil]
+            : undefined) ?? <TimelineIcon />,
+    }))
+    return [
+      { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+      ...setores,
+      { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+    ]
+  })()
+
+  const titulo = multiSetor && user ? 'Meus setores' : 'Ordenador de Despesa'
+  const subtitulo =
+    multiSetor && user ? setorNavSubtitle(user) : 'Assinatura de SOLEMP'
+  const perfilCaption =
+    multiSetor && user ? setorNavSubtitle(user) : user ? loginPerfilLabel(user.perfil) : ''
 
   const drawer = (
     <Box>
@@ -74,10 +90,10 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
           <GavelIcon color="warning" />
           <Box>
             <Typography variant="subtitle1" color="warning.dark" sx={{ fontWeight: 700 }}>
-              {isConfeccao ? 'Cadeia Solemp' : 'Ordenador de Despesa'}
+              {titulo}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {isConfeccao ? 'Confecção · Rascunho · Empenhado' : 'Assinatura de SOLEMP'}
+              {subtitulo}
             </Typography>
           </Box>
         </Box>
@@ -89,7 +105,7 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
             {user.nome}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {isConfeccao ? 'Confecção de Solemp' : 'Ordenador de Despesa'}
+            {perfilCaption}
           </Typography>
         </Box>
       )}
@@ -104,11 +120,12 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
           const isTimelinesPath = location.pathname.includes('/ordenador/timelines')
           const isActive = etapa
             ? isTimelinesPath && etapaAtual === etapa
-            : location.pathname.includes(item.path.replace(/^\//, ''))
+            : location.pathname.includes(item.path.replace(/^\//, '')) &&
+              !(multiSetor && isTimelinesPath && etapaAtual)
 
           return (
             <ListItemButton
-              key={`${item.path}-${etapa ?? 'default'}`}
+              key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
               component={NavLink}
               to={to}
               end={!etapa}
