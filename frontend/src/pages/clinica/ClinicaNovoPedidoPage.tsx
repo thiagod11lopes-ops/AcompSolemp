@@ -878,22 +878,35 @@ export default function ClinicaNovoPedidoPage() {
     setAnexoPerguntaOpen(true)
   }
 
-  const handleAnexoPerguntaNao = () => {
-    setEnvioAnexos([])
+  const abrirModalEnvioPlanilha = (anexos: File[] = []) => {
+    setEnvioAnexos(anexos)
     setAnexoPerguntaOpen(false)
-    setEnvioModalOpen(true)
+    // Garante abertura após fechar o diálogo anterior / seletor do sistema.
+    window.setTimeout(() => {
+      setEnvioModalOpen(true)
+    }, 0)
+  }
+
+  const handleAnexoPerguntaNao = () => {
+    abrirModalEnvioPlanilha([])
   }
 
   const handleAnexoPerguntaSim = () => {
-    anexoInputRef.current?.click()
+    // Fecha a pergunta antes do seletor nativo (evita conflito de foco do Dialog).
+    setAnexoPerguntaOpen(false)
+    window.setTimeout(() => {
+      anexoInputRef.current?.click()
+    }, 120)
   }
 
   const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files
-    const validos = selected ? filterPlanilhaAnexoFiles(selected) : []
     event.target.value = ''
 
+    // Cancelou o seletor: não abre o modal de destinos.
     if (!selected || selected.length === 0) return
+
+    const validos = filterPlanilhaAnexoFiles(selected)
 
     if (validos.length === 0) {
       setFeedback({
@@ -902,6 +915,8 @@ export default function ClinicaNovoPedidoPage() {
         message:
           'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
       })
+      // Mesmo sem anexo válido, abre o modal para enviar a planilha.
+      abrirModalEnvioPlanilha([])
       return
     }
 
@@ -913,9 +928,8 @@ export default function ClinicaNovoPedidoPage() {
       })
     }
 
-    setEnvioAnexos(validos)
-    setAnexoPerguntaOpen(false)
-    setEnvioModalOpen(true)
+    // Após "Abrir" no seletor do sistema → modal IMH / Div. Material.
+    abrirModalEnvioPlanilha(validos)
   }
 
   const handleEnviarPlanilhas = async () => {
