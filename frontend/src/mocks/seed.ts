@@ -1116,7 +1116,11 @@ function mergePlanilhaEnvioSnapshots(
     divMaterialLinhas: base.divMaterialLinhas?.length
       ? base.divMaterialLinhas
       : other.divMaterialLinhas,
-    enviadoEm: pickNewerIso(localSnap.enviadoEm, remoteSnap.enviadoEm),
+    enviadoEm:
+      pickNewerIso(localSnap.enviadoEm, remoteSnap.enviadoEm) ??
+      localSnap.enviadoEm ??
+      remoteSnap.enviadoEm ??
+      new Date().toISOString(),
     recebidaEm: pickNewerIso(localSnap.recebidaEm, remoteSnap.recebidaEm),
     encaminhadaImhEm: pickNewerIso(localSnap.encaminhadaImhEm, remoteSnap.encaminhadaImhEm),
     recebidaImhEm: pickNewerIso(localSnap.recebidaImhEm, remoteSnap.recebidaImhEm),
