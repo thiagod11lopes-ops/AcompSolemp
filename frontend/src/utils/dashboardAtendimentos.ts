@@ -34,13 +34,26 @@ export function nipsUnicosPlanilhaImh(planilha: PedidoPlanilhaEnvioState): Set<s
   return nips
 }
 
+function planilhasDePedidosVivos(
+  data: AppData,
+): PedidoPlanilhaEnvioState[] {
+  const alive = new Set((data.pedidos ?? []).map((p) => p.id))
+  const excluded = new Set(data.pedidosExcluidosIds ?? [])
+  const planilhas: PedidoPlanilhaEnvioState[] = []
+  for (const [pedidoId, planilha] of Object.entries(data.pedidoPlanilhaEnvio ?? {})) {
+    if (!alive.has(pedidoId) || excluded.has(pedidoId)) continue
+    planilhas.push(planilha)
+  }
+  return planilhas
+}
+
 /**
- * Pessoas atendidas: NIPs únicos por planilha IMH, somados entre planilhas.
- * O mesmo NIP em outra planilha conta de novo.
+ * Pessoas atendidas: NIPs únicos por planilha IMH, somados entre planilhas de
+ * timelines ainda existentes. Exclusão de timeline zera a contribuição.
  */
 export function contarPessoasAtendidas(data: AppData): number {
   let total = 0
-  for (const planilha of Object.values(data.pedidoPlanilhaEnvio ?? {})) {
+  for (const planilha of planilhasDePedidosVivos(data)) {
     const nips = nipsUnicosPlanilhaImh(planilha)
     if (nips.size === 0) continue
     total += nips.size
@@ -58,10 +71,13 @@ function linhaDivMaterialContabilizavel(linha: DivMaterialLinha): boolean {
   )
 }
 
-/** Procedimentos: todas as linhas preenchidas das planilhas Div. Material. */
+/**
+ * Procedimentos: linhas preenchidas das planilhas Div. Material de timelines
+ * ainda existentes. Sem fluxos restantes, o total fica zero.
+ */
 export function contarProcedimentosDivMaterial(data: AppData): number {
   let total = 0
-  for (const planilha of Object.values(data.pedidoPlanilhaEnvio ?? {})) {
+  for (const planilha of planilhasDePedidosVivos(data)) {
     for (const linha of planilha.divMaterialLinhas ?? []) {
       if (linhaDivMaterialContabilizavel(linha)) total += 1
     }

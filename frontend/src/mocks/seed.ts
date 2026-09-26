@@ -37,6 +37,7 @@ import {
 } from '@/utils/consumoMaterialTemplate'
 import {
   archiveActivePedidosAsFinalized,
+  purgeOrphanPedidoSideData,
   removePedidosFromAppData,
 } from '@/utils/pedidoCleanup'
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
@@ -331,7 +332,9 @@ export function generateEmptyTenantData(): AppData {
     consumoPlanilha: {},
     planilhasLivres: {},
     pedidoPlanilhaEnvio: {},
+    planilhaAnexosPorPedido: {},
     processosArquivados: [],
+    pedidosExcluidosIds: [],
   }
 }
 
@@ -478,6 +481,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
   if (!data.planilhaAnexosPorPedido) data.planilhaAnexosPorPedido = {}
   if (!data.processosArquivados) data.processosArquivados = []
+  if (!data.pedidosExcluidosIds) data.pedidosExcluidosIds = []
   if (!data.chatMensagens) data.chatMensagens = []
   data.chatMensagens = (data.chatMensagens ?? []).map((m) => ({
     ...m,
@@ -524,7 +528,18 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   syncPagamentoPendenteNotifications(data)
   syncPrazoCorrecaoNotifications(data)
   const notifChanged = data.notificacoes.length > beforeNotifCount
-  return { data, changed: changed || notifChanged || confeccaoUserChanged || bootstrapEmailChanged || workflowChanged || perfisChanged }
+  const orphanChanged = purgeOrphanPedidoSideData(data)
+  return {
+    data,
+    changed:
+      changed ||
+      notifChanged ||
+      confeccaoUserChanged ||
+      bootstrapEmailChanged ||
+      workflowChanged ||
+      perfisChanged ||
+      orphanChanged,
+  }
 }
 
 function ensureWorkflowSemEtapasRemovidas(data: AppData): boolean {
@@ -1083,10 +1098,22 @@ function mergeById<T extends { id: string }>(remoteList: T[], localList: T[]): T
 }
 
 /** Mantém pedidos locais recém-criados e evita regressão de histórico por sync atrasado. */
-function mergePedidosPreservingLocal(remoteList: Pedido[], localList: Pedido[]): Pedido[] {
+function mergePedidosPreservingLocal(
+  remoteList: Pedido[],
+  localList: Pedido[],
+  excludedIds?: Iterable<string>,
+): Pedido[] {
+  const excluded = new Set(excludedIds ?? [])
   const byId = new Map<string, Pedido>()
-  for (const item of remoteList) byId.set(item.id, item)
+  for (const item of remoteList) {
+    if (excluded.has(item.id)) continue
+    byId.set(item.id, item)
+  }
   for (const item of localList) {
+    if (excluded.has(item.id)) {
+      byId.delete(item.id)
+      continue
+    }
     const existing = byId.get(item.id)
     if (!existing) {
       byId.set(item.id, item)
@@ -1192,16 +1219,35 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
   remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
   remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
   remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
-  remote.pedidos = mergePedidosPreservingLocal(remote.pedidos ?? [], local.pedidos ?? [])
-  remote.historico = mergeById(remote.historico ?? [], local.historico ?? [])
-  remote.solemp = mergeById(remote.solemp ?? [], local.solemp ?? [])
-  remote.notasFiscais = mergeById(remote.notasFiscais ?? [], local.notasFiscais ?? [])
+
+  const excludedIds = [
+    ...new Set([...(remote.pedidosExcluidosIds ?? []), ...(local.pedidosExcluidosIds ?? [])]),
+  ]
+  remote.pedidosExcluidosIds = excludedIds
+  remote.pedidos = mergePedidosPreservingLocal(
+    remote.pedidos ?? [],
+    local.pedidos ?? [],
+    excludedIds,
+  )
+  const alivePedidoIds = new Set(remote.pedidos.map((p) => p.id))
+
+  remote.historico = mergeById(remote.historico ?? [], local.historico ?? []).filter(
+    (item) => alivePedidoIds.has(item.pedidoId),
+  )
+  remote.solemp = mergeById(remote.solemp ?? [], local.solemp ?? []).filter((item) =>
+    alivePedidoIds.has(item.pedidoId),
+  )
+  remote.notasFiscais = mergeById(remote.notasFiscais ?? [], local.notasFiscais ?? []).filter(
+    (item) => alivePedidoIds.has(item.pedidoId),
+  )
   remote.processosArquivados = mergeById(
     remote.processosArquivados ?? [],
     local.processosArquivados ?? [],
-  )
+  ).filter((item) => alivePedidoIds.has(item.pedidoId))
   if (local.notificacoes?.length || remote.notificacoes?.length) {
-    remote.notificacoes = mergeById(remote.notificacoes ?? [], local.notificacoes ?? [])
+    remote.notificacoes = mergeById(remote.notificacoes ?? [], local.notificacoes ?? []).filter(
+      (item) => !item.pedidoId || alivePedidoIds.has(item.pedidoId),
+    )
   }
 
   const localIndex = local.planilhaAnexosPorPedido ?? {}
@@ -1216,6 +1262,13 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
   if (!remote.pedidoPlanilhaEnvio) remote.pedidoPlanilhaEnvio = {}
 
   for (const pedidoId of pedidoIds) {
+    // Timeline excluída: não ressuscita planilha (Pessoas/Procedimentos).
+    if (!alivePedidoIds.has(pedidoId) || excludedIds.includes(pedidoId)) {
+      delete remote.pedidoPlanilhaEnvio[pedidoId]
+      delete remoteIndex[pedidoId]
+      continue
+    }
+
     const localSnap = local.pedidoPlanilhaEnvio?.[pedidoId]
     const remoteSnap = remote.pedidoPlanilhaEnvio[pedidoId]
     const mergedAnexos = mergeAnexoLists(
@@ -1249,9 +1302,12 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
 
   const arquivosById = new Map<string, ArquivoAnexo>()
   for (const arquivo of [...(remote.arquivos ?? []), ...(local.arquivos ?? [])]) {
-    if (arquivo.pedidoId) arquivosById.set(arquivo.id, { ...arquivo })
+    if (!arquivo.pedidoId || !alivePedidoIds.has(arquivo.pedidoId)) continue
+    arquivosById.set(arquivo.id, { ...arquivo })
   }
   remote.arquivos = [...arquivosById.values()]
+
+  purgeOrphanPedidoSideData(remote)
 
   return remote
 }

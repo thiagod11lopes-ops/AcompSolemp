@@ -777,6 +777,11 @@ export interface AppData {
    */
   planilhaAnexosPorPedido?: Record<string, ArquivoAnexo[]>
   processosArquivados?: ProcessoArquivado[]
+  /**
+   * Timelines excluídas — impede sync antigo de ressuscitar pedido/planilha
+   * (e com isso manter Pessoas atendidas / Procedimentos fantasmas).
+   */
+  pedidosExcluidosIds?: string[]
   /** Mensagens do bate-papo entre setores (DM + grupo geral) */
   chatMensagens?: ChatMessage[]
   /** Metadados da organização (multi-tenant) */
