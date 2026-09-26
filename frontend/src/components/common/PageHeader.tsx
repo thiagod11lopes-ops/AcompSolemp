@@ -1,56 +1,37 @@
-import { Box, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import type { ReactNode } from 'react'
-import { premiumTokens } from '@/theme/tokens'
+import { usePageTitle } from '@/contexts/PageTitleContext'
 
 interface PageHeaderProps {
   title: string
   subtitle?: string
   action?: ReactNode
   titleAdornment?: ReactNode
-  /** h6 alinha ao título do TopBar (ex.: Portal do Gestor — SOLEMP) */
+  /** Mantido por compatibilidade; o título vai para a TopBar. */
   titleVariant?: 'h4' | 'h6'
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  action,
-  titleAdornment,
-  titleVariant = 'h4',
-}: PageHeaderProps) {
+/**
+ * Envia título/subtítulo para a barra superior e, se houver, renderiza só as ações
+ * no conteúdo da página (sem cabeçalho duplicado).
+ */
+export function PageHeader({ title, subtitle, action, titleAdornment }: PageHeaderProps) {
+  usePageTitle(title, subtitle)
+
+  if (!action && !titleAdornment) return null
+
   return (
     <Box
       sx={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: { xs: 'flex-start', md: 'center' },
-        flexDirection: { xs: 'column', md: 'row' },
-        gap: 2,
-        mb: 3,
-        pb: 2.5,
-        borderBottom: `1px solid ${premiumTokens.border}`,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 1.5,
+        mb: 2,
       }}
     >
-      <Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: subtitle ? 0.5 : 0 }}>
-          <Typography
-            variant={titleVariant}
-            component="h1"
-            sx={{
-              fontWeight: titleVariant === 'h6' ? 600 : 700,
-              letterSpacing: titleVariant === 'h6' ? undefined : '-0.02em',
-            }}
-          >
-            {title}
-          </Typography>
-          {titleAdornment}
-        </Box>
-        {subtitle && (
-          <Typography variant="body1" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
+      {titleAdornment}
       {action}
     </Box>
   )

@@ -24,6 +24,7 @@ import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
+import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
 
@@ -109,15 +110,12 @@ export function ClinicaTopBar() {
     >
       <ImpersonationBanner />
       <Toolbar variant="dense" sx={{ gap: 1, minHeight: 40, py: 0.5 }}>
-        <LocalHospitalIcon color="primary" />
-        <Box sx={{ minWidth: 0, mr: 1 }}>
-          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 700, lineHeight: 1.2 }} noWrap>
-            Portal da Clínica
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {clinica?.nome ?? 'Materiais Consignados'}
-          </Typography>
-        </Box>
+        <LocalHospitalIcon color="primary" sx={{ flexShrink: 0 }} />
+        <TopBarTitle
+          fallback="Portal da Clínica"
+          fallbackSubtitle={clinica?.nome ?? 'Materiais Consignados'}
+          showOnMobile
+        />
 
         <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', px: 1, minWidth: 0 }}>
           <GlobalProcessSearch portal="clinica" dense />

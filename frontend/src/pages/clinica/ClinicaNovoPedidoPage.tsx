@@ -21,6 +21,7 @@ import {
 import { useSearchParams } from 'react-router-dom'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
+import { usePageTitle } from '@/contexts/PageTitleContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas, useEmpresas } from '@/hooks/useCadastros'
 import {
@@ -172,6 +173,12 @@ export default function ClinicaNovoPedidoPage() {
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const isMedicamento =
     user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
+  usePageTitle(
+    'Planilhas',
+    clinicaLogada?.nome
+      ? `${clinicaLogada.nome} — edite e envie as planilhas da clínica`
+      : 'Edite e envie as planilhas da clínica',
+  )
   const planilhasModo: PlanilhasModo = isMedicamento ? 'medicamento' : 'clinica'
   const fixedPlanilhas = useMemo(() => getFixedPlanilhas(planilhasModo), [planilhasModo])
 

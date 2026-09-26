@@ -27,6 +27,7 @@ import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
+import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
@@ -43,10 +44,9 @@ import {
 
 interface TopBarProps {
   onMenuClick: () => void
-  title?: string
 }
 
-export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: TopBarProps) {
+export function TopBar({ onMenuClick }: TopBarProps) {
   const { user, logout } = useGestorAuth()
   const { impersonationTargetEmail, demoMode } = useAuth()
   const { mode, toggleTheme } = useThemeMode()
@@ -122,14 +122,7 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
         >
           <MenuIcon />
         </IconButton>
-        <Typography
-          variant="h6"
-          noWrap
-          component="div"
-          sx={{ flexGrow: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
-        >
-          {title}
-        </Typography>
+        <TopBarTitle fallback="Portal do Gestor — SOLEMP" />
         <Box sx={{ flexGrow: { xs: 1, sm: 0 }, mr: 1, display: 'flex', justifyContent: 'flex-end' }}>
           <GlobalProcessSearch portal="gestor" />
         </Box>

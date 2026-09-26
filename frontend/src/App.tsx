@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PageTitleProvider } from '@/contexts/PageTitleContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRoutes } from '@/routes'
 import { initDataLayer } from '@/data/initDataLayer'
@@ -82,8 +83,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <LiveAppDataBridge />
-          <AppRoutes />
+          <PageTitleProvider>
+            <LiveAppDataBridge />
+            <AppRoutes />
+          </PageTitleProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

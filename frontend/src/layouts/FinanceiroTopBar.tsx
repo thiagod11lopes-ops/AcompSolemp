@@ -8,18 +8,15 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
+import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
 
 interface FinanceiroTopBarProps {
   onMenuClick: () => void
-  title?: string
 }
 
-export function FinanceiroTopBar({
-  onMenuClick,
-  title = 'Pagamentos pendentes',
-}: FinanceiroTopBarProps) {
+export function FinanceiroTopBar({ onMenuClick }: FinanceiroTopBarProps) {
   const { user, logout, isDemo } = useFinanceiroAuth()
   const { impersonationTargetEmail } = useAuth()
   const { navigatePortal, demoBannerHeight } = usePortalPaths()
@@ -59,12 +56,7 @@ export function FinanceiroTopBar({
         <IconButton edge="start" onClick={onMenuClick} sx={{ mr: 2, display: { md: 'none' } }}>
           <MenuIcon />
         </IconButton>
-        <Typography
-          variant="h6"
-          sx={{ flexGrow: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
-        >
-          {title}
-        </Typography>
+        <TopBarTitle fallback="Pagamentos pendentes" />
         <Box sx={{ mr: 1.5, display: 'flex', justifyContent: 'flex-end', flexGrow: { xs: 1, sm: 0 } }}>
           <GlobalProcessSearch portal="financeiro" />
         </Box>

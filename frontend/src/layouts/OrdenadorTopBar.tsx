@@ -8,15 +8,15 @@ import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
+import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { ORDENADOR_DRAWER_WIDTH } from './OrdenadorSidebar'
 
 interface OrdenadorTopBarProps {
   onMenuClick: () => void
-  title?: string
 }
 
-export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }: OrdenadorTopBarProps) {
+export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
   const { user, logout, isDemo } = useOrdenadorAuth()
   const { impersonationTargetEmail } = useAuth()
   const { navigatePortal, demoBannerHeight } = usePortalPaths()
@@ -56,12 +56,7 @@ export function OrdenadorTopBar({ onMenuClick, title = 'Assinatura de SOLEMP' }:
         <IconButton edge="start" onClick={onMenuClick} sx={{ mr: 2, display: { md: 'none' } }}>
           <MenuIcon />
         </IconButton>
-        <Typography
-          variant="h6"
-          sx={{ flexGrow: 1, fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
-        >
-          {title}
-        </Typography>
+        <TopBarTitle fallback="Assinatura de SOLEMP" />
         <Box sx={{ mr: 1.5, display: 'flex', justifyContent: 'flex-end', flexGrow: { xs: 1, sm: 0 } }}>
           <GlobalProcessSearch portal="ordenador" />
         </Box>
