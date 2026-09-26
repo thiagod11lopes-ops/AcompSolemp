@@ -89,11 +89,8 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   },
   DIV_MAT_FINANCAS: {
     label: 'Enviar Planilha',
-    descricao: 'Clique em Receber Planilha para liberar o envio. Depois envie para Empenhado.',
-  },
-  DIV_MAT_EMPENHADO: {
-    label: 'Enviar Planilha',
-    descricao: 'Clique em Receber Planilha para liberar o envio. Depois conclua o Empenhado.',
+    descricao:
+      'Clique em Receber Planilha para liberar o envio. Ao enviar, Empenhado fica concluído automaticamente (fim do fluxo).',
   },
 }
 
@@ -103,7 +100,7 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
   DIV_MAT_FINANCAS: 'Aguardando Solemp em Rascunho.',
-  DIV_MAT_EMPENHADO: 'Aguardando Empenhado.',
+  DIV_MAT_EMPENHADO: 'Fluxo finalizado — Empenhado concluído.',
 }
 
 export function clinicaPodeAvancar(etapaChave: string): boolean {

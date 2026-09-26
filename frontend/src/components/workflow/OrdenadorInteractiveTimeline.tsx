@@ -32,12 +32,10 @@ interface OrdenadorInteractiveTimelineProps {
   onReceberPlanilha?: () => void
   onReceberPlanilhaConfeccao?: () => void
   onReceberPlanilhaRascunho?: () => void
-  onReceberPlanilhaEmpenhado?: () => void
   onEncaminharImh?: () => void
   planilhaRecebida?: boolean
   planilhaRecebidaConfeccao?: boolean
   planilhaRecebidaRascunho?: boolean
-  planilhaRecebidaEmpenhado?: boolean
   onReceberPlanilhaImh?: () => void
   planilhaEncaminhadaImh?: boolean
   planilhaRecebidaImh?: boolean
@@ -55,12 +53,10 @@ export function OrdenadorInteractiveTimeline({
   onReceberPlanilha,
   onReceberPlanilhaConfeccao,
   onReceberPlanilhaRascunho,
-  onReceberPlanilhaEmpenhado,
   onEncaminharImh,
   planilhaRecebida = false,
   planilhaRecebidaConfeccao = false,
   planilhaRecebidaRascunho = false,
-  planilhaRecebidaEmpenhado = false,
   onReceberPlanilhaImh,
   planilhaEncaminhadaImh = false,
   planilhaRecebidaImh = false,
@@ -129,12 +125,11 @@ export function OrdenadorInteractiveTimeline({
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isRascunhoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_FINANCAS'
-  const isEmpenhadoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_EMPENHADO'
   const usaFluxoPlanilha =
     isAuditoriaAtiva ||
     isContabilidadeAtiva ||
     isConfeccaoAtiva ||
-    (isCadeiaConfeccao && (isRascunhoAtivo || isEmpenhadoAtivo))
+    (isCadeiaConfeccao && isRascunhoAtivo)
 
   const renderNodeActions = (node: TimelineNodeData) => {
     const minhaEtapa =
@@ -251,29 +246,7 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    if (
-      isCadeiaConfeccao &&
-      node.etapa.chave === 'DIV_MAT_EMPENHADO' &&
-      onReceberPlanilhaEmpenhado &&
-      onAssinar
-    ) {
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilhaEmpenhado} disabled={assinando}>
-            {planilhaRecebidaEmpenhado ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaEmpenhado}
-            title={!planilhaRecebidaEmpenhado ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
-      )
-    }
-
+    // Empenhado: sem Receber/Enviar — só exibe o fluxo finalizado.
     return null
   }
 
@@ -315,11 +288,6 @@ export function OrdenadorInteractiveTimeline({
                   </p>
                 )}
                 {isRascunhoAtivo && !planilhaRecebidaRascunho && (
-                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Enviar Planilha fica bloqueado até clicar em Receber Planilha.
-                  </p>
-                )}
-                {isEmpenhadoAtivo && !planilhaRecebidaEmpenhado && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
                     Enviar Planilha fica bloqueado até clicar em Receber Planilha.
                   </p>

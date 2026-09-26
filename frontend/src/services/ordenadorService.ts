@@ -165,13 +165,18 @@ export const ordenadorService = {
       chavePendente ??
       (usaCadeiaSolemp ? null : PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]) ??
       null
+    if (chaveGate === 'DIV_MAT_EMPENHADO') {
+      throw new Error(
+        'Empenhado não encaminha planilha: ele já fica concluído ao enviar pela Solemp em Rascunho.',
+      )
+    }
+
     if (
       chaveGate &&
       (chaveGate === 'DIV_MAT_AUDITORIA' ||
         chaveGate === 'DIV_MAT_CONTABILIDADE_IMH' ||
         chaveGate === 'DIV_MAT_CONFECCAO_SOLEMP' ||
-        chaveGate === 'DIV_MAT_FINANCAS' ||
-        chaveGate === 'DIV_MAT_EMPENHADO') &&
+        chaveGate === 'DIV_MAT_FINANCAS') &&
       !pedidoPlanilhaEnvioService.foiRecebidaNoSetor(pedidoId, chaveGate)
     ) {
       throw new Error(

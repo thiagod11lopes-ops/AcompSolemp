@@ -356,10 +356,12 @@ export function advancePedidoEtapa(
       ? getDestinosEncaminhamentoAuditoria()
       : etapaAtual.chave === 'DIV_MAT_CONTABILIDADE_IMH'
         ? [] // Indenizado é concluído automaticamente abaixo
-        : (() => {
-            const unica = getProximaChaveNaDivisao(etapaAtual.chave)
-            return unica && unica !== 'DIV_MAT_INDENIZADO' ? [unica] : []
-          })()
+        : etapaAtual.chave === 'DIV_MAT_FINANCAS'
+          ? [] // Empenhado é concluído automaticamente abaixo (só marca o fim do fluxo)
+          : (() => {
+              const unica = getProximaChaveNaDivisao(etapaAtual.chave)
+              return unica && unica !== 'DIV_MAT_INDENIZADO' ? [unica] : []
+            })()
 
   for (const proximaChave of proximasChaves) {
     const proxima = getEtapaByChave(etapas, proximaChave)
@@ -426,6 +428,43 @@ export function advancePedidoEtapa(
     }
   }
 
+  // Solemp em Rascunho concluída → Empenhado já entra como concluído (só marca o fim do fluxo).
+  if (etapaAtual.chave === 'DIV_MAT_FINANCAS') {
+    const empenhado = getEtapaByChave(etapas, 'DIV_MAT_EMPENHADO')
+    if (empenhado) {
+      const agora = nowIso()
+      const financasHist = etapasHistorico.find((h) => h.etapaId === etapaAtual.id)
+      const histExistente = etapasHistorico.find((h) => h.etapaId === empenhado.id)
+      const obsEmpenhado =
+        'Empenhado concluído automaticamente com o envio da Solemp em Rascunho — fluxo finalizado.'
+      if (!histExistente) {
+        etapasHistorico = [
+          ...etapasHistorico,
+          {
+            etapaId: empenhado.id,
+            etapaNome: empenhado.nome,
+            responsavelId: financasHist?.responsavelId ?? usuario.id,
+            responsavelNome: financasHist?.responsavelNome ?? usuario.nome,
+            dataInicio: agora,
+            dataConclusao: agora,
+            observacao: obsEmpenhado,
+            arquivos: [],
+          },
+        ]
+      } else {
+        histExistente.dataInicio = histExistente.dataInicio || agora
+        histExistente.dataConclusao = agora
+        histExistente.observacao = obsEmpenhado
+        histExistente.responsavelId =
+          histExistente.responsavelId ?? financasHist?.responsavelId ?? usuario.id
+        histExistente.responsavelNome =
+          histExistente.responsavelNome ?? financasHist?.responsavelNome ?? usuario.nome
+      }
+      // Não fica pendente: Empenhado só exibe o fim do fluxo.
+      etapasAtivasIds = etapasAtivasIds.filter((id) => id !== empenhado.id)
+    }
+  }
+
   const pedidoParcial: Pedido = {
     ...pedido,
     etapasHistorico,
@@ -487,6 +526,20 @@ export function advancePedidoEtapa(
     usuario,
     observacao,
   )
+
+  if (etapaAtual.chave === 'DIV_MAT_FINANCAS') {
+    const empenhado = getEtapaByChave(etapas, 'DIV_MAT_EMPENHADO')
+    if (empenhado) {
+      arquivarEtapaConcluida(
+        data,
+        pedidoId,
+        empenhado.chave,
+        empenhado.nome,
+        usuario,
+        'Empenhado concluído automaticamente com o envio da Solemp em Rascunho — fluxo finalizado.',
+      )
+    }
+  }
 
   if (!atualizado.concluido) {
     notifySetoresEtapasAtivas(data, pedidoId)
@@ -731,15 +784,15 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Solemp em Rascunho: planilha enviada por ${usuario.nome}${solempRef}. Encaminhado para Empenhado.`,
+      `Solemp em Rascunho: planilha enviada por ${usuario.nome}${solempRef}. Empenhado registrado como concluído.`,
       etapa.id,
     )
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,
       tipo: 'ETAPA_PENDENTE',
-      titulo: `Empenhado — ${pedido.numero}`,
-      mensagem: `${usuario.nome} enviou a planilha em Solemp em Rascunho e encaminhou para Empenhado.`,
+      titulo: `Fluxo finalizado — ${pedido.numero}`,
+      mensagem: `${usuario.nome} enviou a planilha em Solemp em Rascunho. Empenhado ficou concluído (fim do fluxo).`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -752,31 +805,9 @@ export function assinarSolempForPedido(
   }
 
   if (etapa.chave === 'DIV_MAT_EMPENHADO') {
-    const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
-    const solempRef = solemp?.numero ? ` — SOLEMP ${solemp.numero}` : ''
-
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Empenhado: planilha enviada por ${usuario.nome}${solempRef}. Processo encerrado.`,
-      etapa.id,
+    throw new Error(
+      'Empenhado não recebe planilha: ele já fica concluído ao enviar pela Solemp em Rascunho.',
     )
-
-    data.notificacoes.push({
-      id: `notif-${Date.now()}`,
-      tipo: 'ETAPA_PENDENTE',
-      titulo: `Empenhado concluído — ${pedido.numero}`,
-      mensagem: `${usuario.nome} enviou a planilha e concluiu Empenhado.`,
-      pedidoId,
-      reversaoId: null,
-      perfilDestino: null,
-      etapaChave: etapa.chave,
-      lida: false,
-      data: nowIso(),
-    })
-
-    return data
   }
 
   throw new Error('Este processo não está aguardando ação da Confecção de Solemp')
@@ -823,29 +854,15 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Registro em Solemp em Rascunho — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Enviado para Empenhado.`,
+    `Registro em Solemp em Rascunho — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Empenhado registrado como concluído.`,
     etapa.id,
   )
-
-  const pedidoAtualizado = data.pedidos.find((p) => p.id === pedidoId)
-  const empenhadoAtiva = pedidoAtualizado
-    ? getEtapaAtivaPorChaves(pedidoAtualizado, data.workflowEtapas, ['DIV_MAT_EMPENHADO'])
-    : null
-  if (empenhadoAtiva) {
-    data = advancePedidoEtapa(
-      data,
-      pedidoId,
-      usuario,
-      `Empenhado registrado — SOLEMP ${solemp.numero}. Processo encerrado.`,
-      empenhadoAtiva.id,
-    )
-  }
 
   data.notificacoes.push({
     id: `notif-${Date.now()}`,
     tipo: 'PAGAMENTO_REALIZADO',
     titulo: `Pagamento realizado — ${pedido.numero}`,
-    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}) e encerrou Empenhado.`,
+    mensagem: `${usuario.nome} confirmou o pagamento da SOLEMP ${solemp.numero} (NF ${notaFiscalNumero}). Empenhado ficou concluído (fim do fluxo).`,
     pedidoId,
     reversaoId: null,
     perfilDestino: null,
@@ -862,7 +879,7 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp em Rascunho. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp em Rascunho. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído automaticamente.`,
   })
 
   return data

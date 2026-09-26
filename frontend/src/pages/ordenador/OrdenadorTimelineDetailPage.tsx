@@ -49,7 +49,6 @@ export default function OrdenadorTimelineDetailPage() {
   const [planilhaRecebida, setPlanilhaRecebida] = useState(false)
   const [planilhaRecebidaConfeccao, setPlanilhaRecebidaConfeccao] = useState(false)
   const [planilhaRecebidaRascunho, setPlanilhaRecebidaRascunho] = useState(false)
-  const [planilhaRecebidaEmpenhado, setPlanilhaRecebidaEmpenhado] = useState(false)
   const [planilhaEncaminhadaImh, setPlanilhaEncaminhadaImh] = useState(false)
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
@@ -179,7 +178,6 @@ export default function OrdenadorTimelineDetailPage() {
     setPlanilhaRecebida((prev) => prev || Boolean(stored?.recebidaEm))
     setPlanilhaRecebidaConfeccao((prev) => prev || Boolean(stored?.recebidaConfeccaoEm))
     setPlanilhaRecebidaRascunho((prev) => prev || Boolean(stored?.recebidaRascunhoEm))
-    setPlanilhaRecebidaEmpenhado((prev) => prev || Boolean(stored?.recebidaEmpenhadoEm))
     setPlanilhaEncaminhadaImh((prev) =>
       Boolean(
         prev ||
@@ -247,11 +245,8 @@ export default function OrdenadorTimelineDetailPage() {
       assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
       return
     }
-    if (isConfeccao && isEmpenhadoEtapa) {
-      if (!planilhaRecebidaEmpenhado) return
-      assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
-      return
-    }
+    // Empenhado não envia planilha — fica concluído ao enviar pela Solemp em Rascunho.
+    if (isEmpenhadoEtapa) return
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
 
@@ -312,13 +307,6 @@ export default function OrdenadorTimelineDetailPage() {
   const handleReceberPlanilhaRascunho = () => {
     pedidoPlanilhaEnvioService.markRecebidaRascunho(pedido.id)
     setPlanilhaRecebidaRascunho(true)
-    setPlanilhaOpen(true)
-    void persistRecebimento()
-  }
-
-  const handleReceberPlanilhaEmpenhado = () => {
-    pedidoPlanilhaEnvioService.markRecebidaEmpenhado(pedido.id)
-    setPlanilhaRecebidaEmpenhado(true)
     setPlanilhaOpen(true)
     void persistRecebimento()
   }
@@ -411,12 +399,10 @@ export default function OrdenadorTimelineDetailPage() {
             onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
             onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
             onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
-            onReceberPlanilhaEmpenhado={isConfeccao ? handleReceberPlanilhaEmpenhado : undefined}
             onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
             planilhaRecebida={planilhaRecebida}
             planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
             planilhaRecebidaRascunho={planilhaRecebidaRascunho}
-            planilhaRecebidaEmpenhado={planilhaRecebidaEmpenhado}
             onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
             planilhaEncaminhadaImh={planilhaEncaminhadaImh}
             planilhaRecebidaImh={planilhaRecebidaImh}
