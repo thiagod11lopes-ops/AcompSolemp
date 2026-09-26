@@ -17,6 +17,7 @@ import {
   MOCK_CREDENTIALS,
   reloadFreshAppData,
   resetAppData,
+  saveAppData,
 } from '@/mocks/seed'
 import {
   canAccessGestorRoute,
@@ -502,7 +503,19 @@ export const authService = {
       // Validação definitiva ocorre após hidratar o usuário (perfis[]).
     }
 
-    const authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
+    // Conta Auth já existia (ex.: exclusão incompleta): entra com a senha informada.
+    let authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signUpWithPassword>>
+    try {
+      authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : ''
+      const already =
+        message.includes('já possui conta') ||
+        message.includes('already registered') ||
+        message.includes('already been registered')
+      if (!already) throw error
+      authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
+    }
     return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, expectedPerfil)
   },
 
@@ -521,7 +534,10 @@ export const authService = {
         email: marinhaEmail,
         perfil: access.perfil,
       })
-      if (error) throw error
+      // Perfil já existe (mesmo auth user): segue o login.
+      if (error && !/duplicate|unique|already exists/i.test(error.message)) {
+        throw error
+      }
     }
 
     setTenantId(access.tenant_id)
@@ -530,9 +546,43 @@ export const authService = {
     })
 
     const data = loadAppData()
-    const user = data.usuarios.find((item) => item.id === access.app_user_id && item.ativo)
+    const emailKey = marinhaEmail.trim().toLowerCase()
+    let user =
+      data.usuarios.find((item) => item.id === access.app_user_id && item.ativo) ??
+      data.usuarios.find(
+        (item) => item.email?.trim().toLowerCase() === emailKey && item.ativo,
+      )
+
+    // Cadastro soft-deletado com email_access órfão: reativa para liberar o login.
     if (!user) {
-      throw new Error('Email não cadastrado')
+      const inactive =
+        data.usuarios.find((item) => item.id === access.app_user_id && !item.ativo) ??
+        data.usuarios.find(
+          (item) => item.email?.trim().toLowerCase() === emailKey && !item.ativo,
+        )
+      if (inactive) {
+        inactive.ativo = true
+        inactive.email = marinhaEmail
+        if (access.perfil) {
+          inactive.perfil = access.perfil as UserRole
+        }
+        if (access.nome) inactive.nome = access.nome
+        if (access.clinica_id) inactive.clinicaId = access.clinica_id
+        saveAppData(data)
+        try {
+          const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+          await flushSupabaseAppDataSync()
+        } catch {
+          // Mantém reativação local mesmo se o flush falhar.
+        }
+        user = inactive
+      }
+    }
+
+    if (!user) {
+      throw new Error(
+        'E-mail liberado, mas o usuário não está ativo na organização. Peça ao gestor para cadastrá-lo novamente em Cadastros.',
+      )
     }
 
     if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
