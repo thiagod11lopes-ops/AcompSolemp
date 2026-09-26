@@ -240,8 +240,8 @@ const cellSx = {
   whiteSpace: 'nowrap' as const,
 } as const
 
-/** Viewport: no máximo 8 linhas de dados + cabeçalho (rolagem vertical/horizontal na base). */
-const DIV_MAT_VISIBLE_BODY_ROWS = 8
+/** Viewport: no máximo 12 linhas de dados + cabeçalho (rolagem vertical/horizontal na base). */
+const DIV_MAT_VISIBLE_BODY_ROWS = 12
 const DIV_MAT_HEADER_HEIGHT_PX = 44
 const DIV_MAT_ROW_HEIGHT_PX = 40
 const DIV_MAT_GRID_PAD_PX = 24
@@ -443,7 +443,7 @@ export function DivMaterialPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               width: '100%',
               maxWidth: '100%',
-              // Máx. 8 linhas visíveis; barras de rolagem na base/lateral do viewport.
+              // Máx. 12 linhas visíveis; barras de rolagem na base/lateral do viewport.
               maxHeight: DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               overflowX: 'auto',
               overflowY: 'auto',
