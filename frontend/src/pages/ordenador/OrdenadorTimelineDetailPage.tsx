@@ -250,6 +250,12 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const handleEnviarAuditoria = (anotacoes: string) => {
+    if (
+      !planilhaRecebida ||
+      !pedidoPlanilhaEnvioService.foiRecebidaNoSetor(pedido.id, 'DIV_MAT_AUDITORIA')
+    ) {
+      return
+    }
     assinar.mutate(
       { pedidoId: pedido.id, anotacoes },
       {
@@ -313,6 +319,12 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const handleEncaminharImh = () => {
+    if (
+      !planilhaRecebida ||
+      !pedidoPlanilhaEnvioService.foiRecebidaNoSetor(pedido.id, 'DIV_MAT_AUDITORIA')
+    ) {
+      return
+    }
     setAuditoriaOpen(true)
   }
 

@@ -73,24 +73,27 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   { label: string; descricao: string }
 > = {
   DIV_MAT_AUDITORIA: {
-    label: 'Encaminhar ao IMH',
-    descricao: 'Receba a planilha enviada pela clínica e, após conferir, encaminhe ao IMH.',
+    label: 'Enviar Planilha',
+    descricao:
+      'Clique em Receber Planilha para liberar o envio. Depois envie para IMH e Confecção de Solemp.',
   },
   DIV_MAT_CONTABILIDADE_IMH: {
-    label: 'Concluir IMH',
-    descricao: 'Receba a planilha encaminhada pela Auditoria e, após conferir, finalize a etapa.',
+    label: 'Enviar Planilha',
+    descricao:
+      'Clique em Receber Planilha para liberar o envio. Depois conclua a IMH.',
   },
   DIV_MAT_CONFECCAO_SOLEMP: {
-    label: 'Confeccionar Solemp',
-    descricao: 'Informe o número e o valor da SOLEMP e envie para Solemp em Rascunho.',
+    label: 'Enviar Planilha',
+    descricao:
+      'Clique em Receber Planilha para liberar o envio. Depois confeccione a SOLEMP.',
   },
   DIV_MAT_FINANCAS: {
     label: 'Enviar Planilha',
-    descricao: 'Receba a planilha e envie para Empenhado.',
+    descricao: 'Clique em Receber Planilha para liberar o envio. Depois envie para Empenhado.',
   },
   DIV_MAT_EMPENHADO: {
     label: 'Enviar Planilha',
-    descricao: 'Receba a planilha e conclua o Empenhado.',
+    descricao: 'Clique em Receber Planilha para liberar o envio. Depois conclua o Empenhado.',
   },
 }
 

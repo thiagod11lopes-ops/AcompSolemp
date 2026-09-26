@@ -22,6 +22,7 @@ import {
   pedidoRelacionadoParaPerfil,
 } from '@/utils/perfilEtapa'
 import { userHasPerfil } from '@/utils/userPerfis'
+import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 
 function getContext(data: ReturnType<typeof loadAppData>) {
   return {
@@ -159,6 +160,24 @@ export const ordenadorService = {
       Boolean(chavePendente) &&
       (CHAVES_CONFECCAO_CADEIA as readonly string[]).includes(chavePendente!) &&
       (userHasPerfil(usuario, 'CONFECCAO_SOLEMP') || userHasPerfil(usuario, 'FINANCEIRO'))
+
+    const chaveGate =
+      chavePendente ??
+      (usaCadeiaSolemp ? null : PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]) ??
+      null
+    if (
+      chaveGate &&
+      (chaveGate === 'DIV_MAT_AUDITORIA' ||
+        chaveGate === 'DIV_MAT_CONTABILIDADE_IMH' ||
+        chaveGate === 'DIV_MAT_CONFECCAO_SOLEMP' ||
+        chaveGate === 'DIV_MAT_FINANCAS' ||
+        chaveGate === 'DIV_MAT_EMPENHADO') &&
+      !pedidoPlanilhaEnvioService.foiRecebidaNoSetor(pedidoId, chaveGate)
+    ) {
+      throw new Error(
+        'Receba a planilha antes de enviar. Clique em Receber Planilha primeiro.',
+      )
+    }
 
     if (usaCadeiaSolemp) {
       data = assinarSolempForPedido(data, pedidoId, usuario, {

@@ -70,6 +70,54 @@ function preserveAnexos(
   }
 }
 
+type FlagRecebimento =
+  | 'recebidaEm'
+  | 'recebidaImhEm'
+  | 'recebidaConfeccaoEm'
+  | 'recebidaRascunhoEm'
+  | 'recebidaEmpenhadoEm'
+
+function baseSnapshotFrom(
+  current: PedidoPlanilhaEnvioState | undefined,
+): PedidoPlanilhaEnvioState {
+  return {
+    formato: current?.formato ?? 'imh',
+    cabecalho: current?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
+    linhas: current?.linhas ?? [],
+    controleSolempLinhas: current?.controleSolempLinhas,
+    imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
+    imhAbaLinhas: current?.imhAbaLinhas,
+    divMaterialLinhas: current?.divMaterialLinhas,
+    anexos: current?.anexos,
+    enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
+    recebidaEm: current?.recebidaEm,
+    encaminhadaImhEm: current?.encaminhadaImhEm,
+    recebidaImhEm: current?.recebidaImhEm,
+    recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
+    recebidaRascunhoEm: current?.recebidaRascunhoEm,
+    recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
+    arquivadaEm: current?.arquivadaEm,
+    devolvidaEm: current?.devolvidaEm,
+    devolvidaParaChave: current?.devolvidaParaChave,
+  }
+}
+
+function upsertRecebimentoFlag(
+  pedidoId: string,
+  flag: FlagRecebimento,
+): PedidoPlanilhaEnvioState {
+  const data = readPlanilhaData()
+  if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+  const current = data.pedidoPlanilhaEnvio[pedidoId]
+  const next: PedidoPlanilhaEnvioState = {
+    ...baseSnapshotFrom(current),
+    [flag]: new Date().toISOString(),
+  }
+  data.pedidoPlanilhaEnvio[pedidoId] = next
+  saveAppData(data)
+  return next
+}
+
 export const pedidoPlanilhaEnvioService = {
   saveForPedido(pedidoId: string, planilha: ImhPlanilha, rowId?: string): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
@@ -254,60 +302,40 @@ export const pedidoPlanilhaEnvioService = {
     }
   },
 
-  markRecebida(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = readPlanilhaData()
-    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
-    const current = data.pedidoPlanilhaEnvio[pedidoId]
-    // Sem snapshot ainda: marca recebimento para liberar o envio; a UI usa fallback de planilha.
-    const next: PedidoPlanilhaEnvioState = {
-      formato: current?.formato ?? 'imh',
-      cabecalho: current?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
-      linhas: current?.linhas ?? [],
-      controleSolempLinhas: current?.controleSolempLinhas,
-      imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
-      imhAbaLinhas: current?.imhAbaLinhas,
-      divMaterialLinhas: current?.divMaterialLinhas,
-      anexos: current?.anexos,
-      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
-      recebidaEm: new Date().toISOString(),
-      encaminhadaImhEm: current?.encaminhadaImhEm,
-      recebidaImhEm: current?.recebidaImhEm,
-      recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
-      recebidaRascunhoEm: current?.recebidaRascunhoEm,
-      recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
-      arquivadaEm: current?.arquivadaEm,
-      devolvidaEm: current?.devolvidaEm,
-      devolvidaParaChave: current?.devolvidaParaChave,
+  /** True somente após o setor clicar em Receber Planilha. */
+  foiRecebidaNoSetor(pedidoId: string, etapaChave: string): boolean {
+    const snap = this.getForPedido(pedidoId)
+    if (!snap) return false
+    switch (etapaChave) {
+      case 'DIV_MAT_AUDITORIA':
+        return Boolean(snap.recebidaEm)
+      case 'DIV_MAT_CONTABILIDADE_IMH':
+        return Boolean(snap.recebidaImhEm)
+      case 'DIV_MAT_CONFECCAO_SOLEMP':
+        return Boolean(snap.recebidaConfeccaoEm)
+      case 'DIV_MAT_FINANCAS':
+        return Boolean(snap.recebidaRascunhoEm)
+      case 'DIV_MAT_EMPENHADO':
+        return Boolean(snap.recebidaEmpenhadoEm)
+      default:
+        return false
     }
-    data.pedidoPlanilhaEnvio[pedidoId] = next
-    saveAppData(data)
-    return next
+  },
+
+  markRecebida(pedidoId: string): PedidoPlanilhaEnvioState | null {
+    return upsertRecebimentoFlag(pedidoId, 'recebidaEm')
   },
 
   markEncaminhadaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
     const data = readPlanilhaData()
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
     const current = data.pedidoPlanilhaEnvio[pedidoId]
-    // Garante flag de encaminhamento mesmo se o snapshot ainda não sincronizou.
+    // Não inventa recebidaEm — o envio exige Receber Planilha antes.
+    if (!current?.recebidaEm) return null
     const next: PedidoPlanilhaEnvioState = {
-      formato: current?.formato ?? 'imh',
-      cabecalho: current?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
-      linhas: current?.linhas ?? [],
-      controleSolempLinhas: current?.controleSolempLinhas,
-      imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
-      imhAbaLinhas: current?.imhAbaLinhas,
-      divMaterialLinhas: current?.divMaterialLinhas,
-      anexos: current?.anexos,
-      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
-      recebidaEm: current?.recebidaEm ?? new Date().toISOString(),
+      ...baseSnapshotFrom(current),
+      recebidaEm: current.recebidaEm,
       encaminhadaImhEm: new Date().toISOString(),
-      recebidaImhEm: current?.recebidaImhEm,
-      recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
-      recebidaRascunhoEm: current?.recebidaRascunhoEm,
-      recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
-      arquivadaEm: current?.arquivadaEm,
-      devolvidaEm: current?.devolvidaEm,
-      devolvidaParaChave: current?.devolvidaParaChave,
     }
     data.pedidoPlanilhaEnvio[pedidoId] = next
     saveAppData(data)
@@ -315,59 +343,19 @@ export const pedidoPlanilhaEnvioService = {
   },
 
   markRecebidaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
-    const next: PedidoPlanilhaEnvioState = {
-      ...current,
-      recebidaImhEm: new Date().toISOString(),
-    }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
-    saveAppData(data)
-    return next
+    return upsertRecebimentoFlag(pedidoId, 'recebidaImhEm')
   },
 
   markRecebidaConfeccao(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
-    const next: PedidoPlanilhaEnvioState = {
-      ...current,
-      recebidaConfeccaoEm: new Date().toISOString(),
-    }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
-    saveAppData(data)
-    return next
+    return upsertRecebimentoFlag(pedidoId, 'recebidaConfeccaoEm')
   },
 
   markRecebidaRascunho(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
-    const next: PedidoPlanilhaEnvioState = {
-      ...current,
-      recebidaRascunhoEm: new Date().toISOString(),
-    }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
-    saveAppData(data)
-    return next
+    return upsertRecebimentoFlag(pedidoId, 'recebidaRascunhoEm')
   },
 
   markRecebidaEmpenhado(pedidoId: string): PedidoPlanilhaEnvioState | null {
-    const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
-    const next: PedidoPlanilhaEnvioState = {
-      ...current,
-      recebidaEmpenhadoEm: new Date().toISOString(),
-    }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
-    saveAppData(data)
-    return next
+    return upsertRecebimentoFlag(pedidoId, 'recebidaEmpenhadoEm')
   },
 
   getRowIdFromPedidoId(pedidoId: string): string {
