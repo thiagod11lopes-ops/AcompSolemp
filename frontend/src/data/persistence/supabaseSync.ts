@@ -61,6 +61,16 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
     syncTimer = null
   }
 
+  // Se já há upload em andamento, espera e em seguida envia o snapshot mais recente
+  // (evita descartar anexos/planilha gravados enquanto o flush anterior ainda rodava).
+  if (flushPromise) {
+    try {
+      await flushPromise
+    } catch {
+      // Continua para tentar o pending/local atual.
+    }
+  }
+
   // saveAppData agenda o sync via import() dinâmico — se flush rodar antes,
   // pendingData ainda é null e a gravação na nuvem era ignorada (1º cadastro sumia).
   if (!pendingData) {
@@ -68,8 +78,6 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
     pendingData = loadAppData()
     pendingVersion = APP_DATA_SEED_VERSION
   }
-
-  if (flushPromise) return flushPromise
 
   const data = pendingData
   const version = pendingVersion

@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,7 +14,8 @@ import {
 import CloseIcon from '@mui/icons-material/Close'
 import DownloadIcon from '@mui/icons-material/Download'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import type { ArquivoAnexo } from '@/types'
 
@@ -29,10 +31,40 @@ function formatTamanho(kb: number): string {
 }
 
 export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosModalProps) {
-  const anexos = useMemo(() => {
-    if (!open || !pedidoId) return [] as ArquivoAnexo[]
-    return pedidoAnexoService.listByPedido(pedidoId)
-  }, [open, pedidoId])
+  const cloudSync = useCloudAppDataSync()
+  const [anexos, setAnexos] = useState<ArquivoAnexo[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !pedidoId) {
+      setAnexos([])
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+
+    void (async () => {
+      try {
+        if (cloudSync) {
+          const { refreshAppDataFromCloud } = await import('@/data/persistence/supabaseSync')
+          const { applyRemoteAppData } = await import('@/mocks/seed')
+          const remote = await refreshAppDataFromCloud()
+          if (remote) applyRemoteAppData(remote)
+        }
+      } catch {
+        // Mantém dados locais se o refresh falhar.
+      }
+      if (cancelled) return
+      setAnexos(pedidoAnexoService.listByPedido(pedidoId))
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, pedidoId, cloudSync])
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -47,7 +79,11 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
-        {anexos.length === 0 ? (
+        {loading ? (
+          <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : anexos.length === 0 ? (
           <Box sx={{ py: 3, textAlign: 'center', opacity: 0.7 }}>
             <AttachFileIcon sx={{ fontSize: 36, mb: 1, opacity: 0.5 }} />
             <Typography variant="body2" color="text.secondary">
@@ -90,8 +126,7 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
                     startIcon={<DownloadIcon />}
                     disabled={!podeBaixar}
                     onClick={() => {
-                      const ok = pedidoAnexoService.download(arquivo)
-                      if (!ok) return
+                      pedidoAnexoService.download(arquivo)
                     }}
                     sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
                   >

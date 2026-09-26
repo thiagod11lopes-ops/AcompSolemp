@@ -696,6 +696,8 @@ export interface PedidoPlanilhaEnvioState {
   imhAbaLinhas?: ImhAbaLinha[]
   /** Linhas da aba Div. Material enviadas para Confecção de Solemp. */
   divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
+  /** Arquivos anexados no envio da planilha (visíveis na timeline). */
+  anexos?: ArquivoAnexo[]
   enviadoEm: string
   /** ISO da devolução da planilha para um setor/origem */
   devolvidaEm?: string

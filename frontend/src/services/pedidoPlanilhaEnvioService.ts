@@ -62,6 +62,14 @@ function preservePlanilhaFlags(
   }
 }
 
+function preserveAnexos(
+  existing: PedidoPlanilhaEnvioState | undefined,
+): Pick<PedidoPlanilhaEnvioState, 'anexos'> {
+  return {
+    anexos: existing?.anexos?.map((arquivo) => ({ ...arquivo })),
+  }
+}
+
 export const pedidoPlanilhaEnvioService = {
   saveForPedido(pedidoId: string, planilha: ImhPlanilha, rowId?: string): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
@@ -77,6 +85,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: existing?.imhAbaLinhas,
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
+      ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -112,6 +121,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: abaSnapshot,
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
+      ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -140,6 +150,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: existing?.imhAbaLinhas,
       imhMedicamentoLinhas: linhas.map((linha) => ({ ...linha })),
       divMaterialLinhas: existing?.divMaterialLinhas,
+      ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -170,6 +181,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: existing?.imhAbaLinhas,
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
+      ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -204,6 +216,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: existing?.imhAbaLinhas,
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: divSnapshot,
+      ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
       ...preservePlanilhaFlags(existing),
       devolvidaEm: undefined,
@@ -227,6 +240,7 @@ export const pedidoPlanilhaEnvioService = {
       imhAbaLinhas: snapshot.imhAbaLinhas?.map((linha) => ({ ...linha })),
       imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
       divMaterialLinhas: snapshot.divMaterialLinhas?.map((linha) => ({ ...linha })),
+      anexos: snapshot.anexos?.map((arquivo) => ({ ...arquivo })),
       enviadoEm: snapshot.enviadoEm,
       devolvidaEm: snapshot.devolvidaEm,
       devolvidaParaChave: snapshot.devolvidaParaChave,

@@ -44,24 +44,35 @@ function guessMimeType(fileName: string, fallback?: string): string {
   return 'application/octet-stream'
 }
 
+function cloneAnexo(arquivo: ArquivoAnexo): ArquivoAnexo {
+  return { ...arquivo }
+}
+
 export const pedidoAnexoService = {
   listByPedido(pedidoId: string): ArquivoAnexo[] {
     if (!pedidoId) return []
     const data = readData()
-    return (data.arquivos ?? [])
-      .filter((arquivo) => arquivo.pedidoId === pedidoId)
-      .slice()
-      .sort((a, b) => b.dataUpload.localeCompare(a.dataUpload))
+    const daPlanilha = data.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []
+    const globais = (data.arquivos ?? []).filter((arquivo) => arquivo.pedidoId === pedidoId)
+
+    const byId = new Map<string, ArquivoAnexo>()
+    for (const arquivo of [...globais, ...daPlanilha]) {
+      byId.set(arquivo.id, cloneAnexo(arquivo))
+    }
+
+    return [...byId.values()].sort((a, b) => b.dataUpload.localeCompare(a.dataUpload))
   },
 
-  /** Registra metadados + conteúdo dos arquivos anexados no envio da planilha. */
+  /**
+   * Registra metadados + conteúdo dos arquivos anexados no envio da planilha.
+   * Grava em `pedidoPlanilhaEnvio[pedidoId].anexos` (viaja com a planilha) e em `arquivos`.
+   */
   async saveForPedido(pedidoId: string, files: File[]): Promise<ArquivoAnexo[]> {
     if (!pedidoId || files.length === 0) return []
 
-    const data = readData()
+    // Codifica antes de ler o AppData, para não gravar snapshot stale após o await.
     const agora = new Date().toISOString()
     const criados: ArquivoAnexo[] = []
-
     for (const file of files) {
       const conteudoBase64 = await fileToBase64(file)
       criados.push({
@@ -76,7 +87,21 @@ export const pedidoAnexoService = {
       })
     }
 
-    data.arquivos = [...(data.arquivos ?? []), ...criados]
+    const data = readData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+
+    const existing = data.pedidoPlanilhaEnvio[pedidoId]
+    if (existing) {
+      data.pedidoPlanilhaEnvio[pedidoId] = {
+        ...existing,
+        anexos: [...(existing.anexos ?? []).map(cloneAnexo), ...criados.map(cloneAnexo)],
+      }
+    } else {
+      // Pedido ainda sem snapshot de planilha: mantém só em arquivos globais.
+      // (O envio normal grava a planilha antes dos anexos.)
+    }
+
+    data.arquivos = [...(data.arquivos ?? []), ...criados.map(cloneAnexo)]
     saveAppData(data)
     return criados
   },

@@ -1070,9 +1070,11 @@ export default function ClinicaNovoPedidoPage() {
         await pedidoAnexoService.saveForPedido(pedidoId, envioAnexos)
       }
 
-      // Garante que o snapshot da planilha suba à nuvem após o pedido.
+      // Garante que planilha + anexos subam à nuvem para o próximo setor da timeline.
       try {
         const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+        await flushSupabaseAppDataSync()
+        // Segundo flush: cobre o caso em que o 1º ainda competia com o flush do createPedido.
         await flushSupabaseAppDataSync()
       } catch {
         // Local/demo: sync opcional
