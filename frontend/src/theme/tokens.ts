@@ -12,13 +12,14 @@ export const premiumTokens = {
   text: '#F5F5F7',
   textSecondary: '#A1A1A6',
   line: '#3A3A3C',
-  /** Coral Raycast */
-  primary: '#FF6363',
-  primaryLight: '#FF8A8A',
-  primaryDark: '#E5484D',
+  /** Verde institucional — acento de UI (abas, botões, seleção) */
+  primary: '#558B71',
+  primaryLight: '#7AA892',
+  primaryDark: '#3F6B56',
   green: '#30D158',
   orange: '#FF9F0A',
   yellow: '#FFD60A',
+  /** Alerta — reservado a Atrasados e estados de erro */
   red: '#FF453A',
   purple: '#BF5AF2',
   radius: 14,
@@ -27,9 +28,9 @@ export const premiumTokens = {
   shadowSm: '0 4px 16px rgba(0,0,0,0.28)',
   glass: 'rgba(28,28,30,0.78)',
   gradientBg:
-    'radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255, 99, 99, 0.12), transparent 55%), #0C0C0D',
+    'radial-gradient(ellipse 100% 60% at 50% -10%, rgba(85, 139, 113, 0.14), transparent 55%), #0C0C0D',
   gradientAuth:
-    'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(255, 99, 99, 0.16), transparent), radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 159, 10, 0.08), transparent), #F5F5F7',
+    'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(85, 139, 113, 0.18), transparent), radial-gradient(ellipse 60% 40% at 90% 100%, rgba(255, 159, 10, 0.08), transparent), #F5F5F7',
 } as const
 
 /** Tema claro — base Raycast (branco suave, tipografia escura, acento coral) */

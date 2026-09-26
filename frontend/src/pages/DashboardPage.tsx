@@ -343,7 +343,7 @@ export default function DashboardPage() {
     correcoesVencidas: {
       title: 'Prazos de correção vencidos',
       subtitle: 'Planilhas devolvidas com prazo de correção ultrapassado',
-      accent: premiumTokens.red,
+      accent: premiumTokens.orange,
       icon: <BuildCircleIcon />,
       summaries: [
         { label: 'Quantidade', value: metrics.correcoesVencidas },
@@ -418,7 +418,7 @@ export default function DashboardPage() {
     aguardandoEmpenho: {
       title: 'Aguardando Empenho',
       subtitle: 'Solemps em Rascunho ainda sem empenho',
-      accent: premiumTokens.red,
+      accent: premiumTokens.orange,
       icon: <HourglassTopIcon />,
       summaries: [
         { label: 'Valor', value: formatCurrency(metrics.valorAguardandoEmpenho) },
@@ -541,7 +541,7 @@ export default function DashboardPage() {
             value={metrics.correcoesVencidas}
             subtitle="Prazo de correção ultrapassado"
             icon={<BuildCircleIcon />}
-            color={premiumTokens.red}
+            color={premiumTokens.orange}
             onClick={() => setKpiAberto('correcoesVencidas')}
           />
         </Grid>
@@ -554,7 +554,7 @@ export default function DashboardPage() {
             value={formatCurrency(metrics.valorAguardandoEmpenho)}
             subtitle={subtitleAguardando}
             icon={<HourglassTopIcon />}
-            color={premiumTokens.red}
+            color={premiumTokens.orange}
             onClick={() => setKpiAberto('aguardandoEmpenho')}
           />
         </Grid>

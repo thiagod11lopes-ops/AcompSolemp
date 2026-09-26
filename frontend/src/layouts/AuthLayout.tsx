@@ -17,7 +17,7 @@ export function AuthLayout() {
         position: 'relative',
         overflow: 'hidden',
         background: `
-          radial-gradient(ellipse 90% 60% at 15% -5%, rgba(255, 99, 99, 0.14), transparent 55%),
+          radial-gradient(ellipse 90% 60% at 15% -5%, rgba(85, 139, 113, 0.16), transparent 55%),
           radial-gradient(ellipse 70% 50% at 100% 100%, rgba(255, 159, 10, 0.08), transparent 50%),
           #F5F5F7
         `,

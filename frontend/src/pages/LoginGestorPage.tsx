@@ -307,7 +307,7 @@ export default function LoginGestorPage() {
             display: 'grid',
             placeItems: 'center',
             background: `linear-gradient(145deg, ${premiumTokens.primary} 0%, ${premiumTokens.primaryDark} 100%)`,
-            boxShadow: `0 12px 28px rgba(255, 99, 99, 0.28)`,
+            boxShadow: `0 12px 28px rgba(85, 139, 113, 0.28)`,
           }}
         >
           <AnchorIcon sx={{ fontSize: 34, color: '#FFFFFF' }} />
