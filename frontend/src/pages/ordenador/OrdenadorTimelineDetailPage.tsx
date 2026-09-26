@@ -19,6 +19,7 @@ import { formatCurrency, formatDate } from '@/utils/format'
 import { getRoleLabel, loadAppData } from '@/mocks/seed'
 import {
   chavePendenteParaPerfil,
+  pedidoPendenteParaChave,
   PERFIL_PARA_CHAVE_ETAPA,
 } from '@/utils/perfilEtapa'
 import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
@@ -59,7 +60,13 @@ export default function OrdenadorTimelineDetailPage() {
   }, [user, pedido, etapas])
   const chavePerfil = chavePendente ?? (user ? PERFIL_PARA_CHAVE_ETAPA[user.perfil] : null)
   const etapaPerfil = etapas.find((e) => e.chave === chavePerfil)
-  const isAuditoria = chavePendente === 'DIV_MAT_AUDITORIA'
+  const isAuditoria = Boolean(
+    chavePendente === 'DIV_MAT_AUDITORIA' ||
+      (user &&
+        userHasPerfil(user, 'AUDITORIA') &&
+        pedido &&
+        pedidoPendenteParaChave(pedido, etapas, 'DIV_MAT_AUDITORIA')),
+  )
   const isContabilidade = chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoEtapa = chavePendente === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isRascunhoEtapa = chavePendente === 'DIV_MAT_FINANCAS'

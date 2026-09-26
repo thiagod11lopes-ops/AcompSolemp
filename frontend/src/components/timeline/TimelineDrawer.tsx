@@ -189,7 +189,8 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 <section style={{ marginBottom: 22 }}>
                   <div
                     className="timeline-actions-slot"
-                    onClickCapture={(event) => {
+                    // Bubble (não capture): o onClick do botão precisa rodar antes de fechar o drawer.
+                    onClick={(event) => {
                       const target = event.target
                       if (!(target instanceof Element)) return
                       const button = target.closest('button')
