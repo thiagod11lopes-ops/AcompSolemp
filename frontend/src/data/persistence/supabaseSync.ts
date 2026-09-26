@@ -8,6 +8,7 @@ import { APP_DATA_SEED_VERSION } from '@/data/persistence/types'
 import type { AppData } from '@/types'
 import { getTenantId } from '@/services/tenantService'
 import { getSupabaseClient } from '@/supabase/client'
+import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null
 let pendingData: AppData | null = null
@@ -15,9 +16,25 @@ let pendingVersion = APP_DATA_SEED_VERSION
 let flushPromise: Promise<void> | null = null
 /** Marca o último flush local para o poll não aplicar snapshot mais antigo. */
 let lastLocalFlushAtMs = 0
+/** Invalida uploads em voo (ex.: seed fictício) para o restore real prevalecer. */
+let writeEpoch = 0
+
+function isFictionalDashboardSeedActive(): boolean {
+  return storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1'
+}
 
 export function getLastLocalAppDataFlushAtMs(): number {
   return lastLocalFlushAtMs
+}
+
+/** Cancela sync pendente e invalida uploads em andamento do seed fictício. */
+export function invalidateSupabaseAppDataSyncGeneration(): void {
+  writeEpoch += 1
+  pendingData = null
+  if (syncTimer) {
+    clearTimeout(syncTimer)
+    syncTimer = null
+  }
 }
 
 export async function hydrateLocalCacheFromSupabase(
@@ -45,6 +62,8 @@ export function scheduleSupabaseAppDataSync(
   version: string = APP_DATA_SEED_VERSION,
 ): void {
   if (!useCloudAppDataSync()) return
+  // Seed fictício do dashboard nunca sobe para o Supabase.
+  if (isFictionalDashboardSeedActive()) return
   pendingData = data
   pendingVersion = version
   if (syncTimer) clearTimeout(syncTimer)
@@ -56,6 +75,14 @@ export function scheduleSupabaseAppDataSync(
 
 export async function flushSupabaseAppDataSync(): Promise<void> {
   if (!useCloudAppDataSync()) return
+  if (isFictionalDashboardSeedActive()) {
+    pendingData = null
+    if (syncTimer) {
+      clearTimeout(syncTimer)
+      syncTimer = null
+    }
+    return
+  }
   if (syncTimer) {
     clearTimeout(syncTimer)
     syncTimer = null
@@ -71,6 +98,12 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
     }
   }
 
+  // Seed pode ter sido ativado enquanto aguardávamos um flush antigo.
+  if (isFictionalDashboardSeedActive()) {
+    pendingData = null
+    return
+  }
+
   // saveAppData agenda o sync via import() dinâmico — se flush rodar antes,
   // pendingData ainda é null e a gravação na nuvem era ignorada (1º cadastro sumia).
   if (!pendingData) {
@@ -82,14 +115,18 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
   const data = pendingData
   const version = pendingVersion
   pendingData = null
+  const epoch = writeEpoch
 
   flushPromise = saveAppDataToSupabase(data, version)
     .then(() => {
+      if (epoch !== writeEpoch) return
       lastLocalFlushAtMs = Date.now()
     })
     .catch((error) => {
-      pendingData = data
-      pendingVersion = version
+      if (epoch === writeEpoch) {
+        pendingData = data
+        pendingVersion = version
+      }
       throw error
     })
     .finally(() => {

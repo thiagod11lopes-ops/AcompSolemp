@@ -7,6 +7,7 @@ import type {
   Solemp,
   WorkflowEtapa,
 } from '@/types'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import {
   loadAppData,
   replaceAppDataCache,
@@ -15,6 +16,12 @@ import {
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import { EMPTY_CABECALHO } from '@/utils/fictionalSeedCabecalho'
+import {
+  DEMO_CLINICA_EXEMPLO_ID,
+  DEMO_EMPENHADO_EXEMPLO_ID,
+  DEMO_MEDICAMENTO_EXEMPLO_ID,
+  isDemoExampleUser,
+} from '@/services/demoCadastrosService'
 
 const TARGET_CONCLUIDOS = 520
 const TARGET_EMPENHO = 5_000_000
@@ -339,10 +346,53 @@ export function isFictionalDashboardSeedActive(): boolean {
   return storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1'
 }
 
+const DEMO_ENTIDADE_IDS = new Set([
+  DEMO_CLINICA_EXEMPLO_ID,
+  DEMO_MEDICAMENTO_EXEMPLO_ID,
+  DEMO_EMPENHADO_EXEMPLO_ID,
+])
+
+/** Remove artefatos do seed fictício / demo que possam ter vazado para os dados reais. */
+export function stripFictionalSeedArtifacts(data: AppData): AppData {
+  const next: AppData = structuredClone(data)
+
+  next.clinicas = next.clinicas.filter(
+    (c) => !c.id.startsWith('fic-') && !DEMO_ENTIDADE_IDS.has(c.id),
+  )
+  next.empresas = next.empresas.filter((e) => !e.id.startsWith('fic-'))
+  next.materiais = next.materiais.filter((m) => !m.id.startsWith('fic-'))
+  next.usuarios = next.usuarios.filter(
+    (u) => !u.id.startsWith('fic-') && !isDemoExampleUser(u),
+  )
+  next.pedidos = next.pedidos.filter((p) => !p.id.startsWith('fic-ped-'))
+  next.solemp = next.solemp.filter((s) => !s.id.startsWith('fic-solemp-'))
+  next.notificacoes = next.notificacoes.filter((n) => !n.id.startsWith('fic-notif-'))
+
+  if (next.pedidoPlanilhaEnvio) {
+    for (const key of Object.keys(next.pedidoPlanilhaEnvio)) {
+      if (key.startsWith('fic-ped-')) delete next.pedidoPlanilhaEnvio[key]
+    }
+  }
+
+  if (next.consumoPlanilha) {
+    for (const key of [...DEMO_ENTIDADE_IDS]) {
+      delete next.consumoPlanilha[key]
+    }
+  }
+
+  if (next.planilhasLivres) {
+    for (const key of [...DEMO_ENTIDADE_IDS]) {
+      delete next.planilhasLivres[key]
+    }
+  }
+
+  return next
+}
+
 export function activateFictionalDashboardSeed(): void {
   if (isFictionalDashboardSeedActive()) return
 
-  const real = loadAppData()
+  const real = stripFictionalSeedArtifacts(loadAppData())
   storageSet(STORAGE_KEYS.FICTIONAL_BACKUP, JSON.stringify(real))
 
   const fictional = buildFictionalDashboardAppData(real)
@@ -352,8 +402,20 @@ export function activateFictionalDashboardSeed(): void {
 }
 
 export async function deactivateFictionalDashboardSeed(): Promise<void> {
+  const { invalidateSupabaseAppDataSyncGeneration, flushSupabaseAppDataSync } = await import(
+    '@/data/persistence/supabaseSync'
+  )
+
+  // Cancela uploads pendentes/em voo do snapshot fictício antes de restaurar.
+  invalidateSupabaseAppDataSyncGeneration()
+
   if (!isFictionalDashboardSeedActive()) {
-    // Mesmo sem seed ativo, zera timelines da aba Demonstração se o usuário pediu limpar.
+    // Mesmo sem flag, remove resíduos e limpa a aba Demonstração.
+    const cleaned = stripFictionalSeedArtifacts(loadAppData())
+    replaceAppDataCache(cleaned)
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
     await wipeDemoAppDataStore()
     return
   }
@@ -363,15 +425,22 @@ export async function deactivateFictionalDashboardSeed(): Promise<void> {
   storageRemove(STORAGE_KEYS.FICTIONAL_SNAPSHOT)
   storageRemove(STORAGE_KEYS.FICTIONAL_BACKUP)
 
+  let restored: AppData
   if (raw) {
     try {
-      const real = JSON.parse(raw) as AppData
-      replaceAppDataCache(real)
+      restored = JSON.parse(raw) as AppData
     } catch {
-      replaceAppDataCache(loadAppData())
+      restored = loadAppData()
     }
   } else {
-    replaceAppDataCache(loadAppData())
+    restored = loadAppData()
+  }
+
+  replaceAppDataCache(stripFictionalSeedArtifacts(restored))
+
+  // Garante que a nuvem volte ao snapshot real (sobrescreve flush fictício antigo).
+  if (useCloudAppDataSync()) {
+    await flushSupabaseAppDataSync()
   }
 
   // Dados fictícios do dashboard ≠ aba Demonstração — limpa as duas.

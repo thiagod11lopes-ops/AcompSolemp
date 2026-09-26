@@ -858,9 +858,14 @@ export function reloadAppDataFromStorage(): AppData {
 }
 
 function persistAppData(data: AppData, options?: { silent?: boolean }): void {
+  // Seed fictício: só atualiza o snapshot local — nunca AppData real nem Supabase.
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') {
+    storageSet(STORAGE_KEYS.FICTIONAL_SNAPSHOT, JSON.stringify(data))
+    if (!options?.silent) notifyAppDataChanged()
+    return
+  }
+
   if (useCloudAppDataSync()) {
-    // Seed fictício do dashboard: nunca sobe para o Supabase.
-    if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') return
     void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
       scheduleSupabaseAppDataSync(data, SEED_VERSION)
     })
@@ -1113,6 +1118,11 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
 
 /** Aplica dados vindos do Supabase no cache em memória */
 export function applyRemoteAppData(raw: AppData): AppData {
+  // Com seed fictício ativo, ignora realtime/hidratação remota para não misturar dados.
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1' && appDataCache) {
+    return cloneData(appDataCache)
+  }
+
   const mergedRaw = mergeRemotePreservingAnexos(appDataCache, cloneData(raw))
   const { data, changed } = normalizeAppData(mergedRaw)
   appDataCache = data

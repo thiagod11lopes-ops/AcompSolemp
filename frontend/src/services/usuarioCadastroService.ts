@@ -9,6 +9,7 @@ import {
   upsertEmailAccess,
 } from '@/data/persistence/supabaseTenant'
 import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
+import { isFictionalDashboardSeedActive } from '@/services/fictionalDashboardSeedService'
 import type { CadastroPerfilOpcao, ClinicaEntidadeTipo } from '@/types/cadastroPerfis'
 import {
   isCadastroEntidadeClinica,
@@ -251,6 +252,11 @@ export const usuarioCadastroService = {
 
     saveAppData(data)
 
+    // Seed fictício: alterações ficam só no snapshot local (não poluem nuvem/email_access).
+    if (isFictionalDashboardSeedActive()) {
+      return { user, login }
+    }
+
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
     }
@@ -308,6 +314,7 @@ export const usuarioCadastroService = {
       }
 
       saveAppData(data)
+      if (isFictionalDashboardSeedActive()) return
       if (useCloudAppDataSync()) {
         await flushSupabaseAppDataSync()
       }
@@ -321,6 +328,7 @@ export const usuarioCadastroService = {
     const email = user.email?.trim() ?? ''
     user.ativo = false
     saveAppData(data)
+    if (isFictionalDashboardSeedActive()) return
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
     }
