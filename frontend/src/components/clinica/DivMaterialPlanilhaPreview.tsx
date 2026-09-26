@@ -240,6 +240,16 @@ const cellSx = {
   whiteSpace: 'nowrap' as const,
 } as const
 
+/** Viewport: no máximo 5 linhas de dados + cabeçalho (rolagem vertical/horizontal na base). */
+const DIV_MAT_VISIBLE_BODY_ROWS = 5
+const DIV_MAT_HEADER_HEIGHT_PX = 44
+const DIV_MAT_ROW_HEIGHT_PX = 40
+const DIV_MAT_GRID_PAD_PX = 24
+const DIV_MAT_VIEWPORT_MAX_HEIGHT_PX =
+  DIV_MAT_HEADER_HEIGHT_PX +
+  DIV_MAT_VISIBLE_BODY_ROWS * DIV_MAT_ROW_HEIGHT_PX +
+  DIV_MAT_GRID_PAD_PX
+
 const headerSx = {
   ...cellSx,
   bgcolor: EXCEL_SHEET.headerBg,
@@ -433,23 +443,22 @@ export function DivMaterialPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               width: '100%',
               maxWidth: '100%',
-              // Viewport fixo: barra horizontal fica na base da área visível,
-              // sem precisar rolar até o fim da planilha.
-              maxHeight: 'min(70vh, calc(100vh - 220px))',
+              // Máx. 5 linhas visíveis; barras de rolagem na base/lateral do viewport.
+              maxHeight: DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               overflowX: 'auto',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
               scrollbarGutter: 'stable',
               '&::-webkit-scrollbar': {
-                height: 10,
+                height: 12,
                 width: 10,
               },
               '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(15, 23, 42, 0.28)',
+                backgroundColor: 'rgba(15, 23, 42, 0.35)',
                 borderRadius: 999,
               },
               '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(15, 23, 42, 0.06)',
+                backgroundColor: 'rgba(15, 23, 42, 0.08)',
               },
             }}
           >
