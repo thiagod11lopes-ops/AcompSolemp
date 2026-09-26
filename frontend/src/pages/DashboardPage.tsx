@@ -13,7 +13,6 @@ import { format, isValid, parseISO, subYears, startOfDay, endOfDay } from 'date-
 import { ptBR } from 'date-fns/locale'
 import type { ReactNode } from 'react'
 import { PageHeader } from '@/components/common/PageHeader'
-import { KpiCard } from '@/components/common/KpiCard'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
@@ -24,6 +23,11 @@ import {
 } from '@/components/dashboard/AtendimentosKpiCards'
 import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
 import { ConcluidosCard } from '@/components/dashboard/ConcluidosCard'
+import {
+  DashboardRingCard,
+  ringPct,
+  ringScale,
+} from '@/components/dashboard/DashboardRingCard'
 import {
   KpiDetalheDialog,
   kpiCol,
@@ -188,22 +192,6 @@ export default function DashboardPage() {
     )
   }
   if (!metrics) return <LoadingSpinner />
-
-  const qtdAguardando = metrics.quantidadeAguardandoEmpenho
-  const subtitleAguardando =
-    qtdAguardando === 0
-      ? 'Nenhuma Solemp em Rascunho — soma do Valor Total Div. Material'
-      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Rascunho · Valor Total Div. Material`
-
-  const subtitleTotalEmpenhado =
-    empenhadoAnoCard.quantidade === 0
-      ? 'Últimos 12 meses · nenhum empenho no período'
-      : `${empenhadoAnoCard.quantidade} empenho${empenhadoAnoCard.quantidade === 1 ? '' : 's'} · últimos 12 meses`
-
-  const subtitleMes =
-    mesFiltrado.quantidade === 0
-      ? `${mesFiltrado.mesLabel} · Valor Total Div. Material`
-      : `${mesFiltrado.quantidade} empenho${mesFiltrado.quantidade === 1 ? '' : 's'} em ${mesFiltrado.mesLabel} · Valor Total Div. Material`
 
   const periodoLabel =
     empenhadoPeriodo.inicio && empenhadoPeriodo.fim
@@ -508,41 +496,54 @@ export default function DashboardPage() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
+          <DashboardRingCard
             title="Total"
             value={metrics.totalProcessos}
-            subtitle="Clique para detalhes"
-            icon={<AssignmentIcon />}
+            rings={[
+              ringPct(metrics.concluidos, metrics.totalProcessos),
+              ringPct(metrics.emAndamento, metrics.totalProcessos),
+              ringPct(metrics.atrasados, metrics.totalProcessos),
+            ]}
+            palette="brand"
             onClick={() => setKpiAberto('total')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
+          <DashboardRingCard
             title="Atrasados"
             value={metrics.atrasados}
-            subtitle="Clique para detalhes"
-            icon={<WarningIcon />}
-            color={premiumTokens.red}
+            rings={[
+              ringPct(metrics.atrasados, metrics.totalProcessos),
+              ringPct(metrics.atrasados, Math.max(metrics.emAndamento, 1)),
+              ringScale(metrics.atrasados, Math.max(metrics.atrasados, 5)),
+            ]}
+            palette="alert"
             onClick={() => setKpiAberto('atrasados')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Próx. vencimento"
+          <DashboardRingCard
+            title="Próx. Vencimento"
             value={metrics.proximosVencimento}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            color={premiumTokens.purple}
+            rings={[
+              ringPct(metrics.proximosVencimento, metrics.totalProcessos),
+              ringPct(metrics.proximosVencimento, Math.max(metrics.emAndamento, 1)),
+              ringScale(metrics.proximosVencimento, Math.max(metrics.proximosVencimento, 5)),
+            ]}
+            palette="info"
             onClick={() => setKpiAberto('proximos')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Correções vencidas"
+          <DashboardRingCard
+            title="Correções Vencidas"
             value={metrics.correcoesVencidas}
-            subtitle="Prazo de correção ultrapassado"
-            icon={<BuildCircleIcon />}
-            color={premiumTokens.orange}
+            rings={[
+              ringPct(metrics.correcoesVencidas, metrics.totalProcessos),
+              ringScale(metrics.correcoesVencidas, Math.max(metrics.correcoesVencidas, 5)),
+              ringPct(metrics.correcoesVencidas, Math.max(metrics.emAndamento, 1)),
+            ]}
+            palette="warning"
             onClick={() => setKpiAberto('correcoesVencidas')}
           />
         </Grid>
@@ -550,41 +551,54 @@ export default function DashboardPage() {
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
+          <DashboardRingCard
             title="Aguardando Empenho"
             value={formatCurrency(metrics.valorAguardandoEmpenho)}
-            subtitle={subtitleAguardando}
-            icon={<HourglassTopIcon />}
-            color={premiumTokens.orange}
+            rings={[
+              ringScale(metrics.quantidadeAguardandoEmpenho, Math.max(metrics.quantidadeAguardandoEmpenho, 5)),
+              ringPct(metrics.quantidadeAguardandoEmpenho, Math.max(metrics.emAndamento, 1)),
+              ringScale(metrics.valorAguardandoEmpenho, Math.max(metrics.valorAguardandoEmpenho, 1)),
+            ]}
+            palette="warning"
             onClick={() => setKpiAberto('aguardandoEmpenho')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Total empenhado do mês"
+          <DashboardRingCard
+            title="Total Empenhado do Mês"
             value={formatCurrency(mesFiltrado.valor)}
-            subtitle={subtitleMes}
-            icon={<CalendarMonthIcon />}
-            color={premiumTokens.primary}
+            rings={[
+              ringScale(mesFiltrado.quantidade, Math.max(mesFiltrado.quantidade, 5)),
+              ringScale(mesFiltrado.valor, Math.max(mesFiltrado.valor, empenhadoAnoCard.valor, 1)),
+              ringPct(mesFiltrado.quantidade, Math.max(empenhadoAnoCard.quantidade, 1)),
+            ]}
+            palette="brand"
             onClick={() => setKpiAberto('empenhadoMes')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Total empenhado no ano"
+          <DashboardRingCard
+            title="Total Empenhado no Ano"
             value={formatCurrency(empenhadoAnoCard.valor)}
-            subtitle={subtitleTotalEmpenhado}
-            icon={<AccountBalanceIcon />}
-            color={premiumTokens.green}
+            rings={[
+              ringScale(empenhadoAnoCard.quantidade, Math.max(empenhadoAnoCard.quantidade, 5)),
+              ringScale(empenhadoAnoCard.valor, Math.max(empenhadoAnoCard.valor, 1)),
+              ringPct(mesFiltrado.valor, Math.max(empenhadoAnoCard.valor, 1)),
+            ]}
+            palette="success"
             onClick={() => abrirKpi('totalEmpenhado')}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
+          <DashboardRingCard
             title="Tempo Médio de Finalização"
             value={`${metrics.tempoMedioPagamento}d`}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
+            rings={[
+              Math.min(100, Math.max(2, (1 - Math.min(Math.max(metrics.tempoMedioPagamento, 1), 30) / 30) * 100)),
+              ringPct(metrics.concluidos, metrics.totalProcessos),
+              ringScale(metrics.concluidos, Math.max(metrics.totalProcessos, 1)),
+            ]}
+            palette="brand"
             onClick={() => setKpiAberto('tempoMedio')}
           />
         </Grid>
