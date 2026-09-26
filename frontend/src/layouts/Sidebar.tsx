@@ -19,6 +19,7 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { NavLink } from 'react-router-dom'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getRoleLabel } from '@/mocks/seed'
@@ -56,18 +57,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ px: 2.25, minHeight: 64 }}>
-        <Box>
-          <Typography
-            variant="subtitle1"
-            sx={{ fontWeight: 700, letterSpacing: '-0.03em', color: 'text.primary' }}
-          >
-            AcompSOLEMP
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '-0.01em' }}>
-            Portal do Gestor
-          </Typography>
-        </Box>
+      <Toolbar sx={{ px: 2.25, minHeight: 72 }}>
+        <BrandLogo subtitle="Portal do Gestor" />
       </Toolbar>
       <Divider />
       {user && (
