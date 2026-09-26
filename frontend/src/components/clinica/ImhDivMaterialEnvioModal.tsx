@@ -38,7 +38,17 @@ export function ImhDivMaterialEnvioModal({
   return (
     <Dialog
       open={open}
-      onClose={isSubmitting ? undefined : onClose}
+      onClose={
+        isSubmitting
+          ? undefined
+          : (_event, reason) => {
+              // Evita fechar por clique fantasma do seletor de arquivos do Windows.
+              if (reason === 'backdropClick') return
+              onClose()
+            }
+      }
+      disableRestoreFocus
+      disableEnforceFocus
       maxWidth="sm"
       fullWidth
       slotProps={{

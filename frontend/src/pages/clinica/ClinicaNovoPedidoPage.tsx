@@ -225,6 +225,8 @@ export default function ClinicaNovoPedidoPage() {
 
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const anexoInputRef = useRef<HTMLInputElement | null>(null)
+  const abrirEnvioTimeoutRef = useRef<number | null>(null)
+  const envioModalIgnoreCloseUntilRef = useRef(0)
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -879,24 +881,72 @@ export default function ClinicaNovoPedidoPage() {
   }
 
   const abrirModalEnvioPlanilha = (anexos: File[] = []) => {
+    if (abrirEnvioTimeoutRef.current != null) {
+      window.clearTimeout(abrirEnvioTimeoutRef.current)
+      abrirEnvioTimeoutRef.current = null
+    }
+
     setEnvioAnexos(anexos)
     setAnexoPerguntaOpen(false)
-    // Garante abertura após fechar o diálogo anterior / seletor do sistema.
-    window.setTimeout(() => {
+    // Bloqueia fechamento imediato por clique fantasma do diálogo do Windows.
+    envioModalIgnoreCloseUntilRef.current = Date.now() + 800
+    // Atraso curto: o seletor nativo devolve o foco e pode “clicar” no backdrop.
+    abrirEnvioTimeoutRef.current = window.setTimeout(() => {
       setEnvioModalOpen(true)
-    }, 0)
+      abrirEnvioTimeoutRef.current = null
+    }, 280)
   }
 
   const handleAnexoPerguntaNao = () => {
     abrirModalEnvioPlanilha([])
   }
 
-  const handleAnexoPerguntaSim = () => {
-    // Fecha a pergunta antes do seletor nativo (evita conflito de foco do Dialog).
-    setAnexoPerguntaOpen(false)
-    window.setTimeout(() => {
-      anexoInputRef.current?.click()
-    }, 120)
+  const handleAnexoPerguntaSim = async () => {
+    const picker = (
+      window as Window & {
+        showOpenFilePicker?: (options?: {
+          multiple?: boolean
+          excludeAcceptAllOption?: boolean
+        }) => Promise<Array<{ getFile: () => Promise<File> }>>
+      }
+    ).showOpenFilePicker
+
+    // Chromium/Edge: API mais estável que input+Dialog no Windows.
+    if (typeof picker === 'function') {
+      try {
+        const handles = await picker({
+          multiple: true,
+          excludeAcceptAllOption: false,
+        })
+        const files = await Promise.all(handles.map((handle) => handle.getFile()))
+        const validos = filterPlanilhaAnexoFiles(files)
+        if (validos.length === 0 && files.length > 0) {
+          setFeedback({
+            open: true,
+            severity: 'error',
+            message:
+              'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
+          })
+          abrirModalEnvioPlanilha([])
+          return
+        }
+        if (validos.length < files.length) {
+          setFeedback({
+            open: true,
+            severity: 'error',
+            message: `${files.length - validos.length} arquivo(s) ignorado(s) por formato não aceito.`,
+          })
+        }
+        abrirModalEnvioPlanilha(validos)
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        // Fallback para <input type="file">.
+      }
+    }
+
+    // Mantém o modal de pergunta aberto enquanto o seletor nativo está ativo.
+    anexoInputRef.current?.click()
   }
 
   const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -930,6 +980,13 @@ export default function ClinicaNovoPedidoPage() {
 
     // Após "Abrir" no seletor do sistema → modal IMH / Div. Material.
     abrirModalEnvioPlanilha(validos)
+  }
+
+  const handleFecharEnvioModal = () => {
+    if (isEnviando) return
+    if (Date.now() < envioModalIgnoreCloseUntilRef.current) return
+    setEnvioModalOpen(false)
+    setEnvioAnexos([])
   }
 
   const handleEnviarPlanilhas = async () => {
@@ -1309,12 +1366,7 @@ export default function ClinicaNovoPedidoPage() {
         divMaterialCount={selectedDivCount}
         anexos={envioAnexos}
         isSubmitting={isEnviando}
-        onClose={() => {
-          if (!isEnviando) {
-            setEnvioModalOpen(false)
-            setEnvioAnexos([])
-          }
-        }}
+        onClose={handleFecharEnvioModal}
         onEnviar={handleEnviarPlanilhas}
       />
 
