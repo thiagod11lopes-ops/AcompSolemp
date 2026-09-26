@@ -3,6 +3,7 @@ import {
   PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
   type ArquivoAnexo,
+  type PedidoPlanilhaEnvioState,
   type User,
   type UserRole,
   type WorkflowEtapa,
@@ -1080,6 +1081,63 @@ function mergeById<T extends { id: string }>(remoteList: T[], localList: T[]): T
   return [...byId.values()]
 }
 
+function pickNewerIso(a?: string, b?: string): string | undefined {
+  if (!a) return b
+  if (!b) return a
+  return new Date(a).getTime() >= new Date(b).getTime() ? a : b
+}
+
+/** Mantém flags de receber/enviar locais que o remoto atrasado ainda não tem. */
+function mergePlanilhaEnvioSnapshots(
+  localSnap: PedidoPlanilhaEnvioState | undefined,
+  remoteSnap: PedidoPlanilhaEnvioState | undefined,
+): PedidoPlanilhaEnvioState | undefined {
+  if (!localSnap && !remoteSnap) return undefined
+  if (!localSnap) return remoteSnap ? { ...remoteSnap } : undefined
+  if (!remoteSnap) return { ...localSnap }
+
+  const localLinhas = localSnap.linhas?.length ?? 0
+  const remoteLinhas = remoteSnap.linhas?.length ?? 0
+  const base = remoteLinhas >= localLinhas ? remoteSnap : localSnap
+  const other = base === remoteSnap ? localSnap : remoteSnap
+
+  return {
+    ...other,
+    ...base,
+    cabecalho: base.cabecalho ?? other.cabecalho,
+    linhas: (base.linhas?.length ? base.linhas : other.linhas) ?? [],
+    controleSolempLinhas: base.controleSolempLinhas?.length
+      ? base.controleSolempLinhas
+      : other.controleSolempLinhas,
+    imhAbaLinhas: base.imhAbaLinhas?.length ? base.imhAbaLinhas : other.imhAbaLinhas,
+    imhMedicamentoLinhas: base.imhMedicamentoLinhas?.length
+      ? base.imhMedicamentoLinhas
+      : other.imhMedicamentoLinhas,
+    divMaterialLinhas: base.divMaterialLinhas?.length
+      ? base.divMaterialLinhas
+      : other.divMaterialLinhas,
+    enviadoEm: pickNewerIso(localSnap.enviadoEm, remoteSnap.enviadoEm),
+    recebidaEm: pickNewerIso(localSnap.recebidaEm, remoteSnap.recebidaEm),
+    encaminhadaImhEm: pickNewerIso(localSnap.encaminhadaImhEm, remoteSnap.encaminhadaImhEm),
+    recebidaImhEm: pickNewerIso(localSnap.recebidaImhEm, remoteSnap.recebidaImhEm),
+    recebidaConfeccaoEm: pickNewerIso(
+      localSnap.recebidaConfeccaoEm,
+      remoteSnap.recebidaConfeccaoEm,
+    ),
+    recebidaRascunhoEm: pickNewerIso(
+      localSnap.recebidaRascunhoEm,
+      remoteSnap.recebidaRascunhoEm,
+    ),
+    recebidaEmpenhadoEm: pickNewerIso(
+      localSnap.recebidaEmpenhadoEm,
+      remoteSnap.recebidaEmpenhadoEm,
+    ),
+    arquivadaEm: pickNewerIso(localSnap.arquivadaEm, remoteSnap.arquivadaEm),
+    devolvidaEm: pickNewerIso(localSnap.devolvidaEm, remoteSnap.devolvidaEm),
+    devolvidaParaChave: localSnap.devolvidaParaChave ?? remoteSnap.devolvidaParaChave,
+  }
+}
+
 /** Preserva anexos e cadastros locais que um snapshot remoto antigo ainda não contém. */
 function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
   if (!local) return remote
@@ -1103,25 +1161,32 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
   if (!remote.pedidoPlanilhaEnvio) remote.pedidoPlanilhaEnvio = {}
 
   for (const pedidoId of pedidoIds) {
-    const merged = mergeAnexoLists(
+    const localSnap = local.pedidoPlanilhaEnvio?.[pedidoId]
+    const remoteSnap = remote.pedidoPlanilhaEnvio[pedidoId]
+    const mergedAnexos = mergeAnexoLists(
       [
         ...(localIndex[pedidoId] ?? []),
-        ...(local.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []),
+        ...(localSnap?.anexos ?? []),
       ],
       [
         ...(remoteIndex[pedidoId] ?? []),
-        ...(remote.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []),
+        ...(remoteSnap?.anexos ?? []),
       ],
     )
-    if (merged.length === 0) continue
 
-    remoteIndex[pedidoId] = merged.map((arquivo) => ({ ...arquivo }))
-    const snap = remote.pedidoPlanilhaEnvio[pedidoId]
-    if (snap) {
+    const mergedSnap = mergePlanilhaEnvioSnapshots(localSnap, remoteSnap)
+    if (mergedSnap) {
       remote.pedidoPlanilhaEnvio[pedidoId] = {
-        ...snap,
-        anexos: merged.map((arquivo) => ({ ...arquivo })),
+        ...mergedSnap,
+        anexos:
+          mergedAnexos.length > 0
+            ? mergedAnexos.map((arquivo) => ({ ...arquivo }))
+            : mergedSnap.anexos,
       }
+    }
+
+    if (mergedAnexos.length > 0) {
+      remoteIndex[pedidoId] = mergedAnexos.map((arquivo) => ({ ...arquivo }))
     }
   }
 

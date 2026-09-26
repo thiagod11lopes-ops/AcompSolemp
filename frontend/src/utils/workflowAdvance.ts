@@ -324,7 +324,20 @@ export function advancePedidoEtapa(
     ? pedido.etapasAtivasIds
     : [pedido.etapaAtualId]
 
-  if (!ativas.includes(etapaAtual.id) && etapaAtual.chave !== 'SOLICITACAO') {
+  const etapaEstaAtiva =
+    ativas.some((id) => {
+      if (id === etapaAtual.id) return true
+      const resolvida = resolveEtapaFromRef(id, undefined, etapas)
+      return resolvida?.id === etapaAtual.id || resolvida?.chave === etapaAtual.chave
+    }) ||
+    pedido.etapaAtualId === etapaAtual.id ||
+    pedido.etapasHistorico.some((h) => {
+      if (h.dataConclusao) return false
+      const resolvida = resolveEtapaFromRef(h.etapaId, h.etapaNome, etapas)
+      return resolvida?.id === etapaAtual.id || resolvida?.chave === etapaAtual.chave
+    })
+
+  if (!etapaEstaAtiva && etapaAtual.chave !== 'SOLICITACAO') {
     throw new Error('Esta etapa não está ativa no fluxo paralelo')
   }
 

@@ -26,6 +26,8 @@ import {
 } from '@/utils/perfilEtapa'
 import { getSolempDefaults, parseSolempNumero } from '@/utils/solemp'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import { useCloudAppDataSync } from '@/config/dataSource'
+import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { pedidoToConsumoRow } from '@/utils/consumoMaterialTemplate'
 import { buildImhPlanilhaFromConsumo } from '@/utils/imhPlanilhaTemplate'
 import { listarDestinosDevolucaoPlanilha, type DestinoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
@@ -173,16 +175,20 @@ export default function OrdenadorTimelineDetailPage() {
         )
       : false
 
-    setPlanilhaRecebida(Boolean(stored?.recebidaEm))
-    setPlanilhaRecebidaConfeccao(Boolean(stored?.recebidaConfeccaoEm))
-    setPlanilhaRecebidaRascunho(Boolean(stored?.recebidaRascunhoEm))
-    setPlanilhaRecebidaEmpenhado(Boolean(stored?.recebidaEmpenhadoEm))
-    setPlanilhaEncaminhadaImh(
-      Boolean(stored?.encaminhadaImhEm) ||
-        (auditoriaConcluida && Boolean(stored)) ||
-        (fluxoDiretoImh && (Boolean(stored?.enviadoEm) || contabilidadeAberta)),
+    // Não derruba o "recebido" da sessão se um sync remoto atrasado ainda não trouxe a flag.
+    setPlanilhaRecebida((prev) => prev || Boolean(stored?.recebidaEm))
+    setPlanilhaRecebidaConfeccao((prev) => prev || Boolean(stored?.recebidaConfeccaoEm))
+    setPlanilhaRecebidaRascunho((prev) => prev || Boolean(stored?.recebidaRascunhoEm))
+    setPlanilhaRecebidaEmpenhado((prev) => prev || Boolean(stored?.recebidaEmpenhadoEm))
+    setPlanilhaEncaminhadaImh((prev) =>
+      Boolean(
+        prev ||
+          stored?.encaminhadaImhEm ||
+          (auditoriaConcluida && Boolean(stored)) ||
+          (fluxoDiretoImh && (Boolean(stored?.enviadoEm) || contabilidadeAberta)),
+      ),
     )
-    setPlanilhaRecebidaImh(Boolean(stored?.recebidaImhEm))
+    setPlanilhaRecebidaImh((prev) => prev || Boolean(stored?.recebidaImhEm))
     // arquivadaEm é só da IMH — não deve bloquear Confecção em fluxo paralelo
     const encerradoContabilidade =
       Boolean(stored?.arquivadaEm) && chavePendente === 'DIV_MAT_CONTABILIDADE_IMH'
@@ -249,11 +255,18 @@ export default function OrdenadorTimelineDetailPage() {
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
 
+  const persistRecebimento = async () => {
+    if (useCloudAppDataSync()) {
+      await flushSupabaseAppDataSync()
+    }
+  }
+
   const handleEnviarAuditoria = (anotacoes: string) => {
     if (
       !planilhaRecebida ||
       !pedidoPlanilhaEnvioService.foiRecebidaNoSetor(pedido.id, 'DIV_MAT_AUDITORIA')
     ) {
+      window.alert('Receba a planilha antes de enviar. Clique em Receber Planilha primeiro.')
       return
     }
     assinar.mutate(
@@ -264,6 +277,13 @@ export default function OrdenadorTimelineDetailPage() {
           setAuditoriaOpen(false)
           navigatePortal('/ordenador/arquivados')
         },
+        onError: (error) => {
+          window.alert(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível enviar a planilha. Tente novamente.',
+          )
+        },
       },
     )
   }
@@ -272,30 +292,35 @@ export default function OrdenadorTimelineDetailPage() {
     pedidoPlanilhaEnvioService.markRecebidaImh(pedido.id)
     setPlanilhaRecebidaImh(true)
     setPlanilhaOpen(true)
+    void persistRecebimento()
   }
 
   const handleReceberPlanilha = () => {
     pedidoPlanilhaEnvioService.markRecebida(pedido.id)
     setPlanilhaRecebida(true)
     setPlanilhaOpen(true)
+    void persistRecebimento()
   }
 
   const handleReceberPlanilhaConfeccao = () => {
     pedidoPlanilhaEnvioService.markRecebidaConfeccao(pedido.id)
     setPlanilhaRecebidaConfeccao(true)
     setPlanilhaOpen(true)
+    void persistRecebimento()
   }
 
   const handleReceberPlanilhaRascunho = () => {
     pedidoPlanilhaEnvioService.markRecebidaRascunho(pedido.id)
     setPlanilhaRecebidaRascunho(true)
     setPlanilhaOpen(true)
+    void persistRecebimento()
   }
 
   const handleReceberPlanilhaEmpenhado = () => {
     pedidoPlanilhaEnvioService.markRecebidaEmpenhado(pedido.id)
     setPlanilhaRecebidaEmpenhado(true)
     setPlanilhaOpen(true)
+    void persistRecebimento()
   }
 
   const handleAbrirDevolver = () => {
