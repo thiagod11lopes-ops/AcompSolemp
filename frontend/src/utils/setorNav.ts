@@ -21,7 +21,7 @@ export interface SetorNavItem {
 
 /**
  * Abas laterais para os setores autorizados no cadastro (perfis[]).
- * Confecção + Solemp em Rascunho inclui Empenhado (cadeia).
+ * Empenhado não vira aba: é só etapa concluída automática na timeline.
  */
 export function setorNavItemsParaUsuario(
   user: Pick<User, 'perfil' | 'perfis'>,
@@ -51,12 +51,6 @@ export function setorNavItemsParaUsuario(
         etapa: 'DIV_MAT_FINANCAS',
         perfil: 'FINANCEIRO',
       })
-      items.push({
-        path: '/ordenador/timelines',
-        label: 'Empenhado',
-        etapa: 'DIV_MAT_EMPENHADO',
-        perfil: 'FINANCEIRO',
-      })
       continue
     }
 
@@ -84,15 +78,18 @@ export function etapasNavPermitidas(user: Pick<User, 'perfil' | 'perfis'>): stri
   const items = setorNavItemsParaUsuario(user)
   const fromNav = items.map((i) => i.etapa).filter((e): e is string => Boolean(e))
   if (userTemCadeiaSolemp(user)) {
-    return [...new Set([...fromNav, ...CHAVES_CONFECCAO_CADEIA])]
+    // Sem Empenhado: não há aba/filtro de navegação para essa etapa.
+    return [
+      ...new Set(
+        [...fromNav, ...CHAVES_CONFECCAO_CADEIA].filter((c) => c !== 'DIV_MAT_EMPENHADO'),
+      ),
+    ]
   }
   return [...new Set(fromNav)]
 }
 
 export function setorNavSubtitle(user: Pick<User, 'perfil' | 'perfis'>): string {
-  const labels = setorNavItemsParaUsuario(user)
-    .filter((i) => i.etapa !== 'DIV_MAT_EMPENHADO')
-    .map((i) => i.label)
+  const labels = setorNavItemsParaUsuario(user).map((i) => i.label)
   if (labels.length === 0) return loginPerfilLabel(user.perfil)
   return labels.join(' · ')
 }

@@ -236,7 +236,7 @@ export function UsuariosTab() {
     if (!podeCombinarOpcoes(prev, last)) {
       setErroModal(
         isCadastroEntidadeClinica(last)
-          ? 'Clínica, Medicamento e Empenhado não podem ser combinados com setores nem entre si.'
+          ? 'Clínica e Medicamento não podem ser combinados com setores nem entre si.'
           : 'Não é possível misturar tipos de clínica com setores da Div. de Material.',
       )
       return

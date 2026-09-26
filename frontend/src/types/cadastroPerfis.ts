@@ -93,15 +93,5 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     descricao:
       'Responsável pela etapa Solemp em Rascunho. Pode ser combinado com Confecção de Solemp no mesmo usuário.',
   },
-  {
-    id: 'empenhado',
-    label: 'Empenhado',
-    perfil: 'EMPENHADO',
-    graduacao: 'Empenhado',
-    campoNomeLabel: 'Nome do Responsável do Empenhado',
-    campoNomePlaceholder: 'Ex.: Cap. Santos',
-    descricao:
-      'Portal semelhante à clínica; nos cards o empenho aparece no formato NE (número).',
-    isEmpenhado: true,
-  },
+  // Empenhado não é tipo de cadastro: é só a etapa final automática da cadeia Solemp.
 ]
