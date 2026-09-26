@@ -1,4 +1,5 @@
 import { Box, Typography } from '@mui/material'
+import CorporateFareRoundedIcon from '@mui/icons-material/CorporateFareRounded'
 import { premiumTokens } from '@/theme/tokens'
 
 interface BrandLogoProps {
@@ -6,7 +7,7 @@ interface BrandLogoProps {
   compact?: boolean
 }
 
-/** Logotipo AcompSOLEMP — marca com leve volume; wordmark limpo e legível. */
+/** Logotipo AcompSOLEMP — marca com ícone de organização; wordmark limpo. */
 export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
   const markSize = compact ? 28 : 32
 
@@ -34,18 +35,10 @@ export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
           `,
           display: 'grid',
           placeItems: 'center',
+          color: '#FFFFFF',
         }}
       >
-        <Box
-          sx={{
-            width: '42%',
-            height: '42%',
-            borderRadius: '3px',
-            border: '2px solid rgba(255,255,255,0.85)',
-            borderBottomColor: 'rgba(255,255,255,0.35)',
-            borderRightColor: 'rgba(255,255,255,0.45)',
-          }}
-        />
+        <CorporateFareRoundedIcon sx={{ fontSize: compact ? 18 : 20 }} />
       </Box>
 
       <Box sx={{ minWidth: 0 }}>
