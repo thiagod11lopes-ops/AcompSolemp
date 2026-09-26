@@ -335,7 +335,7 @@ export function UsuariosTab() {
         open={modalAberto}
         onClose={fecharModal}
         fullWidth
-        maxWidth="sm"
+        maxWidth="lg"
         aria-labelledby="novo-cadastro-dialog-title"
       >
         <DialogTitle id="novo-cadastro-dialog-title">Novo cadastro</DialogTitle>
