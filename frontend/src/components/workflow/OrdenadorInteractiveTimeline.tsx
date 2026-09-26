@@ -143,18 +143,15 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilha &&
       onEncaminharImh
     ) {
+      // Sem data-keep-drawer: o drawer (z-index 1301) precisa fechar para o modal
+      // de encaminhamento (MUI Dialog ~1300) ficar visível e concluir o avanço.
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilha}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onEncaminharImh}
             disabled={assinando || !planilhaRecebida}
           >
@@ -174,7 +171,6 @@ export function OrdenadorInteractiveTimeline({
       return comArquivoAnexado(
         <>
           <TimelineActionButton
-            data-keep-drawer=""
             onClick={onReceberPlanilhaImh}
             disabled={assinando || !planilhaDisponivel}
           >
@@ -182,7 +178,6 @@ export function OrdenadorInteractiveTimeline({
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaImh}
           >
@@ -199,16 +194,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaConfeccao}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaConfeccao}
           >
@@ -226,16 +216,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaRascunho}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaRascunho}
           >
@@ -253,16 +238,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaEmpenhado}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaEmpenhado} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaEmpenhado}
           >
