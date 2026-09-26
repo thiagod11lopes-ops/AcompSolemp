@@ -194,6 +194,8 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                       if (!(target instanceof Element)) return
                       const button = target.closest('button')
                       if (!button || button.disabled) return
+                      // Mantém o drawer aberto para ações que abrem outro modal (ex.: anexos).
+                      if (button.hasAttribute('data-keep-drawer')) return
                       onClose()
                     }}
                   >

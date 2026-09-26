@@ -136,6 +136,10 @@ export interface ArquivoAnexo {
   tipo: 'PDF' | 'SOLEMP' | 'NOTA_FISCAL' | 'DESPACHO' | 'OUTRO'
   dataUpload: string
   tamanhoKb: number
+  /** Conteúdo do arquivo em Base64 (para download no modal Arquivo Anexado). */
+  conteudoBase64?: string
+  /** MIME type original do arquivo, quando conhecido. */
+  mimeType?: string
 }
 
 export interface Solemp {

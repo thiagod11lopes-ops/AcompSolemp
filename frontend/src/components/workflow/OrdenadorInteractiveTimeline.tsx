@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { PedidoComDetalhes, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
@@ -20,6 +20,7 @@ import {
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
+import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
 import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
@@ -66,12 +67,31 @@ export function OrdenadorInteractiveTimeline({
   mensagemFluxoEncerrado = null,
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
+  const [anexosModalOpen, setAnexosModalOpen] = useState(false)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
     ? chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
     : null
   const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
+
+  const botaoArquivoAnexado = (
+    <TimelineActionButton
+      type="button"
+      variant="ghost"
+      data-keep-drawer=""
+      onClick={() => setAnexosModalOpen(true)}
+    >
+      Arquivo Anexado
+    </TimelineActionButton>
+  )
+
+  const comArquivoAnexado = (acoes: ReactNode) => (
+    <>
+      {botaoArquivoAnexado}
+      {acoes}
+    </>
+  )
 
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
   const sections = useMemo(
@@ -114,7 +134,7 @@ export function OrdenadorInteractiveTimeline({
     }
 
     if (isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh) {
-      return (
+      return comArquivoAnexado(
         <>
           <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
             Receber Planilha
@@ -126,7 +146,7 @@ export function OrdenadorInteractiveTimeline({
           >
             Encaminhar (IMH + Confecção)
           </TimelineActionButton>
-        </>
+        </>,
       )
     }
 
@@ -137,7 +157,7 @@ export function OrdenadorInteractiveTimeline({
       onAssinar
     ) {
       const planilhaDisponivel = planilhaEncaminhadaImh || fluxoDiretoImh
-      return (
+      return comArquivoAnexado(
         <>
           <TimelineActionButton
             onClick={onReceberPlanilhaImh}
@@ -152,7 +172,7 @@ export function OrdenadorInteractiveTimeline({
           >
             {acaoAtual?.label ?? 'Concluir IMH'}
           </TimelineActionButton>
-        </>
+        </>,
       )
     }
 
@@ -161,7 +181,7 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaConfeccao &&
       onAssinar
     ) {
-      return (
+      return comArquivoAnexado(
         <>
           <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
             Receber Planilha
@@ -173,7 +193,7 @@ export function OrdenadorInteractiveTimeline({
           >
             {ORDENADOR_ETAPA_ACOES.DIV_MAT_CONFECCAO_SOLEMP?.label ?? 'Confeccionar Solemp'}
           </TimelineActionButton>
-        </>
+        </>,
       )
     }
 
@@ -183,7 +203,7 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaRascunho &&
       onAssinar
     ) {
-      return (
+      return comArquivoAnexado(
         <>
           <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
             Receber Planilha
@@ -195,7 +215,7 @@ export function OrdenadorInteractiveTimeline({
           >
             {ORDENADOR_ETAPA_ACOES.DIV_MAT_FINANCAS?.label ?? 'Enviar Planilha'}
           </TimelineActionButton>
-        </>
+        </>,
       )
     }
 
@@ -205,7 +225,7 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaEmpenhado &&
       onAssinar
     ) {
-      return (
+      return comArquivoAnexado(
         <>
           <TimelineActionButton onClick={onReceberPlanilhaEmpenhado} disabled={assinando}>
             Receber Planilha
@@ -217,7 +237,7 @@ export function OrdenadorInteractiveTimeline({
           >
             {ORDENADOR_ETAPA_ACOES.DIV_MAT_EMPENHADO?.label ?? 'Enviar Planilha'}
           </TimelineActionButton>
-        </>
+        </>,
       )
     }
 
@@ -225,75 +245,82 @@ export function OrdenadorInteractiveTimeline({
   }
 
   return (
-    <Timeline
-      pedido={pedido}
-      header={header}
-      sections={sections}
-      renderNodeActions={renderNodeActions}
-      alerts={
-        <>
-          {fluxoEncerrado && mensagemFluxoEncerrado && (
-            <div className="timeline-alert timeline-alert-success">{mensagemFluxoEncerrado}</div>
-          )}
-          {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
-            <div className="timeline-alert timeline-alert-warning">
-              <strong>Ação necessária:</strong> {acaoAtual.descricao}
-              {isAuditoriaAtiva && !planilhaRecebida && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra a planilha antes de encaminhar ao IMH.
-                </p>
-              )}
-              {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Aguardando encaminhamento pela Auditoria.
-                </p>
-              )}
-              {isContabilidadeAtiva && fluxoDiretoImh && !planilhaRecebidaImh && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Planilha enviada diretamente — abra e receba antes de concluir.
-                </p>
-              )}
-              {isContabilidadeAtiva && planilhaEncaminhadaImh && !planilhaRecebidaImh && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra a planilha antes de concluir a IMH.
-                </p>
-              )}
-              {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
-                </p>
-              )}
-              {isRascunhoAtivo && !planilhaRecebidaRascunho && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra e receba a planilha antes de enviar para Empenhado.
-                </p>
-              )}
-              {isEmpenhadoAtivo && !planilhaRecebidaEmpenhado && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                  Abra e receba a planilha antes de concluir o Empenhado.
-                </p>
-              )}
-              {pedido.solemp && !trilhaAuditoria && (
-                <p style={{ margin: '8px 0 0', fontSize: '0.85rem' }}>
-                  SOLEMP: <strong>{pedido.solemp.numero}</strong>
-                </p>
-              )}
-              {!usaFluxoPlanilha && onAssinar && (
-                <div style={{ marginTop: 12 }}>
-                  <TimelineActionButton onClick={onAssinar} disabled={assinando}>
-                    {assinando ? 'Processando...' : acaoAtual.label}
-                  </TimelineActionButton>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      }
-      footer={
-        <span>
-          Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
-        </span>
-      }
-    />
+    <>
+      <Timeline
+        pedido={pedido}
+        header={header}
+        sections={sections}
+        renderNodeActions={renderNodeActions}
+        alerts={
+          <>
+            {fluxoEncerrado && mensagemFluxoEncerrado && (
+              <div className="timeline-alert timeline-alert-success">{mensagemFluxoEncerrado}</div>
+            )}
+            {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
+              <div className="timeline-alert timeline-alert-warning">
+                <strong>Ação necessária:</strong> {acaoAtual.descricao}
+                {isAuditoriaAtiva && !planilhaRecebida && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Abra a planilha antes de encaminhar ao IMH.
+                  </p>
+                )}
+                {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Aguardando encaminhamento pela Auditoria.
+                  </p>
+                )}
+                {isContabilidadeAtiva && fluxoDiretoImh && !planilhaRecebidaImh && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Planilha enviada diretamente — abra e receba antes de concluir.
+                  </p>
+                )}
+                {isContabilidadeAtiva && planilhaEncaminhadaImh && !planilhaRecebidaImh && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Abra a planilha antes de concluir a IMH.
+                  </p>
+                )}
+                {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Abra a planilha enviada pela clínica antes de confeccionar a SOLEMP.
+                  </p>
+                )}
+                {isRascunhoAtivo && !planilhaRecebidaRascunho && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Abra e receba a planilha antes de enviar para Empenhado.
+                  </p>
+                )}
+                {isEmpenhadoAtivo && !planilhaRecebidaEmpenhado && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+                    Abra e receba a planilha antes de concluir o Empenhado.
+                  </p>
+                )}
+                {pedido.solemp && !trilhaAuditoria && (
+                  <p style={{ margin: '8px 0 0', fontSize: '0.85rem' }}>
+                    SOLEMP: <strong>{pedido.solemp.numero}</strong>
+                  </p>
+                )}
+                {!usaFluxoPlanilha && onAssinar && (
+                  <div style={{ marginTop: 12 }}>
+                    <TimelineActionButton onClick={onAssinar} disabled={assinando}>
+                      {assinando ? 'Processando...' : acaoAtual.label}
+                    </TimelineActionButton>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        }
+        footer={
+          <span>
+            Pedido {pedido.numero} · {pedido.clinica.nome} · {formatDate(pedido.dataSolicitacao)}
+          </span>
+        }
+      />
+      <PlanilhaAnexosModal
+        open={anexosModalOpen}
+        pedidoId={pedido.id}
+        onClose={() => setAnexosModalOpen(false)}
+      />
+    </>
   )
 }

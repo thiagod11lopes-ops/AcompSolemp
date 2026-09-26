@@ -996,7 +996,7 @@ export default function ClinicaNovoPedidoPage() {
       }
 
       if (envioAnexos.length > 0) {
-        pedidoAnexoService.saveForPedido(pedidoId, envioAnexos)
+        await pedidoAnexoService.saveForPedido(pedidoId, envioAnexos)
       }
 
       // Garante que o snapshot da planilha suba à nuvem após o pedido.
