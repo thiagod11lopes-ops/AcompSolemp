@@ -11,7 +11,7 @@ interface ConcluidosCardProps {
   onClick?: () => void
 }
 
-const SIZE = 220
+const SIZE = 180
 const CX = SIZE / 2
 const CY = SIZE / 2
 
@@ -56,79 +56,61 @@ function RingArc({
   )
 }
 
-function Callout({
-  x,
-  y,
-  anchorX,
-  anchorY,
+function LegendItem({
   color,
   title,
   detail,
-  align = 'left',
 }: {
-  x: number
-  y: number
-  anchorX: number
-  anchorY: number
   color: string
   title: string
   detail: string
-  align?: 'left' | 'right'
 }) {
   return (
-    <g>
-      <line
-        x1={anchorX}
-        y1={anchorY}
-        x2={x}
-        y2={y}
-        stroke={color}
-        strokeWidth={1.25}
-        opacity={0.85}
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 0.75,
+        minWidth: 0,
+      }}
+    >
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          bgcolor: color,
+          mt: '4px',
+          flexShrink: 0,
+          boxShadow: `0 0 8px ${color}`,
+        }}
       />
-      <circle cx={anchorX} cy={anchorY} r={3.5} fill={color} />
-      <circle cx={anchorX} cy={anchorY} r={6} fill={color} opacity={0.22} />
-      <foreignObject
-        x={align === 'right' ? x - 108 : x}
-        y={y - 18}
-        width={110}
-        height={40}
-      >
-        <Box
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
           sx={{
-            textAlign: align === 'right' ? 'right' : 'left',
-            lineHeight: 1.15,
-            pointerEvents: 'none',
+            color: '#FFFFFF',
+            fontWeight: 800,
+            fontSize: '0.65rem',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            lineHeight: 1.2,
           }}
         >
-          <Box
-            component="span"
-            sx={{
-              display: 'block',
-              color: '#FFFFFF',
-              fontWeight: 800,
-              fontSize: '0.68rem',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {title}
-          </Box>
-          <Box
-            component="span"
-            sx={{
-              display: 'block',
-              color: 'rgba(255,255,255,0.72)',
-              fontSize: '0.62rem',
-              fontWeight: 500,
-              mt: 0.15,
-            }}
-          >
-            {detail}
-          </Box>
-        </Box>
-      </foreignObject>
-    </g>
+          {title}
+        </Typography>
+        <Typography
+          sx={{
+            color: 'rgba(255,255,255,0.7)',
+            fontSize: '0.62rem',
+            fontWeight: 500,
+            lineHeight: 1.25,
+            mt: 0.15,
+          }}
+        >
+          {detail}
+        </Typography>
+      </Box>
+    </Box>
   )
 }
 
@@ -170,12 +152,13 @@ export function ConcluidosCard({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        gap: 1,
+        gap: 1.25,
         p: { xs: 1.5, sm: 1.75 },
         '&:last-child': { pb: { xs: 1.5, sm: 1.75 } },
+        overflow: 'hidden',
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
         <Typography
           sx={{
             fontWeight: 800,
@@ -190,9 +173,11 @@ export function ConcluidosCard({
         <Typography
           sx={{
             fontWeight: 700,
-            fontSize: '0.7rem',
+            fontSize: '0.68rem',
             color: 'rgba(255,255,255,0.45)',
             letterSpacing: '0.02em',
+            textAlign: 'right',
+            whiteSpace: 'nowrap',
           }}
         >
           {formatCurrency(valorConcluidos)}
@@ -202,11 +187,12 @@ export function ConcluidosCard({
       <Box
         sx={{
           flex: 1,
-          minHeight: 210,
+          minHeight: 0,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative',
+          gap: 1.25,
         }}
       >
         <Box
@@ -214,15 +200,16 @@ export function ConcluidosCard({
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           sx={{
             width: '100%',
-            maxWidth: 250,
+            maxWidth: 168,
             height: 'auto',
-            overflow: 'visible',
+            display: 'block',
+            overflow: 'hidden',
+            flexShrink: 0,
           }}
         >
           <defs>
-            <filter id={shadowId} x="-40%" y="-40%" width="180%" height="180%">
-              <feDropShadow dx="0" dy="6" stdDeviation="5" floodColor="#000" floodOpacity="0.55" />
-              <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#000" floodOpacity="0.35" />
+            <filter id={shadowId} x="-35%" y="-35%" width="170%" height="170%">
+              <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
             </filter>
             <linearGradient id={gOuter} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#5CE1FF" />
@@ -241,74 +228,42 @@ export function ConcluidosCard({
             </linearGradient>
           </defs>
 
-          {/* Trilhos sutis */}
-          <circle cx={CX} cy={CY} r={88} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={12} />
-          <circle cx={CX} cy={CY} r={68} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={14} />
-          <circle cx={CX} cy={CY} r={46} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={16} />
+          <circle cx={CX} cy={CY} r={72} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={10} />
+          <circle cx={CX} cy={CY} r={56} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={11} />
+          <circle cx={CX} cy={CY} r={38} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={12} />
 
           <RingArc
-            radius={88}
-            strokeWidth={12}
+            radius={72}
+            strokeWidth={10}
             percent={taxaConclusao}
             gradientId={gOuter}
             filterId={shadowId}
             startAngle={-110}
           />
           <RingArc
-            radius={68}
-            strokeWidth={14}
+            radius={56}
+            strokeWidth={11}
             percent={taxaAndamento > 0 ? taxaAndamento : taxaConclusao * 0.55}
             gradientId={gMid}
             filterId={shadowId}
             startAngle={20}
           />
           <RingArc
-            radius={46}
-            strokeWidth={16}
+            radius={38}
+            strokeWidth={12}
             percent={taxaTempo > 0 ? taxaTempo : Math.max(taxaConclusao * 0.7, 8)}
             gradientId={gInner}
             filterId={shadowId}
             startAngle={-200}
           />
 
-          <Callout
-            align="right"
-            x={18}
-            y={36}
-            anchorX={CX - 62}
-            anchorY={CY - 48}
-            color="#5CE1FF"
-            title="Concluídos"
-            detail={`${concluidos} · ${taxaConclusao.toFixed(0)}%`}
-          />
-          <Callout
-            align="left"
-            x={SIZE - 18}
-            y={48}
-            anchorX={CX + 58}
-            anchorY={CY - 36}
-            color="#A3E635"
-            title="Em andamento"
-            detail={`${emAndamento} PED${emAndamento === 1 ? '' : 's'}`}
-          />
-          <Callout
-            align="left"
-            x={SIZE - 14}
-            y={SIZE - 42}
-            anchorX={CX + 40}
-            anchorY={CY + 28}
-            color="#C084FC"
-            title="Tempo médio"
-            detail={`${tempoMedioDias}d até concluir`}
-          />
-
           <text
             x={CX}
-            y={CY - 4}
+            y={CY - 2}
             textAnchor="middle"
             fill="#FFFFFF"
             style={{
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 800,
               letterSpacing: '0.04em',
               fontFamily: 'Inter, system-ui, sans-serif',
@@ -318,28 +273,60 @@ export function ConcluidosCard({
           </text>
           <text
             x={CX}
-            y={CY + 16}
+            y={CY + 14}
             textAnchor="middle"
             fill="rgba(255,255,255,0.55)"
             style={{
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: 700,
-              letterSpacing: '0.14em',
+              letterSpacing: '0.12em',
               fontFamily: 'Inter, system-ui, sans-serif',
             }}
           >
             FINALIZADOS
           </text>
         </Box>
+
+        <Box
+          sx={{
+            width: '100%',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 1,
+            px: 0.25,
+          }}
+        >
+          <LegendItem
+            color="#5CE1FF"
+            title="Concluídos"
+            detail={`${concluidos} · ${taxaConclusao.toFixed(0)}%`}
+          />
+          <LegendItem
+            color="#A3E635"
+            title="Em andamento"
+            detail={`${emAndamento} PED${emAndamento === 1 ? '' : 's'}`}
+          />
+          <LegendItem
+            color="#C084FC"
+            title="Tempo médio"
+            detail={`${tempoMedioDias}d até concluir`}
+          />
+          <LegendItem
+            color="rgba(255,255,255,0.55)"
+            title="Total"
+            detail={`${totalProcessos} processo${totalProcessos === 1 ? '' : 's'}`}
+          />
+        </Box>
       </Box>
 
       {onClick ? (
         <Typography
           sx={{
-            fontSize: '0.68rem',
+            fontSize: '0.65rem',
             color: 'rgba(255,255,255,0.4)',
             textAlign: 'center',
             letterSpacing: '0.02em',
+            flexShrink: 0,
           }}
         >
           Clique para ver a lista completa
