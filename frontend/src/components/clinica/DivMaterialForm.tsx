@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import {
-  Alert,
   Box,
   Button,
   Paper,
@@ -178,12 +177,6 @@ export function DivMaterialForm({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Alert severity="info" sx={{ py: 0.5 }}>
-        Preenchida pelo MODELO importado (Mapa ← Processo, Vigência ← J:K:L, Fornecedor/CNPJ
-        separados). Clique em Editar na linha para abrir o formulário. Marque o checklist para
-        enviar à Confecção de Solemp.
-      </Alert>
-
       <Box
         sx={{
           display: 'grid',
