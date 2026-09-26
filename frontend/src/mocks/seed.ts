@@ -1092,10 +1092,13 @@ function mergePedidosPreservingLocal(remoteList: Pedido[], localList: Pedido[]):
       byId.set(item.id, item)
       continue
     }
-    const score = (pedido: Pedido) =>
-      (pedido.etapasHistorico?.length ?? 0) * 10 +
-      (pedido.etapasHistorico?.filter((h) => h.dataConclusao).length ?? 0) +
-      (pedido.etapasAtivasIds?.length ?? 0)
+    const score = (pedido: Pedido) => {
+      const hist = pedido.etapasHistorico ?? []
+      const concluidas = hist.filter((h) => h.dataConclusao).length
+      const abertas = hist.filter((h) => !h.dataConclusao).length
+      // Preferir mais conclusões (avanço real) e mais etapas ativas (fork Auditoria→IMH+Confecção).
+      return concluidas * 100 + (pedido.etapasAtivasIds?.length ?? 0) * 10 + abertas + hist.length
+    }
     if (score(item) >= score(existing)) {
       byId.set(item.id, item)
     }
@@ -1159,8 +1162,23 @@ function mergePlanilhaEnvioSnapshots(
       remoteSnap.recebidaEmpenhadoEm,
     ),
     arquivadaEm: pickNewerIso(localSnap.arquivadaEm, remoteSnap.arquivadaEm),
-    devolvidaEm: pickNewerIso(localSnap.devolvidaEm, remoteSnap.devolvidaEm),
-    devolvidaParaChave: localSnap.devolvidaParaChave ?? remoteSnap.devolvidaParaChave,
+    // Se o local reenviou depois da devolução remota, não ressuscita a devolução.
+    ...((): Pick<PedidoPlanilhaEnvioState, 'devolvidaEm' | 'devolvidaParaChave'> => {
+      const localEnvio = localSnap.enviadoEm ? Date.parse(localSnap.enviadoEm) : 0
+      const remoteDev = remoteSnap.devolvidaEm ? Date.parse(remoteSnap.devolvidaEm) : 0
+      const localClearedDevolucao =
+        !localSnap.devolvidaEm &&
+        !localSnap.devolvidaParaChave &&
+        localEnvio > 0 &&
+        localEnvio >= remoteDev
+      if (localClearedDevolucao) {
+        return { devolvidaEm: undefined, devolvidaParaChave: undefined }
+      }
+      return {
+        devolvidaEm: pickNewerIso(localSnap.devolvidaEm, remoteSnap.devolvidaEm),
+        devolvidaParaChave: localSnap.devolvidaParaChave ?? remoteSnap.devolvidaParaChave,
+      }
+    })(),
   }
 }
 
@@ -1284,7 +1302,13 @@ export function clearAllSystemData(): AppData {
 /** Recarrega da fonte ativa — Supabase em nuvem, IndexedDB em local/demo */
 export async function reloadFreshAppData(): Promise<AppData> {
   if (useCloudAppDataSync()) {
-    const { refreshAppDataFromCloud } = await import('@/data/persistence/supabaseSync')
+    const { refreshAppDataFromCloud, shouldPreferLocalAppData } = await import(
+      '@/data/persistence/supabaseSync'
+    )
+    // Em janela de mutação/flush local, não puxa remoto (evita apagar pedido/flags).
+    if (shouldPreferLocalAppData()) {
+      return loadAppData()
+    }
     const remote = await refreshAppDataFromCloud()
     if (remote) return applyRemoteAppData(remote)
     return loadAppData()

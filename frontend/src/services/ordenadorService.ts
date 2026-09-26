@@ -224,8 +224,20 @@ export const ordenadorService = {
 
     await persistSetorData(data)
 
-    const pedido = data.pedidos.find((p) => p.id === pedidoId)!
-    const enriched = enrichPedido(pedido, getContext(data))
+    // Depois do avanço persistido: marca encaminhamento sem sobrescrever o pedido.
+    if (!usaCadeiaSolemp) {
+      const chaveFinal = chavePendente ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
+      if (chaveFinal === 'DIV_MAT_AUDITORIA') {
+        pedidoPlanilhaEnvioService.markEncaminhadaImh(pedidoId)
+        if (useCloudAppDataSync()) {
+          await flushSupabaseAppDataSync()
+        }
+      }
+    }
+
+    const dataFinal = loadAppData()
+    const pedido = dataFinal.pedidos.find((p) => p.id === pedidoId)!
+    const enriched = enrichPedido(pedido, getContext(dataFinal))
     if (!enriched) throw new Error('Erro ao atualizar pedido')
     return enriched
   },

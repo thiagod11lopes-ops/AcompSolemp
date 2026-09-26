@@ -62,6 +62,31 @@ function preservePlanilhaFlags(
   }
 }
 
+/** Novo envio IMH: setores da trilha Auditoria/IMH precisam receber de novo. */
+function resetFlagsTrilhaImh(
+  existing: PedidoPlanilhaEnvioState | undefined,
+): ReturnType<typeof preservePlanilhaFlags> {
+  return {
+    ...preservePlanilhaFlags(existing),
+    recebidaEm: undefined,
+    encaminhadaImhEm: undefined,
+    recebidaImhEm: undefined,
+    arquivadaEm: undefined,
+  }
+}
+
+/** Novo envio Div. Material: setores da trilha Confecção precisam receber de novo. */
+function resetFlagsTrilhaConfeccao(
+  existing: PedidoPlanilhaEnvioState | undefined,
+): ReturnType<typeof preservePlanilhaFlags> {
+  return {
+    ...preservePlanilhaFlags(existing),
+    recebidaConfeccaoEm: undefined,
+    recebidaRascunhoEm: undefined,
+    recebidaEmpenhadoEm: undefined,
+  }
+}
+
 function preserveAnexos(
   existing: PedidoPlanilhaEnvioState | undefined,
 ): Pick<PedidoPlanilhaEnvioState, 'anexos'> {
@@ -135,7 +160,7 @@ export const pedidoPlanilhaEnvioService = {
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
-      ...preservePlanilhaFlags(existing),
+      ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -171,7 +196,7 @@ export const pedidoPlanilhaEnvioService = {
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
-      ...preservePlanilhaFlags(existing),
+      ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -200,7 +225,7 @@ export const pedidoPlanilhaEnvioService = {
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
-      ...preservePlanilhaFlags(existing),
+      ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -231,7 +256,7 @@ export const pedidoPlanilhaEnvioService = {
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
-      ...preservePlanilhaFlags(existing),
+      ...resetFlagsTrilhaConfeccao(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }
@@ -266,7 +291,7 @@ export const pedidoPlanilhaEnvioService = {
       divMaterialLinhas: divSnapshot,
       ...preserveAnexos(existing),
       enviadoEm: new Date().toISOString(),
-      ...preservePlanilhaFlags(existing),
+      ...resetFlagsTrilhaConfeccao(existing),
       devolvidaEm: undefined,
       devolvidaParaChave: undefined,
     }

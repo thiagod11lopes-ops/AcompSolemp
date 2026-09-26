@@ -35,12 +35,38 @@ export function getLastLocalAppDataMutationAtMs(): number {
   return lastLocalMutationAtMs
 }
 
-/** True quando o snapshot remoto é mais antigo que a mutação/flush local. */
-export function shouldIgnoreRemoteAppData(remoteUpdatedAtMs: number): boolean {
-  if (!Number.isFinite(remoteUpdatedAtMs)) return false
+/** True enquanto há upload local pendente ou em andamento. */
+export function isLocalAppDataSyncInFlight(): boolean {
+  return Boolean(flushPromise || syncTimer || pendingData)
+}
+
+/** True nos segundos após mutação/flush local — prioriza o fluxo da planilha. */
+export function shouldPreferLocalAppData(graceMs = 12_000): boolean {
+  if (isLocalAppDataSyncInFlight()) return true
   const localMark = Math.max(lastLocalFlushAtMs, lastLocalMutationAtMs)
   if (!localMark) return false
-  // Folga de 2s para skew de relógio servidor/cliente.
+  return Date.now() - localMark < graceMs
+}
+
+/**
+ * True quando o remoto não deve sobrescrever o estado local.
+ * Cobre: snapshot mais antigo, flush em voo e janela de graça pós-mutação.
+ */
+export function shouldIgnoreRemoteAppData(remoteUpdatedAtMs: number): boolean {
+  if (!Number.isFinite(remoteUpdatedAtMs)) return false
+  // Nunca aplicar remoto enquanto ainda estamos gravando o estado local.
+  if (isLocalAppDataSyncInFlight()) return true
+
+  const localMark = Math.max(lastLocalFlushAtMs, lastLocalMutationAtMs)
+  if (!localMark) return false
+
+  // Janela ampla: sync antigo não pode apagar receber/enviar/pedido no fluxo.
+  const GRACE_MS = 12_000
+  if (Date.now() - localMark < GRACE_MS) {
+    // Só aceita remoto claramente posterior ao flush (outro usuário / eco do próprio save).
+    return remoteUpdatedAtMs <= localMark + 1_500
+  }
+
   return remoteUpdatedAtMs < localMark - 2_000
 }
 
