@@ -23,6 +23,7 @@ import {
   ProcedimentosCard,
 } from '@/components/dashboard/AtendimentosKpiCards'
 import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
+import { ConcluidosCard } from '@/components/dashboard/ConcluidosCard'
 import {
   KpiDetalheDialog,
   kpiCol,
@@ -642,12 +643,12 @@ export default function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
           <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
-            <KpiCard
-              title="Concluídos"
-              value={metrics.concluidos}
-              subtitle="Clique para detalhes"
-              icon={<CheckCircleIcon />}
-              color={premiumTokens.green}
+            <ConcluidosCard
+              concluidos={metrics.concluidos}
+              totalProcessos={metrics.totalProcessos}
+              emAndamento={metrics.emAndamento}
+              valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
+              tempoMedioDias={metrics.tempoMedioPagamento}
               onClick={() => setKpiAberto('concluidos')}
             />
           </Box>
