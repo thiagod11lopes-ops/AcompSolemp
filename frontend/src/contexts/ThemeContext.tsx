@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -21,12 +22,17 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function readInitialMode(): ThemeMode {
   const stored = storageGet(STORAGE_KEYS.THEME)
-  if (stored === 'light') return 'light'
-  return 'dark'
+  if (stored === 'dark') return 'dark'
+  // Padrão Raycast: claro e leve
+  return 'light'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(readInitialMode)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode)
+  }, [mode])
 
   const toggleTheme = useCallback(() => {
     setMode((prev) => {

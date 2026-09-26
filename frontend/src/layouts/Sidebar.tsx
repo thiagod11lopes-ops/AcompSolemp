@@ -56,20 +56,23 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ px: 2 }}>
+      <Toolbar sx={{ px: 2.25, minHeight: 64 }}>
         <Box>
-          <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 700 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 700, letterSpacing: '-0.03em', color: 'text.primary' }}
+          >
             AcompSOLEMP
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Portal do Gestor — Marinha do Brasil
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '-0.01em' }}>
+            Portal do Gestor
           </Typography>
         </Box>
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        <Box sx={{ px: 2.25, py: 1.75 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
             {user.posto} {user.nome}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -78,23 +81,23 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </Box>
       )}
       <Divider />
-      <List>
+      <List sx={{ px: 0.5, py: 1 }}>
         {menuItems.map((item) => (
           <ListItemButton
             key={item.path}
             component={NavLink}
             to={mapPath(item.path)}
             onClick={isMobile ? onClose : undefined}
-            sx={{
-              '&.active': {
-                bgcolor: 'action.selected',
-                borderRight: 3,
-                borderColor: 'primary.main',
-              },
-            }}
           >
-            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
+            <ListItemIcon sx={{ minWidth: 38, color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+            <ListItemText
+              primary={item.label}
+              slotProps={{
+                primary: {
+                  sx: { fontWeight: 600, fontSize: '0.925rem', letterSpacing: '-0.015em' },
+                },
+              }}
+            />
           </ListItemButton>
         ))}
       </List>

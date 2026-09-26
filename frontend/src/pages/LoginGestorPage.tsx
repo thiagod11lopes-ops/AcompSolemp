@@ -303,24 +303,24 @@ export default function LoginGestorPage() {
             height: 64,
             mx: 'auto',
             mb: 1.75,
-            borderRadius: '18px',
+            borderRadius: '16px',
             display: 'grid',
             placeItems: 'center',
             background: `linear-gradient(145deg, ${premiumTokens.primary} 0%, ${premiumTokens.primaryDark} 100%)`,
-            boxShadow: `0 12px 28px rgba(37, 99, 235, 0.35)`,
+            boxShadow: `0 12px 28px rgba(255, 99, 99, 0.28)`,
           }}
         >
           <AnchorIcon sx={{ fontSize: 34, color: '#FFFFFF' }} />
         </Box>
         <Typography
           variant="h5"
-          sx={{ fontWeight: 800, letterSpacing: '-0.03em', color: '#0F172A' }}
+          sx={{ fontWeight: 800, letterSpacing: '-0.035em', color: '#1D1D1F' }}
         >
           AcompSOLEMP
         </Typography>
         <Typography
           variant="body2"
-          sx={{ mt: 0.75, color: '#475569', lineHeight: 1.5, px: 1 }}
+          sx={{ mt: 0.75, color: '#6E6E73', lineHeight: 1.5, px: 1, letterSpacing: '-0.011em' }}
         >
           Entre com o e-mail institucional. O sistema reconhece se você é Gestor ou
           equipe cadastrada.

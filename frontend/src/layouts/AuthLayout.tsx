@@ -4,8 +4,7 @@ import { lightTheme } from '@/theme/theme'
 import { premiumTokens } from '@/theme/tokens'
 
 /**
- * Tela de autenticação: fundo escuro atmosférico + cartão claro de alto contraste
- * (independente do tema claro/escuro do app), para labels e textos sempre legíveis.
+ * Autenticação no visual Raycast: fundo claro atmosférico + cartão branco leve.
  */
 export function AuthLayout() {
   return (
@@ -18,10 +17,9 @@ export function AuthLayout() {
         position: 'relative',
         overflow: 'hidden',
         background: `
-          radial-gradient(ellipse 90% 70% at 10% -10%, rgba(59, 130, 246, 0.28), transparent 55%),
-          radial-gradient(ellipse 70% 55% at 100% 100%, rgba(37, 99, 235, 0.2), transparent 50%),
-          radial-gradient(ellipse 50% 40% at 70% 20%, rgba(14, 165, 233, 0.12), transparent 45%),
-          #0B1220
+          radial-gradient(ellipse 90% 60% at 15% -5%, rgba(255, 99, 99, 0.14), transparent 55%),
+          radial-gradient(ellipse 70% 50% at 100% 100%, rgba(255, 159, 10, 0.08), transparent 50%),
+          #F5F5F7
         `,
         backgroundAttachment: 'fixed',
         p: { xs: 2, sm: 3 },
@@ -29,9 +27,8 @@ export function AuthLayout() {
           content: '""',
           position: 'absolute',
           inset: 0,
-          backgroundImage:
-            'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
+          backgroundImage: 'radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
           maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent)',
           pointerEvents: 'none',
         },
@@ -45,21 +42,21 @@ export function AuthLayout() {
             width: '100%',
             maxWidth: 440,
             p: { xs: 3, sm: 4 },
-            borderRadius: 3.5,
+            borderRadius: '18px',
             overflow: 'hidden',
-            color: '#0F172A',
+            color: '#1D1D1F',
             bgcolor: '#FFFFFF',
-            border: '1px solid rgba(255,255,255,0.65)',
+            border: '1px solid rgba(0,0,0,0.08)',
             boxShadow:
-              '0 4px 6px rgba(15, 23, 42, 0.04), 0 24px 48px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.06)',
+              '0 1px 2px rgba(0,0,0,0.04), 0 24px 48px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03)',
             '&::before': {
               content: '""',
               position: 'absolute',
               top: 0,
               left: 0,
               right: 0,
-              height: 4,
-              background: `linear-gradient(90deg, ${premiumTokens.primaryDark}, ${premiumTokens.primaryLight}, #38BDF8)`,
+              height: 3,
+              background: `linear-gradient(90deg, ${premiumTokens.primary}, ${premiumTokens.orange})`,
             },
           }}
         >
