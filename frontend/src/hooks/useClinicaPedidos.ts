@@ -131,12 +131,28 @@ function invalidateAfterPedidoMutation(
 export function useCreateClinicaPedido() {
   const { user } = useClinicaAuth()
   const queryClient = useQueryClient()
+  const clinicaId = user?.clinicaId ?? ''
 
   return useMutation({
     mutationFn: (input: CreatePedidoInput) =>
       clinicaPedidoService.create(input, user!.id, user!.clinicaId!),
-    onSuccess: () => {
-      invalidateAfterPedidoMutation(queryClient)
+    onSuccess: (pedido) => {
+      // Evita "Timeline não encontrada" logo após o envio se o sync remoto atrasar.
+      if (clinicaId) {
+        queryClient.setQueryData(['clinica-pedido', pedido.id, clinicaId], pedido)
+        queryClient.setQueryData(['clinica-pedidos', clinicaId], (prev: unknown) => {
+          if (!Array.isArray(prev)) return [pedido]
+          const semDuplicata = prev.filter(
+            (item) =>
+              item &&
+              typeof item === 'object' &&
+              'id' in item &&
+              (item as { id: string }).id !== pedido.id,
+          )
+          return [pedido, ...semDuplicata]
+        })
+      }
+      invalidateAfterPedidoMutation(queryClient, pedido.id)
     },
   })
 }

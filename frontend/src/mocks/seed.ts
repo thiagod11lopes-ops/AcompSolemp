@@ -3,6 +3,7 @@ import {
   PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
   type ArquivoAnexo,
+  type Pedido,
   type PedidoPlanilhaEnvioState,
   type User,
   type UserRole,
@@ -1081,6 +1082,27 @@ function mergeById<T extends { id: string }>(remoteList: T[], localList: T[]): T
   return [...byId.values()]
 }
 
+/** Mantém pedidos locais recém-criados e evita regressão de histórico por sync atrasado. */
+function mergePedidosPreservingLocal(remoteList: Pedido[], localList: Pedido[]): Pedido[] {
+  const byId = new Map<string, Pedido>()
+  for (const item of remoteList) byId.set(item.id, item)
+  for (const item of localList) {
+    const existing = byId.get(item.id)
+    if (!existing) {
+      byId.set(item.id, item)
+      continue
+    }
+    const score = (pedido: Pedido) =>
+      (pedido.etapasHistorico?.length ?? 0) * 10 +
+      (pedido.etapasHistorico?.filter((h) => h.dataConclusao).length ?? 0) +
+      (pedido.etapasAtivasIds?.length ?? 0)
+    if (score(item) >= score(existing)) {
+      byId.set(item.id, item)
+    }
+  }
+  return [...byId.values()]
+}
+
 function pickNewerIso(a?: string, b?: string): string | undefined {
   if (!a) return b
   if (!b) return a
@@ -1146,12 +1168,23 @@ function mergePlanilhaEnvioSnapshots(
 function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
   if (!local) return remote
 
-  // Cadastros acabaram de ser criados localmente: um poll/realtime atrasado
-  // não deve apagá-los antes do flush refletir na nuvem.
+  // Cadastros / pedidos acabaram de ser criados localmente: um poll/realtime
+  // atrasado não deve apagá-los antes do flush refletir na nuvem.
   remote.usuarios = mergeById(remote.usuarios ?? [], local.usuarios ?? [])
   remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
   remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
   remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
+  remote.pedidos = mergePedidosPreservingLocal(remote.pedidos ?? [], local.pedidos ?? [])
+  remote.historico = mergeById(remote.historico ?? [], local.historico ?? [])
+  remote.solemp = mergeById(remote.solemp ?? [], local.solemp ?? [])
+  remote.notasFiscais = mergeById(remote.notasFiscais ?? [], local.notasFiscais ?? [])
+  remote.processosArquivados = mergeById(
+    remote.processosArquivados ?? [],
+    local.processosArquivados ?? [],
+  )
+  if (local.notificacoes?.length || remote.notificacoes?.length) {
+    remote.notificacoes = mergeById(remote.notificacoes ?? [], local.notificacoes ?? [])
+  }
 
   const localIndex = local.planilhaAnexosPorPedido ?? {}
   const remoteIndex = { ...(remote.planilhaAnexosPorPedido ?? {}) }

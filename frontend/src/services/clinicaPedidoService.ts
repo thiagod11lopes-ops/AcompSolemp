@@ -144,8 +144,13 @@ export const clinicaPedidoService = {
 
   async getById(id: string, clinicaId: string): Promise<PedidoComDetalhes | null> {
     await delay(null)
-    const data = await loadFreshAppData()
-    const pedido = data.pedidos.find((p) => p.id === id && p.clinicaId === clinicaId)
+    let data = await loadFreshAppData()
+    let pedido = data.pedidos.find((p) => p.id === id && p.clinicaId === clinicaId)
+    // Pedido acabou de ser criado e o sync remoto ainda não refletiu: usa cache local.
+    if (!pedido) {
+      data = loadAppData()
+      pedido = data.pedidos.find((p) => p.id === id && p.clinicaId === clinicaId)
+    }
     if (!pedido) return null
     return enrichPedido(pedido, getContext(data))
   },
