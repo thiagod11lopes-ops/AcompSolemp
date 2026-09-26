@@ -22,7 +22,6 @@ import { NavLink } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { getRoleLabel } from '@/mocks/seed'
 
 const DRAWER_WIDTH = 260
 
@@ -64,10 +63,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       {user && (
         <Box sx={{ px: 2.25, py: 1.75 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
-            {user.posto} {user.nome}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {getRoleLabel(user.perfil)}
+            Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
         </Box>
       )}

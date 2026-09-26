@@ -1,5 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import { usePageTitleContext } from '@/contexts/PageTitleContext'
+import { premiumTokens } from '@/theme/tokens'
 
 interface TopBarTitleProps {
   fallback?: string
@@ -8,7 +9,7 @@ interface TopBarTitleProps {
   showOnMobile?: boolean
 }
 
-/** Título da página na barra superior (substituindo o rótulo fixo do portal). */
+/** Título da página na barra superior — mesmo padrão tipográfico do logotipo. */
 export function TopBarTitle({
   fallback = '',
   fallbackSubtitle,
@@ -31,14 +32,15 @@ export function TopBarTitle({
       }}
     >
       <Typography
-        variant="h6"
         noWrap
         component="div"
         sx={{
-          fontWeight: 700,
-          letterSpacing: '-0.025em',
-          lineHeight: 1.25,
-          fontSize: displaySubtitle ? '1rem' : undefined,
+          fontWeight: 800,
+          fontSize: displaySubtitle ? '1.05rem' : '1.1rem',
+          letterSpacing: '-0.03em',
+          lineHeight: 1.2,
+          color: premiumTokens.primaryDark,
+          textShadow: '0 1px 2px rgba(0,0,0,0.12)',
         }}
       >
         {display}
@@ -48,7 +50,12 @@ export function TopBarTitle({
           variant="caption"
           color="text.secondary"
           noWrap
-          sx={{ display: 'block', letterSpacing: '-0.01em', lineHeight: 1.3 }}
+          sx={{
+            display: 'block',
+            letterSpacing: '-0.01em',
+            mt: 0.1,
+            lineHeight: 1.2,
+          }}
         >
           {displaySubtitle}
         </Typography>
