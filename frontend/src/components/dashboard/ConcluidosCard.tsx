@@ -1,5 +1,9 @@
 import { Box, Card, CardActionArea, CardContent, Typography, keyframes } from '@mui/material'
 import { useEffect, useId, useMemo, useState } from 'react'
+import {
+  dashboardCardShellSx,
+  dashboardCardTitleSx,
+} from '@/components/dashboard/dashboardCardStyles'
 import { premiumTokens } from '@/theme/tokens'
 
 interface ConcluidosCardProps {
@@ -121,18 +125,7 @@ export function ConcluidosCard({
         overflow: 'hidden',
       }}
     >
-      <Typography
-        sx={{
-          fontWeight: 800,
-          fontSize: '0.95rem',
-          letterSpacing: '-0.03em',
-          lineHeight: 1.2,
-          color: premiumTokens.primaryDark,
-          textShadow: '0 1px 2px rgba(0,0,0,0.08)',
-          flexShrink: 0,
-          mb: 0.5,
-        }}
-      >
+      <Typography sx={[dashboardCardTitleSx, { flexShrink: 0, mb: 0.5 }]}>
         Processos Concluídos
       </Typography>
       <Box
@@ -241,23 +234,7 @@ export function ConcluidosCard({
   )
 
   return (
-    <Card
-      sx={{
-        height: '100%',
-        border: `1px solid ${premiumTokens.primary}33`,
-        borderRadius: 3,
-        background: `linear-gradient(165deg, #FFFFFF 0%, #F3F8F5 38%, ${premiumTokens.primaryLight}55 72%, ${premiumTokens.primary} 100%)`,
-        boxShadow: '0 10px 28px rgba(63, 107, 86, 0.14)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        overflow: 'hidden',
-        '&:hover': onClick
-          ? {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 16px 36px rgba(63, 107, 86, 0.22)',
-            }
-          : undefined,
-      }}
-    >
+    <Card sx={dashboardCardShellSx}>
       {onClick ? (
         <CardActionArea
           onClick={onClick}

@@ -7,6 +7,10 @@ import {
   alpha,
 } from '@mui/material'
 import PendingActionsIcon from '@mui/icons-material/PendingActions'
+import {
+  dashboardCardShellSx,
+  dashboardCardTitleSx,
+} from '@/components/dashboard/dashboardCardStyles'
 import { premiumTokens } from '@/theme/tokens'
 import { formatCurrency } from '@/utils/format'
 
@@ -31,14 +35,16 @@ export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardPro
     <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box>
+          <Typography sx={dashboardCardTitleSx}>Em Andamento</Typography>
           <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ fontWeight: 600, letterSpacing: '0.02em' }}
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              mt: 0.75,
+              color: premiumTokens.primaryDark,
+            }}
           >
-            Em andamento
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: '-0.02em', mt: 0.5 }}>
             {total}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -146,21 +152,7 @@ export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardPro
   )
 
   return (
-    <Card
-      sx={{
-        height: '100%',
-        border: `1px solid ${alpha(accent, 0.22)}`,
-        boxShadow: premiumTokens.shadowSm,
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-        '&:hover': onClick
-          ? {
-              transform: 'translateY(-4px)',
-              boxShadow: premiumTokens.shadow,
-              borderColor: premiumTokens.borderStrong,
-            }
-          : undefined,
-      }}
-    >
+    <Card sx={dashboardCardShellSx}>
       {onClick ? (
         <CardActionArea
           onClick={onClick}
