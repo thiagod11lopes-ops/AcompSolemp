@@ -18,6 +18,10 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { RankingCards } from '@/components/dashboard/RankingCards'
 import { TotalIndenizadoCard, ValorASerIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
+import {
+  PessoasAtendidasCard,
+  ProcedimentosCard,
+} from '@/components/dashboard/AtendimentosKpiCards'
 import { EmAndamentoCard } from '@/components/dashboard/EmAndamentoCard'
 import {
   KpiDetalheDialog,
@@ -593,15 +597,38 @@ export default function DashboardPage() {
               flexDirection: 'column',
               gap: 2,
               height: '100%',
-              '& > *': { flex: 1, minHeight: 0 },
             }}
           >
-            <ValorASerIndenizadoCard
-              linhas={metrics.valorASerIndenizadoLinhas ?? []}
-            />
-            <TotalIndenizadoCard
-              linhas={metrics.totalIndenizadoLinhas ?? []}
-            />
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+                flex: 1,
+                minHeight: 0,
+                '& > *': { minHeight: 0, height: '100%' },
+              }}
+            >
+              <ValorASerIndenizadoCard
+                linhas={metrics.valorASerIndenizadoLinhas ?? []}
+              />
+              <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
+            </Box>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 2,
+                flex: 1,
+                minHeight: 0,
+                '& > *': { minHeight: 0, height: '100%' },
+              }}
+            >
+              <TotalIndenizadoCard
+                linhas={metrics.totalIndenizadoLinhas ?? []}
+              />
+              <ProcedimentosCard value={metrics.procedimentos ?? 0} />
+            </Box>
           </Box>
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>

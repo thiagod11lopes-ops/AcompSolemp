@@ -23,6 +23,10 @@ import { flushSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { removePedidosFromAppData } from '@/utils/pedidoCleanup'
+import {
+  contarPessoasAtendidas,
+  contarProcedimentosDivMaterial,
+} from '@/utils/dashboardAtendimentos'
 import { coletarLinhasTotalIndenizado, separarLinhasIndenizadoPorStatus, somarPctIndenizarDoPedido } from '@/utils/totalIndenizado'
 import { etapaVisivelNaTimeline } from '@/utils/timelineFlow'
 import { canAccessGestorRoute } from '@/utils/permissions'
@@ -630,6 +634,20 @@ export const pedidoService = {
           return {
             valorASerIndenizadoLinhas: [],
             totalIndenizadoLinhas: [],
+          }
+        }
+      })(),
+      ...(() => {
+        try {
+          return {
+            pessoasAtendidas: contarPessoasAtendidas(data),
+            procedimentos: contarProcedimentosDivMaterial(data),
+          }
+        } catch (err) {
+          console.error('Falha ao coletar pessoas/procedimentos para o dashboard:', err)
+          return {
+            pessoasAtendidas: 0,
+            procedimentos: 0,
           }
         }
       })(),

@@ -426,6 +426,13 @@ export interface DashboardMetrics {
    * (total indenizado).
    */
   totalIndenizadoLinhas: import('@/utils/totalIndenizado').TotalIndenizadoLinha[]
+  /**
+   * NIPs únicos por planilha IMH, somados entre planilhas
+   * (mesmo NIP em outra planilha conta de novo).
+   */
+  pessoasAtendidas: number
+  /** Total de linhas das planilhas Div. Material. */
+  procedimentos: number
 }
 
 export interface PedidoComDetalhes extends Pedido {
