@@ -10,7 +10,6 @@ import {
 } from '@/utils/perfilEtapa'
 import {
   filtrarEtapasParaTimeline,
-  filtrarEtapasTrilhaAuditoria,
   usaTrilhaAuditoriaOrdenador,
 } from '@/utils/timelineFlow'
 import {
@@ -22,7 +21,7 @@ import {
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
-import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
+import { userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
   pedido: PedidoComDetalhes
@@ -70,13 +69,11 @@ export function OrdenadorInteractiveTimeline({
   const { user } = useOrdenadorAuth()
   const [anexosModalOpen, setAnexosModalOpen] = useState(false)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
-  const chavePerfilFixa = chavesPerfil[0] ?? null
   const chavePendente = user
     ? chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
     : null
-  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente ?? chavePerfilFixa)
+  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
-  const isAuditoriaUser = Boolean(user && userHasPerfil(user, 'AUDITORIA'))
 
   const botaoArquivoAnexado = (
     <TimelineActionButton
@@ -96,11 +93,7 @@ export function OrdenadorInteractiveTimeline({
     </>
   )
 
-  const visiveis = useMemo(() => {
-    const sorted = filtrarEtapasParaTimeline(etapas)
-    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(sorted)
-    return sorted
-  }, [etapas, trilhaAuditoria])
+  const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
   const sections = useMemo(
     () => buildSectionedTimeline(pedido, visiveis),
     [pedido, visiveis],
@@ -114,10 +107,7 @@ export function OrdenadorInteractiveTimeline({
   }, [chavePendente, visiveis])
 
   const acaoAtual = etapaDoPerfil ? ORDENADOR_ETAPA_ACOES[etapaDoPerfil.chave] : undefined
-  const isAuditoriaAtiva =
-    chavePendente === 'DIV_MAT_AUDITORIA' ||
-    (isAuditoriaUser &&
-      pedidoPendenteParaChave(pedido, visiveis, 'DIV_MAT_AUDITORIA'))
+  const isAuditoriaAtiva = etapaDoPerfil?.chave === 'DIV_MAT_AUDITORIA'
   const isContabilidadeAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONTABILIDADE_IMH'
   const isConfeccaoAtiva = etapaDoPerfil?.chave === 'DIV_MAT_CONFECCAO_SOLEMP'
   const isRascunhoAtivo = etapaDoPerfil?.chave === 'DIV_MAT_FINANCAS'
@@ -143,28 +133,18 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    if (
-      node.etapa.chave === 'DIV_MAT_AUDITORIA' &&
-      isAuditoriaAtiva &&
-      onReceberPlanilha &&
-      onEncaminharImh
-    ) {
+    if (isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilha}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onEncaminharImh}
             disabled={assinando || !planilhaRecebida}
           >
-            Enviar Planilha
+            Encaminhar (IMH + Confecção)
           </TimelineActionButton>
         </>,
       )
@@ -180,7 +160,6 @@ export function OrdenadorInteractiveTimeline({
       return comArquivoAnexado(
         <>
           <TimelineActionButton
-            data-keep-drawer=""
             onClick={onReceberPlanilhaImh}
             disabled={assinando || !planilhaDisponivel}
           >
@@ -188,7 +167,6 @@ export function OrdenadorInteractiveTimeline({
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaImh}
           >
@@ -205,16 +183,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaConfeccao}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaConfeccao}
           >
@@ -232,16 +205,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaRascunho}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaRascunho}
           >
@@ -259,16 +227,11 @@ export function OrdenadorInteractiveTimeline({
     ) {
       return comArquivoAnexado(
         <>
-          <TimelineActionButton
-            data-keep-drawer=""
-            onClick={onReceberPlanilhaEmpenhado}
-            disabled={assinando}
-          >
+          <TimelineActionButton onClick={onReceberPlanilhaEmpenhado} disabled={assinando}>
             Receber Planilha
           </TimelineActionButton>
           <TimelineActionButton
             variant="warning"
-            data-keep-drawer=""
             onClick={onAssinar}
             disabled={assinando || !planilhaRecebidaEmpenhado}
           >
@@ -296,24 +259,9 @@ export function OrdenadorInteractiveTimeline({
             {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
               <div className="timeline-alert timeline-alert-warning">
                 <strong>Ação necessária:</strong> {acaoAtual.descricao}
-                {isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
-                  <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {botaoArquivoAnexado}
-                    <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
-                      Receber Planilha
-                    </TimelineActionButton>
-                    <TimelineActionButton
-                      variant="warning"
-                      onClick={onEncaminharImh}
-                      disabled={assinando || !planilhaRecebida}
-                    >
-                      Enviar Planilha
-                    </TimelineActionButton>
-                  </div>
-                )}
                 {isAuditoriaAtiva && !planilhaRecebida && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Abra a planilha (Receber Planilha) antes de enviar para IMH e Confecção.
+                    Abra a planilha antes de encaminhar ao IMH.
                   </p>
                 )}
                 {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (

@@ -256,37 +256,14 @@ export const pedidoPlanilhaEnvioService = {
 
   markRecebida(pedidoId: string): PedidoPlanilhaEnvioState | null {
     const data = readPlanilhaData()
-    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
-    const current = data.pedidoPlanilhaEnvio[pedidoId]
-    // Sem snapshot ainda: marca recebimento para liberar o envio; a UI usa fallback de planilha.
+    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
+    if (!current) return null
+
     const next: PedidoPlanilhaEnvioState = {
-      formato: current?.formato ?? 'imh',
-      cabecalho: current?.cabecalho ?? {
-        numeroRelacao: '',
-        pregaoTad: '',
-        data: '',
-        vigencia: '',
-        processo: '',
-        fornecedor: '',
-      },
-      linhas: current?.linhas ?? [],
-      controleSolempLinhas: current?.controleSolempLinhas,
-      imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
-      imhAbaLinhas: current?.imhAbaLinhas,
-      divMaterialLinhas: current?.divMaterialLinhas,
-      anexos: current?.anexos,
-      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
+      ...current,
       recebidaEm: new Date().toISOString(),
-      encaminhadaImhEm: current?.encaminhadaImhEm,
-      recebidaImhEm: current?.recebidaImhEm,
-      recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
-      recebidaRascunhoEm: current?.recebidaRascunhoEm,
-      recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
-      arquivadaEm: current?.arquivadaEm,
-      devolvidaEm: current?.devolvidaEm,
-      devolvidaParaChave: current?.devolvidaParaChave,
     }
-    data.pedidoPlanilhaEnvio[pedidoId] = next
+    data.pedidoPlanilhaEnvio![pedidoId] = next
     saveAppData(data)
     return next
   },
