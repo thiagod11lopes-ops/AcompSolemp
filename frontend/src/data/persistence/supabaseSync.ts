@@ -16,6 +16,10 @@ let pendingVersion = APP_DATA_SEED_VERSION
 let flushPromise: Promise<void> | null = null
 /** Marca o último flush local para o poll não aplicar snapshot mais antigo. */
 let lastLocalFlushAtMs = 0
+/** Momento da última mutação local (saveAppData) — bloqueia overwrite remoto prematuro. */
+let lastLocalMutationAtMs = 0
+/** Sequência monotônica dos schedules — descarta import() atrasado com snapshot velho. */
+let latestScheduleSeq = 0
 /** Invalida uploads em voo (ex.: seed fictício) para o restore real prevalecer. */
 let writeEpoch = 0
 
@@ -27,9 +31,23 @@ export function getLastLocalAppDataFlushAtMs(): number {
   return lastLocalFlushAtMs
 }
 
+export function getLastLocalAppDataMutationAtMs(): number {
+  return lastLocalMutationAtMs
+}
+
+/** True quando o snapshot remoto é mais antigo que a mutação/flush local. */
+export function shouldIgnoreRemoteAppData(remoteUpdatedAtMs: number): boolean {
+  if (!Number.isFinite(remoteUpdatedAtMs)) return false
+  const localMark = Math.max(lastLocalFlushAtMs, lastLocalMutationAtMs)
+  if (!localMark) return false
+  // Folga de 2s para skew de relógio servidor/cliente.
+  return remoteUpdatedAtMs < localMark - 2_000
+}
+
 /** Cancela sync pendente e invalida uploads em andamento do seed fictício. */
 export function invalidateSupabaseAppDataSyncGeneration(): void {
   writeEpoch += 1
+  latestScheduleSeq += 1
   pendingData = null
   if (syncTimer) {
     clearTimeout(syncTimer)
@@ -57,13 +75,23 @@ export async function refreshAppDataFromCloud(): Promise<AppData | null> {
   return deserializeAppData(snapshot)
 }
 
+/**
+ * Agenda sync com a nuvem.
+ * @param scheduleSeq sequência do persist local — schedules atrasados (import dinâmico) são ignorados.
+ */
 export function scheduleSupabaseAppDataSync(
   data: AppData,
   version: string = APP_DATA_SEED_VERSION,
+  scheduleSeq?: number,
 ): void {
   if (!useCloudAppDataSync()) return
   // Seed fictício do dashboard nunca sobe para o Supabase.
   if (isFictionalDashboardSeedActive()) return
+
+  const seq = scheduleSeq ?? ++latestScheduleSeq
+  if (seq < latestScheduleSeq) return
+  latestScheduleSeq = seq
+  lastLocalMutationAtMs = Date.now()
   pendingData = data
   pendingVersion = version
   if (syncTimer) clearTimeout(syncTimer)
@@ -141,7 +169,7 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
  * Necessário para que outro usuário (ex.: ordenador) veja envio/devolução na hora.
  */
 export function subscribeAppStateRealtime(
-  onRemote: (data: AppData) => void,
+  onRemote: (data: AppData, updatedAtMs: number) => void,
 ): () => void {
   if (!useCloudAppDataSync()) return () => undefined
   const tenantId = getTenantId()
@@ -162,18 +190,22 @@ export function subscribeAppStateRealtime(
         const row = (payload.new ?? null) as {
           payload?: unknown
           version?: string
+          updated_at?: string
         } | null
         if (!row?.payload) return
         try {
+          const updatedAt = row.updated_at ?? new Date().toISOString()
+          const updatedAtMs = Date.parse(updatedAt)
+          if (shouldIgnoreRemoteAppData(updatedAtMs)) return
           const snapshot = {
             version: row.version ?? APP_DATA_SEED_VERSION,
             payload:
               typeof row.payload === 'string'
                 ? row.payload
                 : JSON.stringify(row.payload),
-            updatedAt: new Date().toISOString(),
+            updatedAt,
           }
-          onRemote(deserializeAppData(snapshot))
+          onRemote(deserializeAppData(snapshot), updatedAtMs)
         } catch (error) {
           console.warn('[AcompSolemp] Falha ao aplicar app_state remoto', error)
         }

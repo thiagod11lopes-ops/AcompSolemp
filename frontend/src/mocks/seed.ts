@@ -40,6 +40,7 @@ import {
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
 import { isMarinhaEmail } from '@/utils/email'
+import { scheduleSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 
 const SEED_VERSION = 'v16'
 
@@ -857,6 +858,9 @@ export function reloadAppDataFromStorage(): AppData {
   }
 }
 
+/** Sequência local para o schedule na nuvem — evita import() atrasado com AppData velho. */
+let persistScheduleSeq = 0
+
 function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   // Seed fictício: só atualiza o snapshot local — nunca AppData real nem Supabase.
   if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') {
@@ -866,9 +870,9 @@ function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   }
 
   if (useCloudAppDataSync()) {
-    void import('@/data/persistence/supabaseSync').then(({ scheduleSupabaseAppDataSync }) => {
-      scheduleSupabaseAppDataSync(data, SEED_VERSION)
-    })
+    // Schedule síncrono (sem import dinâmico): evita race em que um schedule
+    // atrasado reenvia AppData velho e apaga cadastro acabado de criar.
+    scheduleSupabaseAppDataSync(data, SEED_VERSION, ++persistScheduleSeq)
     // Notifica abas locais imediatamente; outras sessões entram via realtime.
     if (!options?.silent) notifyAppDataChanged()
     return
@@ -1067,9 +1071,25 @@ function mergeAnexoLists(
   return [...byId.values()]
 }
 
-/** Preserva anexos locais que um snapshot remoto antigo ainda não contém. */
+function mergeById<T extends { id: string }>(remoteList: T[], localList: T[]): T[] {
+  const byId = new Map<string, T>()
+  for (const item of remoteList) byId.set(item.id, item)
+  for (const item of localList) {
+    if (!byId.has(item.id)) byId.set(item.id, item)
+  }
+  return [...byId.values()]
+}
+
+/** Preserva anexos e cadastros locais que um snapshot remoto antigo ainda não contém. */
 function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
   if (!local) return remote
+
+  // Cadastros acabaram de ser criados localmente: um poll/realtime atrasado
+  // não deve apagá-los antes do flush refletir na nuvem.
+  remote.usuarios = mergeById(remote.usuarios ?? [], local.usuarios ?? [])
+  remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
+  remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
+  remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
 
   const localIndex = local.planilhaAnexosPorPedido ?? {}
   const remoteIndex = { ...(remote.planilhaAnexosPorPedido ?? {}) }

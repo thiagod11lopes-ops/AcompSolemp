@@ -21,12 +21,13 @@ export function useCreatePortalUser() {
   return useMutation({
     mutationFn: (input: CreatePortalUserInput) =>
       usuarioCadastroService.createPortalUser(input),
-    // Sempre sincroniza usuários + clínicas: o 1º cadastro de entidade precisa
-    // das duas listas, e onSettled cobre sucesso mesmo com latência de rede.
-    onSettled: async () => {
+    // Atualiza o cache a partir do AppData local (já flushado). Evita invalidate
+    // imediato que refetcha um snapshot remoto atrasado e “some” com o cadastro.
+    onSuccess: () => {
       syncCadastroQueries(queryClient, { refreshClinicas: true })
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+    },
+    onSettled: () => {
+      syncCadastroQueries(queryClient, { refreshClinicas: true })
     },
   })
 }
@@ -38,10 +39,11 @@ export function useDeleteCadastro() {
       usuarioCadastroService.deleteCadastro(input),
     // Soft-delete local roda antes do revoke na nuvem: atualiza a lista mesmo se
     // a RPC falhar (evita card "Cadastrados" mostrar quem já foi excluído).
-    onSettled: async () => {
+    onSuccess: () => {
       syncCadastroQueries(queryClient, { refreshClinicas: true })
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      await queryClient.invalidateQueries({ queryKey: ['clinicas'] })
+    },
+    onSettled: () => {
+      syncCadastroQueries(queryClient, { refreshClinicas: true })
     },
   })
 }
