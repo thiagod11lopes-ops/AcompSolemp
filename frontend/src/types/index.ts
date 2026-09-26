@@ -136,8 +136,10 @@ export interface ArquivoAnexo {
   tipo: 'PDF' | 'SOLEMP' | 'NOTA_FISCAL' | 'DESPACHO' | 'OUTRO'
   dataUpload: string
   tamanhoKb: number
-  /** Conteúdo do arquivo em Base64 (para download no modal Arquivo Anexado). */
+  /** Conteúdo do arquivo em Base64 (modo local/demo ou fallback). */
   conteudoBase64?: string
+  /** Caminho no Storage Supabase (`planilha-anexos`) para download entre usuários. */
+  storagePath?: string
   /** MIME type original do arquivo, quando conhecido. */
   mimeType?: string
 }

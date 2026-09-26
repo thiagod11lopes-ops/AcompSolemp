@@ -1071,13 +1071,15 @@ export default function ClinicaNovoPedidoPage() {
       }
 
       // Garante que planilha + anexos subam à nuvem para o próximo setor da timeline.
+      let syncAnexosFalhou = false
       try {
         const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
         await flushSupabaseAppDataSync()
         // Segundo flush: cobre o caso em que o 1º ainda competia com o flush do createPedido.
         await flushSupabaseAppDataSync()
-      } catch {
-        // Local/demo: sync opcional
+      } catch (error) {
+        console.error('[AcompSolemp] Falha ao sincronizar planilha/anexos:', error)
+        syncAnexosFalhou = envioAnexos.length > 0
       }
 
       const nextImh = temImh
@@ -1132,8 +1134,10 @@ export default function ClinicaNovoPedidoPage() {
       setEnvioAnexos([])
       setFeedback({
         open: true,
-        severity: 'success',
-        message: `${partes.join(' · ')}.`,
+        severity: syncAnexosFalhou ? 'error' : 'success',
+        message: syncAnexosFalhou
+          ? `${partes.join(' · ')}. Atenção: anexos podem não ter sincronizado — execute migration_planilha_anexos_storage.sql no Supabase.`
+          : `${partes.join(' · ')}.`,
       })
       navigatePortal(`/clinica/timeline/${pedidoId}`)
     } catch {

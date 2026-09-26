@@ -35,6 +35,10 @@ está vazia, execute:
 (e, se precisar liberar um e-mail na hora:
 `delete from public.email_access where lower(email) = 'seuemail@marinha.mil.br';`).
 
+Para anexos no envio de planilha (botão **Arquivo Anexado** na timeline), execute:
+[`migration_planilha_anexos_storage.sql`](./migration_planilha_anexos_storage.sql)
+(cria o bucket `planilha-anexos` no Storage).
+
 ## 3. Auth
 
 Em **Authentication → Providers**:

@@ -30,10 +30,27 @@ function formatTamanho(kb: number): string {
   return `${(kb / 1024).toFixed(1)} MB`
 }
 
+function mergeAnexos(local: ArquivoAnexo[], remote: ArquivoAnexo[]): ArquivoAnexo[] {
+  const byId = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...local, ...remote]) {
+    const prev = byId.get(arquivo.id)
+    if (!prev) {
+      byId.set(arquivo.id, arquivo)
+      continue
+    }
+    // Prefere entrada com caminho de storage ou conteúdo baixável.
+    const prevScore = (prev.storagePath ? 2 : 0) + (prev.conteudoBase64 ? 1 : 0)
+    const nextScore = (arquivo.storagePath ? 2 : 0) + (arquivo.conteudoBase64 ? 1 : 0)
+    byId.set(arquivo.id, nextScore >= prevScore ? arquivo : prev)
+  }
+  return [...byId.values()].sort((a, b) => b.dataUpload.localeCompare(a.dataUpload))
+}
+
 export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosModalProps) {
   const cloudSync = useCloudAppDataSync()
   const [anexos, setAnexos] = useState<ArquivoAnexo[]>([])
   const [loading, setLoading] = useState(false)
+  const [baixandoId, setBaixandoId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !pedidoId) {
@@ -43,6 +60,8 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
     }
 
     let cancelled = false
+    const locais = pedidoAnexoService.listByPedido(pedidoId)
+    setAnexos(locais)
     setLoading(true)
 
     void (async () => {
@@ -57,7 +76,8 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
         // Mantém dados locais se o refresh falhar.
       }
       if (cancelled) return
-      setAnexos(pedidoAnexoService.listByPedido(pedidoId))
+      const atualizados = pedidoAnexoService.listByPedido(pedidoId)
+      setAnexos(mergeAnexos(locais, atualizados))
       setLoading(false)
     })()
 
@@ -79,7 +99,7 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
-        {loading ? (
+        {loading && anexos.length === 0 ? (
           <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
             <CircularProgress size={28} />
           </Box>
@@ -89,11 +109,15 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
             <Typography variant="body2" color="text.secondary">
               Nenhum arquivo foi anexado nesta planilha.
             </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              Se o arquivo foi anexado agora, confira se a migration do Storage
+              (`migration_planilha_anexos_storage.sql`) foi executada no Supabase.
+            </Typography>
           </Box>
         ) : (
           <Stack spacing={1.25}>
             {anexos.map((arquivo) => {
-              const podeBaixar = Boolean(arquivo.conteudoBase64)
+              const podeBaixar = Boolean(arquivo.conteudoBase64 || arquivo.storagePath)
               return (
                 <Box
                   key={arquivo.id}
@@ -123,10 +147,19 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
                   <Button
                     size="small"
                     variant="contained"
-                    startIcon={<DownloadIcon />}
-                    disabled={!podeBaixar}
+                    startIcon={
+                      baixandoId === arquivo.id ? (
+                        <CircularProgress size={14} color="inherit" />
+                      ) : (
+                        <DownloadIcon />
+                      )
+                    }
+                    disabled={!podeBaixar || baixandoId === arquivo.id}
                     onClick={() => {
-                      pedidoAnexoService.download(arquivo)
+                      setBaixandoId(arquivo.id)
+                      void pedidoAnexoService.download(arquivo).finally(() => {
+                        setBaixandoId(null)
+                      })
                     }}
                     sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
                   >
