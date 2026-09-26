@@ -1,4 +1,4 @@
-import { Box, Card, CardActionArea, CardContent, keyframes } from '@mui/material'
+import { Box, Card, CardActionArea, CardContent, Typography, keyframes } from '@mui/material'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { premiumTokens } from '@/theme/tokens'
 
@@ -115,21 +115,34 @@ export function ConcluidosCard({
       sx={{
         height: '100%',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: { xs: 1, sm: 1.25 },
-        '&:last-child': { pb: { xs: 1, sm: 1.25 } },
+        flexDirection: 'column',
+        p: { xs: 1.25, sm: 1.5 },
+        '&:last-child': { pb: { xs: 1.25, sm: 1.5 } },
         overflow: 'hidden',
       }}
     >
+      <Typography
+        sx={{
+          fontWeight: 800,
+          fontSize: '0.95rem',
+          letterSpacing: '-0.03em',
+          lineHeight: 1.2,
+          color: premiumTokens.primaryDark,
+          textShadow: '0 1px 2px rgba(0,0,0,0.08)',
+          flexShrink: 0,
+          mb: 0.5,
+        }}
+      >
+        Processos Concluídos
+      </Typography>
       <Box
         component="svg"
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         sx={{
           width: '100%',
-          height: '100%',
+          flex: 1,
+          minHeight: 0,
           maxWidth: '100%',
-          maxHeight: '100%',
           display: 'block',
           overflow: 'visible',
           animation: `${chartEnter} 0.7s cubic-bezier(0.22, 1, 0.36, 1) both`,
