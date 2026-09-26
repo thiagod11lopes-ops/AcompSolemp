@@ -10,7 +10,14 @@ import {
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -25,6 +32,7 @@ import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaMo
 import { DivMaterialForm } from '@/components/clinica/DivMaterialForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
 import { ImhDivMaterialEnvioModal } from '@/components/clinica/ImhDivMaterialEnvioModal'
+import { PlanilhaAnexoPerguntaModal } from '@/components/clinica/PlanilhaAnexoPerguntaModal'
 import {
   PlanilhaApagarModal,
   type PlanilhaApagarConfirmacao,
@@ -33,6 +41,7 @@ import { ImhMedicamentoForm } from '@/components/clinica/ImhMedicamentoForm'
 import { ListaMedicamentosForm } from '@/components/clinica/ListaMedicamentosForm'
 import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpreadsheet'
 import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
+import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
 import type {
   ConmedComrjFormData,
@@ -89,6 +98,10 @@ import {
   mergeLinhasCorrigir,
   resolveCorrigirLinhaIds,
 } from '@/utils/corrigirDevolucao'
+import {
+  filterPlanilhaAnexoFiles,
+  PLANILHA_ANEXO_ACCEPT,
+} from '@/utils/planilhaAnexoAccept'
 import {
   EMPTY_IMH_ABA_FORM,
   imhAbaLinhasToPedidoInput,
@@ -191,6 +204,8 @@ export default function ClinicaNovoPedidoPage() {
   const [divMaterialDataFiltro, setDivMaterialDataFiltro] = useState<PlanilhaDataFiltro>(() =>
     createDefaultPlanilhaDataFiltro(),
   )
+  const [anexoPerguntaOpen, setAnexoPerguntaOpen] = useState(false)
+  const [envioAnexos, setEnvioAnexos] = useState<File[]>([])
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
   const [apagarOpen, setApagarOpen] = useState(false)
@@ -209,6 +224,7 @@ export default function ClinicaNovoPedidoPage() {
   }>({ open: false, severity: 'success', message: '' })
 
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const anexoInputRef = useRef<HTMLInputElement | null>(null)
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -858,6 +874,47 @@ export default function ClinicaNovoPedidoPage() {
       })
       return
     }
+    setEnvioAnexos([])
+    setAnexoPerguntaOpen(true)
+  }
+
+  const handleAnexoPerguntaNao = () => {
+    setEnvioAnexos([])
+    setAnexoPerguntaOpen(false)
+    setEnvioModalOpen(true)
+  }
+
+  const handleAnexoPerguntaSim = () => {
+    anexoInputRef.current?.click()
+  }
+
+  const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files
+    const validos = selected ? filterPlanilhaAnexoFiles(selected) : []
+    event.target.value = ''
+
+    if (!selected || selected.length === 0) return
+
+    if (validos.length === 0) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message:
+          'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
+      })
+      return
+    }
+
+    if (validos.length < selected.length) {
+      setFeedback({
+        open: true,
+        severity: 'error',
+        message: `${selected.length - validos.length} arquivo(s) ignorado(s) por formato não aceito.`,
+      })
+    }
+
+    setEnvioAnexos(validos)
+    setAnexoPerguntaOpen(false)
     setEnvioModalOpen(true)
   }
 
@@ -938,6 +995,10 @@ export default function ClinicaNovoPedidoPage() {
         pedidoPlanilhaEnvioService.saveDivMaterialForPedido(pedidoId, divSelecionadas)
       }
 
+      if (envioAnexos.length > 0) {
+        pedidoAnexoService.saveForPedido(pedidoId, envioAnexos)
+      }
+
       // Garante que o snapshot da planilha suba à nuvem após o pedido.
       try {
         const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
@@ -990,9 +1051,12 @@ export default function ClinicaNovoPedidoPage() {
       }
 
       setEnvioModalOpen(false)
+      setAnexoPerguntaOpen(false)
       const partes: string[] = []
       if (temImh) partes.push(`IMH (${imhSelecionadas.length}) → Auditoria`)
       if (temDiv) partes.push(`Div. Material (${divSelecionadas.length}) → Confecção de Solemp`)
+      if (envioAnexos.length > 0) partes.push(`${envioAnexos.length} anexo(s)`)
+      setEnvioAnexos([])
       setFeedback({
         open: true,
         severity: 'success',
@@ -1191,6 +1255,15 @@ export default function ClinicaNovoPedidoPage() {
         onChange={handleImportFileChange}
       />
 
+      <input
+        ref={anexoInputRef}
+        type="file"
+        accept={PLANILHA_ANEXO_ACCEPT}
+        multiple
+        hidden
+        onChange={handleAnexoFileChange}
+      />
+
       <ConmedEscolherAbaModal
         open={sheetPicker.open}
         sheetNames={sheetPicker.sheets.map((s) => s.nome)}
@@ -1207,13 +1280,26 @@ export default function ClinicaNovoPedidoPage() {
         onConfirm={handleConfirmSheet}
       />
 
+      <PlanilhaAnexoPerguntaModal
+        open={anexoPerguntaOpen}
+        onClose={() => {
+          if (!isEnviando) setAnexoPerguntaOpen(false)
+        }}
+        onSim={handleAnexoPerguntaSim}
+        onNao={handleAnexoPerguntaNao}
+      />
+
       <ImhDivMaterialEnvioModal
         open={envioModalOpen}
         imhCount={selectedImhCount}
         divMaterialCount={selectedDivCount}
+        anexos={envioAnexos}
         isSubmitting={isEnviando}
         onClose={() => {
-          if (!isEnviando) setEnvioModalOpen(false)
+          if (!isEnviando) {
+            setEnvioModalOpen(false)
+            setEnvioAnexos([])
+          }
         }}
         onEnviar={handleEnviarPlanilhas}
       />

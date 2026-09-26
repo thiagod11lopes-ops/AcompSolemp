@@ -11,12 +11,14 @@ import CloseIcon from '@mui/icons-material/Close'
 import SendIcon from '@mui/icons-material/Send'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import DescriptionIcon from '@mui/icons-material/Description'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import { motion } from 'framer-motion'
 
 interface ImhDivMaterialEnvioModalProps {
   open: boolean
   imhCount: number
   divMaterialCount: number
+  anexos?: File[]
   isSubmitting?: boolean
   onClose: () => void
   onEnviar: () => void
@@ -26,6 +28,7 @@ export function ImhDivMaterialEnvioModal({
   open,
   imhCount,
   divMaterialCount,
+  anexos = [],
   isSubmitting = false,
   onClose,
   onEnviar,
@@ -138,6 +141,38 @@ export function ImhDivMaterialEnvioModal({
               </Box>
             </Box>
           </motion.div>
+
+          {anexos.length > 0 ? (
+            <Box
+              sx={{
+                py: 1.5,
+                px: 2.25,
+                borderRadius: 3,
+                bgcolor: alpha('#34d399', 0.12),
+                border: `1px solid ${alpha('#34d399', 0.35)}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 1.5,
+              }}
+            >
+              <AttachFileIcon sx={{ mt: 0.25, color: '#d1fae5' }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 800, color: '#d1fae5' }}>
+                  {anexos.length} arquivo(s) em anexo
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: alpha('#e2e8f0', 0.85),
+                    mt: 0.35,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {anexos.map((file) => file.name).join(' · ')}
+                </Typography>
+              </Box>
+            </Box>
+          ) : null}
         </Stack>
 
         <Box
