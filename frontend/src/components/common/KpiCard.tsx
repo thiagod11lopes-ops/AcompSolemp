@@ -1,6 +1,7 @@
 import { Card, CardActionArea, CardContent, Typography, Box, alpha, useTheme } from '@mui/material'
 import type { ReactNode } from 'react'
 import {
+  dashboardCardIconOffsetSx,
   dashboardCardShellSx,
   dashboardCardTitleSx,
 } from '@/components/dashboard/dashboardCardStyles'
@@ -62,6 +63,7 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick }:
               border: `1px solid ${alpha(accent, 0.28)}`,
               flexShrink: 0,
               boxShadow: '0 2px 8px rgba(63, 107, 86, 0.12)',
+              ...dashboardCardIconOffsetSx,
             }}
           >
             {icon}

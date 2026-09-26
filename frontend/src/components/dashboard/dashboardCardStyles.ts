@@ -24,3 +24,8 @@ export const dashboardCardTitleSx = {
   color: premiumTokens.primaryDark,
   textShadow: '0 1px 2px rgba(0,0,0,0.08)',
 } as const
+
+/** Ícone do card — deslocado 10% para cima. */
+export const dashboardCardIconOffsetSx = {
+  transform: 'translateY(-10%)',
+} as const

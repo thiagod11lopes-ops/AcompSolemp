@@ -36,6 +36,7 @@ import {
 } from '@/utils/totalIndenizado'
 import { formatCurrency } from '@/utils/format'
 import {
+  dashboardCardIconOffsetSx,
   dashboardCardShellSx,
   dashboardCardTitleSx,
 } from '@/components/dashboard/dashboardCardStyles'
@@ -361,6 +362,7 @@ export function IndenizadoValorCard({
                   color: accent,
                   border: `1px solid ${alpha(accent, 0.28)}`,
                   boxShadow: '0 2px 8px rgba(63, 107, 86, 0.12)',
+                  ...dashboardCardIconOffsetSx,
                 }}
               >
                 {icon ?? <PaidOutlinedIcon />}

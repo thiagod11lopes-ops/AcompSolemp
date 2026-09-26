@@ -64,6 +64,7 @@ export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardPro
             color: accent,
             border: `1px solid ${alpha(accent, 0.2)}`,
             flexShrink: 0,
+            ...dashboardCardIconOffsetSx,
           }}
         >
           <PendingActionsIcon fontSize="small" />

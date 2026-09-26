@@ -3,6 +3,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import MedicalServicesOutlinedIcon from '@mui/icons-material/MedicalServicesOutlined'
 import type { ReactNode } from 'react'
 import {
+  dashboardCardIconOffsetSx,
   dashboardCardShellSx,
   dashboardCardTitleSx,
 } from '@/components/dashboard/dashboardCardStyles'
@@ -34,6 +35,7 @@ function ContagemKpiCard({ title, value, description, accent, icon }: ContagemKp
               color: accent,
               border: `1px solid ${alpha(accent, 0.28)}`,
               boxShadow: '0 2px 8px rgba(63, 107, 86, 0.12)',
+              ...dashboardCardIconOffsetSx,
             }}
           >
             {icon}
