@@ -8,6 +8,7 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  Badge,
 } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
@@ -16,6 +17,7 @@ import ScienceIcon from '@mui/icons-material/Science'
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import LogoutIcon from '@mui/icons-material/Logout'
 import GroupsIcon from '@mui/icons-material/Groups'
+import UndoIcon from '@mui/icons-material/Undo'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -29,7 +31,8 @@ import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { DRAWER_WIDTH } from './Sidebar'
-import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
+import { TIPOS_NOTIFICACAO_REVERSAO, notificacaoPertenceAosTipos } from '@/utils/notificacoes'
+import { useNotifications } from '@/hooks/useCadastros'
 import { isSuperAdminEmail } from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { loadAppData } from '@/mocks/seed'
@@ -45,9 +48,9 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: TopBarProps) {
   const { user, logout } = useGestorAuth()
-  const { impersonationTargetEmail } = useAuth()
+  const { impersonationTargetEmail, demoMode } = useAuth()
   const { mode, toggleTheme } = useThemeMode()
-  const { demoBannerHeight } = usePortalPaths()
+  const { demoBannerHeight, mapPath, isDemo } = usePortalPaths()
   const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -56,6 +59,13 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
   const [adminOpen, setAdminOpen] = useState(false)
   const [fictionalActive, setFictionalActive] = useState(() => isFictionalDashboardSeedActive())
   const [fictionalBusy, setFictionalBusy] = useState(false)
+  const perfilNotif =
+    isDemo && demoMode ? demoMode.authUser.perfil : (user?.perfil ?? null)
+  const { data: notifications = [] } = useNotifications(perfilNotif)
+  const reversoesNaoLidas = notifications.filter(
+    (n) =>
+      !n.lida && notificacaoPertenceAosTipos(n, TIPOS_NOTIFICACAO_REVERSAO),
+  ).length
 
   const sessionEmail =
     user?.email?.trim().toLowerCase() ||
@@ -124,6 +134,17 @@ export function TopBar({ onMenuClick, title = 'Portal do Gestor — SOLEMP' }: T
           <GlobalProcessSearch portal="gestor" />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Reversões">
+            <IconButton
+              color="inherit"
+              aria-label="Reversões"
+              onClick={() => navigate(mapPath('/gestor/reversoes'))}
+            >
+              <Badge badgeContent={reversoesNaoLidas} color="warning" max={99}>
+                <UndoIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Demonstração da Timeline">
             <IconButton onClick={() => setDemoOpen(true)} color="inherit">
               <ScienceIcon />

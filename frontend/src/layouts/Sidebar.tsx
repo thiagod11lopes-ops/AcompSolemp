@@ -3,7 +3,6 @@ import {
   List,
   ListItemButton,
   ListItemIcon,
-  ListItemSecondaryAction,
   ListItemText,
   Toolbar,
   Box,
@@ -14,10 +13,8 @@ import {
 } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import DashboardIcon from '@mui/icons-material/Dashboard'
-import AssignmentIcon from '@mui/icons-material/Assignment'
 import PeopleIcon from '@mui/icons-material/People'
 import AssessmentIcon from '@mui/icons-material/Assessment'
-import UndoIcon from '@mui/icons-material/Undo'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
@@ -25,21 +22,17 @@ import { NavLink } from 'react-router-dom'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getRoleLabel } from '@/mocks/seed'
-import { NotificationPanel } from '@/components/notifications/NotificationPanel'
-import { TIPOS_NOTIFICACAO_REVERSAO } from '@/utils/notificacoes'
 
 const DRAWER_WIDTH = 260
 
 const menuItems = [
   { path: '/gestor/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { path: '/gestor/processos', label: 'Processos', icon: <AssignmentIcon /> },
-  { path: '/gestor/cadastros', label: 'Cadastros', icon: <PeopleIcon /> },
-  { path: '/gestor/relatorios', label: 'Relatórios', icon: <AssessmentIcon /> },
-  { path: '/gestor/reversoes', label: 'Reversões', icon: <UndoIcon /> },
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
-  { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
-  { path: '/gestor/prazos', label: 'Configurar Prazos', icon: <ScheduleIcon /> },
+  { path: '/gestor/cadastros', label: 'Cadastro', icon: <PeopleIcon /> },
+  { path: '/gestor/prazos', label: 'Prazos', icon: <ScheduleIcon /> },
   { path: '/gestor/balanco', label: 'Balanço', icon: <AccountBalanceWalletIcon /> },
+  { path: '/gestor/relatorios', label: 'Relatório', icon: <AssessmentIcon /> },
+  { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
 ]
 
 interface SidebarProps {
@@ -101,26 +94,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             }}
           >
             <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} sx={{ pr: item.path === '/gestor/reversoes' ? 5 : 0 }} />
-            {item.path === '/gestor/reversoes' ? (
-              <ListItemSecondaryAction
-                sx={{ right: 8 }}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-              >
-                <NotificationPanel
-                  tipos={TIPOS_NOTIFICACAO_REVERSAO}
-                  title="Reversões"
-                  emptyText="Nenhuma reversão notificada"
-                  tooltip="Notificações de reversão"
-                  size="small"
-                  iconColor="warning"
-                  stopClickPropagation
-                />
-              </ListItemSecondaryAction>
-            ) : null}
+            <ListItemText primary={item.label} />
           </ListItemButton>
         ))}
       </List>
