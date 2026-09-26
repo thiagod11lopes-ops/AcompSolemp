@@ -62,17 +62,33 @@ export async function saveAppDataToSupabase(
     return
   }
 
-  const { error } = await getSupabaseClient().from('app_state').upsert(
-    {
-      tenant_id: id,
-      version: snapshot.version,
-      payload,
-      updated_at: snapshot.updatedAt,
-    },
-    { onConflict: 'tenant_id' },
-  )
+  const client = getSupabaseClient()
 
-  if (error) throw new Error(error.message)
+  // RPC security definer: evita RLS no INSERT do upsert (Novo cadastro / sync).
+  const { error: rpcError } = await client.rpc('save_app_state_for_tenant', {
+    p_tenant_id: id,
+    p_version: snapshot.version,
+    p_payload: payload,
+  })
+
+  if (!rpcError) return
+
+  // Fallback enquanto a migration não foi aplicada no projeto.
+  if (/could not find the function|does not exist|PGRST202/i.test(rpcError.message)) {
+    const { error } = await client.from('app_state').upsert(
+      {
+        tenant_id: id,
+        version: snapshot.version,
+        payload,
+        updated_at: snapshot.updatedAt,
+      },
+      { onConflict: 'tenant_id' },
+    )
+    if (error) throw new Error(error.message)
+    return
+  }
+
+  throw new Error(rpcError.message)
 }
 
 export function createSupabaseAppDataPersistence(
