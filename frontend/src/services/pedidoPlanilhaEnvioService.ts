@@ -256,28 +256,60 @@ export const pedidoPlanilhaEnvioService = {
 
   markRecebida(pedidoId: string): PedidoPlanilhaEnvioState | null {
     const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+    const current = data.pedidoPlanilhaEnvio[pedidoId]
+    // Sem snapshot ainda: marca recebimento para liberar o envio; a UI usa fallback de planilha.
     const next: PedidoPlanilhaEnvioState = {
-      ...current,
+      formato: current?.formato ?? 'imh',
+      cabecalho: current?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
+      linhas: current?.linhas ?? [],
+      controleSolempLinhas: current?.controleSolempLinhas,
+      imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
+      imhAbaLinhas: current?.imhAbaLinhas,
+      divMaterialLinhas: current?.divMaterialLinhas,
+      anexos: current?.anexos,
+      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
       recebidaEm: new Date().toISOString(),
+      encaminhadaImhEm: current?.encaminhadaImhEm,
+      recebidaImhEm: current?.recebidaImhEm,
+      recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
+      recebidaRascunhoEm: current?.recebidaRascunhoEm,
+      recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
+      arquivadaEm: current?.arquivadaEm,
+      devolvidaEm: current?.devolvidaEm,
+      devolvidaParaChave: current?.devolvidaParaChave,
     }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
+    data.pedidoPlanilhaEnvio[pedidoId] = next
     saveAppData(data)
     return next
   },
 
   markEncaminhadaImh(pedidoId: string): PedidoPlanilhaEnvioState | null {
     const data = readPlanilhaData()
-    const current = data.pedidoPlanilhaEnvio?.[pedidoId]
-    if (!current) return null
-
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+    const current = data.pedidoPlanilhaEnvio[pedidoId]
+    // Garante flag de encaminhamento mesmo se o snapshot ainda não sincronizou.
     const next: PedidoPlanilhaEnvioState = {
-      ...current,
+      formato: current?.formato ?? 'imh',
+      cabecalho: current?.cabecalho ?? { ...EMPTY_IMH_CABECALHO },
+      linhas: current?.linhas ?? [],
+      controleSolempLinhas: current?.controleSolempLinhas,
+      imhMedicamentoLinhas: current?.imhMedicamentoLinhas,
+      imhAbaLinhas: current?.imhAbaLinhas,
+      divMaterialLinhas: current?.divMaterialLinhas,
+      anexos: current?.anexos,
+      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
+      recebidaEm: current?.recebidaEm ?? new Date().toISOString(),
       encaminhadaImhEm: new Date().toISOString(),
+      recebidaImhEm: current?.recebidaImhEm,
+      recebidaConfeccaoEm: current?.recebidaConfeccaoEm,
+      recebidaRascunhoEm: current?.recebidaRascunhoEm,
+      recebidaEmpenhadoEm: current?.recebidaEmpenhadoEm,
+      arquivadaEm: current?.arquivadaEm,
+      devolvidaEm: current?.devolvidaEm,
+      devolvidaParaChave: current?.devolvidaParaChave,
     }
-    data.pedidoPlanilhaEnvio![pedidoId] = next
+    data.pedidoPlanilhaEnvio[pedidoId] = next
     saveAppData(data)
     return next
   },

@@ -73,8 +73,9 @@ export const ORDENADOR_ETAPA_ACOES: Record<
   { label: string; descricao: string }
 > = {
   DIV_MAT_AUDITORIA: {
-    label: 'Encaminhar ao IMH',
-    descricao: 'Receba a planilha enviada pela clínica e, após conferir, encaminhe ao IMH.',
+    label: 'Encaminhar (IMH + Confecção)',
+    descricao:
+      'Receba a planilha e os anexos enviados pela clínica e, após conferir, encaminhe para IMH e Confecção de Solemp.',
   },
   DIV_MAT_CONTABILIDADE_IMH: {
     label: 'Concluir IMH',
