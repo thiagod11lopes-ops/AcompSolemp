@@ -10,7 +10,6 @@ import {
 } from '@/utils/perfilEtapa'
 import {
   filtrarEtapasParaTimeline,
-  filtrarEtapasTrilhaAuditoria,
   usaTrilhaAuditoriaOrdenador,
 } from '@/utils/timelineFlow'
 import {
@@ -70,11 +69,10 @@ export function OrdenadorInteractiveTimeline({
   const { user } = useOrdenadorAuth()
   const [anexosModalOpen, setAnexosModalOpen] = useState(false)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
-  const chavePerfilFixa = chavesPerfil[0] ?? null
   const chavePendente = user
     ? chavePendenteParaPerfil(pedido, etapas, user.perfil, undefined, user)
     : null
-  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente ?? chavePerfilFixa)
+  const trilhaAuditoria = usaTrilhaAuditoriaOrdenador(chavePendente)
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
   const isAuditoriaUser = Boolean(user && userHasPerfil(user, 'AUDITORIA'))
 
@@ -96,11 +94,8 @@ export function OrdenadorInteractiveTimeline({
     </>
   )
 
-  const visiveis = useMemo(() => {
-    const sorted = filtrarEtapasParaTimeline(etapas)
-    if (trilhaAuditoria) return filtrarEtapasTrilhaAuditoria(sorted)
-    return sorted
-  }, [etapas, trilhaAuditoria])
+  // Mantém a timeline completa (todas as etapas), como antes do filtro por trilha.
+  const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
   const sections = useMemo(
     () => buildSectionedTimeline(pedido, visiveis),
     [pedido, visiveis],
@@ -295,24 +290,9 @@ export function OrdenadorInteractiveTimeline({
             {acaoAtual && etapaDoPerfil && !fluxoEncerrado && (
               <div className="timeline-alert timeline-alert-warning">
                 <strong>Ação necessária:</strong> {acaoAtual.descricao}
-                {isAuditoriaAtiva && onReceberPlanilha && onEncaminharImh && (
-                  <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {botaoArquivoAnexado}
-                    <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
-                      Receber Planilha
-                    </TimelineActionButton>
-                    <TimelineActionButton
-                      variant="warning"
-                      onClick={onEncaminharImh}
-                      disabled={assinando || !planilhaRecebida}
-                    >
-                      Encaminhar (IMH + Confecção)
-                    </TimelineActionButton>
-                  </div>
-                )}
                 {isAuditoriaAtiva && !planilhaRecebida && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Abra a planilha (Receber Planilha) antes de encaminhar para IMH e Confecção.
+                    Abra a planilha antes de encaminhar ao IMH.
                   </p>
                 )}
                 {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (
