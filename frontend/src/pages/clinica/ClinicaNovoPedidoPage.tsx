@@ -227,6 +227,7 @@ export default function ClinicaNovoPedidoPage() {
   const anexoInputRef = useRef<HTMLInputElement | null>(null)
   const abrirEnvioTimeoutRef = useRef<number | null>(null)
   const envioModalIgnoreCloseUntilRef = useRef(0)
+  const envioAnexosRef = useRef<File[]>([])
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -876,6 +877,7 @@ export default function ClinicaNovoPedidoPage() {
       })
       return
     }
+    envioAnexosRef.current = []
     setEnvioAnexos([])
     setAnexoPerguntaOpen(true)
   }
@@ -886,6 +888,7 @@ export default function ClinicaNovoPedidoPage() {
       abrirEnvioTimeoutRef.current = null
     }
 
+    envioAnexosRef.current = anexos
     setEnvioAnexos(anexos)
     setAnexoPerguntaOpen(false)
     // Bloqueia fechamento imediato por clique fantasma do diálogo do Windows.
@@ -986,6 +989,7 @@ export default function ClinicaNovoPedidoPage() {
     if (isEnviando) return
     if (Date.now() < envioModalIgnoreCloseUntilRef.current) return
     setEnvioModalOpen(false)
+    envioAnexosRef.current = []
     setEnvioAnexos([])
   }
 
@@ -1066,8 +1070,10 @@ export default function ClinicaNovoPedidoPage() {
         pedidoPlanilhaEnvioService.saveDivMaterialForPedido(pedidoId, divSelecionadas)
       }
 
-      if (envioAnexos.length > 0) {
-        await pedidoAnexoService.saveForPedido(pedidoId, envioAnexos)
+      const anexosParaEnviar =
+        envioAnexosRef.current.length > 0 ? envioAnexosRef.current : envioAnexos
+      if (anexosParaEnviar.length > 0) {
+        await pedidoAnexoService.saveForPedido(pedidoId, anexosParaEnviar)
       }
 
       // Garante que planilha + anexos subam à nuvem para o próximo setor da timeline.
@@ -1079,7 +1085,7 @@ export default function ClinicaNovoPedidoPage() {
         await flushSupabaseAppDataSync()
       } catch (error) {
         console.error('[AcompSolemp] Falha ao sincronizar planilha/anexos:', error)
-        syncAnexosFalhou = envioAnexos.length > 0
+        syncAnexosFalhou = anexosParaEnviar.length > 0
       }
 
       const nextImh = temImh
@@ -1130,13 +1136,14 @@ export default function ClinicaNovoPedidoPage() {
       const partes: string[] = []
       if (temImh) partes.push(`IMH (${imhSelecionadas.length}) → Auditoria`)
       if (temDiv) partes.push(`Div. Material (${divSelecionadas.length}) → Confecção de Solemp`)
-      if (envioAnexos.length > 0) partes.push(`${envioAnexos.length} anexo(s)`)
+      if (anexosParaEnviar.length > 0) partes.push(`${anexosParaEnviar.length} anexo(s)`)
+      envioAnexosRef.current = []
       setEnvioAnexos([])
       setFeedback({
         open: true,
         severity: syncAnexosFalhou ? 'error' : 'success',
         message: syncAnexosFalhou
-          ? `${partes.join(' · ')}. Atenção: anexos podem não ter sincronizado — execute migration_planilha_anexos_storage.sql no Supabase.`
+          ? `${partes.join(' · ')}. Atenção: anexos podem não ter sincronizado — verifique o Storage no Supabase.`
           : `${partes.join(' · ')}.`,
       })
       navigatePortal(`/clinica/timeline/${pedidoId}`)

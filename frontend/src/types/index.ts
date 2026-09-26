@@ -764,6 +764,11 @@ export interface AppData {
   /** Planilha editável da aba Preço de Medicamentos (persistida no IndexedDB). */
   medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
+  /**
+   * Índice dedicado de anexos por pedido (espelho de pedidoPlanilhaEnvio[*].anexos).
+   * Evita perda quando um sync remoto sobrescreve o snapshot da planilha.
+   */
+  planilhaAnexosPorPedido?: Record<string, ArquivoAnexo[]>
   processosArquivados?: ProcessoArquivado[]
   /** Mensagens do bate-papo entre setores (DM + grupo geral) */
   chatMensagens?: ChatMessage[]

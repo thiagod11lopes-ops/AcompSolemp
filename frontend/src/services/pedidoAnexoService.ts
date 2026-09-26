@@ -73,6 +73,14 @@ function emptyPlanilhaSnapshot(anexos: ArquivoAnexo[]): PedidoPlanilhaEnvioState
   }
 }
 
+function mergeAnexoLists(a: ArquivoAnexo[] = [], b: ArquivoAnexo[] = []): ArquivoAnexo[] {
+  const byId = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...a, ...b]) {
+    byId.set(arquivo.id, cloneAnexo(arquivo))
+  }
+  return [...byId.values()]
+}
+
 async function uploadToStorage(
   tenantId: string,
   pedidoId: string,
@@ -99,23 +107,51 @@ async function uploadToStorage(
   }
 }
 
+function writeAnexosIntoData(
+  data: ReturnType<typeof loadAppData>,
+  pedidoId: string,
+  anexosLeves: ArquivoAnexo[],
+): void {
+  if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+  if (!data.planilhaAnexosPorPedido) data.planilhaAnexosPorPedido = {}
+
+  const existingSnap = data.pedidoPlanilhaEnvio[pedidoId]
+  const mergedSnap = mergeAnexoLists(existingSnap?.anexos, anexosLeves)
+  if (existingSnap) {
+    data.pedidoPlanilhaEnvio[pedidoId] = {
+      ...existingSnap,
+      anexos: mergedSnap,
+    }
+  } else {
+    data.pedidoPlanilhaEnvio[pedidoId] = emptyPlanilhaSnapshot(mergedSnap)
+  }
+
+  data.planilhaAnexosPorPedido[pedidoId] = mergeAnexoLists(
+    data.planilhaAnexosPorPedido[pedidoId],
+    mergedSnap,
+  )
+
+  const arquivosById = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...(data.arquivos ?? []), ...anexosLeves]) {
+    arquivosById.set(arquivo.id, cloneAnexo(arquivo))
+  }
+  data.arquivos = [...arquivosById.values()]
+}
+
 export const pedidoAnexoService = {
   listByPedido(pedidoId: string): ArquivoAnexo[] {
     if (!pedidoId) return []
     const data = readData()
     const daPlanilha = data.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []
+    const doIndice = data.planilhaAnexosPorPedido?.[pedidoId] ?? []
     const globais = (data.arquivos ?? []).filter((arquivo) => arquivo.pedidoId === pedidoId)
-
-    const byId = new Map<string, ArquivoAnexo>()
-    for (const arquivo of [...globais, ...daPlanilha]) {
-      byId.set(arquivo.id, cloneAnexo(arquivo))
-    }
-
-    return [...byId.values()].sort((a, b) => b.dataUpload.localeCompare(a.dataUpload))
+    return mergeAnexoLists(mergeAnexoLists(globais, daPlanilha), doIndice).sort((a, b) =>
+      b.dataUpload.localeCompare(a.dataUpload),
+    )
   },
 
   /**
-   * Registra anexos no snapshot da planilha.
+   * Registra anexos no snapshot da planilha + índice dedicado.
    * Em nuvem: sobe o arquivo ao Storage e grava metadados + storagePath no AppData.
    */
   async saveForPedido(pedidoId: string, files: File[]): Promise<ArquivoAnexo[]> {
@@ -125,6 +161,7 @@ export const pedidoAnexoService = {
     const tenantId = getTenantId()
     const agora = new Date().toISOString()
     const criados: ArquivoAnexo[] = []
+    const falhasStorage: string[] = []
 
     for (const file of files) {
       const id = createId()
@@ -134,21 +171,16 @@ export const pedidoAnexoService = {
 
       if (cloud && tenantId) {
         storagePath = (await uploadToStorage(tenantId, pedidoId, id, file, mimeType)) ?? undefined
+        if (!storagePath) falhasStorage.push(file.name)
       }
 
       if (!storagePath) {
-        if (!cloud) {
-          // Local/demo: base64 no AppData.
+        // Sempre guarda base64 como fallback para o arquivo aparecer/baixar.
+        // Arquivos grandes podem falhar no sync; o Storage é o caminho preferencial.
+        try {
           conteudoBase64 = await fileToBase64(file)
-        } else if (file.size <= 200 * 1024) {
-          // Fallback nuvem para arquivos pequenos se o bucket ainda não existir.
-          conteudoBase64 = await fileToBase64(file)
-        } else {
-          // Metadados ainda sobem na planilha para aparecerem na timeline.
-          console.warn(
-            '[AcompSolemp] Anexo sem Storage (execute migration_planilha_anexos_storage.sql):',
-            file.name,
-          )
+        } catch (error) {
+          console.warn('[AcompSolemp] Falha ao ler anexo:', file.name, error)
         }
       }
 
@@ -165,27 +197,30 @@ export const pedidoAnexoService = {
       })
     }
 
-    const data = readData()
-    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
-
-    const existing = data.pedidoPlanilhaEnvio[pedidoId]
     const anexosLeves = criados.map((arquivo) =>
       arquivo.storagePath
         ? { ...cloneAnexo(arquivo), conteudoBase64: undefined }
         : cloneAnexo(arquivo),
     )
 
-    if (existing) {
-      data.pedidoPlanilhaEnvio[pedidoId] = {
-        ...existing,
-        anexos: [...(existing.anexos ?? []).map(cloneAnexo), ...anexosLeves],
-      }
-    } else {
-      data.pedidoPlanilhaEnvio[pedidoId] = emptyPlanilhaSnapshot(anexosLeves)
+    // Grava em snapshot fresco (após awaits de upload).
+    const data = readData()
+    writeAnexosIntoData(data, pedidoId, anexosLeves)
+    saveAppData(data)
+
+    const conferidos = this.listByPedido(pedidoId)
+    if (conferidos.length === 0) {
+      throw new Error('Os anexos não puderam ser gravados na planilha.')
     }
 
-    data.arquivos = [...(data.arquivos ?? []), ...anexosLeves]
-    saveAppData(data)
+    if (falhasStorage.length > 0) {
+      console.warn(
+        '[AcompSolemp] Storage falhou para:',
+        falhasStorage.join(', '),
+        '— anexos salvos com fallback no AppData.',
+      )
+    }
+
     return criados
   },
 

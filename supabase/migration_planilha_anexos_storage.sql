@@ -37,3 +37,7 @@ create policy "planilha_anexos_delete_authenticated"
 on storage.objects for delete
 to authenticated
 using (bucket_id = 'planilha-anexos');
+
+-- Garante privilégios no schema storage para o papel authenticated.
+grant usage on schema storage to authenticated;
+grant all on all tables in schema storage to authenticated;

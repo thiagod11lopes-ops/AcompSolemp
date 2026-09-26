@@ -110,8 +110,9 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
               Nenhum arquivo foi anexado nesta planilha.
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-              Se o arquivo foi anexado agora, confira se a migration do Storage
-              (`migration_planilha_anexos_storage.sql`) foi executada no Supabase.
+              Envie novamente a planilha com o anexo após atualizar o sistema (Ctrl+F5). Se ainda
+              falhar, confira no Supabase → Storage se o bucket <strong>planilha-anexos</strong>{' '}
+              existe.
             </Typography>
           </Box>
         ) : (

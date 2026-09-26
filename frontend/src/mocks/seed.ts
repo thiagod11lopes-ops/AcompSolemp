@@ -2,6 +2,7 @@ import {
   ALERTA_VENCIMENTO_PADRAO_DIAS,
   PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
+  type ArquivoAnexo,
   type User,
   type UserRole,
   type WorkflowEtapa,
@@ -472,6 +473,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   if (!data.reversoes) data.reversoes = []
   if (!data.credenciais) data.credenciais = {}
   if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+  if (!data.planilhaAnexosPorPedido) data.planilhaAnexosPorPedido = {}
   if (!data.processosArquivados) data.processosArquivados = []
   if (!data.chatMensagens) data.chatMensagens = []
   data.chatMensagens = (data.chatMensagens ?? []).map((m) => ({
@@ -1042,9 +1044,77 @@ export function saveAppData(data: AppData): void {
   persistAppData(appDataCache)
 }
 
+function mergeAnexoLists(
+  localList: ArquivoAnexo[] | undefined,
+  remoteList: ArquivoAnexo[] | undefined,
+): ArquivoAnexo[] {
+  const byId = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...(remoteList ?? []), ...(localList ?? [])]) {
+    const prev = byId.get(arquivo.id)
+    if (!prev) {
+      byId.set(arquivo.id, { ...arquivo })
+      continue
+    }
+    const prevScore = (prev.storagePath ? 2 : 0) + (prev.conteudoBase64 ? 1 : 0)
+    const nextScore = (arquivo.storagePath ? 2 : 0) + (arquivo.conteudoBase64 ? 1 : 0)
+    byId.set(arquivo.id, nextScore >= prevScore ? { ...arquivo } : prev)
+  }
+  return [...byId.values()]
+}
+
+/** Preserva anexos locais que um snapshot remoto antigo ainda não contém. */
+function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
+  if (!local) return remote
+
+  const localIndex = local.planilhaAnexosPorPedido ?? {}
+  const remoteIndex = { ...(remote.planilhaAnexosPorPedido ?? {}) }
+  const pedidoIds = new Set([
+    ...Object.keys(localIndex),
+    ...Object.keys(remoteIndex),
+    ...Object.keys(local.pedidoPlanilhaEnvio ?? {}),
+    ...Object.keys(remote.pedidoPlanilhaEnvio ?? {}),
+  ])
+
+  if (!remote.pedidoPlanilhaEnvio) remote.pedidoPlanilhaEnvio = {}
+
+  for (const pedidoId of pedidoIds) {
+    const merged = mergeAnexoLists(
+      [
+        ...(localIndex[pedidoId] ?? []),
+        ...(local.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []),
+      ],
+      [
+        ...(remoteIndex[pedidoId] ?? []),
+        ...(remote.pedidoPlanilhaEnvio?.[pedidoId]?.anexos ?? []),
+      ],
+    )
+    if (merged.length === 0) continue
+
+    remoteIndex[pedidoId] = merged.map((arquivo) => ({ ...arquivo }))
+    const snap = remote.pedidoPlanilhaEnvio[pedidoId]
+    if (snap) {
+      remote.pedidoPlanilhaEnvio[pedidoId] = {
+        ...snap,
+        anexos: merged.map((arquivo) => ({ ...arquivo })),
+      }
+    }
+  }
+
+  remote.planilhaAnexosPorPedido = remoteIndex
+
+  const arquivosById = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...(remote.arquivos ?? []), ...(local.arquivos ?? [])]) {
+    if (arquivo.pedidoId) arquivosById.set(arquivo.id, { ...arquivo })
+  }
+  remote.arquivos = [...arquivosById.values()]
+
+  return remote
+}
+
 /** Aplica dados vindos do Supabase no cache em memória */
 export function applyRemoteAppData(raw: AppData): AppData {
-  const { data, changed } = normalizeAppData(raw)
+  const mergedRaw = mergeRemotePreservingAnexos(appDataCache, cloneData(raw))
+  const { data, changed } = normalizeAppData(mergedRaw)
   appDataCache = data
   if (usesIndexedDbAppData() && !isDemoDataSession()) {
     persistAppData(data)
