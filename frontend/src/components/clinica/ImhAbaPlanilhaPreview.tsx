@@ -28,6 +28,7 @@ import {
   PlanilhaFullscreenDialog,
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
+import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
@@ -342,24 +343,26 @@ export function ImhAbaPlanilhaPreview({
         ) : (
           <Box
             sx={{
-              p: 1.5,
+              p: expanded ? 0 : 1.5,
               borderTop: EXCEL_SHEET.border,
-              display: 'grid',
-              gap: 1.25,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: expanded ? 0 : 1.25,
               width: expanded ? '100%' : 'fit-content',
               maxWidth: '100%',
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflow: expanded ? 'auto' : undefined,
+              overflow: expanded ? 'hidden' : undefined,
             }}
           >
-            {value.clinica.trim() ? (
+            {value.clinica.trim() && !expanded ? (
               <Box
                 sx={{
                   display: 'grid',
                   gap: 0.35,
                   px: 0.25,
                   minWidth: 0,
+                  flexShrink: 0,
                 }}
               >
                 <Typography sx={{ ...titleTextSx, fontWeight: 700, textAlign: 'center' }}>
@@ -368,12 +371,16 @@ export function ImhAbaPlanilhaPreview({
               </Box>
             ) : null}
 
+            <PlanilhaFitWidth
+              enabled={expanded}
+              remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
+            >
             <Box
               className="excel-sheet-grid"
               sx={{
                 width: 'fit-content',
-                maxWidth: '100%',
-                overflowX: 'auto',
+                maxWidth: expanded ? 'none' : '100%',
+                overflowX: expanded ? 'visible' : 'auto',
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -548,6 +555,7 @@ export function ImhAbaPlanilhaPreview({
                 </TableBody>
               </Table>
             </Box>
+            </PlanilhaFitWidth>
           </Box>
         )}
       </Paper>

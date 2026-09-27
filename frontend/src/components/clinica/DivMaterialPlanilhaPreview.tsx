@@ -26,6 +26,7 @@ import {
   PlanilhaFullscreenDialog,
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
+import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   DIV_MATERIAL_COLUNAS,
@@ -465,7 +466,7 @@ export function DivMaterialPlanilhaPreview({
           <Box
             className="excel-sheet-grid"
             sx={{
-              p: 1.5,
+              p: expanded ? 0 : 1.5,
               borderTop: EXCEL_SHEET.border,
               width: '100%',
               maxWidth: '100%',
@@ -473,10 +474,12 @@ export function DivMaterialPlanilhaPreview({
               maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflowX: 'auto',
-              overflowY: 'auto',
+              overflowX: expanded ? 'hidden' : 'auto',
+              overflowY: expanded ? 'hidden' : 'auto',
+              display: expanded ? 'flex' : undefined,
+              flexDirection: expanded ? 'column' : undefined,
               WebkitOverflowScrolling: 'touch',
-              scrollbarGutter: 'stable',
+              scrollbarGutter: expanded ? undefined : 'stable',
               '&::-webkit-scrollbar': {
                 height: 12,
                 width: 10,
@@ -490,10 +493,14 @@ export function DivMaterialPlanilhaPreview({
               },
             }}
           >
+            <PlanilhaFitWidth
+              enabled={expanded}
+              remountKey={`${tableMinWidth}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
+            >
             <Box
               sx={{
                 width: 'max-content',
-                minWidth: '100%',
+                minWidth: expanded ? undefined : '100%',
                 border: EXCEL_SHEET.border,
                 borderRadius: 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -501,7 +508,7 @@ export function DivMaterialPlanilhaPreview({
             >
               <Table
                 size="small"
-                stickyHeader
+                stickyHeader={!expanded}
                 sx={{
                   width: tableMinWidth,
                   minWidth: tableMinWidth,
@@ -704,6 +711,7 @@ export function DivMaterialPlanilhaPreview({
                 </TableBody>
               </Table>
             </Box>
+            </PlanilhaFitWidth>
           </Box>
         )}
       </Paper>
