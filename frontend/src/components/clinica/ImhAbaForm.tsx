@@ -255,11 +255,6 @@ export function ImhAbaForm({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Alert severity="info" sx={{ py: 0.5 }}>
-        Use Importar Planilha na barra de abas para carregar o MODELO. Descrição ← PROCEDIMENTO;
-        NIP, data, iniciais e valores quando existirem. Clique em Editar na linha para abrir o
-        formulário à esquerda.
-      </Alert>
     <Box
       sx={{
         display: 'grid',
