@@ -283,6 +283,7 @@ export function MaterialEnvioModal({
                             sx={{
                               fontFamily: EXCEL_SHEET.fontFamily,
                               fontSize: EXCEL_SHEET.fontSize,
+                              fontWeight: EXCEL_SHEET.fontWeight,
                               color: EXCEL_SHEET.text,
                             }}
                             title={linha[col.key]}

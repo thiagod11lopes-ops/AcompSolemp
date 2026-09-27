@@ -280,6 +280,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     border: EXCEL_SHEET.border,
     fontFamily: EXCEL_SHEET.fontFamily,
     fontSize: EXCEL_SHEET.fontSize,
+    fontWeight: EXCEL_SHEET.fontWeight,
     py: 0.35,
     px: 0.75,
     color: EXCEL_SHEET.text,

@@ -49,6 +49,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
           fontSize: `${fontSize} !important`,
+          fontWeight: `${EXCEL_SHEET.fontWeight} !important`,
           lineHeight: 1.25,
           px: '4px !important',
         },
@@ -57,6 +58,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           hyphens: 'auto',
           lineHeight: 1.2,
           verticalAlign: 'middle',
+          fontWeight: `${EXCEL_SHEET.fontWeight} !important`,
         },
       }}
     >

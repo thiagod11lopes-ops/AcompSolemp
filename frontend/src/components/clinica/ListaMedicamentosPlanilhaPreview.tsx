@@ -82,6 +82,7 @@ const cellSx = {
   border: EXCEL_SHEET.border,
   fontFamily: EXCEL_SHEET.fontFamily,
   fontSize: EXCEL_SHEET.fontSize,
+  fontWeight: EXCEL_SHEET.fontWeight,
   py: 0.75,
   px: 1,
   color: EXCEL_SHEET.text,

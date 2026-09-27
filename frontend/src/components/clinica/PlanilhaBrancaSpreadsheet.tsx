@@ -23,7 +23,7 @@ function cellSx(style?: PlanilhaCellStyle) {
   return {
     fontFamily: style?.fontFamily || EXCEL_SHEET.fontFamily,
     fontSize: style?.fontSize ? `${style.fontSize}pt` : EXCEL_SHEET.fontSize,
-    fontWeight: style?.bold ? 700 : 400,
+    fontWeight: EXCEL_SHEET.fontWeight,
     fontStyle: style?.italic ? 'italic' : 'normal',
     textDecoration: style?.underline ? 'underline' : 'none',
     color: style?.color || EXCEL_SHEET.text,
@@ -266,7 +266,7 @@ function PlanilhaBrancaSpreadsheetInner({
                             fontSize: style?.fontSize
                               ? `${style.fontSize}pt`
                               : EXCEL_SHEET.fontSize,
-                            fontWeight: style?.bold ? 700 : 400,
+                            fontWeight: EXCEL_SHEET.fontWeight,
                             fontStyle: style?.italic ? 'italic' : 'normal',
                             color: style?.color || EXCEL_SHEET.text,
                             bgcolor: '#fff',

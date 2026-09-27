@@ -445,6 +445,7 @@ function MedicamentosPrecosSpreadsheetInner() {
                         color: EXCEL_SHEET.text,
                         fontFamily: EXCEL_SHEET.fontFamily,
                         fontSize: EXCEL_SHEET.fontSize,
+                        fontWeight: EXCEL_SHEET.fontWeight,
                         fontWeight: 700,
                         borderColor: EXCEL_SHEET.borderColor,
                         textAlign: header.id === 'acoes' ? 'center' : 'left',
@@ -492,6 +493,7 @@ function MedicamentosPrecosSpreadsheetInner() {
                         borderColor: EXCEL_SHEET.borderColor,
                         fontFamily: EXCEL_SHEET.fontFamily,
                         fontSize: EXCEL_SHEET.fontSize,
+                        fontWeight: EXCEL_SHEET.fontWeight,
                         color: EXCEL_SHEET.text,
                         textAlign:
                           cell.column.id === 'precoReferencia' || cell.column.id === 'acoes'

@@ -8,6 +8,7 @@ export const EXCEL_SHEET = {
   fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
   /** 15px no zoom 100%; 12px no zoom ~90% (via CSS var sincronizada). */
   fontSize: `var(${PLANILHA_FONT_CSS_VAR}, ${PLANILHA_FONT_SIZE_DEFAULT})`,
+  fontWeight: 700,
   lineHeight: 1.2,
   borderColor: '#d4d4d4',
   border: '1px solid #d4d4d4',
