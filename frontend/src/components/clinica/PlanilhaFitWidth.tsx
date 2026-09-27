@@ -76,7 +76,7 @@ export function PlanilhaFitWidth({
           hyphens: 'auto',
           lineHeight: 1.2,
           verticalAlign: 'middle',
-          fontWeight: `${EXCEL_SHEET.fontWeightBold} !important`,
+          fontWeight: `${fontWeight} !important`,
         },
       }}
     >

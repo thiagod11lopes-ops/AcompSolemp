@@ -5,6 +5,7 @@ import {
   EditOutlined as EditIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
+import { PlanilhaBoldToggle } from '@/components/clinica/PlanilhaBoldToggle'
 import {
   Box,
   Button,
@@ -127,6 +128,7 @@ export function ImhAbaPlanilhaPreview({
   onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [boldEnabled, setBoldEnabled] = useState(true)
   const { expanded, setExpanded } = usePlanilhaExpand()
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
@@ -164,7 +166,8 @@ export function ImhAbaPlanilhaPreview({
   const colCount =
     IMH_ABA_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
-  const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
+  const cellFontWeight =
+    expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedImhIdsChange) return
@@ -283,6 +286,13 @@ export function ImhAbaPlanilhaPreview({
             onChange={onDataFiltroChange}
             datas={datas}
           />
+
+          {expanded ? (
+            <PlanilhaBoldToggle
+              enabled={boldEnabled}
+              onToggle={() => setBoldEnabled((v) => !v)}
+            />
+          ) : null}
 
           {onImportClick ? (
             <Button

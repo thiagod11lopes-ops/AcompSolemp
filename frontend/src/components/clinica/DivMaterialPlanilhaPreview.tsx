@@ -4,6 +4,7 @@ import {
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
 } from '@mui/icons-material'
+import { PlanilhaBoldToggle } from '@/components/clinica/PlanilhaBoldToggle'
 import {
   Box,
   Button,
@@ -146,6 +147,7 @@ export function DivMaterialPlanilhaPreview({
   onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [boldEnabled, setBoldEnabled] = useState(true)
   const { expanded, setExpanded } = usePlanilhaExpand()
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
@@ -177,7 +179,8 @@ export function DivMaterialPlanilhaPreview({
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
-  const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
+  const cellFontWeight =
+    expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -269,6 +272,13 @@ export function DivMaterialPlanilhaPreview({
             onChange={onDataFiltroChange}
             datas={datas}
           />
+
+          {expanded ? (
+            <PlanilhaBoldToggle
+              enabled={boldEnabled}
+              onToggle={() => setBoldEnabled((v) => !v)}
+            />
+          ) : null}
 
           <Button
             size="small"
