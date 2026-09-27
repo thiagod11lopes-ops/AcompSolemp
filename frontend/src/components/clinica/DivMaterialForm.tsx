@@ -72,8 +72,7 @@ function formatFieldValue(key: keyof DivMaterialLinha, raw: string): string {
     key === 'modalidadeLicitatoria' ||
     key === 'descricaoMaterial' ||
     key === 'nomePaciente' ||
-    key === 'fornecedor' ||
-    key === 'anexoAtaHomologacao'
+    key === 'fornecedor'
   ) {
     return formatImhUppercase(raw)
   }
@@ -170,12 +169,7 @@ export function DivMaterialForm({
     resetLinhaForm()
   }
 
-  const fieldFullWidth = new Set([
-    'descricaoMaterial',
-    'nomePaciente',
-    'fornecedor',
-    'anexoAtaHomologacao',
-  ])
+  const fieldFullWidth = new Set(['descricaoMaterial', 'nomePaciente', 'fornecedor'])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>

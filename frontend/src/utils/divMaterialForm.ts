@@ -49,11 +49,6 @@ export const DIV_MATERIAL_COLUNAS = [
   { key: 'nupSigad', label: 'NUP SIGAD', width: 120 },
   { key: 'fornecedor', label: 'Fornecedor', width: 140 },
   { key: 'cnpj', label: 'CNPJ', width: 130 },
-  {
-    key: 'anexoAtaHomologacao',
-    label: 'Em anexo a ata ou termo de homologação',
-    width: 200,
-  },
   { key: 'valorTotal', label: 'Valor Total', width: 110 },
 ] as const
 
