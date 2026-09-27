@@ -50,6 +50,8 @@ interface UsePlanilhaColunaHoverOptions {
   selectionEnabled?: boolean
   actionsEnabled?: boolean
   descricaoKey?: string
+  /** Largura mínima em caracteres (aprox.) por chave de coluna. */
+  minCharsByKey?: Record<string, number>
   /** Textos das células por coluna (linhas filtradas) — usado no hover. */
   cellTextsByKey?: Record<string, string[]>
   /** Ref da tabela ou container para medir a largura disponível. */
@@ -71,6 +73,7 @@ export function usePlanilhaColunaHover(
   const selectionEnabled = Boolean(options.selectionEnabled)
   const actionsEnabled = Boolean(options.actionsEnabled)
   const descricaoKey = options.descricaoKey
+  const minCharsByKey = options.minCharsByKey
   const cellTextsByKey = options.cellTextsByKey
   const tableRef = options.tableRef
   const fontSizePx = options.fontSizePx ?? 11
@@ -95,26 +98,43 @@ export function usePlanilhaColunaHover(
     const actionsPx = actionsEnabled ? PLANILHA_ACTIONS_WIDTH_PX : 0
     const reservedPx = selectionPx + actionsPx
     const availablePx = Math.max(160, (tableWidthPx || 960) - reservedPx)
+    const font = `${fontWeight} ${fontSizePx}px ${EXCEL_SHEET.fontFamily}`
+
+    const minPxByKey: Record<string, number> = {}
+    for (const [key, chars] of Object.entries(minCharsByKey ?? {})) {
+      if (chars > 0) {
+        minPxByKey[key] = Math.ceil(measureTextPx('0'.repeat(chars), font) + 16)
+      }
+    }
 
     const bases = columns.map((col) => {
-      const base =
+      let base =
         descricaoKey && col.key === descricaoKey
           ? Math.max(col.width, 220)
           : col.width
+      const minPx = minPxByKey[col.key]
+      if (minPx) {
+        // Converte mínimo em px para peso relativo na distribuição
+        const minWeight = (minPx / availablePx) * 1000
+        base = Math.max(base, minWeight)
+      }
       return { key: col.key, base }
     })
     const baseSum = bases.reduce((acc, item) => acc + item.base, 0) || 1
     const percents: Record<string, string> = {}
+    const minWidths: Record<string, string | undefined> = {}
 
     if (hoveredColKey) {
-      const font = `${fontWeight} ${fontSizePx}px ${EXCEL_SHEET.fontFamily}`
       const neededPx = maxContentWidthPx(cellTextsByKey?.[hoveredColKey], font)
       const hoveredBase =
         bases.find((b) => b.key === hoveredColKey)?.base ?? baseSum / Math.max(columns.length, 1)
       const baseSharePx = (hoveredBase / baseSum) * availablePx
-      // Largura em px até caber o texto (máx. ~92% da área de dados)
+      const minHovered = minPxByKey[hoveredColKey] ?? 0
       const fitPx = Math.round(
-        Math.min(availablePx * 0.92, Math.max(neededPx, baseSharePx, 48)),
+        Math.min(
+          availablePx * 0.92,
+          Math.max(neededPx, baseSharePx, minHovered, 48),
+        ),
       )
       const othersSum =
         bases.filter((b) => b.key !== hoveredColKey).reduce((a, b) => a + b.base, 0) || 1
@@ -122,19 +142,50 @@ export function usePlanilhaColunaHover(
       for (const item of bases) {
         if (item.key === hoveredColKey) {
           percents[item.key] = `${fitPx}px`
+          minWidths[item.key] = `${Math.max(fitPx, minHovered)}px`
         } else {
           const frac = item.base / othersSum
           percents[item.key] =
             `calc((100% - ${reservedPx + fitPx}px) * ${frac.toFixed(5)})`
+          const minPx = minPxByKey[item.key]
+          minWidths[item.key] = minPx ? `${minPx}px` : undefined
         }
       }
     } else {
-      for (const item of bases) {
-        const fraction = item.base / baseSum
-        percents[item.key] =
-          reservedPx > 0
-            ? `calc((100% - ${reservedPx}px) * ${fraction.toFixed(5)})`
-            : `${(fraction * 100).toFixed(3)}%`
+      // Colunas com mínimo ficam em px (>= N caracteres); as demais rateiam o resto
+      const minEntries = bases.filter((b) => minPxByKey[b.key])
+      const freeEntries = bases.filter((b) => !minPxByKey[b.key])
+      const minTotalPx = minEntries.reduce((a, b) => {
+        const share = (b.base / baseSum) * availablePx
+        return a + Math.max(minPxByKey[b.key]!, share)
+      }, 0)
+
+      if (minEntries.length > 0 && minTotalPx < availablePx - 40 && freeEntries.length > 0) {
+        const freeSum = freeEntries.reduce((a, b) => a + b.base, 0) || 1
+        let usedMin = 0
+        for (const item of minEntries) {
+          const share = (item.base / baseSum) * availablePx
+          const widthPx = Math.round(Math.max(minPxByKey[item.key]!, share))
+          usedMin += widthPx
+          percents[item.key] = `${widthPx}px`
+          minWidths[item.key] = `${minPxByKey[item.key]}px`
+        }
+        for (const item of freeEntries) {
+          const frac = item.base / freeSum
+          percents[item.key] =
+            `calc((100% - ${reservedPx + usedMin}px) * ${frac.toFixed(5)})`
+          minWidths[item.key] = undefined
+        }
+      } else {
+        for (const item of bases) {
+          const fraction = item.base / baseSum
+          percents[item.key] =
+            reservedPx > 0
+              ? `calc((100% - ${reservedPx}px) * ${fraction.toFixed(5)})`
+              : `${(fraction * 100).toFixed(3)}%`
+          const minPx = minPxByKey[item.key]
+          minWidths[item.key] = minPx ? `${minPx}px` : undefined
+        }
       }
     }
 
@@ -142,6 +193,7 @@ export function usePlanilhaColunaHover(
       selectionWidth: selectionEnabled ? `${selectionPx}px` : undefined,
       actionsWidth: actionsEnabled ? `${actionsPx}px` : undefined,
       percents,
+      minWidths,
     }
   }, [
     actionsEnabled,
@@ -151,12 +203,16 @@ export function usePlanilhaColunaHover(
     fontSizePx,
     fontWeight,
     hoveredColKey,
+    minCharsByKey,
     selectionEnabled,
     tableWidthPx,
   ])
 
   const resolveColWidth = (key: string, _fallbackWidth?: number): string =>
     layout.percents[key] ?? 'auto'
+
+  const resolveColMinWidth = (key: string): string | number =>
+    layout.minWidths[key] ?? 0
 
   const isColHovered = (key: string) => hoveredColKey === key
 
@@ -168,6 +224,7 @@ export function usePlanilhaColunaHover(
   return {
     hoveredColKey,
     resolveColWidth,
+    resolveColMinWidth,
     isColHovered,
     colHoverHandlers,
     selectionWidth: layout.selectionWidth,

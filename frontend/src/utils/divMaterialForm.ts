@@ -40,7 +40,7 @@ export const DIV_MATERIAL_COLUNAS = [
   { key: 'uasg', label: 'UASG', width: 88 },
   { key: 'nupModalidade', label: 'NUP (modalidade)', width: 130 },
   { key: 'numeroItem', label: 'N° do item', width: 88 },
-  { key: 'descricaoMaterial', label: 'Descrição do material', width: 220 },
+  { key: 'descricaoMaterial', label: 'Descrição do material', width: 360 },
   { key: 'nomePaciente', label: 'Nome do paciente', width: 180 },
   { key: 'nip', label: 'NIP', width: 108 },
   { key: 'mapa', label: 'Mapa', width: 100 },

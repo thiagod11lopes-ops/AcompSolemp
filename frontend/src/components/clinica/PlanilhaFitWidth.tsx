@@ -124,6 +124,10 @@ export function PlanilhaFitWidth({
           textOverflow: 'clip !important',
           verticalAlign: 'middle',
         },
+        // Descrição do material: não encolher abaixo do mínimo (~55 caracteres)
+        '& th[data-col-key="descricaoMaterial"], & td[data-col-key="descricaoMaterial"]': {
+          minWidth: '55ch !important',
+        },
       }}
     >
       {children}

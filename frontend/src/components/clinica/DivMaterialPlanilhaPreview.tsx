@@ -50,14 +50,19 @@ import {
 import { wrapTextGramatical } from '@/utils/textWrapGramatical'
 import '@/components/clinica/spreadsheet-excel.css'
 
-/** Colunas que quebram linha após ~50 caracteres (limites de palavra). */
+/** Colunas que quebram linha após N caracteres (limites de palavra). */
 const DIV_MAT_WRAP_COL_KEYS = new Set(['descricaoMaterial', 'nomePaciente'])
-const DIV_MAT_WRAP_MAX_CHARS = 50
+/** Descrição do material: largura mínima e quebra a partir de 55 caracteres. */
+const DIV_MAT_DESCRICAO_MIN_CHARS = 55
+const DIV_MAT_WRAP_MAX_CHARS: Record<string, number> = {
+  descricaoMaterial: DIV_MAT_DESCRICAO_MIN_CHARS,
+  nomePaciente: 50,
+}
 
 function formatDivMatCellText(colKey: string, raw: string): string {
   const base = dash(raw)
   if (base === '—' || !DIV_MAT_WRAP_COL_KEYS.has(colKey)) return base
-  return wrapTextGramatical(base, DIV_MAT_WRAP_MAX_CHARS)
+  return wrapTextGramatical(base, DIV_MAT_WRAP_MAX_CHARS[colKey] ?? 50)
 }
 
 interface DivMaterialPlanilhaPreviewProps {
@@ -207,6 +212,7 @@ export function DivMaterialPlanilhaPreview({
     expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
   const {
     resolveColWidth,
+    resolveColMinWidth,
     isColHovered,
     colHoverHandlers,
     selectionWidth,
@@ -215,6 +221,7 @@ export function DivMaterialPlanilhaPreview({
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricaoMaterial',
+    minCharsByKey: { descricaoMaterial: DIV_MAT_DESCRICAO_MIN_CHARS },
     cellTextsByKey,
     tableRef,
     fontSizePx: expanded ? 10 : 11,
@@ -517,13 +524,15 @@ export function DivMaterialPlanilhaPreview({
                     ) : null}
                     {DIV_MATERIAL_COLUNAS.map((col) => {
                       const colWidth = resolveColWidth(col.key)
+                      const colMinWidth = resolveColMinWidth(col.key)
                       return (
                         <TableCell
                           key={col.key}
+                          data-col-key={col.key}
                           sx={{
                             ...headerSx,
                             width: colWidth,
-                            minWidth: 0,
+                            minWidth: colMinWidth || 0,
                             fontSize: cellFontSize,
                             whiteSpace: 'normal',
                             lineHeight: 1.2,
@@ -636,6 +645,7 @@ export function DivMaterialPlanilhaPreview({
                             const isDescricao = col.key === 'descricaoMaterial'
                             const allowWrap = DIV_MAT_WRAP_COL_KEYS.has(col.key)
                             const colWidth = resolveColWidth(col.key)
+                            const colMinWidth = resolveColMinWidth(col.key)
                             const text = formatDivMatCellText(
                               col.key,
                               String(linha[col.key] ?? ''),
@@ -644,12 +654,13 @@ export function DivMaterialPlanilhaPreview({
                             return (
                               <TableCell
                                 key={col.key}
+                                data-col-key={col.key}
                                 className={allowWrap ? 'excel-planilha-wrap-col' : undefined}
                                 {...colHoverHandlers(col.key)}
                                 sx={{
                                   ...cellSx,
                                   width: colWidth,
-                                  minWidth: hovered ? colWidth : 0,
+                                  minWidth: colMinWidth || (hovered ? colWidth : 0),
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
                                   verticalAlign: 'middle',
