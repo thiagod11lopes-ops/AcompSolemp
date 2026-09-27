@@ -4,7 +4,6 @@ import {
   Avatar,
   Badge,
   Box,
-  Button,
   Dialog,
   IconButton,
   InputBase,
@@ -22,7 +21,7 @@ import ForumRoundedIcon from '@mui/icons-material/ForumRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { formatRelative } from '@/utils/format'
 import { getRoleLabel } from '@/mocks/seed'
-import { CHAT_GRUPO_THREAD_ID } from '@/services/chatService'
+import { CHAT_GRUPO_THREAD_ID, type ChatThreadSummary } from '@/services/chatService'
 import {
   useActiveChatUser,
   useAutoMarkChatRead,
@@ -41,6 +40,17 @@ function initialFromLabel(label: string): string {
   return label.trim().charAt(0).toUpperCase() || '?'
 }
 
+function previewText(thread: ChatThreadSummary): string {
+  if (thread.lastMessage) {
+    const t = thread.lastMessage.texto
+    return t.length > 48 ? `${t.slice(0, 48)}…` : t
+  }
+  return thread.kind === 'grupo'
+    ? 'Mensagens visíveis para todos os setores'
+    : 'Toque para conversar em particular'
+}
+
+/** Bate-papo estilo WhatsApp: grupo aberto + conversas particulares entre setores. */
 export function ChatModal({ open, onClose }: ChatModalProps) {
   const theme = useTheme()
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'))
@@ -60,6 +70,9 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
     () => threads.find((t) => t.threadId === threadId) ?? null,
     [threads, threadId],
   )
+  const grupo = threads.find((t) => t.kind === 'grupo')
+  const particulares = threads.filter((t) => t.kind === 'dm')
+  const isGrupo = activeThread?.kind === 'grupo'
 
   useEffect(() => {
     if (!open) return
@@ -150,7 +163,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
             Bate-papo
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
-            Gestor e usuários cadastrados · individual ou grupo
+            Grupo de todos · ou conversa particular com um setor
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" aria-label="Fechar">
@@ -162,7 +175,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
         {showList ? (
           <Box
             sx={{
-              width: { xs: '100%', md: 280 },
+              width: { xs: '100%', md: 300 },
               flexShrink: 0,
               borderRight: { md: `1px solid ${theme.palette.divider}` },
               display: 'flex',
@@ -171,48 +184,83 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
               bgcolor: alpha(theme.palette.background.default, 0.35),
             }}
           >
-            <Box sx={{ p: 1.5, pb: 1 }}>
-              <Button
-                fullWidth
-                variant="contained"
-                disableElevation
-                startIcon={<GroupsRoundedIcon />}
-                onClick={() => handleSelectThread(CHAT_GRUPO_THREAD_ID)}
-                sx={{
-                  borderRadius: 2.5,
-                  textTransform: 'none',
-                  fontWeight: 800,
-                  py: 1.1,
-                  background: `linear-gradient(135deg, ${accent} 0%, ${theme.palette.primary.dark} 100%)`,
-                }}
-              >
-                Grupo geral
-              </Button>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mt: 0.75, px: 0.25 }}
-              >
-                Todos os cadastrados leem e escrevem no mesmo canal
-              </Typography>
-            </Box>
+            {grupo ? (
+              <List dense disablePadding sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
+                <ListItemButton
+                  selected={grupo.threadId === threadId}
+                  onClick={() => handleSelectThread(grupo.threadId)}
+                  sx={{
+                    py: 1.35,
+                    px: 1.5,
+                    alignItems: 'flex-start',
+                    bgcolor: alpha(premiumTokens.primary, 0.06),
+                    '&.Mui-selected': {
+                      bgcolor: alpha(premiumTokens.primary, 0.14),
+                      '&:hover': { bgcolor: alpha(premiumTokens.primary, 0.18) },
+                    },
+                    '&:hover': { bgcolor: alpha(premiumTokens.primary, 0.1) },
+                  }}
+                >
+                  <Badge
+                    color="error"
+                    badgeContent={grupo.unread}
+                    invisible={!grupo.unread}
+                    sx={{ mr: 1.25, mt: 0.25 }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        bgcolor: alpha(premiumTokens.primary, 0.22),
+                        color: premiumTokens.primaryDark,
+                      }}
+                    >
+                      <GroupsRoundedIcon />
+                    </Avatar>
+                  </Badge>
+                  <ListItemText
+                    primary="Grupo — todos os setores"
+                    secondary={previewText(grupo)}
+                    slotProps={{
+                      primary: {
+                        sx: { fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.015em' },
+                      },
+                      secondary: {
+                        sx: { fontSize: '0.72rem', mt: 0.2 },
+                        noWrap: true,
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              </List>
+            ) : null}
 
             <Typography
-              variant="overline"
-              sx={{ px: 2, pt: 0.5, fontWeight: 800, letterSpacing: 1, color: 'text.secondary' }}
+              sx={{
+                px: 2,
+                pt: 1.25,
+                pb: 0.25,
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'text.secondary',
+              }}
             >
-              Participantes
+              Conversas particulares
+            </Typography>
+            <Typography sx={{ px: 2, pb: 1, fontSize: '0.68rem', color: 'text.secondary' }}>
+              Só você e o setor escolhido veem a conversa
             </Typography>
 
-            <List dense sx={{ flex: 1, overflow: 'auto', py: 0.5, px: 1 }}>
-              {threads
-                .filter((t) => t.kind === 'dm')
-                .map((t) => {
+            <List dense sx={{ flex: 1, overflow: 'auto', py: 0, px: 1 }}>
+              {particulares.length === 0 ? (
+                <Typography sx={{ px: 1.5, py: 2, fontSize: '0.8rem', color: 'text.secondary' }}>
+                  Nenhum outro usuário cadastrado para conversa particular.
+                </Typography>
+              ) : (
+                particulares.map((t) => {
                   const selected = t.threadId === threadId
-                  const preview = t.lastMessage
-                    ? t.lastMessage.texto.slice(0, 42) +
-                      (t.lastMessage.texto.length > 42 ? '…' : '')
-                    : t.subtitle
                   return (
                     <ListItemButton
                       key={t.threadId}
@@ -221,7 +269,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       sx={{
                         borderRadius: 2,
                         mb: 0.4,
-                        py: 1,
+                        py: 1.05,
                         '&.Mui-selected': {
                           bgcolor: alpha(accent, 0.12),
                           '&:hover': { bgcolor: alpha(accent, 0.16) },
@@ -236,8 +284,8 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       >
                         <Avatar
                           sx={{
-                            width: 34,
-                            height: 34,
+                            width: 36,
+                            height: 36,
                             fontSize: 13,
                             fontWeight: 800,
                             bgcolor: alpha(accent, selected ? 0.28 : 0.14),
@@ -249,7 +297,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       </Badge>
                       <ListItemText
                         primary={t.label}
-                        secondary={preview}
+                        secondary={`${t.subtitle.replace(/^Particular · /, '')} · ${previewText(t)}`}
                         slotProps={{
                           primary: { sx: { fontWeight: 700, fontSize: '0.86rem' } },
                           secondary: { sx: { fontSize: '0.72rem' }, noWrap: true },
@@ -257,7 +305,8 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       />
                     </ListItemButton>
                   )
-                })}
+                })
+              )}
             </List>
           </Box>
         ) : null}
@@ -272,28 +321,29 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 alignItems: 'center',
                 gap: 1,
                 borderBottom: `1px solid ${theme.palette.divider}`,
+                bgcolor: alpha(accent, 0.06),
               }}
             >
               {isNarrow ? (
                 <IconButton
                   size="small"
                   onClick={() => setMobileShowThread(false)}
-                  aria-label="Voltar"
+                  aria-label="Voltar às conversas"
                 >
                   <ArrowBackRoundedIcon fontSize="small" />
                 </IconButton>
               ) : null}
               <Avatar
                 sx={{
-                  width: 34,
-                  height: 34,
-                  bgcolor: alpha(accent, 0.16),
-                  color: accent,
+                  width: 36,
+                  height: 36,
+                  bgcolor: isGrupo ? alpha(premiumTokens.primary, 0.2) : alpha(accent, 0.16),
+                  color: isGrupo ? premiumTokens.primaryDark : accent,
                   fontWeight: 800,
                   fontSize: 13,
                 }}
               >
-                {activeThread?.kind === 'grupo' ? (
+                {isGrupo ? (
                   <GroupsRoundedIcon fontSize="small" />
                 ) : (
                   initialFromLabel(activeThread?.label ?? '?')
@@ -304,11 +354,11 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                   {activeThread?.label ?? 'Conversa'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
-                  {activeThread?.kind === 'grupo'
-                    ? 'Canal aberto para gestor e cadastrados'
+                  {isGrupo
+                    ? 'Grupo · todos os setores participam'
                     : activeThread?.subtitle
-                      ? `${activeThread.subtitle}`
-                      : 'Conversa individual'}
+                      ? activeThread.subtitle
+                      : 'Conversa particular'}
                 </Typography>
               </Box>
             </Box>
@@ -331,13 +381,15 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                   sx={{
                     m: 'auto',
                     textAlign: 'center',
-                    maxWidth: 280,
-                    opacity: 0.85,
+                    maxWidth: 300,
+                    opacity: 0.9,
                   }}
                 >
                   <ForumRoundedIcon sx={{ fontSize: 40, color: alpha(accent, 0.45), mb: 1 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Nenhuma mensagem ainda. Seja o primeiro a escrever.
+                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+                    {isGrupo
+                      ? 'Nenhuma mensagem no grupo. Escreva abaixo — todos os setores verão.'
+                      : 'Nenhuma mensagem nesta conversa particular. Só vocês dois veem o que for escrito.'}
                   </Typography>
                 </Box>
               ) : (
@@ -367,7 +419,8 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                             color: 'text.secondary',
                           }}
                         >
-                          {m.autorNome} · {getRoleLabel(m.autorPerfil)}
+                          {m.autorNome}
+                          {isGrupo ? ` · ${getRoleLabel(m.autorPerfil)}` : ''}
                         </Typography>
                       ) : null}
                       <Box
@@ -381,7 +434,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                           boxShadow: mine ? `0 6px 18px ${alpha(accent, 0.28)}` : 'none',
                         }}
                       >
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                        >
                           {m.texto}
                         </Typography>
                         <Typography
@@ -432,7 +488,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 <InputBase
                   inputRef={inputRef}
                   fullWidth
-                  placeholder="Escreva uma mensagem…"
+                  placeholder={isGrupo ? 'Mensagem para o grupo…' : 'Mensagem particular…'}
                   value={texto}
                   onChange={(e) => setTexto(e.target.value)}
                   onKeyDown={(e) => {

@@ -100,8 +100,8 @@ export const chatService = {
       {
         threadId: CHAT_GRUPO_THREAD_ID,
         kind: 'grupo',
-        label: 'Grupo geral',
-        subtitle: 'Todos os cadastrados',
+        label: 'Grupo — todos os setores',
+        subtitle: 'Todos podem ler e escrever',
         peerUserId: null,
         peerPerfil: null,
         lastMessage: grupoMsgs.length ? grupoMsgs[grupoMsgs.length - 1] : null,
@@ -114,11 +114,12 @@ export const chatService = {
       const msgs = mensagens
         .filter((m) => m.threadId === threadId)
         .sort((a, b) => a.data.localeCompare(b.data))
+      const setor = getRoleLabel(peer.perfil)
       threads.push({
         threadId,
         kind: 'dm',
         label: peerLabel(peer),
-        subtitle: getRoleLabel(peer.perfil),
+        subtitle: `Particular · ${setor}`,
         peerUserId: peer.id,
         peerPerfil: peer.perfil,
         lastMessage: msgs.length ? msgs[msgs.length - 1] : null,
