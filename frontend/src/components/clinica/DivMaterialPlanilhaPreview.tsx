@@ -156,36 +156,45 @@ export function DivMaterialPlanilhaPreview({
     onExpandedChange?.(expanded)
   }, [expanded, onExpandedChange])
 
-  useEffect(() => {
-    if (!expanded || !editingLinhaId) return
-    const scrollRoot = scrollContainerRef.current
-    if (!scrollRoot) return
-    const run = () => {
-      const row = scrollRoot.querySelector(
-        `[data-planilha-linha-id="${editingLinhaId}"]`,
-      ) as HTMLElement | null
-      if (!row) return
-      const rootRect = scrollRoot.getBoundingClientRect()
-      const rowRect = row.getBoundingClientRect()
-      const nextTop = scrollRoot.scrollTop + (rowRect.top - rootRect.top)
-      scrollRoot.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' })
-    }
-    requestAnimationFrame(() => requestAnimationFrame(run))
-  }, [expanded, editingLinhaId])
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
     [linhas, dataFiltro],
   )
+  /** Em edição: linha ativa sobe para o topo (ordem só visual). */
+  const linhasExibidas = useMemo(() => {
+    if (!editingLinhaId) return linhasFiltradas
+    const ativa = linhasFiltradas.find((l) => l.id === editingLinhaId)
+    if (!ativa) return linhasFiltradas
+    return [ativa, ...linhasFiltradas.filter((l) => l.id !== editingLinhaId)]
+  }, [linhasFiltradas, editingLinhaId])
+
+  useEffect(() => {
+    if (!expanded || !editingLinhaId) return
+    const scrollRoot = scrollContainerRef.current
+    if (!scrollRoot) return
+    const run = () => {
+      scrollRoot.scrollTo({ top: 0, behavior: 'smooth' })
+      const row = scrollRoot.querySelector(
+        `[data-planilha-linha-id="${editingLinhaId}"]`,
+      ) as HTMLElement | null
+      row?.scrollIntoView({ block: 'start', behavior: 'smooth', inline: 'nearest' })
+    }
+    // Aguarda reordenação + padding do modal dockado
+    requestAnimationFrame(() => requestAnimationFrame(run))
+    const t = window.setTimeout(run, 80)
+    return () => window.clearTimeout(t)
+  }, [expanded, editingLinhaId, linhasExibidas])
+
   const cellTextsByKey = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const col of DIV_MATERIAL_COLUNAS) {
-      map[col.key] = linhasFiltradas.map((linha) =>
+      map[col.key] = linhasExibidas.map((linha) =>
         formatDivMatCellText(col.key, String(linha[col.key] ?? '')),
       )
     }
     return map
-  }, [linhasFiltradas])
+  }, [linhasExibidas])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   /** Editar só na planilha expandida; excluir permanece nos dois modos. */
@@ -541,14 +550,14 @@ export function DivMaterialPlanilhaPreview({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {linhasFiltradas.length === 0 ? (
+                  {linhasExibidas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
                         Nenhum registro no período filtrado.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    linhasFiltradas.map((linha, index) => {
+                    linhasExibidas.map((linha, index) => {
                       const editing = editingLinhaId === linha.id
                       const finalizado = finalized.has(linha.id)
                       const devolvido = !finalizado && devolvidos.has(linha.id)
@@ -564,14 +573,22 @@ export function DivMaterialPlanilhaPreview({
                                 ? EXCEL_SHEET.selectedBg
                                 : undefined,
                             position: editing ? 'relative' : undefined,
-                            zIndex: editing ? 4 : undefined,
+                            zIndex: editing ? 5 : undefined,
+                            isolation: editing ? 'isolate' : undefined,
                             outline: editing ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
                             outlineOffset: editing ? -2 : undefined,
-                            opacity: isEditingMode && !editing ? 0.28 : 1,
-                            transition: 'opacity 160ms ease',
+                            boxShadow: editing
+                              ? `0 0 0 1px ${EXCEL_SHEET.selectedCheck}, 0 4px 16px rgba(15,23,42,0.18)`
+                              : undefined,
+                            opacity: editing ? 1 : isEditingMode ? 0.22 : 1,
+                            filter: editing ? 'none' : isEditingMode ? 'saturate(0.35)' : undefined,
+                            transition: 'opacity 160ms ease, filter 160ms ease',
                             pointerEvents: isEditingMode && !editing ? 'none' : undefined,
                             '& > .MuiTableCell-root': editing
-                              ? { bgcolor: EXCEL_SHEET.editingBg }
+                              ? {
+                                  bgcolor: `${EXCEL_SHEET.editingBg} !important`,
+                                  opacity: '1 !important',
+                                }
                               : undefined,
                             '&:hover > .MuiTableCell-root': {
                               bgcolor: editing ? EXCEL_SHEET.editingBg : EXCEL_SHEET.hoverBg,
