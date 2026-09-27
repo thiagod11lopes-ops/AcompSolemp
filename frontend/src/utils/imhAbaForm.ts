@@ -40,18 +40,17 @@ export const EMPTY_IMH_ABA_FORM: ImhAbaFormData = {
   devolvidosImhIds: [],
 }
 
-/** Larguras relativas (table-layout:fixed) — colunas o mais estreitas possível. */
 export const IMH_ABA_COLUNAS = [
-  { key: 'data', label: 'DATA', width: 56 },
-  { key: 'nip', label: 'NIP', width: 60 },
-  { key: 'nomeUsuario', label: 'NOME DO USUÁRIO', width: 108 },
-  { key: 'vinculo', label: 'VÍNCULO', width: 72 },
-  { key: 'descricao', label: 'DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO', width: 140 },
-  { key: 'nipTitular', label: 'NIP DO TITULAR', width: 60 },
-  { key: 'valorUnit', label: 'VALOR UNIT', width: 64 },
-  { key: 'quantidade', label: 'QUANTI.', width: 48 },
-  { key: 'valorTotal', label: 'VALOR TOTAL', width: 64 },
-  { key: 'pctIndenizar', label: '% A INDENIZAR', width: 56 },
+  { key: 'data', label: 'DATA', width: 88 },
+  { key: 'nip', label: 'NIP', width: 108 },
+  { key: 'nomeUsuario', label: 'NOME DO USUÁRIO', width: 220 },
+  { key: 'vinculo', label: 'VÍNCULO', width: 140 },
+  { key: 'descricao', label: 'DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO', width: 280 },
+  { key: 'nipTitular', label: 'NIP DO TITULAR', width: 108 },
+  { key: 'valorUnit', label: 'VALOR UNIT', width: 110 },
+  { key: 'quantidade', label: 'QUANTI.', width: 72 },
+  { key: 'valorTotal', label: 'VALOR TOTAL', width: 110 },
+  { key: 'pctIndenizar', label: '% A INDENIZAR', width: 120 },
 ] as const
 
 export type ImhAbaColunaKey = (typeof IMH_ABA_COLUNAS)[number]['key']
