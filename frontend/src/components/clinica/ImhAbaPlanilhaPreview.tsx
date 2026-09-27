@@ -23,7 +23,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ImhAbaFormData } from '@/types'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
@@ -34,7 +34,9 @@ import {
 } from '@/components/clinica/PlanilhaExpandControls'
 import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
 import {
+  PlanilhaActionsButtons,
   PlanilhaExpandedCellContent,
+  planilhaActionsCellSx,
   usePlanilhaColunaHover,
 } from '@/components/clinica/planilhaColunaHover'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
@@ -133,20 +135,10 @@ export function ImhAbaPlanilhaPreview({
   const [gerarOpen, setGerarOpen] = useState(false)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
+  const tableRef = useRef<HTMLTableElement | null>(null)
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
-  const {
-    resolveColWidth,
-    isColHovered,
-    colHoverHandlers,
-    selectionWidth,
-    actionsWidth,
-  } = usePlanilhaColunaHover(IMH_ABA_COLUNAS, {
-    selectionEnabled,
-    actionsEnabled,
-    descricaoKey: 'descricao',
-  })
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
   const devolvidosIds = useMemo(
@@ -158,6 +150,13 @@ export function ImhAbaPlanilhaPreview({
     () => value.linhas.filter((linha) => linhaPassaNoFiltroData(linha.data, dataFiltro)),
     [value.linhas, dataFiltro],
   )
+  const cellTextsByKey = useMemo(() => {
+    const map: Record<string, string[]> = {}
+    for (const col of IMH_ABA_COLUNAS) {
+      map[col.key] = linhasFiltradas.map((linha) => dash(String(linha[col.key] ?? '')))
+    }
+    return map
+  }, [linhasFiltradas])
   const somas = useMemo(
     () => calcImhSomasValorEIndenizar(linhasFiltradas),
     [linhasFiltradas],
@@ -171,6 +170,22 @@ export function ImhAbaPlanilhaPreview({
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight =
     expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
+  const {
+    resolveColWidth,
+    isColHovered,
+    colHoverHandlers,
+    selectionWidth,
+    actionsWidth,
+  } = usePlanilhaColunaHover(IMH_ABA_COLUNAS, {
+    selectionEnabled,
+    actionsEnabled,
+    descricaoKey: 'descricao',
+    expanded,
+    cellTextsByKey,
+    tableRef,
+    fontSizePx: expanded ? 10 : 11,
+    fontWeight: cellFontWeight,
+  })
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedImhIdsChange) return
@@ -428,6 +443,7 @@ export function ImhAbaPlanilhaPreview({
               }}
             >
               <Table
+                ref={tableRef}
                 size="small"
                 sx={{
                   width: '100%',
@@ -447,7 +463,7 @@ export function ImhAbaPlanilhaPreview({
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
                   },
-                  '& tbody .MuiTableCell-root': expanded
+                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': expanded
                     ? {
                         whiteSpace: 'normal',
                         wordBreak: 'break-word',
@@ -529,12 +545,11 @@ export function ImhAbaPlanilhaPreview({
                     })}
                     {actionsEnabled ? (
                       <TableCell
+                        className="excel-planilha-actions-col"
                         sx={{
                           ...headerSx,
-                          textAlign: 'center',
+                          ...planilhaActionsCellSx,
                           width: actionsWidth,
-                          minWidth: 0,
-                          whiteSpace: 'normal',
                           fontSize: cellFontSize,
                         }}
                       >
@@ -642,7 +657,7 @@ export function ImhAbaPlanilhaPreview({
                               }}
                             >
                               <PlanilhaExpandedCellContent
-                                showFull={expanded ? hovered : false}
+                                showFull={hovered}
                                 nowrap={!expanded}
                               >
                                 {text}
@@ -652,32 +667,34 @@ export function ImhAbaPlanilhaPreview({
                         })}
                         {actionsEnabled ? (
                           <TableCell
+                            className="excel-planilha-actions-col"
                             sx={{
                               ...cellSx,
-                              textAlign: 'center',
+                              ...planilhaActionsCellSx,
                               width: actionsWidth,
-                              minWidth: 0,
                               fontSize: cellFontSize,
                               fontWeight: cellFontWeight,
                             }}
                           >
-                            <IconButton
-                              size="small"
-                              aria-label={`Editar linha IMH ${index + 1}`}
-                              onClick={() => onEditLinha?.(linha.id)}
-                              sx={{ p: 0.35 }}
-                            >
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Excluir linha IMH ${index + 1}`}
-                              onClick={() => onDeleteLinha?.(linha.id)}
-                              sx={{ p: 0.35 }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
+                            <PlanilhaActionsButtons>
+                              <IconButton
+                                size="small"
+                                aria-label={`Editar linha IMH ${index + 1}`}
+                                onClick={() => onEditLinha?.(linha.id)}
+                                sx={{ p: 0.25 }}
+                              >
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label={`Excluir linha IMH ${index + 1}`}
+                                onClick={() => onDeleteLinha?.(linha.id)}
+                                sx={{ p: 0.25 }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </PlanilhaActionsButtons>
                           </TableCell>
                         ) : null}
                       </TableRow>

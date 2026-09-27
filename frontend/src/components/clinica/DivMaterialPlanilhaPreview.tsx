@@ -22,7 +22,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
@@ -32,7 +32,9 @@ import {
 } from '@/components/clinica/PlanilhaExpandControls'
 import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
 import {
+  PlanilhaActionsButtons,
   PlanilhaExpandedCellContent,
+  planilhaActionsCellSx,
   usePlanilhaColunaHover,
 } from '@/components/clinica/planilhaColunaHover'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
@@ -152,14 +154,25 @@ export function DivMaterialPlanilhaPreview({
   const [gerarOpen, setGerarOpen] = useState(false)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
+  const tableRef = useRef<HTMLTableElement | null>(null)
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
     [linhas, dataFiltro],
   )
+  const cellTextsByKey = useMemo(() => {
+    const map: Record<string, string[]> = {}
+    for (const col of DIV_MATERIAL_COLUNAS) {
+      map[col.key] = linhasFiltradas.map((linha) => dash(String(linha[col.key] ?? '')))
+    }
+    return map
+  }, [linhasFiltradas])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
+  const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
+  const cellFontWeight =
+    expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
   const {
     resolveColWidth,
     isColHovered,
@@ -170,6 +183,11 @@ export function DivMaterialPlanilhaPreview({
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricaoMaterial',
+    expanded,
+    cellTextsByKey,
+    tableRef,
+    fontSizePx: expanded ? 10 : 11,
+    fontWeight: cellFontWeight,
   })
   const selection = selectedIds ?? new Set<string>()
   const finalized = finalizedIds ?? new Set<string>()
@@ -181,9 +199,6 @@ export function DivMaterialPlanilhaPreview({
   const visible = linhas.length > 0
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
-  const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
-  const cellFontWeight =
-    expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -384,6 +399,7 @@ export function DivMaterialPlanilhaPreview({
               }}
             >
               <Table
+                ref={tableRef}
                 size="small"
                 stickyHeader={!expanded}
                 sx={{
@@ -404,7 +420,7 @@ export function DivMaterialPlanilhaPreview({
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
                   },
-                  '& tbody .MuiTableCell-root': expanded
+                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': expanded
                     ? {
                         whiteSpace: 'normal',
                         wordBreak: 'break-word',
@@ -485,13 +501,12 @@ export function DivMaterialPlanilhaPreview({
                     })}
                     {actionsEnabled ? (
                       <TableCell
+                        className="excel-planilha-actions-col"
                         sx={{
                           ...headerSx,
-                          textAlign: 'center',
+                          ...planilhaActionsCellSx,
                           width: actionsWidth,
-                          minWidth: 0,
                           fontSize: cellFontSize,
-                          whiteSpace: 'normal',
                         }}
                       >
                         AÇÕES
@@ -601,7 +616,7 @@ export function DivMaterialPlanilhaPreview({
                                 }}
                               >
                                 <PlanilhaExpandedCellContent
-                                  showFull={expanded ? hovered : false}
+                                  showFull={hovered}
                                   nowrap={!expanded}
                                 >
                                   {text}
@@ -611,32 +626,34 @@ export function DivMaterialPlanilhaPreview({
                           })}
                           {actionsEnabled ? (
                             <TableCell
+                              className="excel-planilha-actions-col"
                               sx={{
                                 ...cellSx,
-                                textAlign: 'center',
+                                ...planilhaActionsCellSx,
                                 width: actionsWidth,
-                                minWidth: 0,
                                 fontSize: cellFontSize,
                                 fontWeight: cellFontWeight,
                               }}
                             >
-                              <IconButton
-                                size="small"
-                                aria-label={`Editar linha Div. Material ${index + 1}`}
-                                onClick={() => onEditLinha?.(linha.id)}
-                                sx={{ p: 0.35 }}
-                              >
-                                <EditIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Excluir linha Div. Material ${index + 1}`}
-                                onClick={() => onDeleteLinha?.(linha.id)}
-                                sx={{ p: 0.35 }}
-                              >
-                                <DeleteIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
+                              <PlanilhaActionsButtons>
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Editar linha Div. Material ${index + 1}`}
+                                  onClick={() => onEditLinha?.(linha.id)}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <EditIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label={`Excluir linha Div. Material ${index + 1}`}
+                                  onClick={() => onDeleteLinha?.(linha.id)}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </PlanilhaActionsButtons>
                             </TableCell>
                           ) : null}
                         </TableRow>

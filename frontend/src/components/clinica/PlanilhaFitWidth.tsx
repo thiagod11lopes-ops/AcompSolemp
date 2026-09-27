@@ -96,6 +96,18 @@ export function PlanilhaFitWidth({
               wordBreak: 'break-word',
               overflowWrap: 'anywhere',
             },
+        // Coluna Ações: largura fixa e ícones sempre lado a lado
+        '& th.excel-planilha-actions-col, & td.excel-planilha-actions-col': {
+          width: '76px !important',
+          minWidth: '76px !important',
+          maxWidth: '76px !important',
+          whiteSpace: 'nowrap !important',
+          overflow: 'visible !important',
+          textOverflow: 'clip !important',
+          wordBreak: 'normal !important',
+          overflowWrap: 'normal !important',
+          px: '2px !important',
+        },
       }}
     >
       {children}
