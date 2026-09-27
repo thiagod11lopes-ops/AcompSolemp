@@ -145,6 +145,10 @@ export function PlanilhaFitWidth({
         '& th[data-col-key="descricaoMaterial"], & td[data-col-key="descricaoMaterial"]': {
           minWidth: '55ch !important',
         },
+        // IMH — DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO (~50 caracteres)
+        '& th[data-col-key="descricao"], & td[data-col-key="descricao"]': {
+          minWidth: '50ch !important',
+        },
       }}
     >
       {children}

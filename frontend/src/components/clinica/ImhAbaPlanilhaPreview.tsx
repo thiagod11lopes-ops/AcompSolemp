@@ -97,6 +97,8 @@ const IMH_ROW_HEIGHT_PX = 40
 const IMH_GRID_PAD_PX = 24
 const IMH_VIEWPORT_MAX_HEIGHT_PX =
   IMH_HEADER_HEIGHT_PX + IMH_VISIBLE_BODY_ROWS * IMH_ROW_HEIGHT_PX + IMH_GRID_PAD_PX
+/** DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO: largura mínima (~50 caracteres). */
+const IMH_DESCRICAO_MIN_CHARS = 50
 
 const headerSx = {
   ...cellSx,
@@ -227,6 +229,7 @@ export function ImhAbaPlanilhaPreview({
   }
   const {
     resolveColWidth,
+    resolveColMinWidth,
     isColHovered,
     colHoverHandlers,
     selectionWidth,
@@ -235,6 +238,7 @@ export function ImhAbaPlanilhaPreview({
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricao',
+    minCharsByKey: { descricao: IMH_DESCRICAO_MIN_CHARS },
     cellTextsByKey,
     tableRef,
     fontSizePx: expanded ? 10 : 11,
@@ -583,13 +587,15 @@ export function ImhAbaPlanilhaPreview({
                     ) : null}
                     {IMH_ABA_COLUNAS.map((col) => {
                       const colWidth = resolveColWidth(col.key)
+                      const colMinWidth = resolveColMinWidth(col.key)
                       return (
                         <TableCell
                           key={col.key}
+                          data-col-key={col.key}
                           sx={{
                             ...headerSx,
                             width: colWidth,
-                            minWidth: 0,
+                            minWidth: colMinWidth || 0,
                             whiteSpace: 'normal',
                             lineHeight: 1.2,
                             fontSize: cellFontSize,
@@ -699,11 +705,13 @@ export function ImhAbaPlanilhaPreview({
                         ) : null}
                         {IMH_ABA_COLUNAS.map((col) => {
                           const colWidth = resolveColWidth(col.key)
+                          const colMinWidth = resolveColMinWidth(col.key)
                           const text = dash(String(linha[col.key] ?? ''))
                           const hovered = isColHovered(col.key)
                           return (
                             <TableCell
                               key={col.key}
+                              data-col-key={col.key}
                               {...colHoverHandlers(col.key)}
                               sx={{
                                 ...cellSx,
@@ -712,7 +720,7 @@ export function ImhAbaPlanilhaPreview({
                                 fontWeight: cellFontWeight,
                                 textAlign: 'center',
                                 verticalAlign: 'middle',
-                                minWidth: hovered ? colWidth : 0,
+                                minWidth: colMinWidth || (hovered ? colWidth : 0),
                                 transition: 'width 160ms ease',
                                 cursor: 'pointer',
                                 userSelect: 'none',
