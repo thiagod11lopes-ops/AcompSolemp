@@ -27,7 +27,6 @@ import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
-  IMH_ABA_INSTITUICAO,
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
@@ -323,37 +322,20 @@ export function ImhAbaPlanilhaPreview({
               maxWidth: '100%',
             }}
           >
-            <Box
-              sx={{
-                display: 'grid',
-                gap: 0.35,
-                px: 0.25,
-                minWidth: 0,
-              }}
-            >
-              <Typography
+            {value.clinica.trim() ? (
+              <Box
                 sx={{
-                  ...titleTextSx,
-                  fontWeight: 700,
-                  textAlign: 'right',
-                  whiteSpace: 'nowrap',
+                  display: 'grid',
+                  gap: 0.35,
+                  px: 0.25,
+                  minWidth: 0,
                 }}
               >
-                ANEXO DA CP — Nº CP{'\u00A0\u00A0'}
-                <Box component="span" sx={{ fontWeight: 600 }}>
-                  {dash(value.numeroCp)}
-                </Box>
-              </Typography>
-              <Typography sx={{ ...titleTextSx, textAlign: 'center' }}>
-                {IMH_ABA_INSTITUICAO}
-              </Typography>
-              <Typography sx={{ ...titleTextSx, textAlign: 'center' }}>
-                {IMH_ABA_HOSPITAL}
-              </Typography>
-              <Typography sx={{ ...titleTextSx, fontWeight: 700, textAlign: 'center' }}>
-                {dash(value.clinica)}
-              </Typography>
-            </Box>
+                <Typography sx={{ ...titleTextSx, fontWeight: 700, textAlign: 'center' }}>
+                  {value.clinica.trim()}
+                </Typography>
+              </Box>
+            ) : null}
 
             <Box
               className="excel-sheet-grid"
