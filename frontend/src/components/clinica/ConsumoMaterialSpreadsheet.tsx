@@ -576,7 +576,6 @@ function ConsumoMaterialSpreadsheetInner({
                   fontFamily: EXCEL_SHEET.fontFamily,
                   fontSize: EXCEL_SHEET.fontSize,
                   fontWeight: EXCEL_SHEET.fontWeight,
-                  fontWeight: 400,
                   color: EXCEL_SHEET.text,
                   ...cellContentSx,
                 }}
@@ -595,7 +594,6 @@ function ConsumoMaterialSpreadsheetInner({
                 fontFamily: EXCEL_SHEET.fontFamily,
                 fontSize: EXCEL_SHEET.fontSize,
                 fontWeight: EXCEL_SHEET.fontWeight,
-                fontWeight: 400,
                 color: EXCEL_SHEET.text,
                 ...cellContentSx,
               }}
