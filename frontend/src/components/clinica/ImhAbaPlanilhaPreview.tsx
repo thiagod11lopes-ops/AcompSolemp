@@ -29,6 +29,10 @@ import {
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
 import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
+import {
+  PlanilhaExpandedCellContent,
+  usePlanilhaColunaHover,
+} from '@/components/clinica/planilhaColunaHover'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
@@ -124,6 +128,7 @@ export function ImhAbaPlanilhaPreview({
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
   const { expanded, setExpanded } = usePlanilhaExpand()
+  const { resolveColWidth, isColHovered, colHoverHandlers } = usePlanilhaColunaHover(expanded)
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
@@ -456,22 +461,26 @@ export function ImhAbaPlanilhaPreview({
                         </Box>
                       </TableCell>
                     ) : null}
-                    {IMH_ABA_COLUNAS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        sx={{
-                          ...headerSx,
-                          width: expanded ? col.width : undefined,
-                          minWidth: expanded ? 0 : col.width,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
-                          lineHeight: expanded ? 1.2 : undefined,
-                          fontSize: cellFontSize,
-                          fontWeight: EXCEL_SHEET.fontWeightBold,
-                        }}
-                      >
-                        {col.label}
-                      </TableCell>
-                    ))}
+                    {IMH_ABA_COLUNAS.map((col) => {
+                      const colWidth = resolveColWidth(col.key, col.width)
+                      return (
+                        <TableCell
+                          key={col.key}
+                          sx={{
+                            ...headerSx,
+                            width: expanded ? colWidth : undefined,
+                            minWidth: expanded ? 0 : col.width,
+                            whiteSpace: expanded ? 'normal' : 'nowrap',
+                            lineHeight: expanded ? 1.2 : undefined,
+                            fontSize: cellFontSize,
+                            fontWeight: EXCEL_SHEET.fontWeightBold,
+                            ...(expanded ? { transition: 'width 160ms ease' } : null),
+                          }}
+                        >
+                          {col.label}
+                        </TableCell>
+                      )
+                    })}
                     {actionsEnabled ? (
                       <TableCell
                         sx={{
@@ -553,35 +562,49 @@ export function ImhAbaPlanilhaPreview({
                             />
                           </TableCell>
                         ) : null}
-                        {IMH_ABA_COLUNAS.map((col) => (
-                          <TableCell
-                            key={col.key}
-                            sx={{
-                              ...cellSx,
-                              width: expanded ? col.width : undefined,
-                              fontSize: cellFontSize,
-                              fontWeight: cellFontWeight,
-                              textAlign: 'center',
-                              verticalAlign: 'middle',
-                              ...(expanded
-                                ? {
-                                    whiteSpace: 'normal',
-                                    wordBreak: 'break-word',
-                                    overflowWrap: 'anywhere',
-                                    minWidth: 0,
-                                  }
-                                : col.key === 'descricao' || col.key === 'nomeUsuario'
+                        {IMH_ABA_COLUNAS.map((col) => {
+                          const colWidth = resolveColWidth(col.key, col.width)
+                          const text = dash(String(linha[col.key] ?? ''))
+                          const hovered = isColHovered(col.key)
+                          return (
+                            <TableCell
+                              key={col.key}
+                              {...colHoverHandlers(col.key)}
+                              sx={{
+                                ...cellSx,
+                                width: expanded ? colWidth : undefined,
+                                fontSize: cellFontSize,
+                                fontWeight: cellFontWeight,
+                                textAlign: 'center',
+                                verticalAlign: expanded ? 'top' : 'middle',
+                                ...(expanded
                                   ? {
-                                      whiteSpace: 'pre-wrap',
-                                      maxWidth: col.width + 40,
-                                      minWidth: 120,
+                                      whiteSpace: 'normal',
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'anywhere',
+                                      minWidth: 0,
+                                      transition: 'width 160ms ease',
+                                      cursor: 'default',
                                     }
-                                  : null),
-                            }}
-                          >
-                            {dash(String(linha[col.key] ?? ''))}
-                          </TableCell>
-                        ))}
+                                  : col.key === 'descricao' || col.key === 'nomeUsuario'
+                                    ? {
+                                        whiteSpace: 'pre-wrap',
+                                        maxWidth: col.width + 40,
+                                        minWidth: 120,
+                                      }
+                                    : null),
+                              }}
+                            >
+                              {expanded ? (
+                                <PlanilhaExpandedCellContent showFull={hovered}>
+                                  {text}
+                                </PlanilhaExpandedCellContent>
+                              ) : (
+                                text
+                              )}
+                            </TableCell>
+                          )
+                        })}
                         {actionsEnabled ? (
                           <TableCell
                             sx={{

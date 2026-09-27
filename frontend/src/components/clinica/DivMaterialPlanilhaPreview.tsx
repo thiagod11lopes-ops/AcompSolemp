@@ -18,7 +18,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
@@ -27,6 +27,10 @@ import {
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
 import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
+import {
+  PlanilhaExpandedCellContent,
+  usePlanilhaColunaHover,
+} from '@/components/clinica/planilhaColunaHover'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   DIV_MATERIAL_COLUNAS,
@@ -294,17 +298,13 @@ export function DivMaterialPlanilhaPreview({
   onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
-  const [descricaoColHover, setDescricaoColHover] = useState(false)
   const { expanded, setExpanded } = usePlanilhaExpand()
+  const { resolveColWidth, isColHovered, colHoverHandlers } = usePlanilhaColunaHover(expanded)
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
     [linhas, dataFiltro],
   )
-
-  useEffect(() => {
-    if (!expanded) setDescricaoColHover(false)
-  }, [expanded])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
@@ -319,8 +319,6 @@ export function DivMaterialPlanilhaPreview({
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
   const descricaoBaseWidth = 280
-  const descricaoColWidth =
-    expanded && descricaoColHover ? descricaoBaseWidth * 2 : descricaoBaseWidth
   const tableMinWidth =
     DIV_MATERIAL_COLUNAS.reduce(
       (sum, col) => sum + (col.key === 'descricaoMaterial' ? descricaoBaseWidth : col.width),
@@ -330,6 +328,8 @@ export function DivMaterialPlanilhaPreview({
     (actionsEnabled ? 72 : 0)
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
+  const baseColWidth = (key: string, width: number) =>
+    key === 'descricaoMaterial' ? descricaoBaseWidth : width
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -509,7 +509,9 @@ export function DivMaterialPlanilhaPreview({
             <Box
               sx={{
                 width: expanded ? '100%' : 'max-content',
+                maxWidth: expanded ? '100%' : undefined,
                 minWidth: expanded ? 0 : '100%',
+                overflowX: expanded ? 'hidden' : undefined,
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -520,6 +522,7 @@ export function DivMaterialPlanilhaPreview({
                 stickyHeader={!expanded}
                 sx={{
                   width: expanded ? '100%' : tableMinWidth,
+                  maxWidth: expanded ? '100%' : undefined,
                   minWidth: expanded ? 0 : tableMinWidth,
                   tableLayout: 'fixed',
                   '& .MuiTableHead-root .MuiTableRow-root': {
@@ -591,21 +594,19 @@ export function DivMaterialPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {DIV_MATERIAL_COLUNAS.map((col) => {
-                      const isDescricao = col.key === 'descricaoMaterial'
-                      const colWidth = isDescricao ? descricaoColWidth : col.width
+                      const base = baseColWidth(col.key, col.width)
+                      const colWidth = resolveColWidth(col.key, base)
                       return (
                         <TableCell
                           key={col.key}
                           sx={{
                             ...headerSx,
                             width: colWidth,
-                            minWidth: expanded ? 0 : colWidth,
+                            minWidth: expanded ? 0 : base,
                             fontSize: cellFontSize,
                             whiteSpace: expanded ? 'normal' : 'nowrap',
                             lineHeight: expanded ? 1.2 : undefined,
-                            ...(expanded && isDescricao
-                              ? { transition: 'width 160ms ease' }
-                              : null),
+                            ...(expanded ? { transition: 'width 160ms ease' } : null),
                           }}
                         >
                           {col.label}
@@ -697,28 +698,21 @@ export function DivMaterialPlanilhaPreview({
                           ) : null}
                           {DIV_MATERIAL_COLUNAS.map((col) => {
                             const isDescricao = col.key === 'descricaoMaterial'
-                            const colWidth = isDescricao ? descricaoColWidth : col.width
+                            const base = baseColWidth(col.key, col.width)
+                            const colWidth = resolveColWidth(col.key, base)
                             const text = dash(String(linha[col.key] ?? ''))
+                            const hovered = isColHovered(col.key)
                             return (
                               <TableCell
                                 key={col.key}
-                                onMouseEnter={
-                                  expanded && isDescricao
-                                    ? () => setDescricaoColHover(true)
-                                    : undefined
-                                }
-                                onMouseLeave={
-                                  expanded && isDescricao
-                                    ? () => setDescricaoColHover(false)
-                                    : undefined
-                                }
+                                {...colHoverHandlers(col.key)}
                                 sx={{
                                   ...(isDescricao ? descricaoMaterialCellSx : cellSx),
                                   width: colWidth,
-                                  minWidth: expanded ? 0 : colWidth,
+                                  minWidth: expanded ? 0 : base,
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
-                                  ...(expanded && isDescricao
+                                  ...(expanded
                                     ? {
                                         whiteSpace: 'normal',
                                         wordBreak: 'break-word',
@@ -726,37 +720,17 @@ export function DivMaterialPlanilhaPreview({
                                         verticalAlign: 'top',
                                         transition: 'width 160ms ease',
                                         cursor: 'default',
+                                        textAlign: isDescricao ? 'left' : 'center',
                                       }
-                                    : expanded
-                                      ? {
-                                          whiteSpace: 'normal',
-                                          wordBreak: 'break-word',
-                                          overflowWrap: 'anywhere',
-                                        }
-                                      : isDescricao
-                                        ? null
-                                        : { whiteSpace: 'nowrap' }),
+                                    : isDescricao
+                                      ? null
+                                      : { whiteSpace: 'nowrap' }),
                                 }}
                               >
-                                {expanded && isDescricao ? (
-                                  <Box
-                                    sx={{
-                                      whiteSpace: 'normal',
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'anywhere',
-                                      textAlign: 'left',
-                                      ...(descricaoColHover
-                                        ? null
-                                        : {
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 2,
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden',
-                                          }),
-                                    }}
-                                  >
+                                {expanded ? (
+                                  <PlanilhaExpandedCellContent showFull={hovered}>
                                     {text}
-                                  </Box>
+                                  </PlanilhaExpandedCellContent>
                                 ) : isDescricao ? (
                                   <DescricaoMaterialCell text={String(linha[col.key] ?? '')} />
                                 ) : (

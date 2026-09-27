@@ -37,9 +37,12 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
         '& .excel-sheet-grid': {
           width: '100% !important',
           maxWidth: '100% !important',
+          minWidth: '0 !important',
+          overflowX: 'hidden !important',
         },
         '& table': {
           width: '100% !important',
+          maxWidth: '100% !important',
           minWidth: '0 !important',
           tableLayout: 'fixed',
         },
