@@ -229,7 +229,7 @@ export function DivMaterialForm({
             >
               {DIV_MATERIAL_COLUNAS.map((col) => {
                 const key = col.key
-                const multiline = key === 'descricaoMaterial' || key === 'anexoAtaHomologacao'
+                const multiline = key === 'descricaoMaterial'
                 return (
                   <TextField
                     key={key}
