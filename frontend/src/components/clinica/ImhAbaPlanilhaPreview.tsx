@@ -5,7 +5,10 @@ import {
   EditOutlined as EditIcon,
   UploadFileOutlined as UploadFileIcon,
 } from '@mui/icons-material'
-import { PlanilhaBoldToggle } from '@/components/clinica/PlanilhaBoldToggle'
+import {
+  PlanilhaBoldToggle,
+  usePlanilhaBoldPreference,
+} from '@/components/clinica/PlanilhaBoldToggle'
 import {
   Box,
   Button,
@@ -128,7 +131,7 @@ export function ImhAbaPlanilhaPreview({
   onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
-  const [boldEnabled, setBoldEnabled] = useState(true)
+  const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
@@ -288,10 +291,7 @@ export function ImhAbaPlanilhaPreview({
           />
 
           {expanded ? (
-            <PlanilhaBoldToggle
-              enabled={boldEnabled}
-              onToggle={() => setBoldEnabled((v) => !v)}
-            />
+            <PlanilhaBoldToggle enabled={boldEnabled} onToggle={toggleBold} />
           ) : null}
 
           {onImportClick ? (
