@@ -83,7 +83,7 @@ export default function ClinicaPedidosPage() {
   return (
     <>
       <PageHeader
-        title="Meus Pedidos"
+        title="Enviados"
         subtitle={`${clinica?.nome ?? 'Sua clínica'} — acompanhe a trajetória dos seus materiais consignados`}
         action={
           <Button

@@ -30,7 +30,7 @@ const DRAWER_WIDTH = 260
 
 const MENU_ITEMS = [
   { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
-  { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon />, end: true },
+  { path: '/clinica/pedidos', label: 'Enviados', icon: <ListAltIcon />, end: true },
   { path: '/clinica/pedidos/novo', label: 'Planilhas', icon: <AddIcon />, end: false },
   {
     path: '/clinica/precos-medicamentos',
