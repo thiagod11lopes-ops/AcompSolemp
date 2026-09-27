@@ -13,6 +13,11 @@ interface PlanilhaFitWidthProps {
   cellFontWeight?: number
   /** Preenche a altura restante (modo expandido). */
   fillHeight?: boolean
+  /**
+   * Corpo sem quebra de linha (modo recolhido).
+   * Cabeçalhos continuam podendo quebrar para caber nas colunas.
+   */
+  nowrapBody?: boolean
 }
 
 /**
@@ -25,6 +30,7 @@ export function PlanilhaFitWidth({
   cellFontSize,
   cellFontWeight,
   fillHeight = false,
+  nowrapBody = false,
 }: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
@@ -61,9 +67,6 @@ export function PlanilhaFitWidth({
         '& th, & td, & .MuiTableCell-root': {
           minWidth: '0 !important',
           maxWidth: 'none !important',
-          whiteSpace: 'normal !important',
-          wordBreak: 'break-word',
-          overflowWrap: 'anywhere',
           overflow: 'hidden',
           fontSize: `${fontSize} !important`,
           fontWeight: `${fontWeight} !important`,
@@ -73,11 +76,26 @@ export function PlanilhaFitWidth({
         },
         '& thead .MuiTableCell-root, & th': {
           whiteSpace: 'normal !important',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
           hyphens: 'auto',
           lineHeight: 1.2,
           verticalAlign: 'middle',
           fontWeight: `${fontWeight} !important`,
         },
+        '& tbody .MuiTableCell-root, & td': nowrapBody
+          ? {
+              whiteSpace: 'nowrap !important',
+              wordBreak: 'normal',
+              overflowWrap: 'normal',
+              textOverflow: 'ellipsis',
+              verticalAlign: 'middle',
+            }
+          : {
+              whiteSpace: 'normal !important',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+            },
       }}
     >
       {children}

@@ -163,7 +163,7 @@ export function DivMaterialPlanilhaPreview({
     colHoverHandlers,
     selectionWidth,
     actionsWidth,
-  } = usePlanilhaColunaHover(expanded, DIV_MATERIAL_COLUNAS, {
+  } = usePlanilhaColunaHover(DIV_MATERIAL_COLUNAS, {
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricaoMaterial',
@@ -368,6 +368,7 @@ export function DivMaterialPlanilhaPreview({
               fillHeight={expanded}
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
+              nowrapBody={!expanded}
               remountKey={`${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}-${actionsEnabled ? 1 : 0}`}
             >
             <Box
@@ -392,15 +393,29 @@ export function DivMaterialPlanilhaPreview({
                   tableLayout: 'fixed',
                   '& .MuiTableCell-root': {
                     boxSizing: 'border-box',
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'anywhere',
                     minWidth: '0 !important',
                     px: 0.5,
                     py: 0.5,
                     fontSize: cellFontSize,
                     fontWeight: cellFontWeight,
                   },
+                  '& thead .MuiTableCell-root': {
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                  },
+                  '& tbody .MuiTableCell-root': expanded
+                    ? {
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                      }
+                    : {
+                        whiteSpace: 'nowrap',
+                        wordBreak: 'normal',
+                        overflowWrap: 'normal',
+                        textOverflow: 'ellipsis',
+                      },
                 }}
               >
                 <TableHead>
@@ -461,7 +476,7 @@ export function DivMaterialPlanilhaPreview({
                             fontSize: cellFontSize,
                             whiteSpace: 'normal',
                             lineHeight: 1.2,
-                            ...(expanded ? { transition: 'width 160ms ease' } : null),
+                            transition: 'width 160ms ease',
                           }}
                         >
                           {col.label}
@@ -561,25 +576,34 @@ export function DivMaterialPlanilhaPreview({
                                 key={col.key}
                                 {...colHoverHandlers(col.key)}
                                 sx={{
-                                  ...(isDescricao ? descricaoMaterialCellSx : cellSx),
+                                  ...(isDescricao && expanded ? descricaoMaterialCellSx : cellSx),
                                   width: colWidth,
                                   minWidth: 0,
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
-                                  whiteSpace: 'normal',
-                                  wordBreak: 'break-word',
-                                  overflowWrap: 'anywhere',
-                                  verticalAlign: 'top',
+                                  verticalAlign: expanded ? 'top' : 'middle',
                                   textAlign: isDescricao ? 'left' : 'center',
+                                  transition: 'width 160ms ease',
+                                  cursor: 'default',
                                   ...(expanded
                                     ? {
-                                        transition: 'width 160ms ease',
-                                        cursor: 'default',
+                                        whiteSpace: 'normal',
+                                        wordBreak: 'break-word',
+                                        overflowWrap: 'anywhere',
                                       }
-                                    : null),
+                                    : {
+                                        whiteSpace: 'nowrap',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'normal',
+                                        textOverflow: 'ellipsis',
+                                        overflow: 'hidden',
+                                      }),
                                 }}
                               >
-                                <PlanilhaExpandedCellContent showFull={expanded ? hovered : true}>
+                                <PlanilhaExpandedCellContent
+                                  showFull={expanded ? hovered : false}
+                                  nowrap={!expanded}
+                                >
                                   {text}
                                 </PlanilhaExpandedCellContent>
                               </TableCell>

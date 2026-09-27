@@ -139,7 +139,7 @@ export function ImhAbaPlanilhaPreview({
     colHoverHandlers,
     selectionWidth,
     actionsWidth,
-  } = usePlanilhaColunaHover(expanded, IMH_ABA_COLUNAS, {
+  } = usePlanilhaColunaHover(IMH_ABA_COLUNAS, {
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricao',
@@ -411,6 +411,7 @@ export function ImhAbaPlanilhaPreview({
               fillHeight={expanded}
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
+              nowrapBody={!expanded}
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
@@ -435,15 +436,29 @@ export function ImhAbaPlanilhaPreview({
                   tableLayout: 'fixed',
                   '& .MuiTableCell-root': {
                     boxSizing: 'border-box',
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'anywhere',
                     minWidth: 0,
                     px: 0.5,
                     py: 0.5,
                     fontSize: cellFontSize,
                     fontWeight: cellFontWeight,
                   },
+                  '& thead .MuiTableCell-root': {
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                  },
+                  '& tbody .MuiTableCell-root': expanded
+                    ? {
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                      }
+                    : {
+                        whiteSpace: 'nowrap',
+                        wordBreak: 'normal',
+                        overflowWrap: 'normal',
+                        textOverflow: 'ellipsis',
+                      },
                 }}
               >
                 <TableHead>
@@ -505,7 +520,7 @@ export function ImhAbaPlanilhaPreview({
                             lineHeight: 1.2,
                             fontSize: cellFontSize,
                             fontWeight: EXCEL_SHEET.fontWeightBold,
-                            ...(expanded ? { transition: 'width 160ms ease' } : null),
+                            transition: 'width 160ms ease',
                           }}
                         >
                           {col.label}
@@ -607,20 +622,29 @@ export function ImhAbaPlanilhaPreview({
                                 fontSize: cellFontSize,
                                 fontWeight: cellFontWeight,
                                 textAlign: 'center',
-                                verticalAlign: 'top',
-                                whiteSpace: 'normal',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'anywhere',
+                                verticalAlign: expanded ? 'top' : 'middle',
                                 minWidth: 0,
+                                transition: 'width 160ms ease',
+                                cursor: 'default',
                                 ...(expanded
                                   ? {
-                                      transition: 'width 160ms ease',
-                                      cursor: 'default',
+                                      whiteSpace: 'normal',
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'anywhere',
                                     }
-                                  : null),
+                                  : {
+                                      whiteSpace: 'nowrap',
+                                      wordBreak: 'normal',
+                                      overflowWrap: 'normal',
+                                      textOverflow: 'ellipsis',
+                                      overflow: 'hidden',
+                                    }),
                               }}
                             >
-                              <PlanilhaExpandedCellContent showFull={expanded ? hovered : true}>
+                              <PlanilhaExpandedCellContent
+                                showFull={expanded ? hovered : false}
+                                nowrap={!expanded}
+                              >
                                 {text}
                               </PlanilhaExpandedCellContent>
                             </TableCell>
