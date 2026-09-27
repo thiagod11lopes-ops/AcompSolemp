@@ -1250,18 +1250,31 @@ export default function ClinicaNovoPedidoPage() {
 
   return (
     <>
-      <Box sx={{ mb: 1.5 }}>
+      <Box
+        sx={(theme) => ({
+          mb: 1.5,
+          position: 'sticky',
+          top: { xs: 56, sm: 64 },
+          zIndex: theme.zIndex.appBar - 1,
+        })}
+      >
         <Box
           sx={(theme) => ({
             borderBottom: 1,
             borderColor: 'divider',
-            bgcolor: alpha(theme.palette.primary.main, 0.03),
+            bgcolor: theme.palette.background.paper,
+            backgroundImage: `linear-gradient(
+              180deg,
+              ${alpha(theme.palette.primary.main, 0.06)} 0%,
+              ${alpha(theme.palette.primary.main, 0.03)} 100%
+            )`,
             borderRadius: '8px 8px 0 0',
             px: 0.5,
             display: 'flex',
             alignItems: 'center',
             gap: 1,
             flexWrap: 'wrap',
+            boxShadow: `0 1px 0 ${theme.palette.divider}`,
           })}
         >
           {!isMedicamento && !modoCorrigir ? (

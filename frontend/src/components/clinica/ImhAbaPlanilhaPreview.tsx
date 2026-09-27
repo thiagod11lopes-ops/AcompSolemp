@@ -90,11 +90,24 @@ const cellSx = {
   whiteSpace: 'nowrap' as const,
 } as const
 
+/** Viewport: no máximo 12 linhas de dados + cabeçalho (igual Div. Material). */
+const IMH_VISIBLE_BODY_ROWS = 12
+const IMH_HEADER_HEIGHT_PX = 44
+const IMH_ROW_HEIGHT_PX = 40
+const IMH_GRID_PAD_PX = 24
+const IMH_VIEWPORT_MAX_HEIGHT_PX =
+  IMH_HEADER_HEIGHT_PX + IMH_VISIBLE_BODY_ROWS * IMH_ROW_HEIGHT_PX + IMH_GRID_PAD_PX
+
 const headerSx = {
   ...cellSx,
   bgcolor: EXCEL_SHEET.headerBg,
   fontWeight: EXCEL_SHEET.fontWeightBold,
   color: EXCEL_SHEET.mutedText,
+  position: 'sticky' as const,
+  top: 0,
+  zIndex: 4,
+  backgroundClip: 'padding-box',
+  boxShadow: `inset 0 -1px 0 ${EXCEL_SHEET.borderColor}`,
 } as const
 
 const titleTextSx = {
@@ -431,6 +444,7 @@ export function ImhAbaPlanilhaPreview({
           </Box>
         ) : (
           <Box
+            className="excel-sheet-grid"
             sx={{
               p: expanded ? 0 : 1.5,
               borderTop: EXCEL_SHEET.border,
@@ -440,10 +454,12 @@ export function ImhAbaPlanilhaPreview({
               width: '100%',
               maxWidth: '100%',
               minWidth: 0,
+              // Máx. 12 linhas visíveis; em tela cheia usa toda a página.
+              maxHeight: expanded ? 'none' : IMH_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflowX: 'hidden',
-              overflowY: expanded ? 'hidden' : undefined,
+              // Rolagem só no PlanilhaFitWidth (âncora do sticky header).
+              overflow: 'hidden',
               boxSizing: 'border-box',
             }}
           >
@@ -465,7 +481,7 @@ export function ImhAbaPlanilhaPreview({
 
             <PlanilhaFitWidth
               enabled
-              fillHeight={expanded}
+              fillHeight
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
               nowrapBody
@@ -474,12 +490,10 @@ export function ImhAbaPlanilhaPreview({
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
-              className="excel-sheet-grid"
               sx={{
                 width: '100%',
                 maxWidth: '100%',
                 minWidth: 0,
-                overflowX: 'hidden',
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -489,11 +503,14 @@ export function ImhAbaPlanilhaPreview({
               <Table
                 ref={tableRef}
                 size="small"
+                stickyHeader
                 sx={{
                   width: '100%',
                   maxWidth: '100%',
                   minWidth: 0,
                   tableLayout: 'fixed',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
                   '& .MuiTableCell-root': {
                     boxSizing: 'border-box',
                     minWidth: 0,
@@ -506,6 +523,9 @@ export function ImhAbaPlanilhaPreview({
                     whiteSpace: 'normal',
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 4,
                   },
                   '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': {
                     whiteSpace: 'nowrap',
