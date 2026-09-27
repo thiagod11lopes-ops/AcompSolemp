@@ -14,8 +14,10 @@ import {
 } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
+import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import { ChatModal } from '@/components/chat/ChatModal'
 import {
   useActiveChatUser,
   useAutoMarkChatRead,
@@ -53,6 +55,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
   const user = useActiveChatUser()
   const [threadId, setThreadId] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const accent = theme.palette.primary.main
@@ -318,14 +321,19 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
     <Box sx={shellSx}>
       <Box
         sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
           px: 1.5,
-          py: 1,
+          py: 0.85,
           borderBottom: `1px solid ${theme.palette.divider}`,
           bgcolor: alpha(accent, 0.06),
         }}
       >
         <Typography
           sx={{
+            flex: 1,
+            minWidth: 0,
             fontWeight: 800,
             fontSize: '0.98rem',
             letterSpacing: '-0.02em',
@@ -335,10 +343,20 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
         >
           Bate-papo
         </Typography>
-        <Typography sx={{ fontSize: '0.71rem', color: 'text.secondary', mt: 0.15 }}>
-          Grupo de todos · ou conversa particular com um setor
-        </Typography>
+        <IconButton
+          size="small"
+          onClick={() => setModalOpen(true)}
+          aria-label="Maximizar bate-papo"
+          title="Maximizar"
+          sx={{
+            color: accent,
+            '&:hover': { bgcolor: alpha(accent, 0.12) },
+          }}
+        >
+          <OpenInFullRoundedIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </Box>
+      <ChatModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {grupo ? (

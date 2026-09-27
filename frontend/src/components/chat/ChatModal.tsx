@@ -162,9 +162,6 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
           <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '1.15rem' }}>
             Bate-papo
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.86rem' }}>
-            Grupo de todos · ou conversa particular com um setor
-          </Typography>
         </Box>
         <IconButton onClick={onClose} size="small" aria-label="Fechar">
           <CloseIcon fontSize="small" />
