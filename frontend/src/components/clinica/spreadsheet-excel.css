@@ -32,6 +32,34 @@
   width: max-content;
 }
 
+/* Modo expandido: tabela exatamente na largura da página, sem rolagem horizontal */
+.excel-sheet-fit-width,
+.excel-sheet-fit-width .excel-sheet-grid,
+.excel-sheet-expanded .excel-sheet-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+
+.excel-sheet-fit-width .MuiTable-root,
+.excel-sheet-expanded .MuiTable-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.excel-sheet-fit-width .MuiTableCell-root,
+.excel-sheet-expanded .MuiTableCell-root {
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .excel-sheet-grid .MuiTableCell-root {
   border: var(--excel-border);
   padding: 2px 6px;

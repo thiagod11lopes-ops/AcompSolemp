@@ -299,7 +299,6 @@ export function DivMaterialPlanilhaPreview({
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
   const { expanded, setExpanded } = usePlanilhaExpand()
-  const { resolveColWidth, isColHovered, colHoverHandlers } = usePlanilhaColunaHover(expanded)
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
@@ -308,6 +307,17 @@ export function DivMaterialPlanilhaPreview({
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
+  const {
+    resolveColWidth,
+    isColHovered,
+    colHoverHandlers,
+    selectionWidth,
+    actionsWidth,
+  } = usePlanilhaColunaHover(expanded, DIV_MATERIAL_COLUNAS, {
+    selectionEnabled,
+    actionsEnabled,
+    descricaoKey: 'descricaoMaterial',
+  })
   const selection = selectedIds ?? new Set<string>()
   const finalized = finalizedIds ?? new Set<string>()
   const devolvidos = devolvidosIds ?? new Set<string>()
@@ -328,8 +338,6 @@ export function DivMaterialPlanilhaPreview({
     (actionsEnabled ? 72 : 0)
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
-  const baseColWidth = (key: string, width: number) =>
-    key === 'descricaoMaterial' ? descricaoBaseWidth : width
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -352,7 +360,7 @@ export function DivMaterialPlanilhaPreview({
   const sheet = (
       <Paper
         elevation={0}
-        className="excel-sheet"
+        className={expanded ? 'excel-sheet excel-sheet-expanded' : 'excel-sheet'}
         sx={{
           borderRadius: expanded ? 0 : 2,
           overflow: 'hidden',
@@ -366,9 +374,13 @@ export function DivMaterialPlanilhaPreview({
             ? {
                 flex: 1,
                 height: '100%',
+                width: '100%',
+                maxWidth: '100%',
                 minHeight: 0,
+                minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
+                boxSizing: 'border-box',
               }
             : {}),
         }}
@@ -554,7 +566,7 @@ export function DivMaterialPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
-                          width: expanded ? 36 : 52,
+                          width: expanded ? selectionWidth : 52,
                           minWidth: expanded ? 0 : 52,
                           textAlign: 'center',
                           px: 0.5,
@@ -594,15 +606,16 @@ export function DivMaterialPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {DIV_MATERIAL_COLUNAS.map((col) => {
-                      const base = baseColWidth(col.key, col.width)
-                      const colWidth = resolveColWidth(col.key, base)
+                      const collapsedWidth =
+                        col.key === 'descricaoMaterial' ? descricaoBaseWidth : col.width
+                      const colWidth = resolveColWidth(col.key, collapsedWidth)
                       return (
                         <TableCell
                           key={col.key}
                           sx={{
                             ...headerSx,
                             width: colWidth,
-                            minWidth: expanded ? 0 : base,
+                            minWidth: expanded ? 0 : collapsedWidth,
                             fontSize: cellFontSize,
                             whiteSpace: expanded ? 'normal' : 'nowrap',
                             lineHeight: expanded ? 1.2 : undefined,
@@ -618,7 +631,7 @@ export function DivMaterialPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           textAlign: 'center',
-                          width: expanded ? 44 : 72,
+                          width: expanded ? actionsWidth : 72,
                           minWidth: expanded ? 0 : 72,
                           fontSize: cellFontSize,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
@@ -668,7 +681,7 @@ export function DivMaterialPlanilhaPreview({
                                   : EXCEL_SHEET.selectHeaderBg,
                                 textAlign: 'center',
                                 px: 0.5,
-                                width: expanded ? 36 : 52,
+                                width: expanded ? selectionWidth : 52,
                                 minWidth: expanded ? 0 : 52,
                               }}
                             >
@@ -698,8 +711,10 @@ export function DivMaterialPlanilhaPreview({
                           ) : null}
                           {DIV_MATERIAL_COLUNAS.map((col) => {
                             const isDescricao = col.key === 'descricaoMaterial'
-                            const base = baseColWidth(col.key, col.width)
-                            const colWidth = resolveColWidth(col.key, base)
+                            const collapsedWidth = isDescricao
+                              ? descricaoBaseWidth
+                              : col.width
+                            const colWidth = resolveColWidth(col.key, collapsedWidth)
                             const text = dash(String(linha[col.key] ?? ''))
                             const hovered = isColHovered(col.key)
                             return (
@@ -709,7 +724,7 @@ export function DivMaterialPlanilhaPreview({
                                 sx={{
                                   ...(isDescricao ? descricaoMaterialCellSx : cellSx),
                                   width: colWidth,
-                                  minWidth: expanded ? 0 : base,
+                                  minWidth: expanded ? 0 : collapsedWidth,
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
                                   ...(expanded
@@ -744,7 +759,7 @@ export function DivMaterialPlanilhaPreview({
                               sx={{
                                 ...cellSx,
                                 textAlign: 'center',
-                                width: expanded ? 44 : 72,
+                                width: expanded ? actionsWidth : 72,
                                 minWidth: expanded ? 0 : 72,
                                 fontSize: cellFontSize,
                                 fontWeight: cellFontWeight,

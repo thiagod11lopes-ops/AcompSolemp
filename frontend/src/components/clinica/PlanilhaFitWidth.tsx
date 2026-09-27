@@ -12,9 +12,8 @@ interface PlanilhaFitWidthProps {
 }
 
 /**
- * Container de largura total: todas as colunas cabem na tela.
- * Títulos e células quebram linha; sem transform/scale.
- * Só afeta o modo expandido (enabled=true).
+ * Container de largura total: encaixa a tabela exatamente na largura da página.
+ * Todas as colunas ficam visíveis; sem rolagem horizontal.
  */
 export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFitWidthProps) {
   if (!enabled) {
@@ -25,6 +24,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
 
   return (
     <Box
+      className="excel-sheet-fit-width"
       sx={{
         width: '100%',
         maxWidth: '100%',
@@ -33,32 +33,35 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
         minWidth: 0,
         overflowX: 'hidden',
         overflowY: 'auto',
+        boxSizing: 'border-box',
         WebkitOverflowScrolling: 'touch',
-        '& .excel-sheet-grid': {
+        '& .excel-sheet-grid, & > *': {
           width: '100% !important',
           maxWidth: '100% !important',
           minWidth: '0 !important',
-          overflowX: 'hidden !important',
+          boxSizing: 'border-box',
         },
-        '& table': {
+        '& table, & .MuiTable-root': {
           width: '100% !important',
           maxWidth: '100% !important',
           minWidth: '0 !important',
-          tableLayout: 'fixed',
+          tableLayout: 'fixed !important',
         },
         '& th, & td, & .MuiTableCell-root': {
           minWidth: '0 !important',
-          maxWidth: 'none',
-          whiteSpace: 'normal',
+          maxWidth: 'none !important',
+          whiteSpace: 'normal !important',
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
+          overflow: 'hidden',
           fontSize: `${fontSize} !important`,
           fontWeight: `${EXCEL_SHEET.fontWeightBold} !important`,
           lineHeight: 1.25,
           px: '4px !important',
+          boxSizing: 'border-box',
         },
         '& thead .MuiTableCell-root, & th': {
-          whiteSpace: 'normal',
+          whiteSpace: 'normal !important',
           hyphens: 'auto',
           lineHeight: 1.2,
           verticalAlign: 'middle',

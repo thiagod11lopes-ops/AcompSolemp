@@ -67,15 +67,17 @@ export function PlanilhaFullscreenDialog({
         paper: {
           sx: {
             m: 0,
-            maxWidth: '100vw',
-            width: '100vw',
-            height: '100vh',
-            maxHeight: '100vh',
+            // 100% evita overflow horizontal que 100vw causa com a barra de rolagem
+            maxWidth: '100%',
+            width: '100%',
+            height: '100%',
+            maxHeight: '100%',
             borderRadius: 0,
             bgcolor: EXCEL_SHEET.sheetBg,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            boxSizing: 'border-box',
           },
         },
       }}
