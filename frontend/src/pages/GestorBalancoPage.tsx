@@ -685,6 +685,104 @@ export default function GestorBalancoPage() {
                 </ResponsiveContainer>
               </ChartCard>
             </Grid>
+
+            {/* Gráficos vindos do Dashboard — só os que ainda não tinham equivalente no Balanço */}
+            <Grid size={{ xs: 12, md: 5 }}>
+              <ChartCard title="Valor por etapa" subtitle="Distribuição do valor nos cards da timeline" height={360}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={metrics.valorPorEtapa}
+                      dataKey="valor"
+                      nameKey="etapa"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label={({ name }) => String(name).slice(0, 12)}
+                    >
+                      {metrics.valorPorEtapa.map((_, index) => (
+                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 7 }}>
+              <ChartCard title="Tempo médio por etapa" subtitle="Dias médios em cada card da timeline" height={360}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.tempoMedioPorEtapa} layout="vertical" margin={{ left: 8, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="etapa"
+                      width={140}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => String(v).slice(0, 18)}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="dias" name="Dias" fill={premiumTokens.primary} radius={[0, 8, 8, 0]} maxBarSize={18} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <ChartCard
+                title="Tempo médio e atrasos por etapa"
+                subtitle="Média de dias e quantidade de atrasados (visão do Dashboard)"
+                height={360}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.rankingGargalos} margin={{ bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="etapa"
+                      tick={{ fontSize: 10 }}
+                      interval={0}
+                      angle={-28}
+                      textAnchor="end"
+                      height={60}
+                      tickFormatter={(v) => String(v).slice(0, 14)}
+                    />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="mediaDias" name="Média dias" fill={premiumTokens.orange} radius={[8, 8, 0, 0]} maxBarSize={36} />
+                    <Bar dataKey="atrasados" name="Atrasados" fill={premiumTokens.red} radius={[8, 8, 0, 0]} maxBarSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <ChartCard
+                title="Ranking de responsáveis"
+                subtitle="Em andamento e atrasados por responsável"
+                height={360}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={metrics.rankingResponsaveis} layout="vertical" margin={{ left: 8, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="nome"
+                      width={120}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => String(v).slice(0, 16)}
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="total" name="Em andamento" fill={premiumTokens.primary} radius={[0, 8, 8, 0]} maxBarSize={16} />
+                    <Bar dataKey="atrasados" name="Atrasados" fill={premiumTokens.red} radius={[0, 8, 8, 0]} maxBarSize={16} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </Grid>
           </Grid>
         </motion.div>
       </AnimatePresence>

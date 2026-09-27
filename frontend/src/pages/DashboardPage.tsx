@@ -15,8 +15,6 @@ import type { ReactNode } from 'react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { KpiCard } from '@/components/common/KpiCard'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
-import { RankingCards } from '@/components/dashboard/RankingCards'
 import { TotalIndenizadoCard, ValorASerIndenizadoCard } from '@/components/dashboard/TotalIndenizadoCard'
 import {
   PessoasAtendidasCard,
@@ -654,11 +652,6 @@ export default function DashboardPage() {
           </Box>
         </Grid>
       </Grid>
-
-      <Box sx={{ mt: 3 }}>
-        <DashboardCharts metrics={metrics} />
-      </Box>
-      <RankingCards metrics={metrics} />
 
       {ativo && (
         <KpiDetalheDialog
