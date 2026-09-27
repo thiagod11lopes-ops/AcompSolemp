@@ -45,7 +45,7 @@ export const IMH_ABA_COLUNAS = [
   { key: 'nip', label: 'NIP', width: 108 },
   { key: 'nomeUsuario', label: 'NOME DO USUÁRIO', width: 220 },
   { key: 'vinculo', label: 'VÍNCULO', width: 140 },
-  { key: 'descricao', label: 'DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO', width: 280 },
+  { key: 'descricao', label: 'DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO', width: 360 },
   { key: 'nipTitular', label: 'NIP DO TITULAR', width: 108 },
   { key: 'valorUnit', label: 'VALOR UNIT', width: 110 },
   { key: 'quantidade', label: 'QUANTI.', width: 72 },
