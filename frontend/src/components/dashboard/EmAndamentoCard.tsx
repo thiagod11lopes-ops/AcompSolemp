@@ -30,7 +30,7 @@ interface EmAndamentoCardProps {
 }
 
 export function EmAndamentoCard({ total, porEtapa, onClick }: EmAndamentoCardProps) {
-  const accent = premiumTokens.yellow
+  const accent = premiumTokens.primaryDark
 
   const content = (
     <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
