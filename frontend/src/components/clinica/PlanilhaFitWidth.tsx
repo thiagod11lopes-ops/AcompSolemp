@@ -1,77 +1,24 @@
 import { Box } from '@mui/material'
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import type { ReactNode } from 'react'
 
 interface PlanilhaFitWidthProps {
-  /** Quando true, escala a planilha para ocupar 100% da largura disponível. */
+  /** Quando true, a planilha ocupa 100% da largura (sem scale — fonte permanece legível). */
   enabled: boolean
   children: ReactNode
-  /** Dependências que alteram a largura natural da tabela (colunas, seleção, etc.). */
   remountKey?: string | number
 }
 
 /**
- * Escala o conteúdo para caber exatamente na largura do container
- * (referência: zoom do navegador em 100%), sem rolagem horizontal.
- * Todas as colunas ficam visíveis; rolagem vertical permanece se necessário.
+ * Container de largura total para a planilha expandida.
+ * Não usa transform/scale para não reduzir a fonte das células.
  */
-export function PlanilhaFitWidth({ enabled, children, remountKey }: PlanilhaFitWidthProps) {
-  const viewportRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
-  const [scaledHeight, setScaledHeight] = useState<number | undefined>(undefined)
-
-  useLayoutEffect(() => {
-    if (!enabled) {
-      setScale(1)
-      setScaledHeight(undefined)
-      return
-    }
-
-    const viewport = viewportRef.current
-    const content = contentRef.current
-    if (!viewport || !content) return
-
-    const update = () => {
-      const available = viewport.clientWidth
-      // scrollWidth ignora transform — largura natural da grade.
-      const naturalWidth = Math.max(content.scrollWidth, content.offsetWidth)
-      const naturalHeight = Math.max(content.scrollHeight, content.offsetHeight)
-      if (available <= 0 || naturalWidth <= 0) return
-
-      const nextScale = available / naturalWidth
-      setScale(nextScale)
-      setScaledHeight(naturalHeight * nextScale)
-    }
-
-    // Aguarda o Dialog fullScreen estabilizar o layout.
-    const raf = requestAnimationFrame(() => {
-      update()
-      requestAnimationFrame(update)
-    })
-
-    const ro = new ResizeObserver(() => update())
-    ro.observe(viewport)
-    ro.observe(content)
-    window.addEventListener('resize', update)
-    return () => {
-      cancelAnimationFrame(raf)
-      ro.disconnect()
-      window.removeEventListener('resize', update)
-    }
-  }, [enabled, remountKey])
-
+export function PlanilhaFitWidth({ enabled, children }: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
   }
 
   return (
     <Box
-      ref={viewportRef}
       sx={{
         width: '100%',
         flex: 1,
@@ -79,27 +26,27 @@ export function PlanilhaFitWidth({ enabled, children, remountKey }: PlanilhaFitW
         overflowX: 'hidden',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
+        '& .excel-sheet-grid': {
+          width: '100% !important',
+          maxWidth: '100% !important',
+        },
+        '& table': {
+          width: '100% !important',
+          minWidth: '0 !important',
+          tableLayout: 'fixed',
+        },
+        '& th, & td, & .MuiTableCell-root, & .MuiTypography-root': {
+          minWidth: '0 !important',
+          maxWidth: 'none',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          fontSize: '20px !important',
+          lineHeight: 1.25,
+        },
       }}
     >
-      <Box
-        sx={{
-          width: '100%',
-          height: scaledHeight,
-          position: 'relative',
-        }}
-      >
-        <Box
-          ref={contentRef}
-          sx={{
-            transformOrigin: 'top left',
-            transform: `scale(${scale})`,
-            width: 'max-content',
-            maxWidth: 'none',
-          }}
-        >
-          {children}
-        </Box>
-      </Box>
+      {children}
     </Box>
   )
 }

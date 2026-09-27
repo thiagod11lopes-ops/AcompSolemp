@@ -378,15 +378,21 @@ export function ImhAbaPlanilhaPreview({
             <Box
               className="excel-sheet-grid"
               sx={{
-                width: 'fit-content',
-                maxWidth: expanded ? 'none' : '100%',
-                overflowX: expanded ? 'visible' : 'auto',
+                width: expanded ? '100%' : 'fit-content',
+                maxWidth: '100%',
+                overflowX: expanded ? 'hidden' : 'auto',
                 border: EXCEL_SHEET.border,
-                borderRadius: 1,
+                borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
               }}
             >
-              <Table size="small" sx={{ width: 'auto', tableLayout: 'auto' }}>
+              <Table
+                size="small"
+                sx={{
+                  width: expanded ? '100%' : 'auto',
+                  tableLayout: expanded ? 'fixed' : 'auto',
+                }}
+              >
                 <TableHead>
                   <TableRow>
                     {selectionEnabled ? (
@@ -432,12 +438,30 @@ export function ImhAbaPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {IMH_ABA_COLUNAS.map((col) => (
-                      <TableCell key={col.key} sx={{ ...headerSx, minWidth: col.width }}>
+                      <TableCell
+                        key={col.key}
+                        sx={{
+                          ...headerSx,
+                          minWidth: expanded ? 0 : col.width,
+                          width: expanded ? `${col.width}px` : undefined,
+                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                        }}
+                      >
                         {col.label}
                       </TableCell>
                     ))}
                     {actionsEnabled ? (
-                      <TableCell sx={{ ...headerSx, textAlign: 'center', minWidth: 72 }}>
+                      <TableCell
+                        sx={{
+                          ...headerSx,
+                          textAlign: 'center',
+                          minWidth: expanded ? 0 : 72,
+                          width: expanded ? 56 : 72,
+                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                        }}
+                      >
                         AÇÕES
                       </TableCell>
                     ) : null}
@@ -513,22 +537,36 @@ export function ImhAbaPlanilhaPreview({
                             key={col.key}
                             sx={{
                               ...cellSx,
-                              ...(col.key === 'descricao' || col.key === 'nomeUsuario'
+                              fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                              ...(expanded
                                 ? {
-                                    whiteSpace: 'pre-wrap',
-                                    maxWidth: col.width + 40,
-                                    minWidth: 120,
-                                    textAlign: 'center',
-                                    verticalAlign: 'middle',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'break-word',
+                                    minWidth: 0,
+                                    maxWidth: 'none',
                                   }
-                                : null),
+                                : col.key === 'descricao' || col.key === 'nomeUsuario'
+                                  ? {
+                                      whiteSpace: 'pre-wrap',
+                                      maxWidth: col.width + 40,
+                                      minWidth: 120,
+                                      textAlign: 'center',
+                                      verticalAlign: 'middle',
+                                    }
+                                  : null),
                             }}
                           >
                             {dash(String(linha[col.key] ?? ''))}
                           </TableCell>
                         ))}
                         {actionsEnabled ? (
-                          <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
+                          <TableCell
+                            sx={{
+                              ...cellSx,
+                              textAlign: 'center',
+                              fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                            }}
+                          >
                             <IconButton
                               size="small"
                               aria-label={`Editar linha IMH ${index + 1}`}
