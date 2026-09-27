@@ -10,6 +10,11 @@ import { useCloudAppDataSync } from '@/config/dataSource'
 
 export const CHAT_GRUPO_THREAD_ID = 'grupo'
 
+/** Janela para apagar para todos / editar (estilo WhatsApp ≈ 1 h). */
+export const CHAT_EDIT_DELETE_WINDOW_MS = 60 * 60 * 1000
+
+export const CHAT_DELETED_PLACEHOLDER = 'Esta mensagem foi apagada'
+
 /** Conversa 1:1 entre dois usuários (ids ordenados). */
 export function chatDmThreadId(userIdA: string, userIdB: string): string {
   const [x, y] = [userIdA, userIdB].sort((a, b) => a.localeCompare(b))
@@ -30,6 +35,17 @@ export function parseChatDmPeerId(threadId: string, meuId: string): string | nul
 export function chatThreadInvolvesUser(threadId: string, userId: string): boolean {
   if (threadId === CHAT_GRUPO_THREAD_ID) return true
   return parseChatDmPeerId(threadId, userId) != null
+}
+
+export function isChatMessageVisibleTo(m: ChatMessage, userId: string): boolean {
+  return !(m.apagadaPara ?? []).includes(userId)
+}
+
+export function canEditOrDeleteForEveryone(m: ChatMessage, userId: string): boolean {
+  if (m.autorId !== userId) return false
+  if (m.apagadaParaTodos) return false
+  const age = Date.now() - new Date(m.data).getTime()
+  return age >= 0 && age <= CHAT_EDIT_DELETE_WINDOW_MS
 }
 
 function ensureChat(data: AppData): ChatMessage[] {
@@ -60,10 +76,22 @@ export interface ChatThreadSummary {
   unread: number
 }
 
+function visibleThreadMessages(
+  mensagens: ChatMessage[],
+  threadId: string,
+  userId: string,
+): ChatMessage[] {
+  return mensagens
+    .filter((m) => m.threadId === threadId && isChatMessageVisibleTo(m, userId))
+    .sort((a, b) => a.data.localeCompare(b.data))
+}
+
 function unreadInThread(mensagens: ChatMessage[], threadId: string, user: User): number {
   return mensagens.filter(
     (m) =>
       m.threadId === threadId &&
+      isChatMessageVisibleTo(m, user.id) &&
+      !m.apagadaParaTodos &&
       m.autorId !== user.id &&
       !(m.lidasPor ?? []).includes(user.id),
   ).length
@@ -85,6 +113,19 @@ async function persistChatSend(data: AppData): Promise<void> {
   }
 }
 
+function findOwnedMessage(
+  mensagens: ChatMessage[],
+  messageId: string,
+  user: User,
+): ChatMessage {
+  const msg = mensagens.find((m) => m.id === messageId)
+  if (!msg) throw new Error('Mensagem não encontrada.')
+  if (!chatThreadInvolvesUser(msg.threadId, user.id)) {
+    throw new Error('Sem permissão nesta conversa.')
+  }
+  return msg
+}
+
 export const chatService = {
   async listThreads(user: User): Promise<ChatThreadSummary[]> {
     await delay(null, 80)
@@ -92,9 +133,7 @@ export const chatService = {
     const mensagens = ensureChat(data)
     const peers = listChatParticipants(data, user)
 
-    const grupoMsgs = mensagens
-      .filter((m) => m.threadId === CHAT_GRUPO_THREAD_ID)
-      .sort((a, b) => a.data.localeCompare(b.data))
+    const grupoMsgs = visibleThreadMessages(mensagens, CHAT_GRUPO_THREAD_ID, user.id)
 
     const threads: ChatThreadSummary[] = [
       {
@@ -111,9 +150,7 @@ export const chatService = {
 
     for (const peer of peers) {
       const threadId = chatDmThreadId(user.id, peer.id)
-      const msgs = mensagens
-        .filter((m) => m.threadId === threadId)
-        .sort((a, b) => a.data.localeCompare(b.data))
+      const msgs = visibleThreadMessages(mensagens, threadId, user.id)
       const setor = getRoleLabel(peer.perfil)
       threads.push({
         threadId,
@@ -141,15 +178,14 @@ export const chatService = {
     await delay(null, 50)
     if (!chatThreadInvolvesUser(threadId, user.id)) return []
     const data = await loadLatestAppData()
-    return ensureChat(data)
-      .filter((m) => m.threadId === threadId)
-      .sort((a, b) => a.data.localeCompare(b.data))
+    return visibleThreadMessages(ensureChat(data), threadId, user.id)
   },
 
   async sendMessage(
     user: User,
     threadId: string,
     texto: string,
+    respostaAId?: string | null,
   ): Promise<ChatMessage> {
     await delay(null, 60)
     const limpo = texto.trim()
@@ -166,6 +202,15 @@ export const chatService = {
 
     const data = loadAppData()
     const mensagens = ensureChat(data)
+
+    let respostaValida: string | null = null
+    if (respostaAId) {
+      const alvo = mensagens.find((m) => m.id === respostaAId && m.threadId === threadId)
+      if (alvo && isChatMessageVisibleTo(alvo, user.id) && !alvo.apagadaParaTodos) {
+        respostaValida = alvo.id
+      }
+    }
+
     const msg: ChatMessage = {
       id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       threadId,
@@ -175,8 +220,58 @@ export const chatService = {
       texto: limpo,
       data: new Date().toISOString(),
       lidasPor: [user.id],
+      apagadaPara: [],
+      apagadaParaTodos: false,
+      editadoEm: null,
+      respostaAId: respostaValida,
     }
     mensagens.push(msg)
+    await persistChatSend(data)
+    return msg
+  },
+
+  async editMessage(user: User, messageId: string, texto: string): Promise<ChatMessage> {
+    await delay(null, 60)
+    const limpo = texto.trim()
+    if (!limpo) throw new Error('Digite uma mensagem.')
+    if (limpo.length > 2000) throw new Error('Mensagem muito longa (máx. 2000 caracteres).')
+
+    const data = loadAppData()
+    const mensagens = ensureChat(data)
+    const msg = findOwnedMessage(mensagens, messageId, user)
+    if (!canEditOrDeleteForEveryone(msg, user.id)) {
+      throw new Error('Não é possível editar esta mensagem.')
+    }
+    msg.texto = limpo
+    msg.editadoEm = new Date().toISOString()
+    await persistChatSend(data)
+    return msg
+  },
+
+  async deleteMessageForMe(user: User, messageId: string): Promise<void> {
+    await delay(null, 40)
+    const data = loadAppData()
+    const mensagens = ensureChat(data)
+    const msg = findOwnedMessage(mensagens, messageId, user)
+    const lista = msg.apagadaPara ?? []
+    if (!lista.includes(user.id)) {
+      msg.apagadaPara = [...lista, user.id]
+      await persistChatSend(data)
+    }
+  },
+
+  async deleteMessageForEveryone(user: User, messageId: string): Promise<ChatMessage> {
+    await delay(null, 40)
+    const data = loadAppData()
+    const mensagens = ensureChat(data)
+    const msg = findOwnedMessage(mensagens, messageId, user)
+    if (!canEditOrDeleteForEveryone(msg, user.id)) {
+      throw new Error('Só é possível apagar para todos dentro de 1 hora.')
+    }
+    msg.apagadaParaTodos = true
+    msg.texto = CHAT_DELETED_PLACEHOLDER
+    msg.editadoEm = null
+    msg.respostaAId = null
     await persistChatSend(data)
     return msg
   },
@@ -189,6 +284,8 @@ export const chatService = {
     let changed = false
     for (const m of mensagens) {
       if (m.threadId !== threadId) continue
+      if (!isChatMessageVisibleTo(m, user.id)) continue
+      if (m.apagadaParaTodos) continue
       if (m.autorId === user.id) continue
       if (!(m.lidasPor ?? []).includes(user.id)) {
         m.lidasPor = [...(m.lidasPor ?? []), user.id]
@@ -208,6 +305,8 @@ export const chatService = {
     return mensagens.filter(
       (m) =>
         chatThreadInvolvesUser(m.threadId, user.id) &&
+        isChatMessageVisibleTo(m, user.id) &&
+        !m.apagadaParaTodos &&
         m.autorId !== user.id &&
         !(m.lidasPor ?? []).includes(user.id),
     ).length

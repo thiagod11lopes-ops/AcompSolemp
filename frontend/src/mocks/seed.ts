@@ -486,6 +486,10 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   data.chatMensagens = (data.chatMensagens ?? []).map((m) => ({
     ...m,
     lidasPor: Array.isArray(m.lidasPor) ? m.lidasPor : [],
+    apagadaPara: Array.isArray(m.apagadaPara) ? m.apagadaPara : [],
+    apagadaParaTodos: Boolean(m.apagadaParaTodos),
+    editadoEm: m.editadoEm ?? null,
+    respostaAId: m.respostaAId ?? null,
   }))
   const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
   const bootstrapEmailChanged = ensureBootstrapGoogleEmails(data)

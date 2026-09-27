@@ -5,6 +5,19 @@ import { chatService } from '@/services/chatService'
 import { useAuth } from '@/contexts/AuthContext'
 import { subscribeAppDataChanged } from '@/mocks/seed'
 
+function invalidateChat(
+  queryClient: ReturnType<typeof useQueryClient>,
+  threadId?: string,
+) {
+  if (threadId) {
+    void queryClient.invalidateQueries({ queryKey: ['chat-messages', threadId] })
+  } else {
+    void queryClient.invalidateQueries({ queryKey: ['chat-messages'] })
+  }
+  void queryClient.invalidateQueries({ queryKey: ['chat-threads'] })
+  void queryClient.invalidateQueries({ queryKey: ['chat-unread'] })
+}
+
 export function useActiveChatUser(): User | null {
   const { gestorUser, clinicaUser, ordenadorUser, financeiroUser } = useAuth()
   return gestorUser ?? clinicaUser ?? ordenadorUser ?? financeiroUser ?? null
@@ -59,15 +72,55 @@ export function useSendChatMessage() {
   const user = useActiveChatUser()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ threadId, texto }: { threadId: string; texto: string }) => {
+    mutationFn: ({
+      threadId,
+      texto,
+      respostaAId,
+    }: {
+      threadId: string
+      texto: string
+      respostaAId?: string | null
+    }) => {
       if (!user) throw new Error('Usuário não autenticado.')
-      return chatService.sendMessage(user, threadId, texto)
+      return chatService.sendMessage(user, threadId, texto, respostaAId)
     },
-    onSuccess: (_msg, vars) => {
-      void queryClient.invalidateQueries({ queryKey: ['chat-messages', vars.threadId] })
-      void queryClient.invalidateQueries({ queryKey: ['chat-threads'] })
-      void queryClient.invalidateQueries({ queryKey: ['chat-unread'] })
+    onSuccess: (_msg, vars) => invalidateChat(queryClient, vars.threadId),
+  })
+}
+
+export function useEditChatMessage() {
+  const user = useActiveChatUser()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ messageId, texto }: { messageId: string; texto: string }) => {
+      if (!user) throw new Error('Usuário não autenticado.')
+      return chatService.editMessage(user, messageId, texto)
     },
+    onSuccess: (msg) => invalidateChat(queryClient, msg.threadId),
+  })
+}
+
+export function useDeleteChatMessageForMe() {
+  const user = useActiveChatUser()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ messageId }: { messageId: string; threadId: string }) => {
+      if (!user) throw new Error('Usuário não autenticado.')
+      return chatService.deleteMessageForMe(user, messageId)
+    },
+    onSuccess: (_r, vars) => invalidateChat(queryClient, vars.threadId),
+  })
+}
+
+export function useDeleteChatMessageForEveryone() {
+  const user = useActiveChatUser()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ messageId }: { messageId: string }) => {
+      if (!user) throw new Error('Usuário não autenticado.')
+      return chatService.deleteMessageForEveryone(user, messageId)
+    },
+    onSuccess: (msg) => invalidateChat(queryClient, msg.threadId),
   })
 }
 
@@ -79,11 +132,7 @@ export function useMarkChatThreadRead() {
       if (!user) throw new Error('Usuário não autenticado.')
       return chatService.markThreadRead(user, threadId)
     },
-    onSuccess: (_r, threadId) => {
-      void queryClient.invalidateQueries({ queryKey: ['chat-messages', threadId] })
-      void queryClient.invalidateQueries({ queryKey: ['chat-threads'] })
-      void queryClient.invalidateQueries({ queryKey: ['chat-unread'] })
-    },
+    onSuccess: (_r, threadId) => invalidateChat(queryClient, threadId),
   })
 }
 

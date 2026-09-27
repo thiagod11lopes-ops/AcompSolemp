@@ -5,7 +5,6 @@ import {
   Badge,
   Box,
   IconButton,
-  InputBase,
   List,
   ListItemButton,
   ListItemText,
@@ -16,18 +15,19 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
-import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import { ChatComposer, type ChatComposerMode } from '@/components/chat/ChatComposer'
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble'
 import { ChatModal } from '@/components/chat/ChatModal'
 import {
   useActiveChatUser,
   useAutoMarkChatRead,
   useChatMessages,
   useChatThreads,
+  useEditChatMessage,
   useSendChatMessage,
 } from '@/hooks/useChat'
 import type { ChatThreadSummary } from '@/services/chatService'
-import { formatRelative } from '@/utils/format'
-import { getRoleLabel } from '@/mocks/seed'
+import type { ChatMessage } from '@/types'
 import { premiumTokens } from '@/theme/tokens'
 
 interface ChatDockProps {
@@ -55,6 +55,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
   const user = useActiveChatUser()
   const [threadId, setThreadId] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
+  const [composerMode, setComposerMode] = useState<ChatComposerMode>({ type: 'send' })
   const [modalOpen, setModalOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -63,6 +64,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
   const { data: threads = [] } = useChatThreads(Boolean(user?.id))
   const { data: messages = [] } = useChatMessages(threadId, Boolean(user?.id && threadId))
   const send = useSendChatMessage()
+  const edit = useEditChatMessage()
   useAutoMarkChatRead(threadId ?? '', Boolean(user?.id && threadId))
 
   const activeThread = useMemo(
@@ -76,25 +78,61 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, threadId])
 
+  const resetComposer = () => {
+    setTexto('')
+    setComposerMode({ type: 'send' })
+  }
+
   const handleOpenThread = (id: string) => {
     setThreadId(id)
-    setTexto('')
+    resetComposer()
     setTimeout(() => inputRef.current?.focus(), 80)
   }
 
   const handleBack = () => {
     setThreadId(null)
-    setTexto('')
+    resetComposer()
   }
 
-  const handleSend = () => {
+  const handleEdit = (message: ChatMessage) => {
+    setComposerMode({ type: 'edit', message })
+    setTexto(message.texto)
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
+
+  const handleReply = (message: ChatMessage) => {
+    setComposerMode({ type: 'reply', message })
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
+
+  const handleSubmit = () => {
     const limpo = texto.trim()
-    if (!limpo || !user || !threadId || send.isPending) return
+    if (!limpo || !user || !threadId) return
+
+    if (composerMode.type === 'edit') {
+      if (edit.isPending) return
+      edit.mutate(
+        { messageId: composerMode.message.id, texto: limpo },
+        {
+          onSuccess: () => {
+            resetComposer()
+            inputRef.current?.focus()
+          },
+        },
+      )
+      return
+    }
+
+    if (send.isPending) return
     send.mutate(
-      { threadId, texto: limpo },
+      {
+        threadId,
+        texto: limpo,
+        respostaAId: composerMode.type === 'reply' ? composerMode.message.id : null,
+      },
       {
         onSuccess: () => {
-          setTexto('')
+          resetComposer()
           inputRef.current?.focus()
         },
       },
@@ -197,121 +235,34 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                 : 'Nenhuma mensagem nesta conversa particular. Só vocês dois veem o que for escrito.'}
             </Typography>
           ) : (
-            messages.slice(-50).map((m) => {
-              const mine = m.autorId === user.id
-              return (
-                <Box
-                  key={m.id}
-                  sx={{
-                    alignSelf: mine ? 'flex-end' : 'flex-start',
-                    maxWidth: '92%',
-                  }}
-                >
-                  {!mine ? (
-                    <Typography
-                      sx={{
-                        fontSize: '0.69rem',
-                        fontWeight: 700,
-                        color: 'text.secondary',
-                        mb: 0.15,
-                        ml: 0.4,
-                      }}
-                    >
-                      {m.autorNome}
-                      {isGrupo ? ` · ${getRoleLabel(m.autorPerfil)}` : ''}
-                    </Typography>
-                  ) : null}
-                  <Box
-                    sx={{
-                      px: 1.1,
-                      py: 0.65,
-                      borderRadius: mine ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                      bgcolor: mine ? accent : alpha(theme.palette.text.primary, 0.06),
-                      color: mine ? theme.palette.primary.contrastText : 'text.primary',
-                      border: mine ? 'none' : `1px solid ${theme.palette.divider}`,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: '0.85rem',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {m.texto}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        display: 'block',
-                        mt: 0.2,
-                        textAlign: 'right',
-                        opacity: 0.7,
-                        fontSize: '0.64rem',
-                      }}
-                    >
-                      {formatRelative(m.data)}
-                    </Typography>
-                  </Box>
-                </Box>
-              )
-            })
+            messages.slice(-50).map((m) => (
+              <ChatMessageBubble
+                key={m.id}
+                message={m}
+                allMessages={messages}
+                user={user}
+                isGrupo={isGrupo}
+                compact
+                onEdit={handleEdit}
+                onReply={handleReply}
+              />
+            ))
           )}
           <div ref={bottomRef} />
         </Box>
 
-        <Box
-          component="form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            handleSend()
-          }}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            px: 1,
-            py: 0.85,
-            borderTop: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <InputBase
-            inputRef={inputRef}
-            fullWidth
-            placeholder={isGrupo ? 'Mensagem para o grupo…' : 'Mensagem particular…'}
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-            sx={{
-              fontSize: '0.92rem',
-              px: 1.1,
-              py: 0.45,
-              borderRadius: 999,
-              border: `1px solid ${alpha(accent, 0.22)}`,
-              bgcolor: alpha(theme.palette.background.default, 0.65),
-            }}
-          />
-          <IconButton
-            type="submit"
-            size="small"
-            disabled={!texto.trim() || send.isPending}
-            sx={{
-              bgcolor: accent,
-              color: theme.palette.primary.contrastText,
-              width: 32,
-              height: 32,
-              '&:hover': { bgcolor: theme.palette.primary.dark },
-              '&.Mui-disabled': { bgcolor: alpha(accent, 0.3), color: '#fff' },
-            }}
-          >
-            <SendRoundedIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </Box>
+        <ChatComposer
+          mode={composerMode}
+          texto={texto}
+          onTextoChange={setTexto}
+          onSubmit={handleSubmit}
+          onCancelMode={resetComposer}
+          inputRef={inputRef}
+          user={user}
+          isGrupo={isGrupo}
+          pending={send.isPending || edit.isPending}
+          compact
+        />
       </Box>
     )
   }

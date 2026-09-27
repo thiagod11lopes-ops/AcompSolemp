@@ -6,7 +6,6 @@ import {
   Box,
   Dialog,
   IconButton,
-  InputBase,
   List,
   ListItemButton,
   ListItemText,
@@ -15,20 +14,21 @@ import {
   useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded'
 import ForumRoundedIcon from '@mui/icons-material/ForumRounded'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
-import { formatRelative } from '@/utils/format'
-import { getRoleLabel } from '@/mocks/seed'
+import { ChatComposer, type ChatComposerMode } from '@/components/chat/ChatComposer'
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble'
 import { CHAT_GRUPO_THREAD_ID, type ChatThreadSummary } from '@/services/chatService'
 import {
   useActiveChatUser,
   useAutoMarkChatRead,
   useChatMessages,
   useChatThreads,
+  useEditChatMessage,
   useSendChatMessage,
 } from '@/hooks/useChat'
+import type { ChatMessage } from '@/types'
 import { premiumTokens } from '@/theme/tokens'
 
 interface ChatModalProps {
@@ -58,12 +58,14 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
   const [threadId, setThreadId] = useState<string>(CHAT_GRUPO_THREAD_ID)
   const [mobileShowThread, setMobileShowThread] = useState(false)
   const [texto, setTexto] = useState('')
+  const [composerMode, setComposerMode] = useState<ChatComposerMode>({ type: 'send' })
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const { data: threads = [] } = useChatThreads(open)
   const { data: messages = [] } = useChatMessages(threadId, open)
   const send = useSendChatMessage()
+  const edit = useEditChatMessage()
   useAutoMarkChatRead(threadId, open)
 
   const activeThread = useMemo(
@@ -74,11 +76,16 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
   const particulares = threads.filter((t) => t.kind === 'dm')
   const isGrupo = activeThread?.kind === 'grupo'
 
+  const resetComposer = () => {
+    setTexto('')
+    setComposerMode({ type: 'send' })
+  }
+
   useEffect(() => {
     if (!open) return
     setThreadId(CHAT_GRUPO_THREAD_ID)
     setMobileShowThread(false)
-    setTexto('')
+    resetComposer()
   }, [open])
 
   useEffect(() => {
@@ -88,17 +95,49 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
   const handleSelectThread = (id: string) => {
     setThreadId(id)
     setMobileShowThread(true)
+    resetComposer()
     setTimeout(() => inputRef.current?.focus(), 120)
   }
 
-  const handleSend = () => {
+  const handleEdit = (message: ChatMessage) => {
+    setComposerMode({ type: 'edit', message })
+    setTexto(message.texto)
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
+
+  const handleReply = (message: ChatMessage) => {
+    setComposerMode({ type: 'reply', message })
+    setTimeout(() => inputRef.current?.focus(), 80)
+  }
+
+  const handleSubmit = () => {
     const limpo = texto.trim()
-    if (!limpo || !user || send.isPending) return
+    if (!limpo || !user) return
+
+    if (composerMode.type === 'edit') {
+      if (edit.isPending) return
+      edit.mutate(
+        { messageId: composerMode.message.id, texto: limpo },
+        {
+          onSuccess: () => {
+            resetComposer()
+            inputRef.current?.focus()
+          },
+        },
+      )
+      return
+    }
+
+    if (send.isPending) return
     send.mutate(
-      { threadId, texto: limpo },
+      {
+        threadId,
+        texto: limpo,
+        respostaAId: composerMode.type === 'reply' ? composerMode.message.id : null,
+      },
       {
         onSuccess: () => {
-          setTexto('')
+          resetComposer()
           inputRef.current?.focus()
         },
       },
@@ -375,129 +414,35 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       : 'Nenhuma mensagem nesta conversa particular. Só vocês dois veem o que for escrito.'}
                   </Typography>
                 </Box>
-              ) : (
-                messages.map((m) => {
-                  const mine = m.autorId === user?.id
-                  return (
-                    <Box
-                      key={m.id}
-                      sx={{
-                        alignSelf: mine ? 'flex-end' : 'flex-start',
-                        maxWidth: '78%',
-                        animation: 'chatIn 220ms ease both',
-                        '@keyframes chatIn': {
-                          from: { opacity: 0, transform: 'translateY(6px)' },
-                          to: { opacity: 1, transform: 'translateY(0)' },
-                        },
-                      }}
-                    >
-                      {!mine ? (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: 'block',
-                            mb: 0.35,
-                            ml: 0.75,
-                            fontWeight: 700,
-                            color: 'text.secondary',
-                            fontSize: '0.86rem',
-                          }}
-                        >
-                          {m.autorNome}
-                          {isGrupo ? ` · ${getRoleLabel(m.autorPerfil)}` : ''}
-                        </Typography>
-                      ) : null}
-                      <Box
-                        sx={{
-                          px: 1.5,
-                          py: 1.05,
-                          borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                          bgcolor: mine ? accent : alpha(theme.palette.text.primary, 0.06),
-                          color: mine ? theme.palette.primary.contrastText : 'text.primary',
-                          border: mine ? 'none' : `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                          boxShadow: mine ? `0 6px 18px ${alpha(accent, 0.28)}` : 'none',
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '1.01rem' }}
-                        >
-                          {m.texto}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: 'block',
-                            mt: 0.45,
-                            textAlign: 'right',
-                            opacity: 0.72,
-                            fontSize: '0.75rem',
-                          }}
-                        >
-                          {formatRelative(m.data)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )
-                })
-              )}
+              ) : user ? (
+                messages.map((m) => (
+                  <ChatMessageBubble
+                    key={m.id}
+                    message={m}
+                    allMessages={messages}
+                    user={user}
+                    isGrupo={Boolean(isGrupo)}
+                    onEdit={handleEdit}
+                    onReply={handleReply}
+                  />
+                ))
+              ) : null}
               <div ref={bottomRef} />
             </Box>
 
-            <Box
-              sx={{
-                p: 1.5,
-                borderTop: `1px solid ${theme.palette.divider}`,
-                bgcolor: alpha(theme.palette.background.paper, 0.85),
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              <Box
-                component="form"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleSend()
-                }}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  px: 1.25,
-                  py: 0.6,
-                  borderRadius: 999,
-                  border: `1px solid ${alpha(accent, 0.22)}`,
-                  bgcolor: alpha(theme.palette.background.default, 0.55),
-                }}
-              >
-                <InputBase
-                  inputRef={inputRef}
-                  fullWidth
-                  placeholder={isGrupo ? 'Mensagem para o grupo…' : 'Mensagem particular…'}
-                  value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSend()
-                    }
-                  }}
-                  sx={{ fontSize: '1.04rem', px: 0.5 }}
-                />
-                <IconButton
-                  type="submit"
-                  color="primary"
-                  disabled={!texto.trim() || send.isPending}
-                  sx={{
-                    bgcolor: accent,
-                    color: theme.palette.primary.contrastText,
-                    '&:hover': { bgcolor: theme.palette.primary.dark },
-                    '&.Mui-disabled': { bgcolor: alpha(accent, 0.3), color: '#fff' },
-                  }}
-                >
-                  <SendRoundedIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+            {user ? (
+              <ChatComposer
+                mode={composerMode}
+                texto={texto}
+                onTextoChange={setTexto}
+                onSubmit={handleSubmit}
+                onCancelMode={resetComposer}
+                inputRef={inputRef}
+                user={user}
+                isGrupo={Boolean(isGrupo)}
+                pending={send.isPending || edit.isPending}
+              />
+            ) : null}
           </Box>
         ) : null}
       </Box>

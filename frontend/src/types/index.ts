@@ -801,4 +801,12 @@ export interface ChatMessage {
   data: string
   /** IDs de usuários que já leram a mensagem */
   lidasPor: string[]
+  /** ISO da última edição (estilo WhatsApp: “editada”) */
+  editadoEm?: string | null
+  /** Apagada para todos — permanece o placeholder na conversa */
+  apagadaParaTodos?: boolean
+  /** IDs de usuários que apagaram “só para mim” */
+  apagadaPara?: string[]
+  /** ID da mensagem respondida (citação) */
+  respostaAId?: string | null
 }
