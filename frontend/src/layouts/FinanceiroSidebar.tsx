@@ -114,42 +114,44 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
         </Box>
       )}
       <Divider />
-      <List sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-        {menuItems.map((item) => {
-          const etapa = 'etapa' in item ? item.etapa : undefined
-          const to = etapa
-            ? { pathname: mapPath(item.path), search: `?etapa=${etapa}` }
-            : mapPath(item.path)
-          const etapaAtual = new URLSearchParams(location.search).get('etapa')
-          const isTimelinesPath = location.pathname.includes('/ordenador/timelines')
-          const isActive = etapa
-            ? isTimelinesPath && etapaAtual === etapa
-            : location.pathname.includes(item.path.replace(/^\//, '')) &&
-              !(multiSetor && isTimelinesPath && etapaAtual)
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <List sx={{ flexShrink: 0 }}>
+          {menuItems.map((item) => {
+            const etapa = 'etapa' in item ? item.etapa : undefined
+            const to = etapa
+              ? { pathname: mapPath(item.path), search: `?etapa=${etapa}` }
+              : mapPath(item.path)
+            const etapaAtual = new URLSearchParams(location.search).get('etapa')
+            const isTimelinesPath = location.pathname.includes('/ordenador/timelines')
+            const isActive = etapa
+              ? isTimelinesPath && etapaAtual === etapa
+              : location.pathname.includes(item.path.replace(/^\//, '')) &&
+                !(multiSetor && isTimelinesPath && etapaAtual)
 
-          return (
-            <ListItemButton
-              key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
-              component={NavLink}
-              to={to}
-              end={!etapa}
-              onClick={isMobile ? onClose : undefined}
-              selected={Boolean(isActive)}
-              sx={{
-                '&.active, &.Mui-selected': {
-                  bgcolor: 'action.selected',
-                  borderRight: 3,
-                  borderColor: 'success.main',
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          )
-        })}
-      </List>
-      <ChatDock />
+            return (
+              <ListItemButton
+                key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
+                component={NavLink}
+                to={to}
+                end={!etapa}
+                onClick={isMobile ? onClose : undefined}
+                selected={Boolean(isActive)}
+                sx={{
+                  '&.active, &.Mui-selected': {
+                    bgcolor: 'action.selected',
+                    borderRight: 3,
+                    borderColor: 'success.main',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            )
+          })}
+        </List>
+        <ChatDock />
+      </Box>
     </Box>
   )
 

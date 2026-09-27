@@ -71,27 +71,29 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </Box>
       )}
       <Divider />
-      <List sx={{ px: 0.5, py: 1, flex: 1, overflow: 'auto', minHeight: 0 }}>
-        {menuItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            component={NavLink}
-            to={mapPath(item.path)}
-            onClick={isMobile ? onClose : undefined}
-          >
-            <ListItemIcon sx={{ minWidth: 38, color: 'text.secondary' }}>{item.icon}</ListItemIcon>
-            <ListItemText
-              primary={item.label}
-              slotProps={{
-                primary: {
-                  sx: { fontWeight: 600, fontSize: '0.925rem', letterSpacing: '-0.015em' },
-                },
-              }}
-            />
-          </ListItemButton>
-        ))}
-      </List>
-      <ChatDock />
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <List sx={{ px: 0.5, py: 1, flexShrink: 0 }}>
+          {menuItems.map((item) => (
+            <ListItemButton
+              key={item.path}
+              component={NavLink}
+              to={mapPath(item.path)}
+              onClick={isMobile ? onClose : undefined}
+            >
+              <ListItemIcon sx={{ minWidth: 38, color: 'text.secondary' }}>{item.icon}</ListItemIcon>
+              <ListItemText
+                primary={item.label}
+                slotProps={{
+                  primary: {
+                    sx: { fontWeight: 600, fontSize: '0.925rem', letterSpacing: '-0.015em' },
+                  },
+                }}
+              />
+            </ListItemButton>
+          ))}
+        </List>
+        <ChatDock />
+      </Box>
     </Box>
   )
 

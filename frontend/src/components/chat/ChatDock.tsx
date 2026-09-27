@@ -72,9 +72,10 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
           borderTop: fillHeight ? 'none' : `1px solid ${theme.palette.divider}`,
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: fillHeight ? 'none' : 280,
-          minHeight: fillHeight ? 0 : 200,
+          maxHeight: fillHeight ? 'none' : 260,
+          minHeight: fillHeight ? 0 : 180,
           height: fillHeight ? '100%' : undefined,
+          mt: fillHeight ? 0 : 0.5,
           bgcolor: alpha(theme.palette.background.paper, 0.92),
         }}
       >
