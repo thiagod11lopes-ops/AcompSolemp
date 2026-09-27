@@ -257,8 +257,8 @@ export function ImhAbaForm({
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
       >
-        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.5 }}>
-          <PlanilhaEditSection title="Cabeçalho" subtitle="Dados gerais da planilha">
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1 }}>
+          <PlanilhaEditSection title="Cabeçalho" columns={2}>
             <TextField
               label="Clínica"
               value={value.clinica}
@@ -266,7 +266,7 @@ export function ImhAbaForm({
               placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
               size="small"
               fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+              sx={planilhaEditFieldSx}
             />
             <TextField
               label="Nº CP (ANEXO)"
@@ -275,11 +275,11 @@ export function ImhAbaForm({
               placeholder="25/2026"
               size="small"
               fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+              sx={planilhaEditFieldSx}
             />
           </PlanilhaEditSection>
 
-          <PlanilhaEditSection title="Beneficiário" subtitle="Identificação do usuário e vínculo">
+          <PlanilhaEditSection title="Beneficiário" columns={3}>
             <TextField
               label="DATA"
               value={linhaDraft.data}
@@ -297,14 +297,6 @@ export function ImhAbaForm({
               size="small"
               fullWidth
               sx={planilhaEditFieldSx}
-            />
-            <TextField
-              label="NOME DO USUÁRIO"
-              value={linhaDraft.nomeUsuario}
-              onChange={(e) => updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
             />
             <TextField
               select
@@ -328,6 +320,14 @@ export function ImhAbaForm({
               ))}
             </TextField>
             <TextField
+              label="NOME DO USUÁRIO"
+              value={linhaDraft.nomeUsuario}
+              onChange={(e) => updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: 'span 2' } }}
+            />
+            <TextField
               label="NIP DO TITULAR"
               value={
                 isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
@@ -339,7 +339,7 @@ export function ImhAbaForm({
               slotProps={{
                 input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
               }}
-              helperText={
+              title={
                 isVinculoTitular(linhaDraft.vinculo)
                   ? 'Igual ao NIP quando o vínculo é TITULAR'
                   : linhaDraft.vinculo
@@ -350,10 +350,7 @@ export function ImhAbaForm({
             />
           </PlanilhaEditSection>
 
-          <PlanilhaEditSection
-            title="Procedimento"
-            subtitle="Descrição do procedimento ou medicamento"
-          >
+          <PlanilhaEditSection title="Procedimento e valores" columns={4}>
             <TextField
               label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
               value={linhaDraft.descricao}
@@ -361,12 +358,10 @@ export function ImhAbaForm({
               size="small"
               fullWidth
               multiline
-              minRows={3}
+              minRows={2}
+              maxRows={3}
               sx={planilhaEditMultilineSx}
             />
-          </PlanilhaEditSection>
-
-          <PlanilhaEditSection title="Valores" subtitle="Unitário, quantidade e totais calculados">
             <TextField
               label="VALOR UNIT"
               value={linhaDraft.valorUnit}
