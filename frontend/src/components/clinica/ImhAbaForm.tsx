@@ -1,20 +1,14 @@
 import { useRef, useState } from 'react'
-import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  MenuItem,
-  Snackbar,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Alert, Box, MenuItem, Snackbar, TextField } from '@mui/material'
 import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhAbaPlanilhaPreview } from '@/components/clinica/ImhAbaPlanilhaPreview'
+import {
+  PlanilhaEditSection,
+  PlanilhaLinhaEditDialog,
+  planilhaEditFieldSx,
+  planilhaEditMultilineSx,
+} from '@/components/clinica/PlanilhaLinhaEditDialog'
 import {
   createEmptyImhAbaLinha,
   formatImhData,
@@ -50,28 +44,6 @@ interface ImhAbaFormProps {
 }
 
 const VINCULOS = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO', 'OUTROS'] as const
-
-const compactFieldSx = {
-  '& .MuiInputBase-root': { fontSize: '0.78rem' },
-  '& .MuiInputBase-input': { fontSize: '0.78rem', py: 0.65 },
-  '& .MuiInputLabel-root': { fontSize: '0.78rem' },
-} as const
-
-const multilineFieldSx = {
-  ...compactFieldSx,
-  gridColumn: '1 / -1',
-  '& .MuiInputBase-root': {
-    fontSize: '0.78rem',
-    alignItems: 'flex-start',
-  },
-  '& .MuiInputBase-input': {
-    fontSize: '0.78rem',
-    lineHeight: 1.35,
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
-  },
-} as const
 
 function cloneLinha(linha: ImhAbaLinha): ImhAbaLinha {
   return { ...linha }
@@ -278,216 +250,158 @@ export function ImhAbaForm({
         onDataFiltroChange={onDataFiltroChange}
       />
 
-      <Dialog
+      <PlanilhaLinhaEditDialog
         open={Boolean(editingLinhaId)}
+        title="Editar IMH"
+        badge="IMH"
         onClose={handleCancelLinha}
-        fullWidth
-        maxWidth="sm"
-        // Acima da planilha expandida (modal + 10).
-        sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
-        slotProps={{
-          paper: {
-            sx: { borderRadius: 2.5 },
-          },
-        }}
+        onSave={handleAdicionarLinha}
       >
-        <DialogTitle sx={{ pb: 0.5, fontWeight: 800 }}>
-          Editando — IMH
-          <Typography
-            component="span"
-            variant="body2"
-            color="text.secondary"
-            sx={{ display: 'block', fontWeight: 400, mt: 0.35 }}
-          >
-            Altere o lançamento selecionado. A planilha atualiza ao vivo.
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers sx={{ pt: 1.5 }}>
-          <Box sx={{ display: 'grid', gap: 1.5 }}>
-            <Box>
-              <Typography
-                variant="overline"
-                sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-              >
-                Cabeçalho
-              </Typography>
-              <Box
-                sx={{
-                  mt: 0.5,
-                  display: 'grid',
-                  gap: 0.85,
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                }}
-              >
-                <TextField
-                  label="Clínica"
-                  value={value.clinica}
-                  onChange={(e) => setHeaderField('clinica', formatImhUppercase(e.target.value))}
-                  placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
-                  size="small"
-                  fullWidth
-                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-                />
-                <TextField
-                  label="Nº CP (ANEXO)"
-                  value={value.numeroCp}
-                  onChange={(e) => setHeaderField('numeroCp', formatImhNumeroCp(e.target.value))}
-                  placeholder="25/2026"
-                  size="small"
-                  fullWidth
-                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-                />
-              </Box>
-            </Box>
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.5 }}>
+          <PlanilhaEditSection title="Cabeçalho" subtitle="Dados gerais da planilha">
+            <TextField
+              label="Clínica"
+              value={value.clinica}
+              onChange={(e) => setHeaderField('clinica', formatImhUppercase(e.target.value))}
+              placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="Nº CP (ANEXO)"
+              value={value.numeroCp}
+              onChange={(e) => setHeaderField('numeroCp', formatImhNumeroCp(e.target.value))}
+              placeholder="25/2026"
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
+          </PlanilhaEditSection>
 
-            <Box ref={linhaFormRef}>
-              <Typography
-                variant="overline"
-                sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-              >
-                Lançamento
-              </Typography>
-              <Box
-                sx={{
-                  mt: 0.5,
-                  display: 'grid',
-                  gap: 0.85,
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                }}
-              >
-                <TextField
-                  label="DATA"
-                  value={linhaDraft.data}
-                  onChange={(e) => updateDraft({ data: formatImhData(e.target.value) })}
-                  placeholder="dd/mm/aa"
-                  size="small"
-                  fullWidth
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="NIP"
-                  value={linhaDraft.nip}
-                  onChange={(e) => updateDraft({ nip: formatImhNip(e.target.value) })}
-                  placeholder="00.0000.00"
-                  size="small"
-                  fullWidth
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="NOME DO USUÁRIO"
-                  value={linhaDraft.nomeUsuario}
-                  onChange={(e) =>
-                    updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })
-                  }
-                  size="small"
-                  fullWidth
-                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-                />
-                <TextField
-                  select
-                  label="VÍNCULO"
-                  value={linhaDraft.vinculo || ''}
-                  onChange={(e) => {
-                    const vinculo = formatImhUppercase(e.target.value)
-                    updateDraft(
-                      isVinculoTitular(vinculo)
-                        ? { vinculo }
-                        : { vinculo, nipTitular: '' },
-                    )
-                  }}
-                  size="small"
-                  fullWidth
-                  sx={compactFieldSx}
-                >
-                  <MenuItem value="">—</MenuItem>
-                  {VINCULOS.map((item) => (
-                    <MenuItem key={item} value={item}>
-                      {item}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="NIP DO TITULAR"
-                  value={
-                    isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
-                  }
-                  onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
-                  placeholder="00.0000.00"
-                  size="small"
-                  fullWidth
-                  slotProps={{
-                    input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
-                  }}
-                  helperText={
-                    isVinculoTitular(linhaDraft.vinculo)
-                      ? 'Igual ao NIP quando o vínculo é TITULAR'
-                      : linhaDraft.vinculo
-                        ? 'Preencha manualmente o NIP do titular'
-                        : undefined
-                  }
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
-                  value={linhaDraft.descricao}
-                  onChange={(e) => updateDraft({ descricao: formatImhUppercase(e.target.value) })}
-                  size="small"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  sx={multilineFieldSx}
-                />
-                <TextField
-                  label="VALOR UNIT"
-                  value={linhaDraft.valorUnit}
-                  onChange={(e) => updateDraft({ valorUnit: formatImhMoeda(e.target.value) })}
-                  size="small"
-                  fullWidth
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="QUANTI."
-                  value={linhaDraft.quantidade}
-                  onChange={(e) =>
-                    updateDraft({ quantidade: formatImhQuantidade(e.target.value) })
-                  }
-                  size="small"
-                  fullWidth
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="VALOR TOTAL"
-                  value={linhaDraft.valorTotal}
-                  size="small"
-                  fullWidth
-                  slotProps={{ input: { readOnly: true } }}
-                  sx={compactFieldSx}
-                />
-                <TextField
-                  label="% A INDENIZAR"
-                  value={linhaDraft.pctIndenizar}
-                  size="small"
-                  fullWidth
-                  slotProps={{ input: { readOnly: true } }}
-                  sx={compactFieldSx}
-                />
-              </Box>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
-          <Button onClick={handleCancelLinha} sx={{ textTransform: 'none' }}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleAdicionarLinha}
-            sx={{ textTransform: 'none', fontWeight: 700 }}
+          <PlanilhaEditSection title="Beneficiário" subtitle="Identificação do usuário e vínculo">
+            <TextField
+              label="DATA"
+              value={linhaDraft.data}
+              onChange={(e) => updateDraft({ data: formatImhData(e.target.value) })}
+              placeholder="dd/mm/aa"
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="NIP"
+              value={linhaDraft.nip}
+              onChange={(e) => updateDraft({ nip: formatImhNip(e.target.value) })}
+              placeholder="00.0000.00"
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="NOME DO USUÁRIO"
+              value={linhaDraft.nomeUsuario}
+              onChange={(e) => updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              select
+              label="VÍNCULO"
+              value={linhaDraft.vinculo || ''}
+              onChange={(e) => {
+                const vinculo = formatImhUppercase(e.target.value)
+                updateDraft(
+                  isVinculoTitular(vinculo) ? { vinculo } : { vinculo, nipTitular: '' },
+                )
+              }}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            >
+              <MenuItem value="">—</MenuItem>
+              {VINCULOS.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="NIP DO TITULAR"
+              value={
+                isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
+              }
+              onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
+              placeholder="00.0000.00"
+              size="small"
+              fullWidth
+              slotProps={{
+                input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
+              }}
+              helperText={
+                isVinculoTitular(linhaDraft.vinculo)
+                  ? 'Igual ao NIP quando o vínculo é TITULAR'
+                  : linhaDraft.vinculo
+                    ? 'Preencha manualmente o NIP do titular'
+                    : undefined
+              }
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection
+            title="Procedimento"
+            subtitle="Descrição do procedimento ou medicamento"
           >
-            Salvar lançamento
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <TextField
+              label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
+              value={linhaDraft.descricao}
+              onChange={(e) => updateDraft({ descricao: formatImhUppercase(e.target.value) })}
+              size="small"
+              fullWidth
+              multiline
+              minRows={3}
+              sx={planilhaEditMultilineSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection title="Valores" subtitle="Unitário, quantidade e totais calculados">
+            <TextField
+              label="VALOR UNIT"
+              value={linhaDraft.valorUnit}
+              onChange={(e) => updateDraft({ valorUnit: formatImhMoeda(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="QUANTI."
+              value={linhaDraft.quantidade}
+              onChange={(e) => updateDraft({ quantidade: formatImhQuantidade(e.target.value) })}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="VALOR TOTAL"
+              value={linhaDraft.valorTotal}
+              size="small"
+              fullWidth
+              slotProps={{ input: { readOnly: true } }}
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="% A INDENIZAR"
+              value={linhaDraft.pctIndenizar}
+              size="small"
+              fullWidth
+              slotProps={{ input: { readOnly: true } }}
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+        </Box>
+      </PlanilhaLinhaEditDialog>
 
       {!hideImport ? (
         <ConmedEscolherAbaModal

@@ -1,19 +1,15 @@
 import { useRef, useState } from 'react'
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-} from '@mui/material'
+import { Box, TextField } from '@mui/material'
 import { DivMaterialPlanilhaPreview } from '@/components/clinica/DivMaterialPlanilhaPreview'
+import {
+  PlanilhaEditSection,
+  PlanilhaLinhaEditDialog,
+  planilhaEditFieldSx,
+  planilhaEditMultilineSx,
+} from '@/components/clinica/PlanilhaLinhaEditDialog'
 import { formatCnpj } from '@/utils/format'
 import {
   createEmptyDivMaterialLinha,
-  DIV_MATERIAL_COLUNAS,
   divMaterialLinhaHasContent,
   sortDivMaterialLinhas,
   withNormalizedDivMaterialLinha,
@@ -33,28 +29,6 @@ interface DivMaterialFormProps {
   dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
   onDataFiltroChange: (next: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro) => void
 }
-
-const compactFieldSx = {
-  '& .MuiInputBase-root': { fontSize: '0.78rem' },
-  '& .MuiInputBase-input': { fontSize: '0.78rem', py: 0.65 },
-  '& .MuiInputLabel-root': { fontSize: '0.78rem' },
-} as const
-
-const multilineFieldSx = {
-  ...compactFieldSx,
-  gridColumn: '1 / -1',
-  '& .MuiInputBase-root': {
-    fontSize: '0.78rem',
-    alignItems: 'flex-start',
-  },
-  '& .MuiInputBase-input': {
-    fontSize: '0.78rem',
-    lineHeight: 1.35,
-    whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
-  },
-} as const
 
 function cloneLinha(linha: DivMaterialLinha): DivMaterialLinha {
   return { ...linha }
@@ -116,6 +90,12 @@ export function DivMaterialForm({
     syncDraftToList(withNormalizedDivMaterialLinha({ ...linhaDraft, ...patch }))
   }
 
+  const setField = (key: keyof Omit<DivMaterialLinha, 'id' | 'sourceKey'>, raw: string) => {
+    updateDraft({ [key]: formatFieldValue(key, raw) } as Partial<
+      Omit<DivMaterialLinha, 'id' | 'sourceKey'>
+    >)
+  }
+
   const resetLinhaForm = () => {
     setLinhaDraft(createEmptyDivMaterialLinha())
     setEditingLinhaId(null)
@@ -169,8 +149,6 @@ export function DivMaterialForm({
     resetLinhaForm()
   }
 
-  const fieldFullWidth = new Set(['descricaoMaterial', 'nomePaciente', 'fornecedor'])
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
       <DivMaterialPlanilhaPreview
@@ -187,89 +165,152 @@ export function DivMaterialForm({
         onDataFiltroChange={onDataFiltroChange}
       />
 
-      <Dialog
+      <PlanilhaLinhaEditDialog
         open={Boolean(editingLinhaId)}
+        title="Editar Div. Material"
+        badge="Div. Material"
         onClose={handleCancelLinha}
-        fullWidth
-        maxWidth="sm"
-        // Acima da planilha expandida (modal + 10).
-        sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
-        slotProps={{
-          paper: {
-            sx: { borderRadius: 2.5 },
-          },
-        }}
+        onSave={handleAdicionarLinha}
       >
-        <DialogTitle sx={{ pb: 0.5, fontWeight: 800 }}>
-          Editando — Div. Material
-          <Typography
-            component="span"
-            variant="body2"
-            color="text.secondary"
-            sx={{ display: 'block', fontWeight: 400, mt: 0.35 }}
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.5 }}>
+          <PlanilhaEditSection
+            title="Procedimento"
+            subtitle="Data, modalidade e identificação do item"
           >
-            Altere o lançamento selecionado. A planilha atualiza ao vivo.
-          </Typography>
-        </DialogTitle>
-        <DialogContent dividers sx={{ pt: 1.5 }}>
-          <Box ref={linhaFormRef}>
-            <Typography
-              variant="overline"
-              sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-            >
-              Lançamento
-            </Typography>
-            <Box
-              sx={{
-                mt: 0.5,
-                display: 'grid',
-                gap: 0.85,
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              }}
-            >
-              {DIV_MATERIAL_COLUNAS.map((col) => {
-                const key = col.key
-                const multiline = key === 'descricaoMaterial'
-                return (
-                  <TextField
-                    key={key}
-                    label={col.label}
-                    value={String(linhaDraft[key] ?? '')}
-                    onChange={(e) =>
-                      updateDraft({ [key]: formatFieldValue(key, e.target.value) } as Partial<
-                        Omit<DivMaterialLinha, 'id' | 'sourceKey'>
-                      >)
-                    }
-                    size="small"
-                    fullWidth
-                    multiline={multiline}
-                    minRows={multiline ? 2 : undefined}
-                    sx={
-                      fieldFullWidth.has(key) || multiline
-                        ? multiline
-                          ? multilineFieldSx
-                          : { ...compactFieldSx, gridColumn: { sm: '1 / -1' } }
-                        : compactFieldSx
-                    }
-                  />
-                )
-              })}
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
-          <Button onClick={handleCancelLinha} sx={{ textTransform: 'none' }}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleAdicionarLinha}
-            sx={{ textTransform: 'none', fontWeight: 700 }}
-          >
-            Salvar lançamento
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <TextField
+              label="Data do procedimento"
+              value={linhaDraft.dataProcedimento}
+              onChange={(e) => setField('dataProcedimento', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="Modalidade licitatória"
+              value={linhaDraft.modalidadeLicitatoria}
+              onChange={(e) => setField('modalidadeLicitatoria', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="UASG"
+              value={linhaDraft.uasg}
+              onChange={(e) => setField('uasg', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="NUP (modalidade)"
+              value={linhaDraft.nupModalidade}
+              onChange={(e) => setField('nupModalidade', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="N° do item"
+              value={linhaDraft.numeroItem}
+              onChange={(e) => setField('numeroItem', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection title="Material e paciente" subtitle="Descrição e dados do paciente">
+            <TextField
+              label="Descrição do material"
+              value={linhaDraft.descricaoMaterial}
+              onChange={(e) => setField('descricaoMaterial', e.target.value)}
+              size="small"
+              fullWidth
+              multiline
+              minRows={3}
+              sx={planilhaEditMultilineSx}
+            />
+            <TextField
+              label="Nome do paciente"
+              value={linhaDraft.nomePaciente}
+              onChange={(e) => setField('nomePaciente', e.target.value)}
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="NIP"
+              value={linhaDraft.nip}
+              onChange={(e) => setField('nip', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection title="Documentação" subtitle="Mapa, vale de sala e NUPs">
+            <TextField
+              label="Mapa"
+              value={linhaDraft.mapa}
+              onChange={(e) => setField('mapa', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="Vale de sala"
+              value={linhaDraft.valeSala}
+              onChange={(e) => setField('valeSala', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="Vigência"
+              value={linhaDraft.vigencia}
+              onChange={(e) => setField('vigencia', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="NUP SIGAD"
+              value={linhaDraft.nupSigad}
+              onChange={(e) => setField('nupSigad', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection title="Fornecedor e valor" subtitle="Dados comerciais do lançamento">
+            <TextField
+              label="Fornecedor"
+              value={linhaDraft.fornecedor}
+              onChange={(e) => setField('fornecedor', e.target.value)}
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
+            <TextField
+              label="CNPJ"
+              value={linhaDraft.cnpj}
+              onChange={(e) => setField('cnpj', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+            <TextField
+              label="Valor Total"
+              value={linhaDraft.valorTotal}
+              onChange={(e) => setField('valorTotal', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+        </Box>
+      </PlanilhaLinhaEditDialog>
     </Box>
   )
 }
