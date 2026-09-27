@@ -25,7 +25,7 @@ export const dashboardCardTitleSx = {
   textShadow: '0 1px 2px rgba(0,0,0,0.08)',
 } as const
 
-/** Ícone do card — deslocado 10% para cima. */
+/** Ícone do card — deslocado 25% para cima (10% + 15%). */
 export const dashboardCardIconOffsetSx = {
-  transform: 'translateY(-10%)',
+  transform: 'translateY(-25%)',
 } as const
