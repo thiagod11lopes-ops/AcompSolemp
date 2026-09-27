@@ -172,11 +172,8 @@ export function DivMaterialForm({
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
       >
-        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.5 }}>
-          <PlanilhaEditSection
-            title="Procedimento"
-            subtitle="Data, modalidade e identificação do item"
-          >
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1 }}>
+          <PlanilhaEditSection title="Procedimento" columns={3}>
             <TextField
               label="Data do procedimento"
               value={linhaDraft.dataProcedimento}
@@ -217,27 +214,6 @@ export function DivMaterialForm({
               fullWidth
               sx={planilhaEditFieldSx}
             />
-          </PlanilhaEditSection>
-
-          <PlanilhaEditSection title="Material e paciente" subtitle="Descrição e dados do paciente">
-            <TextField
-              label="Descrição do material"
-              value={linhaDraft.descricaoMaterial}
-              onChange={(e) => setField('descricaoMaterial', e.target.value)}
-              size="small"
-              fullWidth
-              multiline
-              minRows={3}
-              sx={planilhaEditMultilineSx}
-            />
-            <TextField
-              label="Nome do paciente"
-              value={linhaDraft.nomePaciente}
-              onChange={(e) => setField('nomePaciente', e.target.value)}
-              size="small"
-              fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
             <TextField
               label="NIP"
               value={linhaDraft.nip}
@@ -248,7 +224,37 @@ export function DivMaterialForm({
             />
           </PlanilhaEditSection>
 
-          <PlanilhaEditSection title="Documentação" subtitle="Mapa, vale de sala e NUPs">
+          <PlanilhaEditSection title="Material e paciente" columns={3}>
+            <TextField
+              label="Descrição do material"
+              value={linhaDraft.descricaoMaterial}
+              onChange={(e) => setField('descricaoMaterial', e.target.value)}
+              size="small"
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={3}
+              sx={planilhaEditMultilineSx}
+            />
+            <TextField
+              label="Nome do paciente"
+              value={linhaDraft.nomePaciente}
+              onChange={(e) => setField('nomePaciente', e.target.value)}
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: 'span 2' } }}
+            />
+            <TextField
+              label="Fornecedor"
+              value={linhaDraft.fornecedor}
+              onChange={(e) => setField('fornecedor', e.target.value)}
+              size="small"
+              fullWidth
+              sx={planilhaEditFieldSx}
+            />
+          </PlanilhaEditSection>
+
+          <PlanilhaEditSection title="Documentação e valor" columns={4}>
             <TextField
               label="Mapa"
               value={linhaDraft.mapa}
@@ -281,24 +287,13 @@ export function DivMaterialForm({
               fullWidth
               sx={planilhaEditFieldSx}
             />
-          </PlanilhaEditSection>
-
-          <PlanilhaEditSection title="Fornecedor e valor" subtitle="Dados comerciais do lançamento">
-            <TextField
-              label="Fornecedor"
-              value={linhaDraft.fornecedor}
-              onChange={(e) => setField('fornecedor', e.target.value)}
-              size="small"
-              fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
             <TextField
               label="CNPJ"
               value={linhaDraft.cnpj}
               onChange={(e) => setField('cnpj', e.target.value)}
               size="small"
               fullWidth
-              sx={planilhaEditFieldSx}
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: 'span 2' } }}
             />
             <TextField
               label="Valor Total"
@@ -306,7 +301,7 @@ export function DivMaterialForm({
               onChange={(e) => setField('valorTotal', e.target.value)}
               size="small"
               fullWidth
-              sx={planilhaEditFieldSx}
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: 'span 2' } }}
             />
           </PlanilhaEditSection>
         </Box>
