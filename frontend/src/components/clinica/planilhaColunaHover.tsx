@@ -52,7 +52,7 @@ interface UsePlanilhaColunaHoverOptions {
   descricaoKey?: string
   /** Largura mínima em caracteres (aprox.) por chave de coluna. */
   minCharsByKey?: Record<string, number>
-  /** Textos das células por coluna (linhas filtradas) — usado no hover. */
+  /** Textos das células por coluna (linhas filtradas) — usado ao expandir. */
   cellTextsByKey?: Record<string, string[]>
   /** Ref da tabela ou container para medir a largura disponível. */
   tableRef?: RefObject<HTMLElement | null>
@@ -62,13 +62,14 @@ interface UsePlanilhaColunaHoverOptions {
 
 /**
  * Larguras que somam o espaço disponível (seleção/ações fixas).
- * Hover: alarga a coluna na horizontal até caber todo o conteúdo (sem quebra).
+ * Clique na célula: alarga a coluna até caber o conteúdo; clique na mesma
+ * fecha; clique em outra troca (fecha a anterior e abre a nova).
  */
 export function usePlanilhaColunaHover(
   columns: readonly ColDef[],
   options: UsePlanilhaColunaHoverOptions = {},
 ) {
-  const [hoveredColKey, setHoveredColKey] = useState<string | null>(null)
+  const [expandedColKey, setExpandedColKey] = useState<string | null>(null)
   const [tableWidthPx, setTableWidthPx] = useState(0)
   const selectionEnabled = Boolean(options.selectionEnabled)
   const actionsEnabled = Boolean(options.actionsEnabled)
@@ -124,25 +125,25 @@ export function usePlanilhaColunaHover(
     const percents: Record<string, string> = {}
     const minWidths: Record<string, string | undefined> = {}
 
-    if (hoveredColKey) {
-      const neededPx = maxContentWidthPx(cellTextsByKey?.[hoveredColKey], font)
-      const hoveredBase =
-        bases.find((b) => b.key === hoveredColKey)?.base ?? baseSum / Math.max(columns.length, 1)
-      const baseSharePx = (hoveredBase / baseSum) * availablePx
-      const minHovered = minPxByKey[hoveredColKey] ?? 0
+    if (expandedColKey) {
+      const neededPx = maxContentWidthPx(cellTextsByKey?.[expandedColKey], font)
+      const expandedBase =
+        bases.find((b) => b.key === expandedColKey)?.base ?? baseSum / Math.max(columns.length, 1)
+      const baseSharePx = (expandedBase / baseSum) * availablePx
+      const minExpanded = minPxByKey[expandedColKey] ?? 0
       const fitPx = Math.round(
         Math.min(
           availablePx * 0.92,
-          Math.max(neededPx, baseSharePx, minHovered, 48),
+          Math.max(neededPx, baseSharePx, minExpanded, 48),
         ),
       )
       const othersSum =
-        bases.filter((b) => b.key !== hoveredColKey).reduce((a, b) => a + b.base, 0) || 1
+        bases.filter((b) => b.key !== expandedColKey).reduce((a, b) => a + b.base, 0) || 1
 
       for (const item of bases) {
-        if (item.key === hoveredColKey) {
+        if (item.key === expandedColKey) {
           percents[item.key] = `${fitPx}px`
-          minWidths[item.key] = `${Math.max(fitPx, minHovered)}px`
+          minWidths[item.key] = `${Math.max(fitPx, minExpanded)}px`
         } else {
           const frac = item.base / othersSum
           percents[item.key] =
@@ -202,7 +203,7 @@ export function usePlanilhaColunaHover(
     descricaoKey,
     fontSizePx,
     fontWeight,
-    hoveredColKey,
+    expandedColKey,
     minCharsByKey,
     selectionEnabled,
     tableWidthPx,
@@ -214,18 +215,28 @@ export function usePlanilhaColunaHover(
   const resolveColMinWidth = (key: string): string | number =>
     layout.minWidths[key] ?? 0
 
-  const isColHovered = (key: string) => hoveredColKey === key
+  const isColExpanded = (key: string) => expandedColKey === key
 
-  const colHoverHandlers = (key: string) => ({
-    onMouseEnter: () => setHoveredColKey(key),
-    onMouseLeave: () => setHoveredColKey(null),
+  /** Clique: mesma coluna fecha; outra coluna troca (fecha a anterior). */
+  const colClickHandlers = (key: string) => ({
+    onClick: (event: { stopPropagation?: () => void }) => {
+      event.stopPropagation?.()
+      setExpandedColKey((prev) => (prev === key ? null : key))
+    },
   })
 
+  // Aliases mantidos para compatibilidade com os previews existentes
+  const isColHovered = isColExpanded
+  const colHoverHandlers = colClickHandlers
+
   return {
-    hoveredColKey,
+    expandedColKey,
+    hoveredColKey: expandedColKey,
     resolveColWidth,
     resolveColMinWidth,
+    isColExpanded,
     isColHovered,
+    colClickHandlers,
     colHoverHandlers,
     selectionWidth: layout.selectionWidth,
     actionsWidth: layout.actionsWidth,
@@ -234,7 +245,7 @@ export function usePlanilhaColunaHover(
 
 /**
  * Conteúdo da célula.
- * - padrão: uma linha com reticências; no hover a coluna alarga.
+ * - padrão: uma linha com reticências; ao clicar a coluna alarga.
  * - allowWrap: respeita quebras `\n` (ex.: limite gramatical de 50 chars).
  */
 export function PlanilhaExpandedCellContent({

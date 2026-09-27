@@ -666,7 +666,8 @@ export function DivMaterialPlanilhaPreview({
                                   verticalAlign: 'middle',
                                   textAlign: isDescricao || allowWrap ? 'left' : 'center',
                                   transition: 'width 160ms ease',
-                                  cursor: 'default',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
                                   overflow: 'hidden',
                                   ...(allowWrap
                                     ? {
