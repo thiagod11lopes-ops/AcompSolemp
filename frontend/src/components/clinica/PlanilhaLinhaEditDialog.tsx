@@ -11,6 +11,7 @@ import {
   alpha,
 } from '@mui/material'
 import type { ReactNode } from 'react'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { premiumTokens } from '@/theme/tokens'
 
 export const planilhaEditFieldSx = {
@@ -216,7 +217,9 @@ export function PlanilhaLinhaEditDialog({
           gap: 1.25,
           px: { xs: 1.75, sm: 2.25 },
           py: dockBelowRow ? 1 : 1.25,
-          borderBottom: `1px solid ${alpha('#0f172a', 0.06)}`,
+          // Barra de título inteira em verde opaco (mesmo tom da linha em edição)
+          bgcolor: EXCEL_SHEET.editingBg,
+          borderBottom: `1px solid ${alpha(EXCEL_SHEET.selectedCheck, 0.28)}`,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -228,9 +231,9 @@ export function PlanilhaLinhaEditDialog({
               fontWeight: 700,
               fontSize: '0.65rem',
               letterSpacing: 0.3,
-              color: premiumTokens.primaryDark,
-              bgcolor: alpha(premiumTokens.primary, 0.14),
-              border: `1px solid ${alpha(premiumTokens.primary, 0.22)}`,
+              color: EXCEL_SHEET.selectedCheck,
+              bgcolor: alpha('#fff', 0.55),
+              border: `1px solid ${alpha(EXCEL_SHEET.selectedCheck, 0.35)}`,
             }}
           />
           <Typography
@@ -251,9 +254,9 @@ export function PlanilhaLinhaEditDialog({
           onClick={onClose}
           size="small"
           sx={{
-            color: 'text.secondary',
-            bgcolor: alpha('#0f172a', 0.04),
-            '&:hover': { bgcolor: alpha('#0f172a', 0.08) },
+            color: EXCEL_SHEET.selectedCheck,
+            bgcolor: alpha('#fff', 0.45),
+            '&:hover': { bgcolor: alpha('#fff', 0.7) },
           }}
         >
           <CloseRoundedIcon fontSize="small" />
