@@ -18,7 +18,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
@@ -142,12 +142,17 @@ export function DivMaterialPlanilhaPreview({
   onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [descricaoColHover, setDescricaoColHover] = useState(false)
   const { expanded, setExpanded } = usePlanilhaExpand()
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
     [linhas, dataFiltro],
   )
+
+  useEffect(() => {
+    if (!expanded) setDescricaoColHover(false)
+  }, [expanded])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
@@ -161,9 +166,12 @@ export function DivMaterialPlanilhaPreview({
   const visible = linhas.length > 0
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
+  const descricaoBaseWidth = 280
+  const descricaoColWidth =
+    expanded && descricaoColHover ? descricaoBaseWidth * 2 : descricaoBaseWidth
   const tableMinWidth =
     DIV_MATERIAL_COLUNAS.reduce(
-      (sum, col) => sum + (col.key === 'descricaoMaterial' ? 280 : col.width),
+      (sum, col) => sum + (col.key === 'descricaoMaterial' ? descricaoBaseWidth : col.width),
       0,
     ) +
     (selectionEnabled ? 52 : 0) +
@@ -430,7 +438,8 @@ export function DivMaterialPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {DIV_MATERIAL_COLUNAS.map((col) => {
-                      const colWidth = col.key === 'descricaoMaterial' ? 280 : col.width
+                      const isDescricao = col.key === 'descricaoMaterial'
+                      const colWidth = isDescricao ? descricaoColWidth : col.width
                       return (
                         <TableCell
                           key={col.key}
@@ -441,6 +450,9 @@ export function DivMaterialPlanilhaPreview({
                             fontSize: cellFontSize,
                             whiteSpace: expanded ? 'normal' : 'nowrap',
                             lineHeight: expanded ? 1.2 : undefined,
+                            ...(expanded && isDescricao
+                              ? { transition: 'width 160ms ease' }
+                              : null),
                           }}
                         >
                           {col.label}
@@ -531,29 +543,69 @@ export function DivMaterialPlanilhaPreview({
                             </TableCell>
                           ) : null}
                           {DIV_MATERIAL_COLUNAS.map((col) => {
-                            const colWidth = col.key === 'descricaoMaterial' ? 280 : col.width
+                            const isDescricao = col.key === 'descricaoMaterial'
+                            const colWidth = isDescricao ? descricaoColWidth : col.width
+                            const text = dash(String(linha[col.key] ?? ''))
                             return (
                               <TableCell
                                 key={col.key}
+                                onMouseEnter={
+                                  expanded && isDescricao
+                                    ? () => setDescricaoColHover(true)
+                                    : undefined
+                                }
+                                onMouseLeave={
+                                  expanded && isDescricao
+                                    ? () => setDescricaoColHover(false)
+                                    : undefined
+                                }
                                 sx={{
-                                  ...(col.key === 'descricaoMaterial'
-                                    ? descricaoMaterialCellSx
-                                    : cellSx),
+                                  ...(isDescricao ? descricaoMaterialCellSx : cellSx),
                                   width: colWidth,
                                   minWidth: expanded ? 0 : colWidth,
                                   fontSize: cellFontSize,
-                                  ...(expanded
+                                  ...(expanded && isDescricao
                                     ? {
                                         whiteSpace: 'normal',
                                         wordBreak: 'break-word',
                                         overflowWrap: 'anywhere',
+                                        verticalAlign: 'top',
+                                        transition: 'width 160ms ease',
+                                        cursor: 'default',
                                       }
-                                    : col.key === 'descricaoMaterial'
-                                      ? null
-                                      : { whiteSpace: 'nowrap' }),
+                                    : expanded
+                                      ? {
+                                          whiteSpace: 'normal',
+                                          wordBreak: 'break-word',
+                                          overflowWrap: 'anywhere',
+                                        }
+                                      : isDescricao
+                                        ? null
+                                        : { whiteSpace: 'nowrap' }),
                                 }}
                               >
-                                {dash(String(linha[col.key] ?? ''))}
+                                {expanded && isDescricao ? (
+                                  <Box
+                                    sx={{
+                                      whiteSpace: 'normal',
+                                      wordBreak: 'break-word',
+                                      overflowWrap: 'anywhere',
+                                      textAlign: 'left',
+                                      ...(descricaoColHover
+                                        ? null
+                                        : {
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                          }),
+                                    }}
+                                  >
+                                    {text}
+                                  </Box>
+                                ) : (
+                                  text
+                                )}
                               </TableCell>
                             )
                           })}
