@@ -11,6 +11,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material'
+import DashboardIcon from '@mui/icons-material/Dashboard'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
 import TimelineIcon from '@mui/icons-material/Timeline'
@@ -28,6 +29,7 @@ import { stripDemoRouteBase } from '@/utils/portalPaths'
 const DRAWER_WIDTH = 260
 
 const MENU_ITEMS = [
+  { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
   { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon />, end: true },
   { path: '/clinica/pedidos/novo', label: 'Planilhas', icon: <AddIcon />, end: false },
   {
@@ -49,6 +51,9 @@ const MENU_ITEMS = [
 
 function isMenuPathActive(pathname: string, itemPath: string): boolean {
   const path = stripDemoRouteBase(pathname)
+  if (itemPath === '/clinica/dashboard') {
+    return path === '/clinica/dashboard' || path.startsWith('/clinica/dashboard/')
+  }
   if (itemPath === '/clinica/pedidos/novo') {
     return path.startsWith('/clinica/pedidos/novo')
   }

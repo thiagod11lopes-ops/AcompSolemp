@@ -49,6 +49,7 @@ const ConfigurarPrazosPage = lazy(() => import('@/pages/ConfigurarPrazosPage'))
 const GestorBalancoPage = lazy(() => import('@/pages/GestorBalancoPage'))
 const DemoEntryPage = lazy(() => import('@/pages/gestor/DemoEntryPage'))
 const ConfiguracaoPage = lazy(() => import('@/pages/ConfiguracaoPage'))
+const ClinicaDashboardPage = lazy(() => import('@/pages/clinica/ClinicaDashboardPage'))
 const ClinicaPedidosPage = lazy(() => import('@/pages/clinica/ClinicaPedidosPage'))
 const ClinicaNovoPedidoPage = lazy(() => import('@/pages/clinica/ClinicaNovoPedidoPage'))
 const ClinicaPrecosMedicamentosPage = lazy(
@@ -171,6 +172,7 @@ export function AppRoutes() {
                 </ClinicaProtectedRoute>
               }
             >
+            <Route path="/gestor/demo/clinica/dashboard" element={<LazyPage><ClinicaDashboardPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
@@ -234,7 +236,8 @@ export function AppRoutes() {
             </ClinicaProtectedRoute>
           }
         >
-          <Route path="/clinica" element={<Navigate to="/clinica/timelines" replace />} />
+          <Route path="/clinica" element={<Navigate to="/clinica/dashboard" replace />} />
+          <Route path="/clinica/dashboard" element={<LazyPage><ClinicaDashboardPage /></LazyPage>} />
           <Route path="/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
           <Route path="/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
           <Route path="/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />

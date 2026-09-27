@@ -73,10 +73,11 @@ export function useDemoPedido(id: string) {
   })
 }
 
-export function useDashboardMetrics() {
+export function useDashboardMetrics(clinicaId?: string | null, enabled = true) {
   return useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => pedidoService.getDashboardMetrics(),
+    queryKey: ['dashboard', clinicaId ?? 'all'],
+    queryFn: () => pedidoService.getDashboardMetrics(clinicaId),
+    enabled,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   })

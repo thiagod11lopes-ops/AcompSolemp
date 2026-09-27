@@ -87,8 +87,25 @@ function filtrarEmpenhadoPorPeriodo(
   })
 }
 
-export default function DashboardPage() {
-  const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics()
+export interface DashboardPageProps {
+  /** Quando informado, os cards refletem só os processos dessa clínica. */
+  clinicaId?: string | null
+  title?: string
+  subtitle?: string
+  /** Se false, não busca métricas (ex.: aguardando auth da clínica). */
+  metricsEnabled?: boolean
+}
+
+export default function DashboardPage({
+  clinicaId = null,
+  title = 'Dashboard do Gestor',
+  subtitle = 'Visão executiva dos processos de materiais consignados e SOLEMP',
+  metricsEnabled = true,
+}: DashboardPageProps = {}) {
+  const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics(
+    clinicaId,
+    metricsEnabled,
+  )
   const [kpiAberto, setKpiAberto] = useState<KpiKey | null>(null)
   const [mesSelecionado, setMesSelecionado] = useState(() => format(new Date(), 'yyyy-MM'))
   const [empenhadoPeriodo, setEmpenhadoPeriodo] = useState(periodoAnoCorrente)
@@ -168,10 +185,7 @@ export default function DashboardPage() {
   if (isError) {
     return (
       <Box sx={{ p: 2 }}>
-        <PageHeader
-          title="Dashboard do Gestor"
-          subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
-        />
+        <PageHeader title={title} subtitle={subtitle} />
         <Alert
           severity="error"
           action={
@@ -499,10 +513,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dashboard do Gestor"
-        subtitle="Visão executiva dos processos de materiais consignados e SOLEMP"
-      />
+      <PageHeader title={title} subtitle={subtitle} />
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
