@@ -72,7 +72,13 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
     [threads, threadId],
   )
   const grupo = threads.find((t) => t.kind === 'grupo')
-  const particulares = threads.filter((t) => t.kind === 'dm')
+  /** No dock: só a última conversa particular; as demais ficam no modal maximizado. */
+  const ultimaParticular = useMemo(() => {
+    const dms = threads.filter((t) => t.kind === 'dm')
+    const comMensagem = dms.filter((t) => t.lastMessage)
+    if (comMensagem.length > 0) return comMensagem[0]
+    return dms[0] ?? null
+  }, [threads])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -357,65 +363,57 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
           </List>
         ) : null}
 
-        <List dense disablePadding>
-          {particulares.length === 0 ? (
-            <Typography
-              sx={{ px: 1.5, py: 1.5, fontSize: '0.81rem', color: 'text.secondary' }}
+        {ultimaParticular ? (
+          <List dense disablePadding>
+            <ListItemButton
+              key={ultimaParticular.threadId}
+              onClick={() => handleOpenThread(ultimaParticular.threadId)}
+              sx={{
+                py: 0.95,
+                px: 1.25,
+                alignItems: 'flex-start',
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+              }}
             >
-              Nenhum outro usuário cadastrado para conversa particular.
-            </Typography>
-          ) : (
-            particulares.map((t) => (
-              <ListItemButton
-                key={t.threadId}
-                onClick={() => handleOpenThread(t.threadId)}
-                sx={{
-                  py: 0.95,
-                  px: 1.25,
-                  alignItems: 'flex-start',
-                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-                }}
+              <Badge
+                color="error"
+                badgeContent={ultimaParticular.unread}
+                invisible={!ultimaParticular.unread}
+                sx={{ mr: 1.1, mt: 0.2 }}
               >
-                <Badge
-                  color="error"
-                  badgeContent={t.unread}
-                  invisible={!t.unread}
-                  sx={{ mr: 1.1, mt: 0.2 }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 34,
-                      height: 34,
-                      fontSize: 15,
-                      fontWeight: 800,
-                      bgcolor: alpha(accent, 0.14),
-                      color: accent,
-                    }}
-                  >
-                    {t.peerPerfil ? (
-                      initialFromLabel(t.label)
-                    ) : (
-                      <PersonRoundedIcon sx={{ fontSize: 18 }} />
-                    )}
-                  </Avatar>
-                </Badge>
-                <ListItemText
-                  primary={t.label}
-                  secondary={`${t.subtitle.replace(/^Particular · /, '')} · ${previewText(t)}`}
-                  slotProps={{
-                    primary: {
-                      sx: { fontWeight: 700, fontSize: '0.87rem' },
-                    },
-                    secondary: {
-                      sx: { fontSize: '0.74rem', mt: 0.1 },
-                      noWrap: true,
-                    },
+                <Avatar
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    fontSize: 15,
+                    fontWeight: 800,
+                    bgcolor: alpha(accent, 0.14),
+                    color: accent,
                   }}
-                />
-              </ListItemButton>
-            ))
-          )}
-        </List>
+                >
+                  {ultimaParticular.peerPerfil ? (
+                    initialFromLabel(ultimaParticular.label)
+                  ) : (
+                    <PersonRoundedIcon sx={{ fontSize: 18 }} />
+                  )}
+                </Avatar>
+              </Badge>
+              <ListItemText
+                primary={ultimaParticular.label}
+                secondary={`${ultimaParticular.subtitle.replace(/^Particular · /, '')} · ${previewText(ultimaParticular)}`}
+                slotProps={{
+                  primary: {
+                    sx: { fontWeight: 700, fontSize: '0.87rem' },
+                  },
+                  secondary: {
+                    sx: { fontSize: '0.74rem', mt: 0.1 },
+                    noWrap: true,
+                  },
+                }}
+              />
+            </ListItemButton>
+          </List>
+        ) : null}
       </Box>
 
       {!threadId ? (
@@ -428,7 +426,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
           }}
         >
           <Typography sx={{ fontSize: '0.69rem', color: 'text.secondary', textAlign: 'center' }}>
-            Toque no <strong>Grupo</strong> ou em um <strong>setor</strong> para abrir a conversa
+            Maximizar para ver todas as conversas
           </Typography>
         </Box>
       ) : null}
