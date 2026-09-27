@@ -175,7 +175,11 @@ export function DivMaterialPlanilhaPreview({
   }, [linhasFiltradas])
 
   const selectionEnabled = Boolean(onSelectedIdsChange)
-  const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
+  /** Editar só na planilha expandida; excluir permanece nos dois modos. */
+  const editEnabled = Boolean(expanded && onEditLinha)
+  const deleteEnabled = Boolean(onDeleteLinha)
+  const actionsEnabled = editEnabled || deleteEnabled
+  const isEditingMode = Boolean(editingLinhaId)
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight =
     expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
@@ -204,6 +208,11 @@ export function DivMaterialPlanilhaPreview({
   const visible = linhas.length > 0
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
+  const dimmedSx = {
+    opacity: 0.28,
+    transition: 'opacity 160ms ease',
+    pointerEvents: 'none' as const,
+  }
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -262,6 +271,7 @@ export function DivMaterialPlanilhaPreview({
             py: 1,
             flexShrink: 0,
             background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
+            ...(isEditingMode ? dimmedSx : { transition: 'opacity 160ms ease' }),
           }}
         >
           <Typography
@@ -436,7 +446,7 @@ export function DivMaterialPlanilhaPreview({
                   },
                 }}
               >
-                <TableHead>
+                <TableHead sx={isEditingMode ? dimmedSx : undefined}>
                   <TableRow>
                     {selectionEnabled ? (
                       <TableCell
@@ -539,10 +549,13 @@ export function DivMaterialPlanilhaPreview({
                               : selection.has(linha.id)
                                 ? EXCEL_SHEET.selectedBg
                                 : undefined,
-                            position: editing && expanded ? 'relative' : undefined,
-                            zIndex: editing && expanded ? 3 : undefined,
-                            outline: editing && expanded ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
-                            outlineOffset: editing && expanded ? -2 : undefined,
+                            position: editing ? 'relative' : undefined,
+                            zIndex: editing ? 4 : undefined,
+                            outline: editing ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
+                            outlineOffset: editing ? -2 : undefined,
+                            opacity: isEditingMode && !editing ? 0.28 : 1,
+                            transition: 'opacity 160ms ease',
+                            pointerEvents: isEditingMode && !editing ? 'none' : undefined,
                             '& > .MuiTableCell-root': editing
                               ? { bgcolor: EXCEL_SHEET.editingBg }
                               : undefined,
@@ -632,23 +645,27 @@ export function DivMaterialPlanilhaPreview({
                               }}
                             >
                               <PlanilhaActionsButtons>
-                                <IconButton
-                                  size="small"
-                                  aria-label={`Editar linha Div. Material ${index + 1}`}
-                                  onClick={() => onEditLinha?.(linha.id)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  aria-label={`Excluir linha Div. Material ${index + 1}`}
-                                  onClick={() => onDeleteLinha?.(linha.id)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
+                                {editEnabled ? (
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Editar linha Div. Material ${index + 1}`}
+                                    onClick={() => onEditLinha?.(linha.id)}
+                                    sx={{ p: 0.25 }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                ) : null}
+                                {deleteEnabled ? (
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    aria-label={`Excluir linha Div. Material ${index + 1}`}
+                                    onClick={() => onDeleteLinha?.(linha.id)}
+                                    sx={{ p: 0.25 }}
+                                  >
+                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                ) : null}
                               </PlanilhaActionsButtons>
                             </TableCell>
                           ) : null}

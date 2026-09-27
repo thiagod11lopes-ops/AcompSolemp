@@ -163,7 +163,11 @@ export function ImhAbaPlanilhaPreview({
     requestAnimationFrame(() => requestAnimationFrame(run))
   }, [expanded, editingLinhaId])
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
-  const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
+  /** Editar só na planilha expandida; excluir permanece nos dois modos. */
+  const editEnabled = Boolean(expanded && onEditLinha)
+  const deleteEnabled = Boolean(onDeleteLinha)
+  const actionsEnabled = editEnabled || deleteEnabled
+  const isEditingMode = Boolean(editingLinhaId)
   const selection = selectedImhIds ?? new Set<string>()
   const finalizedIds = new Set(value.finalizedImhIds ?? [])
   const devolvidosIds = useMemo(
@@ -195,6 +199,11 @@ export function ImhAbaPlanilhaPreview({
   const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight =
     expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
+  const dimmedSx = {
+    opacity: 0.28,
+    transition: 'opacity 160ms ease',
+    pointerEvents: 'none' as const,
+  }
   const {
     resolveColWidth,
     isColHovered,
@@ -268,6 +277,7 @@ export function ImhAbaPlanilhaPreview({
             py: 1,
             flexShrink: 0,
             background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
+            ...(isEditingMode ? dimmedSx : { transition: 'opacity 160ms ease' }),
           }}
         >
           <Typography
@@ -497,7 +507,7 @@ export function ImhAbaPlanilhaPreview({
                   },
                 }}
               >
-                <TableHead>
+                <TableHead sx={isEditingMode ? dimmedSx : undefined}>
                   <TableRow>
                     {selectionEnabled ? (
                       <TableCell
@@ -601,10 +611,13 @@ export function ImhAbaPlanilhaPreview({
                             : selection.has(linha.id)
                               ? EXCEL_SHEET.selectedBg
                               : undefined,
-                          position: editing && expanded ? 'relative' : undefined,
-                          zIndex: editing && expanded ? 3 : undefined,
-                          outline: editing && expanded ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
-                          outlineOffset: editing && expanded ? -2 : undefined,
+                          position: editing ? 'relative' : undefined,
+                          zIndex: editing ? 4 : undefined,
+                          outline: editing ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
+                          outlineOffset: editing ? -2 : undefined,
+                          opacity: isEditingMode && !editing ? 0.28 : 1,
+                          transition: 'opacity 160ms ease',
+                          pointerEvents: isEditingMode && !editing ? 'none' : undefined,
                           '& > .MuiTableCell-root': editing
                             ? { bgcolor: EXCEL_SHEET.editingBg }
                             : undefined,
@@ -691,23 +704,27 @@ export function ImhAbaPlanilhaPreview({
                             }}
                           >
                             <PlanilhaActionsButtons>
-                              <IconButton
-                                size="small"
-                                aria-label={`Editar linha IMH ${index + 1}`}
-                                onClick={() => onEditLinha?.(linha.id)}
-                                sx={{ p: 0.25 }}
-                              >
-                                <EditIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                color="error"
-                                aria-label={`Excluir linha IMH ${index + 1}`}
-                                onClick={() => onDeleteLinha?.(linha.id)}
-                                sx={{ p: 0.25 }}
-                              >
-                                <DeleteIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
+                              {editEnabled ? (
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Editar linha IMH ${index + 1}`}
+                                  onClick={() => onEditLinha?.(linha.id)}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <EditIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              ) : null}
+                              {deleteEnabled ? (
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label={`Excluir linha IMH ${index + 1}`}
+                                  onClick={() => onDeleteLinha?.(linha.id)}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              ) : null}
                             </PlanilhaActionsButtons>
                           </TableCell>
                         ) : null}
