@@ -175,7 +175,7 @@ export function DivMaterialForm({
         badge="Div. Material"
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
-        dockBelowRow={sheetExpanded}
+        anchorLinhaId={editingLinhaId}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 0.65 }}>
           <PlanilhaEditSection title="Procedimento" columns={3}>

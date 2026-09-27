@@ -10,7 +10,7 @@ import {
   Typography,
   alpha,
 } from '@mui/material'
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useState, type ReactNode } from 'react'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { premiumTokens } from '@/theme/tokens'
 
@@ -132,14 +132,21 @@ interface PlanilhaLinhaEditDialogProps {
   saveLabel?: string
   children: ReactNode
   /**
-   * Com a planilha expandida: modal ancorado embaixo (linha editada fica
-   * visível no topo, sem blur).
+   * Id da linha (`data-planilha-linha-id`): o modal fica centralizado
+   * e ancorado na base dessa linha.
    */
+  anchorLinhaId?: string | null
+  /** @deprecated Use anchorLinhaId — mantido por compatibilidade. */
   dockBelowRow?: boolean
 }
 
+const ROW_GAP_PX = 10
+const VIEWPORT_PAD_PX = 8
+const MIN_PAPER_HEIGHT_PX = 200
+
 /**
- * Modal compacto para editar lançamentos — todos os campos visíveis sem rolagem.
+ * Modal compacto para editar lançamentos — sempre centralizado na
+ * horizontal e ancorado na base da linha da planilha.
  */
 export function PlanilhaLinhaEditDialog({
   open,
@@ -149,8 +156,66 @@ export function PlanilhaLinhaEditDialog({
   onSave,
   saveLabel = 'Salvar lançamento',
   children,
+  anchorLinhaId = null,
   dockBelowRow = false,
 }: PlanilhaLinhaEditDialogProps) {
+  const [anchorTop, setAnchorTop] = useState<number | null>(null)
+  const [maxPaperHeight, setMaxPaperHeight] = useState<number | null>(null)
+  const anchored = Boolean(open && (anchorLinhaId || dockBelowRow))
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchorTop(null)
+      setMaxPaperHeight(null)
+      return
+    }
+
+    const update = () => {
+      const vh = window.innerHeight
+      if (!anchorLinhaId) {
+        setAnchorTop(null)
+        setMaxPaperHeight(Math.min(vh * 0.9, 720))
+        return
+      }
+
+      const row = document.querySelector(
+        `[data-planilha-linha-id="${CSS.escape(anchorLinhaId)}"]`,
+      ) as HTMLElement | null
+
+      if (!row) {
+        setAnchorTop(null)
+        setMaxPaperHeight(Math.min(vh * 0.9, 720))
+        return
+      }
+
+      const rect = row.getBoundingClientRect()
+      // Sempre na base da linha (não reposiciona para o centro da tela).
+      const top = Math.max(
+        VIEWPORT_PAD_PX,
+        Math.round(rect.bottom + ROW_GAP_PX),
+      )
+      const availableBelow = Math.max(MIN_PAPER_HEIGHT_PX, vh - top - VIEWPORT_PAD_PX)
+      const maxH = Math.min(Math.min(vh * 0.72, 640), availableBelow)
+      setAnchorTop(top)
+      setMaxPaperHeight(maxH)
+    }
+
+    update()
+    // Aguarda a linha subir ao topo / layout estabilizar
+    const t1 = window.setTimeout(update, 50)
+    const t2 = window.setTimeout(update, 160)
+    const t3 = window.setTimeout(update, 320)
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(t3)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [open, anchorLinhaId])
+
   return (
     <Dialog
       open={open}
@@ -161,33 +226,26 @@ export function PlanilhaLinhaEditDialog({
       hideBackdrop={false}
       sx={{
         zIndex: (t) => t.zIndex.modal + 20,
-        ...(dockBelowRow
-          ? {
-              '& .MuiDialog-container': {
-                alignItems: 'flex-end',
-                justifyContent: 'center',
-                pt: 0,
-                pb: { xs: 0.75, sm: 1 },
-                px: { xs: 1, sm: 2 },
-              },
-            }
-          : {
-              '& .MuiDialog-container': {
-                alignItems: 'center',
-              },
-            }),
+        '& .MuiDialog-container': {
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          px: { xs: 1, sm: 2 },
+          // Sem âncora: centraliza verticalmente via padding simétrico.
+          pt: anchorTop != null ? 0 : 'min(12vh, 96px)',
+          pb: VIEWPORT_PAD_PX,
+        },
       }}
       slotProps={{
         backdrop: {
-          sx: dockBelowRow
+          sx: anchored
             ? {
                 bgcolor: 'transparent',
                 backdropFilter: 'none',
                 backgroundImage: `linear-gradient(
                   to bottom,
                   transparent 0%,
-                  transparent 36%,
-                  ${alpha('#0f172a', 0.1)} 50%,
+                  transparent 28%,
+                  ${alpha('#0f172a', 0.1)} 45%,
                   ${alpha('#0f172a', 0.26)} 100%
                 )`,
               }
@@ -198,15 +256,16 @@ export function PlanilhaLinhaEditDialog({
         },
         paper: {
           sx: {
-            borderRadius: dockBelowRow ? 2 : 2.5,
+            borderRadius: 2,
             overflow: 'hidden',
             width: { xs: '96vw', md: 'min(1100px, 94vw)' },
             maxWidth: '1100px',
-            // Altura suficiente para IMH e Div. Material sem barra de rolagem interna
-            maxHeight: dockBelowRow
-              ? { xs: '72vh', sm: 'min(68vh, 620px)' }
-              : { xs: '94vh', sm: 'min(90vh, 720px)' },
-            m: dockBelowRow ? 0 : undefined,
+            maxHeight: maxPaperHeight != null ? `${maxPaperHeight}px` : 'min(90vh, 720px)',
+            // Sempre centralizado na horizontal; topo = base da linha.
+            m: 0,
+            mx: 'auto',
+            mt: anchorTop != null ? `${anchorTop}px` : 0,
+            mb: 0,
             display: 'flex',
             flexDirection: 'column',
             border: `1px solid ${alpha('#0f172a', 0.08)}`,
@@ -274,13 +333,14 @@ export function PlanilhaLinhaEditDialog({
         sx={{
           px: { xs: 1.25, sm: 1.75 },
           py: 0.85,
-          // Sem rolagem: o conteúdo cabe na altura do paper
-          overflow: 'visible',
+          overflowX: 'hidden',
+          overflowY: 'auto',
           flex: '1 1 auto',
           minHeight: 0,
           bgcolor: alpha('#f8fafc', 0.55),
           display: 'grid',
           gap: 0.65,
+          alignContent: 'start',
         }}
       >
         {children}

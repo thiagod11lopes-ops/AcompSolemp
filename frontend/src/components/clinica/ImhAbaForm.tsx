@@ -260,7 +260,7 @@ export function ImhAbaForm({
         badge="IMH"
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
-        dockBelowRow={sheetExpanded}
+        anchorLinhaId={editingLinhaId}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 0.65 }}>
           <PlanilhaEditSection title="Cabeçalho" columns={2}>
