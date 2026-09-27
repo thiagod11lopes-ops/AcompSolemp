@@ -23,6 +23,11 @@ import { useMemo, useState } from 'react'
 import type { ImhAbaFormData } from '@/types'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
+import {
+  PlanilhaExpandButton,
+  planilhaExpandedPaperSx,
+  usePlanilhaExpand,
+} from '@/components/clinica/PlanilhaExpandControls'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
@@ -116,6 +121,7 @@ export function ImhAbaPlanilhaPreview({
   onDataFiltroChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const { expanded, setExpanded } = usePlanilhaExpand()
   const visible = imhFormHasPreviewContent(value)
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
@@ -178,6 +184,7 @@ export function ImhAbaPlanilhaPreview({
             ? '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)'
             : 'none',
           bgcolor: EXCEL_SHEET.sheetBg,
+          ...planilhaExpandedPaperSx(expanded),
         }}
       >
         <Box
@@ -189,6 +196,7 @@ export function ImhAbaPlanilhaPreview({
             flexWrap: 'wrap',
             px: 1.5,
             py: 1,
+            flexShrink: 0,
             background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
           }}
         >
@@ -292,21 +300,39 @@ export function ImhAbaPlanilhaPreview({
           >
             Gerar Documento
           </Button>
-          {onRequestClear ? (
-            <IconButton
-              size="small"
-              aria-label="Apagar lançamentos IMH"
-              onClick={onRequestClear}
-              disabled={value.linhas.length === 0 && !value.clinica.trim() && !value.numeroCp.trim()}
-              sx={{ ml: 'auto', color: 'error.main' }}
-            >
-              <TrashIcon fontSize="small" />
-            </IconButton>
-          ) : null}
+          <Box
+            sx={{
+              ml: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.25,
+              flexShrink: 0,
+            }}
+          >
+            <PlanilhaExpandButton
+              expanded={expanded}
+              onToggle={() => setExpanded((v) => !v)}
+              labelExpand="Expandir planilha IMH"
+              labelCollapse="Recolher planilha IMH"
+            />
+            {onRequestClear ? (
+              <IconButton
+                size="small"
+                aria-label="Apagar lançamentos IMH"
+                onClick={onRequestClear}
+                disabled={
+                  value.linhas.length === 0 && !value.clinica.trim() && !value.numeroCp.trim()
+                }
+                sx={{ color: 'error.main' }}
+              >
+                <TrashIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Box>
         </Box>
 
         {!visible ? (
-          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
+          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55, flex: 1 }}>
             <Typography variant="body2" color="text.secondary">
               Preencha o cabeçalho e as linhas — ou importe a aba IMH — para ver a planilha ao vivo.
             </Typography>
@@ -318,8 +344,11 @@ export function ImhAbaPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               display: 'grid',
               gap: 1.25,
-              width: 'fit-content',
+              width: expanded ? '100%' : 'fit-content',
               maxWidth: '100%',
+              flex: expanded ? 1 : undefined,
+              minHeight: 0,
+              overflow: expanded ? 'auto' : undefined,
             }}
           >
             {value.clinica.trim() ? (

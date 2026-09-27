@@ -21,6 +21,11 @@ import {
 import { useMemo, useState } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
+import {
+  PlanilhaExpandButton,
+  planilhaExpandedPaperSx,
+  usePlanilhaExpand,
+} from '@/components/clinica/PlanilhaExpandControls'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   DIV_MATERIAL_COLUNAS,
@@ -290,6 +295,7 @@ export function DivMaterialPlanilhaPreview({
   onDataFiltroChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const { expanded, setExpanded } = usePlanilhaExpand()
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
@@ -353,6 +359,7 @@ export function DivMaterialPlanilhaPreview({
             ? '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)'
             : 'none',
           bgcolor: EXCEL_SHEET.sheetBg,
+          ...planilhaExpandedPaperSx(expanded),
         }}
       >
         <Box
@@ -364,6 +371,7 @@ export function DivMaterialPlanilhaPreview({
             flexWrap: 'wrap',
             px: 1.5,
             py: 1,
+            flexShrink: 0,
             background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
           }}
         >
@@ -416,21 +424,37 @@ export function DivMaterialPlanilhaPreview({
             Gerar Documento
           </Button>
 
-          {onRequestClear ? (
-            <IconButton
-              size="small"
-              aria-label="Apagar lançamentos Div. Material"
-              onClick={onRequestClear}
-              disabled={linhas.length === 0}
-              sx={{ ml: 'auto', color: 'error.main' }}
-            >
-              <TrashIcon fontSize="small" />
-            </IconButton>
-          ) : null}
+          <Box
+            sx={{
+              ml: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.25,
+              flexShrink: 0,
+            }}
+          >
+            <PlanilhaExpandButton
+              expanded={expanded}
+              onToggle={() => setExpanded((v) => !v)}
+              labelExpand="Expandir planilha Div. Material"
+              labelCollapse="Recolher planilha Div. Material"
+            />
+            {onRequestClear ? (
+              <IconButton
+                size="small"
+                aria-label="Apagar lançamentos Div. Material"
+                onClick={onRequestClear}
+                disabled={linhas.length === 0}
+                sx={{ color: 'error.main' }}
+              >
+                <TrashIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Box>
         </Box>
 
         {!visible ? (
-          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
+          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55, flex: 1 }}>
             <Typography variant="body2" color="text.secondary">
               Importe o MODELO ou adicione lançamentos no formulário à esquerda para ver a planilha.
             </Typography>
@@ -443,8 +467,10 @@ export function DivMaterialPlanilhaPreview({
               borderTop: EXCEL_SHEET.border,
               width: '100%',
               maxWidth: '100%',
-              // Máx. 12 linhas visíveis; barras de rolagem na base/lateral do viewport.
-              maxHeight: DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
+              // Máx. 12 linhas visíveis; em tela cheia usa toda a página.
+              maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
+              flex: expanded ? 1 : undefined,
+              minHeight: 0,
               overflowX: 'auto',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
