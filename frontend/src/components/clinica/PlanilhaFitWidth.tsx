@@ -12,8 +12,8 @@ interface PlanilhaFitWidthProps {
 }
 
 /**
- * Container de largura total para a planilha expandida.
- * Não usa transform/scale para não reduzir a fonte das células.
+ * Container de largura total: todas as colunas cabem na tela.
+ * Títulos e células quebram linha; sem transform/scale.
  */
 export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFitWidthProps) {
   if (!enabled) {
@@ -26,8 +26,10 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
     <Box
       sx={{
         width: '100%',
+        maxWidth: '100%',
         flex: 1,
         minHeight: 0,
+        minWidth: 0,
         overflowX: 'hidden',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
@@ -40,7 +42,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           minWidth: '0 !important',
           tableLayout: 'fixed',
         },
-        '& th, & td, & .MuiTableCell-root, & .MuiTypography-root': {
+        '& th, & td, & .MuiTableCell-root': {
           minWidth: '0 !important',
           maxWidth: 'none',
           whiteSpace: 'normal',
@@ -48,6 +50,13 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           overflowWrap: 'anywhere',
           fontSize: `${fontSize} !important`,
           lineHeight: 1.25,
+          px: '4px !important',
+        },
+        '& thead .MuiTableCell-root, & th': {
+          whiteSpace: 'normal',
+          hyphens: 'auto',
+          lineHeight: 1.2,
+          verticalAlign: 'middle',
         },
       }}
     >

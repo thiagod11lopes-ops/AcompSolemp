@@ -59,178 +59,22 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
-const PT_VOGAIS = new Set(
-  'aeiouáéíóúâêôãõàäëïöüyAEIOUÁÉÍÓÚÂÊÔÃÕÀÄËÏÖÜY'.split(''),
-)
-
-/** Dígrafos que não se separam na silabação. */
-const PT_DIGRAFOS = ['ch', 'lh', 'nh', 'rr', 'ss', 'gu', 'qu'] as const
-
-function isPtVogal(ch: string): boolean {
-  return PT_VOGAIS.has(ch)
-}
-
-/**
- * Separação silábica aproximada (PT-BR) para quebra de linha.
- * Evita cortar dígrafos e tenta manter ditongos juntos.
- */
-function splitSilabasPt(word: string): string[] {
-  if (!word) return []
-  if (word.length <= 2) return [word]
-
-  const lower = word.toLowerCase()
-  // Marca dígrafos como um único “caractere” lógico
-  type Unit = { text: string; vowel: boolean }
-  const units: Unit[] = []
-  let i = 0
-  while (i < word.length) {
-    const two = lower.slice(i, i + 2)
-    const dig = PT_DIGRAFOS.find((d) => two === d)
-    if (dig) {
-      units.push({ text: word.slice(i, i + 2), vowel: false })
-      i += 2
-      continue
-    }
-    const ch = word[i]
-    units.push({ text: ch, vowel: isPtVogal(lower[i]) })
-    i += 1
-  }
-
-  // Núcleos = sequências de vogais (ditongo/tritongo)
-  const nuclei: number[] = []
-  for (let u = 0; u < units.length; u++) {
-    if (!units[u].vowel) continue
-    if (u > 0 && units[u - 1].vowel) continue
-    nuclei.push(u)
-  }
-  if (nuclei.length <= 1) return [word]
-
-  const breaks: number[] = [] // índices em units onde começa a próxima sílaba
-  for (let n = 1; n < nuclei.length; n++) {
-    const prev = nuclei[n - 1]
-    const curr = nuclei[n]
-    // quantas unidades vogais no núcleo anterior
-    let prevNucleusEnd = prev
-    while (prevNucleusEnd + 1 < curr && units[prevNucleusEnd + 1].vowel) {
-      prevNucleusEnd += 1
-    }
-    const consStart = prevNucleusEnd + 1
-    const consCount = curr - consStart
-    if (consCount <= 0) {
-      breaks.push(curr)
-    } else if (consCount === 1) {
-      // VCV → consoante com a sílaba seguinte
-      breaks.push(consStart)
-    } else {
-      // VCC+V → 1ª consoante com a anterior, resto com a seguinte
-      breaks.push(consStart + 1)
-    }
-  }
-
-  const silabas: string[] = []
-  let start = 0
-  for (const b of breaks) {
-    silabas.push(units.slice(start, b).map((u) => u.text).join(''))
-    start = b
-  }
-  silabas.push(units.slice(start).map((u) => u.text).join(''))
-  return silabas.filter(Boolean)
-}
-
-/**
- * Quebra perto de `target` caracteres, respeitando palavras/sílabas.
- * Pode ultrapassar o alvo para não cortar sílaba incorretamente.
- */
-function wrapDescricaoMaterial(value: string, target = 50): string {
-  const flat = value.replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim()
-  if (!flat) return '—'
-
-  const words = flat.split(' ').filter(Boolean)
-  const lines: string[] = []
-  let current = ''
-
-  const pushCurrent = () => {
-    if (current) lines.push(current)
-    current = ''
-  }
-
-  const wrapLongWord = (word: string) => {
-    const silabas = splitSilabasPt(word)
-    let part = ''
-    for (let s = 0; s < silabas.length; s++) {
-      const sil = silabas[s]
-      const next = part + sil
-      const hasMore = s < silabas.length - 1
-      if (part && next.length > target && hasMore) {
-        lines.push(`${part}-`)
-        part = sil
-      } else {
-        part = next
-      }
-    }
-    return part
-  }
-
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word
-    if (candidate.length <= target) {
-      current = candidate
-      continue
-    }
-
-    if (!current) {
-      current = word.length <= target ? word : wrapLongWord(word)
-      continue
-    }
-
-    pushCurrent()
-    current = word.length <= target ? word : wrapLongWord(word)
-  }
-  pushCurrent()
-  return lines.join('\n')
-}
-
-/**
- * Descrição alinhada à esquerda; quebra por sílaba/palavra (~50, podendo ultrapassar).
- */
-function DescricaoMaterialCell({ text }: { text: string }) {
-  return (
-    <Box
-      component="div"
-      lang="pt-BR"
-      sx={{
-        display: 'block',
-        textAlign: 'left',
-        whiteSpace: 'pre !important',
-        wordBreak: 'normal !important',
-        overflowWrap: 'normal !important',
-        overflow: 'visible !important',
-        lineHeight: 1.35,
-      }}
-    >
-      {wrapDescricaoMaterial(text, 50)}
-    </Box>
-  )
-}
-
 const descricaoMaterialCellSx = {
   ...({
     border: EXCEL_SHEET.border,
     fontFamily: EXCEL_SHEET.fontFamily,
     fontSize: EXCEL_SHEET.fontSize,
-    py: 0.75,
-    px: 1,
+    py: 0.5,
+    px: 0.5,
     color: EXCEL_SHEET.text,
     bgcolor: EXCEL_SHEET.cellBg,
   } as const),
   textAlign: 'left' as const,
-  whiteSpace: 'pre !important',
-  overflow: 'visible !important',
-  textOverflow: 'unset',
-  wordBreak: 'normal !important',
-  overflowWrap: 'normal !important',
+  whiteSpace: 'normal' as const,
+  wordBreak: 'break-word' as const,
+  overflowWrap: 'anywhere' as const,
   verticalAlign: 'middle' as const,
-  lineHeight: 1.35,
+  lineHeight: 1.25,
 } as const
 
 const cellSx = {
@@ -315,13 +159,7 @@ export function DivMaterialPlanilhaPreview({
   const visible = linhas.length > 0
   const colCount =
     DIV_MATERIAL_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
-  const tableMinWidth =
-    DIV_MATERIAL_COLUNAS.reduce(
-      (sum, col) => sum + (col.key === 'descricaoMaterial' ? 280 : col.width),
-      0,
-    ) +
-    (selectionEnabled ? 52 : 0) +
-    (actionsEnabled ? 72 : 0)
+  const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedIdsChange) return
@@ -474,14 +312,12 @@ export function DivMaterialPlanilhaPreview({
               maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflowX: expanded ? 'hidden' : 'auto',
-              overflowY: expanded ? 'auto' : 'auto',
-              display: expanded ? 'flex' : undefined,
-              flexDirection: expanded ? 'column' : undefined,
+              overflowX: 'hidden',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
               WebkitOverflowScrolling: 'touch',
-              scrollbarGutter: expanded ? undefined : 'stable',
               '&::-webkit-scrollbar': {
-                height: 12,
                 width: 10,
               },
               '&::-webkit-scrollbar-thumb': {
@@ -494,14 +330,14 @@ export function DivMaterialPlanilhaPreview({
             }}
           >
             <PlanilhaFitWidth
-              enabled={expanded}
-              cellFontSize="10px"
-              remountKey={`${tableMinWidth}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
+              enabled
+              cellFontSize={expanded ? '10px' : undefined}
+              remountKey={`${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}-${actionsEnabled ? 1 : 0}`}
             >
             <Box
               sx={{
-                width: expanded ? '100%' : 'max-content',
-                minWidth: expanded ? 0 : '100%',
+                width: '100%',
+                minWidth: 0,
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -511,26 +347,19 @@ export function DivMaterialPlanilhaPreview({
                 size="small"
                 stickyHeader={!expanded}
                 sx={{
-                  width: expanded ? '100%' : tableMinWidth,
-                  minWidth: expanded ? 0 : tableMinWidth,
-                  '& .MuiTableHead-root .MuiTableRow-root': {
-                    height: expanded ? 'auto' : DIV_MAT_HEADER_HEIGHT_PX,
-                  },
-                  '& .MuiTableBody-root .MuiTableRow-root': {
-                    height: expanded ? 'auto' : DIV_MAT_ROW_HEIGHT_PX,
-                  },
+                  width: '100%',
+                  minWidth: 0,
+                  tableLayout: 'fixed',
                   '& .MuiTableCell-root': {
                     boxSizing: 'border-box',
-                    ...(expanded
-                      ? {
-                          fontSize: '10px',
-                          whiteSpace: 'normal',
-                          wordBreak: 'break-word',
-                          minWidth: '0 !important',
-                        }
-                      : {}),
+                    fontSize: cellFontSize,
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    minWidth: 0,
+                    px: 0.5,
+                    py: 0.5,
                   },
-                  tableLayout: 'fixed',
                 }}
               >
                 <TableHead>
@@ -540,10 +369,10 @@ export function DivMaterialPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
-                          width: 52,
-                          minWidth: 52,
+                          width: '36px',
                           textAlign: 'center',
-                          px: 0.5,
+                          px: 0.25,
+                          whiteSpace: 'normal',
                         }}
                       >
                         <Box
@@ -578,32 +407,28 @@ export function DivMaterialPlanilhaPreview({
                         </Box>
                       </TableCell>
                     ) : null}
-                    {DIV_MATERIAL_COLUNAS.map((col) => {
-                      const colWidth = col.key === 'descricaoMaterial' ? 280 : col.width
-                      return (
-                        <TableCell
-                          key={col.key}
-                          sx={{
-                            ...headerSx,
-                            width: expanded ? `${colWidth}px` : colWidth,
-                            minWidth: expanded ? 0 : colWidth,
-                            fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
-                            whiteSpace: expanded ? 'normal' : 'nowrap',
-                          }}
-                        >
-                          {col.label}
-                        </TableCell>
-                      )
-                    })}
+                    {DIV_MATERIAL_COLUNAS.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        sx={{
+                          ...headerSx,
+                          width: col.width,
+                          fontSize: cellFontSize,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {col.label}
+                      </TableCell>
+                    ))}
                     {actionsEnabled ? (
                       <TableCell
                         sx={{
                           ...headerSx,
                           textAlign: 'center',
-                          width: expanded ? 56 : 72,
-                          minWidth: expanded ? 0 : 72,
-                          fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          width: '44px',
+                          fontSize: cellFontSize,
+                          whiteSpace: 'normal',
                         }}
                       >
                         AÇÕES
@@ -649,9 +474,9 @@ export function DivMaterialPlanilhaPreview({
                                   ? EXCEL_SHEET.editingBg
                                   : EXCEL_SHEET.selectHeaderBg,
                                 textAlign: 'center',
-                                px: 0.5,
-                                width: 52,
-                                minWidth: 52,
+                                px: 0.25,
+                                width: '36px',
+                                whiteSpace: 'normal',
                               }}
                             >
                               <Checkbox
@@ -678,54 +503,31 @@ export function DivMaterialPlanilhaPreview({
                               />
                             </TableCell>
                           ) : null}
-                          {DIV_MATERIAL_COLUNAS.map((col) =>
-                            col.key === 'descricaoMaterial' ? (
-                              <TableCell
-                                key={col.key}
-                                sx={{
-                                  ...descricaoMaterialCellSx,
-                                  width: expanded ? '280px' : 280,
-                                  minWidth: expanded ? 0 : 280,
-                                  fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
-                                  ...(expanded
-                                    ? {
-                                        whiteSpace: 'normal !important',
-                                        wordBreak: 'break-word !important',
-                                        overflowWrap: 'anywhere !important',
-                                      }
-                                    : null),
-                                }}
-                              >
-                                {expanded ? (
-                                  dash(String(linha[col.key] ?? ''))
-                                ) : (
-                                  <DescricaoMaterialCell text={String(linha[col.key] ?? '')} />
-                                )}
-                              </TableCell>
-                            ) : (
-                              <TableCell
-                                key={col.key}
-                                sx={{
-                                  ...cellSx,
-                                  width: expanded ? `${col.width}px` : col.width,
-                                  minWidth: expanded ? 0 : col.width,
-                                  fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
-                                  whiteSpace: expanded ? 'normal' : 'nowrap',
-                                  wordBreak: expanded ? 'break-word' : undefined,
-                                }}
-                              >
-                                {dash(String(linha[col.key] ?? ''))}
-                              </TableCell>
-                            ),
-                          )}
+                          {DIV_MATERIAL_COLUNAS.map((col) => (
+                            <TableCell
+                              key={col.key}
+                              sx={{
+                                ...(col.key === 'descricaoMaterial'
+                                  ? descricaoMaterialCellSx
+                                  : cellSx),
+                                width: col.width,
+                                fontSize: cellFontSize,
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {dash(String(linha[col.key] ?? ''))}
+                            </TableCell>
+                          ))}
                           {actionsEnabled ? (
                             <TableCell
                               sx={{
                                 ...cellSx,
                                 textAlign: 'center',
-                                width: expanded ? 56 : 72,
-                                minWidth: expanded ? 0 : 72,
-                                fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
+                                width: '44px',
+                                fontSize: cellFontSize,
+                                whiteSpace: 'normal',
                               }}
                             >
                               <IconButton

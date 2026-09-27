@@ -34,22 +34,23 @@ export interface DivMaterialLinha {
   sourceKey: string
 }
 
+/** Larguras relativas (table-layout:fixed) — colunas o mais estreitas possível. */
 export const DIV_MATERIAL_COLUNAS = [
-  { key: 'dataProcedimento', label: 'Data do procedimento', width: 120 },
-  { key: 'modalidadeLicitatoria', label: 'Modalidade licitatória', width: 140 },
-  { key: 'uasg', label: 'UASG', width: 88 },
-  { key: 'nupModalidade', label: 'NUP (modalidade)', width: 130 },
-  { key: 'numeroItem', label: 'N° do item', width: 88 },
-  { key: 'descricaoMaterial', label: 'Descrição do material', width: 220 },
-  { key: 'nomePaciente', label: 'Nome do paciente', width: 180 },
-  { key: 'nip', label: 'NIP', width: 108 },
-  { key: 'mapa', label: 'Mapa', width: 100 },
-  { key: 'valeSala', label: 'Vale de sala', width: 100 },
-  { key: 'vigencia', label: 'Vigência', width: 100 },
-  { key: 'nupSigad', label: 'NUP SIGAD', width: 120 },
-  { key: 'fornecedor', label: 'Fornecedor', width: 140 },
-  { key: 'cnpj', label: 'CNPJ', width: 130 },
-  { key: 'valorTotal', label: 'Valor Total', width: 110 },
+  { key: 'dataProcedimento', label: 'Data do procedimento', width: 68 },
+  { key: 'modalidadeLicitatoria', label: 'Modalidade licitatória', width: 76 },
+  { key: 'uasg', label: 'UASG', width: 48 },
+  { key: 'nupModalidade', label: 'NUP (modalidade)', width: 72 },
+  { key: 'numeroItem', label: 'N° do item', width: 44 },
+  { key: 'descricaoMaterial', label: 'Descrição do material', width: 128 },
+  { key: 'nomePaciente', label: 'Nome do paciente', width: 96 },
+  { key: 'nip', label: 'NIP', width: 60 },
+  { key: 'mapa', label: 'Mapa', width: 44 },
+  { key: 'valeSala', label: 'Vale de sala', width: 52 },
+  { key: 'vigencia', label: 'Vigência', width: 52 },
+  { key: 'nupSigad', label: 'NUP SIGAD', width: 68 },
+  { key: 'fornecedor', label: 'Fornecedor', width: 84 },
+  { key: 'cnpj', label: 'CNPJ', width: 80 },
+  { key: 'valorTotal', label: 'Valor Total', width: 64 },
 ] as const
 
 export type DivMaterialColunaKey = (typeof DIV_MATERIAL_COLUNAS)[number]['key']

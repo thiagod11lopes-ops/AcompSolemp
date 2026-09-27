@@ -348,11 +348,12 @@ export function ImhAbaPlanilhaPreview({
               display: 'flex',
               flexDirection: 'column',
               gap: expanded ? 0 : 1.25,
-              width: expanded ? '100%' : 'fit-content',
+              width: '100%',
               maxWidth: '100%',
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflow: expanded ? 'hidden' : undefined,
+              overflowX: 'hidden',
+              overflowY: expanded ? 'hidden' : undefined,
             }}
           >
             {value.clinica.trim() && !expanded ? (
@@ -372,15 +373,16 @@ export function ImhAbaPlanilhaPreview({
             ) : null}
 
             <PlanilhaFitWidth
-              enabled={expanded}
+              enabled
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
               className="excel-sheet-grid"
               sx={{
-                width: expanded ? '100%' : 'fit-content',
+                width: '100%',
                 maxWidth: '100%',
-                overflowX: expanded ? 'hidden' : 'auto',
+                minWidth: 0,
+                overflowX: 'hidden',
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -389,8 +391,18 @@ export function ImhAbaPlanilhaPreview({
               <Table
                 size="small"
                 sx={{
-                  width: expanded ? '100%' : 'auto',
-                  tableLayout: expanded ? 'fixed' : 'auto',
+                  width: '100%',
+                  minWidth: 0,
+                  tableLayout: 'fixed',
+                  '& .MuiTableCell-root': {
+                    boxSizing: 'border-box',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    minWidth: 0,
+                    px: 0.5,
+                    py: 0.5,
+                  },
                 }}
               >
                 <TableHead>
@@ -400,9 +412,10 @@ export function ImhAbaPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
-                          minWidth: 52,
+                          width: 36,
                           textAlign: 'center',
-                          px: 0.5,
+                          px: 0.25,
+                          whiteSpace: 'normal',
                         }}
                       >
                         <Box
@@ -442,9 +455,9 @@ export function ImhAbaPlanilhaPreview({
                         key={col.key}
                         sx={{
                           ...headerSx,
-                          minWidth: expanded ? 0 : col.width,
-                          width: expanded ? `${col.width}px` : undefined,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          width: col.width,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.2,
                           fontSize: EXCEL_SHEET.fontSize,
                         }}
                       >
@@ -456,9 +469,8 @@ export function ImhAbaPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           textAlign: 'center',
-                          minWidth: expanded ? 0 : 72,
-                          width: expanded ? 56 : 72,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          width: 44,
+                          whiteSpace: 'normal',
                           fontSize: EXCEL_SHEET.fontSize,
                         }}
                       >
@@ -537,23 +549,14 @@ export function ImhAbaPlanilhaPreview({
                             key={col.key}
                             sx={{
                               ...cellSx,
+                              width: col.width,
                               fontSize: EXCEL_SHEET.fontSize,
-                              ...(expanded
-                                ? {
-                                    whiteSpace: 'normal',
-                                    wordBreak: 'break-word',
-                                    minWidth: 0,
-                                    maxWidth: 'none',
-                                  }
-                                : col.key === 'descricao' || col.key === 'nomeUsuario'
-                                  ? {
-                                      whiteSpace: 'pre-wrap',
-                                      maxWidth: col.width + 40,
-                                      minWidth: 120,
-                                      textAlign: 'center',
-                                      verticalAlign: 'middle',
-                                    }
-                                  : null),
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              overflowWrap: 'anywhere',
+                              minWidth: 0,
+                              textAlign: 'center',
+                              verticalAlign: 'middle',
                             }}
                           >
                             {dash(String(linha[col.key] ?? ''))}
@@ -564,6 +567,8 @@ export function ImhAbaPlanilhaPreview({
                             sx={{
                               ...cellSx,
                               textAlign: 'center',
+                              width: 44,
+                              whiteSpace: 'normal',
                               fontSize: EXCEL_SHEET.fontSize,
                             }}
                           >
