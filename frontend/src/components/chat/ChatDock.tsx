@@ -406,24 +406,6 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
           </List>
         ) : null}
 
-        <Typography
-          sx={{
-            px: 1.5,
-            pt: 1,
-            pb: 0.35,
-            fontSize: '0.71rem',
-            fontWeight: 800,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'text.secondary',
-          }}
-        >
-          Conversas particulares
-        </Typography>
-        <Typography sx={{ px: 1.5, pb: 0.75, fontSize: '0.69rem', color: 'text.secondary' }}>
-          Só você e o setor escolhido veem a conversa
-        </Typography>
-
         <List dense disablePadding>
           {particulares.length === 0 ? (
             <Typography

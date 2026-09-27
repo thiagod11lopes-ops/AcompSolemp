@@ -232,24 +232,6 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
               </List>
             ) : null}
 
-            <Typography
-              sx={{
-                px: 2,
-                pt: 1.25,
-                pb: 0.25,
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: 'text.secondary',
-              }}
-            >
-              Conversas particulares
-            </Typography>
-            <Typography sx={{ px: 2, pb: 1, fontSize: '0.78rem', color: 'text.secondary' }}>
-              Só você e o setor escolhido veem a conversa
-            </Typography>
-
             <List dense sx={{ flex: 1, overflow: 'auto', py: 0, px: 1 }}>
               {particulares.length === 0 ? (
                 <Typography sx={{ px: 1.5, py: 2, fontSize: '0.92rem', color: 'text.secondary' }}>
