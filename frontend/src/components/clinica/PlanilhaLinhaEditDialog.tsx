@@ -130,6 +130,11 @@ interface PlanilhaLinhaEditDialogProps {
   onSave: () => void
   saveLabel?: string
   children: ReactNode
+  /**
+   * Com a planilha expandida: modal ancorado embaixo (linha editada fica
+   * visível no topo, sem blur).
+   */
+  dockBelowRow?: boolean
 }
 
 /**
@@ -143,6 +148,7 @@ export function PlanilhaLinhaEditDialog({
   onSave,
   saveLabel = 'Salvar lançamento',
   children,
+  dockBelowRow = false,
 }: PlanilhaLinhaEditDialogProps) {
   return (
     <Dialog
@@ -151,22 +157,50 @@ export function PlanilhaLinhaEditDialog({
       fullWidth
       maxWidth="lg"
       scroll="body"
-      sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
+      hideBackdrop={false}
+      sx={{
+        zIndex: (t) => t.zIndex.modal + 20,
+        ...(dockBelowRow
+          ? {
+              '& .MuiDialog-container': {
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                pt: 0,
+                pb: { xs: 1, sm: 1.5 },
+                px: { xs: 1, sm: 2 },
+              },
+            }
+          : null),
+      }}
       slotProps={{
         backdrop: {
-          sx: {
-            bgcolor: alpha('#0f172a', 0.4),
-            backdropFilter: 'blur(3px)',
-          },
+          sx: dockBelowRow
+            ? {
+                // Sem blur: a linha no topo permanece nítida para ver a edição ao vivo
+                bgcolor: 'transparent',
+                backdropFilter: 'none',
+                // Faixa suave só na metade inferior, atrás do formulário
+                backgroundImage: `linear-gradient(
+                  to bottom,
+                  transparent 0%,
+                  transparent 42%,
+                  ${alpha('#0f172a', 0.12)} 55%,
+                  ${alpha('#0f172a', 0.28)} 100%
+                )`,
+              }
+            : {
+                bgcolor: alpha('#0f172a', 0.4),
+                backdropFilter: 'blur(3px)',
+              },
         },
         paper: {
           sx: {
-            borderRadius: 2.5,
+            borderRadius: dockBelowRow ? 2 : 2.5,
             overflow: 'hidden',
             width: { xs: '96vw', md: 'min(1100px, 94vw)' },
             maxWidth: '1100px',
-            // Evita barra de rolagem: o conteúdo cabe na viewport
-            maxHeight: 'none',
+            maxHeight: dockBelowRow ? 'min(52vh, 520px)' : 'none',
+            m: dockBelowRow ? 0 : undefined,
             border: `1px solid ${alpha('#0f172a', 0.08)}`,
             boxShadow: `0 24px 64px ${alpha('#0f172a', 0.24)}`,
             background: `linear-gradient(180deg, ${alpha(premiumTokens.primary, 0.06)} 0%, #fff 72px)`,
@@ -181,7 +215,7 @@ export function PlanilhaLinhaEditDialog({
           justifyContent: 'space-between',
           gap: 1.25,
           px: { xs: 1.75, sm: 2.25 },
-          py: 1.25,
+          py: dockBelowRow ? 1 : 1.25,
           borderBottom: `1px solid ${alpha('#0f172a', 0.06)}`,
         }}
       >
@@ -229,8 +263,8 @@ export function PlanilhaLinhaEditDialog({
       <DialogContent
         sx={{
           px: { xs: 1.75, sm: 2.25 },
-          py: 1.25,
-          overflow: 'visible',
+          py: dockBelowRow ? 1 : 1.25,
+          overflow: dockBelowRow ? 'auto' : 'visible',
           bgcolor: alpha('#f8fafc', 0.55),
           display: 'grid',
           gap: 1,

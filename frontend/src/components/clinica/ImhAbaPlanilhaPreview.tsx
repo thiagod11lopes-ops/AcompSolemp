@@ -23,7 +23,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ImhAbaFormData } from '@/types'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
@@ -67,6 +67,8 @@ interface ImhAbaPlanilhaPreviewProps {
   onRequestClear?: () => void
   dataFiltro: PlanilhaDataFiltro
   onDataFiltroChange: (next: PlanilhaDataFiltro) => void
+  /** Notifica o pai quando a planilha entra/sai do modo expandido. */
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 function dash(value: string): string {
@@ -131,12 +133,35 @@ export function ImhAbaPlanilhaPreview({
   onRequestClear,
   dataFiltro,
   onDataFiltroChange,
+  onExpandedChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const tableRef = useRef<HTMLTableElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const visible = imhFormHasPreviewContent(value)
+
+  useEffect(() => {
+    onExpandedChange?.(expanded)
+  }, [expanded, onExpandedChange])
+
+  useEffect(() => {
+    if (!expanded || !editingLinhaId) return
+    const scrollRoot = scrollContainerRef.current
+    if (!scrollRoot) return
+    const run = () => {
+      const row = scrollRoot.querySelector(
+        `[data-planilha-linha-id="${editingLinhaId}"]`,
+      ) as HTMLElement | null
+      if (!row) return
+      const rootRect = scrollRoot.getBoundingClientRect()
+      const rowRect = row.getBoundingClientRect()
+      const nextTop = scrollRoot.scrollTop + (rowRect.top - rootRect.top)
+      scrollRoot.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' })
+    }
+    requestAnimationFrame(() => requestAnimationFrame(run))
+  }, [expanded, editingLinhaId])
   const selectionEnabled = Boolean(onSelectedImhIdsChange)
   const actionsEnabled = Boolean(onEditLinha || onDeleteLinha)
   const selection = selectedImhIds ?? new Set<string>()
@@ -427,6 +452,8 @@ export function ImhAbaPlanilhaPreview({
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
               nowrapBody={!expanded}
+              scrollRef={scrollContainerRef}
+              bottomPad={expanded && editingLinhaId ? '54vh' : undefined}
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
@@ -574,12 +601,17 @@ export function ImhAbaPlanilhaPreview({
                     return (
                       <TableRow
                         key={linha.id}
+                        data-planilha-linha-id={linha.id}
                         sx={{
                           bgcolor: editing
                             ? EXCEL_SHEET.editingBg
                             : selection.has(linha.id)
                               ? EXCEL_SHEET.selectedBg
                               : undefined,
+                          position: editing && expanded ? 'relative' : undefined,
+                          zIndex: editing && expanded ? 3 : undefined,
+                          outline: editing && expanded ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
+                          outlineOffset: editing && expanded ? -2 : undefined,
                           '& > .MuiTableCell-root': editing
                             ? { bgcolor: EXCEL_SHEET.editingBg }
                             : undefined,

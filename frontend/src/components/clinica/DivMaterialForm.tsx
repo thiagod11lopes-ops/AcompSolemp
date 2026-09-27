@@ -66,6 +66,7 @@ export function DivMaterialForm({
 }: DivMaterialFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<DivMaterialLinha>(() => createEmptyDivMaterialLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
+  const [sheetExpanded, setSheetExpanded] = useState(false)
   const linhaSnapshotRef = useRef<DivMaterialLinha | null>(null)
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
 
@@ -125,9 +126,11 @@ export function DivMaterialForm({
     linhaSnapshotRef.current = cloneLinha(found)
     setEditingLinhaId(id)
     setLinhaDraft(cloneLinha(found))
-    requestAnimationFrame(() => {
-      linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
+    if (!sheetExpanded) {
+      requestAnimationFrame(() => {
+        linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
   }
 
   const handleDeleteLinha = (id: string) => {
@@ -163,6 +166,7 @@ export function DivMaterialForm({
         onRequestClear={onRequestClear}
         dataFiltro={dataFiltro}
         onDataFiltroChange={onDataFiltroChange}
+        onExpandedChange={setSheetExpanded}
       />
 
       <PlanilhaLinhaEditDialog
@@ -171,6 +175,7 @@ export function DivMaterialForm({
         badge="Div. Material"
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
+        dockBelowRow={sheetExpanded}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1 }}>
           <PlanilhaEditSection title="Procedimento" columns={3}>

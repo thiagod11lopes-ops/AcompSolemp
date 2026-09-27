@@ -61,6 +61,7 @@ export function ImhAbaForm({
 }: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
+  const [sheetExpanded, setSheetExpanded] = useState(false)
   const linhaSnapshotRef = useRef<ImhAbaLinha | null>(null)
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
@@ -206,9 +207,11 @@ export function ImhAbaForm({
     linhaSnapshotRef.current = cloneLinha(found)
     setEditingLinhaId(id)
     setLinhaDraft(cloneLinha(found))
-    requestAnimationFrame(() => {
-      linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
+    if (!sheetExpanded) {
+      requestAnimationFrame(() => {
+        linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
   }
 
   const handleDeleteLinha = (id: string) => {
@@ -248,6 +251,7 @@ export function ImhAbaForm({
         onRequestClear={onRequestClear}
         dataFiltro={dataFiltro}
         onDataFiltroChange={onDataFiltroChange}
+        onExpandedChange={setSheetExpanded}
       />
 
       <PlanilhaLinhaEditDialog
@@ -256,6 +260,7 @@ export function ImhAbaForm({
         badge="IMH"
         onClose={handleCancelLinha}
         onSave={handleAdicionarLinha}
+        dockBelowRow={sheetExpanded}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1 }}>
           <PlanilhaEditSection title="Cabeçalho" columns={2}>

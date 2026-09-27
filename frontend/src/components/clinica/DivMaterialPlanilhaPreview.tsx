@@ -22,7 +22,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
@@ -62,6 +62,8 @@ interface DivMaterialPlanilhaPreviewProps {
   onRequestClear?: () => void
   dataFiltro: PlanilhaDataFiltro
   onDataFiltroChange: (next: PlanilhaDataFiltro) => void
+  /** Notifica o pai quando a planilha entra/sai do modo expandido. */
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 function dash(value: string): string {
@@ -150,11 +152,34 @@ export function DivMaterialPlanilhaPreview({
   onRequestClear,
   dataFiltro,
   onDataFiltroChange,
+  onExpandedChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const tableRef = useRef<HTMLTableElement | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    onExpandedChange?.(expanded)
+  }, [expanded, onExpandedChange])
+
+  useEffect(() => {
+    if (!expanded || !editingLinhaId) return
+    const scrollRoot = scrollContainerRef.current
+    if (!scrollRoot) return
+    const run = () => {
+      const row = scrollRoot.querySelector(
+        `[data-planilha-linha-id="${editingLinhaId}"]`,
+      ) as HTMLElement | null
+      if (!row) return
+      const rootRect = scrollRoot.getBoundingClientRect()
+      const rowRect = row.getBoundingClientRect()
+      const nextTop = scrollRoot.scrollTop + (rowRect.top - rootRect.top)
+      scrollRoot.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' })
+    }
+    requestAnimationFrame(() => requestAnimationFrame(run))
+  }, [expanded, editingLinhaId])
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
   const linhasFiltradas = useMemo(
     () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
@@ -349,6 +374,7 @@ export function DivMaterialPlanilhaPreview({
           </Box>
         ) : (
           <Box
+            ref={scrollContainerRef}
             className="excel-sheet-grid"
             sx={{
               p: expanded ? 0 : 1.5,
@@ -357,9 +383,11 @@ export function DivMaterialPlanilhaPreview({
               maxWidth: '100%',
               minWidth: 0,
               // Máx. 12 linhas visíveis; em tela cheia usa toda a página.
+              // Com edição na expandida, reserva espaço inferior para o modal dockado.
               maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
+              pb: expanded && editingLinhaId ? '54vh' : undefined,
               overflowX: 'hidden',
               overflowY: 'auto',
               display: 'flex',
@@ -530,12 +558,17 @@ export function DivMaterialPlanilhaPreview({
                       return (
                         <TableRow
                           key={linha.id}
+                          data-planilha-linha-id={linha.id}
                           sx={{
                             bgcolor: editing
                               ? EXCEL_SHEET.editingBg
                               : selection.has(linha.id)
                                 ? EXCEL_SHEET.selectedBg
                                 : undefined,
+                            position: editing && expanded ? 'relative' : undefined,
+                            zIndex: editing && expanded ? 3 : undefined,
+                            outline: editing && expanded ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
+                            outlineOffset: editing && expanded ? -2 : undefined,
                             '& > .MuiTableCell-root': editing
                               ? { bgcolor: EXCEL_SHEET.editingBg }
                               : undefined,

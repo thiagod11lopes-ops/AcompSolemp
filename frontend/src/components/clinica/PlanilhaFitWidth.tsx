@@ -1,5 +1,5 @@
 import { Box } from '@mui/material'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 
 interface PlanilhaFitWidthProps {
@@ -18,6 +18,10 @@ interface PlanilhaFitWidthProps {
    * Cabeçalhos continuam podendo quebrar para caber nas colunas.
    */
   nowrapBody?: boolean
+  /** Ref do container com overflow (para rolar até a linha em edição). */
+  scrollRef?: Ref<HTMLDivElement | null>
+  /** Padding inferior extra (ex.: espaço para o modal dockado). */
+  bottomPad?: string | number
 }
 
 /**
@@ -31,6 +35,8 @@ export function PlanilhaFitWidth({
   cellFontWeight,
   fillHeight = false,
   nowrapBody = false,
+  scrollRef,
+  bottomPad,
 }: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
@@ -41,6 +47,7 @@ export function PlanilhaFitWidth({
 
   return (
     <Box
+      ref={scrollRef}
       className="excel-sheet-fit-width"
       sx={{
         width: '100%',
@@ -50,6 +57,7 @@ export function PlanilhaFitWidth({
         minWidth: 0,
         overflowX: 'hidden',
         overflowY: fillHeight ? 'auto' : 'visible',
+        pb: bottomPad,
         boxSizing: 'border-box',
         WebkitOverflowScrolling: 'touch',
         '& .excel-sheet-grid, & > *': {
