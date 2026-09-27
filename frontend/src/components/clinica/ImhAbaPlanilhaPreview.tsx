@@ -370,12 +370,13 @@ export function ImhAbaPlanilhaPreview({
               display: 'flex',
               flexDirection: 'column',
               gap: expanded ? 0 : 1.25,
-              width: expanded ? '100%' : 'fit-content',
+              width: '100%',
               maxWidth: '100%',
-              minWidth: expanded ? 0 : undefined,
+              minWidth: 0,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              overflow: expanded ? 'hidden' : undefined,
+              overflowX: 'hidden',
+              overflowY: expanded ? 'hidden' : undefined,
               boxSizing: 'border-box',
             }}
           >
@@ -396,17 +397,19 @@ export function ImhAbaPlanilhaPreview({
             ) : null}
 
             <PlanilhaFitWidth
-              enabled={expanded}
-              cellFontSize="10px"
+              enabled
+              fillHeight={expanded}
+              cellFontSize={cellFontSize}
+              cellFontWeight={cellFontWeight}
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
               className="excel-sheet-grid"
               sx={{
-                width: expanded ? '100%' : 'fit-content',
+                width: '100%',
                 maxWidth: '100%',
-                minWidth: expanded ? 0 : undefined,
-                overflowX: expanded ? 'hidden' : 'auto',
+                minWidth: 0,
+                overflowX: 'hidden',
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -416,23 +419,21 @@ export function ImhAbaPlanilhaPreview({
               <Table
                 size="small"
                 sx={{
-                  width: expanded ? '100%' : 'auto',
-                  maxWidth: expanded ? '100%' : undefined,
-                  minWidth: expanded ? 0 : undefined,
-                  tableLayout: expanded ? 'fixed' : 'auto',
-                  ...(expanded
-                    ? {
-                        '& .MuiTableCell-root': {
-                          boxSizing: 'border-box',
-                          whiteSpace: 'normal',
-                          wordBreak: 'break-word',
-                          overflowWrap: 'anywhere',
-                          minWidth: 0,
-                          px: 0.5,
-                          py: 0.5,
-                        },
-                      }
-                    : {}),
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  tableLayout: 'fixed',
+                  '& .MuiTableCell-root': {
+                    boxSizing: 'border-box',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    minWidth: 0,
+                    px: 0.5,
+                    py: 0.5,
+                    fontSize: cellFontSize,
+                    fontWeight: cellFontWeight,
+                  },
                 }}
               >
                 <TableHead>
@@ -442,11 +443,11 @@ export function ImhAbaPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
-                          width: expanded ? selectionWidth : undefined,
-                          minWidth: expanded ? 0 : 52,
+                          width: selectionWidth,
+                          minWidth: 0,
                           textAlign: 'center',
                           px: 0.5,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          whiteSpace: 'normal',
                         }}
                       >
                         <Box
@@ -482,18 +483,16 @@ export function ImhAbaPlanilhaPreview({
                       </TableCell>
                     ) : null}
                     {IMH_ABA_COLUNAS.map((col) => {
-                      const colWidth = expanded
-                        ? resolveColWidth(col.key, col.width)
-                        : undefined
+                      const colWidth = resolveColWidth(col.key)
                       return (
                         <TableCell
                           key={col.key}
                           sx={{
                             ...headerSx,
                             width: colWidth,
-                            minWidth: expanded ? 0 : col.width,
-                            whiteSpace: expanded ? 'normal' : 'nowrap',
-                            lineHeight: expanded ? 1.2 : undefined,
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                            lineHeight: 1.2,
                             fontSize: cellFontSize,
                             fontWeight: EXCEL_SHEET.fontWeightBold,
                             ...(expanded ? { transition: 'width 160ms ease' } : null),
@@ -508,9 +507,9 @@ export function ImhAbaPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           textAlign: 'center',
-                          width: expanded ? actionsWidth : 72,
-                          minWidth: expanded ? 0 : 72,
-                          whiteSpace: expanded ? 'normal' : 'nowrap',
+                          width: actionsWidth,
+                          minWidth: 0,
+                          whiteSpace: 'normal',
                           fontSize: cellFontSize,
                         }}
                       >
@@ -585,9 +584,7 @@ export function ImhAbaPlanilhaPreview({
                           </TableCell>
                         ) : null}
                         {IMH_ABA_COLUNAS.map((col) => {
-                          const colWidth = expanded
-                            ? resolveColWidth(col.key, col.width)
-                            : undefined
+                          const colWidth = resolveColWidth(col.key)
                           const text = dash(String(linha[col.key] ?? ''))
                           const hovered = isColHovered(col.key)
                           return (
@@ -600,32 +597,22 @@ export function ImhAbaPlanilhaPreview({
                                 fontSize: cellFontSize,
                                 fontWeight: cellFontWeight,
                                 textAlign: 'center',
-                                verticalAlign: expanded ? 'top' : 'middle',
+                                verticalAlign: 'top',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                overflowWrap: 'anywhere',
+                                minWidth: 0,
                                 ...(expanded
                                   ? {
-                                      whiteSpace: 'normal',
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'anywhere',
-                                      minWidth: 0,
                                       transition: 'width 160ms ease',
                                       cursor: 'default',
                                     }
-                                  : col.key === 'descricao' || col.key === 'nomeUsuario'
-                                    ? {
-                                        whiteSpace: 'pre-wrap',
-                                        maxWidth: col.width + 40,
-                                        minWidth: 120,
-                                      }
-                                    : null),
+                                  : null),
                               }}
                             >
-                              {expanded ? (
-                                <PlanilhaExpandedCellContent showFull={hovered}>
-                                  {text}
-                                </PlanilhaExpandedCellContent>
-                              ) : (
-                                text
-                              )}
+                              <PlanilhaExpandedCellContent showFull={expanded ? hovered : true}>
+                                {text}
+                              </PlanilhaExpandedCellContent>
                             </TableCell>
                           )
                         })}
@@ -634,8 +621,8 @@ export function ImhAbaPlanilhaPreview({
                             sx={{
                               ...cellSx,
                               textAlign: 'center',
-                              width: expanded ? actionsWidth : undefined,
-                              minWidth: expanded ? 0 : 72,
+                              width: actionsWidth,
+                              minWidth: 0,
                               fontSize: cellFontSize,
                               fontWeight: cellFontWeight,
                             }}

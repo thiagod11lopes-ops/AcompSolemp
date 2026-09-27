@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 type ColDef = { key: string; width: number }
 
 /**
- * Hover que dobra a fatia da coluna no modo expandido.
- * Larguras são percentuais que sempre somam 100% da página
+ * Larguras percentuais que sempre somam 100% do espaço disponível
  * (reserva seleção/ações), para caber sem rolagem horizontal.
+ * Hover que dobra a coluna só no modo expandido.
  */
 export function usePlanilhaColunaHover(
   expanded: boolean,
@@ -34,7 +34,7 @@ export function usePlanilhaColunaHover(
           : col.width
       return {
         key: col.key,
-        weight: hoveredColKey === col.key ? base * 2 : base,
+        weight: expanded && hoveredColKey === col.key ? base * 2 : base,
       }
     })
     const sum = weights.reduce((acc, item) => acc + item.weight, 0) || 1
@@ -48,12 +48,10 @@ export function usePlanilhaColunaHover(
       actionsWidth: actionsEnabled ? `${actionsPct}%` : undefined,
       percents,
     }
-  }, [actionsEnabled, columns, descricaoKey, hoveredColKey, selectionEnabled])
+  }, [actionsEnabled, columns, descricaoKey, expanded, hoveredColKey, selectionEnabled])
 
-  const resolveColWidth = (key: string, fallbackWidth?: number): string | number => {
-    if (expanded) return layout.percents[key] ?? 'auto'
-    return fallbackWidth ?? 'auto'
-  }
+  const resolveColWidth = (key: string, _fallbackWidth?: number): string =>
+    layout.percents[key] ?? 'auto'
 
   const isColHovered = (key: string) => expanded && hoveredColKey === key
 
@@ -75,7 +73,7 @@ export function usePlanilhaColunaHover(
   }
 }
 
-/** Conteúdo da célula no modo expandido: truncado em 2 linhas, completo no hover da coluna. */
+/** Conteúdo da célula: truncado em 2 linhas; completo no hover (modo expandido). */
 export function PlanilhaExpandedCellContent({
   children,
   showFull,

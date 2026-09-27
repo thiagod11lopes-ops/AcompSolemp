@@ -3,24 +3,35 @@ import type { ReactNode } from 'react'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 
 interface PlanilhaFitWidthProps {
-  /** Quando true, a planilha ocupa 100% da largura (sem scale — fonte permanece legível). */
+  /** Quando true, a planilha ocupa 100% da largura disponível. */
   enabled: boolean
   children: ReactNode
   remountKey?: string | number
-  /** Sobrescreve o tamanho da fonte das células no modo expandido. */
+  /** Tamanho da fonte das células (ex.: 11px recolhida, 10px expandida). */
   cellFontSize?: string
+  /** Peso da fonte das células. */
+  cellFontWeight?: number
+  /** Preenche a altura restante (modo expandido). */
+  fillHeight?: boolean
 }
 
 /**
- * Container de largura total: encaixa a tabela exatamente na largura da página.
+ * Container de largura total: encaixa a tabela no espaço disponível.
  * Todas as colunas ficam visíveis; sem rolagem horizontal.
  */
-export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFitWidthProps) {
+export function PlanilhaFitWidth({
+  enabled,
+  children,
+  cellFontSize,
+  cellFontWeight,
+  fillHeight = false,
+}: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
   }
 
-  const fontSize = cellFontSize ?? EXCEL_SHEET.fontSizeExpanded
+  const fontSize = cellFontSize ?? EXCEL_SHEET.fontSize
+  const fontWeight = cellFontWeight ?? EXCEL_SHEET.fontWeight
 
   return (
     <Box
@@ -28,11 +39,11 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
       sx={{
         width: '100%',
         maxWidth: '100%',
-        flex: 1,
+        flex: fillHeight ? 1 : undefined,
         minHeight: 0,
         minWidth: 0,
         overflowX: 'hidden',
-        overflowY: 'auto',
+        overflowY: fillHeight ? 'auto' : 'visible',
         boxSizing: 'border-box',
         WebkitOverflowScrolling: 'touch',
         '& .excel-sheet-grid, & > *': {
@@ -55,7 +66,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           overflowWrap: 'anywhere',
           overflow: 'hidden',
           fontSize: `${fontSize} !important`,
-          fontWeight: `${EXCEL_SHEET.fontWeightBold} !important`,
+          fontWeight: `${fontWeight} !important`,
           lineHeight: 1.25,
           px: '4px !important',
           boxSizing: 'border-box',
