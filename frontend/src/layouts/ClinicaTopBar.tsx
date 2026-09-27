@@ -4,20 +4,13 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Tab,
-  Tabs,
   Toolbar,
   Typography,
 } from '@mui/material'
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital'
+import MenuIcon from '@mui/icons-material/Menu'
 import LogoutIcon from '@mui/icons-material/Logout'
-import ListAltIcon from '@mui/icons-material/ListAlt'
-import AddIcon from '@mui/icons-material/Add'
-import TimelineIcon from '@mui/icons-material/Timeline'
-import MedicationIcon from '@mui/icons-material/Medication'
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
-import { useMemo, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth, useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
@@ -25,59 +18,21 @@ import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
-import { stripDemoRouteBase } from '@/utils/portalPaths'
+import { CLINICA_DRAWER_WIDTH } from './ClinicaSidebar'
 
-const NAV_ITEMS = [
-  { path: '/clinica/pedidos', label: 'Meus Pedidos', icon: <ListAltIcon sx={{ fontSize: 18 }} /> },
-  { path: '/clinica/pedidos/novo', label: 'Planilhas', icon: <AddIcon sx={{ fontSize: 18 }} /> },
-  {
-    path: '/clinica/precos-medicamentos',
-    label: 'Preço de Medicamentos',
-    icon: <MedicationIcon sx={{ fontSize: 18 }} />,
-    medicamentoOnly: true,
-  },
-  { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon sx={{ fontSize: 18 }} /> },
-  {
-    path: '/clinica/balanco',
-    label: 'Balanço Geral',
-    icon: <AccountBalanceIcon sx={{ fontSize: 18 }} />,
-    medicamentoOnly: true,
-  },
-] as const
-
-function resolveActiveTab(pathname: string): string {
-  const path = stripDemoRouteBase(pathname)
-  if (path.startsWith('/clinica/precos-medicamentos')) return '/clinica/precos-medicamentos'
-  if (path.startsWith('/clinica/balanco')) return '/clinica/balanco'
-  if (path.startsWith('/clinica/pedidos/novo')) return '/clinica/pedidos/novo'
-  if (path.startsWith('/clinica/timeline')) return '/clinica/timelines'
-  if (path.startsWith('/clinica/pedidos')) return '/clinica/pedidos'
-  return '/clinica/pedidos'
+interface ClinicaTopBarProps {
+  onMenuClick: () => void
 }
 
-export const CLINICA_TOPBAR_HEIGHT = 108
-
-export function ClinicaTopBar() {
+export function ClinicaTopBar({ onMenuClick }: ClinicaTopBarProps) {
   const { user, logout, isDemo } = useClinicaAuth()
   const { impersonationTargetEmail } = useAuth()
   const { data: clinicas = [] } = useClinicas()
-  const { mapPath, navigatePortal, demoBannerHeight } = usePortalPaths()
+  const { navigatePortal, demoBannerHeight } = usePortalPaths()
   const navigate = useNavigate()
-  const location = useLocation()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
-  const isMedicamento =
-    user?.perfil === 'MEDICAMENTO' || clinica?.tipo === 'medicamento'
-  const activeTab = useMemo(() => resolveActiveTab(location.pathname), [location.pathname])
-  const navItems = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) =>
-        'medicamentoOnly' in item && item.medicamentoOnly ? isMedicamento : true,
-      ),
-    [isMedicamento],
-  )
-  const tabsValue = navItems.some((item) => item.path === activeTab) ? activeTab : false
 
   const handleLogout = async () => {
     const wasImpersonating = Boolean(impersonationTargetEmail)
@@ -99,30 +54,30 @@ export function ClinicaTopBar() {
       sx={{
         position: 'fixed',
         top: demoBannerHeight,
-        left: 0,
+        left: { md: CLINICA_DRAWER_WIDTH },
         right: 0,
-        zIndex: (t) => t.zIndex.appBar,
+        zIndex: (t) => t.zIndex.drawer + 1,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
       }}
     >
       <ImpersonationBanner />
-      <Toolbar variant="dense" sx={{ gap: 1, minHeight: 40, py: 0.5 }}>
-        <LocalHospitalIcon color="primary" sx={{ flexShrink: 0 }} />
+      <Toolbar>
+        <IconButton edge="start" onClick={onMenuClick} sx={{ mr: 2, display: { md: 'none' } }}>
+          <MenuIcon />
+        </IconButton>
         <TopBarTitle
           fallback="Portal da Clínica"
           fallbackSubtitle={clinica?.nome ?? 'Materiais Consignados'}
           showOnMobile
         />
-
-        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', px: 1, minWidth: 0 }}>
-          <GlobalProcessSearch portal="clinica" dense />
+        <Box sx={{ mr: 1.5, display: 'flex', justifyContent: 'flex-end', flexGrow: { xs: 1, sm: 0 } }}>
+          <GlobalProcessSearch portal="clinica" />
         </Box>
-
         <NotificationPanel />
-        <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 0.5 }}>
-          <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main', fontSize: 14 }}>
+        <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1 }}>
+          <Avatar sx={{ width: 36, height: 36, bgcolor: 'secondary.main', fontSize: 14 }}>
             {user?.nome.charAt(0)}
           </Avatar>
         </IconButton>
@@ -138,48 +93,6 @@ export function ClinicaTopBar() {
           </MenuItem>
         </Menu>
       </Toolbar>
-
-      <Tabs
-        value={tabsValue}
-        onChange={(_, path: string) => {
-          if (path) navigatePortal(path)
-        }}
-        variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
-        sx={{
-          minHeight: 40,
-          px: { xs: 0.5, sm: 2 },
-          borderTop: 1,
-          borderColor: 'divider',
-          bgcolor: (t) => t.palette.action.hover,
-          '& .MuiTab-root': {
-            minHeight: 40,
-            py: 0.25,
-            textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '0.8125rem',
-            gap: 0.5,
-          },
-        }}
-      >
-        {navItems.map((item) => (
-          <Tab
-            key={item.path}
-            value={item.path}
-            label={item.label}
-            icon={item.icon}
-            iconPosition="start"
-            component={NavLink}
-            to={mapPath(item.path)}
-            end={
-              item.path === '/clinica/pedidos' ||
-              item.path === '/clinica/timelines' ||
-              item.path === '/clinica/balanco'
-            }
-          />
-        ))}
-      </Tabs>
     </Box>
   )
 }
