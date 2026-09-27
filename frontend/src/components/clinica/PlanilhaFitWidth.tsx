@@ -116,6 +116,14 @@ export function PlanilhaFitWidth({
           overflowWrap: 'normal !important',
           px: '2px !important',
         },
+        // Colunas com quebra gramatical (ex.: descrição / nome do paciente)
+        '& td.excel-planilha-wrap-col': {
+          whiteSpace: 'pre-line !important',
+          wordBreak: 'normal !important',
+          overflowWrap: 'normal !important',
+          textOverflow: 'clip !important',
+          verticalAlign: 'middle',
+        },
       }}
     >
       {children}

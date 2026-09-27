@@ -47,7 +47,18 @@ import {
   linhaPassaNoFiltroData,
   type PlanilhaDataFiltro,
 } from '@/utils/planilhaDataFiltro'
+import { wrapTextGramatical } from '@/utils/textWrapGramatical'
 import '@/components/clinica/spreadsheet-excel.css'
+
+/** Colunas que quebram linha após ~50 caracteres (limites de palavra). */
+const DIV_MAT_WRAP_COL_KEYS = new Set(['descricaoMaterial', 'nomePaciente'])
+const DIV_MAT_WRAP_MAX_CHARS = 50
+
+function formatDivMatCellText(colKey: string, raw: string): string {
+  const base = dash(raw)
+  if (base === '—' || !DIV_MAT_WRAP_COL_KEYS.has(colKey)) return base
+  return wrapTextGramatical(base, DIV_MAT_WRAP_MAX_CHARS)
+}
 
 interface DivMaterialPlanilhaPreviewProps {
   linhas: DivMaterialLinha[]
@@ -169,7 +180,9 @@ export function DivMaterialPlanilhaPreview({
   const cellTextsByKey = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const col of DIV_MATERIAL_COLUNAS) {
-      map[col.key] = linhasFiltradas.map((linha) => dash(String(linha[col.key] ?? '')))
+      map[col.key] = linhasFiltradas.map((linha) =>
+        formatDivMatCellText(col.key, String(linha[col.key] ?? '')),
+      )
     }
     return map
   }, [linhasFiltradas])
@@ -438,12 +451,13 @@ export function DivMaterialPlanilhaPreview({
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
                   },
-                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': {
-                    whiteSpace: 'nowrap',
-                    wordBreak: 'normal',
-                    overflowWrap: 'normal',
-                    textOverflow: 'ellipsis',
-                  },
+                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col):not(.excel-planilha-wrap-col)':
+                    {
+                      whiteSpace: 'nowrap',
+                      wordBreak: 'normal',
+                      overflowWrap: 'normal',
+                      textOverflow: 'ellipsis',
+                    },
                 }}
               >
                 <TableHead sx={isEditingMode ? dimmedSx : undefined}>
@@ -603,12 +617,17 @@ export function DivMaterialPlanilhaPreview({
                           ) : null}
                           {DIV_MATERIAL_COLUNAS.map((col) => {
                             const isDescricao = col.key === 'descricaoMaterial'
+                            const allowWrap = DIV_MAT_WRAP_COL_KEYS.has(col.key)
                             const colWidth = resolveColWidth(col.key)
-                            const text = dash(String(linha[col.key] ?? ''))
+                            const text = formatDivMatCellText(
+                              col.key,
+                              String(linha[col.key] ?? ''),
+                            )
                             const hovered = isColHovered(col.key)
                             return (
                               <TableCell
                                 key={col.key}
+                                className={allowWrap ? 'excel-planilha-wrap-col' : undefined}
                                 {...colHoverHandlers(col.key)}
                                 sx={{
                                   ...cellSx,
@@ -617,17 +636,29 @@ export function DivMaterialPlanilhaPreview({
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
                                   verticalAlign: 'middle',
-                                  textAlign: isDescricao ? 'left' : 'center',
+                                  textAlign: isDescricao || allowWrap ? 'left' : 'center',
                                   transition: 'width 160ms ease',
                                   cursor: 'default',
-                                  whiteSpace: 'nowrap',
-                                  wordBreak: 'normal',
-                                  overflowWrap: 'normal',
-                                  textOverflow: hovered ? 'clip' : 'ellipsis',
                                   overflow: 'hidden',
+                                  ...(allowWrap
+                                    ? {
+                                        whiteSpace: 'pre-line',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'normal',
+                                        textOverflow: 'clip',
+                                      }
+                                    : {
+                                        whiteSpace: 'nowrap',
+                                        wordBreak: 'normal',
+                                        overflowWrap: 'normal',
+                                        textOverflow: hovered ? 'clip' : 'ellipsis',
+                                      }),
                                 }}
                               >
-                                <PlanilhaExpandedCellContent showFull={hovered}>
+                                <PlanilhaExpandedCellContent
+                                  showFull={hovered}
+                                  allowWrap={allowWrap}
+                                >
                                   {text}
                                 </PlanilhaExpandedCellContent>
                               </TableCell>

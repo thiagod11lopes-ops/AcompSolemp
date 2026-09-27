@@ -28,7 +28,10 @@ function maxContentWidthPx(
   if (!texts?.length) return 0
   let max = 0
   for (const text of texts) {
-    max = Math.max(max, measureTextPx(text || '—', font))
+    // Mede a linha mais larga (textos com quebra gramatical usam \n)
+    for (const line of String(text || '—').split('\n')) {
+      max = Math.max(max, measureTextPx(line || '—', font))
+    }
   }
   return Math.ceil(max + paddingPx)
 }
@@ -173,18 +176,48 @@ export function usePlanilhaColunaHover(
 }
 
 /**
- * Conteúdo da célula em uma linha: reticências quando truncado;
- * no hover a coluna alarga e o texto completo aparece sem quebra.
+ * Conteúdo da célula.
+ * - padrão: uma linha com reticências; no hover a coluna alarga.
+ * - allowWrap: respeita quebras `\n` (ex.: limite gramatical de 50 chars).
  */
 export function PlanilhaExpandedCellContent({
   children,
   showFull,
+  allowWrap = false,
 }: {
   children: ReactNode
   showFull: boolean
-  /** @deprecated Sempre nowrap — mantido por compatibilidade. */
+  allowWrap?: boolean
+  /** @deprecated Mantido por compatibilidade. */
   nowrap?: boolean
 }) {
+  if (allowWrap) {
+    return (
+      <Box
+        sx={{
+          whiteSpace: 'pre-line',
+          overflow: showFull ? 'visible' : 'hidden',
+          textOverflow: 'clip',
+          wordBreak: 'normal',
+          overflowWrap: 'normal',
+          textAlign: 'inherit',
+          minWidth: 0,
+          maxWidth: '100%',
+          lineHeight: 1.25,
+          ...(showFull
+            ? null
+            : {
+                display: '-webkit-box',
+                WebkitLineClamp: 4,
+                WebkitBoxOrient: 'vertical',
+              }),
+        }}
+      >
+        {children}
+      </Box>
+    )
+  }
+
   return (
     <Box
       sx={{
