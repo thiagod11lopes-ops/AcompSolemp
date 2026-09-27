@@ -16,9 +16,9 @@ import { premiumTokens } from '@/theme/tokens'
 
 export const planilhaEditFieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: 1.5,
+    borderRadius: 1.25,
     bgcolor: alpha('#0f172a', 0.02),
-    fontSize: '0.8rem',
+    fontSize: '0.78rem',
     transition: 'background-color 160ms ease, box-shadow 160ms ease',
     '&:hover': {
       bgcolor: alpha(premiumTokens.primary, 0.04),
@@ -39,16 +39,16 @@ export const planilhaEditFieldSx = {
     },
   },
   '& .MuiInputBase-input': {
-    fontSize: '0.8rem',
-    py: 0.7,
+    fontSize: '0.78rem',
+    py: 0.55,
   },
   '& .MuiInputLabel-root': {
-    fontSize: '0.8rem',
+    fontSize: '0.78rem',
   },
   '& .MuiFormHelperText-root': {
-    fontSize: '0.68rem',
+    fontSize: '0.65rem',
     mx: 0.25,
-    mt: 0.25,
+    mt: 0.15,
     mb: 0,
   },
 } as const
@@ -61,9 +61,9 @@ export const planilhaEditMultilineSx = {
     alignItems: 'flex-start',
   },
   '& .MuiInputBase-input': {
-    fontSize: '0.8rem',
-    lineHeight: 1.35,
-    py: 0.7,
+    fontSize: '0.78rem',
+    lineHeight: 1.3,
+    py: 0.55,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
     wordBreak: 'break-word',
@@ -86,20 +86,20 @@ export function PlanilhaEditSection({
   return (
     <Box
       sx={{
-        borderRadius: 2,
+        borderRadius: 1.5,
         border: `1px solid ${alpha('#0f172a', 0.08)}`,
         bgcolor: alpha('#fff', 0.85),
-        px: 1.25,
-        py: 1,
+        px: 1,
+        py: 0.65,
         display: 'grid',
-        gap: 0.85,
+        gap: 0.55,
       }}
     >
       <Typography
         sx={{
           fontWeight: 800,
-          fontSize: '0.68rem',
-          letterSpacing: 0.45,
+          fontSize: '0.62rem',
+          letterSpacing: 0.4,
           textTransform: 'uppercase',
           color: premiumTokens.primaryDark,
           lineHeight: 1.1,
@@ -110,7 +110,7 @@ export function PlanilhaEditSection({
       <Box
         sx={{
           display: 'grid',
-          gap: 0.85,
+          gap: 0.65,
           gridTemplateColumns: {
             xs: '1fr',
             sm: columns === 2 ? '1fr 1fr' : columns === 4 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
@@ -167,26 +167,28 @@ export function PlanilhaLinhaEditDialog({
                 alignItems: 'flex-end',
                 justifyContent: 'center',
                 pt: 0,
-                pb: { xs: 1, sm: 1.5 },
+                pb: { xs: 0.75, sm: 1 },
                 px: { xs: 1, sm: 2 },
               },
             }
-          : null),
+          : {
+              '& .MuiDialog-container': {
+                alignItems: 'center',
+              },
+            }),
       }}
       slotProps={{
         backdrop: {
           sx: dockBelowRow
             ? {
-                // Sem blur: a linha no topo permanece nítida para ver a edição ao vivo
                 bgcolor: 'transparent',
                 backdropFilter: 'none',
-                // Faixa suave só na metade inferior, atrás do formulário
                 backgroundImage: `linear-gradient(
                   to bottom,
                   transparent 0%,
-                  transparent 42%,
-                  ${alpha('#0f172a', 0.12)} 55%,
-                  ${alpha('#0f172a', 0.28)} 100%
+                  transparent 36%,
+                  ${alpha('#0f172a', 0.1)} 50%,
+                  ${alpha('#0f172a', 0.26)} 100%
                 )`,
               }
             : {
@@ -200,8 +202,13 @@ export function PlanilhaLinhaEditDialog({
             overflow: 'hidden',
             width: { xs: '96vw', md: 'min(1100px, 94vw)' },
             maxWidth: '1100px',
-            maxHeight: dockBelowRow ? 'min(52vh, 520px)' : 'none',
+            // Altura suficiente para IMH e Div. Material sem barra de rolagem interna
+            maxHeight: dockBelowRow
+              ? { xs: '72vh', sm: 'min(68vh, 620px)' }
+              : { xs: '94vh', sm: 'min(90vh, 720px)' },
             m: dockBelowRow ? 0 : undefined,
+            display: 'flex',
+            flexDirection: 'column',
             border: `1px solid ${alpha('#0f172a', 0.08)}`,
             boxShadow: `0 24px 64px ${alpha('#0f172a', 0.24)}`,
             background: `linear-gradient(180deg, ${alpha(premiumTokens.primary, 0.06)} 0%, #fff 72px)`,
@@ -215,9 +222,9 @@ export function PlanilhaLinhaEditDialog({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 1.25,
-          px: { xs: 1.75, sm: 2.25 },
-          py: dockBelowRow ? 1 : 1.25,
-          // Barra de título inteira em verde opaco (mesmo tom da linha em edição)
+          px: { xs: 1.5, sm: 2 },
+          py: 0.85,
+          flexShrink: 0,
           bgcolor: EXCEL_SHEET.editingBg,
           borderBottom: `1px solid ${alpha(EXCEL_SHEET.selectedCheck, 0.28)}`,
         }}
@@ -240,7 +247,7 @@ export function PlanilhaLinhaEditDialog({
             component="h2"
             sx={{
               fontWeight: 800,
-              fontSize: { xs: '1rem', sm: '1.1rem' },
+              fontSize: { xs: '0.95rem', sm: '1.05rem' },
               letterSpacing: '-0.02em',
               lineHeight: 1.15,
               color: '#0f172a',
@@ -265,12 +272,15 @@ export function PlanilhaLinhaEditDialog({
 
       <DialogContent
         sx={{
-          px: { xs: 1.75, sm: 2.25 },
-          py: dockBelowRow ? 1 : 1.25,
-          overflow: dockBelowRow ? 'auto' : 'visible',
+          px: { xs: 1.25, sm: 1.75 },
+          py: 0.85,
+          // Sem rolagem: o conteúdo cabe na altura do paper
+          overflow: 'visible',
+          flex: '1 1 auto',
+          minHeight: 0,
           bgcolor: alpha('#f8fafc', 0.55),
           display: 'grid',
-          gap: 1,
+          gap: 0.65,
         }}
       >
         {children}
@@ -278,9 +288,10 @@ export function PlanilhaLinhaEditDialog({
 
       <DialogActions
         sx={{
-          px: { xs: 1.75, sm: 2.25 },
-          py: 1.15,
+          px: { xs: 1.5, sm: 2 },
+          py: 0.85,
           gap: 1,
+          flexShrink: 0,
           bgcolor: '#fff',
           borderTop: `1px solid ${alpha('#0f172a', 0.06)}`,
         }}
@@ -292,7 +303,7 @@ export function PlanilhaLinhaEditDialog({
             fontWeight: 600,
             color: 'text.secondary',
             px: 1.5,
-            minHeight: 34,
+            minHeight: 32,
           }}
         >
           Cancelar
@@ -304,7 +315,7 @@ export function PlanilhaLinhaEditDialog({
             textTransform: 'none',
             fontWeight: 700,
             px: 2,
-            minHeight: 34,
+            minHeight: 32,
             borderRadius: 1.5,
             bgcolor: premiumTokens.primary,
             boxShadow: `0 6px 16px ${alpha(premiumTokens.primary, 0.25)}`,

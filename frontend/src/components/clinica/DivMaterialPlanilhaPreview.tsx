@@ -406,7 +406,7 @@ export function DivMaterialPlanilhaPreview({
               maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              pb: expanded && editingLinhaId ? '54vh' : undefined,
+              pb: expanded && editingLinhaId ? '70vh' : undefined,
               overflowX: 'hidden',
               overflowY: 'auto',
               display: 'flex',

@@ -470,7 +470,7 @@ export function ImhAbaPlanilhaPreview({
               cellFontWeight={cellFontWeight}
               nowrapBody
               scrollRef={scrollContainerRef}
-              bottomPad={expanded && editingLinhaId ? '54vh' : undefined}
+              bottomPad={expanded && editingLinhaId ? '70vh' : undefined}
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box

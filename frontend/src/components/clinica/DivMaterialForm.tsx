@@ -177,7 +177,7 @@ export function DivMaterialForm({
         onSave={handleAdicionarLinha}
         dockBelowRow={sheetExpanded}
       >
-        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1 }}>
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 0.65 }}>
           <PlanilhaEditSection title="Procedimento" columns={3}>
             <TextField
               label="Data do procedimento"
@@ -237,8 +237,8 @@ export function DivMaterialForm({
               size="small"
               fullWidth
               multiline
-              minRows={2}
-              maxRows={3}
+              minRows={1}
+              maxRows={2}
               sx={planilhaEditMultilineSx}
             />
             <TextField
