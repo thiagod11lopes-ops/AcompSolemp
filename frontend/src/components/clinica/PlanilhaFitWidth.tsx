@@ -14,7 +14,7 @@ interface PlanilhaFitWidthProps {
   /** Preenche a altura restante (modo expandido). */
   fillHeight?: boolean
   /**
-   * Corpo sem quebra de linha (modo recolhido).
+   * Corpo sem quebra de linha (padrão true).
    * Cabeçalhos continuam podendo quebrar para caber nas colunas.
    */
   nowrapBody?: boolean
@@ -34,7 +34,7 @@ export function PlanilhaFitWidth({
   cellFontSize,
   cellFontWeight,
   fillHeight = false,
-  nowrapBody = false,
+  nowrapBody = true,
   scrollRef,
   bottomPad,
 }: PlanilhaFitWidthProps) {

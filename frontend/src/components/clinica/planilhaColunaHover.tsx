@@ -23,7 +23,7 @@ function measureTextPx(text: string, font: string): number {
 function maxContentWidthPx(
   texts: string[] | undefined,
   font: string,
-  paddingPx = 14,
+  paddingPx = 16,
 ): number {
   if (!texts?.length) return 0
   let max = 0
@@ -47,9 +47,7 @@ interface UsePlanilhaColunaHoverOptions {
   selectionEnabled?: boolean
   actionsEnabled?: boolean
   descricaoKey?: string
-  /** Expandida: hover dobra a coluna. Recolhida: alarga até caber o conteúdo. */
-  expanded?: boolean
-  /** Textos das células por coluna (linhas filtradas) — usado no hover recolhido. */
+  /** Textos das células por coluna (linhas filtradas) — usado no hover. */
   cellTextsByKey?: Record<string, string[]>
   /** Ref da tabela ou container para medir a largura disponível. */
   tableRef?: RefObject<HTMLElement | null>
@@ -58,8 +56,8 @@ interface UsePlanilhaColunaHoverOptions {
 }
 
 /**
- * Larguras que sempre somam o espaço disponível (reserva seleção/ações fixas).
- * Hover: dobra (expandida) ou cresce até revelar o conteúdo inteiro (recolhida).
+ * Larguras que somam o espaço disponível (seleção/ações fixas).
+ * Hover: alarga a coluna na horizontal até caber todo o conteúdo (sem quebra).
  */
 export function usePlanilhaColunaHover(
   columns: readonly ColDef[],
@@ -70,7 +68,6 @@ export function usePlanilhaColunaHover(
   const selectionEnabled = Boolean(options.selectionEnabled)
   const actionsEnabled = Boolean(options.actionsEnabled)
   const descricaoKey = options.descricaoKey
-  const expanded = Boolean(options.expanded)
   const cellTextsByKey = options.cellTextsByKey
   const tableRef = options.tableRef
   const fontSizePx = options.fontSizePx ?? 11
@@ -79,12 +76,14 @@ export function usePlanilhaColunaHover(
   useEffect(() => {
     const el = tableRef?.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width ?? el.clientWidth
+    const measure = () => {
+      const w = el.clientWidth || el.parentElement?.clientWidth || 0
       setTableWidthPx(Math.round(w))
-    })
+    }
+    const ro = new ResizeObserver(() => measure())
     ro.observe(el)
-    setTableWidthPx(Math.round(el.clientWidth))
+    if (el.parentElement) ro.observe(el.parentElement)
+    measure()
     return () => ro.disconnect()
   }, [tableRef])
 
@@ -102,46 +101,38 @@ export function usePlanilhaColunaHover(
       return { key: col.key, base }
     })
     const baseSum = bases.reduce((acc, item) => acc + item.base, 0) || 1
-
-    let weights = bases.map((item) => ({ key: item.key, weight: item.base }))
+    const percents: Record<string, string> = {}
 
     if (hoveredColKey) {
-      if (expanded) {
-        weights = bases.map((item) => ({
-          key: item.key,
-          weight: item.key === hoveredColKey ? item.base * 2 : item.base,
-        }))
-      } else {
-        const font = `${fontWeight} ${fontSizePx}px ${EXCEL_SHEET.fontFamily}`
-        const neededPx = maxContentWidthPx(cellTextsByKey?.[hoveredColKey], font)
-        const hoveredBase =
-          bases.find((b) => b.key === hoveredColKey)?.base ?? baseSum / columns.length
-        const fitFraction = Math.min(
-          0.92,
-          Math.max(neededPx / availablePx, hoveredBase / baseSum),
-        )
-        const othersSum =
-          bases.filter((b) => b.key !== hoveredColKey).reduce((a, b) => a + b.base, 0) || 1
-        weights = bases.map((item) => {
-          if (item.key === hoveredColKey) {
-            return { key: item.key, weight: fitFraction }
-          }
-          return {
-            key: item.key,
-            weight: ((1 - fitFraction) * item.base) / othersSum,
-          }
-        })
-      }
-    }
+      const font = `${fontWeight} ${fontSizePx}px ${EXCEL_SHEET.fontFamily}`
+      const neededPx = maxContentWidthPx(cellTextsByKey?.[hoveredColKey], font)
+      const hoveredBase =
+        bases.find((b) => b.key === hoveredColKey)?.base ?? baseSum / Math.max(columns.length, 1)
+      const baseSharePx = (hoveredBase / baseSum) * availablePx
+      // Largura em px até caber o texto (máx. ~92% da área de dados)
+      const fitPx = Math.round(
+        Math.min(availablePx * 0.92, Math.max(neededPx, baseSharePx, 48)),
+      )
+      const othersSum =
+        bases.filter((b) => b.key !== hoveredColKey).reduce((a, b) => a + b.base, 0) || 1
 
-    const weightSum = weights.reduce((acc, item) => acc + item.weight, 0) || 1
-    const percents: Record<string, string> = {}
-    for (const item of weights) {
-      const fraction = item.weight / weightSum
-      percents[item.key] =
-        reservedPx > 0
-          ? `calc((100% - ${reservedPx}px) * ${fraction.toFixed(5)})`
-          : `${(fraction * 100).toFixed(3)}%`
+      for (const item of bases) {
+        if (item.key === hoveredColKey) {
+          percents[item.key] = `${fitPx}px`
+        } else {
+          const frac = item.base / othersSum
+          percents[item.key] =
+            `calc((100% - ${reservedPx + fitPx}px) * ${frac.toFixed(5)})`
+        }
+      }
+    } else {
+      for (const item of bases) {
+        const fraction = item.base / baseSum
+        percents[item.key] =
+          reservedPx > 0
+            ? `calc((100% - ${reservedPx}px) * ${fraction.toFixed(5)})`
+            : `${(fraction * 100).toFixed(3)}%`
+      }
     }
 
     return {
@@ -154,7 +145,6 @@ export function usePlanilhaColunaHover(
     cellTextsByKey,
     columns,
     descricaoKey,
-    expanded,
     fontSizePx,
     fontWeight,
     hoveredColKey,
@@ -183,55 +173,29 @@ export function usePlanilhaColunaHover(
 }
 
 /**
- * Conteúdo da célula.
- * - wrap: truncado em 2 linhas; completo no hover (modo expandido).
- * - nowrap: uma linha com reticências; no hover a coluna alarga até caber o texto.
+ * Conteúdo da célula em uma linha: reticências quando truncado;
+ * no hover a coluna alarga e o texto completo aparece sem quebra.
  */
 export function PlanilhaExpandedCellContent({
   children,
   showFull,
-  nowrap = false,
 }: {
   children: ReactNode
   showFull: boolean
+  /** @deprecated Sempre nowrap — mantido por compatibilidade. */
   nowrap?: boolean
 }) {
-  if (nowrap) {
-    return (
-      <Box
-        sx={{
-          whiteSpace: 'nowrap',
-          overflow: showFull ? 'visible' : 'hidden',
-          textOverflow: showFull ? 'clip' : 'ellipsis',
-          wordBreak: 'normal',
-          overflowWrap: 'normal',
-          textAlign: 'inherit',
-          minWidth: 0,
-          maxWidth: '100%',
-        }}
-      >
-        {children}
-      </Box>
-    )
-  }
-
   return (
     <Box
       sx={{
-        whiteSpace: 'normal',
-        wordBreak: 'break-word',
-        overflowWrap: 'anywhere',
+        whiteSpace: 'nowrap',
+        overflow: showFull ? 'visible' : 'hidden',
+        textOverflow: showFull ? 'clip' : 'ellipsis',
+        wordBreak: 'normal',
+        overflowWrap: 'normal',
         textAlign: 'inherit',
         minWidth: 0,
         maxWidth: '100%',
-        ...(showFull
-          ? null
-          : {
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }),
       }}
     >
       {children}

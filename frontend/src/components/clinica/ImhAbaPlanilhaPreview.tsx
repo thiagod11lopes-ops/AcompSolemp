@@ -205,7 +205,6 @@ export function ImhAbaPlanilhaPreview({
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricao',
-    expanded,
     cellTextsByKey,
     tableRef,
     fontSizePx: expanded ? 10 : 11,
@@ -451,7 +450,7 @@ export function ImhAbaPlanilhaPreview({
               fillHeight={expanded}
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
-              nowrapBody={!expanded}
+              nowrapBody
               scrollRef={scrollContainerRef}
               bottomPad={expanded && editingLinhaId ? '54vh' : undefined}
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
@@ -490,18 +489,12 @@ export function ImhAbaPlanilhaPreview({
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
                   },
-                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': expanded
-                    ? {
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word',
-                        overflowWrap: 'anywhere',
-                      }
-                    : {
-                        whiteSpace: 'nowrap',
-                        wordBreak: 'normal',
-                        overflowWrap: 'normal',
-                        textOverflow: 'ellipsis',
-                      },
+                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': {
+                    whiteSpace: 'nowrap',
+                    wordBreak: 'normal',
+                    overflowWrap: 'normal',
+                    textOverflow: 'ellipsis',
+                  },
                 }}
               >
                 <TableHead>
@@ -669,29 +662,18 @@ export function ImhAbaPlanilhaPreview({
                                 fontSize: cellFontSize,
                                 fontWeight: cellFontWeight,
                                 textAlign: 'center',
-                                verticalAlign: expanded ? 'top' : 'middle',
-                                minWidth: 0,
+                                verticalAlign: 'middle',
+                                minWidth: hovered ? colWidth : 0,
                                 transition: 'width 160ms ease',
                                 cursor: 'default',
-                                ...(expanded
-                                  ? {
-                                      whiteSpace: 'normal',
-                                      wordBreak: 'break-word',
-                                      overflowWrap: 'anywhere',
-                                    }
-                                  : {
-                                      whiteSpace: 'nowrap',
-                                      wordBreak: 'normal',
-                                      overflowWrap: 'normal',
-                                      textOverflow: 'ellipsis',
-                                      overflow: 'hidden',
-                                    }),
+                                whiteSpace: 'nowrap',
+                                wordBreak: 'normal',
+                                overflowWrap: 'normal',
+                                textOverflow: hovered ? 'clip' : 'ellipsis',
+                                overflow: 'hidden',
                               }}
                             >
-                              <PlanilhaExpandedCellContent
-                                showFull={hovered}
-                                nowrap={!expanded}
-                              >
+                              <PlanilhaExpandedCellContent showFull={hovered}>
                                 {text}
                               </PlanilhaExpandedCellContent>
                             </TableCell>

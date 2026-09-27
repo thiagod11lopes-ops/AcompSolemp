@@ -71,25 +71,6 @@ function dash(value: string): string {
   return trimmed || '—'
 }
 
-const descricaoMaterialCellSx = {
-  ...({
-    border: EXCEL_SHEET.border,
-    fontFamily: EXCEL_SHEET.fontFamily,
-    fontSize: EXCEL_SHEET.fontSize,
-    fontWeight: EXCEL_SHEET.fontWeight,
-    py: 0.5,
-    px: 0.5,
-    color: EXCEL_SHEET.text,
-    bgcolor: EXCEL_SHEET.cellBg,
-  } as const),
-  textAlign: 'left' as const,
-  whiteSpace: 'normal' as const,
-  wordBreak: 'break-word' as const,
-  overflowWrap: 'anywhere' as const,
-  verticalAlign: 'top' as const,
-  lineHeight: 1.25,
-} as const
-
 const cellSx = {
   border: EXCEL_SHEET.border,
   fontFamily: EXCEL_SHEET.fontFamily,
@@ -208,7 +189,6 @@ export function DivMaterialPlanilhaPreview({
     selectionEnabled,
     actionsEnabled,
     descricaoKey: 'descricaoMaterial',
-    expanded,
     cellTextsByKey,
     tableRef,
     fontSizePx: expanded ? 10 : 11,
@@ -411,7 +391,7 @@ export function DivMaterialPlanilhaPreview({
               fillHeight={expanded}
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
-              nowrapBody={!expanded}
+              nowrapBody
               remountKey={`${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}-${actionsEnabled ? 1 : 0}`}
             >
             <Box
@@ -448,18 +428,12 @@ export function DivMaterialPlanilhaPreview({
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
                   },
-                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': expanded
-                    ? {
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word',
-                        overflowWrap: 'anywhere',
-                      }
-                    : {
-                        whiteSpace: 'nowrap',
-                        wordBreak: 'normal',
-                        overflowWrap: 'normal',
-                        textOverflow: 'ellipsis',
-                      },
+                  '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col)': {
+                    whiteSpace: 'nowrap',
+                    wordBreak: 'normal',
+                    overflowWrap: 'normal',
+                    textOverflow: 'ellipsis',
+                  },
                 }}
               >
                 <TableHead>
@@ -624,34 +598,23 @@ export function DivMaterialPlanilhaPreview({
                                 key={col.key}
                                 {...colHoverHandlers(col.key)}
                                 sx={{
-                                  ...(isDescricao && expanded ? descricaoMaterialCellSx : cellSx),
+                                  ...cellSx,
                                   width: colWidth,
-                                  minWidth: 0,
+                                  minWidth: hovered ? colWidth : 0,
                                   fontSize: cellFontSize,
                                   fontWeight: cellFontWeight,
-                                  verticalAlign: expanded ? 'top' : 'middle',
+                                  verticalAlign: 'middle',
                                   textAlign: isDescricao ? 'left' : 'center',
                                   transition: 'width 160ms ease',
                                   cursor: 'default',
-                                  ...(expanded
-                                    ? {
-                                        whiteSpace: 'normal',
-                                        wordBreak: 'break-word',
-                                        overflowWrap: 'anywhere',
-                                      }
-                                    : {
-                                        whiteSpace: 'nowrap',
-                                        wordBreak: 'normal',
-                                        overflowWrap: 'normal',
-                                        textOverflow: 'ellipsis',
-                                        overflow: 'hidden',
-                                      }),
+                                  whiteSpace: 'nowrap',
+                                  wordBreak: 'normal',
+                                  overflowWrap: 'normal',
+                                  textOverflow: hovered ? 'clip' : 'ellipsis',
+                                  overflow: 'hidden',
                                 }}
                               >
-                                <PlanilhaExpandedCellContent
-                                  showFull={hovered}
-                                  nowrap={!expanded}
-                                >
+                                <PlanilhaExpandedCellContent showFull={hovered}>
                                   {text}
                                 </PlanilhaExpandedCellContent>
                               </TableCell>
