@@ -34,6 +34,7 @@ import {
 } from '@/utils/medicamentoBalanco'
 import { EMPTY_IMH_MEDICAMENTO_FORM } from '@/utils/imhMedicamentoForm'
 import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
+import GestorBalancoPage from '@/pages/GestorBalancoPage'
 
 function toDateInputValue(d: Date): string {
   const yyyy = d.getFullYear()
@@ -57,6 +58,7 @@ const MESES = [
   'Dezembro',
 ] as const
 
+/** Balanço da clínica logada (medicamento = gráficos de estoque; demais = balanço dos processos). */
 export default function ClinicaBalancoGeralPage() {
   const { user, isLoading: authLoading } = useClinicaAuth()
   const { mapPath } = usePortalPaths()
@@ -66,6 +68,7 @@ export default function ClinicaBalancoGeralPage() {
     user?.perfil === 'MEDICAMENTO' || clinica?.tipo === 'medicamento'
 
   const clinicaId = user?.clinicaId ?? ''
+  const nomeClinica = clinica?.nome?.trim() || 'sua clínica'
   const { data: pedidos = [] } = useClinicaPedidos()
 
   const [periodoTipo, setPeriodoTipo] = useState<BalancoPeriodoTipo>('mes')
@@ -80,7 +83,7 @@ export default function ClinicaBalancoGeralPage() {
   const { data: planilhas, isError: planilhasError } = useQuery({
     queryKey: ['clinica-balanco-planilhas', clinicaId],
     queryFn: () => clinicaPlanilhasLivresService.getState(clinicaId, 'medicamento'),
-    enabled: Boolean(clinicaId),
+    enabled: Boolean(clinicaId) && isMedicamento,
     staleTime: 0,
     refetchOnMount: 'always',
     retry: 1,
@@ -114,22 +117,30 @@ export default function ClinicaBalancoGeralPage() {
 
   if (authLoading || clinicasLoading) return <LoadingSpinner />
 
-  if (!user) {
+  if (!user?.clinicaId) {
     return <Navigate to={mapPath('/clinica/timelines')} replace />
   }
 
   if (!isMedicamento) {
-    return <Navigate to={mapPath('/clinica/timelines')} replace />
+    return (
+      <GestorBalancoPage
+        clinicaId={user.clinicaId}
+        metricsEnabled={Boolean(user.clinicaId)}
+        hideRankingClinicas
+        title="Balanço"
+        subtitle={`Balanço exclusivo de ${nomeClinica}`}
+      />
+    )
   }
 
   return (
     <Box>
       <PageHeader
-        title="Balanço Geral"
+        title="Balanço"
         subtitle={
           mostrarExemplo
             ? `Pré-visualização com dados de exemplo · ${balanco.periodoLabel}`
-            : `Resumo do período: ${balanco.periodoLabel}`
+            : `Balanço de ${nomeClinica} · ${balanco.periodoLabel}`
         }
         titleAdornment={<AccountBalanceIcon color="primary" fontSize="small" />}
         action={

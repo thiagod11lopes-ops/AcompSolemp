@@ -30,20 +30,19 @@ const DRAWER_WIDTH = 260
 
 const MENU_ITEMS = [
   { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
+  { path: '/clinica/pedidos/novo', label: 'Enviar', icon: <AddIcon />, end: false },
   { path: '/clinica/pedidos', label: 'Enviados', icon: <ListAltIcon />, end: true },
-  { path: '/clinica/pedidos/novo', label: 'Planilhas', icon: <AddIcon />, end: false },
+  { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon />, end: true },
+  {
+    path: '/clinica/balanco',
+    label: 'Balanço',
+    icon: <AccountBalanceIcon />,
+    end: true,
+  },
   {
     path: '/clinica/precos-medicamentos',
     label: 'Preço de Medicamentos',
     icon: <MedicationIcon />,
-    end: true,
-    medicamentoOnly: true,
-  },
-  { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon />, end: true },
-  {
-    path: '/clinica/balanco',
-    label: 'Balanço Geral',
-    icon: <AccountBalanceIcon />,
     end: true,
     medicamentoOnly: true,
   },

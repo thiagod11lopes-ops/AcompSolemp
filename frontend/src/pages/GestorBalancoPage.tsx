@@ -177,9 +177,25 @@ function KpiTile({
   )
 }
 
-export default function GestorBalancoPage() {
+export interface GestorBalancoPageProps {
+  /** Filtra o balanço pela clínica (portal da clínica). */
+  clinicaId?: string | null
+  title?: string
+  subtitle?: string
+  /** Oculta o ranking entre clínicas (uso no portal da clínica). */
+  hideRankingClinicas?: boolean
+  metricsEnabled?: boolean
+}
+
+export default function GestorBalancoPage({
+  clinicaId = null,
+  title = 'Balanço',
+  subtitle = 'Balanço geral do sistema com indicadores, evolução e exportação em PDF',
+  hideRankingClinicas = false,
+  metricsEnabled = true,
+}: GestorBalancoPageProps = {}) {
   const theme = useTheme()
-  const { data: metrics, isLoading, isError } = useDashboardMetrics()
+  const { data: metrics, isLoading, isError } = useDashboardMetrics(clinicaId, metricsEnabled)
   const [preset, setPreset] = useState<Preset>('12m')
   const [dataInicio, setDataInicio] = useState(() => presetRange('12m').inicio)
   const [dataFim, setDataFim] = useState(() => presetRange('12m').fim)
@@ -228,7 +244,7 @@ export default function GestorBalancoPage() {
   if (isError || !metrics || !balanco) {
     return (
       <Box>
-        <PageHeader title="Balanço" subtitle="Visão consolidada do sistema" />
+        <PageHeader title={title} subtitle={subtitle} />
         <Alert severity="error">Não foi possível carregar os indicadores do balanço.</Alert>
       </Box>
     )
@@ -239,8 +255,8 @@ export default function GestorBalancoPage() {
   return (
     <Box>
       <PageHeader
-        title="Balanço"
-        subtitle="Balanço geral do sistema com indicadores, evolução e exportação em PDF"
+        title={title}
+        subtitle={subtitle}
         action={
           <Button
             variant="contained"
@@ -596,41 +612,43 @@ export default function GestorBalancoPage() {
               </ChartCard>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 6 }}>
-              <ChartCard title="Ranking de clínicas" subtitle="Por valor dos processos no período" height={360}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={balanco.rankingClinicas} layout="vertical" margin={{ left: 8, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) =>
-                        Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : String(v)
-                      }
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="nome"
-                      width={110}
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => String(v).slice(0, 16)}
-                    />
-                    <Tooltip
-                      formatter={(v, name) =>
-                        String(name) === 'valor' ? formatCurrency(Number(v)) : Number(v)
-                      }
-                    />
-                    <Bar dataKey="valor" name="valor" radius={[0, 8, 8, 0]} maxBarSize={18}>
-                      {balanco.rankingClinicas.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartCard>
-            </Grid>
+            {!hideRankingClinicas ? (
+              <Grid size={{ xs: 12, md: 6 }}>
+                <ChartCard title="Ranking de clínicas" subtitle="Por valor dos processos no período" height={360}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={balanco.rankingClinicas} layout="vertical" margin={{ left: 8, right: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(v) =>
+                          Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(0)}k` : String(v)
+                        }
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="nome"
+                        width={110}
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(v) => String(v).slice(0, 16)}
+                      />
+                      <Tooltip
+                        formatter={(v, name) =>
+                          String(name) === 'valor' ? formatCurrency(Number(v)) : Number(v)
+                        }
+                      />
+                      <Bar dataKey="valor" name="valor" radius={[0, 8, 8, 0]} maxBarSize={18}>
+                        {balanco.rankingClinicas.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              </Grid>
+            ) : null}
 
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: hideRankingClinicas ? 12 : 6 }}>
               <ChartCard title="Gargalos na timeline" subtitle="PEDs em andamento por etapa" height={360}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={balanco.gargalos} margin={{ bottom: 40 }}>

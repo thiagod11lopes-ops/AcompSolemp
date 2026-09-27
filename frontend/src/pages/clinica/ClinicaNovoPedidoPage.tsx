@@ -174,7 +174,7 @@ export default function ClinicaNovoPedidoPage() {
   const isMedicamento =
     user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
   usePageTitle(
-    'Planilhas',
+    'Enviar',
     clinicaLogada?.nome
       ? `${clinicaLogada.nome} — edite e envie as planilhas da clínica`
       : 'Edite e envie as planilhas da clínica',
