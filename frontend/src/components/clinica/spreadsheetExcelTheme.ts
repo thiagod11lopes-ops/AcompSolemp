@@ -6,9 +6,15 @@ import {
 /** Tokens visuais alinhados ao Microsoft Excel (grade, fonte e cores padrão). */
 export const EXCEL_SHEET = {
   fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
-  /** 15px no zoom 100%; 12px no zoom ~90% (via CSS var sincronizada). */
-  fontSize: `var(${PLANILHA_FONT_CSS_VAR}, ${PLANILHA_FONT_SIZE_DEFAULT})`,
-  fontWeight: 700,
+  /** Aparência padrão (planilha não expandida). */
+  fontSize: '11px',
+  /**
+   * Fonte do modo expandido: 15px no zoom 100%; 12px no zoom ~90%
+   * (via CSS var sincronizada em usePlanilhaFontZoom).
+   */
+  fontSizeExpanded: `var(${PLANILHA_FONT_CSS_VAR}, ${PLANILHA_FONT_SIZE_DEFAULT})`,
+  fontWeight: 400,
+  fontWeightBold: 700,
   lineHeight: 1.2,
   borderColor: '#d4d4d4',
   border: '1px solid #d4d4d4',

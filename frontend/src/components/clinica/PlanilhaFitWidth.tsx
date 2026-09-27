@@ -14,13 +14,14 @@ interface PlanilhaFitWidthProps {
 /**
  * Container de largura total: todas as colunas cabem na tela.
  * Títulos e células quebram linha; sem transform/scale.
+ * Só afeta o modo expandido (enabled=true).
  */
 export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
   }
 
-  const fontSize = cellFontSize ?? EXCEL_SHEET.fontSize
+  const fontSize = cellFontSize ?? EXCEL_SHEET.fontSizeExpanded
 
   return (
     <Box
@@ -49,7 +50,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
           fontSize: `${fontSize} !important`,
-          fontWeight: `${EXCEL_SHEET.fontWeight} !important`,
+          fontWeight: `${EXCEL_SHEET.fontWeightBold} !important`,
           lineHeight: 1.25,
           px: '4px !important',
         },
@@ -58,7 +59,7 @@ export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFi
           hyphens: 'auto',
           lineHeight: 1.2,
           verticalAlign: 'middle',
-          fontWeight: `${EXCEL_SHEET.fontWeight} !important`,
+          fontWeight: `${EXCEL_SHEET.fontWeightBold} !important`,
         },
       }}
     >

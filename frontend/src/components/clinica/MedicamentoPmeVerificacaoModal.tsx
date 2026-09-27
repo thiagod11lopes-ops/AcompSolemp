@@ -94,7 +94,7 @@ export function MedicamentoPmeVerificacaoModal({
                     color: EXCEL_SHEET.text,
                     fontFamily: EXCEL_SHEET.fontFamily,
                     fontSize: EXCEL_SHEET.fontSize,
-                    fontWeight: EXCEL_SHEET.fontWeight,
+                    fontWeight: EXCEL_SHEET.fontWeightBold,
                     borderColor: EXCEL_SHEET.borderColor,
                     whiteSpace: 'nowrap',
                   }}

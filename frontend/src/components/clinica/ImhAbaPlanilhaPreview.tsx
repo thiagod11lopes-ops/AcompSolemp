@@ -81,7 +81,7 @@ const cellSx = {
 const headerSx = {
   ...cellSx,
   bgcolor: EXCEL_SHEET.headerBg,
-  fontWeight: EXCEL_SHEET.fontWeight,
+  fontWeight: EXCEL_SHEET.fontWeightBold,
   color: EXCEL_SHEET.mutedText,
 } as const
 
@@ -148,6 +148,8 @@ export function ImhAbaPlanilhaPreview({
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
   const colCount =
     IMH_ABA_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
+  const cellFontSize = expanded ? EXCEL_SHEET.fontSizeExpanded : EXCEL_SHEET.fontSize
+  const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   const toggleAll = (checked: boolean) => {
     if (!onSelectedImhIdsChange) return
@@ -463,7 +465,8 @@ export function ImhAbaPlanilhaPreview({
                           minWidth: expanded ? 0 : col.width,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
                           lineHeight: expanded ? 1.2 : undefined,
-                          fontSize: EXCEL_SHEET.fontSize,
+                          fontSize: cellFontSize,
+                          fontWeight: EXCEL_SHEET.fontWeightBold,
                         }}
                       >
                         {col.label}
@@ -477,7 +480,7 @@ export function ImhAbaPlanilhaPreview({
                           width: expanded ? 44 : 72,
                           minWidth: expanded ? 0 : 72,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
-                          fontSize: EXCEL_SHEET.fontSize,
+                          fontSize: cellFontSize,
                         }}
                       >
                         AÇÕES
@@ -556,7 +559,8 @@ export function ImhAbaPlanilhaPreview({
                             sx={{
                               ...cellSx,
                               width: expanded ? col.width : undefined,
-                              fontSize: EXCEL_SHEET.fontSize,
+                              fontSize: cellFontSize,
+                              fontWeight: cellFontWeight,
                               textAlign: 'center',
                               verticalAlign: 'middle',
                               ...(expanded
@@ -585,7 +589,8 @@ export function ImhAbaPlanilhaPreview({
                               textAlign: 'center',
                               width: expanded ? 44 : undefined,
                               minWidth: expanded ? 0 : 72,
-                              fontSize: EXCEL_SHEET.fontSize,
+                              fontSize: cellFontSize,
+                              fontWeight: cellFontWeight,
                             }}
                           >
                             <IconButton
