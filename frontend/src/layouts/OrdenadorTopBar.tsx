@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth, useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
-import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
@@ -61,7 +60,6 @@ export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
           <GlobalProcessSearch portal="ordenador" />
         </Box>
         <NotificationPanel />
-        <ChatPanel />
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1 }}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: 'warning.main', fontSize: 14 }}>
             {user?.nome.charAt(0)}

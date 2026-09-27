@@ -19,6 +19,7 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import { NavLink, useLocation } from 'react-router-dom'
+import { ChatDock } from '@/components/chat/ChatDock'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import {
@@ -87,8 +88,8 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
     multiSetor && user ? setorNavSubtitle(user) : 'Setor Financeiro'
 
   const drawer = (
-    <Box>
-      <Toolbar sx={{ px: 2, minHeight: `${56 + demoBannerHeight}px !important` }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Toolbar sx={{ px: 2, minHeight: `${56 + demoBannerHeight}px !important`, flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AccountBalanceIcon color="success" />
           <Box>
@@ -103,7 +104,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: 2, py: 1.5 }}>
+        <Box sx={{ px: 2, py: 1.5, flexShrink: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {user.nome}
           </Typography>
@@ -113,7 +114,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
         </Box>
       )}
       <Divider />
-      <List>
+      <List sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
         {menuItems.map((item) => {
           const etapa = 'etapa' in item ? item.etapa : undefined
           const to = etapa
@@ -148,6 +149,7 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
           )
         })}
       </List>
+      <ChatDock />
     </Box>
   )
 
@@ -160,7 +162,12 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH },
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+          },
         }}
       >
         {drawer}
@@ -173,6 +180,9 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
             width: DRAWER_WIDTH,
             boxSizing: 'border-box',
             pt: `${demoBannerHeight}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
           },
         }}
         open

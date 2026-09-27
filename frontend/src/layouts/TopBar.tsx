@@ -25,7 +25,6 @@ import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useThemeMode } from '@/contexts/ThemeContext'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
-import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
@@ -165,7 +164,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             </IconButton>
           </Tooltip>
           <NotificationPanel excludeTipos={TIPOS_NOTIFICACAO_REVERSAO} />
-          <ChatPanel />
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
               {user?.nome.charAt(0)}

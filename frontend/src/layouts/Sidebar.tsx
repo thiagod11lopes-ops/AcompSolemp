@@ -20,6 +20,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { NavLink } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
+import { ChatDock } from '@/components/chat/ChatDock'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 
@@ -48,27 +49,29 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const drawerPaperSx = {
     width: DRAWER_WIDTH,
     boxSizing: 'border-box' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: demoBannerHeight > 0 ? `calc(100% - ${demoBannerHeight}px)` : '100%',
     ...(demoBannerHeight > 0 && {
       top: demoBannerHeight,
-      height: `calc(100% - ${demoBannerHeight}px)`,
     }),
   }
 
   const drawer = (
-    <Box>
-      <Toolbar sx={{ px: 2.25, minHeight: 72 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
         <BrandLogo subtitle="Portal do Gestor" />
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: 2.25, py: 1.75 }}>
+        <Box sx={{ px: 2.25, py: 1.75, flexShrink: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
             Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
         </Box>
       )}
       <Divider />
-      <List sx={{ px: 0.5, py: 1 }}>
+      <List sx={{ px: 0.5, py: 1, flex: 1, overflow: 'auto', minHeight: 0 }}>
         {menuItems.map((item) => (
           <ListItemButton
             key={item.path}
@@ -88,6 +91,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </ListItemButton>
         ))}
       </List>
+      <ChatDock />
     </Box>
   )
 

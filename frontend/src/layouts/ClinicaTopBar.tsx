@@ -22,7 +22,6 @@ import { useAuth, useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
-import { ChatPanel } from '@/components/chat/ChatPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
@@ -122,7 +121,6 @@ export function ClinicaTopBar() {
         </Box>
 
         <NotificationPanel />
-        <ChatPanel />
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 0.5 }}>
           <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main', fontSize: 14 }}>
             {user?.nome.charAt(0)}
