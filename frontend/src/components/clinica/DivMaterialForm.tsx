@@ -2,10 +2,12 @@ import { useRef, useState } from 'react'
 import {
   Box,
   Button,
-  Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   TextField,
   Typography,
-  alpha,
 } from '@mui/material'
 import { DivMaterialPlanilhaPreview } from '@/components/clinica/DivMaterialPlanilhaPreview'
 import { formatCnpj } from '@/utils/format'
@@ -176,45 +178,46 @@ export function DivMaterialForm({
   ])
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Box
-        sx={{
-          display: 'grid',
-          gap: 2,
-          gridTemplateColumns: editingLinhaId
-            ? { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' }
-            : '1fr',
-          alignItems: 'start',
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+      <DivMaterialPlanilhaPreview
+        linhas={linhas}
+        editingLinhaId={editingLinhaId}
+        selectedIds={selectedIds}
+        onSelectedIdsChange={onSelectedIdsChange}
+        finalizedIds={finalizedIds}
+        devolvidosIds={devolvidosIds}
+        onEditLinha={handleEditLinha}
+        onDeleteLinha={handleDeleteLinha}
+        onRequestClear={onRequestClear}
+        dataFiltro={dataFiltro}
+        onDataFiltroChange={onDataFiltroChange}
+      />
+
+      <Dialog
+        open={Boolean(editingLinhaId)}
+        onClose={handleCancelLinha}
+        fullWidth
+        maxWidth="sm"
+        // Acima da planilha expandida (modal + 10).
+        sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: 2.5 },
+          },
         }}
       >
-        {editingLinhaId ? (
-        <Paper
-          elevation={0}
-          sx={(theme) => ({
-            p: { xs: 1.25, md: 1.5 },
-            borderRadius: 2,
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-            bgcolor: alpha(theme.palette.primary.main, 0.02),
-            display: 'grid',
-            gap: 1.25,
-            position: { xl: 'sticky' },
-            top: { xl: 12 },
-            maxHeight: { xl: 'calc(100vh - 120px)' },
-            overflow: { xl: 'auto' },
-          })}
-        >
-          <Box>
-            <Typography
-              variant="subtitle2"
-              sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
-            >
-              Editando — Div. Material
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-              Altere o lançamento selecionado. A planilha atualiza ao vivo.
-            </Typography>
-          </Box>
-
+        <DialogTitle sx={{ pb: 0.5, fontWeight: 800 }}>
+          Editando — Div. Material
+          <Typography
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: 'block', fontWeight: 400, mt: 0.35 }}
+          >
+            Altere o lançamento selecionado. A planilha atualiza ao vivo.
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 1.5 }}>
           <Box ref={linhaFormRef}>
             <Typography
               variant="overline"
@@ -258,45 +261,21 @@ export function DivMaterialForm({
                 )
               })}
             </Box>
-
-            <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={handleAdicionarLinha}
-                sx={{ textTransform: 'none', fontWeight: 700 }}
-              >
-                Salvar lançamento
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                onClick={handleCancelLinha}
-                sx={{ textTransform: 'none' }}
-              >
-                Cancelar
-              </Button>
-            </Box>
           </Box>
-        </Paper>
-        ) : null}
-
-        <Box sx={{ minWidth: 0 }}>
-          <DivMaterialPlanilhaPreview
-            linhas={linhas}
-            editingLinhaId={editingLinhaId}
-            selectedIds={selectedIds}
-            onSelectedIdsChange={onSelectedIdsChange}
-            finalizedIds={finalizedIds}
-            devolvidosIds={devolvidosIds}
-            onEditLinha={handleEditLinha}
-            onDeleteLinha={handleDeleteLinha}
-            onRequestClear={onRequestClear}
-            dataFiltro={dataFiltro}
-            onDataFiltroChange={onDataFiltroChange}
-          />
-        </Box>
-      </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+          <Button onClick={handleCancelLinha} sx={{ textTransform: 'none' }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAdicionarLinha}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Salvar lançamento
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

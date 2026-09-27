@@ -3,12 +3,14 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   MenuItem,
-  Paper,
   Snackbar,
   TextField,
   Typography,
-  alpha,
 } from '@mui/material'
 import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
@@ -254,286 +256,270 @@ export function ImhAbaForm({
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 2,
-        gridTemplateColumns: editingLinhaId
-          ? { xs: '1fr', xl: 'minmax(340px, 400px) minmax(0, 1fr)' }
-          : '1fr',
-        alignItems: 'start',
-      }}
-    >
-      {editingLinhaId ? (
-      <Paper
-        elevation={0}
-        sx={(theme) => ({
-          p: { xs: 1.25, md: 1.5 },
-          borderRadius: 2,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-          bgcolor: alpha(theme.palette.primary.main, 0.02),
-          display: 'grid',
-          gap: 1.25,
-          position: { xl: 'sticky' },
-          top: { xl: 12 },
-          maxHeight: { xl: 'calc(100vh - 120px)' },
-          overflow: { xl: 'auto' },
-        })}
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+        hidden
+        onChange={handleImportFileChange}
+      />
+      <ImhAbaPlanilhaPreview
+        value={value}
+        editingLinhaId={editingLinhaId}
+        importing={importing}
+        selectedImhIds={selectedImhIds}
+        onSelectedImhIdsChange={onSelectedImhIdsChange}
+        onImportClick={hideImport ? undefined : handleImportClick}
+        onEditLinha={handleEditLinha}
+        onDeleteLinha={handleDeleteLinha}
+        onRequestClear={onRequestClear}
+        dataFiltro={dataFiltro}
+        onDataFiltroChange={onDataFiltroChange}
+      />
+
+      <Dialog
+        open={Boolean(editingLinhaId)}
+        onClose={handleCancelLinha}
+        fullWidth
+        maxWidth="sm"
+        // Acima da planilha expandida (modal + 10).
+        sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
+        slotProps={{
+          paper: {
+            sx: { borderRadius: 2.5 },
+          },
+        }}
       >
-        <Box>
+        <DialogTitle sx={{ pb: 0.5, fontWeight: 800 }}>
+          Editando — IMH
           <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: 'block', fontWeight: 400, mt: 0.35 }}
           >
-            Editando — IMH
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
             Altere o lançamento selecionado. A planilha atualiza ao vivo.
           </Typography>
-        </Box>
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 1.5 }}>
+          <Box sx={{ display: 'grid', gap: 1.5 }}>
+            <Box>
+              <Typography
+                variant="overline"
+                sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+              >
+                Cabeçalho
+              </Typography>
+              <Box
+                sx={{
+                  mt: 0.5,
+                  display: 'grid',
+                  gap: 0.85,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                }}
+              >
+                <TextField
+                  label="Clínica"
+                  value={value.clinica}
+                  onChange={(e) => setHeaderField('clinica', formatImhUppercase(e.target.value))}
+                  placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
+                  size="small"
+                  fullWidth
+                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
+                />
+                <TextField
+                  label="Nº CP (ANEXO)"
+                  value={value.numeroCp}
+                  onChange={(e) => setHeaderField('numeroCp', formatImhNumeroCp(e.target.value))}
+                  placeholder="25/2026"
+                  size="small"
+                  fullWidth
+                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
+                />
+              </Box>
+            </Box>
 
-        <Box>
-          <Typography
-            variant="overline"
-            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-          >
-            Cabeçalho
-          </Typography>
-          <Box
-            sx={{
-              mt: 0.5,
-              display: 'grid',
-              gap: 0.85,
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            }}
-          >
-            <TextField
-              label="Clínica"
-              value={value.clinica}
-              onChange={(e) => setHeaderField('clinica', formatImhUppercase(e.target.value))}
-              placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
-              size="small"
-              fullWidth
-              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
-            <TextField
-              label="Nº CP (ANEXO)"
-              value={value.numeroCp}
-              onChange={(e) => setHeaderField('numeroCp', formatImhNumeroCp(e.target.value))}
-              placeholder="25/2026"
-              size="small"
-              fullWidth
-              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
+            <Box ref={linhaFormRef}>
+              <Typography
+                variant="overline"
+                sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+              >
+                Lançamento
+              </Typography>
+              <Box
+                sx={{
+                  mt: 0.5,
+                  display: 'grid',
+                  gap: 0.85,
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                }}
+              >
+                <TextField
+                  label="DATA"
+                  value={linhaDraft.data}
+                  onChange={(e) => updateDraft({ data: formatImhData(e.target.value) })}
+                  placeholder="dd/mm/aa"
+                  size="small"
+                  fullWidth
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="NIP"
+                  value={linhaDraft.nip}
+                  onChange={(e) => updateDraft({ nip: formatImhNip(e.target.value) })}
+                  placeholder="00.0000.00"
+                  size="small"
+                  fullWidth
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="NOME DO USUÁRIO"
+                  value={linhaDraft.nomeUsuario}
+                  onChange={(e) =>
+                    updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })
+                  }
+                  size="small"
+                  fullWidth
+                  sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
+                />
+                <TextField
+                  select
+                  label="VÍNCULO"
+                  value={linhaDraft.vinculo || ''}
+                  onChange={(e) => {
+                    const vinculo = formatImhUppercase(e.target.value)
+                    updateDraft(
+                      isVinculoTitular(vinculo)
+                        ? { vinculo }
+                        : { vinculo, nipTitular: '' },
+                    )
+                  }}
+                  size="small"
+                  fullWidth
+                  sx={compactFieldSx}
+                >
+                  <MenuItem value="">—</MenuItem>
+                  {VINCULOS.map((item) => (
+                    <MenuItem key={item} value={item}>
+                      {item}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="NIP DO TITULAR"
+                  value={
+                    isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
+                  }
+                  onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
+                  placeholder="00.0000.00"
+                  size="small"
+                  fullWidth
+                  slotProps={{
+                    input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
+                  }}
+                  helperText={
+                    isVinculoTitular(linhaDraft.vinculo)
+                      ? 'Igual ao NIP quando o vínculo é TITULAR'
+                      : linhaDraft.vinculo
+                        ? 'Preencha manualmente o NIP do titular'
+                        : undefined
+                  }
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
+                  value={linhaDraft.descricao}
+                  onChange={(e) => updateDraft({ descricao: formatImhUppercase(e.target.value) })}
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  sx={multilineFieldSx}
+                />
+                <TextField
+                  label="VALOR UNIT"
+                  value={linhaDraft.valorUnit}
+                  onChange={(e) => updateDraft({ valorUnit: formatImhMoeda(e.target.value) })}
+                  size="small"
+                  fullWidth
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="QUANTI."
+                  value={linhaDraft.quantidade}
+                  onChange={(e) =>
+                    updateDraft({ quantidade: formatImhQuantidade(e.target.value) })
+                  }
+                  size="small"
+                  fullWidth
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="VALOR TOTAL"
+                  value={linhaDraft.valorTotal}
+                  size="small"
+                  fullWidth
+                  slotProps={{ input: { readOnly: true } }}
+                  sx={compactFieldSx}
+                />
+                <TextField
+                  label="% A INDENIZAR"
+                  value={linhaDraft.pctIndenizar}
+                  size="small"
+                  fullWidth
+                  slotProps={{ input: { readOnly: true } }}
+                  sx={compactFieldSx}
+                />
+              </Box>
+            </Box>
           </Box>
-        </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+          <Button onClick={handleCancelLinha} sx={{ textTransform: 'none' }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleAdicionarLinha}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
+          >
+            Salvar lançamento
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        <Box ref={linhaFormRef}>
-          <Typography
-            variant="overline"
-            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
-          >
-            Lançamento
-          </Typography>
-          <Box
-            sx={{
-              mt: 0.5,
-              display: 'grid',
-              gap: 0.85,
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            }}
-          >
-            <TextField
-              label="DATA"
-              value={linhaDraft.data}
-              onChange={(e) => updateDraft({ data: formatImhData(e.target.value) })}
-              placeholder="dd/mm/aa"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="NIP"
-              value={linhaDraft.nip}
-              onChange={(e) => updateDraft({ nip: formatImhNip(e.target.value) })}
-              placeholder="00.0000.00"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="NOME DO USUÁRIO"
-              value={linhaDraft.nomeUsuario}
-              onChange={(e) => updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
-            />
-            <TextField
-              select
-              label="VÍNCULO"
-              value={linhaDraft.vinculo || ''}
-              onChange={(e) => {
-                const vinculo = formatImhUppercase(e.target.value)
-                updateDraft(
-                  isVinculoTitular(vinculo)
-                    ? { vinculo }
-                    : { vinculo, nipTitular: '' },
-                )
-              }}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            >
-              <MenuItem value="">—</MenuItem>
-              {VINCULOS.map((item) => (
-                <MenuItem key={item} value={item}>
-                  {item}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="NIP DO TITULAR"
-              value={
-                isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
-              }
-              onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
-              placeholder="00.0000.00"
-              size="small"
-              fullWidth
-              slotProps={{
-                input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
-              }}
-              helperText={
-                isVinculoTitular(linhaDraft.vinculo)
-                  ? 'Igual ao NIP quando o vínculo é TITULAR'
-                  : linhaDraft.vinculo
-                    ? 'Preencha manualmente o NIP do titular'
-                    : undefined
-              }
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
-              value={linhaDraft.descricao}
-              onChange={(e) => updateDraft({ descricao: formatImhUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              multiline
-              minRows={2}
-              sx={multilineFieldSx}
-            />
-            <TextField
-              label="VALOR UNIT"
-              value={linhaDraft.valorUnit}
-              onChange={(e) => updateDraft({ valorUnit: formatImhMoeda(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="QUANTI."
-              value={linhaDraft.quantidade}
-              onChange={(e) => updateDraft({ quantidade: formatImhQuantidade(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="VALOR TOTAL"
-              value={linhaDraft.valorTotal}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="% A INDENIZAR"
-              value={linhaDraft.pctIndenizar}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={compactFieldSx}
-            />
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleAdicionarLinha}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              Salvar lançamento
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              onClick={handleCancelLinha}
-              sx={{ textTransform: 'none' }}
-            >
-              Cancelar
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
+      {!hideImport ? (
+        <ConmedEscolherAbaModal
+          open={sheetPicker.open}
+          sheetNames={sheetPicker.sheets.map((s) => s.nome)}
+          fileName={sheetPicker.fileName}
+          initialSheetIndex={sheetPicker.initialSheetIndex}
+          description={
+            sheetPicker.fileName
+              ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar.`
+              : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
+          }
+          onCancel={() =>
+            setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+          }
+          onConfirm={handleConfirmSheet}
+        />
       ) : null}
-
-      <Box sx={{ minWidth: 0 }}>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
-          hidden
-          onChange={handleImportFileChange}
-        />
-        <ImhAbaPlanilhaPreview
-          value={value}
-          editingLinhaId={editingLinhaId}
-          importing={importing}
-          selectedImhIds={selectedImhIds}
-          onSelectedImhIdsChange={onSelectedImhIdsChange}
-          onImportClick={hideImport ? undefined : handleImportClick}
-          onEditLinha={handleEditLinha}
-          onDeleteLinha={handleDeleteLinha}
-          onRequestClear={onRequestClear}
-          dataFiltro={dataFiltro}
-          onDataFiltroChange={onDataFiltroChange}
-        />
-        {!hideImport ? (
-          <ConmedEscolherAbaModal
-            open={sheetPicker.open}
-            sheetNames={sheetPicker.sheets.map((s) => s.nome)}
-            fileName={sheetPicker.fileName}
-            initialSheetIndex={sheetPicker.initialSheetIndex}
-            description={
-              sheetPicker.fileName
-                ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar.`
-                : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
-            }
-            onCancel={() =>
-              setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
-            }
-            onConfirm={handleConfirmSheet}
-          />
-        ) : null}
-        <Snackbar
-          open={importFeedback.open}
-          autoHideDuration={5000}
+      <Snackbar
+        open={importFeedback.open}
+        autoHideDuration={5000}
+        onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={importFeedback.severity}
+          variant="filled"
           onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert
-            severity={importFeedback.severity}
-            variant="filled"
-            onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
-          >
-            {importFeedback.message}
-          </Alert>
-        </Snackbar>
-      </Box>
-    </Box>
+          {importFeedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }
