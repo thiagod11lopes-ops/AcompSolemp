@@ -163,7 +163,7 @@ export function ImhAbaPlanilhaPreview({
   const someSelected = selecionaveis.some((l) => selection.has(l.id))
   const colCount =
     IMH_ABA_COLUNAS.length + (selectionEnabled ? 1 : 0) + (actionsEnabled ? 1 : 0)
-  const cellFontSize = expanded ? EXCEL_SHEET.fontSizeExpanded : EXCEL_SHEET.fontSize
+  const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
   const cellFontWeight = expanded ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   const toggleAll = (checked: boolean) => {
@@ -397,6 +397,7 @@ export function ImhAbaPlanilhaPreview({
 
             <PlanilhaFitWidth
               enabled={expanded}
+              cellFontSize="10px"
               remountKey={`${colCount}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
