@@ -7,16 +7,20 @@ interface PlanilhaFitWidthProps {
   enabled: boolean
   children: ReactNode
   remountKey?: string | number
+  /** Sobrescreve o tamanho da fonte das células no modo expandido. */
+  cellFontSize?: string
 }
 
 /**
  * Container de largura total para a planilha expandida.
  * Não usa transform/scale para não reduzir a fonte das células.
  */
-export function PlanilhaFitWidth({ enabled, children }: PlanilhaFitWidthProps) {
+export function PlanilhaFitWidth({ enabled, children, cellFontSize }: PlanilhaFitWidthProps) {
   if (!enabled) {
     return <>{children}</>
   }
+
+  const fontSize = cellFontSize ?? EXCEL_SHEET.fontSize
 
   return (
     <Box
@@ -42,7 +46,7 @@ export function PlanilhaFitWidth({ enabled, children }: PlanilhaFitWidthProps) {
           whiteSpace: 'normal',
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
-          fontSize: `${EXCEL_SHEET.fontSize} !important`,
+          fontSize: `${fontSize} !important`,
           lineHeight: 1.25,
         },
       }}

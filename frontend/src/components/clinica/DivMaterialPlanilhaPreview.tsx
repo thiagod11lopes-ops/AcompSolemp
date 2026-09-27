@@ -495,6 +495,7 @@ export function DivMaterialPlanilhaPreview({
           >
             <PlanilhaFitWidth
               enabled={expanded}
+              cellFontSize="10px"
               remountKey={`${tableMinWidth}-${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}`}
             >
             <Box
@@ -522,7 +523,7 @@ export function DivMaterialPlanilhaPreview({
                     boxSizing: 'border-box',
                     ...(expanded
                       ? {
-                          fontSize: EXCEL_SHEET.fontSize,
+                          fontSize: '10px',
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
                           minWidth: '0 !important',
@@ -586,7 +587,7 @@ export function DivMaterialPlanilhaPreview({
                             ...headerSx,
                             width: expanded ? `${colWidth}px` : colWidth,
                             minWidth: expanded ? 0 : colWidth,
-                            fontSize: EXCEL_SHEET.fontSize,
+                            fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
                             whiteSpace: expanded ? 'normal' : 'nowrap',
                           }}
                         >
@@ -601,7 +602,7 @@ export function DivMaterialPlanilhaPreview({
                           textAlign: 'center',
                           width: expanded ? 56 : 72,
                           minWidth: expanded ? 0 : 72,
-                          fontSize: EXCEL_SHEET.fontSize,
+                          fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
                         }}
                       >
@@ -685,7 +686,7 @@ export function DivMaterialPlanilhaPreview({
                                   ...descricaoMaterialCellSx,
                                   width: expanded ? '280px' : 280,
                                   minWidth: expanded ? 0 : 280,
-                                  fontSize: EXCEL_SHEET.fontSize,
+                                  fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
                                   ...(expanded
                                     ? {
                                         whiteSpace: 'normal !important',
@@ -708,7 +709,7 @@ export function DivMaterialPlanilhaPreview({
                                   ...cellSx,
                                   width: expanded ? `${col.width}px` : col.width,
                                   minWidth: expanded ? 0 : col.width,
-                                  fontSize: EXCEL_SHEET.fontSize,
+                                  fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
                                   whiteSpace: expanded ? 'normal' : 'nowrap',
                                   wordBreak: expanded ? 'break-word' : undefined,
                                 }}
@@ -724,7 +725,7 @@ export function DivMaterialPlanilhaPreview({
                                 textAlign: 'center',
                                 width: expanded ? 56 : 72,
                                 minWidth: expanded ? 0 : 72,
-                                fontSize: EXCEL_SHEET.fontSize,
+                                fontSize: expanded ? '10px' : EXCEL_SHEET.fontSize,
                               }}
                             >
                               <IconButton
