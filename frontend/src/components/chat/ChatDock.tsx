@@ -138,7 +138,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
               height: 32,
               bgcolor: isGrupo ? alpha(premiumTokens.primary, 0.2) : alpha(accent, 0.18),
               color: isGrupo ? premiumTokens.primaryDark : accent,
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 800,
             }}
           >
@@ -153,7 +153,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
               noWrap
               sx={{
                 fontWeight: 800,
-                fontSize: '0.78rem',
+                fontSize: '0.90rem',
                 letterSpacing: '-0.02em',
                 color: premiumTokens.primaryDark,
                 lineHeight: 1.2,
@@ -161,7 +161,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
             >
               {activeThread.label}
             </Typography>
-            <Typography noWrap sx={{ fontSize: '0.62rem', color: 'text.secondary' }}>
+            <Typography noWrap sx={{ fontSize: '0.71rem', color: 'text.secondary' }}>
               {isGrupo
                 ? 'Grupo · todos os setores participam'
                 : activeThread.subtitle}
@@ -187,7 +187,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ m: 'auto', textAlign: 'center', px: 1.5, lineHeight: 1.4 }}
+              sx={{ m: 'auto', textAlign: 'center', px: 1.5, lineHeight: 1.4, fontSize: '0.86rem' }}
             >
               {isGrupo
                 ? 'Nenhuma mensagem no grupo. Escreva abaixo — todos os setores verão.'
@@ -207,7 +207,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                   {!mine ? (
                     <Typography
                       sx={{
-                        fontSize: '0.6rem',
+                        fontSize: '0.69rem',
                         fontWeight: 700,
                         color: 'text.secondary',
                         mb: 0.15,
@@ -230,7 +230,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                   >
                     <Typography
                       sx={{
-                        fontSize: '0.74rem',
+                        fontSize: '0.85rem',
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         lineHeight: 1.35,
@@ -244,7 +244,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                         mt: 0.2,
                         textAlign: 'right',
                         opacity: 0.7,
-                        fontSize: '0.56rem',
+                        fontSize: '0.64rem',
                       }}
                     >
                       {formatRelative(m.data)}
@@ -285,7 +285,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
               }
             }}
             sx={{
-              fontSize: '0.8rem',
+              fontSize: '0.92rem',
               px: 1.1,
               py: 0.45,
               borderRadius: 999,
@@ -327,7 +327,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
         <Typography
           sx={{
             fontWeight: 800,
-            fontSize: '0.85rem',
+            fontSize: '0.98rem',
             letterSpacing: '-0.02em',
             color: premiumTokens.primaryDark,
             lineHeight: 1.2,
@@ -335,7 +335,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
         >
           Bate-papo
         </Typography>
-        <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', mt: 0.15 }}>
+        <Typography sx={{ fontSize: '0.71rem', color: 'text.secondary', mt: 0.15 }}>
           Grupo de todos · ou conversa particular com um setor
         </Typography>
       </Box>
@@ -376,10 +376,10 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                 secondary={previewText(grupo)}
                 slotProps={{
                   primary: {
-                    sx: { fontWeight: 800, fontSize: '0.78rem', letterSpacing: '-0.015em' },
+                    sx: { fontWeight: 800, fontSize: '0.90rem', letterSpacing: '-0.015em' },
                   },
                   secondary: {
-                    sx: { fontSize: '0.66rem', mt: 0.15 },
+                    sx: { fontSize: '0.76rem', mt: 0.15 },
                     noWrap: true,
                   },
                 }}
@@ -393,7 +393,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
             px: 1.5,
             pt: 1,
             pb: 0.35,
-            fontSize: '0.62rem',
+            fontSize: '0.71rem',
             fontWeight: 800,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
@@ -402,14 +402,14 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
         >
           Conversas particulares
         </Typography>
-        <Typography sx={{ px: 1.5, pb: 0.75, fontSize: '0.6rem', color: 'text.secondary' }}>
+        <Typography sx={{ px: 1.5, pb: 0.75, fontSize: '0.69rem', color: 'text.secondary' }}>
           Só você e o setor escolhido veem a conversa
         </Typography>
 
         <List dense disablePadding>
           {particulares.length === 0 ? (
             <Typography
-              sx={{ px: 1.5, py: 1.5, fontSize: '0.7rem', color: 'text.secondary' }}
+              sx={{ px: 1.5, py: 1.5, fontSize: '0.81rem', color: 'text.secondary' }}
             >
               Nenhum outro usuário cadastrado para conversa particular.
             </Typography>
@@ -435,7 +435,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                     sx={{
                       width: 34,
                       height: 34,
-                      fontSize: 13,
+                      fontSize: 15,
                       fontWeight: 800,
                       bgcolor: alpha(accent, 0.14),
                       color: accent,
@@ -453,10 +453,10 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
                   secondary={`${t.subtitle.replace(/^Particular · /, '')} · ${previewText(t)}`}
                   slotProps={{
                     primary: {
-                      sx: { fontWeight: 700, fontSize: '0.76rem' },
+                      sx: { fontWeight: 700, fontSize: '0.87rem' },
                     },
                     secondary: {
-                      sx: { fontSize: '0.64rem', mt: 0.1 },
+                      sx: { fontSize: '0.74rem', mt: 0.1 },
                       noWrap: true,
                     },
                   }}
@@ -476,7 +476,7 @@ export function ChatDock({ fillHeight = false }: ChatDockProps) {
             bgcolor: alpha(theme.palette.background.default, 0.5),
           }}
         >
-          <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', textAlign: 'center' }}>
+          <Typography sx={{ fontSize: '0.69rem', color: 'text.secondary', textAlign: 'center' }}>
             Toque no <strong>Grupo</strong> ou em um <strong>setor</strong> para abrir a conversa
           </Typography>
         </Box>

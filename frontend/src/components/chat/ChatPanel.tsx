@@ -37,7 +37,7 @@ export function ChatPanel({ size = 'medium', stopClickPropagation = false }: Cha
                 fontWeight: 800,
                 minWidth: 18,
                 height: 18,
-                fontSize: '0.65rem',
+                fontSize: '0.75rem',
               },
             }}
           >

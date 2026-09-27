@@ -159,10 +159,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
           <ForumRoundedIcon fontSize="small" />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '1.15rem' }}>
             Bate-papo
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.86rem' }}>
             Grupo de todos · ou conversa particular com um setor
           </Typography>
         </Box>
@@ -223,10 +223,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                     secondary={previewText(grupo)}
                     slotProps={{
                       primary: {
-                        sx: { fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.015em' },
+                        sx: { fontWeight: 800, fontSize: '1.04rem', letterSpacing: '-0.015em' },
                       },
                       secondary: {
-                        sx: { fontSize: '0.72rem', mt: 0.2 },
+                        sx: { fontSize: '0.83rem', mt: 0.2 },
                         noWrap: true,
                       },
                     }}
@@ -240,7 +240,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 px: 2,
                 pt: 1.25,
                 pb: 0.25,
-                fontSize: '0.68rem',
+                fontSize: '0.78rem',
                 fontWeight: 800,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
@@ -249,13 +249,13 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
             >
               Conversas particulares
             </Typography>
-            <Typography sx={{ px: 2, pb: 1, fontSize: '0.68rem', color: 'text.secondary' }}>
+            <Typography sx={{ px: 2, pb: 1, fontSize: '0.78rem', color: 'text.secondary' }}>
               Só você e o setor escolhido veem a conversa
             </Typography>
 
             <List dense sx={{ flex: 1, overflow: 'auto', py: 0, px: 1 }}>
               {particulares.length === 0 ? (
-                <Typography sx={{ px: 1.5, py: 2, fontSize: '0.8rem', color: 'text.secondary' }}>
+                <Typography sx={{ px: 1.5, py: 2, fontSize: '0.92rem', color: 'text.secondary' }}>
                   Nenhum outro usuário cadastrado para conversa particular.
                 </Typography>
               ) : (
@@ -286,7 +286,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                           sx={{
                             width: 36,
                             height: 36,
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: 800,
                             bgcolor: alpha(accent, selected ? 0.28 : 0.14),
                             color: accent,
@@ -299,8 +299,8 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                         primary={t.label}
                         secondary={`${t.subtitle.replace(/^Particular · /, '')} · ${previewText(t)}`}
                         slotProps={{
-                          primary: { sx: { fontWeight: 700, fontSize: '0.86rem' } },
-                          secondary: { sx: { fontSize: '0.72rem' }, noWrap: true },
+                          primary: { sx: { fontWeight: 700, fontSize: '0.99rem' } },
+                          secondary: { sx: { fontSize: '0.83rem' }, noWrap: true },
                         }}
                       />
                     </ListItemButton>
@@ -340,7 +340,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                   bgcolor: isGrupo ? alpha(premiumTokens.primary, 0.2) : alpha(accent, 0.16),
                   color: isGrupo ? premiumTokens.primaryDark : accent,
                   fontWeight: 800,
-                  fontSize: 13,
+                  fontSize: 15,
                 }}
               >
                 {isGrupo ? (
@@ -350,10 +350,10 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                 )}
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800 }} noWrap>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, fontSize: '1.01rem' }} noWrap>
                   {activeThread?.label ?? 'Conversa'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
+                <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: '0.86rem' }}>
                   {isGrupo
                     ? 'Grupo · todos os setores participam'
                     : activeThread?.subtitle
@@ -386,7 +386,11 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                   }}
                 >
                   <ForumRoundedIcon sx={{ fontSize: 40, color: alpha(accent, 0.45), mb: 1 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ lineHeight: 1.45, fontSize: '1.01rem' }}
+                  >
                     {isGrupo
                       ? 'Nenhuma mensagem no grupo. Escreva abaixo — todos os setores verão.'
                       : 'Nenhuma mensagem nesta conversa particular. Só vocês dois veem o que for escrito.'}
@@ -417,6 +421,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                             ml: 0.75,
                             fontWeight: 700,
                             color: 'text.secondary',
+                            fontSize: '0.86rem',
                           }}
                         >
                           {m.autorNome}
@@ -436,7 +441,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       >
                         <Typography
                           variant="body2"
-                          sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                          sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '1.01rem' }}
                         >
                           {m.texto}
                         </Typography>
@@ -447,7 +452,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                             mt: 0.45,
                             textAlign: 'right',
                             opacity: 0.72,
-                            fontSize: '0.65rem',
+                            fontSize: '0.75rem',
                           }}
                         >
                           {formatRelative(m.data)}
@@ -497,7 +502,7 @@ export function ChatModal({ open, onClose }: ChatModalProps) {
                       handleSend()
                     }
                   }}
-                  sx={{ fontSize: '0.9rem', px: 0.5 }}
+                  sx={{ fontSize: '1.04rem', px: 0.5 }}
                 />
                 <IconButton
                   type="submit"
