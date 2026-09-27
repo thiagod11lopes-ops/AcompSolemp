@@ -1,5 +1,6 @@
 import { Box } from '@mui/material'
 import type { ReactNode } from 'react'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 
 interface PlanilhaFitWidthProps {
   /** Quando true, a planilha ocupa 100% da largura (sem scale — fonte permanece legível). */
@@ -41,7 +42,7 @@ export function PlanilhaFitWidth({ enabled, children }: PlanilhaFitWidthProps) {
           whiteSpace: 'normal',
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
-          fontSize: '15px !important',
+          fontSize: `${EXCEL_SHEET.fontSize} !important`,
           lineHeight: 1.25,
         },
       }}

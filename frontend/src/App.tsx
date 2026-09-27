@@ -8,6 +8,7 @@ import { initDataLayer } from '@/data/initDataLayer'
 import { authService } from '@/services/authService'
 import { initStorage } from '@/storage/indexedDb'
 import { useLiveAppDataSync } from '@/hooks/useLiveAppDataSync'
+import { usePlanilhaFontZoom } from '@/hooks/usePlanilhaFontZoom'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,11 @@ const bootstrapStyle: CSSProperties = {
 
 function LiveAppDataBridge() {
   useLiveAppDataSync()
+  return null
+}
+
+function PlanilhaFontZoomBridge() {
+  usePlanilhaFontZoom()
   return null
 }
 
@@ -85,6 +91,7 @@ function App() {
         <AuthProvider>
           <PageTitleProvider>
             <LiveAppDataBridge />
+            <PlanilhaFontZoomBridge />
             <AppRoutes />
           </PageTitleProvider>
         </AuthProvider>
