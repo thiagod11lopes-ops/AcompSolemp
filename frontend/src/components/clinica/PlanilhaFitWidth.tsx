@@ -41,7 +41,7 @@ export function PlanilhaFitWidth({ enabled, children }: PlanilhaFitWidthProps) {
           whiteSpace: 'normal',
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
-          fontSize: '20px !important',
+          fontSize: '15px !important',
           lineHeight: 1.25,
         },
       }}

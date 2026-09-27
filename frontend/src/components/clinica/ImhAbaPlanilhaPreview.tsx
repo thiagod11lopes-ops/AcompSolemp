@@ -445,7 +445,7 @@ export function ImhAbaPlanilhaPreview({
                           minWidth: expanded ? 0 : col.width,
                           width: expanded ? `${col.width}px` : undefined,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
-                          fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                          fontSize: EXCEL_SHEET.fontSize,
                         }}
                       >
                         {col.label}
@@ -459,7 +459,7 @@ export function ImhAbaPlanilhaPreview({
                           minWidth: expanded ? 0 : 72,
                           width: expanded ? 56 : 72,
                           whiteSpace: expanded ? 'normal' : 'nowrap',
-                          fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                          fontSize: EXCEL_SHEET.fontSize,
                         }}
                       >
                         AÇÕES
@@ -537,7 +537,7 @@ export function ImhAbaPlanilhaPreview({
                             key={col.key}
                             sx={{
                               ...cellSx,
-                              fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                              fontSize: EXCEL_SHEET.fontSize,
                               ...(expanded
                                 ? {
                                     whiteSpace: 'normal',
@@ -564,7 +564,7 @@ export function ImhAbaPlanilhaPreview({
                             sx={{
                               ...cellSx,
                               textAlign: 'center',
-                              fontSize: expanded ? '20px' : EXCEL_SHEET.fontSize,
+                              fontSize: EXCEL_SHEET.fontSize,
                             }}
                           >
                             <IconButton

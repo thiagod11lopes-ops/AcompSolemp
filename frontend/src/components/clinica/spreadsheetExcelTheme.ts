@@ -1,7 +1,7 @@
 /** Tokens visuais alinhados ao Microsoft Excel (grade, fonte e cores padrão). */
 export const EXCEL_SHEET = {
   fontFamily: 'Calibri, "Segoe UI", Arial, sans-serif',
-  fontSize: '20px',
+  fontSize: '15px',
   lineHeight: 1.2,
   borderColor: '#d4d4d4',
   border: '1px solid #d4d4d4',
