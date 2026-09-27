@@ -1,46 +1,13 @@
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
-import { IconButton, type SxProps, type Theme } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { Dialog, IconButton } from '@mui/material'
+import { useState, type ReactNode } from 'react'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 
-/** Estado + bloqueio de scroll do body para planilha em tela cheia. */
+/** Estado de expansão da planilha. */
 export function usePlanilhaExpand() {
   const [expanded, setExpanded] = useState(false)
-
-  useEffect(() => {
-    if (!expanded) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setExpanded(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [expanded])
-
   return { expanded, setExpanded }
-}
-
-/** Estilos do Paper da planilha quando expandida sobre a página. */
-export function planilhaExpandedPaperSx(expanded: boolean): SxProps<Theme> {
-  if (!expanded) return {}
-  return {
-    position: 'fixed',
-    inset: 0,
-    zIndex: (t) => t.zIndex.modal + 2,
-    borderRadius: 0,
-    m: 0,
-    maxHeight: '100vh',
-    height: '100vh',
-    width: '100vw',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    boxShadow: 'none',
-  }
 }
 
 interface PlanilhaExpandButtonProps {
@@ -71,5 +38,49 @@ export function PlanilhaExpandButton({
         <OpenInFullRoundedIcon fontSize="small" />
       )}
     </IconButton>
+  )
+}
+
+interface PlanilhaFullscreenDialogProps {
+  open: boolean
+  onClose: () => void
+  children: ReactNode
+}
+
+/**
+ * Overlay em tela cheia no body (acima de abas, títulos e sidebars).
+ * Usar Dialog evita que transform/overflow dos pais limitem o fixed.
+ */
+export function PlanilhaFullscreenDialog({
+  open,
+  onClose,
+  children,
+}: PlanilhaFullscreenDialogProps) {
+  return (
+    <Dialog
+      fullScreen
+      open={open}
+      onClose={onClose}
+      // Acima de drawers (1200) e app bars; cobre todo o portal.
+      sx={{ zIndex: (t) => t.zIndex.modal + 10 }}
+      slotProps={{
+        paper: {
+          sx: {
+            m: 0,
+            maxWidth: '100%',
+            width: '100%',
+            height: '100%',
+            maxHeight: '100%',
+            borderRadius: 0,
+            bgcolor: EXCEL_SHEET.sheetBg,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        },
+      }}
+    >
+      {children}
+    </Dialog>
   )
 }

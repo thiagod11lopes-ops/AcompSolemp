@@ -23,7 +23,7 @@ import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
   PlanilhaExpandButton,
-  planilhaExpandedPaperSx,
+  PlanilhaFullscreenDialog,
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
@@ -340,26 +340,28 @@ export function DivMaterialPlanilhaPreview({
     onSelectedIdsChange(next)
   }
 
-  return (
-    <Box
-      sx={{
-        opacity: visible ? 1 : 0.92,
-        transform: visible ? 'translateY(0)' : 'translateY(4px)',
-        transition: 'opacity 280ms ease, transform 280ms ease',
-      }}
-    >
+  const sheet = (
       <Paper
         elevation={0}
         className="excel-sheet"
         sx={{
-          borderRadius: 2,
+          borderRadius: expanded ? 0 : 2,
           overflow: 'hidden',
           border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-          boxShadow: visible
-            ? '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)'
-            : 'none',
+          boxShadow:
+            expanded || !visible
+              ? 'none'
+              : '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)',
           bgcolor: EXCEL_SHEET.sheetBg,
-          ...planilhaExpandedPaperSx(expanded),
+          ...(expanded
+            ? {
+                flex: 1,
+                height: '100%',
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+              }
+            : {}),
         }}
       >
         <Box
@@ -705,6 +707,23 @@ export function DivMaterialPlanilhaPreview({
           </Box>
         )}
       </Paper>
+  )
+
+  return (
+    <Box
+      sx={{
+        opacity: visible ? 1 : 0.92,
+        transform: expanded ? 'none' : visible ? 'translateY(0)' : 'translateY(4px)',
+        transition: expanded ? undefined : 'opacity 280ms ease, transform 280ms ease',
+      }}
+    >
+      {expanded ? (
+        <PlanilhaFullscreenDialog open onClose={() => setExpanded(false)}>
+          {sheet}
+        </PlanilhaFullscreenDialog>
+      ) : (
+        sheet
+      )}
 
       <GerarDocumentoModal
         open={gerarOpen}
