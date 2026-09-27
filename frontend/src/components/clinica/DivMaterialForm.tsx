@@ -177,7 +177,7 @@ export function DivMaterialForm({
         onSave={handleAdicionarLinha}
         anchorLinhaId={editingLinhaId}
       >
-        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 0.65 }}>
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.25 }}>
           <PlanilhaEditSection title="Procedimento" columns={3}>
             <TextField
               label="Data do procedimento"

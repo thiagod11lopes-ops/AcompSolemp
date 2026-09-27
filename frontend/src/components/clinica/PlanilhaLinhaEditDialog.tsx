@@ -18,7 +18,8 @@ export const planilhaEditFieldSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: 1.25,
     bgcolor: alpha('#0f172a', 0.02),
-    fontSize: '0.78rem',
+    fontSize: '0.84rem',
+    minHeight: 42,
     transition: 'background-color 160ms ease, box-shadow 160ms ease',
     '&:hover': {
       bgcolor: alpha(premiumTokens.primary, 0.04),
@@ -39,16 +40,17 @@ export const planilhaEditFieldSx = {
     },
   },
   '& .MuiInputBase-input': {
-    fontSize: '0.78rem',
-    py: 0.55,
+    fontSize: '0.84rem',
+    py: 1.05,
+    lineHeight: 1.35,
   },
   '& .MuiInputLabel-root': {
-    fontSize: '0.78rem',
+    fontSize: '0.84rem',
   },
   '& .MuiFormHelperText-root': {
-    fontSize: '0.65rem',
+    fontSize: '0.7rem',
     mx: 0.25,
-    mt: 0.15,
+    mt: 0.35,
     mb: 0,
   },
 } as const
@@ -59,11 +61,12 @@ export const planilhaEditMultilineSx = {
   '& .MuiOutlinedInput-root': {
     ...planilhaEditFieldSx['& .MuiOutlinedInput-root'],
     alignItems: 'flex-start',
+    minHeight: 72,
   },
   '& .MuiInputBase-input': {
-    fontSize: '0.78rem',
-    lineHeight: 1.3,
-    py: 0.55,
+    fontSize: '0.84rem',
+    lineHeight: 1.4,
+    py: 1.05,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
     wordBreak: 'break-word',
@@ -89,20 +92,21 @@ export function PlanilhaEditSection({
         borderRadius: 1.5,
         border: `1px solid ${alpha('#0f172a', 0.08)}`,
         bgcolor: alpha('#fff', 0.85),
-        px: 1,
-        py: 0.65,
+        px: { xs: 1.25, sm: 1.5 },
+        py: 1.25,
         display: 'grid',
-        gap: 0.55,
+        gap: 1,
       }}
     >
       <Typography
         sx={{
           fontWeight: 800,
-          fontSize: '0.62rem',
+          fontSize: '0.7rem',
           letterSpacing: 0.4,
           textTransform: 'uppercase',
           color: premiumTokens.primaryDark,
-          lineHeight: 1.1,
+          lineHeight: 1.2,
+          mb: 0.15,
         }}
       >
         {title}
@@ -110,7 +114,7 @@ export function PlanilhaEditSection({
       <Box
         sx={{
           display: 'grid',
-          gap: 0.65,
+          gap: 1.35,
           gridTemplateColumns: {
             xs: '1fr',
             sm: columns === 2 ? '1fr 1fr' : columns === 4 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
@@ -174,7 +178,7 @@ export function PlanilhaLinhaEditDialog({
       const vh = window.innerHeight
       if (!anchorLinhaId) {
         setAnchorTop(null)
-        setMaxPaperHeight(Math.min(vh * 0.9, 720))
+        setMaxPaperHeight(Math.min(vh * 0.9, 820))
         return
       }
 
@@ -184,7 +188,7 @@ export function PlanilhaLinhaEditDialog({
 
       if (!row) {
         setAnchorTop(null)
-        setMaxPaperHeight(Math.min(vh * 0.9, 720))
+        setMaxPaperHeight(Math.min(vh * 0.9, 820))
         return
       }
 
@@ -195,7 +199,7 @@ export function PlanilhaLinhaEditDialog({
         Math.round(rect.bottom + ROW_GAP_PX),
       )
       const availableBelow = Math.max(MIN_PAPER_HEIGHT_PX, vh - top - VIEWPORT_PAD_PX)
-      const maxH = Math.min(Math.min(vh * 0.72, 640), availableBelow)
+      const maxH = Math.min(Math.min(vh * 0.82, 780), availableBelow)
       setAnchorTop(top)
       setMaxPaperHeight(maxH)
     }
@@ -331,15 +335,15 @@ export function PlanilhaLinhaEditDialog({
 
       <DialogContent
         sx={{
-          px: { xs: 1.25, sm: 1.75 },
-          py: 0.85,
+          px: { xs: 1.5, sm: 2 },
+          py: 1.35,
           overflowX: 'hidden',
           overflowY: 'auto',
           flex: '1 1 auto',
           minHeight: 0,
           bgcolor: alpha('#f8fafc', 0.55),
           display: 'grid',
-          gap: 0.65,
+          gap: 1.25,
           alignContent: 'start',
         }}
       >

@@ -262,7 +262,7 @@ export function ImhAbaForm({
         onSave={handleAdicionarLinha}
         anchorLinhaId={editingLinhaId}
       >
-        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 0.65 }}>
+        <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.25 }}>
           <PlanilhaEditSection title="Cabeçalho" columns={2}>
             <TextField
               label="Clínica"
