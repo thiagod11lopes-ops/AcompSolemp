@@ -118,7 +118,10 @@ const headerSx = {
   color: EXCEL_SHEET.mutedText,
   position: 'sticky' as const,
   top: 0,
-  zIndex: 2,
+  zIndex: 4,
+  // Fundo opaco para o corpo não aparecer por baixo na rolagem.
+  backgroundClip: 'padding-box',
+  boxShadow: `inset 0 -1px 0 ${EXCEL_SHEET.borderColor}`,
 } as const
 
 const finalizedCheckboxSx = {
@@ -393,7 +396,6 @@ export function DivMaterialPlanilhaPreview({
           </Box>
         ) : (
           <Box
-            ref={scrollContainerRef}
             className="excel-sheet-grid"
             sx={{
               p: expanded ? 0 : 1.5,
@@ -402,35 +404,24 @@ export function DivMaterialPlanilhaPreview({
               maxWidth: '100%',
               minWidth: 0,
               // Máx. 12 linhas visíveis; em tela cheia usa toda a página.
-              // Com edição na expandida, reserva espaço inferior para o modal dockado.
               maxHeight: expanded ? 'none' : DIV_MAT_VIEWPORT_MAX_HEIGHT_PX,
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              pb: expanded && editingLinhaId ? '70vh' : undefined,
-              overflowX: 'hidden',
-              overflowY: 'auto',
+              // Rolagem só no PlanilhaFitWidth (âncora do sticky header).
+              overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              WebkitOverflowScrolling: 'touch',
               boxSizing: 'border-box',
-              '&::-webkit-scrollbar': {
-                width: 10,
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(15, 23, 42, 0.35)',
-                borderRadius: 999,
-              },
-              '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(15, 23, 42, 0.08)',
-              },
             }}
           >
             <PlanilhaFitWidth
               enabled
-              fillHeight={expanded}
+              fillHeight
               cellFontSize={cellFontSize}
               cellFontWeight={cellFontWeight}
               nowrapBody
+              scrollRef={scrollContainerRef}
+              bottomPad={expanded && editingLinhaId ? '70vh' : undefined}
               remountKey={`${linhasFiltradas.length}-${selectionEnabled ? 1 : 0}-${actionsEnabled ? 1 : 0}`}
             >
             <Box
@@ -438,7 +429,6 @@ export function DivMaterialPlanilhaPreview({
                 width: '100%',
                 maxWidth: '100%',
                 minWidth: 0,
-                overflowX: 'hidden',
                 border: EXCEL_SHEET.border,
                 borderRadius: expanded ? 0 : 1,
                 bgcolor: EXCEL_SHEET.sheetBg,
@@ -448,12 +438,14 @@ export function DivMaterialPlanilhaPreview({
               <Table
                 ref={tableRef}
                 size="small"
-                stickyHeader={!expanded}
+                stickyHeader
                 sx={{
                   width: '100%',
                   maxWidth: '100%',
                   minWidth: 0,
                   tableLayout: 'fixed',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
                   '& .MuiTableCell-root': {
                     boxSizing: 'border-box',
                     minWidth: '0 !important',
@@ -466,6 +458,9 @@ export function DivMaterialPlanilhaPreview({
                     whiteSpace: 'normal',
                     wordBreak: 'break-word',
                     overflowWrap: 'anywhere',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 4,
                   },
                   '& tbody .MuiTableCell-root:not(.excel-planilha-actions-col):not(.excel-planilha-wrap-col)':
                     {

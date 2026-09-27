@@ -60,6 +60,16 @@ export function PlanilhaFitWidth({
         pb: bottomPad,
         boxSizing: 'border-box',
         WebkitOverflowScrolling: 'touch',
+        '&::-webkit-scrollbar': {
+          width: 10,
+        },
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(15, 23, 42, 0.35)',
+          borderRadius: 999,
+        },
+        '&::-webkit-scrollbar-track': {
+          backgroundColor: 'rgba(15, 23, 42, 0.08)',
+        },
         '& .excel-sheet-grid, & > *': {
           width: '100% !important',
           maxWidth: '100% !important',
@@ -71,6 +81,8 @@ export function PlanilhaFitWidth({
           maxWidth: '100% !important',
           minWidth: '0 !important',
           tableLayout: 'fixed !important',
+          borderCollapse: 'separate',
+          borderSpacing: 0,
         },
         '& th, & td, & .MuiTableCell-root': {
           minWidth: '0 !important',
@@ -82,7 +94,11 @@ export function PlanilhaFitWidth({
           px: '4px !important',
           boxSizing: 'border-box',
         },
-        '& thead .MuiTableCell-root, & th': {
+        // Cabeçalho fixo na rolagem vertical do próprio container.
+        '& thead .MuiTableCell-root, & thead th, & .MuiTableCell-stickyHeader': {
+          position: 'sticky !important',
+          top: '0 !important',
+          zIndex: '4 !important',
           whiteSpace: 'normal !important',
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
@@ -90,6 +106,7 @@ export function PlanilhaFitWidth({
           lineHeight: 1.2,
           verticalAlign: 'middle',
           fontWeight: `${fontWeight} !important`,
+          backgroundClip: 'padding-box',
         },
         '& tbody .MuiTableCell-root, & td': nowrapBody
           ? {
