@@ -28,6 +28,7 @@ import {
   type KpiDetalheColumn,
   type KpiDetalheSummary,
 } from '@/components/dashboard/KpiDetalheDialog'
+import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { premiumTokens } from '@/theme/tokens'
@@ -102,6 +103,9 @@ export default function DashboardPage({
   subtitle = 'Visão executiva dos processos de materiais consignados e SOLEMP',
   metricsEnabled = true,
 }: DashboardPageProps = {}) {
+  const { user: ordenadorUser } = useOrdenadorAuth()
+  // IMH não exibe cards de empenho no dashboard.
+  const ocultarCardsEmpenho = ordenadorUser?.perfil === 'CONTABILIDADE_IMH'
   const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics(
     clinicaId,
     metricsEnabled,
@@ -558,36 +562,40 @@ export default function DashboardPage({
       </Grid>
 
       <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Aguardando Empenho"
-            value={formatCurrency(metrics.valorAguardandoEmpenho)}
-            subtitle={subtitleAguardando}
-            icon={<HourglassTopIcon />}
-            color={premiumTokens.orange}
-            onClick={() => setKpiAberto('aguardandoEmpenho')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Total empenhado do mês"
-            value={formatCurrency(mesFiltrado.valor)}
-            subtitle={subtitleMes}
-            icon={<CalendarMonthIcon />}
-            color={premiumTokens.primary}
-            onClick={() => setKpiAberto('empenhadoMes')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Total empenhado no ano"
-            value={formatCurrency(empenhadoAnoCard.valor)}
-            subtitle={subtitleTotalEmpenhado}
-            icon={<AccountBalanceIcon />}
-            color={premiumTokens.green}
-            onClick={() => abrirKpi('totalEmpenhado')}
-          />
-        </Grid>
+        {!ocultarCardsEmpenho && (
+          <>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Aguardando Empenho"
+                value={formatCurrency(metrics.valorAguardandoEmpenho)}
+                subtitle={subtitleAguardando}
+                icon={<HourglassTopIcon />}
+                color={premiumTokens.orange}
+                onClick={() => setKpiAberto('aguardandoEmpenho')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Total empenhado do mês"
+                value={formatCurrency(mesFiltrado.valor)}
+                subtitle={subtitleMes}
+                icon={<CalendarMonthIcon />}
+                color={premiumTokens.primary}
+                onClick={() => setKpiAberto('empenhadoMes')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Total empenhado no ano"
+                value={formatCurrency(empenhadoAnoCard.valor)}
+                subtitle={subtitleTotalEmpenhado}
+                icon={<AccountBalanceIcon />}
+                color={premiumTokens.green}
+                onClick={() => abrirKpi('totalEmpenhado')}
+              />
+            </Grid>
+          </>
+        )}
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <KpiCard
             title="Tempo Médio de Finalização"
