@@ -111,6 +111,10 @@ import {
   sortImhLinhasByData,
   syncImhAbaFromFontes,
 } from '@/utils/imhAbaForm'
+import {
+  syncNomesFromDivChange,
+  syncNomesFromImhChange,
+} from '@/utils/syncNomePacienteImhDivMat'
 
 const IMH_ABA_ID = 'imh'
 const DIV_MATERIAL_ABA_ID = 'div-material'
@@ -669,6 +673,19 @@ export default function ClinicaNovoPedidoPage() {
 
   const handleImhChange = useCallback(
     (next: ImhAbaFormData) => {
+      const synced = syncNomesFromImhChange(
+        imhFormRef.current,
+        next,
+        divMaterialLinhasRef.current,
+        conmedFormRef.current,
+      )
+      if (synced.changed) {
+        setImhForm(synced.imh)
+        setDivMaterialLinhas(synced.divLinhas)
+        setConmedForm(synced.conmed)
+        persist({ imh: synced.imh, conmed: synced.conmed })
+        return
+      }
       setImhForm(next)
       persist({ imh: next })
     },
@@ -862,17 +879,34 @@ export default function ClinicaNovoPedidoPage() {
     [handleImhMedicamentoChange, idsCorrigir],
   )
 
-  const handleDivMaterialChangeCorrigir = useCallback(
+  const handleDivMaterialChange = useCallback(
     (next: DivMaterialLinha[]) => {
-      if (!idsCorrigir) {
-        setDivMaterialLinhas(next)
+      const synced = syncNomesFromDivChange(
+        divMaterialLinhasRef.current,
+        next,
+        imhFormRef.current,
+        conmedFormRef.current,
+      )
+      if (synced.changed) {
+        setDivMaterialLinhas(synced.divLinhas)
+        setImhForm(synced.imh)
+        setConmedForm(synced.conmed)
+        persist({ imh: synced.imh, conmed: synced.conmed })
         return
       }
-      setDivMaterialLinhas(
-        mergeLinhasCorrigir(divMaterialLinhasRef.current, next, idsCorrigir),
-      )
+      setDivMaterialLinhas(next)
     },
-    [idsCorrigir],
+    [persist],
+  )
+
+  const handleDivMaterialChangeCorrigir = useCallback(
+    (next: DivMaterialLinha[]) => {
+      const merged = idsCorrigir
+        ? mergeLinhasCorrigir(divMaterialLinhasRef.current, next, idsCorrigir)
+        : next
+      handleDivMaterialChange(merged)
+    },
+    [handleDivMaterialChange, idsCorrigir],
   )
 
   const handleAbrirEnvio = () => {
