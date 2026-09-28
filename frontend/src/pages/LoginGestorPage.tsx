@@ -6,7 +6,6 @@ import {
   Alert,
   InputAdornment,
   IconButton,
-  Divider,
   Stack,
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
@@ -318,13 +317,6 @@ export default function LoginGestorPage() {
         >
           AcompSOLEMP
         </Typography>
-        <Typography
-          variant="body2"
-          sx={{ mt: 0.75, color: '#6E6E73', lineHeight: 1.5, px: 1, letterSpacing: '-0.011em' }}
-        >
-          Entre com o e-mail institucional. O sistema reconhece se você é Gestor ou
-          equipe cadastrada.
-        </Typography>
       </Box>
 
       {error && (
@@ -424,17 +416,6 @@ export default function LoginGestorPage() {
           />
         </Stack>
       )}
-
-      <Divider sx={{ my: 2.5, borderColor: 'rgba(15, 23, 42, 0.1)' }} />
-
-      <Typography
-        variant="caption"
-        sx={{ display: 'block', color: '#64748B', lineHeight: 1.55 }}
-      >
-        {isSupabase
-          ? 'Equipe: e-mail liberado pelo gestor. Gestor: Cadastrar-se com e-mail livre cria o banco da organização. Vários setores no mesmo cadastro aparecem como abas à esquerda após o login.'
-          : 'Demo Gestor: gestor / gestor123. Demais perfis: e-mail cadastrado no AppData local.'}
-      </Typography>
 
       <TeamEmailRecognizedModal
         open={teamModalOpen}
