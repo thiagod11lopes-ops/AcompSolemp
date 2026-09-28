@@ -13,8 +13,8 @@ export const MENSAGENS_ARQUIVAMENTO: Record<string, string> = {
   DIV_MAT_CONTABILIDADE_IMH: 'Planilha arquivada. Fluxo da IMH encerrado.',
   DIV_MAT_CONFECCAO_SOLEMP: 'SOLEMP encaminhada para Aguardando NE.',
   DIV_MAT_FINANCAS:
-    'Registro em Aguardando NE. Empenhado ficou concluído automaticamente (fim do fluxo).',
-  DIV_MAT_EMPENHADO: 'Empenhado concluído automaticamente — fluxo finalizado.',
+    'Registro em Aguardando NE com empenho. Fluxo finalizado (Empenhado concluído automaticamente).',
+  DIV_MAT_EMPENHADO: 'Empenhado concluído — fluxo finalizado.',
 }
 
 function resolverNomeArquivo(

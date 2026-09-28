@@ -523,6 +523,8 @@ export function advancePedidoEtapa(
   }
   data.historico.push(evento)
 
+  // Uma única linha em Arquivados: a etapa concluída (em Aguardando NE o Empenhado
+  // já entra como concluído no histórico, sem gerar segundo registro).
   arquivarEtapaConcluida(
     data,
     pedidoId,
@@ -532,24 +534,6 @@ export function advancePedidoEtapa(
     observacao,
     { empenhoNumero },
   )
-
-  if (etapaAtual.chave === 'DIV_MAT_FINANCAS') {
-    const empenhado = getEtapaByChave(etapas, 'DIV_MAT_EMPENHADO')
-    if (empenhado) {
-      const obsEmpenhado = empenhoNumero
-        ? `Empenhado concluído automaticamente — ${empenhoNumero}. Fluxo finalizado.`
-        : 'Empenhado concluído automaticamente com o envio em Aguardando NE — fluxo finalizado.'
-      arquivarEtapaConcluida(
-        data,
-        pedidoId,
-        empenhado.chave,
-        empenhado.nome,
-        usuario,
-        obsEmpenhado,
-        { empenhoNumero },
-      )
-    }
-  }
 
   if (!atualizado.concluido) {
     notifySetoresEtapasAtivas(data, pedidoId)
