@@ -287,6 +287,8 @@
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.01em;
+  /* Cards têm fundo escuro; evita herdar texto do tema claro. */
+  color: #ffffff;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
