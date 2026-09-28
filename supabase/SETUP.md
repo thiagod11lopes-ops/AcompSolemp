@@ -39,6 +39,10 @@ está vazia, execute:
 (e, se precisar liberar um e-mail na hora:
 `delete from public.email_access where lower(email) = 'seuemail@marinha.mil.br';`).
 
+Se o modal de convite no login mostra só **um** setor quando o usuário tem vários,
+execute:
+[`migration_lookup_email_access_perfis.sql`](./migration_lookup_email_access_perfis.sql).
+
 Para anexos no envio de planilha (botão **Arquivo Anexado** na timeline), execute:
 [`migration_planilha_anexos_storage.sql`](./migration_planilha_anexos_storage.sql)
 (cria o bucket `planilha-anexos` no Storage).
