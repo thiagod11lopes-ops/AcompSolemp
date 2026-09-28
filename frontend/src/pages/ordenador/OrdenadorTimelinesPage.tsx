@@ -14,10 +14,13 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { TimelineListToolbar } from '@/components/common/TimelineListToolbar'
+import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useOrdenadorPedidos } from '@/hooks/useOrdenadorPedidos'
 import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
+import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
+import { userHasPerfil } from '@/utils/userPerfis'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { resolveEmpenhoExibicao } from '@/utils/empenho'
 import { getRoleLabel } from '@/mocks/seed'
@@ -58,16 +61,25 @@ export default function OrdenadorTimelinesPage() {
   const [extras, setExtras] = useState<TimelineListExtraFilters>({})
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
   const isCadeia = Boolean(user && userTemCadeiaSolemp(user))
+  const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const etapasPermitidas = user ? etapasNavPermitidas(user) : []
   const etapaFiltro = searchParams.get('etapa')
   const etapaChaveValida =
     etapaFiltro && etapasPermitidas.includes(etapaFiltro) ? etapaFiltro : null
+  const isVistaImh =
+    isImh &&
+    (etapaChaveValida === 'DIV_MAT_CONTABILIDADE_IMH' ||
+      (!etapaChaveValida && user?.perfil === 'CONTABILIDADE_IMH'))
   const tituloEtapa = etapaChaveValida
-    ? (ETAPA_LABEL[etapaChaveValida] ?? loginPerfilLabel(user!.perfil) ?? perfilLabel)
+    ? etapaChaveValida === 'DIV_MAT_CONTABILIDADE_IMH'
+      ? 'Timelines'
+      : (ETAPA_LABEL[etapaChaveValida] ?? loginPerfilLabel(user!.perfil) ?? perfilLabel)
     : user && etapasPermitidas.length > 1
       ? 'Meus setores'
-      : perfilLabel
+      : isVistaImh
+        ? 'Timelines'
+        : perfilLabel
   const chavesArquivo = etapaChaveValida
     ? [etapaChaveValida]
     : etapasPermitidas.length > 0
@@ -158,11 +170,22 @@ export default function OrdenadorTimelinesPage() {
   return (
     <>
       <PageHeader
-        title={`Timelines — ${tituloEtapa}`}
+        title={isVistaImh ? 'Timelines' : `Timelines — ${tituloEtapa}`}
         subtitle={
           isCadeia
             ? 'Fila do setor: pendências, atrasos e filtros por clínica/data'
             : 'Fila do setor — minhas pendências, atrasadas e filtros'
+        }
+        action={
+          isVistaImh ? (
+            <NotificationPanel
+              tipos={TIPOS_NOTIFICACAO_TIMELINE_SETOR}
+              title="Notificações — Timelines"
+              emptyText="Nenhuma notificação de timeline"
+              tooltip="Notificações de Timelines"
+              iconColor="warning"
+            />
+          ) : undefined
         }
       />
 

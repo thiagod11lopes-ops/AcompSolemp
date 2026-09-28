@@ -2,6 +2,14 @@ import type { AppData, Notification, NotificationType } from '@/types'
 
 export const TIPOS_NOTIFICACAO_REVERSAO: NotificationType[] = ['REVERSAO_TIMELINE']
 
+/** Notificações da fila de Timelines do setor (ex.: IMH). */
+export const TIPOS_NOTIFICACAO_TIMELINE_SETOR: NotificationType[] = [
+  'ETAPA_PENDENTE',
+  'PLANILHA_DEVOLVIDA',
+  'PLANILHA_CORRIGIDA_REENVIADA',
+  'PRAZO_CORRECAO_VENCIDO',
+]
+
 export function notificacaoPertenceAosTipos(
   n: Notification,
   tipos?: NotificationType[],

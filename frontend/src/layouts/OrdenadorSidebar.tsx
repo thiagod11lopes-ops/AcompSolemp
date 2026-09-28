@@ -24,16 +24,19 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChatDock } from '@/components/chat/ChatDock'
+import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetores'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
+import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
 import {
   setorNavItemsParaUsuario,
   setorNavSubtitle,
   userPodeVerAbaBalanco,
   userTemMultiSetorNav,
 } from '@/utils/setorNav'
+import { userHasPerfil } from '@/utils/userPerfis'
 import type { UserRole } from '@/types'
 
 const DRAWER_WIDTH = 240
@@ -52,15 +55,20 @@ const menuBalanco = {
   icon: <AccountBalanceWalletIcon />,
 }
 
-const menuBase = [
-  { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { path: '/ordenador/timelines', label: 'Timelines pendentes', icon: <TimelineIcon /> },
-  { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
-]
-
 interface OrdenadorSidebarProps {
   mobileOpen: boolean
   onClose: () => void
+}
+
+function isAbaTimelinesImh(item: {
+  path: string
+  perfil?: UserRole
+  etapa?: string
+}): boolean {
+  if (item.perfil === 'CONTABILIDADE_IMH' || item.etapa === 'DIV_MAT_CONTABILIDADE_IMH') {
+    return true
+  }
+  return item.path.includes('/ordenador/timelines') && !item.etapa && !item.perfil
 }
 
 export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps) {
@@ -71,20 +79,29 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const multiSetor = Boolean(user && userTemMultiSetorNav(user))
   const mostraBalanco = Boolean(user && userPodeVerAbaBalanco(user))
+  const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
   const { contagemParaItem } = useContagemPendenciasSetores(user)
 
   const menuItems = (() => {
+    const timelinesLabel = isImh ? 'Timelines' : 'Timelines pendentes'
+    const menuBase = [
+      { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+      {
+        path: '/ordenador/timelines',
+        label: timelinesLabel,
+        icon: <TimelineIcon />,
+        perfil: isImh ? ('CONTABILIDADE_IMH' as UserRole) : undefined,
+      },
+      { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+    ]
+
     if (!user || !multiSetor) {
       if (!mostraBalanco) return menuBase
-      return [
-        menuBase[0],
-        menuBase[1],
-        menuBalanco,
-        menuBase[2],
-      ]
+      return [menuBase[0], menuBase[1], menuBalanco, menuBase[2]]
     }
     const setores = setorNavItemsParaUsuario(user).map((item) => ({
       ...item,
+      label: item.perfil === 'CONTABILIDADE_IMH' ? 'Timelines' : item.label,
       icon:
         (item.etapa === 'DIV_MAT_EMPENHADO'
           ? ICON_POR_PERFIL.DIV_MAT_EMPENHADO
@@ -148,11 +165,18 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                 !(multiSetor && isTimelinesPath && etapaAtual)
 
             const perfilItem = 'perfil' in item ? item.perfil : undefined
-            const isAbaSetor = Boolean(etapa || perfilItem)
+            const isAbaSetor = Boolean(etapa || (perfilItem && multiSetor))
             const pendencias =
               multiSetor && isAbaSetor
                 ? contagemParaItem({ etapa, perfil: perfilItem })
                 : 0
+            const showSinoImh =
+              isImh &&
+              isAbaTimelinesImh({
+                path: item.path,
+                perfil: perfilItem,
+                etapa,
+              })
 
             return (
               <ListItemButton
@@ -186,7 +210,25 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                       <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
                         {item.label}
                       </Typography>
-                      {multiSetor && isAbaSetor ? (
+                      {showSinoImh ? (
+                        <Box
+                          sx={{ display: 'flex', alignItems: 'center' }}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                          }}
+                        >
+                          <NotificationPanel
+                            tipos={TIPOS_NOTIFICACAO_TIMELINE_SETOR}
+                            title="Notificações — Timelines"
+                            emptyText="Nenhuma notificação de timeline"
+                            tooltip="Notificações de Timelines"
+                            size="small"
+                            iconColor="warning"
+                            stopClickPropagation
+                          />
+                        </Box>
+                      ) : multiSetor && isAbaSetor ? (
                         <Badge
                           badgeContent={pendencias}
                           color="error"

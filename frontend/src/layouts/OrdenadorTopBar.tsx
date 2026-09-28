@@ -9,6 +9,8 @@ import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
+import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
+import { userHasPerfil } from '@/utils/userPerfis'
 import { ORDENADOR_DRAWER_WIDTH } from './OrdenadorSidebar'
 
 interface OrdenadorTopBarProps {
@@ -21,6 +23,7 @@ export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
   const { navigatePortal, demoBannerHeight } = usePortalPaths()
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
 
   const handleLogout = async () => {
     const wasImpersonating = Boolean(impersonationTargetEmail)
@@ -59,7 +62,9 @@ export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
         <Box sx={{ mr: 1.5, display: 'flex', justifyContent: 'flex-end', flexGrow: { xs: 1, sm: 0 } }}>
           <GlobalProcessSearch portal="ordenador" />
         </Box>
-        <NotificationPanel />
+        <NotificationPanel
+          excludeTipos={isImh ? TIPOS_NOTIFICACAO_TIMELINE_SETOR : undefined}
+        />
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 1 }}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: 'warning.main', fontSize: 14 }}>
             {user?.nome.charAt(0)}
