@@ -338,9 +338,7 @@ export default function LoginGestorPage() {
           type={isSupabase ? 'email' : 'text'}
           margin="normal"
           placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
-          helperText={
-            errors.login?.message ?? (isSupabase ? MARINHA_EMAIL_HINT : undefined)
-          }
+          helperText={errors.login?.message}
           {...registerField('login')}
           error={Boolean(errors.login)}
         />
