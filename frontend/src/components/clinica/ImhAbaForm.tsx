@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, Box, MenuItem, Snackbar, TextField } from '@mui/material'
 import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
@@ -8,6 +8,7 @@ import {
   PlanilhaLinhaEditDialog,
   planilhaEditFieldSx,
   planilhaEditMultilineSx,
+  planilhaEditSelectSlotProps,
 } from '@/components/clinica/PlanilhaLinhaEditDialog'
 import {
   createEmptyImhAbaLinha,
@@ -20,6 +21,7 @@ import {
   isVinculoTitular,
   linhaHasContent,
   normalizeImhAbaForm,
+  normalizeImhVinculo,
   withRecalculatedImhLinha,
   sortImhLinhasByData,
 } from '@/utils/imhAbaForm'
@@ -41,9 +43,16 @@ interface ImhAbaFormProps {
   onRequestClear?: () => void
   dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
   onDataFiltroChange: (next: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro) => void
+  /** Nome da clínica logada — preenche automaticamente o campo Clínica. */
+  clinicaNomePadrao?: string
 }
 
-const VINCULOS = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO', 'OUTROS'] as const
+const VINCULOS = [
+  'TITULAR',
+  'DEPENDENTE DIRETO',
+  'DEPENDENTE INDIRETO',
+  'OUTROS',
+] as const
 
 function cloneLinha(linha: ImhAbaLinha): ImhAbaLinha {
   return { ...linha }
@@ -58,6 +67,7 @@ export function ImhAbaForm({
   onRequestClear,
   dataFiltro,
   onDataFiltroChange,
+  clinicaNomePadrao = '',
 }: ImhAbaFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -66,6 +76,14 @@ export function ImhAbaForm({
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importing, setImporting] = useState(false)
+
+  /** Preenche Clínica com o nome da clínica logada quando ainda estiver vazio. */
+  useEffect(() => {
+    const padrao = clinicaNomePadrao.trim()
+    if (!padrao) return
+    if (value.clinica.trim()) return
+    onChange({ ...value, clinica: formatImhUppercase(padrao) })
+  }, [clinicaNomePadrao, value, onChange])
   const [sheetPicker, setSheetPicker] = useState<{
     open: boolean
     fileName: string
@@ -204,9 +222,18 @@ export function ImhAbaForm({
   const handleEditLinha = (id: string) => {
     const found = value.linhas.find((l) => l.id === id)
     if (!found) return
+    const padraoClinica = clinicaNomePadrao.trim()
+    if (padraoClinica && !value.clinica.trim()) {
+      onChange({ ...value, clinica: formatImhUppercase(padraoClinica) })
+    }
     linhaSnapshotRef.current = cloneLinha(found)
     setEditingLinhaId(id)
-    setLinhaDraft(cloneLinha(found))
+    setLinhaDraft(
+      cloneLinha({
+        ...found,
+        vinculo: normalizeImhVinculo(found.vinculo) || found.vinculo,
+      }),
+    )
     if (!sheetExpanded) {
       requestAnimationFrame(() => {
         linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -266,11 +293,16 @@ export function ImhAbaForm({
           <PlanilhaEditSection title="Cabeçalho" columns={2}>
             <TextField
               label="Clínica"
-              value={value.clinica}
+              value={value.clinica || formatImhUppercase(clinicaNomePadrao)}
               onChange={(e) => setHeaderField('clinica', formatImhUppercase(e.target.value))}
               placeholder="CLÍNICA DE TRAUMATO-ORTOPEDIA"
               size="small"
               fullWidth
+              slotProps={{
+                input: {
+                  readOnly: Boolean(clinicaNomePadrao.trim()),
+                },
+              }}
               sx={planilhaEditFieldSx}
             />
             <TextField
@@ -306,15 +338,20 @@ export function ImhAbaForm({
             <TextField
               select
               label="VÍNCULO"
-              value={linhaDraft.vinculo || ''}
+              value={
+                normalizeImhVinculo(linhaDraft.vinculo) ||
+                formatImhUppercase(linhaDraft.vinculo) ||
+                ''
+              }
               onChange={(e) => {
-                const vinculo = formatImhUppercase(e.target.value)
+                const vinculo = normalizeImhVinculo(e.target.value) || formatImhUppercase(e.target.value)
                 updateDraft(
                   isVinculoTitular(vinculo) ? { vinculo } : { vinculo, nipTitular: '' },
                 )
               }}
               size="small"
               fullWidth
+              slotProps={planilhaEditSelectSlotProps}
               sx={planilhaEditFieldSx}
             >
               <MenuItem value="">—</MenuItem>

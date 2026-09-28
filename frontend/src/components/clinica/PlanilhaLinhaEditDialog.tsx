@@ -73,6 +73,17 @@ export const planilhaEditMultilineSx = {
   },
 } as const
 
+/** Menu do Select acima do modal de edição (zIndex do Dialog = modal+20). */
+export const planilhaEditSelectSlotProps = {
+  select: {
+    MenuProps: {
+      sx: {
+        zIndex: (theme: { zIndex: { modal: number } }) => theme.zIndex.modal + 50,
+      },
+    },
+  },
+} as const
+
 interface PlanilhaEditSectionProps {
   title: string
   children: ReactNode

@@ -1221,6 +1221,7 @@ export default function ClinicaNovoPedidoPage() {
             modoCorrigir ? { ...imhDataFiltro, mostrarTodos: true } : imhDataFiltro
           }
           onDataFiltroChange={handleImhDataFiltroChange}
+          clinicaNomePadrao={clinicaLogada?.nome ?? ''}
         />
       )
     }
