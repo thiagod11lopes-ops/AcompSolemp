@@ -84,24 +84,6 @@ export function OrdenadorInteractiveTimeline({
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
   const isAuditoriaUser = Boolean(user && userHasPerfil(user, 'AUDITORIA'))
 
-  const botaoArquivoAnexado = (
-    <TimelineActionButton
-      type="button"
-      variant="ghost"
-      data-keep-drawer=""
-      onClick={() => setAnexosModalOpen(true)}
-    >
-      Arquivo Anexado
-    </TimelineActionButton>
-  )
-
-  const comArquivoAnexado = (acoes: ReactNode) => (
-    <>
-      {botaoArquivoAnexado}
-      {acoes}
-    </>
-  )
-
   const botaoVisualizarDocumento = (
     <TimelineActionButton
       type="button"
@@ -122,23 +104,33 @@ export function OrdenadorInteractiveTimeline({
     </TimelineActionButton>
   )
 
-  const comReceberEVisualizar = (receber: ReactNode, demais?: ReactNode) =>
-    comArquivoAnexado(
-      <>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}
-        >
-          {receber}
-          {botaoVisualizarDocumento}
-        </div>
-        {demais}
-      </>,
-    )
+  const botaoArquivoAnexado = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+      }}
+    >
+      <TimelineActionButton
+        type="button"
+        variant="ghost"
+        data-keep-drawer=""
+        onClick={() => setAnexosModalOpen(true)}
+      >
+        Arquivo Anexado
+      </TimelineActionButton>
+      {botaoVisualizarDocumento}
+    </div>
+  )
+
+  const comArquivoAnexado = (acoes: ReactNode) => (
+    <>
+      {botaoArquivoAnexado}
+      {acoes}
+    </>
+  )
 
   // Mantém a timeline completa (todas as etapas), como antes do filtro por trilha.
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
@@ -199,18 +191,20 @@ export function OrdenadorInteractiveTimeline({
     ) {
       // Sem data-keep-drawer: o drawer (z-index 1301) precisa fechar para o modal
       // de encaminhamento (MUI Dialog ~1300) ficar visível e concluir o avanço.
-      return comReceberEVisualizar(
-        <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
-          {planilhaRecebida ? 'Planilha recebida' : 'Receber Planilha'}
-        </TimelineActionButton>,
-        <TimelineActionButton
-          variant="warning"
-          onClick={onEncaminharImh}
-          disabled={assinando || !planilhaRecebida}
-          title={!planilhaRecebida ? tituloBloqueado : 'Enviar Planilha'}
-        >
-          Enviar Planilha
-        </TimelineActionButton>,
+      return comArquivoAnexado(
+        <>
+          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
+            {planilhaRecebida ? 'Planilha recebida' : 'Receber Planilha'}
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onEncaminharImh}
+            disabled={assinando || !planilhaRecebida}
+            title={!planilhaRecebida ? tituloBloqueado : 'Enviar Planilha'}
+          >
+            Enviar Planilha
+          </TimelineActionButton>
+        </>,
       )
     }
 
@@ -221,21 +215,23 @@ export function OrdenadorInteractiveTimeline({
       onAssinar
     ) {
       const planilhaDisponivel = planilhaEncaminhadaImh || fluxoDiretoImh
-      return comReceberEVisualizar(
-        <TimelineActionButton
-          onClick={onReceberPlanilhaImh}
-          disabled={assinando || !planilhaDisponivel}
-        >
-          {planilhaRecebidaImh ? 'Planilha recebida' : 'Receber Planilha'}
-        </TimelineActionButton>,
-        <TimelineActionButton
-          variant="warning"
-          onClick={onAssinar}
-          disabled={assinando || !planilhaRecebidaImh}
-          title={!planilhaRecebidaImh ? tituloBloqueado : 'Enviar Planilha'}
-        >
-          Enviar Planilha
-        </TimelineActionButton>,
+      return comArquivoAnexado(
+        <>
+          <TimelineActionButton
+            onClick={onReceberPlanilhaImh}
+            disabled={assinando || !planilhaDisponivel}
+          >
+            {planilhaRecebidaImh ? 'Planilha recebida' : 'Receber Planilha'}
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaImh}
+            title={!planilhaRecebidaImh ? tituloBloqueado : 'Enviar Planilha'}
+          >
+            Enviar Planilha
+          </TimelineActionButton>
+        </>,
       )
     }
 
@@ -244,18 +240,20 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaConfeccao &&
       onAssinar
     ) {
-      return comReceberEVisualizar(
-        <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
-          {planilhaRecebidaConfeccao ? 'Planilha recebida' : 'Receber Planilha'}
-        </TimelineActionButton>,
-        <TimelineActionButton
-          variant="warning"
-          onClick={onAssinar}
-          disabled={assinando || !planilhaRecebidaConfeccao}
-          title={!planilhaRecebidaConfeccao ? tituloBloqueado : 'Enviar Planilha'}
-        >
-          Enviar Planilha
-        </TimelineActionButton>,
+      return comArquivoAnexado(
+        <>
+          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
+            {planilhaRecebidaConfeccao ? 'Planilha recebida' : 'Receber Planilha'}
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaConfeccao}
+            title={!planilhaRecebidaConfeccao ? tituloBloqueado : 'Enviar Planilha'}
+          >
+            Enviar Planilha
+          </TimelineActionButton>
+        </>,
       )
     }
 
@@ -265,18 +263,20 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaRascunho &&
       onAssinar
     ) {
-      return comReceberEVisualizar(
-        <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
-          {planilhaRecebidaRascunho ? 'Planilha recebida' : 'Receber Planilha'}
-        </TimelineActionButton>,
-        <TimelineActionButton
-          variant="warning"
-          onClick={onAssinar}
-          disabled={assinando || !planilhaRecebidaRascunho}
-          title={!planilhaRecebidaRascunho ? tituloBloqueado : 'Enviar Planilha'}
-        >
-          Enviar Planilha
-        </TimelineActionButton>,
+      return comArquivoAnexado(
+        <>
+          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
+            {planilhaRecebidaRascunho ? 'Planilha recebida' : 'Receber Planilha'}
+          </TimelineActionButton>
+          <TimelineActionButton
+            variant="warning"
+            onClick={onAssinar}
+            disabled={assinando || !planilhaRecebidaRascunho}
+            title={!planilhaRecebidaRascunho ? tituloBloqueado : 'Enviar Planilha'}
+          >
+            Enviar Planilha
+          </TimelineActionButton>
+        </>,
       )
     }
 
