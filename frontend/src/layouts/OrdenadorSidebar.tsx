@@ -1,4 +1,5 @@
 import {
+  Badge,
   Drawer,
   List,
   ListItemButton,
@@ -20,10 +21,12 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChatDock } from '@/components/chat/ChatDock'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetores'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import {
   setorNavItemsParaUsuario,
@@ -68,6 +71,7 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const multiSetor = Boolean(user && userTemMultiSetorNav(user))
   const mostraBalanco = Boolean(user && userPodeVerAbaBalanco(user))
+  const { contagemParaItem } = useContagemPendenciasSetores(user)
 
   const menuItems = (() => {
     if (!user || !multiSetor) {
@@ -143,6 +147,13 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
               : location.pathname.includes(item.path.replace(/^\//, '')) &&
                 !(multiSetor && isTimelinesPath && etapaAtual)
 
+            const perfilItem = 'perfil' in item ? item.perfil : undefined
+            const isAbaSetor = Boolean(etapa || perfilItem)
+            const pendencias =
+              multiSetor && isAbaSetor
+                ? contagemParaItem({ etapa, perfil: perfilItem })
+                : 0
+
             return (
               <ListItemButton
                 key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
@@ -160,7 +171,44 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                 }}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
+                <ListItemText
+                  primary={
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        width: '100%',
+                        pr: 0.5,
+                      }}
+                    >
+                      <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
+                        {item.label}
+                      </Typography>
+                      {multiSetor && isAbaSetor ? (
+                        <Badge
+                          badgeContent={pendencias}
+                          color="error"
+                          max={99}
+                          showZero
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              fontSize: '0.65rem',
+                              minWidth: 18,
+                              height: 18,
+                            },
+                          }}
+                        >
+                          <NotificationsNoneIcon
+                            fontSize="small"
+                            sx={{ color: pendencias > 0 ? 'warning.main' : 'text.secondary' }}
+                          />
+                        </Badge>
+                      ) : null}
+                    </Box>
+                  }
+                />
               </ListItemButton>
             )
           })}
