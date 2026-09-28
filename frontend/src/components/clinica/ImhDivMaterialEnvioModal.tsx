@@ -8,10 +8,12 @@ import {
   alpha,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import DescriptionIcon from '@mui/icons-material/Description'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import AddIcon from '@mui/icons-material/Add'
 import { motion } from 'framer-motion'
 
 interface ImhDivMaterialEnvioModalProps {
@@ -22,6 +24,9 @@ interface ImhDivMaterialEnvioModalProps {
   isSubmitting?: boolean
   onClose: () => void
   onEnviar: () => void
+  /** Abre o seletor para acumular mais arquivos. */
+  onAdicionarAnexos?: () => void
+  onRemoverAnexo?: (index: number) => void
 }
 
 export function ImhDivMaterialEnvioModal({
@@ -32,6 +37,8 @@ export function ImhDivMaterialEnvioModal({
   isSubmitting = false,
   onClose,
   onEnviar,
+  onAdicionarAnexos,
+  onRemoverAnexo,
 }: ImhDivMaterialEnvioModalProps) {
   const canSend = (imhCount > 0 || divMaterialCount > 0) && !isSubmitting
 
@@ -152,37 +159,110 @@ export function ImhDivMaterialEnvioModal({
             </Box>
           </motion.div>
 
-          {anexos.length > 0 ? (
-            <Box
+          <Box
+            sx={{
+              py: 1.5,
+              px: 2.25,
+              borderRadius: 3,
+              bgcolor: alpha('#34d399', 0.12),
+              border: `1px solid ${alpha('#34d399', 0.35)}`,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
               sx={{
-                py: 1.5,
-                px: 2.25,
-                borderRadius: 3,
-                bgcolor: alpha('#34d399', 0.12),
-                border: `1px solid ${alpha('#34d399', 0.35)}`,
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 1.5,
+                mb: anexos.length > 0 ? 1.25 : 0,
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              <AttachFileIcon sx={{ mt: 0.25, color: '#d1fae5' }} />
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+                <AttachFileIcon sx={{ color: '#d1fae5', flexShrink: 0 }} />
                 <Typography sx={{ fontWeight: 800, color: '#d1fae5' }}>
-                  {anexos.length} arquivo(s) em anexo
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: alpha('#e2e8f0', 0.85),
-                    mt: 0.35,
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {anexos.map((file) => file.name).join(' · ')}
+                  {anexos.length > 0
+                    ? `${anexos.length} arquivo(s) em anexo`
+                    : 'Nenhum arquivo em anexo'}
                 </Typography>
               </Box>
-            </Box>
-          ) : null}
+              {onAdicionarAnexos && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  disabled={isSubmitting}
+                  onClick={onAdicionarAnexos}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    color: '#d1fae5',
+                    borderColor: alpha('#6ee7b7', 0.55),
+                    '&:hover': {
+                      borderColor: '#a7f3d0',
+                      bgcolor: alpha('#34d399', 0.12),
+                    },
+                  }}
+                >
+                  Adicionar
+                </Button>
+              )}
+            </Stack>
+
+            {anexos.length > 0 && (
+              <Stack spacing={0.75}>
+                {anexos.map((file, index) => (
+                  <Box
+                    key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.25,
+                      py: 0.85,
+                      borderRadius: 2,
+                      bgcolor: alpha('#022c22', 0.35),
+                      border: `1px solid ${alpha('#6ee7b7', 0.25)}`,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        color: alpha('#ecfdf5', 0.95),
+                        wordBreak: 'break-word',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {file.name}
+                    </Typography>
+                    {onRemoverAnexo && (
+                      <IconButton
+                        size="small"
+                        aria-label={`Remover ${file.name}`}
+                        disabled={isSubmitting}
+                        onClick={() => onRemoverAnexo(index)}
+                        sx={{
+                          color: alpha('#fecaca', 0.95),
+                          '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
+                        }}
+                      >
+                        <DeleteOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            )}
+
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', mt: 1, color: alpha('#a7f3d0', 0.75) }}
+            >
+              É possível anexar vários documentos (PDF, Word, Excel, LibreOffice e afins).
+            </Typography>
+          </Box>
         </Stack>
 
         <Box

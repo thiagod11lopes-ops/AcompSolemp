@@ -26,6 +26,8 @@ interface DocumentoAnexoPreviewModalProps {
   open: boolean
   pedidoId: string
   onClose: () => void
+  /** Quando informado, abre direto neste anexo (após escolha no modal). */
+  initialArquivoId?: string | null
 }
 
 function formatTamanho(kb: number): string {
@@ -116,6 +118,7 @@ export function DocumentoAnexoPreviewModal({
   open,
   pedidoId,
   onClose,
+  initialArquivoId = null,
 }: DocumentoAnexoPreviewModalProps) {
   const cloudSync = useCloudAppDataSync()
   const [anexos, setAnexos] = useState<ArquivoAnexo[]>([])
@@ -157,7 +160,11 @@ export function DocumentoAnexoPreviewModal({
     let cancelled = false
     const locais = pedidoAnexoService.listByPedido(pedidoId)
     setAnexos(locais)
-    setSelectedId(locais[0]?.id ?? null)
+    setSelectedId(
+      initialArquivoId && locais.some((a) => a.id === initialArquivoId)
+        ? initialArquivoId
+        : (locais[0]?.id ?? null),
+    )
     setLoadingList(true)
 
     void (async () => {
@@ -175,6 +182,9 @@ export function DocumentoAnexoPreviewModal({
       const atualizados = mergeAnexos(locais, pedidoAnexoService.listByPedido(pedidoId))
       setAnexos(atualizados)
       setSelectedId((prev) => {
+        if (initialArquivoId && atualizados.some((a) => a.id === initialArquivoId)) {
+          return initialArquivoId
+        }
         if (prev && atualizados.some((a) => a.id === prev)) return prev
         return atualizados[0]?.id ?? null
       })
@@ -184,7 +194,7 @@ export function DocumentoAnexoPreviewModal({
     return () => {
       cancelled = true
     }
-  }, [open, pedidoId, cloudSync])
+  }, [open, pedidoId, cloudSync, initialArquivoId])
 
   useEffect(() => {
     if (!open || !selected) {

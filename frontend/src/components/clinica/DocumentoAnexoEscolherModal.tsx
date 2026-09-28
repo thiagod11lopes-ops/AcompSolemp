@@ -1,0 +1,168 @@
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  Typography,
+  alpha,
+} from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
+import { useEffect, useState } from 'react'
+import { useCloudAppDataSync } from '@/config/dataSource'
+import { pedidoAnexoService } from '@/services/pedidoAnexoService'
+import type { ArquivoAnexo } from '@/types'
+
+interface DocumentoAnexoEscolherModalProps {
+  open: boolean
+  pedidoId: string
+  onClose: () => void
+  onEscolher: (arquivo: ArquivoAnexo) => void
+}
+
+function formatTamanho(kb: number): string {
+  if (kb < 1024) return `${kb} KB`
+  return `${(kb / 1024).toFixed(1)} MB`
+}
+
+function mergeAnexos(local: ArquivoAnexo[], remote: ArquivoAnexo[]): ArquivoAnexo[] {
+  const byId = new Map<string, ArquivoAnexo>()
+  for (const arquivo of [...local, ...remote]) {
+    const prev = byId.get(arquivo.id)
+    if (!prev) {
+      byId.set(arquivo.id, arquivo)
+      continue
+    }
+    const prevScore = (prev.storagePath ? 2 : 0) + (prev.conteudoBase64 ? 1 : 0)
+    const nextScore = (arquivo.storagePath ? 2 : 0) + (arquivo.conteudoBase64 ? 1 : 0)
+    byId.set(arquivo.id, nextScore >= prevScore ? arquivo : prev)
+  }
+  return [...byId.values()].sort((a, b) => b.dataUpload.localeCompare(a.dataUpload))
+}
+
+/** Lista os anexos do pedido para o usuário escolher qual visualizar. */
+export function DocumentoAnexoEscolherModal({
+  open,
+  pedidoId,
+  onClose,
+  onEscolher,
+}: DocumentoAnexoEscolherModalProps) {
+  const cloudSync = useCloudAppDataSync()
+  const [anexos, setAnexos] = useState<ArquivoAnexo[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !pedidoId) {
+      setAnexos([])
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    const locais = pedidoAnexoService.listByPedido(pedidoId)
+    setAnexos(locais)
+    setLoading(true)
+
+    void (async () => {
+      try {
+        if (cloudSync) {
+          const { refreshAppDataFromCloud } = await import('@/data/persistence/supabaseSync')
+          const { applyRemoteAppData } = await import('@/mocks/seed')
+          const remote = await refreshAppDataFromCloud()
+          if (remote) applyRemoteAppData(remote)
+        }
+      } catch {
+        // Mantém dados locais.
+      }
+      if (cancelled) return
+      setAnexos(mergeAnexos(locais, pedidoAnexoService.listByPedido(pedidoId)))
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, pedidoId, cloudSync])
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
+        Escolher documento
+        <IconButton
+          onClick={onClose}
+          sx={{ position: 'absolute', right: 12, top: 12 }}
+          aria-label="Fechar"
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Selecione qual arquivo anexado deseja visualizar.
+        </Typography>
+        {loading && anexos.length === 0 ? (
+          <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : anexos.length === 0 ? (
+          <Box sx={{ py: 3, textAlign: 'center', opacity: 0.7 }}>
+            <AttachFileIcon sx={{ fontSize: 36, mb: 1, opacity: 0.5 }} />
+            <Typography variant="body2" color="text.secondary">
+              Nenhum arquivo foi anexado nesta planilha.
+            </Typography>
+          </Box>
+        ) : (
+          <Stack spacing={1.25}>
+            {anexos.map((arquivo) => (
+              <Box
+                key={arquivo.id}
+                sx={(theme) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.25,
+                  p: 1.5,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                  bgcolor: alpha(theme.palette.primary.main, 0.03),
+                })}
+              >
+                <AttachFileIcon color="primary" sx={{ flexShrink: 0 }} />
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 700, wordBreak: 'break-word' }}
+                  >
+                    {arquivo.nome}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatTamanho(arquivo.tamanhoKb)}
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<VisibilityOutlinedIcon />}
+                  onClick={() => onEscolher(arquivo)}
+                  sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                >
+                  Visualizar
+                </Button>
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 700 }}>
+          Fechar
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}

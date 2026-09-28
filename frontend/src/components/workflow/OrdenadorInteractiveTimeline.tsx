@@ -21,6 +21,7 @@ import {
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
+import { DocumentoAnexoEscolherModal } from '@/components/clinica/DocumentoAnexoEscolherModal'
 import { DocumentoAnexoPreviewModal } from '@/components/clinica/DocumentoAnexoPreviewModal'
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
 import { timelineTheme } from '@/components/timeline/theme'
@@ -69,7 +70,9 @@ export function OrdenadorInteractiveTimeline({
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
   const [anexosModalOpen, setAnexosModalOpen] = useState(false)
+  const [escolherAnexoOpen, setEscolherAnexoOpen] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [previewArquivoId, setPreviewArquivoId] = useState<string | null>(null)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
     ? chavePendenteParaPerfil(
@@ -91,7 +94,7 @@ export function OrdenadorInteractiveTimeline({
       data-keep-drawer=""
       aria-label="Visualizar documento"
       title="Visualizar documento"
-      onClick={() => setPreviewModalOpen(true)}
+      onClick={() => setEscolherAnexoOpen(true)}
       style={{
         padding: '8px 10px',
         display: 'inline-flex',
@@ -353,10 +356,24 @@ export function OrdenadorInteractiveTimeline({
         pedidoId={pedido.id}
         onClose={() => setAnexosModalOpen(false)}
       />
+      <DocumentoAnexoEscolherModal
+        open={escolherAnexoOpen}
+        pedidoId={pedido.id}
+        onClose={() => setEscolherAnexoOpen(false)}
+        onEscolher={(arquivo) => {
+          setEscolherAnexoOpen(false)
+          setPreviewArquivoId(arquivo.id)
+          setPreviewModalOpen(true)
+        }}
+      />
       <DocumentoAnexoPreviewModal
         open={previewModalOpen}
         pedidoId={pedido.id}
-        onClose={() => setPreviewModalOpen(false)}
+        initialArquivoId={previewArquivoId}
+        onClose={() => {
+          setPreviewModalOpen(false)
+          setPreviewArquivoId(null)
+        }}
       />
     </>
   )
