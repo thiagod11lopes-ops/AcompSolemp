@@ -224,7 +224,13 @@ export const pedidoAnexoService = {
     return criados
   },
 
-  async download(arquivo: ArquivoAnexo): Promise<boolean> {
+  /**
+   * Obtém o Blob do anexo (Storage ou base64) sem disparar download —
+   * usado para visualização embutida no navegador.
+   */
+  async resolveBlob(arquivo: ArquivoAnexo): Promise<Blob | null> {
+    const mime = arquivo.mimeType || guessMimeType(arquivo.nome)
+
     if (arquivo.storagePath && useCloudAppDataSync()) {
       try {
         const client = getSupabaseClient()
@@ -232,32 +238,41 @@ export const pedidoAnexoService = {
           .from(STORAGE_BUCKET)
           .download(arquivo.storagePath)
         if (!error && data) {
-          const url = URL.createObjectURL(data)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = arquivo.nome
-          link.rel = 'noopener'
-          document.body.appendChild(link)
-          link.click()
-          link.remove()
-          URL.revokeObjectURL(url)
-          return true
+          if (data.type && data.type !== 'application/octet-stream') return data
+          return new Blob([data], { type: mime })
         }
-        console.warn('[AcompSolemp] Download Storage falhou:', error?.message)
+        console.warn('[AcompSolemp] Preview Storage falhou:', error?.message)
       } catch (error) {
-        console.warn('[AcompSolemp] Download Storage indisponível:', error)
+        console.warn('[AcompSolemp] Preview Storage indisponível:', error)
       }
     }
 
-    if (!arquivo.conteudoBase64) return false
-    const mime = arquivo.mimeType || guessMimeType(arquivo.nome)
+    if (!arquivo.conteudoBase64) return null
+    try {
+      const binary = atob(arquivo.conteudoBase64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i)
+      }
+      return new Blob([bytes], { type: mime })
+    } catch (error) {
+      console.warn('[AcompSolemp] Falha ao decodificar anexo para preview:', error)
+      return null
+    }
+  },
+
+  async download(arquivo: ArquivoAnexo): Promise<boolean> {
+    const blob = await this.resolveBlob(arquivo)
+    if (!blob) return false
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = `data:${mime};base64,${arquivo.conteudoBase64}`
+    link.href = url
     link.download = arquivo.nome
     link.rel = 'noopener'
     document.body.appendChild(link)
     link.click()
     link.remove()
+    URL.revokeObjectURL(url)
     return true
   },
 }

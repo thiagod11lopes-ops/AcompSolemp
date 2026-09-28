@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import type { PedidoComDetalhes, ProcessoArquivado, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
@@ -20,7 +21,9 @@ import {
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
+import { DocumentoAnexoPreviewModal } from '@/components/clinica/DocumentoAnexoPreviewModal'
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
+import { timelineTheme } from '@/components/timeline/theme'
 import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
@@ -66,6 +69,7 @@ export function OrdenadorInteractiveTimeline({
 }: OrdenadorInteractiveTimelineProps) {
   const { user } = useOrdenadorAuth()
   const [anexosModalOpen, setAnexosModalOpen] = useState(false)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
     ? chavePendenteParaPerfil(
@@ -97,6 +101,44 @@ export function OrdenadorInteractiveTimeline({
       {acoes}
     </>
   )
+
+  const botaoVisualizarDocumento = (
+    <TimelineActionButton
+      type="button"
+      variant="ghost"
+      data-keep-drawer=""
+      aria-label="Visualizar documento"
+      title="Visualizar documento"
+      onClick={() => setPreviewModalOpen(true)}
+      style={{
+        padding: '8px 10px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 0,
+      }}
+    >
+      <VisibilityOutlinedIcon sx={{ fontSize: 18, color: timelineTheme.textSecondary }} />
+    </TimelineActionButton>
+  )
+
+  const comReceberEVisualizar = (receber: ReactNode, demais?: ReactNode) =>
+    comArquivoAnexado(
+      <>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          {receber}
+          {botaoVisualizarDocumento}
+        </div>
+        {demais}
+      </>,
+    )
 
   // Mantém a timeline completa (todas as etapas), como antes do filtro por trilha.
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
@@ -157,20 +199,18 @@ export function OrdenadorInteractiveTimeline({
     ) {
       // Sem data-keep-drawer: o drawer (z-index 1301) precisa fechar para o modal
       // de encaminhamento (MUI Dialog ~1300) ficar visível e concluir o avanço.
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
-            {planilhaRecebida ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onEncaminharImh}
-            disabled={assinando || !planilhaRecebida}
-            title={!planilhaRecebida ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return comReceberEVisualizar(
+        <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
+          {planilhaRecebida ? 'Planilha recebida' : 'Receber Planilha'}
+        </TimelineActionButton>,
+        <TimelineActionButton
+          variant="warning"
+          onClick={onEncaminharImh}
+          disabled={assinando || !planilhaRecebida}
+          title={!planilhaRecebida ? tituloBloqueado : 'Enviar Planilha'}
+        >
+          Enviar Planilha
+        </TimelineActionButton>,
       )
     }
 
@@ -181,23 +221,21 @@ export function OrdenadorInteractiveTimeline({
       onAssinar
     ) {
       const planilhaDisponivel = planilhaEncaminhadaImh || fluxoDiretoImh
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton
-            onClick={onReceberPlanilhaImh}
-            disabled={assinando || !planilhaDisponivel}
-          >
-            {planilhaRecebidaImh ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaImh}
-            title={!planilhaRecebidaImh ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return comReceberEVisualizar(
+        <TimelineActionButton
+          onClick={onReceberPlanilhaImh}
+          disabled={assinando || !planilhaDisponivel}
+        >
+          {planilhaRecebidaImh ? 'Planilha recebida' : 'Receber Planilha'}
+        </TimelineActionButton>,
+        <TimelineActionButton
+          variant="warning"
+          onClick={onAssinar}
+          disabled={assinando || !planilhaRecebidaImh}
+          title={!planilhaRecebidaImh ? tituloBloqueado : 'Enviar Planilha'}
+        >
+          Enviar Planilha
+        </TimelineActionButton>,
       )
     }
 
@@ -206,20 +244,18 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaConfeccao &&
       onAssinar
     ) {
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
-            {planilhaRecebidaConfeccao ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaConfeccao}
-            title={!planilhaRecebidaConfeccao ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return comReceberEVisualizar(
+        <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
+          {planilhaRecebidaConfeccao ? 'Planilha recebida' : 'Receber Planilha'}
+        </TimelineActionButton>,
+        <TimelineActionButton
+          variant="warning"
+          onClick={onAssinar}
+          disabled={assinando || !planilhaRecebidaConfeccao}
+          title={!planilhaRecebidaConfeccao ? tituloBloqueado : 'Enviar Planilha'}
+        >
+          Enviar Planilha
+        </TimelineActionButton>,
       )
     }
 
@@ -229,20 +265,18 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaRascunho &&
       onAssinar
     ) {
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
-            {planilhaRecebidaRascunho ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaRascunho}
-            title={!planilhaRecebidaRascunho ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return comReceberEVisualizar(
+        <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
+          {planilhaRecebidaRascunho ? 'Planilha recebida' : 'Receber Planilha'}
+        </TimelineActionButton>,
+        <TimelineActionButton
+          variant="warning"
+          onClick={onAssinar}
+          disabled={assinando || !planilhaRecebidaRascunho}
+          title={!planilhaRecebidaRascunho ? tituloBloqueado : 'Enviar Planilha'}
+        >
+          Enviar Planilha
+        </TimelineActionButton>,
       )
     }
 
@@ -318,6 +352,11 @@ export function OrdenadorInteractiveTimeline({
         open={anexosModalOpen}
         pedidoId={pedido.id}
         onClose={() => setAnexosModalOpen(false)}
+      />
+      <DocumentoAnexoPreviewModal
+        open={previewModalOpen}
+        pedidoId={pedido.id}
+        onClose={() => setPreviewModalOpen(false)}
       />
     </>
   )
