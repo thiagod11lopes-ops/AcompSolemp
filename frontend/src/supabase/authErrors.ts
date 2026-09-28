@@ -150,11 +150,20 @@ export function mapSupabaseAuthError(error: unknown): Error {
     )
   }
 
-  if (lower.includes('error sending') || lower.includes('smtp') || lower.includes('mail')) {
+  // Não usar includes('mail'): isso pega qualquer "email" e mascara o erro real.
+  if (
+    lower.includes('error sending') ||
+    lower.includes('smtp') ||
+    lower.includes('sending confirmation email') ||
+    lower.includes('error sending confirmation') ||
+    (lower.includes('confirmation email') && lower.includes('send'))
+  ) {
     return new Error(
-      'Falha ao enviar e-mail. No cadastro não deve haver envio: desative “Confirm email” ' +
-        '(Authentication → Providers → Email) ou publique a Edge Function signup-with-password. ' +
-        'SMTP só é necessário para “Esqueci a senha”. Destino @marinha.mil.br precisa receber mensagens.',
+      'Falha no envio de e-mail pelo Supabase (SMTP). ' +
+        'No cadastro isso não deveria ocorrer com “Confirm email” desligado. ' +
+        'Se estiver em “Esqueci a senha”, confira Authentication → Emails → SMTP ' +
+        'e se o destino @marinha.mil.br recebe mensagens. Erro original: ' +
+        message,
     )
   }
 

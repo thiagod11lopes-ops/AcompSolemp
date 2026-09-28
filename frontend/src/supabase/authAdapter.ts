@@ -67,22 +67,35 @@ export const supabaseAuthAdapter = {
       })
       if (error) {
         const lower = (error.message || '').toLowerCase()
-        if (lower.includes('error sending') || lower.includes('smtp') || lower.includes('mail')) {
+        const already =
+          lower.includes('already registered') ||
+          lower.includes('already been registered') ||
+          lower.includes('user already exists')
+        if (already) {
+          return this.signInWithPassword(normalized, password)
+        }
+        // Cuidado: não usar includes('mail') — casa com qualquer "email".
+        if (isSmtpSendFailureMessage(lower)) {
           throw new Error(
-            'O cadastro tentou enviar e-mail de confirmação. Desative “Confirm email” em ' +
-              'Authentication → Providers → Email, ou publique a Edge Function ' +
-              'signup-with-password. E-mails do sistema devem ir só em “Esqueci a senha”.',
+            'O Supabase tentou enviar e-mail no cadastro. Com “Confirm email” desligado isso não deveria acontecer. ' +
+              'Erro original: ' +
+              (error.message || 'smtp/send failure'),
           )
         }
         throw error
       }
-      if (!data.session || !data.user) {
+      if (data.session && data.user) {
+        return { user: data.user, session: data.session }
+      }
+      // Conta criada sem sessão: tenta entrar (Confirm email off / conta pré-existente).
+      try {
+        return await this.signInWithPassword(normalized, password)
+      } catch {
         throw new Error(
-          'Conta criada, mas sem sessão. Desative “Confirm email” em Authentication → Providers → Email ' +
-            'para cadastrar sem e-mail, ou use Entrar se a conta já existir.',
+          'Conta criada, mas sem sessão automática. Use Entrar com o mesmo e-mail e senha. ' +
+            'Se falhar, use Esqueci a senha.',
         )
       }
-      return { user: data.user, session: data.session }
     })
   },
 
@@ -189,6 +202,16 @@ export const supabaseAuthAdapter = {
 }
 
 type CreateAuthUserResult = 'created' | 'already_registered' | 'unavailable'
+
+function isSmtpSendFailureMessage(lower: string): boolean {
+  return (
+    lower.includes('error sending') ||
+    lower.includes('smtp') ||
+    lower.includes('sending confirmation email') ||
+    lower.includes('error sending confirmation') ||
+    (lower.includes('confirmation email') && lower.includes('send'))
+  )
+}
 
 /** Cria usuário Auth confirmado sem disparar e-mail (Edge Function + service role). */
 async function createAuthUserWithoutEmail(
