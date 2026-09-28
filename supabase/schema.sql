@@ -81,6 +81,7 @@ drop policy if exists "app_state_update_own" on public.app_state;
 drop policy if exists "profiles_select_own" on public.profiles;
 drop policy if exists "profiles_insert_own" on public.profiles;
 drop policy if exists "profiles_update_own" on public.profiles;
+drop policy if exists "profiles_delete_own" on public.profiles;
 drop policy if exists "email_access_select" on public.email_access;
 drop policy if exists "email_access_insert_tenant" on public.email_access;
 drop policy if exists "email_access_update_tenant" on public.email_access;
@@ -128,8 +129,64 @@ as $$
           and p.tenant_id = p_tenant_id
           and upper(coalesce(p.perfil, '')) in ('GESTOR', 'ADMINISTRADOR')
       )
+      or exists (
+        select 1
+        from public.profiles p
+        where p.tenant_id = p_tenant_id
+          and upper(coalesce(p.perfil, '')) in ('GESTOR', 'ADMINISTRADOR')
+          and lower(coalesce(p.email, '')) = lower(coalesce(auth.jwt() ->> 'email', ''))
+          and coalesce(auth.jwt() ->> 'email', '') <> ''
+      )
     );
 $$;
+
+-- Perfil de equipe órfão (sem email_access) → libera bootstrap de gestor
+create or replace function public.clear_orphan_team_profile_for_gestor()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_email text := lower(trim(coalesce(auth.jwt() ->> 'email', '')));
+  v_perfil text;
+  v_has_access boolean := false;
+begin
+  if v_uid is null then
+    return false;
+  end if;
+
+  if v_email <> '' then
+    select exists (
+      select 1 from public.email_access e where lower(e.email) = v_email
+    ) into v_has_access;
+  end if;
+
+  if v_has_access then
+    return false;
+  end if;
+
+  select upper(coalesce(p.perfil, ''))
+    into v_perfil
+  from public.profiles p
+  where p.id = v_uid;
+
+  if v_perfil is null then
+    return false;
+  end if;
+
+  if v_perfil in ('GESTOR', 'ADMINISTRADOR') then
+    return false;
+  end if;
+
+  delete from public.profiles where id = v_uid;
+  return true;
+end;
+$$;
+
+grant execute on function public.clear_orphan_team_profile_for_gestor()
+  to authenticated, service_role;
 
 create policy "app_state_select_own"
   on public.app_state for select
@@ -165,6 +222,10 @@ create policy "profiles_insert_own"
 
 create policy "profiles_update_own"
   on public.profiles for update
+  using (id = auth.uid());
+
+create policy "profiles_delete_own"
+  on public.profiles for delete
   using (id = auth.uid());
 
 -- email_access: membros do tenant (gestor cadastra; timeline consulta o próprio e-mail)

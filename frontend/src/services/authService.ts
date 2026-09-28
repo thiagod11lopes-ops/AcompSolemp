@@ -338,7 +338,29 @@ export const authService = {
       )
       return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
     } catch (error) {
-      throw mapSupabaseAuthError(error)
+      // E-mail livre sem conta Auth: Entrar cria a conta e o banco do Gestor.
+      const message = error instanceof Error ? error.message.toLowerCase() : ''
+      const invalidLogin =
+        message.includes('invalid login') ||
+        message.includes('invalid credentials') ||
+        message.includes('e-mail ou senha inválidos')
+      if (!invalidLogin) throw mapSupabaseAuthError(error)
+
+      try {
+        const authSession = await supabaseAuthAdapter.signUpWithPassword(
+          marinhaEmail,
+          credentials.senha,
+        )
+        return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+      } catch (signUpError) {
+        const already =
+          signUpError instanceof Error &&
+          /já possui conta|already registered|already been registered/i.test(
+            signUpError.message,
+          )
+        if (already) throw mapSupabaseAuthError(error)
+        throw mapSupabaseAuthError(signUpError)
+      }
     }
   },
 
@@ -380,6 +402,12 @@ export const authService = {
         'Este e-mail pertence à equipe do gestor (Timeline). Não é possível usá-lo no Portal do Gestor.',
       )
     }
+
+    // E-mail livre: remove perfil de equipe órfão e cria banco próprio se necessário.
+    const { clearOrphanTeamProfileForGestor } = await import(
+      '@/data/persistence/supabaseTenant'
+    )
+    await clearOrphanTeamProfileForGestor()
 
     let profile = await getProfileForCurrentUser()
 

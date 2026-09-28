@@ -36,6 +36,31 @@ export async function getProfileForCurrentUser(): Promise<ProfileRecord | null> 
   return data as ProfileRecord | null
 }
 
+/**
+ * Remove perfil de equipe órfão (sem email_access) para o e-mail autenticado
+ * poder criar Portal do Gestor com banco próprio.
+ */
+export async function clearOrphanTeamProfileForGestor(): Promise<boolean> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('clear_orphan_team_profile_for_gestor')
+  if (error) {
+    // Migration ainda não aplicada: tenta delete direto (pode falhar por RLS).
+    if (/could not find the function|does not exist|PGRST202/i.test(error.message)) {
+      const profile = await getProfileForCurrentUser()
+      if (!profile) return false
+      const perfil = profile.perfil?.trim().toUpperCase()
+      if (perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') return false
+      const access = await getEmailAccess(profile.email)
+      if (access) return false
+      const { error: delError } = await client.from('profiles').delete().eq('id', profile.id)
+      if (delError) return false
+      return true
+    }
+    throw new Error(error.message)
+  }
+  return Boolean(data)
+}
+
 export async function getTenantById(tenantId: string): Promise<TenantRecord | null> {
   const { data, error } = await getSupabaseClient()
     .from('tenants')
@@ -64,8 +89,18 @@ export async function provisionGestorTenant(input: {
   initialAppData: AppData
 }): Promise<{ tenant: TenantRecord; profile: ProfileRecord; owner: import('@/types').User }> {
   const client = getSupabaseClient()
+
+  // E-mail livre (sem convite): limpa perfil de equipe órfão antes de criar o banco.
+  await clearOrphanTeamProfileForGestor()
+
   const existing = await getProfileForCurrentUser()
   if (existing) {
+    const perfil = existing.perfil?.trim().toUpperCase()
+    if (perfil !== 'GESTOR' && perfil !== 'ADMINISTRADOR') {
+      throw new Error(
+        'Este e-mail está vinculado à Timeline da organização. Use a tela da Timeline para entrar.',
+      )
+    }
     const tenant = await getTenantById(existing.tenant_id)
     if (!tenant) throw new Error('Organização do perfil não encontrada.')
     const ownerId = `user-owner-${tenant.id}`

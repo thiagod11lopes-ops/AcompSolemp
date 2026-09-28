@@ -428,7 +428,7 @@ export default function LoginGestorPage() {
             helperText={
               blockUntilInviteAccepted
                 ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
-                : 'Cadastrar-se: se o e-mail foi liberado pelo gestor, entra na equipe; senão, cria o banco do Gestor.'
+                : 'Sem convite de gestor: ao entrar ou cadastrar-se você vira Gestor com banco próprio e pode liberar e-mails da equipe.'
             }
             onSubmit={handleSignUp}
           />

@@ -7,9 +7,24 @@ import {
   type AppDataSnapshot,
 } from '@/data/persistence/types'
 import { getSupabaseClient } from '@/supabase/client'
-import { getTenantId } from '@/services/tenantService'
+import { getTenantId, setTenantId } from '@/services/tenantService'
 import { isImpersonationSession } from '@/config/dataSource'
 import { adminLoadAppState, adminSaveAppState } from '@/data/persistence/supabaseAdmin'
+
+/** Resolve tenant do profile Auth sem importar supabaseTenant (evita ciclo). */
+async function resolveAuthProfileTenantId(): Promise<string | null> {
+  const client = getSupabaseClient()
+  const { data: sessionData } = await client.auth.getSession()
+  const userId = sessionData.session?.user?.id
+  if (!userId) return null
+  const { data, error } = await client
+    .from('profiles')
+    .select('tenant_id')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data?.tenant_id) return null
+  return String(data.tenant_id)
+}
 
 export async function loadAppDataFromSupabase(
   tenantId?: string | null,
@@ -49,7 +64,22 @@ export async function saveAppDataToSupabase(
   version: string = APP_DATA_SEED_VERSION,
   tenantId?: string | null,
 ): Promise<void> {
-  const id = tenantId ?? getTenantId()
+  let id = tenantId ?? getTenantId()
+
+  if (!isImpersonationSession()) {
+    // Evita TENANT_ID local obsoleto (outra sessão) — causa
+    // "Sem permissão para salvar o estado da organização".
+    try {
+      const profileTenantId = await resolveAuthProfileTenantId()
+      if (profileTenantId && (!id || id !== profileTenantId)) {
+        id = profileTenantId
+        setTenantId(profileTenantId)
+      }
+    } catch {
+      // Segue com o tenant informado/local.
+    }
+  }
+
   if (!id) {
     throw new Error('Tenant não definido para salvar AppData no Supabase.')
   }
