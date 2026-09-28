@@ -54,7 +54,7 @@ export function AguardandoEmpenhoDialog({
       <DialogTitle sx={{ pr: 6 }}>
         Aguardando Empenho
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {itens.length} Solemp{itens.length === 1 ? '' : 's'} em Rascunho
+          {itens.length} em Aguardando NE
           {itens.length === 1 ? '' : 's'} — total {formatCurrency(valorTotal)}
         </Typography>
         <IconButton
@@ -68,7 +68,7 @@ export function AguardandoEmpenhoDialog({
       <DialogContent dividers>
         {itens.length === 0 ? (
           <Typography color="text.secondary">
-            Nenhuma Solemp em Rascunho aguardando empenho no momento.
+            Nenhum processo em Aguardando NE no momento.
           </Typography>
         ) : (
           <>

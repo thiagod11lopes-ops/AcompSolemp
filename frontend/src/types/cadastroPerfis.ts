@@ -81,17 +81,17 @@ export const CADASTRO_PERFIS: CadastroPerfilOpcao[] = [
     campoNomeLabel: 'Nome do Responsável da Confecção de Solemp',
     campoNomePlaceholder: 'Ex.: Sgt. Maria Souza',
     descricao:
-      'Responsável pela etapa Confecção de Solemp. Para também operar Solemp em Rascunho, marque os dois tipos no cadastro.',
+      'Responsável pela etapa Confecção de Solemp. Para também operar Aguardando NE, marque os dois tipos no cadastro.',
   },
   {
     id: 'financas',
-    label: 'Solemp em Rascunho',
+    label: 'Aguardando NE',
     perfil: 'FINANCEIRO',
-    graduacao: 'Solemp em Rascunho',
-    campoNomeLabel: 'Nome do Responsável da Solemp em Rascunho',
+    graduacao: 'Aguardando NE',
+    campoNomeLabel: 'Nome do Responsável de Aguardando NE',
     campoNomePlaceholder: 'Ex.: Ten. Santos',
     descricao:
-      'Responsável pela etapa Solemp em Rascunho. Pode ser combinado com Confecção de Solemp no mesmo usuário.',
+      'Responsável pela etapa Aguardando NE. Pode ser combinado com Confecção de Solemp no mesmo usuário.',
   },
   // Empenhado não é tipo de cadastro: é só a etapa final automática da cadeia Solemp.
 ]

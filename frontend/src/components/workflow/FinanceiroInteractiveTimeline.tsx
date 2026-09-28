@@ -127,8 +127,8 @@ export function FinanceiroInteractiveTimeline({
           )}
           {jaAguardando && !pagamentoConcluido && (
             <div className="timeline-alert" style={{ borderColor: '#F9731655' }}>
-              <strong style={{ color: '#F97316' }}>Aguardando empenho:</strong> o card Solemp
-              em Rascunho permanece com a tarja laranja. O processo não avançou para Empenhado.
+              <strong style={{ color: '#F97316' }}>Aguardando empenho:</strong> o card
+              Aguardando NE permanece com a tarja laranja. O processo não avançou para Empenhado.
             </div>
           )}
           {acaoFinancas && podeRegistrar && (

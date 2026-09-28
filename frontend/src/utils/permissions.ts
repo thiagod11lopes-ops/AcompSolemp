@@ -91,7 +91,7 @@ export function canAccessClinicaRoute(role: UserRole): boolean {
   return role === 'CLINICA' || role === 'MEDICAMENTO' || role === 'EMPENHADO'
 }
 
-/** Confecção de Solemp NÃO herda Solemp em Rascunho — só se o gestor autorizar FINANCEIRO. */
+/** Confecção de Solemp NÃO herda Aguardando NE — só se o gestor autorizar FINANCEIRO. */
 export function canAccessFinanceiroRoute(role: UserRole): boolean {
   return role === 'FINANCEIRO'
 }

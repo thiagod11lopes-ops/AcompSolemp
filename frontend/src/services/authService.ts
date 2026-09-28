@@ -210,7 +210,7 @@ async function completePortalLogin(
     setSession('financeiro', { ...authUser, perfil: 'FINANCEIRO' })
   }
 
-  // Dual session da cadeia Confecção + Solemp em Rascunho.
+  // Dual session da cadeia Confecção + Aguardando NE.
   if (userTemCadeiaSolemp(authUser)) {
     if (portal === 'ordenador') {
       setSession('financeiro', { ...authUser, perfil: 'FINANCEIRO' })

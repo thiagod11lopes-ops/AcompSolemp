@@ -39,7 +39,7 @@ export const TIMELINE_ETAPA_META: Record<
   { grupo: string | null; divisao: string | null; trilha: string | null }
 > = {
   SOLICITACAO: { grupo: null, divisao: null, trilha: null },
-  // Esquerda: Auditoria → IMH → Indenizado | Direita: Confecção → Solemp em Rascunho → Empenhado
+  // Esquerda: Auditoria → IMH → Indenizado | Direita: Confecção → Aguardando NE → Empenhado
   DIV_MAT_AUDITORIA: { grupo: 'Div. de Material', divisao: 'Auditoria', trilha: 'auditoria' },
   DIV_MAT_CONTABILIDADE_IMH: {
     grupo: 'Div. de Material',
@@ -92,7 +92,7 @@ export function filtrarEtapasTrilhaAuditoria(etapas: WorkflowEtapa[]): WorkflowE
     .sort((a, b) => a.ordem - b.ordem)
 }
 
-/** Confecção (Material) → Solemp em Rascunho → Empenhado */
+/** Confecção (Material) → Aguardando NE → Empenhado */
 export const DIVISAO_2_CHAVES = [
   'DIV_MAT_CONFECCAO_SOLEMP',
   'DIV_MAT_FINANCAS',

@@ -47,7 +47,7 @@ const ETAPA_LABEL: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Auditoria',
   DIV_MAT_CONTABILIDADE_IMH: 'IMH',
   DIV_MAT_CONFECCAO_SOLEMP: 'Confecção de Solemp',
-  DIV_MAT_FINANCAS: 'Solemp em Rascunho',
+  DIV_MAT_FINANCAS: 'Aguardando NE',
   DIV_MAT_EMPENHADO: 'Empenhado',
 }
 

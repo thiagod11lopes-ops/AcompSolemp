@@ -15,7 +15,7 @@ export function userHasPerfil(
   return userPerfis(user).includes(perfil)
 }
 
-/** Confecção + Solemp em Rascunho autorizados juntos pelo gestor. */
+/** Confecção + Aguardando NE autorizados juntos pelo gestor. */
 export function userTemCadeiaSolemp(user: Pick<User, 'perfil' | 'perfis'>): boolean {
   return userHasPerfil(user, 'CONFECCAO_SOLEMP') && userHasPerfil(user, 'FINANCEIRO')
 }

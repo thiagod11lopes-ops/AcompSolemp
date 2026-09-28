@@ -70,7 +70,7 @@ export default function FinanceiroPagamentosPage() {
   return (
     <>
       <PageHeader
-        title="Timelines — Solemp em Rascunho"
+        title="Timelines — Aguardando NE"
         subtitle="Fila financeira: minhas pendências, atrasadas e filtros por clínica/data"
       />
 
@@ -88,7 +88,7 @@ export default function FinanceiroPagamentosPage() {
           <PaymentsIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
           <Typography color="text.secondary">
             {pedidos.length === 0
-              ? 'Nenhum processo de Solemp em Rascunho no momento.'
+              ? 'Nenhum processo de Aguardando NE no momento.'
               : 'Nenhuma timeline encontrada com o filtro atual.'}
           </Typography>
         </Card>
@@ -157,8 +157,8 @@ export default function FinanceiroPagamentosPage() {
                       <Chip
                         label={
                           concluido
-                            ? 'Solemp em Rascunho — concluído'
-                            : 'Solemp em Rascunho — pendente'
+                            ? 'Aguardando NE — concluído'
+                            : 'Aguardando NE — pendente'
                         }
                         color={concluido ? 'success' : 'info'}
                         size="small"

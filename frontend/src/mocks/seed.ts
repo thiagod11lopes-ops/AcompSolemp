@@ -139,7 +139,7 @@ export const DEFAULT_WORKFLOW_ETAPAS: Omit<WorkflowEtapa, 'id'>[] = [
   },
   {
     chave: 'DIV_MAT_FINANCAS',
-    nome: 'Solemp em Rascunho',
+    nome: 'Aguardando NE',
     ordem: 6,
     prazoDias: 4,
     alertaVencimentoDias: 2,
@@ -667,7 +667,7 @@ function backfillIndenizadoHistorico(data: AppData): boolean {
   return changed
 }
 
-/** Pedidos que já passaram por Solemp em Rascunho passam a ter Empenhado no histórico. */
+/** Pedidos que já passaram por Aguardando NE passam a ter Empenhado no histórico. */
 function backfillEmpenhadoHistorico(data: AppData): boolean {
   const financas = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_FINANCAS')
   const empenhado = data.workflowEtapas.find((e) => e.chave === 'DIV_MAT_EMPENHADO')
@@ -683,7 +683,7 @@ function backfillEmpenhadoHistorico(data: AppData): boolean {
       if (!empenhadoHist.dataConclusao && (pedido.concluido || financasHist.dataConclusao)) {
         empenhadoHist.dataConclusao = financasHist.dataConclusao
         empenhadoHist.observacao =
-          empenhadoHist.observacao || 'Empenhado registrado com a Solemp em Rascunho.'
+          empenhadoHist.observacao || 'Empenhado registrado em Aguardando NE.'
         changed = true
       }
       continue
@@ -696,7 +696,7 @@ function backfillEmpenhadoHistorico(data: AppData): boolean {
       responsavelNome: financasHist.responsavelNome,
       dataInicio: financasHist.dataConclusao,
       dataConclusao: financasHist.dataConclusao,
-      observacao: 'Empenhado registrado com a Solemp em Rascunho.',
+      observacao: 'Empenhado registrado em Aguardando NE.',
       arquivos: [],
     })
     changed = true
@@ -753,7 +753,7 @@ function migrateSimplifyFluxoFinancas(data: AppData): AppData {
       if (!ETAPAS_REMOVIDAS_SET.has(chave)) continue
       historico.dataConclusao = new Date().toISOString()
       historico.observacao =
-        'Etapa descontinuada — processo encaminhado para Solemp em Rascunho.'
+        'Etapa descontinuada — processo encaminhado para Aguardando NE.'
     }
 
     pedido.etapaAtualId = financasEtapa.id
@@ -1445,7 +1445,7 @@ export function getRoleLabel(role: UserRole): string {
     MEDICAMENTO: 'Medicamento',
     EMPENHADO: 'Empenhado',
     ASSINANTE: 'Ordenador de Despesa',
-    FINANCEIRO: 'Solemp em Rascunho',
+    FINANCEIRO: 'Aguardando NE',
     AUDITORIA: 'Auditoria',
     CONTABILIDADE_IMH: 'IMH',
     CONFECCAO_SOLEMP: 'Confecção de Solemp',

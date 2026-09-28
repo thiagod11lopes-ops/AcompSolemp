@@ -428,7 +428,7 @@ export function advancePedidoEtapa(
     }
   }
 
-  // Solemp em Rascunho concluída → Empenhado já entra como concluído (só marca o fim do fluxo).
+  // Aguardando NE concluída → Empenhado já entra como concluído (só marca o fim do fluxo).
   if (etapaAtual.chave === 'DIV_MAT_FINANCAS') {
     const empenhado = getEtapaByChave(etapas, 'DIV_MAT_EMPENHADO')
     if (empenhado) {
@@ -436,7 +436,7 @@ export function advancePedidoEtapa(
       const financasHist = etapasHistorico.find((h) => h.etapaId === etapaAtual.id)
       const histExistente = etapasHistorico.find((h) => h.etapaId === empenhado.id)
       const obsEmpenhado =
-        'Empenhado concluído automaticamente com o envio da Solemp em Rascunho — fluxo finalizado.'
+        'Empenhado concluído automaticamente com o envio em Aguardando NE — fluxo finalizado.'
       if (!histExistente) {
         etapasHistorico = [
           ...etapasHistorico,
@@ -536,7 +536,7 @@ export function advancePedidoEtapa(
         empenhado.chave,
         empenhado.nome,
         usuario,
-        'Empenhado concluído automaticamente com o envio da Solemp em Rascunho — fluxo finalizado.',
+        'Empenhado concluído automaticamente com o envio em Aguardando NE — fluxo finalizado.',
       )
     }
   }
@@ -756,15 +756,15 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Solemp em Rascunho.`,
+      `Confecção de Solemp registrada — SOLEMP ${solemp.numero} (${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}). Enviado para Aguardando NE.`,
       etapa.id,
     )
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,
       tipo: 'SOLEMP_CRIADA',
-      titulo: `Solemp em Rascunho — ${pedido.numero}`,
-      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Solemp em Rascunho.`,
+      titulo: `Aguardando NE — ${pedido.numero}`,
+      mensagem: `${usuario.nome} confeccionou a SOLEMP ${solemp.numero} e enviou para Aguardando NE.`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -784,7 +784,7 @@ export function assinarSolempForPedido(
       data,
       pedidoId,
       usuario,
-      `Solemp em Rascunho: planilha enviada por ${usuario.nome}${solempRef}. Empenhado registrado como concluído.`,
+      `Aguardando NE: planilha enviada por ${usuario.nome}${solempRef}. Empenhado registrado como concluído.`,
       etapa.id,
     )
 
@@ -792,7 +792,7 @@ export function assinarSolempForPedido(
       id: `notif-${Date.now()}`,
       tipo: 'ETAPA_PENDENTE',
       titulo: `Fluxo finalizado — ${pedido.numero}`,
-      mensagem: `${usuario.nome} enviou a planilha em Solemp em Rascunho. Empenhado ficou concluído (fim do fluxo).`,
+      mensagem: `${usuario.nome} enviou a planilha em Aguardando NE. Empenhado ficou concluído (fim do fluxo).`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -806,7 +806,7 @@ export function assinarSolempForPedido(
 
   if (etapa.chave === 'DIV_MAT_EMPENHADO') {
     throw new Error(
-      'Empenhado não recebe planilha: ele já fica concluído ao enviar pela Solemp em Rascunho.',
+      'Empenhado não recebe planilha: ele já fica concluído ao enviar em Aguardando NE.',
     )
   }
 
@@ -825,7 +825,7 @@ export function registrarPagamentoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Solemp em Rascunho')
+    throw new Error('Este processo não está na etapa Aguardando NE')
   }
 
   const solemp = data.solemp.find((s) => s.id === solempId && s.pedidoId === pedidoId)
@@ -854,7 +854,7 @@ export function registrarPagamentoForPedido(
     data,
     pedidoId,
     usuario,
-    `Registro em Solemp em Rascunho — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Empenhado registrado como concluído.`,
+    `Registro em Aguardando NE — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Empenhado registrado como concluído.`,
     etapa.id,
   )
 
@@ -879,14 +879,14 @@ export function registrarPagamentoForPedido(
     usuarioId: usuario.id,
     usuarioNome: usuario.nome,
     data: nowIso(),
-    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Solemp em Rascunho. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído automaticamente.`,
+    observacao: `Pagamento da SOLEMP ${solemp.numero} confirmado em Aguardando NE. NF ${notaFiscalNumero} — ${empresaNome}. Empenhado concluído automaticamente.`,
   })
 
   return data
 }
 
 /**
- * Marca Solemp em Rascunho como "Aguardando Empenhar".
+ * Marca Aguardando NE como "Aguardando Empenhar".
  * Não avança o workflow nem abre o card Empenhado — só persiste a tarja.
  */
 export function marcarAguardandoEmpenhoForPedido(
@@ -899,7 +899,7 @@ export function marcarAguardandoEmpenhoForPedido(
 
   const etapa = getEtapaAtivaPorChaves(pedido, data.workflowEtapas, ['DIV_MAT_FINANCAS'])
   if (!etapa) {
-    throw new Error('Este processo não está na etapa Solemp em Rascunho')
+    throw new Error('Este processo não está na etapa Aguardando NE')
   }
 
   if (pedido.aguardandoEmpenho) {
@@ -942,7 +942,7 @@ export function marcarAguardandoEmpenhoForPedido(
         usuarioNome: usuario.nome,
         data: now,
         observacao:
-          'Marcado como Aguardando Empenhar. Timeline permanece em Solemp em Rascunho.',
+          'Marcado como Aguardando Empenhar. Timeline permanece em Aguardando NE.',
       },
     ],
     notificacoes: [
@@ -951,7 +951,7 @@ export function marcarAguardandoEmpenhoForPedido(
         id: `notif-${Date.now()}-aguardando-empenho`,
         tipo: 'ETAPA_PENDENTE' as const,
         titulo: `Aguardando Empenhar — ${pedido.numero}`,
-        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Solemp em Rascunho.`,
+        mensagem: `${usuario.nome} marcou a SOLEMP como aguardando empenho. O processo permanece em Aguardando NE.`,
         pedidoId,
         reversaoId: null,
         perfilDestino: null,

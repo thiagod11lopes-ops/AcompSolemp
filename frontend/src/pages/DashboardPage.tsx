@@ -208,8 +208,8 @@ export default function DashboardPage({
   const qtdAguardando = metrics.quantidadeAguardandoEmpenho
   const subtitleAguardando =
     qtdAguardando === 0
-      ? 'Nenhuma Solemp em Rascunho — soma do Valor Total Div. Material'
-      : `${qtdAguardando} Solemp${qtdAguardando === 1 ? '' : 's'} em Rascunho · Valor Total Div. Material`
+      ? 'Nenhum processo em Aguardando NE — soma do Valor Total Div. Material'
+      : `${qtdAguardando} em Aguardando NE · Valor Total Div. Material`
 
   const subtitleTotalEmpenhado =
     empenhadoAnoCard.quantidade === 0
@@ -434,7 +434,7 @@ export default function DashboardPage({
     },
     aguardandoEmpenho: {
       title: 'Aguardando Empenho',
-      subtitle: 'Solemps em Rascunho ainda sem empenho',
+      subtitle: 'Aguardando NE ainda sem empenho',
       accent: premiumTokens.orange,
       icon: <HourglassTopIcon />,
       summaries: [
@@ -463,7 +463,7 @@ export default function DashboardPage({
         kpiCol.inicio,
       ],
       rows: metrics.aguardandoEmpenhoItens as unknown as Record<string, unknown>[],
-      emptyMessage: 'Nenhuma Solemp em Rascunho aguardando empenho.',
+      emptyMessage: 'Nenhum processo em Aguardando NE no momento.',
     },
     totalEmpenhado: {
       title: 'Total empenhado no ano',

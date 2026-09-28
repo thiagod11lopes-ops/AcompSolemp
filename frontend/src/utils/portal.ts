@@ -64,7 +64,7 @@ export const FINANCEIRO_ETAPA_ACOES: Record<
   DIV_MAT_FINANCAS: {
     label: 'Registrar pagamento',
     labelConcluido: 'Concluído',
-    descricao: 'Confirme o pagamento na etapa Solemp em Rascunho.',
+    descricao: 'Confirme o pagamento na etapa Aguardando NE.',
   },
 }
 
@@ -99,7 +99,7 @@ export const ETAPAS_AGUARDANDO_SETOR: Record<string, string> = {
   DIV_MAT_AUDITORIA: 'Aguardando Auditoria na Div. de Material.',
   DIV_MAT_CONTABILIDADE_IMH: 'Aguardando IMH na Div. de Material.',
   DIV_MAT_CONFECCAO_SOLEMP: 'Aguardando Confecção de Solemp na Div. de Material.',
-  DIV_MAT_FINANCAS: 'Aguardando Solemp em Rascunho.',
+  DIV_MAT_FINANCAS: 'Aguardando NE.',
   DIV_MAT_EMPENHADO: 'Fluxo finalizado — Empenhado concluído.',
 }
 

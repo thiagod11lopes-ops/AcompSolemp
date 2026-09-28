@@ -167,7 +167,7 @@ export const ordenadorService = {
       null
     if (chaveGate === 'DIV_MAT_EMPENHADO') {
       throw new Error(
-        'Empenhado não encaminha planilha: ele já fica concluído ao enviar pela Solemp em Rascunho.',
+        'Empenhado não encaminha planilha: ele já fica concluído ao enviar em Aguardando NE.',
       )
     }
 

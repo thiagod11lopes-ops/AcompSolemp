@@ -22,7 +22,7 @@ const DEMO_NOMES: Record<string, string> = {
   auditoria: 'Cap. Ana Paula',
   contabilidade: 'Ten. Roberto Lima',
   confeccao: 'Sgt. Maria Souza',
-  financas: 'Ten. Santos', // demo Solemp em Rascunho (perfil FINANCEIRO)
+  financas: 'Ten. Santos', // demo Aguardando NE (perfil FINANCEIRO)
   empenhado: 'Empenhado',
 }
 

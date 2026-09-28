@@ -43,7 +43,7 @@ export const LOGIN_PERFIL_OPCOES: LoginPerfilOpcao[] = [
   },
   {
     id: 'financas',
-    label: 'Solemp em Rascunho',
+    label: 'Aguardando NE',
     perfil: 'FINANCEIRO',
   },
 ]

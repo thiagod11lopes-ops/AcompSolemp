@@ -241,7 +241,7 @@ export interface Pedido {
   /** IDs das linhas da planilha de consumo incluídas neste envio (lote) */
   consumoRowIds?: string[]
   /**
-   * Marcado em Solemp em Rascunho via "Aguardando Empenhar".
+   * Marcado em Aguardando NE via "Aguardando Empenhar".
    * Não avança para Empenhado — só aplica a tarja "Aguardando" no card.
    */
   aguardandoEmpenho?: boolean
@@ -388,7 +388,7 @@ export interface DashboardMetrics {
   tempoMedioPorEtapa: { etapa: string; dias: number }[]
   valorPagoMes: number
   quantidadePagoMes: number
-  /** Solemps ativas só na etapa Solemp em Rascunho (após Confecção) */
+  /** Solemps ativas só na etapa Aguardando NE (após Confecção) */
   valorAguardandoEmpenho: number
   quantidadeAguardandoEmpenho: number
   aguardandoEmpenhoItens: AguardandoEmpenhoItem[]
@@ -719,7 +719,7 @@ export interface PedidoPlanilhaEnvioState {
   recebidaImhEm?: string
   /** Planilha recebida pela Confecção de Solemp (trilha Div. Material) */
   recebidaConfeccaoEm?: string
-  /** Planilha recebida em Solemp em Rascunho (cadeia Confecção) */
+  /** Planilha recebida em Aguardando NE (cadeia Confecção) */
   recebidaRascunhoEm?: string
   /** Planilha recebida em Empenhado (cadeia Confecção) */
   recebidaEmpenhadoEm?: string

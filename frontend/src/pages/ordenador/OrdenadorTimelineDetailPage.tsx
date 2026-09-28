@@ -245,7 +245,7 @@ export default function OrdenadorTimelineDetailPage() {
       assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
       return
     }
-    // Empenhado não envia planilha — fica concluído ao enviar pela Solemp em Rascunho.
+    // Empenhado não envia planilha — fica concluído ao enviar em Aguardando NE.
     if (isEmpenhadoEtapa) return
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
   }
@@ -366,7 +366,7 @@ export default function OrdenadorTimelineDetailPage() {
   const planilhaTitle = (() => {
     if (isContabilidade) return `IMH — Planilha ${pedido.numero}`
     if (isConfeccaoEtapa) return `Confecção de Solemp — Div. de Material ${pedido.numero}`
-    if (isRascunhoEtapa) return `Solemp em Rascunho — Div. de Material ${pedido.numero}`
+    if (isRascunhoEtapa) return `Aguardando NE — Div. de Material ${pedido.numero}`
     if (isEmpenhadoEtapa) return `Empenhado — Div. de Material ${pedido.numero}`
     if (isConfeccao) return `Cadeia Solemp — Div. de Material ${pedido.numero}`
     return undefined
