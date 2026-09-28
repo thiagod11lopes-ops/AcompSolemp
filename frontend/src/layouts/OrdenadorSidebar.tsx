@@ -19,6 +19,7 @@ import PaymentsIcon from '@mui/icons-material/Payments'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import { NavLink, useLocation } from 'react-router-dom'
 import { ChatDock } from '@/components/chat/ChatDock'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -27,6 +28,7 @@ import { loginPerfilLabel } from '@/utils/loginPerfis'
 import {
   setorNavItemsParaUsuario,
   setorNavSubtitle,
+  userPodeVerAbaBalanco,
   userTemMultiSetorNav,
 } from '@/utils/setorNav'
 import type { UserRole } from '@/types'
@@ -39,6 +41,12 @@ const ICON_POR_PERFIL: Partial<Record<UserRole | string, React.ReactNode>> = {
   CONFECCAO_SOLEMP: <TimelineIcon />,
   FINANCEIRO: <PaymentsIcon />,
   DIV_MAT_EMPENHADO: <HourglassTopIcon />,
+}
+
+const menuBalanco = {
+  path: '/ordenador/balanco',
+  label: 'Balanço',
+  icon: <AccountBalanceWalletIcon />,
 }
 
 const menuBase = [
@@ -59,9 +67,18 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const multiSetor = Boolean(user && userTemMultiSetorNav(user))
+  const mostraBalanco = Boolean(user && userPodeVerAbaBalanco(user))
 
   const menuItems = (() => {
-    if (!user || !multiSetor) return menuBase
+    if (!user || !multiSetor) {
+      if (!mostraBalanco) return menuBase
+      return [
+        menuBase[0],
+        menuBase[1],
+        menuBalanco,
+        menuBase[2],
+      ]
+    }
     const setores = setorNavItemsParaUsuario(user).map((item) => ({
       ...item,
       icon:
@@ -74,6 +91,7 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
     return [
       { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       ...setores,
+      ...(mostraBalanco ? [menuBalanco] : []),
       { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
     ]
   })()

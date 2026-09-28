@@ -2,7 +2,16 @@ import type { ReactNode } from 'react'
 import type { User, UserRole } from '@/types'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { PERFIL_PARA_CHAVE_ETAPA, CHAVES_CONFECCAO_CADEIA } from '@/utils/perfilEtapa'
-import { userPerfis, userTemCadeiaSolemp } from '@/utils/userPerfis'
+import { userHasPerfil, userPerfis, userTemCadeiaSolemp } from '@/utils/userPerfis'
+
+/** Auditoria, Confecção de Solemp e Solemp em Rascunho têm aba Balanço. */
+export function userPodeVerAbaBalanco(user: Pick<User, 'perfil' | 'perfis'>): boolean {
+  return (
+    userHasPerfil(user, 'AUDITORIA') ||
+    userHasPerfil(user, 'CONFECCAO_SOLEMP') ||
+    userHasPerfil(user, 'FINANCEIRO')
+  )
+}
 
 /** Ordem de exibição das abas de setor no menu lateral. */
 const ORDEM_SETORES: UserRole[] = [

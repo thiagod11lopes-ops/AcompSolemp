@@ -192,6 +192,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/ordenador/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
+            <Route path="/gestor/demo/ordenador/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
             <Route path="/gestor/demo/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
           </Route>
 
@@ -206,6 +207,7 @@ export function AppRoutes() {
             <Route path="/gestor/demo/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
+            <Route path="/gestor/demo/financeiro/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
             <Route path="/gestor/demo/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
           </Route>
 
@@ -259,6 +261,7 @@ export function AppRoutes() {
           <Route path="/ordenador/dashboard" element={<LazyPage><DashboardPage /></LazyPage>} />
           <Route path="/ordenador/timelines" element={<LazyPage><OrdenadorTimelinesPage /></LazyPage>} />
           <Route path="/ordenador/timelines/:id" element={<LazyPage><OrdenadorTimelineDetailPage /></LazyPage>} />
+          <Route path="/ordenador/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
           <Route path="/ordenador/arquivados" element={<LazyPage><OrdenadorArquivadosPage /></LazyPage>} />
         </Route>
 
@@ -275,6 +278,7 @@ export function AppRoutes() {
           <Route path="/financeiro/pagamentos" element={<LazyPage><FinanceiroPagamentosPage /></LazyPage>} />
           <Route path="/financeiro/pagamentos/:id" element={<LazyPage><FinanceiroPagamentoDetailPage /></LazyPage>} />
           <Route path="/financeiro/aguardando-empenho" element={<LazyPage><FinanceiroAguardandoEmpenhoPage /></LazyPage>} />
+          <Route path="/financeiro/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />
           <Route path="/financeiro/arquivados" element={<LazyPage><FinanceiroArquivadosPage /></LazyPage>} />
         </Route>
 
