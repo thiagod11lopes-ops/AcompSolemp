@@ -340,13 +340,6 @@ export default function LoginGestorPage() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        {!pendingTeamInvite && (
-          <Alert severity="info" sx={{ mb: 1.5 }}>
-            E-mail ainda não liberado por um gestor cria o seu próprio banco (Portal do
-            Gestor). E-mail cadastrado em Cadastros entra nos setores autorizados.
-          </Alert>
-        )}
-
         <TextField
           fullWidth
           label={isSupabase ? 'E-mail institucional' : 'E-mail ou login'}
