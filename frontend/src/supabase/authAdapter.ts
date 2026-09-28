@@ -41,19 +41,45 @@ export const supabaseAuthAdapter = {
     })
   },
 
+  /**
+   * Cria conta com senha sem enviar e-mail.
+   * Preferência: Edge Function admin (email_confirm sem mailer).
+   * Fallback: signUp clássico (exige "Confirm email" desligado no Supabase).
+   * E-mail do sistema fica só para resetPasswordForEmail (recuperação).
+   */
   async signUpWithPassword(
     email: string,
     password: string,
   ): Promise<SupabaseAuthSession> {
     return withSupabaseAuthError(async () => {
-      const { data, error } = await getSupabaseClient().auth.signUp({
-        email: email.trim().toLowerCase(),
+      const normalized = email.trim().toLowerCase()
+      const client = getSupabaseClient()
+
+      const createdViaFunction = await createAuthUserWithoutEmail(client, normalized, password)
+      if (createdViaFunction === 'created' || createdViaFunction === 'already_registered') {
+        return this.signInWithPassword(normalized, password)
+      }
+
+      // Fallback quando a function ainda não foi publicada no projeto.
+      const { data, error } = await client.auth.signUp({
+        email: normalized,
         password,
       })
-      if (error) throw error
+      if (error) {
+        const lower = (error.message || '').toLowerCase()
+        if (lower.includes('error sending') || lower.includes('smtp') || lower.includes('mail')) {
+          throw new Error(
+            'O cadastro tentou enviar e-mail de confirmação. Desative “Confirm email” em ' +
+              'Authentication → Providers → Email, ou publique a Edge Function ' +
+              'signup-with-password. E-mails do sistema devem ir só em “Esqueci a senha”.',
+          )
+        }
+        throw error
+      }
       if (!data.session || !data.user) {
         throw new Error(
-          'Conta criada. Confirme o e-mail (se exigido) e faça login novamente.',
+          'Conta criada, mas sem sessão. Desative “Confirm email” em Authentication → Providers → Email ' +
+            'para cadastrar sem e-mail, ou use Entrar se a conta já existir.',
         )
       }
       return { user: data.user, session: data.session }
@@ -160,6 +186,60 @@ export const supabaseAuthAdapter = {
       })
     })
   },
+}
+
+type CreateAuthUserResult = 'created' | 'already_registered' | 'unavailable'
+
+/** Cria usuário Auth confirmado sem disparar e-mail (Edge Function + service role). */
+async function createAuthUserWithoutEmail(
+  client: ReturnType<typeof getSupabaseClient>,
+  email: string,
+  password: string,
+): Promise<CreateAuthUserResult> {
+  try {
+    const { data, error } = await client.functions.invoke('signup-with-password', {
+      body: { email, password },
+    })
+    if (error) {
+      const status = (error as { context?: { status?: number } }).context?.status
+      const message = `${error.message ?? ''} ${JSON.stringify(data ?? {})}`.toLowerCase()
+      if (status === 404 || message.includes('not found') || message.includes('failed to send')) {
+        return 'unavailable'
+      }
+      if (
+        status === 409 ||
+        message.includes('already_registered') ||
+        message.includes('already registered') ||
+        message.includes('already been registered')
+      ) {
+        return 'already_registered'
+      }
+      // Function existe mas falhou: não cair no signUp (evita e-mail/SMTP).
+      throw new Error(
+        typeof data === 'object' && data && 'error' in data
+          ? String((data as { error?: unknown }).error)
+          : error.message || 'Falha ao criar conta sem e-mail.',
+      )
+    }
+
+    const payload = data as { ok?: boolean; error?: string; message?: string } | null
+    if (payload?.error === 'already_registered') return 'already_registered'
+    if (payload?.error) {
+      const lower = payload.error.toLowerCase()
+      if (lower.includes('already') || lower.includes('registered') || lower.includes('exists')) {
+        return 'already_registered'
+      }
+      throw new Error(payload.message || payload.error)
+    }
+    if (payload?.ok) return 'created'
+    return 'unavailable'
+  } catch (error) {
+    if (error instanceof Error && !/failed to send|not found|functions?/i.test(error.message)) {
+      // Erro de negócio da function: propaga.
+      if (!/unavailable|fetch/i.test(error.message)) throw error
+    }
+    return 'unavailable'
+  }
 }
 
 /** Tokens implícitos do e-mail: #access_token=...&type=recovery */

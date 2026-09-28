@@ -1,0 +1,3 @@
+# Cadastro público (antes da sessão): o cliente chama com a anon key.
+[functions.signup-with-password]
+verify_jwt = false

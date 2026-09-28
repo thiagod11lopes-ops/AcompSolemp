@@ -52,7 +52,17 @@ Para anexos no envio de planilha (botão **Arquivo Anexado** na timeline), execu
 Em **Authentication → Providers**:
 
 - Ative **Email**
-- Desative confirmação de e-mail em desenvolvimento, se quiser (Authentication → Providers → Email → Confirm email)
+- **Desative “Confirm email”** (Authentication → Providers → Email → Confirm email).  
+  O AcompSOLEMP **não envia e-mail no cadastro**; e-mail só em **Esqueci a senha** (`resetPasswordForEmail`).
+
+Opcional (recomendado se quiser manter Confirm email ligado no painel): publique a Edge Function que cria a conta sem mailer:
+
+```bash
+supabase functions deploy signup-with-password --no-verify-jwt
+```
+
+Arquivo: [`functions/signup-with-password`](./functions/signup-with-password).  
+SMTP (Authentication → Emails → SMTP) continua necessário **apenas** para recuperação de senha.
 
 ## 4. Variáveis (`frontend/.env`)
 

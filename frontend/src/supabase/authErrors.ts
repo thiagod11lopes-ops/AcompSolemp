@@ -152,7 +152,9 @@ export function mapSupabaseAuthError(error: unknown): Error {
 
   if (lower.includes('error sending') || lower.includes('smtp') || lower.includes('mail')) {
     return new Error(
-      'Falha ao enviar e-mail. Confira Authentication → Emails → SMTP e se o destino @marinha.mil.br recebe mensagens.',
+      'Falha ao enviar e-mail. No cadastro não deve haver envio: desative “Confirm email” ' +
+        '(Authentication → Providers → Email) ou publique a Edge Function signup-with-password. ' +
+        'SMTP só é necessário para “Esqueci a senha”. Destino @marinha.mil.br precisa receber mensagens.',
     )
   }
 
