@@ -228,6 +228,22 @@ export async function removeEmailAccess(
   throw new Error(error.message)
 }
 
+function normalizeAccessPerfis(row: {
+  perfil?: unknown
+  perfis?: unknown
+}): string[] {
+  const fromArray = Array.isArray(row.perfis)
+    ? row.perfis
+        .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+        .map((p) => p.trim())
+    : []
+  if (fromArray.length > 0) return [...new Set(fromArray)]
+  if (typeof row.perfil === 'string' && row.perfil.trim()) {
+    return [row.perfil.trim()]
+  }
+  return []
+}
+
 export async function getEmailAccess(email: string): Promise<{
   email: string
   tenant_id: string
@@ -236,6 +252,8 @@ export async function getEmailAccess(email: string): Promise<{
   clinica_id: string | null
   nome: string | null
   gestor_email: string | null
+  /** Todos os setores/tipos liberados no cadastro do gestor. */
+  perfis: string[]
 } | null> {
   const { data, error } = await getSupabaseClient().rpc('lookup_email_access', {
     p_email: email.trim().toLowerCase(),
@@ -243,8 +261,11 @@ export async function getEmailAccess(email: string): Promise<{
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
   if (!row) return null
+  const perfis = normalizeAccessPerfis(row)
   return {
     ...row,
+    perfil: typeof row.perfil === 'string' ? row.perfil : perfis[0] ?? '',
+    perfis,
     gestor_email:
       typeof row.gestor_email === 'string' && row.gestor_email.trim()
         ? row.gestor_email.trim().toLowerCase()

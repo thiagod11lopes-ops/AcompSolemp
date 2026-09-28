@@ -77,7 +77,7 @@ export default function LoginGestorPage() {
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [recognizedEmail, setRecognizedEmail] = useState('')
   const [gestorEmail, setGestorEmail] = useState<string | null>(null)
-  const [recognizedPerfil, setRecognizedPerfil] = useState<UserRole | null>(null)
+  const [recognizedPerfis, setRecognizedPerfis] = useState<UserRole[]>([])
   /** E-mail da equipe reconhecido e ainda sem aceite neste navegador. */
   const [pendingTeamInvite, setPendingTeamInvite] = useState(false)
   const [info, setInfo] = useState('')
@@ -98,10 +98,34 @@ export default function LoginGestorPage() {
 
   const emailHint = watch('login')
 
-  const recognizedPerfilLabel = useMemo(
-    () => (recognizedPerfil ? loginPerfilLabel(recognizedPerfil) : null),
-    [recognizedPerfil],
+  const recognizedPerfilLabels = useMemo(
+    () =>
+      recognizedPerfis
+        .filter((p) => (PERFIS_EQUIPE as readonly string[]).includes(p))
+        .map((p) => loginPerfilLabel(p)),
+    [recognizedPerfis],
   )
+
+  const resolveTeamPerfis = (access: {
+    perfil?: string
+    perfis?: string[] | null
+  }): UserRole[] => {
+    const raw =
+      Array.isArray(access.perfis) && access.perfis.length > 0
+        ? access.perfis
+        : access.perfil
+          ? [access.perfil]
+          : []
+    return [
+      ...new Set(
+        raw
+          .map((p) => p.trim())
+          .filter((p): p is UserRole =>
+            (PERFIS_EQUIPE as readonly string[]).includes(p),
+          ),
+      ),
+    ]
+  }
 
   /** E-mail liberado pelo gestor: modal no primeiro acesso até aceitar. */
   useEffect(() => {
@@ -131,10 +155,7 @@ export default function LoginGestorPage() {
           }
           setRecognizedEmail(normalized)
           setGestorEmail(access.gestor_email)
-          const perfil = access.perfil as UserRole
-          setRecognizedPerfil(
-            (PERFIS_EQUIPE as readonly string[]).includes(perfil) ? perfil : null,
-          )
+          setRecognizedPerfis(resolveTeamPerfis(access))
           setPendingTeamInvite(true)
           setInfo('')
           setTeamModalOpen(true)
@@ -149,12 +170,11 @@ export default function LoginGestorPage() {
 
   const openTeamInviteModal = (
     email: string,
-    access: { gestor_email: string | null; perfil: string },
+    access: { gestor_email: string | null; perfil: string; perfis?: string[] | null },
   ) => {
     setRecognizedEmail(email)
     setGestorEmail(access.gestor_email)
-    const perfil = access.perfil as UserRole
-    setRecognizedPerfil((PERFIS_EQUIPE as readonly string[]).includes(perfil) ? perfil : null)
+    setRecognizedPerfis(resolveTeamPerfis(access))
     setPendingTeamInvite(true)
     setTeamModalOpen(true)
   }
@@ -189,7 +209,7 @@ export default function LoginGestorPage() {
     clearTeamInviteAccepted(recognizedEmail)
     setTeamModalOpen(false)
     setGestorEmail(null)
-    setRecognizedPerfil(null)
+    setRecognizedPerfis([])
     setPendingTeamInvite(false)
     setInfo(
       'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor e montar o seu banco de dados.',
@@ -419,7 +439,7 @@ export default function LoginGestorPage() {
         open={teamModalOpen}
         email={recognizedEmail}
         gestorEmail={gestorEmail}
-        perfilLabel={recognizedPerfilLabel}
+        perfilLabels={recognizedPerfilLabels}
         onAccept={handleAcceptTeamInvite}
         onDecline={handleDeclineTeamInvite}
       />

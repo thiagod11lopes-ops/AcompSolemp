@@ -18,8 +18,12 @@ interface TeamEmailRecognizedModalProps {
   open: boolean
   email: string
   gestorEmail: string | null
-  /** Perfil cadastrado pelo gestor (ex.: Clínica, Confecção de Solemp). */
+  /**
+   * Setores/tipos liberados pelo gestor (ex.: Clínica, Confecção de Solemp).
+   * Aceita um rótulo único (legado) ou a lista completa.
+   */
   perfilLabel?: string | null
+  perfilLabels?: string[] | null
   onAccept: () => void
   onDecline: () => Promise<void>
 }
@@ -30,6 +34,7 @@ export function TeamEmailRecognizedModal({
   email,
   gestorEmail,
   perfilLabel,
+  perfilLabels,
   onAccept,
   onDecline,
 }: TeamEmailRecognizedModalProps) {
@@ -206,23 +211,49 @@ export function TeamEmailRecognizedModal({
               {email}
             </Typography>
           </Box>
-          {perfilLabel ? (
-            <Box
-              sx={{
-                px: 1.75,
-                py: 1,
-                borderRadius: 2,
-                bgcolor: 'rgba(0,0,0,0.12)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                textAlign: 'left',
-              }}
-            >
-              <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
-                Perfil cadastrado
-              </Typography>
-              <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{perfilLabel}</Typography>
-            </Box>
-          ) : null}
+          {(() => {
+            const labels = (
+              perfilLabels?.filter((l) => l.trim().length > 0) ??
+              (perfilLabel?.trim() ? [perfilLabel.trim()] : [])
+            )
+            if (labels.length === 0) return null
+            return (
+              <Box
+                sx={{
+                  px: 1.75,
+                  py: 1,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(0,0,0,0.12)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  textAlign: 'left',
+                }}
+              >
+                <Typography
+                  sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}
+                >
+                  {labels.length > 1 ? 'Setores cadastrados' : 'Perfil cadastrado'}
+                </Typography>
+                <Box
+                  component="ul"
+                  sx={{
+                    m: 0,
+                    pl: labels.length > 1 ? 2.25 : 0,
+                    listStyle: labels.length > 1 ? 'disc' : 'none',
+                  }}
+                >
+                  {labels.map((label) => (
+                    <Typography
+                      key={label}
+                      component="li"
+                      sx={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.45 }}
+                    >
+                      {label}
+                    </Typography>
+                  ))}
+                </Box>
+              </Box>
+            )
+          })()}
         </Box>
 
         <Typography
