@@ -13,6 +13,7 @@ import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilha
 import { DevolverPlanilhaModal } from '@/components/ordenador/DevolverPlanilhaModal'
 import { ContabilidadeConfirmacaoModal } from '@/components/ordenador/ContabilidadeConfirmacaoModal'
 import { ConfeccaoSolempModal } from '@/components/ordenador/ConfeccaoSolempModal'
+import { EmpenhoEnvioModal } from '@/components/ordenador/EmpenhoEnvioModal'
 import { MENSAGENS_ARQUIVAMENTO } from '@/utils/processoArquivamento'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -53,6 +54,7 @@ export default function OrdenadorTimelineDetailPage() {
   const [planilhaRecebidaImh, setPlanilhaRecebidaImh] = useState(false)
   const [contabilidadeOpen, setContabilidadeOpen] = useState(false)
   const [confeccaoOpen, setConfeccaoOpen] = useState(false)
+  const [empenhoOpen, setEmpenhoOpen] = useState(false)
   const [fluxoEncerrado, setFluxoEncerrado] = useState(false)
   const [mensagemFluxoEncerrado, setMensagemFluxoEncerrado] = useState<string | null>(null)
   const perfilLabel = user ? getRoleLabel(user.perfil) : 'Setor'
@@ -225,6 +227,7 @@ export default function OrdenadorTimelineDetailPage() {
     setAuditoriaOpen(false)
     setContabilidadeOpen(false)
     setConfeccaoOpen(false)
+    setEmpenhoOpen(false)
     navigatePortal('/ordenador/arquivados')
   }
 
@@ -242,12 +245,34 @@ export default function OrdenadorTimelineDetailPage() {
     }
     if (isConfeccao && isRascunhoEtapa) {
       if (!planilhaRecebidaRascunho) return
-      assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+      setEmpenhoOpen(true)
       return
     }
     // Empenhado não envia planilha — fica concluído ao enviar em Aguardando NE.
     if (isEmpenhadoEtapa) return
     assinar.mutate({ pedidoId: pedido.id }, { onSuccess: concluirComSucesso })
+  }
+
+  const handleEnviarEmpenho = ({
+    empenhoNumero,
+    observacoes,
+  }: {
+    empenhoNumero: string
+    observacoes: string
+  }) => {
+    assinar.mutate(
+      { pedidoId: pedido.id, empenhoNumero, observacoes },
+      {
+        onSuccess: concluirComSucesso,
+        onError: (error) => {
+          window.alert(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível enviar a planilha. Tente novamente.',
+          )
+        },
+      },
+    )
   }
 
   const persistRecebimento = async () => {
@@ -361,7 +386,7 @@ export default function OrdenadorTimelineDetailPage() {
   }
 
   const modalAberto =
-    auditoriaOpen || planilhaOpen || contabilidadeOpen || confeccaoOpen
+    auditoriaOpen || planilhaOpen || contabilidadeOpen || confeccaoOpen || empenhoOpen
 
   const planilhaTitle = (() => {
     if (isContabilidade) return `IMH — Planilha ${pedido.numero}`
@@ -514,6 +539,15 @@ export default function OrdenadorTimelineDetailPage() {
         pedidoNumero={pedido.numero}
         defaults={solempDefaults}
         valorSugerido={pedido.valor}
+      />
+
+      <EmpenhoEnvioModal
+        open={empenhoOpen}
+        onClose={() => setEmpenhoOpen(false)}
+        onEnviar={handleEnviarEmpenho}
+        loading={assinar.isPending}
+        pedidoNumero={pedido.numero}
+        solempNumero={pedido.solemp?.numero}
       />
     </>
   )

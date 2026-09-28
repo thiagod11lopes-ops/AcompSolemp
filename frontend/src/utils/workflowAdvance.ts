@@ -305,6 +305,7 @@ export function advancePedidoEtapa(
   usuario: User,
   observacao: string,
   etapaIdAvancar?: string,
+  options?: { empenhoNumero?: string | null },
 ): AppData {
   const pedidoIndex = data.pedidos.findIndex((p) => p.id === pedidoId)
   if (pedidoIndex < 0) throw new Error('Pedido não encontrado')
@@ -495,6 +496,9 @@ export function advancePedidoEtapa(
         )
       : null
 
+  const empenhoNumero =
+    options?.empenhoNumero?.trim() || pedido.empenhoNumero?.trim() || null
+
   const atualizado: Pedido = {
     ...pedido,
     etapaAtualId: etapaPrincipalId,
@@ -502,6 +506,7 @@ export function advancePedidoEtapa(
     responsavelAtualId: responsavelAtual?.id ?? null,
     concluido,
     etapasHistorico,
+    ...(empenhoNumero ? { empenhoNumero } : {}),
   }
 
   data.pedidos[pedidoIndex] = atualizado
@@ -525,18 +530,23 @@ export function advancePedidoEtapa(
     etapaAtual.nome,
     usuario,
     observacao,
+    { empenhoNumero },
   )
 
   if (etapaAtual.chave === 'DIV_MAT_FINANCAS') {
     const empenhado = getEtapaByChave(etapas, 'DIV_MAT_EMPENHADO')
     if (empenhado) {
+      const obsEmpenhado = empenhoNumero
+        ? `Empenhado concluído automaticamente — ${empenhoNumero}. Fluxo finalizado.`
+        : 'Empenhado concluído automaticamente com o envio em Aguardando NE — fluxo finalizado.'
       arquivarEtapaConcluida(
         data,
         pedidoId,
         empenhado.chave,
         empenhado.nome,
         usuario,
-        'Empenhado concluído automaticamente com o envio em Aguardando NE — fluxo finalizado.',
+        obsEmpenhado,
+        { empenhoNumero },
       )
     }
   }
@@ -722,6 +732,9 @@ export interface AssinarSolempOptions {
   numero?: string
   valor?: number
   assinanteNome?: string
+  /** Número do empenho (NE) — obrigatório ao enviar planilha em Aguardando NE. */
+  empenhoNumero?: string
+  observacoes?: string
 }
 
 export function assinarSolempForPedido(
@@ -779,20 +792,32 @@ export function assinarSolempForPedido(
   if (etapa.chave === 'DIV_MAT_FINANCAS') {
     const solemp = data.solemp.find((s) => s.pedidoId === pedidoId)
     const solempRef = solemp?.numero ? ` — SOLEMP ${solemp.numero}` : ''
+    const empenhoNumero = options?.empenhoNumero?.trim()
+    if (!empenhoNumero) {
+      throw new Error('Informe o número do empenho gerado')
+    }
+    const obsExtra = options?.observacoes?.trim()
+    const observacao = [
+      `Aguardando NE: planilha enviada por ${usuario.nome}${solempRef}. Empenho ${empenhoNumero}. Empenhado registrado como concluído.`,
+      obsExtra ? `Observações: ${obsExtra}` : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
 
     data = advancePedidoEtapa(
       data,
       pedidoId,
       usuario,
-      `Aguardando NE: planilha enviada por ${usuario.nome}${solempRef}. Empenhado registrado como concluído.`,
+      observacao,
       etapa.id,
+      { empenhoNumero },
     )
 
     data.notificacoes.push({
       id: `notif-${Date.now()}`,
       tipo: 'ETAPA_PENDENTE',
       titulo: `Fluxo finalizado — ${pedido.numero}`,
-      mensagem: `${usuario.nome} enviou a planilha em Aguardando NE. Empenhado ficou concluído (fim do fluxo).`,
+      mensagem: `${usuario.nome} enviou a planilha em Aguardando NE com empenho ${empenhoNumero}. Empenhado ficou concluído (fim do fluxo).`,
       pedidoId,
       reversaoId: null,
       perfilDestino: null,
@@ -818,7 +843,12 @@ export function registrarPagamentoForPedido(
   pedidoId: string,
   solempId: string,
   usuario: User,
-  options?: { notaFiscalNumero?: string; empresaNome?: string },
+  options?: {
+    notaFiscalNumero?: string
+    empresaNome?: string
+    empenhoNumero?: string
+    observacoes?: string
+  },
 ): AppData {
   const pedido = data.pedidos.find((p) => p.id === pedidoId)
   if (!pedido) throw new Error('Pedido não encontrado')
@@ -833,8 +863,11 @@ export function registrarPagamentoForPedido(
 
   const notaFiscalNumero = options?.notaFiscalNumero?.trim()
   const empresaNome = options?.empresaNome?.trim()
+  const empenhoNumero = options?.empenhoNumero?.trim()
+  const observacoes = options?.observacoes?.trim()
   if (!notaFiscalNumero) throw new Error('Informe o número da nota fiscal')
   if (!empresaNome || empresaNome.length < 2) throw new Error('Informe o nome da empresa')
+  if (!empenhoNumero) throw new Error('Informe o número do empenho gerado')
 
   data = createNotaFiscalForPedido(data, pedidoId, notaFiscalNumero, {
     empresaNome,
@@ -845,17 +878,30 @@ export function registrarPagamentoForPedido(
     ...data,
     pedidos: data.pedidos.map((p) =>
       p.id === pedidoId
-        ? { ...p, aguardandoEmpenho: false, aguardandoEmpenhoEm: undefined }
+        ? {
+            ...p,
+            aguardandoEmpenho: false,
+            aguardandoEmpenhoEm: undefined,
+            empenhoNumero,
+          }
         : p,
     ),
   }
+
+  const observacao = [
+    `Registro em Aguardando NE — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}, empenho ${empenhoNumero}. Empenhado registrado como concluído.`,
+    observacoes ? `Observações: ${observacoes}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   data = advancePedidoEtapa(
     data,
     pedidoId,
     usuario,
-    `Registro em Aguardando NE — SOLEMP ${solemp.numero}, NF ${notaFiscalNumero}, empresa ${empresaNome}. Empenhado registrado como concluído.`,
+    observacao,
     etapa.id,
+    { empenhoNumero },
   )
 
   data.notificacoes.push({

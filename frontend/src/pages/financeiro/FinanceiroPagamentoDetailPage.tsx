@@ -78,9 +78,13 @@ export default function FinanceiroPagamentoDetailPage() {
   const handleRegistrar = ({
     notaFiscalNumero,
     empresaNome,
+    empenhoNumero,
+    observacoes,
   }: {
     notaFiscalNumero: string
     empresaNome: string
+    empenhoNumero: string
+    observacoes: string
   }) => {
     if (!pedido.solemp?.id) {
       setErro('SOLEMP não encontrada para este processo')
@@ -93,6 +97,8 @@ export default function FinanceiroPagamentoDetailPage() {
         solempId: pedido.solemp.id,
         notaFiscalNumero,
         empresaNome,
+        empenhoNumero,
+        observacoes,
       },
       {
         onSuccess: () => {

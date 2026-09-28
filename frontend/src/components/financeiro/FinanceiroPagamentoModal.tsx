@@ -15,12 +15,19 @@ import CloseIcon from '@mui/icons-material/Close'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
 import BusinessIcon from '@mui/icons-material/Business'
+import NotesIcon from '@mui/icons-material/Notes'
 import { useEffect, useState } from 'react'
+import { formatEmpenhoNe } from '@/utils/empenho'
 
 interface FinanceiroPagamentoModalProps {
   open: boolean
   onClose: () => void
-  onRegistrar: (dados: { notaFiscalNumero: string; empresaNome: string }) => void
+  onRegistrar: (dados: {
+    notaFiscalNumero: string
+    empresaNome: string
+    empenhoNumero: string
+    observacoes: string
+  }) => void
   loading?: boolean
   pedidoNumero?: string
   solempNumero: string
@@ -39,23 +46,33 @@ export function FinanceiroPagamentoModal({
   const theme = useTheme()
   const [notaFiscalNumero, setNotaFiscalNumero] = useState('')
   const [empresaNome, setEmpresaNome] = useState('')
+  const [empenhoNumero, setEmpenhoNumero] = useState('')
+  const [observacoes, setObservacoes] = useState('')
   const [erroNota, setErroNota] = useState('')
   const [erroEmpresa, setErroEmpresa] = useState('')
+  const [erroEmpenho, setErroEmpenho] = useState('')
 
   useEffect(() => {
     if (open) {
       setNotaFiscalNumero('')
       setEmpresaNome(empresaSugerida)
+      setEmpenhoNumero('')
+      setObservacoes('')
       setErroNota('')
       setErroEmpresa('')
+      setErroEmpenho('')
     }
   }, [open, empresaSugerida])
+
+  const empenhoPreview = formatEmpenhoNe(empenhoNumero)
 
   const handleRegistrar = () => {
     setErroNota('')
     setErroEmpresa('')
+    setErroEmpenho('')
     const nf = notaFiscalNumero.trim()
     const empresa = empresaNome.trim()
+    const empenhoFormatado = formatEmpenhoNe(empenhoNumero)
     if (!nf) {
       setErroNota('Informe o número da nota fiscal')
       return
@@ -64,7 +81,16 @@ export function FinanceiroPagamentoModal({
       setErroEmpresa('Informe o nome da empresa')
       return
     }
-    onRegistrar({ notaFiscalNumero: nf, empresaNome: empresa })
+    if (!empenhoNumero.trim() || !empenhoFormatado) {
+      setErroEmpenho('Informe o número do empenho gerado')
+      return
+    }
+    onRegistrar({
+      notaFiscalNumero: nf,
+      empresaNome: empresa,
+      empenhoNumero: empenhoFormatado,
+      observacoes: observacoes.trim(),
+    })
   }
 
   return (
@@ -210,7 +236,7 @@ export function FinanceiroPagamentoModal({
           error={Boolean(erroEmpresa)}
           helperText={erroEmpresa || 'Obrigatório'}
           sx={{
-            mb: 3,
+            mb: 2,
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
               bgcolor: alpha(theme.palette.background.default, 0.65),
@@ -221,6 +247,66 @@ export function FinanceiroPagamentoModal({
               startAdornment: (
                 <InputAdornment position="start">
                   <BusinessIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+
+        <TextField
+          fullWidth
+          label="Número do empenho"
+          value={empenhoNumero}
+          onChange={(e) => {
+            setEmpenhoNumero(e.target.value)
+            setErroEmpenho('')
+          }}
+          placeholder="Ex.: 4451 ou NE 4451"
+          disabled={loading}
+          error={Boolean(erroEmpenho)}
+          helperText={
+            erroEmpenho ||
+            (empenhoPreview ? `Será gravado como ${empenhoPreview}` : 'Obrigatório — vai para Arquivados')
+          }
+          sx={{
+            mb: 2,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.background.default, 0.65),
+            },
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <ReceiptLongIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+
+        <TextField
+          fullWidth
+          label="Observações"
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+          placeholder="Observações opcionais"
+          disabled={loading}
+          multiline
+          minRows={2}
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.background.default, 0.65),
+            },
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1.5 }}>
+                  <NotesIcon fontSize="small" color="action" />
                 </InputAdornment>
               ),
             },

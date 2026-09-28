@@ -63,6 +63,20 @@ export function ProcessosArquivadosTable({
 
     base.push(
       {
+        accessorKey: 'empenhoNumero',
+        header: 'Nº Empenho',
+        cell: ({ row }) => {
+          const valor = row.original.empenhoNumero?.trim()
+          return valor ? (
+            <Chip label={valor} size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              —
+            </Typography>
+          )
+        },
+      },
+      {
         accessorKey: 'valor',
         header: 'Valor',
         cell: ({ getValue }) => formatCurrency(getValue<number>()),

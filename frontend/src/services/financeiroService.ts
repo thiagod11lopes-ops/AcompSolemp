@@ -127,7 +127,12 @@ export const financeiroService = {
     pedidoId: string,
     solempId: string,
     usuarioId: string,
-    options?: { notaFiscalNumero: string; empresaNome: string },
+    options?: {
+      notaFiscalNumero: string
+      empresaNome: string
+      empenhoNumero?: string
+      observacoes?: string
+    },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
     let data = loadAppData()

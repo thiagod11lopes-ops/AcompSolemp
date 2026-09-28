@@ -137,6 +137,8 @@ export const ordenadorService = {
       solempNumero?: string
       solempValor?: number
       assinanteNome?: string
+      empenhoNumero?: string
+      observacoes?: string
     },
   ): Promise<PedidoComDetalhes> {
     await delay(null, 500)
@@ -189,6 +191,8 @@ export const ordenadorService = {
         numero: options?.solempNumero,
         valor: options?.solempValor,
         assinanteNome: options?.assinanteNome,
+        empenhoNumero: options?.empenhoNumero,
+        observacoes: options?.observacoes ?? options?.anotacoes,
       })
     } else {
       const chave = chavePendente ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]

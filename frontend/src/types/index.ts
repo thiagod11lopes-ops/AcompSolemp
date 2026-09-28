@@ -247,6 +247,8 @@ export interface Pedido {
   aguardandoEmpenho?: boolean
   /** ISO da marcação aguardando empenho */
   aguardandoEmpenhoEm?: string
+  /** Número do empenho (NE) gerado — informado ao enviar a planilha em Aguardando NE. */
+  empenhoNumero?: string | null
   /** Chave da etapa que recebeu a planilha devolvida (tarja "Devolvido"). */
   planilhaDevolvidaParaChave?: string | null
   /** ISO da última devolução de planilha */
@@ -742,6 +744,8 @@ export interface ProcessoArquivado {
   observacao: string
   valor: number
   mensagemArquivamento: string
+  /** Número do empenho (NE) informado ao enviar a planilha em Aguardando NE. */
+  empenhoNumero?: string | null
 }
 
 export interface TenantMeta {

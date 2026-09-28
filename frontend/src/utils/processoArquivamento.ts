@@ -48,6 +48,7 @@ export function arquivarEtapaConcluida(
   etapaNome: string,
   usuario: User,
   observacao: string,
+  options?: { empenhoNumero?: string | null },
 ): void {
   if (!ETAPAS_ARQUIVAVEIS.has(etapaChave)) return
 
@@ -65,6 +66,8 @@ export function arquivarEtapaConcluida(
   const arquivoNome = resolverNomeArquivo(data, pedidoId, etapaChave, pedido.numero)
   const mensagemArquivamento =
     MENSAGENS_ARQUIVAMENTO[etapaChave] ?? 'Processo arquivado neste setor.'
+  const empenhoNumero =
+    options?.empenhoNumero?.trim() || pedido.empenhoNumero?.trim() || null
 
   data.processosArquivados.push({
     id: `arq-${Date.now()}-${etapaChave}`,
@@ -81,6 +84,7 @@ export function arquivarEtapaConcluida(
     observacao,
     valor: pedido.valor,
     mensagemArquivamento,
+    empenhoNumero,
   })
 
   if (etapaChave === 'DIV_MAT_CONTABILIDADE_IMH' && data.pedidoPlanilhaEnvio?.[pedidoId]) {

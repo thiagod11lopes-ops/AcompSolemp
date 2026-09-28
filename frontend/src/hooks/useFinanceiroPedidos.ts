@@ -36,15 +36,21 @@ export function useRegistrarPagamento() {
       solempId,
       notaFiscalNumero,
       empresaNome,
+      empenhoNumero,
+      observacoes,
     }: {
       pedidoId: string
       solempId: string
       notaFiscalNumero: string
       empresaNome: string
+      empenhoNumero: string
+      observacoes?: string
     }) =>
       financeiroService.registrarPagamento(pedidoId, solempId, user!.id, {
         notaFiscalNumero,
         empresaNome,
+        empenhoNumero,
+        observacoes,
       }),
     onSuccess: (_, { pedidoId }) => {
       queryClient.invalidateQueries({ queryKey: ['financeiro-pedidos'] })
