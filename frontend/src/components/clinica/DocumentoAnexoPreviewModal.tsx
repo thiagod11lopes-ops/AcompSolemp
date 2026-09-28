@@ -14,6 +14,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile'
 import { useEffect, useMemo, useState } from 'react'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
+import { PdfBlobViewer } from '@/components/clinica/PdfBlobViewer'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import {
   parseSpreadsheetSheetsFile,
@@ -72,6 +73,8 @@ type PreviewKind = 'pdf' | 'image' | 'text' | 'spreadsheet' | 'unsupported'
 
 function previewKind(arquivo: ArquivoAnexo): PreviewKind {
   const lower = arquivo.nome.toLowerCase()
+  // Extensão manda — MIME do storage às vezes vem genérico/errado.
+  if (lower.endsWith('.pdf')) return 'pdf'
   // Parser interno cobre OOXML (.xlsx) e ODS; .xls binário antigo não.
   if (lower.endsWith('.xlsx') || lower.endsWith('.ods')) return 'spreadsheet'
   if (lower.endsWith('.xls')) return 'unsupported'
@@ -119,6 +122,7 @@ export function DocumentoAnexoPreviewModal({
   const [loadingList, setLoadingList] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [textContent, setTextContent] = useState<string | null>(null)
   const [sheets, setSheets] = useState<SpreadsheetSheetImport[]>([])
   const [sheetIndex, setSheetIndex] = useState(0)
@@ -185,6 +189,7 @@ export function DocumentoAnexoPreviewModal({
   useEffect(() => {
     if (!open || !selected) {
       setObjectUrl(null)
+      setPdfBlob(null)
       setTextContent(null)
       setSheets([])
       setSheetIndex(0)
@@ -194,10 +199,11 @@ export function DocumentoAnexoPreviewModal({
     }
 
     let cancelled = false
-    let urlToRevoke: string | null = null
+    let createdUrl: string | null = null
     setLoadingContent(true)
     setContentError(null)
     setObjectUrl(null)
+    setPdfBlob(null)
     setTextContent(null)
     setSheets([])
     setSheetIndex(0)
@@ -212,18 +218,31 @@ export function DocumentoAnexoPreviewModal({
       }
 
       const mime = mimeOf(selected)
-      const typed =
-        blob.type && blob.type !== 'application/octet-stream'
-          ? blob
-          : new Blob([blob], { type: mime })
       const k = previewKind(selected)
+      // Força MIME correto: blob do Storage às vezes vem como octet-stream e o
+      // viewer nativo do Chrome só mostra o botão "Abrir" (que não funciona no modal).
+      const typed =
+        k === 'pdf'
+          ? new Blob([blob], { type: 'application/pdf' })
+          : blob.type && blob.type !== 'application/octet-stream'
+            ? blob
+            : new Blob([blob], { type: mime })
 
       try {
         if (k === 'text') {
-          setTextContent(await typed.text())
-        } else if (k === 'pdf' || k === 'image') {
-          urlToRevoke = URL.createObjectURL(typed)
-          setObjectUrl(urlToRevoke)
+          const text = await typed.text()
+          if (cancelled) return
+          setTextContent(text)
+        } else if (k === 'pdf') {
+          if (cancelled) return
+          setPdfBlob(typed)
+        } else if (k === 'image') {
+          createdUrl = URL.createObjectURL(typed)
+          if (cancelled) {
+            URL.revokeObjectURL(createdUrl)
+            return
+          }
+          setObjectUrl(createdUrl)
         } else if (k === 'spreadsheet') {
           const file = new File([typed], selected.nome, { type: mime })
           const parsed = await parseSpreadsheetSheetsFile(file)
@@ -240,7 +259,7 @@ export function DocumentoAnexoPreviewModal({
           setContentError(
             error instanceof Error
               ? error.message
-              : 'Não foi possível abrir a planilha para visualização.',
+              : 'Não foi possível abrir o arquivo para visualização.',
           )
         }
       }
@@ -250,7 +269,7 @@ export function DocumentoAnexoPreviewModal({
 
     return () => {
       cancelled = true
-      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke)
+      if (createdUrl) URL.revokeObjectURL(createdUrl)
     }
   }, [open, selected])
 
@@ -265,6 +284,8 @@ export function DocumentoAnexoPreviewModal({
       fullScreen
       open={open}
       onClose={onClose}
+      // Sem transição/transform: o viewer nativo de PDF do Chrome quebra com transform no ancestral.
+      transitionDuration={0}
       sx={{ zIndex: (t) => t.zIndex.modal + 20 }}
       slotProps={{
         paper: {
@@ -280,6 +301,7 @@ export function DocumentoAnexoPreviewModal({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            transform: 'none !important',
           },
         },
       }}
@@ -413,20 +435,8 @@ export function DocumentoAnexoPreviewModal({
             <Typography color="error" sx={{ px: 3, textAlign: 'center' }}>
               {contentError}
             </Typography>
-          ) : kind === 'pdf' && objectUrl ? (
-            <Box
-              component="iframe"
-              title={selected?.nome ?? 'Documento PDF'}
-              src={objectUrl}
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                border: 0,
-                bgcolor: '#525659',
-              }}
-            />
+          ) : kind === 'pdf' && pdfBlob ? (
+            <PdfBlobViewer blob={pdfBlob} fileName={selected?.nome} />
           ) : kind === 'image' && objectUrl ? (
             <Box
               component="img"
