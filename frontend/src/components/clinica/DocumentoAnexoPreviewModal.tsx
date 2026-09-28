@@ -13,7 +13,12 @@ import DownloadIcon from '@mui/icons-material/Download'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import { useEffect, useMemo, useState } from 'react'
 import { useCloudAppDataSync } from '@/config/dataSource'
+import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
+import {
+  parseSpreadsheetSheetsFile,
+  type SpreadsheetSheetImport,
+} from '@/utils/consumoMaterialOds'
 import type { ArquivoAnexo } from '@/types'
 
 interface DocumentoAnexoPreviewModalProps {
@@ -56,12 +61,22 @@ function mimeOf(arquivo: ArquivoAnexo): string {
   if (lower.endsWith('.txt') || lower.endsWith('.md')) return 'text/plain'
   if (lower.endsWith('.csv')) return 'text/csv'
   if (lower.endsWith('.json')) return 'application/json'
+  if (lower.endsWith('.xlsx'))
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  if (lower.endsWith('.xls')) return 'application/vnd.ms-excel'
+  if (lower.endsWith('.ods')) return 'application/vnd.oasis.opendocument.spreadsheet'
   return arquivo.mimeType || 'application/octet-stream'
 }
 
-type PreviewKind = 'pdf' | 'image' | 'text' | 'unsupported'
+type PreviewKind = 'pdf' | 'image' | 'text' | 'spreadsheet' | 'unsupported'
 
-function previewKind(mime: string): PreviewKind {
+function previewKind(arquivo: ArquivoAnexo): PreviewKind {
+  const lower = arquivo.nome.toLowerCase()
+  // Parser interno cobre OOXML (.xlsx) e ODS; .xls binário antigo não.
+  if (lower.endsWith('.xlsx') || lower.endsWith('.ods')) return 'spreadsheet'
+  if (lower.endsWith('.xls')) return 'unsupported'
+
+  const mime = mimeOf(arquivo)
   if (mime === 'application/pdf' || mime.includes('pdf')) return 'pdf'
   if (mime.startsWith('image/')) return 'image'
   if (
@@ -71,7 +86,27 @@ function previewKind(mime: string): PreviewKind {
   ) {
     return 'text'
   }
+  if (
+    mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    mime === 'application/vnd.oasis.opendocument.spreadsheet'
+  ) {
+    return 'spreadsheet'
+  }
   return 'unsupported'
+}
+
+const MAX_PREVIEW_ROWS = 800
+const MAX_PREVIEW_COLS = 60
+
+function trimSheetRows(rows: string[][]): string[][] {
+  if (rows.length === 0) return rows
+  const limited = rows.slice(0, MAX_PREVIEW_ROWS).map((row) => row.slice(0, MAX_PREVIEW_COLS))
+  // Remove linhas finais totalmente vazias para não alongar o scroll.
+  let last = limited.length - 1
+  while (last >= 0 && limited[last].every((cell) => !String(cell ?? '').trim())) {
+    last -= 1
+  }
+  return limited.slice(0, last + 1)
 }
 
 export function DocumentoAnexoPreviewModal({
@@ -85,6 +120,8 @@ export function DocumentoAnexoPreviewModal({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [textContent, setTextContent] = useState<string | null>(null)
+  const [sheets, setSheets] = useState<SpreadsheetSheetImport[]>([])
+  const [sheetIndex, setSheetIndex] = useState(0)
   const [loadingContent, setLoadingContent] = useState(false)
   const [contentError, setContentError] = useState<string | null>(null)
   const [baixando, setBaixando] = useState(false)
@@ -93,7 +130,17 @@ export function DocumentoAnexoPreviewModal({
     () => anexos.find((a) => a.id === selectedId) ?? anexos[0] ?? null,
     [anexos, selectedId],
   )
-  const kind = selected ? previewKind(mimeOf(selected)) : null
+  const kind = selected ? previewKind(selected) : null
+  const activeSheet = sheets[sheetIndex] ?? sheets[0] ?? null
+  const previewRows = useMemo(
+    () => (activeSheet ? trimSheetRows(activeSheet.rows) : []),
+    [activeSheet],
+  )
+  const colCount = useMemo(() => {
+    let max = 0
+    for (const row of previewRows) max = Math.max(max, row.length)
+    return Math.max(max, 1)
+  }, [previewRows])
 
   useEffect(() => {
     if (!open || !pedidoId) {
@@ -139,6 +186,8 @@ export function DocumentoAnexoPreviewModal({
     if (!open || !selected) {
       setObjectUrl(null)
       setTextContent(null)
+      setSheets([])
+      setSheetIndex(0)
       setContentError(null)
       setLoadingContent(false)
       return
@@ -150,6 +199,8 @@ export function DocumentoAnexoPreviewModal({
     setContentError(null)
     setObjectUrl(null)
     setTextContent(null)
+    setSheets([])
+    setSheetIndex(0)
 
     void (async () => {
       const blob = await pedidoAnexoService.resolveBlob(selected)
@@ -165,21 +216,35 @@ export function DocumentoAnexoPreviewModal({
         blob.type && blob.type !== 'application/octet-stream'
           ? blob
           : new Blob([blob], { type: mime })
-      const k = previewKind(mime)
+      const k = previewKind(selected)
 
-      if (k === 'text') {
-        try {
-          const text = await typed.text()
+      try {
+        if (k === 'text') {
+          setTextContent(await typed.text())
+        } else if (k === 'pdf' || k === 'image') {
+          urlToRevoke = URL.createObjectURL(typed)
+          setObjectUrl(urlToRevoke)
+        } else if (k === 'spreadsheet') {
+          const file = new File([typed], selected.nome, { type: mime })
+          const parsed = await parseSpreadsheetSheetsFile(file)
           if (cancelled) return
-          setTextContent(text)
-        } catch {
-          if (!cancelled) setContentError('Não foi possível ler o texto do arquivo.')
+          if (parsed.length === 0) {
+            setContentError('Nenhuma aba com dados encontrada na planilha.')
+          } else {
+            setSheets(parsed)
+            setSheetIndex(0)
+          }
         }
-      } else if (k === 'pdf' || k === 'image') {
-        urlToRevoke = URL.createObjectURL(typed)
-        setObjectUrl(urlToRevoke)
+      } catch (error) {
+        if (!cancelled) {
+          setContentError(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível abrir a planilha para visualização.',
+          )
+        }
       }
-      // unsupported: sem object URL — mostra aviso + download
+
       if (!cancelled) setLoadingContent(false)
     })()
 
@@ -189,7 +254,6 @@ export function DocumentoAnexoPreviewModal({
     }
   }, [open, selected])
 
-  // Revoga URL ao trocar/fechar (cleanup do effect anterior só cobre o ciclo do próprio effect).
   useEffect(() => {
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
@@ -332,20 +396,23 @@ export function DocumentoAnexoPreviewModal({
             position: 'relative',
             display: 'grid',
             placeItems: 'center',
-            bgcolor: '#111820',
+            bgcolor: kind === 'spreadsheet' ? EXCEL_SHEET.sheetBg : '#111820',
+            overflow: 'hidden',
           }}
         >
           {loadingList && anexos.length === 0 ? (
-            <CircularProgress sx={{ color: '#fff' }} />
+            <CircularProgress sx={{ color: kind === 'spreadsheet' ? EXCEL_SHEET.text : '#fff' }} />
           ) : anexos.length === 0 ? (
-            <Box sx={{ textAlign: 'center', px: 3, opacity: 0.75 }}>
+            <Box sx={{ textAlign: 'center', px: 3, opacity: 0.75, color: '#fff' }}>
               <AttachFileIcon sx={{ fontSize: 42, mb: 1, opacity: 0.5 }} />
               <Typography>Nenhum arquivo anexado nesta planilha.</Typography>
             </Box>
           ) : loadingContent ? (
-            <CircularProgress sx={{ color: '#fff' }} />
+            <CircularProgress sx={{ color: kind === 'spreadsheet' ? EXCEL_SHEET.text : '#fff' }} />
           ) : contentError ? (
-            <Typography color="error">{contentError}</Typography>
+            <Typography color="error" sx={{ px: 3, textAlign: 'center' }}>
+              {contentError}
+            </Typography>
           ) : kind === 'pdf' && objectUrl ? (
             <Box
               component="iframe"
@@ -392,14 +459,154 @@ export function DocumentoAnexoPreviewModal({
             >
               {textContent}
             </Box>
+          ) : kind === 'spreadsheet' && activeSheet ? (
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                bgcolor: EXCEL_SHEET.sheetBg,
+                color: EXCEL_SHEET.text,
+              }}
+            >
+              {sheets.length > 1 && (
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{
+                    px: 1,
+                    pt: 1,
+                    pb: 0.75,
+                    flexShrink: 0,
+                    overflowX: 'auto',
+                    bgcolor: EXCEL_SHEET.toolbarBg,
+                    borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+                  }}
+                >
+                  {sheets.map((sheet, index) => {
+                    const active = index === sheetIndex
+                    return (
+                      <Button
+                        key={`${sheet.nome}-${index}`}
+                        size="small"
+                        onClick={() => setSheetIndex(index)}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: active ? 800 : 600,
+                          minWidth: 'auto',
+                          px: 1.5,
+                          py: 0.4,
+                          borderRadius: '6px 6px 0 0',
+                          bgcolor: active ? EXCEL_SHEET.cellBg : 'transparent',
+                          color: EXCEL_SHEET.text,
+                          border: active
+                            ? `1px solid ${EXCEL_SHEET.toolbarBorder}`
+                            : '1px solid transparent',
+                          borderBottom: active
+                            ? `1px solid ${EXCEL_SHEET.cellBg}`
+                            : '1px solid transparent',
+                          boxShadow: 'none',
+                        }}
+                      >
+                        {sheet.nome}
+                      </Button>
+                    )
+                  })}
+                </Stack>
+              )}
+              <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <Box
+                  component="table"
+                  sx={{
+                    borderCollapse: 'collapse',
+                    width: 'max-content',
+                    minWidth: '100%',
+                    fontFamily: EXCEL_SHEET.fontFamily,
+                    fontSize: EXCEL_SHEET.fontSize,
+                    lineHeight: EXCEL_SHEET.lineHeight,
+                  }}
+                >
+                  <Box component="tbody">
+                    {previewRows.length === 0 ? (
+                      <Box component="tr">
+                        <Box
+                          component="td"
+                          sx={{
+                            p: 3,
+                            color: EXCEL_SHEET.mutedText,
+                            border: EXCEL_SHEET.border,
+                          }}
+                        >
+                          Aba sem células preenchidas.
+                        </Box>
+                      </Box>
+                    ) : (
+                      previewRows.map((row, rowIndex) => (
+                        <Box component="tr" key={`r-${rowIndex}`}>
+                          {Array.from({ length: colCount }, (_, colIndex) => {
+                            const value = row[colIndex] ?? ''
+                            const isHeader = rowIndex === 0
+                            return (
+                              <Box
+                                component="td"
+                                key={`c-${rowIndex}-${colIndex}`}
+                                sx={{
+                                  border: EXCEL_SHEET.border,
+                                  px: 1,
+                                  py: 0.55,
+                                  minWidth: 72,
+                                  maxWidth: 320,
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word',
+                                  verticalAlign: 'top',
+                                  bgcolor: isHeader
+                                    ? EXCEL_SHEET.headerBg
+                                    : rowIndex % 2 === 0
+                                      ? EXCEL_SHEET.cellBg
+                                      : EXCEL_SHEET.emptyRowBg,
+                                  fontWeight: isHeader
+                                    ? EXCEL_SHEET.fontWeightBold
+                                    : EXCEL_SHEET.fontWeight,
+                                  color: EXCEL_SHEET.text,
+                                }}
+                              >
+                                {value}
+                              </Box>
+                            )
+                          })}
+                        </Box>
+                      ))
+                    )}
+                  </Box>
+                </Box>
+                {(activeSheet.rows.length > MAX_PREVIEW_ROWS ||
+                  activeSheet.rows.some((r) => r.length > MAX_PREVIEW_COLS)) && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: 'block',
+                      px: 1.5,
+                      py: 1,
+                      color: EXCEL_SHEET.mutedText,
+                      bgcolor: EXCEL_SHEET.toolbarBg,
+                      borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+                    }}
+                  >
+                    Exibindo até {MAX_PREVIEW_ROWS} linhas e {MAX_PREVIEW_COLS} colunas. Baixe o
+                    arquivo para ver o conteúdo completo.
+                  </Typography>
+                )}
+              </Box>
+            </Box>
           ) : (
-            <Box sx={{ textAlign: 'center', px: 3, maxWidth: 420 }}>
+            <Box sx={{ textAlign: 'center', px: 3, maxWidth: 420, color: '#fff' }}>
               <Typography sx={{ mb: 1.5, fontWeight: 700 }}>
                 Visualização embutida indisponível para este formato
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.7, mb: 2 }}>
-                PDFs, imagens e textos abrem aqui. Planilhas e documentos do Office podem
-                ser baixados para abrir no aplicativo correspondente.
+                PDFs, imagens, textos e planilhas (.xlsx / .ods) abrem aqui. Outros formatos do
+                Office podem ser baixados para abrir no aplicativo correspondente.
               </Typography>
               {selected && (
                 <Button
