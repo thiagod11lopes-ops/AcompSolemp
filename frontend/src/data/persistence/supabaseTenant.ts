@@ -215,17 +215,12 @@ export async function removeEmailAccess(
 
   if (!error) return
 
-  // Fallback: decline_team_email_invite já existe em produção e remove email_access
-  // (security definer) — desbloqueia exclusão enquanto a migration nova não roda.
-  if (/sem permissão|não autenticado|permission/i.test(error.message)) {
-    const { error: declineError } = await client.rpc('decline_team_email_invite', {
-      p_email: trimmed,
-    })
-    if (!declineError) return
-    throw new Error(declineError.message || error.message)
-  }
-
-  throw new Error(error.message)
+  // Fallback: decline_team_email_invite remove email_access (security definer).
+  const { error: declineError } = await client.rpc('decline_team_email_invite', {
+    p_email: trimmed,
+  })
+  if (!declineError) return
+  throw new Error(declineError.message || error.message)
 }
 
 function normalizeAccessPerfis(row: {

@@ -574,7 +574,8 @@ export const authService = {
         (item) => item.email?.trim().toLowerCase() === emailKey && item.ativo,
       )
 
-    // Cadastro soft-deletado com email_access órfão: reativa para liberar o login.
+    // Cadastro excluído (ativo=false) não deve voltar só porque email_access ficou órfão.
+    // Nesse caso remove o vínculo residual e exige novo cadastro pelo gestor.
     if (!user) {
       const inactive =
         data.usuarios.find((item) => item.id === access.app_user_id && !item.ativo) ??
@@ -582,21 +583,20 @@ export const authService = {
           (item) => item.email?.trim().toLowerCase() === emailKey && !item.ativo,
         )
       if (inactive) {
-        inactive.ativo = true
-        inactive.email = marinhaEmail
-        if (access.perfil) {
-          inactive.perfil = access.perfil as UserRole
-        }
-        if (access.nome) inactive.nome = access.nome
-        if (access.clinica_id) inactive.clinicaId = access.clinica_id
-        saveAppData(data)
         try {
-          const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
-          await flushSupabaseAppDataSync()
+          const { removeEmailAccess } = await import('@/data/persistence/supabaseTenant')
+          await removeEmailAccess(emailKey, access.tenant_id)
         } catch {
-          // Mantém reativação local mesmo se o flush falhar.
+          try {
+            const { declineTeamEmailInvite } = await import('@/data/persistence/supabaseTenant')
+            await declineTeamEmailInvite(emailKey)
+          } catch {
+            // Segue com a mensagem abaixo.
+          }
         }
-        user = inactive
+        throw new Error(
+          'Este e-mail foi excluído dos Cadastros. Peça ao gestor para cadastrá-lo novamente.',
+        )
       }
     }
 

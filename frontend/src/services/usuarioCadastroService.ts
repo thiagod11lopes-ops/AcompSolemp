@@ -5,6 +5,8 @@ import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 import { getTenantId } from '@/services/tenantService'
 import {
+  declineTeamEmailInvite,
+  getEmailAccess,
   removeEmailAccess,
   upsertEmailAccess,
 } from '@/data/persistence/supabaseTenant'
@@ -281,18 +283,42 @@ export const usuarioCadastroService = {
     const data = loadAppData()
     const tenantId = getTenantId()
 
-    const revokeEmails = async (emails: string[]) => {
+    /** Remove o e-mail de email_access na nuvem e confirma que não há mais acesso. */
+    const revokeEmailsFromDatabase = async (emails: string[]) => {
       if (!useCloudAppDataSync()) return
       const unique = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))]
       for (const email of unique) {
+        let lastError: Error | null = null
         try {
           await removeEmailAccess(email, tenantId)
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          // Já removido / inexistente: exclusão local já concluiu.
-          if (/não autenticado|sem permissão|pertence a outra/i.test(message)) {
-            throw err instanceof Error ? err : new Error(message)
+          lastError = err instanceof Error ? err : new Error(String(err))
+          try {
+            await declineTeamEmailInvite(email)
+            lastError = null
+          } catch (declineErr) {
+            lastError =
+              declineErr instanceof Error ? declineErr : new Error(String(declineErr))
           }
+        }
+
+        // Confirma remoção no banco (lookup público / email_access).
+        let stillPresent = false
+        try {
+          stillPresent = Boolean(await getEmailAccess(email))
+        } catch {
+          // Se o lookup falhar, não engolir a exclusão — exige remoção explícita.
+          if (lastError) throw lastError
+          throw new Error(
+            `Não foi possível confirmar a exclusão do e-mail ${email} no banco de dados.`,
+          )
+        }
+
+        if (stillPresent) {
+          throw new Error(
+            lastError?.message ||
+              `O e-mail ${email} continua ativo no banco. Tente novamente ou execute a migration de remoção no Supabase.`,
+          )
         }
       }
     }
@@ -306,34 +332,48 @@ export const usuarioCadastroService = {
         .map((u) => u.email?.trim() ?? '')
         .filter(Boolean)
 
-      // Mantém clínica e histórico; só revoga acesso e desativa (mantém e-mail para reativação)
+      if (isFictionalDashboardSeedActive()) {
+        for (const user of data.usuarios) {
+          if (user.clinicaId === input.id) user.ativo = false
+        }
+        saveAppData(data)
+        return
+      }
+
+      // 1) Remove do banco (email_access) antes do soft-delete local.
+      await revokeEmailsFromDatabase(emails)
+
+      // 2) Desativa no app_state (histórico local; e-mail pode ser recadastrado depois).
       for (const user of data.usuarios) {
         if (user.clinicaId === input.id) {
           user.ativo = false
         }
       }
-
       saveAppData(data)
-      if (isFictionalDashboardSeedActive()) return
       if (useCloudAppDataSync()) {
         await flushSupabaseAppDataSync()
       }
-
-      await revokeEmails(emails)
       return
     }
 
     const user = data.usuarios.find((u) => u.id === input.id)
     if (!user) throw new Error('Usuário não encontrado')
     const email = user.email?.trim() ?? ''
+
+    if (isFictionalDashboardSeedActive()) {
+      user.ativo = false
+      saveAppData(data)
+      return
+    }
+
+    if (email) {
+      await revokeEmailsFromDatabase([email])
+    }
+
     user.ativo = false
     saveAppData(data)
-    if (isFictionalDashboardSeedActive()) return
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
-    }
-    if (email) {
-      await revokeEmails([email])
     }
   },
 }
