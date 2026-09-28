@@ -115,6 +115,10 @@ import {
   syncNomesFromDivChange,
   syncNomesFromImhChange,
 } from '@/utils/syncNomePacienteImhDivMat'
+import {
+  syncSelecaoDivFromImh,
+  syncSelecaoImhFromDiv,
+} from '@/utils/syncSelecaoImhDivMat'
 
 const IMH_ABA_ID = 'imh'
 const DIV_MATERIAL_ABA_ID = 'div-material'
@@ -909,6 +913,30 @@ export default function ClinicaNovoPedidoPage() {
     [handleDivMaterialChange, idsCorrigir],
   )
 
+  const handleSelectedImhIdsChange = useCallback((next: Set<string>) => {
+    setSelectedImhIds(next)
+    setSelectedDivMaterialIds((prevDiv) =>
+      syncSelecaoDivFromImh(
+        next,
+        imhFormRef.current.linhas,
+        divMaterialLinhasRef.current,
+        prevDiv,
+      ),
+    )
+  }, [])
+
+  const handleSelectedDivMaterialIdsChange = useCallback((next: Set<string>) => {
+    setSelectedDivMaterialIds(next)
+    setSelectedImhIds((prevImh) =>
+      syncSelecaoImhFromDiv(
+        next,
+        imhFormRef.current.linhas,
+        divMaterialLinhasRef.current,
+        prevImh,
+      ),
+    )
+  }, [])
+
   const handleAbrirEnvio = () => {
     if (selectedImhCount === 0 && selectedDivCount === 0) {
       setFeedback({
@@ -1248,7 +1276,7 @@ export default function ClinicaNovoPedidoPage() {
           value={imhFormVisivel}
           onChange={handleImhChangeCorrigir}
           selectedImhIds={selectedImhIds}
-          onSelectedImhIdsChange={setSelectedImhIds}
+          onSelectedImhIdsChange={handleSelectedImhIdsChange}
           hideImport
           onRequestClear={modoCorrigir ? undefined : () => handleRequestClear('IMH')}
           dataFiltro={
@@ -1265,7 +1293,7 @@ export default function ClinicaNovoPedidoPage() {
           linhas={divMaterialLinhasVisiveis}
           onChange={handleDivMaterialChangeCorrigir}
           selectedIds={selectedDivMaterialIds}
-          onSelectedIdsChange={setSelectedDivMaterialIds}
+          onSelectedIdsChange={handleSelectedDivMaterialIdsChange}
           finalizedIds={finalizedDivMaterialIds}
           devolvidosIds={devolvidosDivMaterialIds}
           onRequestClear={
