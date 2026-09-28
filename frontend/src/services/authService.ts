@@ -17,7 +17,6 @@ import {
   MOCK_CREDENTIALS,
   reloadFreshAppData,
   resetAppData,
-  saveAppData,
 } from '@/mocks/seed'
 import {
   canAccessGestorRoute,
