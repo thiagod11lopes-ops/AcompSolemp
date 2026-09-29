@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import type { PedidoComDetalhes, ProcessoArquivado, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
@@ -26,6 +26,7 @@ import { DocumentoAnexoPreviewModal } from '@/components/clinica/DocumentoAnexoP
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
 import { timelineTheme } from '@/components/timeline/theme'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
+import { subscribeAppDataChanged } from '@/mocks/seed'
 import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
@@ -74,10 +75,17 @@ export function OrdenadorInteractiveTimeline({
   const [escolherAnexoOpen, setEscolherAnexoOpen] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewArquivoId, setPreviewArquivoId] = useState<string | null>(null)
-  const anexosCount = useMemo(
-    () => pedidoAnexoService.listByPedido(pedido.id).length,
-    [pedido.id],
+  const [anexosCount, setAnexosCount] = useState(() =>
+    pedidoAnexoService.listByPedido(pedido.id).length,
   )
+
+  useEffect(() => {
+    const refresh = () => {
+      setAnexosCount(pedidoAnexoService.listByPedido(pedido.id).length)
+    }
+    refresh()
+    return subscribeAppDataChanged(refresh)
+  }, [pedido.id])
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
     ? chavePendenteParaPerfil(

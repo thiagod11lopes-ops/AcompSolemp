@@ -33,6 +33,16 @@ function guessMimeType(fileName: string, fallback?: string): string {
   if (fallback && fallback !== 'application/octet-stream') return fallback
   const lower = fileName.toLowerCase()
   if (lower.endsWith('.pdf')) return 'application/pdf'
+  if (lower.endsWith('.png')) return 'image/png'
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.jpe') || lower.endsWith('.jfif'))
+    return 'image/jpeg'
+  if (lower.endsWith('.gif')) return 'image/gif'
+  if (lower.endsWith('.webp')) return 'image/webp'
+  if (lower.endsWith('.bmp')) return 'image/bmp'
+  if (lower.endsWith('.tif') || lower.endsWith('.tiff')) return 'image/tiff'
+  if (lower.endsWith('.heic')) return 'image/heic'
+  if (lower.endsWith('.heif')) return 'image/heif'
+  if (lower.endsWith('.svg')) return 'image/svg+xml'
   if (lower.endsWith('.docx'))
     return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   if (lower.endsWith('.doc')) return 'application/msword'
@@ -159,6 +169,12 @@ export const pedidoAnexoService = {
 
     const cloud = useCloudAppDataSync()
     const tenantId = getTenantId()
+    if (cloud && !tenantId) {
+      throw new Error(
+        'Organização não identificada. Faça login novamente antes de enviar anexos.',
+      )
+    }
+
     const agora = new Date().toISOString()
     const criados: ArquivoAnexo[] = []
     const falhasStorage: string[] = []
@@ -171,16 +187,19 @@ export const pedidoAnexoService = {
 
       if (cloud && tenantId) {
         storagePath = (await uploadToStorage(tenantId, pedidoId, id, file, mimeType)) ?? undefined
-        if (!storagePath) falhasStorage.push(file.name)
-      }
-
-      if (!storagePath) {
-        // Sempre guarda base64 como fallback para o arquivo aparecer/baixar.
-        // Arquivos grandes podem falhar no sync; o Storage é o caminho preferencial.
+        if (!storagePath) {
+          falhasStorage.push(file.name)
+          // Em nuvem não grava fallback base64: a Auditoria não receberia o arquivo.
+          continue
+        }
+      } else {
+        // Local/demo: base64 no AppData.
         try {
           conteudoBase64 = await fileToBase64(file)
         } catch (error) {
           console.warn('[AcompSolemp] Falha ao ler anexo:', file.name, error)
+          falhasStorage.push(file.name)
+          continue
         }
       }
 
@@ -195,6 +214,15 @@ export const pedidoAnexoService = {
         storagePath,
         conteudoBase64,
       })
+    }
+
+    if (criados.length === 0) {
+      const nomes = falhasStorage.join(', ') || 'arquivo(s)'
+      throw new Error(
+        cloud
+          ? `Não foi possível enviar o(s) anexo(s) ao Storage (${nomes}). Verifique o bucket planilha-anexos no Supabase e tente novamente.`
+          : `Não foi possível ler o(s) anexo(s): ${nomes}.`,
+      )
     }
 
     const anexosLeves = criados.map((arquivo) =>
@@ -214,10 +242,8 @@ export const pedidoAnexoService = {
     }
 
     if (falhasStorage.length > 0) {
-      console.warn(
-        '[AcompSolemp] Storage falhou para:',
-        falhasStorage.join(', '),
-        '— anexos salvos com fallback no AppData.',
+      throw new Error(
+        `Alguns anexos não puderam ser enviados (${falhasStorage.join(', ')}). Os demais foram salvos — remova os que falharam e anexe novamente.`,
       )
     }
 

@@ -1,5 +1,19 @@
-/** Extensões aceitas no anexo ao enviar planilha (documentos, planilhas e texto). */
+/** Extensões aceitas no anexo ao enviar planilha (documentos, planilhas, imagens e texto). */
 export const PLANILHA_ANEXO_EXTENSIONS = [
+  // Imagens clínicas / digitais comuns
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.jpe',
+  '.jfif',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.tif',
+  '.tiff',
+  '.heic',
+  '.heif',
+  '.svg',
   // Documentos / texto (pedido)
   '.doc',
   '.docx',
