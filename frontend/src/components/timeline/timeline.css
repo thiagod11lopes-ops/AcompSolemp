@@ -13,12 +13,14 @@
   --tl-red: #ff453a;
   --tl-purple: #bf5af2;
   position: relative;
-  background: var(--premium-card);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(85, 139, 113, 0.1) 0%, transparent 50%),
+    var(--premium-card);
   border: 1px solid var(--tl-border);
-  border-radius: 16px;
+  border-radius: 18px;
   color: var(--tl-text);
   overflow: hidden;
-  box-shadow: var(--premium-shadow);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
 }
 
 .timeline-root::before {
@@ -35,7 +37,7 @@
 }
 
 .timeline-inner {
-  padding: 28px;
+  padding: 22px 22px 18px;
 }
 
 .timeline-lane {
@@ -489,12 +491,30 @@
   animation: tl-devolucao-title-blink 1.35s ease-in-out infinite;
 }
 
-/* Layout em fluxo: clínica centralizada + ramificações */
-.timeline-flow {
+/* Layout em fluxo horizontal: esquerda → direita */
+.timeline-flow,
+.timeline-flow--horizontal {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   width: 100%;
+  min-width: min-content;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 0;
+  padding: 8px 4px 14px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tl-line) transparent;
+}
+
+.timeline-flow--horizontal::-webkit-scrollbar {
+  height: 6px;
+}
+
+.timeline-flow--horizontal::-webkit-scrollbar-thumb {
+  background: var(--tl-line);
+  border-radius: 999px;
 }
 
 .timeline-flow--with-direct-imh {
@@ -531,37 +551,53 @@
 .timeline-flow-clinic {
   display: flex;
   justify-content: center;
-  width: 100%;
+  align-items: center;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .timeline-flow-connector {
   display: flex;
   justify-content: center;
-  width: 100%;
-  padding: 2px 0;
+  align-items: center;
+  width: auto;
+  flex-shrink: 0;
+  padding: 0 2px;
 }
 
 .timeline-flow-segment {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  width: 100%;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .timeline-flow-stage {
-  width: 100%;
+  width: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
+  flex-shrink: 0;
 }
 
+.timeline-flow-stage .timeline-section-title {
+  margin-bottom: 10px;
+  margin-left: 2px;
+}
+
+.timeline-flow-stage .timeline-section-subtitle {
+  margin-bottom: 10px;
+}
+
+/* Trilhas paralelas empilhadas; cada trilha segue LTR */
 .timeline-flow-parallel-grid {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 48px;
-  width: 100%;
+  gap: 18px;
+  width: auto;
 }
 
 .timeline-flow-branch-entry--centered {
@@ -571,22 +607,29 @@
 
 .timeline-flow-sequential-grid {
   display: flex;
-  justify-content: center;
-  width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  width: auto;
 }
 
 .timeline-flow-lane {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  min-width: min-content;
 }
 
 .timeline-flow-lane-column {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 240px;
-  flex: 0 0 240px;
+  align-items: flex-start;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.timeline-flow-lane-column .timeline-lane-title {
+  margin-bottom: 8px;
+  margin-left: 2px;
 }
 
 .timeline-flow-branch-entry {
@@ -615,7 +658,7 @@
 }
 
 .timeline-flow-connector--stem {
-  padding: 2px 0;
+  padding: 0 2px;
 }
 
 .timeline-flow-connector-line {
@@ -643,18 +686,10 @@
 
 @media (max-width: 900px) {
   .timeline-inner {
-    padding: 20px 16px;
+    padding: 16px 14px 12px;
   }
 
   .timeline-flow-parallel-grid {
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .timeline-lane {
-    flex-direction: column;
-    align-items: center;
-    min-width: 100%;
+    gap: 14px;
   }
 }

@@ -121,7 +121,7 @@ export const Timeline = memo(function Timeline({
                 )}
                 <LaneRow
                   lane={lane}
-                  vertical={isMobile}
+                  vertical={false}
                   onOpenDetails={openDrawer}
                 />
               </div>
@@ -168,7 +168,6 @@ const LaneRow = memo(function LaneRow({
 
 const LinearFlowLayout = memo(function LinearFlowLayout({
   nodes,
-  isMobile,
   onOpenDetails,
 }: {
   nodes: TimelineNodeData[]
@@ -181,14 +180,14 @@ const LinearFlowLayout = memo(function LinearFlowLayout({
     return (
       <LaneRow
         lane={{ id: 'main', nodes }}
-        vertical={isMobile}
+        vertical={false}
         onOpenDetails={onOpenDetails}
       />
     )
   }
 
   return (
-    <div className="timeline-flow">
+    <div className="timeline-flow timeline-flow--horizontal">
       <div className="timeline-flow-clinic">
         <TimelineNode
           node={clinicNode}
@@ -200,7 +199,7 @@ const LinearFlowLayout = memo(function LinearFlowLayout({
       {restNodes.length > 0 && (
         <>
           <div className="timeline-flow-connector">
-            <TimelineEdge state={clinicNode.edgeAfter} vertical />
+            <TimelineEdge state={clinicNode.edgeAfter} vertical={false} />
           </div>
           <div className="timeline-flow-sequential-grid">
             <div className="timeline-flow-lane">
@@ -208,7 +207,7 @@ const LinearFlowLayout = memo(function LinearFlowLayout({
                 <TimelineNode
                   key={node.id}
                   node={node}
-                  vertical={isMobile}
+                  vertical={false}
                   showEdgeAfter={
                     index < restNodes.length - 1 &&
                     timelineConnectorVisivel(node.etapa.chave, restNodes[index + 1].etapa.chave)

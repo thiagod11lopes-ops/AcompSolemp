@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { Box, Button, Grid, Paper, Typography, Chip } from '@mui/material'
+import { Box, Button, Paper, Typography, Chip } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -402,7 +402,7 @@ export default function OrdenadorTimelineDetailPage() {
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigatePortal('/ordenador/timelines')}
-        sx={{ mb: 2 }}
+        sx={{ mb: 1.5 }}
       >
         Voltar às timelines
       </Button>
@@ -413,88 +413,80 @@ export default function OrdenadorTimelineDetailPage() {
         subtitle={`${pedido.clinica.nome} · ${pedido.empresa.nomeFantasia}`}
       />
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <OrdenadorInteractiveTimeline
-            pedido={pedido}
-            etapas={etapas}
-            processosArquivados={processosArquivados}
-            onAssinar={handleAssinar}
-            assinando={assinar.isPending && !modalAberto}
-            onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
-            onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
-            onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
-            onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
-            planilhaRecebida={planilhaRecebida}
-            planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
-            planilhaRecebidaRascunho={planilhaRecebidaRascunho}
-            onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
-            planilhaEncaminhadaImh={planilhaEncaminhadaImh}
-            planilhaRecebidaImh={planilhaRecebidaImh}
-            fluxoDiretoImh={fluxoDiretoImh}
-            fluxoEncerrado={fluxoEncerrado}
-            mensagemFluxoEncerrado={mensagemFluxoEncerrado}
+      <Paper
+        elevation={0}
+        sx={{
+          mb: 2,
+          px: 2,
+          py: 1.5,
+          borderRadius: 3,
+          border: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1.5,
+          alignItems: 'center',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Chip
+          label={etapaPerfil?.nome ?? pedido.etapaAtual.nome}
+          color="warning"
+          size="small"
+          sx={{ fontWeight: 700 }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {pedido.material.descricao}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          {formatCurrency(pedido.valor)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Solicitado em {formatDate(pedido.dataSolicitacao)}
+        </Typography>
+        {pedido.solemp && (
+          <Chip
+            label={`SOLEMP ${pedido.solemp.numero}${
+              pedido.solemp.valor != null ? ` · ${formatCurrency(pedido.solemp.valor)}` : ''
+            }`}
+            color="primary"
+            variant="outlined"
+            size="small"
+            sx={{ fontWeight: 700, ml: { xs: 0, sm: 'auto' } }}
           />
-          {fluxoEncerrado && (
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2 }}
-              onClick={() => navigatePortal('/ordenador/arquivados')}
-            >
-              Ver arquivados
-            </Button>
-          )}
-        </Grid>
+        )}
+      </Paper>
 
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Dados do Processo
-            </Typography>
-            <Box sx={{ display: 'grid', gap: 1 }}>
-              <Typography variant="body2">
-                <strong>Clínica:</strong> {pedido.clinica.nome}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Material:</strong> {pedido.material.descricao}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Valor:</strong> {formatCurrency(pedido.valor)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
-              </Typography>
-              <Chip
-                label={etapaPerfil?.nome ?? pedido.etapaAtual.nome}
-                color="warning"
-                size="small"
-                sx={{ width: 'fit-content', mt: 1 }}
-              />
-            </Box>
-          </Paper>
-
-          {pedido.solemp && (
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                SOLEMP
-              </Typography>
-              <Typography variant="h5" color="primary" sx={{ fontWeight: 800 }}>
-                {pedido.solemp.numero}
-              </Typography>
-              {pedido.solemp.valor != null && (
-                <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>
-                  {formatCurrency(pedido.solemp.valor)}
-                </Typography>
-              )}
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Conclua a etapa <strong>{etapaPerfil?.nome ?? perfilLabel}</strong> para avançar o
-                processo.
-              </Typography>
-            </Paper>
-          )}
-        </Grid>
-      </Grid>
+      <OrdenadorInteractiveTimeline
+        pedido={pedido}
+        etapas={etapas}
+        processosArquivados={processosArquivados}
+        onAssinar={handleAssinar}
+        assinando={assinar.isPending && !modalAberto}
+        onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
+        onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
+        onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
+        onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
+        planilhaRecebida={planilhaRecebida}
+        planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
+        planilhaRecebidaRascunho={planilhaRecebidaRascunho}
+        onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
+        planilhaEncaminhadaImh={planilhaEncaminhadaImh}
+        planilhaRecebidaImh={planilhaRecebidaImh}
+        fluxoDiretoImh={fluxoDiretoImh}
+        fluxoEncerrado={fluxoEncerrado}
+        mensagemFluxoEncerrado={mensagemFluxoEncerrado}
+      />
+      {fluxoEncerrado && (
+        <Button
+          variant="contained"
+          color="primary"
+          sx={{ mt: 2 }}
+          onClick={() => navigatePortal('/ordenador/arquivados')}
+        >
+          Ver arquivados
+        </Button>
+      )}
 
       <AuditoriaPlanilhaModal
         open={planilhaOpen}

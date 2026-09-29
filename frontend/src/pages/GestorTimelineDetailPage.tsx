@@ -84,15 +84,47 @@ export default function GestorTimelineDetailPage() {
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
       />
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
-        </Grid>
+      <Paper
+        elevation={0}
+        sx={{
+          mb: 2,
+          px: 2,
+          py: 1.5,
+          borderRadius: 3,
+          border: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1.25,
+          alignItems: 'center',
+        }}
+      >
+        {etapasAtivas.map((etapa) => (
+          <Chip
+            key={etapa.id}
+            label={resolveEtapaNomeExibicao(etapa, pedido)}
+            color="primary"
+            size="small"
+            sx={{ fontWeight: 700 }}
+          />
+        ))}
+        <Typography variant="body2" color="text.secondary">
+          {pedido.material.descricao}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          {formatCurrency(pedido.valor)}
+        </Typography>
+      </Paper>
 
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Dados do Lançamento
+      <Box sx={{ mb: 3 }}>
+        <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
+      </Box>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
+              Dados do lançamento
             </Typography>
             <Box sx={{ display: 'grid', gap: 1 }}>
               <Typography variant="body2">
@@ -151,17 +183,12 @@ export default function GestorTimelineDetailPage() {
               <Typography variant="body2">
                 <strong>Valor:</strong> {formatCurrency(pedido.valor)}
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                {etapasAtivas.map((etapa) => (
-                  <Chip key={etapa.id} label={resolveEtapaNomeExibicao(etapa, pedido)} color="primary" size="small" />
-                ))}
-              </Box>
             </Box>
           </Paper>
 
           {pedido.solemp && (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 SOLEMP
               </Typography>
               <Typography variant="body2">
@@ -174,8 +201,8 @@ export default function GestorTimelineDetailPage() {
           )}
 
           {pedido.notaFiscal && (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 Nota Fiscal
               </Typography>
               <Typography variant="body2">
@@ -186,9 +213,11 @@ export default function GestorTimelineDetailPage() {
               </Typography>
             </Paper>
           )}
+        </Grid>
 
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
               Histórico
             </Typography>
             <List dense>
