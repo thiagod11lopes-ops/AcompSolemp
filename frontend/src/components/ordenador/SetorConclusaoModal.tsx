@@ -40,8 +40,8 @@ const VARIANTES: Record<SetorConclusaoVariante, VarianteConfig> = {
     etapaDe: 'Auditoria',
     etapaPara: 'IMH e Confecção de Solemp',
     notesHint:
-      'Anotações são opcionais. A planilha será enviada para IMH e Confecção de Solemp.',
-    placeholder: 'Escreva anotações para IMH e Confecção, se necessário…',
+      'Comentários são opcionais. A planilha será enviada para IMH e Confecção de Solemp.',
+    placeholder: 'Escreva comentários para IMH e Confecção, se necessário…',
     submitLabel: 'Enviar Planilha',
     icon: <FactCheckIcon sx={{ fontSize: 28 }} />,
     accent: 'secondary',
@@ -52,8 +52,8 @@ const VARIANTES: Record<SetorConclusaoVariante, VarianteConfig> = {
     etapaDe: 'IMH',
     etapaPara: null,
     notesHint:
-      'Anotações são opcionais. Se quiser, registre observações ao concluir a IMH.',
-    placeholder: 'Escreva anotações da IMH, se necessário…',
+      'Comentários são opcionais. Se quiser, registre observações ao concluir a IMH.',
+    placeholder: 'Escreva comentários da IMH, se necessário…',
     submitLabel: 'Enviar Planilha',
     icon: <CalculateIcon sx={{ fontSize: 28 }} />,
     accent: 'warning',
@@ -199,7 +199,7 @@ export function SetorConclusaoModal({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <NotesIcon fontSize="small" color="action" />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            Anotações
+            Comentários
           </Typography>
           <Chip label="Opcional" size="small" variant="outlined" sx={{ height: 22 }} />
         </Box>
@@ -235,7 +235,7 @@ export function SetorConclusaoModal({
           sx={{ display: 'block', mt: 1, textAlign: 'right' }}
         >
           {anotacoes.trim().length === 0
-            ? 'Nenhuma anotação — pode enviar assim mesmo'
+            ? 'Nenhum comentário — pode enviar assim mesmo'
             : `${anotacoes.trim().length} caractere(s)`}
         </Typography>
 

@@ -153,8 +153,8 @@ export function ImhDivMaterialEnvioModal({
         <TextField
           fullWidth
           size="small"
-          label="Comentário"
-          placeholder="Opcional — aparece nos detalhes da etapa"
+          label="Comentários"
+          placeholder="Opcional — aparece na aba lateral da timeline com o seu nome"
           value={comentario}
           onChange={(e) => setComentario(e.target.value)}
           disabled={isSubmitting}

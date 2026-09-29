@@ -1157,6 +1157,17 @@ function mergePlanilhaEnvioSnapshots(
   const base = remoteLinhas >= localLinhas ? remoteSnap : localSnap
   const other = base === remoteSnap ? localSnap : remoteSnap
 
+  const comentariosById = new Map<string, NonNullable<PedidoPlanilhaEnvioState['comentariosTimeline']>[number]>()
+  for (const item of [
+    ...(other.comentariosTimeline ?? []),
+    ...(base.comentariosTimeline ?? []),
+  ]) {
+    comentariosById.set(item.id, { ...item })
+  }
+  const comentariosTimeline = [...comentariosById.values()].sort((a, b) =>
+    a.em.localeCompare(b.em),
+  )
+
   return {
     ...other,
     ...base,
@@ -1172,6 +1183,9 @@ function mergePlanilhaEnvioSnapshots(
     divMaterialLinhas: base.divMaterialLinhas?.length
       ? base.divMaterialLinhas
       : other.divMaterialLinhas,
+    comentarioEnvio: base.comentarioEnvio ?? other.comentarioEnvio,
+    comentariosTimeline:
+      comentariosTimeline.length > 0 ? comentariosTimeline : undefined,
     enviadoEm:
       pickNewerIso(localSnap.enviadoEm, remoteSnap.enviadoEm) ??
       localSnap.enviadoEm ??

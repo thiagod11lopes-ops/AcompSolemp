@@ -1,6 +1,12 @@
 import { isDemoDataSession } from '@/config/dataSource'
 import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
-import type { ImhAbaFormData, ImhAbaLinha, ImhMedicamentoLinha, PedidoPlanilhaEnvioState } from '@/types'
+import type {
+  ImhAbaFormData,
+  ImhAbaLinha,
+  ImhMedicamentoLinha,
+  PedidoPlanilhaEnvioState,
+  PlanilhaComentarioTimeline,
+} from '@/types'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import type { ControleSolempPlanilha } from '@/utils/controleSolempTemplate'
 import { rowIdFromPedidoId } from '@/utils/consumoMaterialTemplate'
@@ -102,14 +108,61 @@ type FlagRecebimento =
   | 'recebidaRascunhoEm'
   | 'recebidaEmpenhadoEm'
 
+function cloneComentarios(
+  lista: PlanilhaComentarioTimeline[] | undefined,
+): PlanilhaComentarioTimeline[] | undefined {
+  if (!lista?.length) return undefined
+  return lista.map((item) => ({ ...item }))
+}
+
 function preserveEnvioMeta(
   existing: PedidoPlanilhaEnvioState | undefined,
-): Pick<PedidoPlanilhaEnvioState, 'comentarioEnvio' | 'enviadoPorId' | 'enviadoPorNome'> {
+): Pick<
+  PedidoPlanilhaEnvioState,
+  'comentarioEnvio' | 'comentariosTimeline' | 'enviadoPorId' | 'enviadoPorNome'
+> {
   return {
     comentarioEnvio: existing?.comentarioEnvio,
+    comentariosTimeline: cloneComentarios(existing?.comentariosTimeline),
     enviadoPorId: existing?.enviadoPorId,
     enviadoPorNome: existing?.enviadoPorNome,
   }
+}
+
+function createComentarioId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `comentario-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+/** Lista cumulativa: histórico novo + legado `comentarioEnvio` da clínica. */
+export function listComentariosTimeline(
+  planilha: PedidoPlanilhaEnvioState | null | undefined,
+): PlanilhaComentarioTimeline[] {
+  if (!planilha) return []
+  const lista = cloneComentarios(planilha.comentariosTimeline) ?? []
+  const legado = planilha.comentarioEnvio?.trim()
+  // Só injeta o legado se ainda não estiver no histórico cumulativo.
+  if (
+    legado &&
+    !lista.some(
+      (c) =>
+        c.texto === legado ||
+        (c.etapaChave === 'SOLICITACAO' && c.texto === legado),
+    )
+  ) {
+    lista.unshift({
+      id: `legado-envio-${planilha.enviadoEm}`,
+      texto: legado,
+      responsavelId: planilha.enviadoPorId ?? null,
+      responsavelNome: planilha.enviadoPorNome?.trim() || 'Clínica',
+      etapaChave: 'SOLICITACAO',
+      etapaNome: 'Clínica',
+      em: planilha.enviadoEm,
+    })
+  }
+  return lista.sort((a, b) => a.em.localeCompare(b.em))
 }
 
 function baseSnapshotFrom(
@@ -323,16 +376,77 @@ export const pedidoPlanilhaEnvioService = {
       comentarioEnvio?: string
       enviadoPorId?: string | null
       enviadoPorNome?: string | null
+      etapaChave?: string | null
+      etapaNome?: string | null
     },
   ): PedidoPlanilhaEnvioState {
     const data = readPlanilhaData()
     if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
     const current = data.pedidoPlanilhaEnvio[pedidoId]
+    const comentario = meta.comentarioEnvio?.trim() || undefined
+    const responsavelNome = meta.enviadoPorNome ?? current?.enviadoPorNome ?? null
+    let comentariosTimeline = cloneComentarios(current?.comentariosTimeline) ?? []
+
+    if (comentario) {
+      comentariosTimeline = [
+        ...comentariosTimeline,
+        {
+          id: createComentarioId(),
+          texto: comentario,
+          responsavelId: meta.enviadoPorId ?? current?.enviadoPorId ?? null,
+          responsavelNome: responsavelNome?.trim() || 'Responsável',
+          etapaChave: meta.etapaChave ?? 'SOLICITACAO',
+          etapaNome: meta.etapaNome ?? 'Clínica',
+          em: new Date().toISOString(),
+        },
+      ]
+    }
+
     const next: PedidoPlanilhaEnvioState = {
       ...baseSnapshotFrom(current),
-      comentarioEnvio: meta.comentarioEnvio?.trim() || undefined,
+      comentarioEnvio: comentario,
+      comentariosTimeline: comentariosTimeline.length > 0 ? comentariosTimeline : undefined,
       enviadoPorId: meta.enviadoPorId ?? current?.enviadoPorId ?? null,
-      enviadoPorNome: meta.enviadoPorNome ?? current?.enviadoPorNome ?? null,
+      enviadoPorNome: responsavelNome,
+      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio[pedidoId] = next
+    saveAppData(data)
+    return next
+  },
+
+  /** Acrescenta comentário ao histórico cumulativo da timeline. */
+  addComentario(
+    pedidoId: string,
+    input: {
+      texto: string
+      responsavelId?: string | null
+      responsavelNome: string
+      etapaChave?: string | null
+      etapaNome?: string | null
+    },
+  ): PedidoPlanilhaEnvioState | null {
+    const texto = input.texto.trim()
+    if (!pedidoId || !texto) return this.getForPedido(pedidoId)
+
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+    const current = data.pedidoPlanilhaEnvio[pedidoId]
+    const comentariosTimeline = [
+      ...(cloneComentarios(current?.comentariosTimeline) ?? []),
+      {
+        id: createComentarioId(),
+        texto,
+        responsavelId: input.responsavelId ?? null,
+        responsavelNome: input.responsavelNome.trim() || 'Responsável',
+        etapaChave: input.etapaChave ?? null,
+        etapaNome: input.etapaNome ?? null,
+        em: new Date().toISOString(),
+      },
+    ]
+    const next: PedidoPlanilhaEnvioState = {
+      ...baseSnapshotFrom(current),
+      comentariosTimeline,
       enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
     }
     data.pedidoPlanilhaEnvio[pedidoId] = next

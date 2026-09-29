@@ -694,6 +694,17 @@ export interface ClinicaPlanilhasLivresState {
   planilhaFiltros?: import('@/utils/planilhaDataFiltro').PlanilhaFiltrosPersistidos
 }
 
+/** Comentário de envio de setor/clínica na timeline (histórico cumulativo). */
+export interface PlanilhaComentarioTimeline {
+  id: string
+  texto: string
+  responsavelId?: string | null
+  responsavelNome: string
+  etapaChave?: string | null
+  etapaNome?: string | null
+  em: string
+}
+
 export interface PedidoPlanilhaEnvioState {
   /** Formato da planilha anexada ao pedido. Default: IMH/OPME. */
   formato?: 'imh' | 'imhAba' | 'controleSolemp' | 'imhMedicamento' | 'divMaterial'
@@ -709,8 +720,16 @@ export interface PedidoPlanilhaEnvioState {
   divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
   /** Arquivos anexados no envio da planilha (visíveis na timeline). */
   anexos?: ArquivoAnexo[]
-  /** Comentário informado no modal de envio da clínica (visível nos detalhes da etapa). */
+  /**
+   * Comentário legado do envio da clínica.
+   * Preferir `comentariosTimeline` (histórico cumulativo).
+   */
   comentarioEnvio?: string
+  /**
+   * Comentários acumulados ao longo da timeline (clínica + setores).
+   * Exibidos na aba lateral ao clicar em qualquer card.
+   */
+  comentariosTimeline?: PlanilhaComentarioTimeline[]
   /** Quem enviou a planilha (cadastro da clínica). */
   enviadoPorId?: string | null
   enviadoPorNome?: string | null

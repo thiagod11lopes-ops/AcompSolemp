@@ -46,7 +46,7 @@ function valorToDisplay(valor: number): string {
 interface ConfeccaoSolempModalProps {
   open: boolean
   onClose: () => void
-  onEnviar: (dados: { numero: string; valor: number }) => void
+  onEnviar: (dados: { numero: string; valor: number; comentario?: string }) => void
   loading?: boolean
   pedidoNumero?: string
   defaults: SolempNumeroParts
@@ -67,6 +67,7 @@ export function ConfeccaoSolempModal({
   const [sequencial, setSequencial] = useState(defaults.sequencial)
   const [ano, setAno] = useState(defaults.ano)
   const [valorDisplay, setValorDisplay] = useState('')
+  const [comentario, setComentario] = useState('')
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export function ConfeccaoSolempModal({
       setSequencial(defaults.sequencial)
       setAno(defaults.ano)
       setValorDisplay(valorToDisplay(valorSugerido))
+      setComentario('')
       setErro('')
     }
   }, [open, defaults, valorSugerido])
@@ -94,7 +96,7 @@ export function ConfeccaoSolempModal({
       setErro('Informe o valor da SOLEMP')
       return
     }
-    onEnviar({ numero, valor })
+    onEnviar({ numero, valor, comentario: comentario.trim() || undefined })
   }
 
   return (
@@ -292,6 +294,25 @@ export function ConfeccaoSolempModal({
             },
           }}
           sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.background.default, 0.65),
+            },
+          }}
+        />
+
+        <TextField
+          fullWidth
+          label="Comentários"
+          value={comentario}
+          onChange={(e) => setComentario(e.target.value)}
+          placeholder="Comentários opcionais — seguem na timeline com o seu nome"
+          disabled={loading}
+          margin="normal"
+          multiline
+          minRows={3}
+          sx={{
+            mt: 2,
             '& .MuiOutlinedInput-root': {
               borderRadius: 3,
               bgcolor: alpha(theme.palette.background.default, 0.65),
