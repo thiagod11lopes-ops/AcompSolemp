@@ -162,18 +162,38 @@ export function ImhDivMaterialEnvioModal({
           minRows={2}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 2.5, pb: 2 }}>
-        <Button onClick={onClose} disabled={isSubmitting} color="inherit">
+      <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          disabled={isSubmitting}
+          color="inherit"
+          sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '11px' }}
+        >
           Cancelar
         </Button>
         <Button
           variant="contained"
-          color="primary"
           onClick={() => onEnviar(comentario.trim())}
           disabled={!canSend}
           startIcon={<SendIcon />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: '11px',
+            px: 2,
+            boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
+            background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
+              boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
+            },
+            '&.Mui-disabled': {
+              background: 'rgba(85, 139, 113, 0.2)',
+              color: 'rgba(0,0,0,0.38)',
+            },
+          }}
         >
-          {isSubmitting ? 'Enviando...' : 'Enviar'}
+          {isSubmitting ? 'Enviando...' : 'Enviar planilha'}
         </Button>
       </DialogActions>
     </Dialog>
