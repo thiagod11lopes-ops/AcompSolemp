@@ -29,43 +29,20 @@ function findAnchor(
   )
 }
 
-function resolveCorridorX(container: HTMLElement, bounds: DOMRect): number {
-  const columns = container.querySelectorAll('.timeline-flow-lane-column')
-  if (columns.length >= 2) {
-    const left = columns[0].getBoundingClientRect()
-    const right = columns[columns.length - 1].getBoundingClientRect()
-    return (left.right + right.left) / 2 - bounds.left
-  }
-
-  const grid = container.querySelector('.timeline-flow-parallel-grid')
-  if (grid) {
-    const gridBounds = grid.getBoundingClientRect()
-    return gridBounds.left + gridBounds.width / 2 - bounds.left
-  }
-
-  return bounds.width / 2
-}
-
-function buildOrthogonalPath(
-  clinicCx: number,
-  clinicBottom: number,
-  corridorX: number,
-  imhCx: number,
-  imhTop: number,
+/** Ligação clínica → IMH no fluxo horizontal (esquerda → direita). */
+function buildHorizontalPath(
+  clinicRight: number,
+  clinicCy: number,
+  imhLeft: number,
+  imhCy: number,
 ): PathPoint[] {
-  const points: PathPoint[] = [{ x: clinicCx, y: clinicBottom }]
-
-  if (Math.abs(clinicCx - corridorX) > 2) {
-    points.push({ x: corridorX, y: clinicBottom })
-  }
-
-  points.push({ x: corridorX, y: imhTop })
-
-  if (Math.abs(corridorX - imhCx) > 2) {
-    points.push({ x: imhCx, y: imhTop })
-  }
-
-  return points
+  const midX = clinicRight + Math.max(16, (imhLeft - clinicRight) / 2)
+  return [
+    { x: clinicRight, y: clinicCy },
+    { x: midX, y: clinicCy },
+    { x: midX, y: imhCy },
+    { x: imhLeft, y: imhCy },
+  ]
 }
 
 function pointsToPolyline(points: PathPoint[]): string {
@@ -114,15 +91,12 @@ export const TimelineDirectClinicImhLink = memo(function TimelineDirectClinicImh
         return
       }
 
-      const clinicCx = clinic.left + clinic.width / 2 - bounds.left
-      const clinicBottom = clinic.bottom - bounds.top
-      const imhCx = imh.left + imh.width / 2 - bounds.left
-      const imhTop = imh.top - bounds.top
-      const corridorX = resolveCorridorX(container, bounds)
+      const clinicRight = clinic.right - bounds.left
+      const clinicCy = clinic.top + clinic.height / 2 - bounds.top
+      const imhLeft = imh.left - bounds.left
+      const imhCy = imh.top + imh.height / 2 - bounds.top
 
-      setPathPoints(
-        buildOrthogonalPath(clinicCx, clinicBottom, corridorX, imhCx, imhTop),
-      )
+      setPathPoints(buildHorizontalPath(clinicRight, clinicCy, imhLeft, imhCy))
     }
 
     const scheduleMeasure = () => {

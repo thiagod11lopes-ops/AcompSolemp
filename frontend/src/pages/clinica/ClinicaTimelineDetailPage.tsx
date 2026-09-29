@@ -72,25 +72,59 @@ export default function ClinicaTimelineDetailPage() {
         action={<StatusChip status={pedido.prazoStatus} concluido={pedido.concluido} />}
       />
 
-      <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 3 }}>
+      <Alert severity="info" icon={<VisibilityIcon />} sx={{ mb: 2 }}>
         Após o envio para a Div. de Material, a clínica acompanha todas as etapas em
-        visualização até a conclusão do processo. As atualizações dos setores aparecem aqui
-        automaticamente.
+        visualização até a conclusão do processo.
       </Alert>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <ClinicaInteractiveTimeline
-            pedido={pedido}
-            etapas={etapas}
-            somenteLeitura
+      <Paper
+        elevation={0}
+        sx={{
+          mb: 2,
+          px: 2,
+          py: 1.5,
+          borderRadius: 3,
+          border: 1,
+          borderColor: 'divider',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1.25,
+          alignItems: 'center',
+        }}
+      >
+        {(pedido.etapasAtivasIds?.length
+          ? etapas.filter((e) => pedido.etapasAtivasIds.includes(e.id))
+          : [pedido.etapaAtual]
+        ).map((etapa) => (
+          <Chip
+            key={etapa.id}
+            label={resolveEtapaNomeExibicao(etapa, pedido)}
+            color="primary"
+            size="small"
+            sx={{ fontWeight: 700 }}
           />
-        </Grid>
+        ))}
+        <Typography variant="body2" color="text.secondary">
+          {pedido.material.descricao}
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          {formatCurrency(pedido.valor)}
+        </Typography>
+      </Paper>
 
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Dados do Lançamento
+      <Box sx={{ mb: 3 }}>
+        <ClinicaInteractiveTimeline
+          pedido={pedido}
+          etapas={etapas}
+          somenteLeitura
+        />
+      </Box>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
+              Dados do lançamento
             </Typography>
             <Box sx={{ display: 'grid', gap: 1 }}>
               {pedido.paciente && (
@@ -188,24 +222,12 @@ export default function ClinicaTimelineDetailPage() {
               <Typography variant="body2" sx={{ mt: 1 }}>
                 <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
               </Typography>
-              {(pedido.etapasAtivasIds?.length
-                ? etapas.filter((e) => pedido.etapasAtivasIds.includes(e.id))
-                : [pedido.etapaAtual]
-              ).map((etapa) => (
-                <Chip
-                  key={etapa.id}
-                  label={resolveEtapaNomeExibicao(etapa, pedido)}
-                  color="primary"
-                  size="small"
-                  sx={{ width: 'fit-content', mt: 1, mr: 1 }}
-                />
-              ))}
             </Box>
           </Paper>
 
           {pedido.solemp && (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 SOLEMP
               </Typography>
               <Typography variant="body2">
@@ -218,8 +240,8 @@ export default function ClinicaTimelineDetailPage() {
           )}
 
           {pedido.notaFiscal && (
-            <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 Nota Fiscal
               </Typography>
               <Typography variant="body2">
@@ -230,9 +252,11 @@ export default function ClinicaTimelineDetailPage() {
               </Typography>
             </Paper>
           )}
+        </Grid>
 
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
               Histórico
             </Typography>
             <List dense>
