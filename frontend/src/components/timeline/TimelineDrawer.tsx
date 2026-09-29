@@ -1,6 +1,6 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, User, FileText, Clock3, ShieldCheck, Paperclip, MessageSquare } from 'lucide-react'
+import { X, User, FileText, Clock3, MessageSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { TimelineDrawerDetail } from './types'
 import { TimelineStatus } from './TimelineStatus'
@@ -10,7 +10,6 @@ import { formatCurrency, formatDateTime } from '@/utils/format'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
-import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import {
   buildCorrigirDevolucaoPath,
   usuarioPodeCorrigirDevolucao,
@@ -67,10 +66,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   const planilhaEnvio = detail
     ? pedidoPlanilhaEnvioService.getForPedido(detail.pedido.id)
     : null
-  const anexosCount = useMemo(() => {
-    if (!detail) return 0
-    return pedidoAnexoService.listByPedido(detail.pedido.id).length
-  }, [detail])
 
   const responsavelNome =
     historico?.responsavelNome?.trim() ||
@@ -216,12 +211,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 PED {detail.node.numeroPedido}
               </Section>
 
-              <Section title="Arquivo anexado" icon={Paperclip}>
-                {anexosCount > 0
-                  ? `${anexosCount} documento${anexosCount === 1 ? '' : 's'} anexado${anexosCount === 1 ? '' : 's'}`
-                  : 'Nenhum documento anexado'}
-              </Section>
-
               {podeVerPlanilha ? (
                 <section style={{ marginBottom: 22 }}>
                   <TimelineActionButton onClick={handleVerPlanilha} variant="ghost">
@@ -271,12 +260,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   </p>
                 )}
               </Section>
-
-              {detail.node.processoNumero && (
-                <Section title="Número do processo" icon={FileText}>
-                  {detail.node.processoNumero}
-                </Section>
-              )}
 
               <Section
                 title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'}
@@ -379,13 +362,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 </Section>
               )}
 
-              <Section title="Auditoria" icon={ShieldCheck}>
-                <Row label="Pedido" value={detail.node.numeroPedido} />
-                <Row label="Clínica" value={detail.pedido.clinica.nome} />
-                <Row label="Empresa" value={detail.pedido.empresa.nomeFantasia} />
-                <Row label="Prazo da etapa" value={`${detail.node.etapa.prazoDias} dias`} />
-              </Section>
-
               <Section title="Histórico completo" icon={Clock3}>
                 {detail.pedido.etapasHistorico
                   .filter(
@@ -414,8 +390,10 @@ export const TimelineDrawer = memo(function TimelineDrawer({
 
               <Section title="Dados do processo" icon={FileText}>
                 <Row label="Clínica" value={detail.pedido.clinica.nome} />
+                <Row label="Empresa" value={detail.pedido.empresa.nomeFantasia} />
                 <Row label="Material" value={detail.pedido.material.descricao} />
                 <Row label="Valor" value={formatCurrency(detail.pedido.valor)} />
+                <Row label="Prazo da etapa" value={`${detail.node.etapa.prazoDias} dias`} />
               </Section>
             </div>
           </motion.aside>
