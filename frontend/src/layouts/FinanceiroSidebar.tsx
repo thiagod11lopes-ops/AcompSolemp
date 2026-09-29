@@ -1,5 +1,4 @@
 import {
-  Badge,
   Drawer,
   List,
   ListItemButton,
@@ -20,21 +19,21 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
-import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { TimelineAbaSino } from '@/components/notifications/TimelineAbaSino'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetores'
-import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
+import {
+  etapaChaveDaAbaSetor,
+  useContagemPendenciasSetores,
+} from '@/hooks/useContagemPendenciasSetores'
 import {
   setorNavItemsParaUsuario,
   userPodeVerAbaBalanco,
   userTemMultiSetorNav,
 } from '@/utils/setorNav'
-import { userHasPerfil } from '@/utils/userPerfis'
 import type { UserRole } from '@/types'
 
 const DRAWER_WIDTH = 240
@@ -55,7 +54,12 @@ const menuBalanco = {
 
 const menuBase = [
   { path: '/financeiro/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { path: '/financeiro/pagamentos', label: 'Pagamentos pendentes', icon: <PaymentsIcon /> },
+  {
+    path: '/financeiro/pagamentos',
+    label: 'Pagamentos pendentes',
+    icon: <PaymentsIcon />,
+    perfil: 'FINANCEIRO' as UserRole,
+  },
   {
     path: '/financeiro/aguardando-empenho',
     label: 'Aguardando Empenho',
@@ -69,6 +73,18 @@ interface FinanceiroSidebarProps {
   onClose: () => void
 }
 
+function isAbaTimeline(item: {
+  path: string
+  perfil?: UserRole
+  etapa?: string
+}): boolean {
+  if (item.etapa || item.perfil) return true
+  return (
+    item.path.includes('/ordenador/timelines') ||
+    item.path.includes('/financeiro/pagamentos')
+  )
+}
+
 export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProps) {
   const { user } = useFinanceiroAuth()
   const { mapPath, demoBannerHeight } = usePortalPaths()
@@ -77,7 +93,6 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const multiSetor = Boolean(user && userTemMultiSetorNav(user))
   const mostraBalanco = Boolean(user && userPodeVerAbaBalanco(user))
-  const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
   const { contagemParaItem } = useContagemPendenciasSetores(user)
 
   const menuItems = (() => {
@@ -137,15 +152,15 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
               : location.pathname.includes(item.path.replace(/^\//, '')) &&
                 !(multiSetor && isTimelinesPath && etapaAtual)
             const perfilItem = 'perfil' in item ? item.perfil : undefined
-            const isAbaSetor = Boolean(etapa || perfilItem)
-            const pendencias =
-              multiSetor && isAbaSetor
-                ? contagemParaItem({ etapa, perfil: perfilItem })
-                : 0
-            const showSinoImh =
-              isImh &&
-              (perfilItem === 'CONTABILIDADE_IMH' ||
-                etapa === 'DIV_MAT_CONTABILIDADE_IMH')
+            const abaTimeline = isAbaTimeline({
+              path: item.path,
+              perfil: perfilItem,
+              etapa,
+            })
+            const pendencias = abaTimeline
+              ? contagemParaItem({ etapa, perfil: perfilItem })
+              : 0
+            const etapaChave = etapaChaveDaAbaSetor({ etapa, perfil: perfilItem }) ?? undefined
 
             return (
               <ListItemButton
@@ -179,43 +194,13 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
                       <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
                         {item.label}
                       </Typography>
-                      {showSinoImh ? (
-                        <Box
-                          sx={{ display: 'flex', alignItems: 'center' }}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            event.stopPropagation()
-                          }}
-                        >
-                          <NotificationPanel
-                            tipos={TIPOS_NOTIFICACAO_TIMELINE_SETOR}
-                            title="Notificações — Timelines"
-                            emptyText="Nenhuma notificação de timeline"
-                            tooltip="Notificações de Timelines"
-                            size="small"
-                            iconColor="warning"
-                            stopClickPropagation
-                          />
-                        </Box>
-                      ) : multiSetor && isAbaSetor ? (
-                        <Badge
-                          badgeContent={pendencias}
-                          color="error"
-                          max={99}
-                          showZero
-                          sx={{
-                            '& .MuiBadge-badge': {
-                              fontSize: '0.65rem',
-                              minWidth: 18,
-                              height: 18,
-                            },
-                          }}
-                        >
-                          <NotificationsNoneIcon
-                            fontSize="small"
-                            sx={{ color: pendencias > 0 ? 'success.main' : 'text.secondary' }}
-                          />
-                        </Badge>
+                      {abaTimeline ? (
+                        <TimelineAbaSino
+                          pendencias={pendencias}
+                          etapaChave={etapaChave}
+                          perfil={perfilItem}
+                          iconColor="warning"
+                        />
                       ) : null}
                     </Box>
                   }
