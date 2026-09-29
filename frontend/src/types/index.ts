@@ -709,6 +709,11 @@ export interface PedidoPlanilhaEnvioState {
   divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
   /** Arquivos anexados no envio da planilha (visíveis na timeline). */
   anexos?: ArquivoAnexo[]
+  /** Comentário informado no modal de envio da clínica (visível nos detalhes da etapa). */
+  comentarioEnvio?: string
+  /** Quem enviou a planilha (cadastro da clínica). */
+  enviadoPorId?: string | null
+  enviadoPorNome?: string | null
   enviadoEm: string
   /** ISO da devolução da planilha para um setor/origem */
   devolvidaEm?: string

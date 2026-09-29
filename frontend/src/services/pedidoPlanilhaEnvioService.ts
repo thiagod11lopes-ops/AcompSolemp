@@ -102,6 +102,16 @@ type FlagRecebimento =
   | 'recebidaRascunhoEm'
   | 'recebidaEmpenhadoEm'
 
+function preserveEnvioMeta(
+  existing: PedidoPlanilhaEnvioState | undefined,
+): Pick<PedidoPlanilhaEnvioState, 'comentarioEnvio' | 'enviadoPorId' | 'enviadoPorNome'> {
+  return {
+    comentarioEnvio: existing?.comentarioEnvio,
+    enviadoPorId: existing?.enviadoPorId,
+    enviadoPorNome: existing?.enviadoPorNome,
+  }
+}
+
 function baseSnapshotFrom(
   current: PedidoPlanilhaEnvioState | undefined,
 ): PedidoPlanilhaEnvioState {
@@ -114,6 +124,7 @@ function baseSnapshotFrom(
     imhAbaLinhas: current?.imhAbaLinhas,
     divMaterialLinhas: current?.divMaterialLinhas,
     anexos: current?.anexos,
+    ...preserveEnvioMeta(current),
     enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
     recebidaEm: current?.recebidaEm,
     encaminhadaImhEm: current?.encaminhadaImhEm,
@@ -159,6 +170,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
+      ...preserveEnvioMeta(existing),
       enviadoEm: new Date().toISOString(),
       ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
@@ -195,6 +207,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
+      ...preserveEnvioMeta(existing),
       enviadoEm: new Date().toISOString(),
       ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
@@ -224,6 +237,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: linhas.map((linha) => ({ ...linha })),
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
+      ...preserveEnvioMeta(existing),
       enviadoEm: new Date().toISOString(),
       ...resetFlagsTrilhaImh(existing),
       devolvidaEm: undefined,
@@ -255,6 +269,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: existing?.divMaterialLinhas,
       ...preserveAnexos(existing),
+      ...preserveEnvioMeta(existing),
       enviadoEm: new Date().toISOString(),
       ...resetFlagsTrilhaConfeccao(existing),
       devolvidaEm: undefined,
@@ -290,6 +305,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: existing?.imhMedicamentoLinhas,
       divMaterialLinhas: divSnapshot,
       ...preserveAnexos(existing),
+      ...preserveEnvioMeta(existing),
       enviadoEm: new Date().toISOString(),
       ...resetFlagsTrilhaConfeccao(existing),
       devolvidaEm: undefined,
@@ -299,6 +315,29 @@ export const pedidoPlanilhaEnvioService = {
     data.pedidoPlanilhaEnvio[pedidoId] = snapshot
     saveAppData(data)
     return snapshot
+  },
+
+  saveEnvioMeta(
+    pedidoId: string,
+    meta: {
+      comentarioEnvio?: string
+      enviadoPorId?: string | null
+      enviadoPorNome?: string | null
+    },
+  ): PedidoPlanilhaEnvioState {
+    const data = readPlanilhaData()
+    if (!data.pedidoPlanilhaEnvio) data.pedidoPlanilhaEnvio = {}
+    const current = data.pedidoPlanilhaEnvio[pedidoId]
+    const next: PedidoPlanilhaEnvioState = {
+      ...baseSnapshotFrom(current),
+      comentarioEnvio: meta.comentarioEnvio?.trim() || undefined,
+      enviadoPorId: meta.enviadoPorId ?? current?.enviadoPorId ?? null,
+      enviadoPorNome: meta.enviadoPorNome ?? current?.enviadoPorNome ?? null,
+      enviadoEm: current?.enviadoEm ?? new Date().toISOString(),
+    }
+    data.pedidoPlanilhaEnvio[pedidoId] = next
+    saveAppData(data)
+    return next
   },
 
   getForPedido(pedidoId: string): PedidoPlanilhaEnvioState | null {
@@ -314,6 +353,7 @@ export const pedidoPlanilhaEnvioService = {
       imhMedicamentoLinhas: snapshot.imhMedicamentoLinhas?.map((linha) => ({ ...linha })),
       divMaterialLinhas: snapshot.divMaterialLinhas?.map((linha) => ({ ...linha })),
       anexos: snapshot.anexos?.map((arquivo) => ({ ...arquivo })),
+      ...preserveEnvioMeta(snapshot),
       enviadoEm: snapshot.enviadoEm,
       devolvidaEm: snapshot.devolvidaEm,
       devolvidaParaChave: snapshot.devolvidaParaChave,

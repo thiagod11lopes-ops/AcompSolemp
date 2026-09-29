@@ -8,11 +8,13 @@ import {
   DialogTitle,
   IconButton,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import { useEffect, useState } from 'react'
 
 interface ImhDivMaterialEnvioModalProps {
   open: boolean
@@ -21,7 +23,7 @@ interface ImhDivMaterialEnvioModalProps {
   anexos?: File[]
   isSubmitting?: boolean
   onClose: () => void
-  onEnviar: () => void
+  onEnviar: (comentario: string) => void
   /** Abre o seletor para acumular mais arquivos. */
   onAdicionarAnexos?: () => void
   onRemoverAnexo?: (index: number) => void
@@ -38,7 +40,12 @@ export function ImhDivMaterialEnvioModal({
   onAdicionarAnexos,
   onRemoverAnexo,
 }: ImhDivMaterialEnvioModalProps) {
+  const [comentario, setComentario] = useState('')
   const canSend = (imhCount > 0 || divMaterialCount > 0) && !isSubmitting
+
+  useEffect(() => {
+    if (open) setComentario('')
+  }, [open])
 
   return (
     <Dialog
@@ -86,7 +93,7 @@ export function ImhDivMaterialEnvioModal({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 1,
-            mb: anexos.length > 0 ? 1 : 0,
+            mb: anexos.length > 0 ? 1 : 1.5,
           }}
         >
           <Typography variant="body2" color="text.secondary">
@@ -108,7 +115,7 @@ export function ImhDivMaterialEnvioModal({
         </Box>
 
         {anexos.length > 0 && (
-          <Stack spacing={0.5}>
+          <Stack spacing={0.5} sx={{ mb: 1.5 }}>
             {anexos.map((file, index) => (
               <Box
                 key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
@@ -142,6 +149,18 @@ export function ImhDivMaterialEnvioModal({
             ))}
           </Stack>
         )}
+
+        <TextField
+          fullWidth
+          size="small"
+          label="Comentário"
+          placeholder="Opcional — aparece nos detalhes da etapa"
+          value={comentario}
+          onChange={(e) => setComentario(e.target.value)}
+          disabled={isSubmitting}
+          multiline
+          minRows={2}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 2.5, pb: 2 }}>
         <Button onClick={onClose} disabled={isSubmitting} color="inherit">
@@ -150,7 +169,7 @@ export function ImhDivMaterialEnvioModal({
         <Button
           variant="contained"
           color="primary"
-          onClick={onEnviar}
+          onClick={() => onEnviar(comentario.trim())}
           disabled={!canSend}
           startIcon={<SendIcon />}
         >

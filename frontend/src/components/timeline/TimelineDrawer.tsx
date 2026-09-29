@@ -1,15 +1,16 @@
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, User, FileText, Clock3, ShieldCheck } from 'lucide-react'
+import { X, User, FileText, Clock3, ShieldCheck, Paperclip, MessageSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { TimelineDrawerDetail } from './types'
 import { TimelineStatus } from './TimelineStatus'
 import { TimelineActionButton } from './TimelineActionButton'
 import { timelineTheme } from './theme'
-import { formatDateTime } from '@/utils/format'
+import { formatCurrency, formatDateTime } from '@/utils/format'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import {
   buildCorrigirDevolucaoPath,
   usuarioPodeCorrigirDevolucao,
@@ -22,6 +23,10 @@ interface TimelineDrawerProps {
   onClose: () => void
   actions?: React.ReactNode
 }
+
+const WHITE = '#FFFFFF'
+const WHITE_MUTED = 'rgba(255,255,255,0.78)'
+const WHITE_SOFT = 'rgba(255,255,255,0.14)'
 
 function resolvePreferFormatoPlanilha(
   planilha: PedidoPlanilhaEnvioState | null,
@@ -53,7 +58,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   const historico = detail?.node.historico
   const isDevolvido = detail?.node.statusBand === 'devolvido'
   const justificativaDevolucao = detail?.node.justificativaDevolucao?.trim() || null
-  const corDevolvido = '#c2410c'
+  const corDevolvido = '#fb923c'
   const devolucoes = detail?.pedido.planilhaDevolucoes ?? []
   const devolucoesOrdenadas = [...devolucoes].sort(
     (a, b) => new Date(b.em).getTime() - new Date(a.em).getTime(),
@@ -62,6 +67,19 @@ export const TimelineDrawer = memo(function TimelineDrawer({
   const planilhaEnvio = detail
     ? pedidoPlanilhaEnvioService.getForPedido(detail.pedido.id)
     : null
+  const anexosCount = useMemo(() => {
+    if (!detail) return 0
+    return pedidoAnexoService.listByPedido(detail.pedido.id).length
+  }, [detail])
+
+  const responsavelNome =
+    historico?.responsavelNome?.trim() ||
+    planilhaEnvio?.enviadoPorNome?.trim() ||
+    detail?.pedido.etapasHistorico.find((h) => h.responsavelNome)?.responsavelNome ||
+    'Não atribuído'
+
+  const comentarioEnvio = planilhaEnvio?.comentarioEnvio?.trim() || ''
+
   const corrigirPath =
     detail && isDevolvido
       ? buildCorrigirDevolucaoPath(detail.pedido, planilhaEnvio)
@@ -131,12 +149,13 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '-24px 0 64px rgba(0,0,0,0.5)',
+              color: WHITE,
             }}
           >
             <header
               style={{
-                padding: '20px 24px',
-                borderBottom: `1px solid ${timelineTheme.border}`,
+                padding: '22px 24px 18px',
+                borderBottom: `1px solid ${WHITE_SOFT}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
@@ -144,27 +163,47 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               }}
             >
               <div>
-                <p style={{ margin: 0, fontSize: '0.72rem', color: timelineTheme.textSecondary }}>
-                  Detalhes da etapa
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '0.68rem',
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                    color: WHITE,
+                  }}
+                >
+                  Etapa
                 </p>
-                <h2 style={{ margin: '6px 0 10px', fontSize: '1.15rem', fontWeight: 700 }}>
+                <h2
+                  style={{
+                    margin: '8px 0 12px',
+                    fontSize: '1.35rem',
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.15,
+                    color: WHITE,
+                  }}
+                >
                   {detail.node.displayName}
                 </h2>
-                <TimelineStatus status={detail.node.status} />
+                <div className="timeline-drawer-status-white">
+                  <TimelineStatus status={detail.node.status} />
+                </div>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 title="Fechar painel"
                 style={{
-                  border: `1px solid ${timelineTheme.border}`,
+                  border: `1px solid ${WHITE_SOFT}`,
                   background: 'transparent',
                   borderRadius: 10,
                   width: 36,
                   height: 36,
                   display: 'grid',
                   placeItems: 'center',
-                  color: timelineTheme.text,
+                  color: WHITE,
                   cursor: 'pointer',
                 }}
               >
@@ -172,9 +211,15 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               </button>
             </header>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', color: WHITE }}>
               <Section title="Pedido" icon={FileText}>
                 PED {detail.node.numeroPedido}
+              </Section>
+
+              <Section title="Arquivo anexado" icon={Paperclip}>
+                {anexosCount > 0
+                  ? `${anexosCount} documento${anexosCount === 1 ? '' : 's'} anexado${anexosCount === 1 ? '' : 's'}`
+                  : 'Nenhum documento anexado'}
               </Section>
 
               {podeVerPlanilha ? (
@@ -188,7 +233,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               {actions && (
                 <section style={{ marginBottom: 22 }}>
                   <div
-                    className="timeline-actions-slot"
+                    className="timeline-actions-slot timeline-drawer-actions-white"
                     // Bubble (não capture): o onClick do botão precisa rodar antes de fechar o drawer.
                     onClick={(event) => {
                       const target = event.target
@@ -206,7 +251,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
               )}
 
               <Section title="Responsável" icon={User}>
-                {historico?.responsavelNome ?? 'Não atribuído'}
+                {responsavelNome}
               </Section>
 
               <Section title="Datas" icon={Clock3}>
@@ -221,7 +266,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     )}
                   </>
                 ) : (
-                  <p style={{ margin: 0, color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                  <p style={{ margin: 0, color: WHITE, fontSize: '0.85rem' }}>
                     Etapa ainda não iniciada
                   </p>
                 )}
@@ -233,19 +278,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 </Section>
               )}
 
-              <Section title="Observações" icon={FileText}>
-                {isDevolvido ? (
-                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
-                    Sem observações adicionais nesta etapa.
-                  </span>
-                ) : (
-                  historico?.observacao ?? 'Sem observações registradas.'
-                )}
-              </Section>
-
               <Section
                 title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'}
-                icon={FileText}
+                icon={MessageSquare}
                 titleClassName={
                   isDevolvido && justificativaDevolucao
                     ? 'timeline-drawer-devolucao-title-blink'
@@ -265,11 +300,15 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     {justificativaDevolucao}
                   </p>
                 ) : isDevolvido ? (
-                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                  <span style={{ color: WHITE, fontSize: '0.85rem' }}>
                     Justificativa não registrada.
                   </span>
+                ) : comentarioEnvio ? (
+                  <span style={{ color: WHITE, fontSize: '0.9rem', lineHeight: 1.55 }}>
+                    {comentarioEnvio}
+                  </span>
                 ) : (
-                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
+                  <span style={{ color: WHITE, fontSize: '0.85rem' }}>
                     Nenhum comentário registrado nesta etapa.
                   </span>
                 )}
@@ -303,16 +342,17 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                             padding: '12px 14px',
                             borderRadius: 10,
                             border: `1px solid ${
-                              isLatest ? 'rgba(194, 65, 12, 0.45)' : timelineTheme.border
+                              isLatest ? 'rgba(251, 146, 60, 0.45)' : WHITE_SOFT
                             }`,
-                            background: isLatest ? 'rgba(194, 65, 12, 0.08)' : 'transparent',
+                            background: isLatest ? 'rgba(251, 146, 60, 0.12)' : 'transparent',
                             fontSize: '0.85rem',
                             lineHeight: 1.5,
+                            color: WHITE,
                           }}
                         >
                           <div
                             style={{
-                              color: timelineTheme.textSecondary,
+                              color: WHITE_MUTED,
                               fontSize: '0.75rem',
                               marginBottom: 6,
                               fontWeight: 600,
@@ -321,15 +361,15 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                             {formatDateTime(item.em)}
                             {isLatest ? ' · mais recente' : ''}
                           </div>
-                          <div style={{ marginBottom: 4 }}>
+                          <div style={{ marginBottom: 4, color: WHITE }}>
                             <strong>{item.deEtapaNome}</strong>
                             {' → '}
                             <strong>{item.paraEtapaNome}</strong>
                           </div>
-                          <div style={{ color: timelineTheme.textSecondary, marginBottom: 8 }}>
+                          <div style={{ color: WHITE_MUTED, marginBottom: 8 }}>
                             Por {item.porUsuarioNome}
                           </div>
-                          <div style={{ color: isLatest ? corDevolvido : undefined, fontWeight: 600 }}>
+                          <div style={{ color: isLatest ? corDevolvido : WHITE, fontWeight: 600 }}>
                             {item.justificativa}
                           </div>
                         </div>
@@ -338,16 +378,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   </div>
                 </Section>
               )}
-
-              <Section title="Alterações" icon={Clock3}>
-                {historico?.observacao ? (
-                  <div style={{ fontSize: '0.85rem' }}>{historico.observacao}</div>
-                ) : (
-                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
-                    Sem alterações documentadas.
-                  </span>
-                )}
-              </Section>
 
               <Section title="Auditoria" icon={ShieldCheck}>
                 <Row label="Pedido" value={detail.node.numeroPedido} />
@@ -368,18 +398,24 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                       style={{
                         padding: '10px 12px',
                         borderRadius: 10,
-                        border: `1px solid ${timelineTheme.border}`,
+                        border: `1px solid ${WHITE_SOFT}`,
                         marginBottom: 8,
                         fontSize: '0.82rem',
+                        color: WHITE,
                       }}
                     >
-                      <div style={{ color: timelineTheme.textSecondary, marginBottom: 4 }}>
+                      <div style={{ color: WHITE }}>
                         {formatDateTime(h.dataInicio)}
                         {h.dataConclusao ? ` → ${formatDateTime(h.dataConclusao)}` : ' (em aberto)'}
                       </div>
-                      {h.observacao && <div>{h.observacao}</div>}
                     </div>
                   ))}
+              </Section>
+
+              <Section title="Dados do processo" icon={FileText}>
+                <Row label="Clínica" value={detail.pedido.clinica.nome} />
+                <Row label="Material" value={detail.pedido.material.descricao} />
+                <Row label="Valor" value={formatCurrency(detail.pedido.valor)} />
               </Section>
             </div>
           </motion.aside>
@@ -401,6 +437,18 @@ export const TimelineDrawer = memo(function TimelineDrawer({
         setPlanilhaModal({ open: false, pedidoNumero: '', planilha: null })
       }
     />
+
+    <style>{`
+      .timeline-drawer-status-white span {
+        color: ${WHITE} !important;
+        border-color: ${WHITE_SOFT} !important;
+        background: rgba(255,255,255,0.1) !important;
+      }
+      .timeline-drawer-actions-white button,
+      .timeline-drawer-actions-white {
+        color: ${WHITE} !important;
+      }
+    `}</style>
     </>
   )
 })
@@ -417,7 +465,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section style={{ marginBottom: 22 }}>
+    <section style={{ marginBottom: 22, color: WHITE }}>
       <h3
         className={titleClassName}
         style={{
@@ -428,23 +476,31 @@ function Section({
           fontSize: '0.72rem',
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
-          ...(titleClassName ? {} : { color: timelineTheme.textSecondary }),
+          color: WHITE,
           fontWeight: 700,
         }}
       >
-        <Icon size={14} />
+        <Icon size={14} color={WHITE} />
         {title}
       </h3>
-      <div style={{ fontSize: '0.88rem', lineHeight: 1.5 }}>{children}</div>
+      <div style={{ fontSize: '0.88rem', lineHeight: 1.5, color: WHITE }}>{children}</div>
     </section>
   )
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-      <span style={{ color: timelineTheme.textSecondary }}>{label}</span>
-      <span style={{ fontWeight: 500, textAlign: 'right' }}>{value}</span>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 6,
+        color: WHITE,
+      }}
+    >
+      <span style={{ color: WHITE }}>{label}</span>
+      <span style={{ fontWeight: 500, textAlign: 'right', color: WHITE }}>{value}</span>
     </div>
   )
 }

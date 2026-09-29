@@ -240,8 +240,8 @@ export const clinicaPedidoService = {
       ? {
           etapaId: contabilidade!.id,
           etapaNome: contabilidade!.nome,
-          responsavelId: null,
-          responsavelNome: null,
+          responsavelId: usuario.id,
+          responsavelNome: usuario.nome,
           dataInicio: agora,
           dataConclusao: null as string | null,
           observacao: 'Aguardando recebimento da planilha pela IMH.',
@@ -254,8 +254,8 @@ export const clinicaPedidoService = {
       : {
           etapaId: auditoria!.id,
           etapaNome: auditoria!.nome,
-          responsavelId: null,
-          responsavelNome: null,
+          responsavelId: usuario.id,
+          responsavelNome: usuario.nome,
           dataInicio: agora,
           dataConclusao: null as string | null,
           observacao: 'Aguardando recebimento da planilha pela Auditoria.',
@@ -267,8 +267,8 @@ export const clinicaPedidoService = {
       ? {
           etapaId: confeccao!.id,
           etapaNome: confeccao!.nome,
-          responsavelId: null,
-          responsavelNome: null,
+          responsavelId: usuario.id,
+          responsavelNome: usuario.nome,
           dataInicio: agora,
           dataConclusao: null as string | null,
           observacao: 'Aguardando recebimento da planilha pela Confecção de Solemp.',
@@ -405,8 +405,8 @@ export const clinicaPedidoService = {
       pedido.etapasHistorico.push({
         etapaId: targetEtapa.id,
         etapaNome: targetEtapa.nome,
-        responsavelId: null,
-        responsavelNome: null,
+        responsavelId: usuario.id,
+        responsavelNome: usuario.nome,
         dataInicio: agora,
         dataConclusao: null,
         observacao:
@@ -419,6 +419,16 @@ export const clinicaPedidoService = {
               : 'Aguardando recebimento da planilha pela Confecção de Solemp.',
         arquivos: [],
       })
+    } else if (hasOpenTrack) {
+      pedido.etapasHistorico = pedido.etapasHistorico.map((h) =>
+        h.etapaId === targetEtapa.id && !h.dataConclusao
+          ? {
+              ...h,
+              responsavelId: h.responsavelId ?? usuario.id,
+              responsavelNome: h.responsavelNome ?? usuario.nome,
+            }
+          : h,
+      )
     }
 
     if (!alreadyInAtivas) {
@@ -519,8 +529,8 @@ export const clinicaPedidoService = {
       pedido.etapasHistorico.push({
         etapaId: contabilidade.id,
         etapaNome: contabilidade.nome,
-        responsavelId: null,
-        responsavelNome: null,
+        responsavelId: usuario.id,
+        responsavelNome: usuario.nome,
         dataInicio: agora,
         dataConclusao: null,
         observacao: reabriu
