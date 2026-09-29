@@ -22,6 +22,7 @@ import TimelineIcon from '@mui/icons-material/Timeline'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useFinanceiroAuth } from '@/contexts/AuthContext'
@@ -30,7 +31,6 @@ import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetor
 import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
 import {
   setorNavItemsParaUsuario,
-  setorNavSubtitle,
   userPodeVerAbaBalanco,
   userTemMultiSetorNav,
 } from '@/utils/setorNav'
@@ -109,36 +109,47 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
     ]
   })()
 
-  const titulo = multiSetor && user ? 'Meus setores' : 'Financeiro'
-  const subtitulo =
-    multiSetor && user ? setorNavSubtitle(user) : 'Pagamento de NF'
-  const perfilCaption =
-    multiSetor && user ? setorNavSubtitle(user) : 'Setor Financeiro'
-
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2, minHeight: `${56 + demoBannerHeight}px !important`, flexShrink: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AccountBalanceIcon color="success" />
-          <Box>
-            <Typography variant="subtitle1" color="success.dark" sx={{ fontWeight: 700 }}>
-              {titulo}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {subtitulo}
-            </Typography>
+      <Toolbar
+        sx={{
+          px: multiSetor ? 2.25 : 2,
+          minHeight: multiSetor ? 72 : `${56 + demoBannerHeight}px !important`,
+          flexShrink: 0,
+        }}
+      >
+        {multiSetor ? (
+          <BrandLogo />
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AccountBalanceIcon color="success" />
+            <Box>
+              <Typography variant="subtitle1" color="success.dark" sx={{ fontWeight: 700 }}>
+                Financeiro
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Pagamento de NF
+              </Typography>
+            </Box>
           </Box>
-        </Box>
+        )}
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: 2, py: 1.5, flexShrink: 0 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {user.nome}
+        <Box sx={{ px: multiSetor ? 2.25 : 2, py: multiSetor ? 1.75 : 1.5, flexShrink: 0 }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, letterSpacing: multiSetor ? '-0.015em' : undefined }}
+          >
+            {multiSetor
+              ? `Usuário logado: ${user.posto ? `${user.posto} ${user.nome}` : user.nome}`
+              : user.nome}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {perfilCaption}
-          </Typography>
+          {!multiSetor && (
+            <Typography variant="caption" color="text.secondary">
+              Setor Financeiro
+            </Typography>
+          )}
         </Box>
       )}
       <Divider />

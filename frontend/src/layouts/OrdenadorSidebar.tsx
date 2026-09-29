@@ -23,6 +23,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
 import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
@@ -32,7 +33,6 @@ import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
 import {
   setorNavItemsParaUsuario,
-  setorNavSubtitle,
   userPodeVerAbaBalanco,
   userTemMultiSetorNav,
 } from '@/utils/setorNav'
@@ -117,36 +117,47 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
     ]
   })()
 
-  const titulo = multiSetor && user ? 'Meus setores' : 'Ordenador de Despesa'
-  const subtitulo =
-    multiSetor && user ? setorNavSubtitle(user) : 'Assinatura de SOLEMP'
-  const perfilCaption =
-    multiSetor && user ? setorNavSubtitle(user) : user ? loginPerfilLabel(user.perfil) : ''
-
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2, minHeight: `${56 + demoBannerHeight}px !important`, flexShrink: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <GavelIcon color="warning" />
-          <Box>
-            <Typography variant="subtitle1" color="warning.dark" sx={{ fontWeight: 700 }}>
-              {titulo}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {subtitulo}
-            </Typography>
+      <Toolbar
+        sx={{
+          px: multiSetor ? 2.25 : 2,
+          minHeight: multiSetor ? 72 : `${56 + demoBannerHeight}px !important`,
+          flexShrink: 0,
+        }}
+      >
+        {multiSetor ? (
+          <BrandLogo />
+        ) : (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <GavelIcon color="warning" />
+            <Box>
+              <Typography variant="subtitle1" color="warning.dark" sx={{ fontWeight: 700 }}>
+                Ordenador de Despesa
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Assinatura de SOLEMP
+              </Typography>
+            </Box>
           </Box>
-        </Box>
+        )}
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: 2, py: 1.5, flexShrink: 0 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {user.nome}
+        <Box sx={{ px: multiSetor ? 2.25 : 2, py: multiSetor ? 1.75 : 1.5, flexShrink: 0 }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, letterSpacing: multiSetor ? '-0.015em' : undefined }}
+          >
+            {multiSetor
+              ? `Usuário logado: ${user.posto ? `${user.posto} ${user.nome}` : user.nome}`
+              : user.nome}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {perfilCaption}
-          </Typography>
+          {!multiSetor && (
+            <Typography variant="caption" color="text.secondary">
+              {loginPerfilLabel(user.perfil)}
+            </Typography>
+          )}
         </Box>
       )}
       <Divider />
