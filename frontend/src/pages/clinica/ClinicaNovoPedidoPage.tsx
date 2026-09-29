@@ -1059,7 +1059,7 @@ export default function ClinicaNovoPedidoPage() {
     setEnvioAnexos([])
   }
 
-  const handleEnviarPlanilhas = async () => {
+  const handleEnviarPlanilhas = async (comentarioEnvio = '') => {
     const clinicaNome = clinicaLogada?.nome ?? ''
     if (!clinicaNome || !clinicaId) {
       setFeedback({
@@ -1135,6 +1135,12 @@ export default function ClinicaNovoPedidoPage() {
         // Envia a Div. Material exatamente como na aba (linhas marcadas, colunas intactas).
         pedidoPlanilhaEnvioService.saveDivMaterialForPedido(pedidoId, divSelecionadas)
       }
+
+      pedidoPlanilhaEnvioService.saveEnvioMeta(pedidoId, {
+        comentarioEnvio,
+        enviadoPorId: user?.id ?? null,
+        enviadoPorNome: user?.nome ?? clinicaNome,
+      })
 
       const anexosParaEnviar =
         envioAnexosRef.current.length > 0 ? envioAnexosRef.current : envioAnexos

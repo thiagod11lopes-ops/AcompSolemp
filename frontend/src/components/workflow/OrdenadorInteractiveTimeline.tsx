@@ -25,6 +25,7 @@ import { DocumentoAnexoEscolherModal } from '@/components/clinica/DocumentoAnexo
 import { DocumentoAnexoPreviewModal } from '@/components/clinica/DocumentoAnexoPreviewModal'
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
 import { timelineTheme } from '@/components/timeline/theme'
+import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 interface OrdenadorInteractiveTimelineProps {
@@ -73,6 +74,10 @@ export function OrdenadorInteractiveTimeline({
   const [escolherAnexoOpen, setEscolherAnexoOpen] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewArquivoId, setPreviewArquivoId] = useState<string | null>(null)
+  const anexosCount = useMemo(
+    () => pedidoAnexoService.listByPedido(pedido.id).length,
+    [pedido.id],
+  )
   const chavesPerfil = user ? chavesEtapaParaPerfil(user.perfil, user) : []
   const chavePendente = user
     ? chavePendenteParaPerfil(
@@ -122,7 +127,9 @@ export function OrdenadorInteractiveTimeline({
         data-keep-drawer=""
         onClick={() => setAnexosModalOpen(true)}
       >
-        Arquivo Anexado
+        {anexosCount > 0
+          ? `Arquivo anexado (${anexosCount})`
+          : 'Arquivo anexado (0)'}
       </TimelineActionButton>
       {botaoVisualizarDocumento}
     </div>
