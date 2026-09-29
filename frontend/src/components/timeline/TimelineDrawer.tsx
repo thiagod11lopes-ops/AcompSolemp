@@ -24,8 +24,9 @@ interface TimelineDrawerProps {
 }
 
 const WHITE = '#FFFFFF'
-const WHITE_MUTED = 'rgba(255,255,255,0.78)'
-const WHITE_SOFT = 'rgba(255,255,255,0.14)'
+const WHITE_SOFT = 'rgba(255,255,255,0.55)'
+const LINE = 'rgba(255,255,255,0.1)'
+const SURFACE = 'rgba(255,255,255,0.04)'
 
 function resolvePreferFormatoPlanilha(
   planilha: PedidoPlanilhaEnvioState | null,
@@ -109,333 +110,459 @@ export const TimelineDrawer = memo(function TimelineDrawer({
     })
   }
 
+  const historicoEtapa =
+    detail?.pedido.etapasHistorico.filter(
+      (h) => h.etapaId === detail.node.etapa.id || h.etapaNome === detail.node.etapa.nome,
+    ) ?? []
+
   return (
     <>
-    <AnimatePresence>
-      {detail && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(4px)',
-              zIndex: 1300,
-            }}
-          />
-          <motion.aside
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            style={{
-              position: 'fixed',
-              top: 0,
-              right: 0,
-              width: 'min(440px, 100vw)',
-              height: '100vh',
-              background: timelineTheme.card,
-              borderLeft: `1px solid ${timelineTheme.border}`,
-              zIndex: 1301,
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '-24px 0 64px rgba(0,0,0,0.5)',
-              color: WHITE,
-            }}
-          >
-            <header
+      <AnimatePresence>
+        {detail && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={onClose}
               style={{
-                padding: '22px 24px 18px',
-                borderBottom: `1px solid ${WHITE_SOFT}`,
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(8,10,12,0.48)',
+                backdropFilter: 'blur(6px)',
+                zIndex: 1300,
+              }}
+            />
+            <motion.aside
+              initial={{ x: '100%', opacity: 0.85 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0.85 }}
+              transition={{ type: 'spring', damping: 32, stiffness: 380 }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                width: 'min(400px, 100vw)',
+                height: '100vh',
+                background: `
+                  linear-gradient(180deg, rgba(85,139,113,0.16) 0%, transparent 180px),
+                  ${timelineTheme.card}
+                `,
+                borderLeft: `1px solid ${LINE}`,
+                zIndex: 1301,
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 12,
+                flexDirection: 'column',
+                boxShadow: '-12px 0 40px rgba(0,0,0,0.28)',
+                color: WHITE,
               }}
             >
-              <div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '0.68rem',
-                    letterSpacing: '0.16em',
-                    textTransform: 'uppercase',
-                    fontWeight: 700,
-                    color: WHITE,
-                  }}
-                >
-                  Etapa
-                </p>
-                <h2
-                  style={{
-                    margin: '8px 0 12px',
-                    fontSize: '1.35rem',
-                    fontWeight: 800,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.15,
-                    color: WHITE,
-                  }}
-                >
-                  {detail.node.displayName}
-                </h2>
-                <div className="timeline-drawer-status-white">
-                  <TimelineStatus status={detail.node.status} />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                title="Fechar painel"
+              <header
                 style={{
-                  border: `1px solid ${WHITE_SOFT}`,
-                  background: 'transparent',
-                  borderRadius: 10,
-                  width: 36,
-                  height: 36,
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: WHITE,
-                  cursor: 'pointer',
+                  padding: '20px 22px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
                 }}
               >
-                <X size={18} />
-              </button>
-            </header>
-
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', color: WHITE }}>
-              <Section title="Pedido" icon={FileText}>
-                PED {detail.node.numeroPedido}
-              </Section>
-
-              {podeVerPlanilha ? (
-                <section style={{ marginBottom: 22 }}>
-                  <TimelineActionButton onClick={handleVerPlanilha} variant="ghost">
-                    Ver planilha
-                  </TimelineActionButton>
-                </section>
-              ) : null}
-
-              {actions && (
-                <section style={{ marginBottom: 22 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div
-                    className="timeline-actions-slot timeline-drawer-actions-white"
-                    // Bubble (não capture): o onClick do botão precisa rodar antes de fechar o drawer.
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 99,
+                        background: timelineTheme.blue,
+                        boxShadow: `0 0 0 3px rgba(85,139,113,0.22)`,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        color: WHITE_SOFT,
+                      }}
+                    >
+                      Etapa
+                    </span>
+                  </div>
+                  <h2
+                    style={{
+                      margin: '0 0 12px',
+                      fontSize: '1.4rem',
+                      fontWeight: 750,
+                      letterSpacing: '-0.03em',
+                      lineHeight: 1.15,
+                      color: WHITE,
+                    }}
+                  >
+                    {detail.node.displayName}
+                  </h2>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <div className="timeline-drawer-status-white">
+                      <TimelineStatus status={detail.node.status} />
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: WHITE,
+                        padding: '5px 10px',
+                        borderRadius: 999,
+                        background: SURFACE,
+                        border: `1px solid ${LINE}`,
+                      }}
+                    >
+                      PED {detail.node.numeroPedido}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  title="Fechar painel"
+                  style={{
+                    border: `1px solid ${LINE}`,
+                    background: SURFACE,
+                    borderRadius: 12,
+                    width: 34,
+                    height: 34,
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: WHITE,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </header>
+
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  padding: '4px 22px 28px',
+                  color: WHITE,
+                }}
+              >
+                {(podeVerPlanilha || actions) && (
+                  <div
+                    className="timeline-drawer-actions-white"
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      marginBottom: 22,
+                      padding: '12px',
+                      borderRadius: 14,
+                      background: SURFACE,
+                      border: `1px solid ${LINE}`,
+                    }}
                     onClick={(event) => {
                       const target = event.target
                       if (!(target instanceof Element)) return
                       const button = target.closest('button')
                       if (!button || button.disabled) return
-                      // Mantém o drawer aberto para ações que abrem outro modal (ex.: anexos / enviar).
                       if (button.hasAttribute('data-keep-drawer')) return
                       onClose()
                     }}
                   >
+                    {podeVerPlanilha ? (
+                      <TimelineActionButton onClick={handleVerPlanilha} variant="ghost">
+                        Ver planilha
+                      </TimelineActionButton>
+                    ) : null}
                     {actions}
                   </div>
-                </section>
-              )}
-
-              <Section title="Responsável" icon={User}>
-                {responsavelNome}
-              </Section>
-
-              <Section title="Datas" icon={Clock3}>
-                {historico ? (
-                  <>
-                    <Row label="Início" value={formatDateTime(historico.dataInicio)} />
-                    {historico.dataConclusao && (
-                      <Row label="Conclusão" value={formatDateTime(historico.dataConclusao)} />
-                    )}
-                    {detail.node.tempoNaEtapa && (
-                      <Row label="Tempo na etapa" value={detail.node.tempoNaEtapa} />
-                    )}
-                    <Row
-                      label="Prazo da etapa"
-                      value={`${detail.node.etapa.prazoDias} dias`}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <p style={{ margin: '0 0 6px', color: WHITE, fontSize: '0.85rem' }}>
-                      Etapa ainda não iniciada
-                    </p>
-                    <Row
-                      label="Prazo da etapa"
-                      value={`${detail.node.etapa.prazoDias} dias`}
-                    />
-                  </>
                 )}
-              </Section>
 
-              <Section
-                title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'}
-                icon={MessageSquare}
-                titleClassName={
-                  isDevolvido && justificativaDevolucao
-                    ? 'timeline-drawer-devolucao-title-blink'
-                    : undefined
-                }
-              >
-                {isDevolvido && justificativaDevolucao ? (
+                <MetaBlock
+                  items={[
+                    { icon: User, label: 'Responsável', value: responsavelNome },
+                    ...(historico
+                      ? [
+                          {
+                            icon: Clock3,
+                            label: 'Início',
+                            value: formatDateTime(historico.dataInicio),
+                          },
+                          ...(historico.dataConclusao
+                            ? [
+                                {
+                                  icon: Clock3,
+                                  label: 'Conclusão',
+                                  value: formatDateTime(historico.dataConclusao),
+                                },
+                              ]
+                            : []),
+                          ...(detail.node.tempoNaEtapa
+                            ? [
+                                {
+                                  icon: Clock3,
+                                  label: 'Tempo na etapa',
+                                  value: detail.node.tempoNaEtapa,
+                                },
+                              ]
+                            : []),
+                          {
+                            icon: Clock3,
+                            label: 'Prazo da etapa',
+                            value: `${detail.node.etapa.prazoDias} dias`,
+                          },
+                        ]
+                      : [
+                          {
+                            icon: Clock3,
+                            label: 'Prazo da etapa',
+                            value: `${detail.node.etapa.prazoDias} dias`,
+                          },
+                        ]),
+                  ]}
+                />
+
+                {!historico && (
                   <p
                     style={{
-                      margin: 0,
-                      color: corDevolvido,
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      lineHeight: 1.55,
+                      margin: '0 0 18px',
+                      color: WHITE_SOFT,
+                      fontSize: '0.82rem',
                     }}
                   >
-                    {justificativaDevolucao}
+                    Etapa ainda não iniciada
                   </p>
-                ) : isDevolvido ? (
-                  <span style={{ color: WHITE, fontSize: '0.85rem' }}>
-                    Justificativa não registrada.
-                  </span>
-                ) : comentarioEnvio ? (
-                  <span style={{ color: WHITE, fontSize: '0.9rem', lineHeight: 1.55 }}>
-                    {comentarioEnvio}
-                  </span>
-                ) : (
-                  <span style={{ color: WHITE, fontSize: '0.85rem' }}>
-                    Nenhum comentário registrado nesta etapa.
-                  </span>
                 )}
-                {isDevolvido && podeCorrigir && corrigirPath ? (
-                  <div style={{ marginTop: 14 }}>
-                    <TimelineActionButton
-                      onClick={handleCorrigir}
+
+                <Section
+                  title={isDevolvido ? 'Justificativa da devolução' : 'Comentários'}
+                  icon={MessageSquare}
+                  titleClassName={
+                    isDevolvido && justificativaDevolucao
+                      ? 'timeline-drawer-devolucao-title-blink'
+                      : undefined
+                  }
+                >
+                  {isDevolvido && justificativaDevolucao ? (
+                    <p
                       style={{
-                        width: '100%',
-                        background: corDevolvido,
-                        color: '#fff',
-                        border: 'none',
-                        letterSpacing: '0.06em',
+                        margin: 0,
+                        color: corDevolvido,
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        lineHeight: 1.55,
                       }}
                     >
-                      CORRIGIR
-                    </TimelineActionButton>
-                  </div>
-                ) : null}
-              </Section>
+                      {justificativaDevolucao}
+                    </p>
+                  ) : isDevolvido ? (
+                    <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
+                      Justificativa não registrada.
+                    </span>
+                  ) : comentarioEnvio ? (
+                    <span style={{ color: WHITE, fontSize: '0.9rem', lineHeight: 1.55 }}>
+                      {comentarioEnvio}
+                    </span>
+                  ) : (
+                    <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
+                      Nenhum comentário registrado nesta etapa.
+                    </span>
+                  )}
+                  {isDevolvido && podeCorrigir && corrigirPath ? (
+                    <div style={{ marginTop: 12 }}>
+                      <TimelineActionButton
+                        onClick={handleCorrigir}
+                        style={{
+                          width: '100%',
+                          background: corDevolvido,
+                          color: '#fff',
+                          border: 'none',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        CORRIGIR
+                      </TimelineActionButton>
+                    </div>
+                  ) : null}
+                </Section>
 
-              {devolucoesOrdenadas.length > 0 && (
-                <Section title="Devoluções da planilha" icon={Clock3}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {devolucoesOrdenadas.map((item, index) => {
-                      const isLatest = index === 0
-                      return (
+                {devolucoesOrdenadas.length > 0 && (
+                  <Section title="Devoluções da planilha" icon={Clock3}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {devolucoesOrdenadas.map((item, index) => {
+                        const isLatest = index === 0
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '12px 13px',
+                              borderRadius: 12,
+                              border: `1px solid ${
+                                isLatest ? 'rgba(251, 146, 60, 0.4)' : LINE
+                              }`,
+                              background: isLatest
+                                ? 'rgba(251, 146, 60, 0.1)'
+                                : SURFACE,
+                              fontSize: '0.84rem',
+                              lineHeight: 1.5,
+                              color: WHITE,
+                            }}
+                          >
+                            <div
+                              style={{
+                                color: WHITE_SOFT,
+                                fontSize: '0.72rem',
+                                marginBottom: 6,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {formatDateTime(item.em)}
+                              {isLatest ? ' · mais recente' : ''}
+                            </div>
+                            <div style={{ marginBottom: 4 }}>
+                              <strong>{item.deEtapaNome}</strong>
+                              {' → '}
+                              <strong>{item.paraEtapaNome}</strong>
+                            </div>
+                            <div style={{ color: WHITE_SOFT, marginBottom: 6 }}>
+                              Por {item.porUsuarioNome}
+                            </div>
+                            <div
+                              style={{
+                                color: isLatest ? corDevolvido : WHITE,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {item.justificativa}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Section>
+                )}
+
+                {historicoEtapa.length > 0 && (
+                  <Section title="Histórico" icon={Clock3}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {historicoEtapa.map((h, index) => (
                         <div
-                          key={item.id}
+                          key={`${h.etapaId}-${index}`}
                           style={{
-                            padding: '12px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '9px 12px',
                             borderRadius: 10,
-                            border: `1px solid ${
-                              isLatest ? 'rgba(251, 146, 60, 0.45)' : WHITE_SOFT
-                            }`,
-                            background: isLatest ? 'rgba(251, 146, 60, 0.12)' : 'transparent',
-                            fontSize: '0.85rem',
-                            lineHeight: 1.5,
+                            background: SURFACE,
+                            border: `1px solid ${LINE}`,
+                            fontSize: '0.8rem',
                             color: WHITE,
                           }}
                         >
-                          <div
+                          <span
                             style={{
-                              color: WHITE_MUTED,
-                              fontSize: '0.75rem',
-                              marginBottom: 6,
-                              fontWeight: 600,
+                              width: 6,
+                              height: 6,
+                              borderRadius: 99,
+                              background: h.dataConclusao
+                                ? timelineTheme.green
+                                : timelineTheme.blue,
+                              flexShrink: 0,
                             }}
-                          >
-                            {formatDateTime(item.em)}
-                            {isLatest ? ' · mais recente' : ''}
-                          </div>
-                          <div style={{ marginBottom: 4, color: WHITE }}>
-                            <strong>{item.deEtapaNome}</strong>
-                            {' → '}
-                            <strong>{item.paraEtapaNome}</strong>
-                          </div>
-                          <div style={{ color: WHITE_MUTED, marginBottom: 8 }}>
-                            Por {item.porUsuarioNome}
-                          </div>
-                          <div style={{ color: isLatest ? corDevolvido : WHITE, fontWeight: 600 }}>
-                            {item.justificativa}
-                          </div>
+                          />
+                          <span>
+                            {formatDateTime(h.dataInicio)}
+                            {h.dataConclusao
+                              ? ` → ${formatDateTime(h.dataConclusao)}`
+                              : ' · em aberto'}
+                          </span>
                         </div>
-                      )
-                    })}
-                  </div>
-                </Section>
-              )}
-
-              <Section title="Histórico completo" icon={Clock3}>
-                {detail.pedido.etapasHistorico
-                  .filter(
-                    (h) =>
-                      h.etapaId === detail.node.etapa.id || h.etapaNome === detail.node.etapa.nome,
-                  )
-                  .map((h, index) => (
-                    <div
-                      key={`${h.etapaId}-${index}`}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 10,
-                        border: `1px solid ${WHITE_SOFT}`,
-                        marginBottom: 8,
-                        fontSize: '0.82rem',
-                        color: WHITE,
-                      }}
-                    >
-                      <div style={{ color: WHITE }}>
-                        {formatDateTime(h.dataInicio)}
-                        {h.dataConclusao ? ` → ${formatDateTime(h.dataConclusao)}` : ' (em aberto)'}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-              </Section>
+                  </Section>
+                )}
 
-              <Section title="Dados do processo" icon={FileText}>
-                <Row label="Clínica" value={detail.pedido.clinica.nome} />
-                <Row label="Empresa" value={detail.pedido.empresa.nomeFantasia} />
-                <Row label="Material" value={detail.pedido.material.descricao} />
-                <Row label="Valor" value={formatCurrency(detail.pedido.valor)} />
-              </Section>
-            </div>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+                <Section title="Processo" icon={FileText}>
+                  <MetaBlock
+                    compact
+                    items={[
+                      {
+                        icon: FileText,
+                        label: 'Clínica',
+                        value: detail.pedido.clinica.nome,
+                      },
+                      {
+                        icon: FileText,
+                        label: 'Empresa',
+                        value: detail.pedido.empresa.nomeFantasia,
+                      },
+                      {
+                        icon: FileText,
+                        label: 'Material',
+                        value: detail.pedido.material.descricao,
+                      },
+                      {
+                        icon: FileText,
+                        label: 'Valor',
+                        value: formatCurrency(detail.pedido.valor),
+                      },
+                    ]}
+                  />
+                </Section>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
-    <AuditoriaPlanilhaModal
-      open={planilhaModal.open}
-      pedidoNumero={planilhaModal.pedidoNumero}
-      planilha={planilhaModal.planilha}
-      preferFormato={resolvePreferFormatoPlanilha(planilhaModal.planilha)}
-      title={
-        planilhaModal.pedidoNumero
-          ? `Planilha — ${planilhaModal.pedidoNumero}`
-          : undefined
-      }
-      onClose={() =>
-        setPlanilhaModal({ open: false, pedidoNumero: '', planilha: null })
-      }
-    />
+      <AuditoriaPlanilhaModal
+        open={planilhaModal.open}
+        pedidoNumero={planilhaModal.pedidoNumero}
+        planilha={planilhaModal.planilha}
+        preferFormato={resolvePreferFormatoPlanilha(planilhaModal.planilha)}
+        title={
+          planilhaModal.pedidoNumero
+            ? `Planilha — ${planilhaModal.pedidoNumero}`
+            : undefined
+        }
+        onClose={() =>
+          setPlanilhaModal({ open: false, pedidoNumero: '', planilha: null })
+        }
+      />
 
-    <style>{`
-      .timeline-drawer-status-white span {
-        color: ${WHITE} !important;
-        border-color: ${WHITE_SOFT} !important;
-        background: rgba(255,255,255,0.1) !important;
-      }
-      .timeline-drawer-actions-white button,
-      .timeline-drawer-actions-white {
-        color: ${WHITE} !important;
-      }
-    `}</style>
+      <style>{`
+        .timeline-drawer-status-white span {
+          color: ${WHITE} !important;
+          border-color: ${LINE} !important;
+          background: ${SURFACE} !important;
+        }
+        .timeline-drawer-actions-white button {
+          color: ${WHITE} !important;
+          border-color: ${LINE} !important;
+          background: rgba(255,255,255,0.03) !important;
+          border-radius: 10px !important;
+        }
+        .timeline-drawer-actions-white button:hover:not(:disabled) {
+          background: rgba(255,255,255,0.08) !important;
+        }
+      `}</style>
     </>
   )
 })
@@ -458,16 +585,16 @@ function Section({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 7,
           margin: '0 0 10px',
-          fontSize: '0.72rem',
-          letterSpacing: '0.08em',
+          fontSize: '0.7rem',
+          letterSpacing: '0.1em',
           textTransform: 'uppercase',
-          color: WHITE,
+          color: WHITE_SOFT,
           fontWeight: 700,
         }}
       >
-        <Icon size={14} color={WHITE} />
+        <Icon size={13} color={WHITE_SOFT} />
         {title}
       </h3>
       <div style={{ fontSize: '0.88rem', lineHeight: 1.5, color: WHITE }}>{children}</div>
@@ -475,19 +602,63 @@ function Section({
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function MetaBlock({
+  items,
+  compact = false,
+}: {
+  items: Array<{ icon: typeof User; label: string; value: string }>
+  compact?: boolean
+}) {
   return (
     <div
       style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 12,
-        marginBottom: 6,
-        color: WHITE,
+        display: 'grid',
+        gap: compact ? 0 : 2,
+        marginBottom: compact ? 0 : 18,
+        borderRadius: compact ? 0 : 14,
+        border: compact ? 'none' : `1px solid ${LINE}`,
+        background: compact ? 'transparent' : SURFACE,
+        overflow: 'hidden',
       }}
     >
-      <span style={{ color: WHITE }}>{label}</span>
-      <span style={{ fontWeight: 500, textAlign: 'right', color: WHITE }}>{value}</span>
+      {items.map((item, index) => {
+        const Icon = item.icon
+        return (
+          <div
+            key={`${item.label}-${index}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '18px 1fr auto',
+              alignItems: 'start',
+              gap: 10,
+              padding: compact ? '7px 0' : '11px 13px',
+              borderTop: compact
+                ? index === 0
+                  ? 'none'
+                  : `1px solid ${LINE}`
+                : index === 0
+                  ? 'none'
+                  : `1px solid ${LINE}`,
+            }}
+          >
+            <Icon size={14} color={WHITE_SOFT} style={{ marginTop: 2 }} />
+            <span style={{ color: WHITE_SOFT, fontSize: '0.78rem' }}>{item.label}</span>
+            <span
+              style={{
+                color: WHITE,
+                fontSize: '0.84rem',
+                fontWeight: 600,
+                textAlign: 'right',
+                lineHeight: 1.35,
+                maxWidth: 210,
+                wordBreak: 'break-word',
+              }}
+            >
+              {item.value}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
