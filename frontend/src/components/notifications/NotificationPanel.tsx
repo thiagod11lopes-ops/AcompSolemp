@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
-import type { Notification, NotificationType } from '@/types'
+import type { Notification, NotificationType, UserRole } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
   if (
@@ -60,6 +60,10 @@ function getNotificationPath(n: Notification): string | null {
 interface NotificationPanelProps {
   tipos?: NotificationType[]
   excludeTipos?: NotificationType[]
+  /** Filtra por perfil destino da notificação (aba de setor). */
+  perfilDestino?: UserRole | null
+  /** Filtra por chave de etapa da aba de timeline. */
+  etapaChave?: string | null
   title?: string
   emptyText?: string
   tooltip?: string
@@ -68,17 +72,22 @@ interface NotificationPanelProps {
   iconColor?: 'inherit' | 'warning' | 'primary'
   /** Evita que o clique no sino dispare o NavLink da aba. */
   stopClickPropagation?: boolean
+  /** Sobrescreve o badge (ex.: cards pendentes na aba). */
+  badgeContent?: number
 }
 
 export function NotificationPanel({
   tipos,
   excludeTipos,
+  perfilDestino,
+  etapaChave,
   title = 'Notificações',
   emptyText = 'Nenhuma notificação',
   tooltip = 'Notificações',
   size = 'medium',
   iconColor = 'inherit',
   stopClickPropagation = false,
+  badgeContent,
 }: NotificationPanelProps) {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
@@ -92,12 +101,20 @@ export function NotificationPanel({
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 
-  const filtered = notifications.filter((n) =>
-    notificacaoPertenceAosTipos(n, tipos, excludeTipos),
-  )
+  const filtered = notifications.filter((n) => {
+    if (!notificacaoPertenceAosTipos(n, tipos, excludeTipos)) return false
+    if (perfilDestino && n.perfilDestino && n.perfilDestino !== perfilDestino) {
+      return false
+    }
+    if (etapaChave && n.etapaChave && n.etapaChave !== etapaChave) {
+      return false
+    }
+    return true
+  })
   /** Sinos filtrados por tipo (ex.: Reversões) exibem só não lidas — ciência remove do sino. */
   const visible = tipos && tipos.length > 0 ? filtered.filter((n) => !n.lida) : filtered
   const unread = visible.filter((n) => !n.lida).length
+  const badgeValue = badgeContent ?? unread
 
   const handleMarkAll = async () => {
     await notificationService.markAllAsRead(user?.perfil ?? null, { tipos, excludeTipos })
@@ -119,7 +136,7 @@ export function NotificationPanel({
           }}
           aria-label={tooltip}
         >
-          <Badge badgeContent={unread} color="error">
+          <Badge badgeContent={badgeValue} color="error" max={99}>
             <NotificationsIcon fontSize={size === 'small' ? 'small' : 'medium'} />
           </Badge>
         </IconButton>

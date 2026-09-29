@@ -1,5 +1,4 @@
 import {
-  Badge,
   Drawer,
   List,
   ListItemButton,
@@ -20,15 +19,16 @@ import HourglassTopIcon from '@mui/icons-material/HourglassTop'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 import { NavLink, useLocation } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
-import { NotificationPanel } from '@/components/notifications/NotificationPanel'
+import { TimelineAbaSino } from '@/components/notifications/TimelineAbaSino'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetores'
-import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
+import {
+  etapaChaveDaAbaSetor,
+  useContagemPendenciasSetores,
+} from '@/hooks/useContagemPendenciasSetores'
 import {
   setorNavItemsParaUsuario,
   userPodeVerAbaBalanco,
@@ -58,15 +58,13 @@ interface OrdenadorSidebarProps {
   onClose: () => void
 }
 
-function isAbaTimelinesImh(item: {
+function isAbaTimeline(item: {
   path: string
   perfil?: UserRole
   etapa?: string
 }): boolean {
-  if (item.perfil === 'CONTABILIDADE_IMH' || item.etapa === 'DIV_MAT_CONTABILIDADE_IMH') {
-    return true
-  }
-  return item.path.includes('/ordenador/timelines') && !item.etapa && !item.perfil
+  if (item.etapa || item.perfil) return true
+  return item.path.includes('/ordenador/timelines')
 }
 
 export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps) {
@@ -144,18 +142,15 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                 !(multiSetor && isTimelinesPath && etapaAtual)
 
             const perfilItem = 'perfil' in item ? item.perfil : undefined
-            const isAbaSetor = Boolean(etapa || (perfilItem && multiSetor))
-            const pendencias =
-              multiSetor && isAbaSetor
-                ? contagemParaItem({ etapa, perfil: perfilItem })
-                : 0
-            const showSinoImh =
-              isImh &&
-              isAbaTimelinesImh({
-                path: item.path,
-                perfil: perfilItem,
-                etapa,
-              })
+            const abaTimeline = isAbaTimeline({
+              path: item.path,
+              perfil: perfilItem,
+              etapa,
+            })
+            const pendencias = abaTimeline
+              ? contagemParaItem({ etapa, perfil: perfilItem })
+              : 0
+            const etapaChave = etapaChaveDaAbaSetor({ etapa, perfil: perfilItem }) ?? undefined
 
             return (
               <ListItemButton
@@ -189,43 +184,13 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                       <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
                         {item.label}
                       </Typography>
-                      {showSinoImh ? (
-                        <Box
-                          sx={{ display: 'flex', alignItems: 'center' }}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            event.stopPropagation()
-                          }}
-                        >
-                          <NotificationPanel
-                            tipos={TIPOS_NOTIFICACAO_TIMELINE_SETOR}
-                            title="Notificações — Timelines"
-                            emptyText="Nenhuma notificação de timeline"
-                            tooltip="Notificações de Timelines"
-                            size="small"
-                            iconColor="warning"
-                            stopClickPropagation
-                          />
-                        </Box>
-                      ) : multiSetor && isAbaSetor ? (
-                        <Badge
-                          badgeContent={pendencias}
-                          color="error"
-                          max={99}
-                          showZero
-                          sx={{
-                            '& .MuiBadge-badge': {
-                              fontSize: '0.65rem',
-                              minWidth: 18,
-                              height: 18,
-                            },
-                          }}
-                        >
-                          <NotificationsNoneIcon
-                            fontSize="small"
-                            sx={{ color: pendencias > 0 ? 'warning.main' : 'text.secondary' }}
-                          />
-                        </Badge>
+                      {abaTimeline ? (
+                        <TimelineAbaSino
+                          pendencias={pendencias}
+                          etapaChave={etapaChave}
+                          perfil={perfilItem}
+                          iconColor="warning"
+                        />
                       ) : null}
                     </Box>
                   }
