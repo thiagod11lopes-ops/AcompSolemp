@@ -218,81 +218,182 @@ export default function FinanceiroPagamentoDetailPage() {
         <Box
           component="aside"
           sx={{
-            width: { xs: '100%', md: 280 },
-            minWidth: { md: 260 },
-            maxWidth: { md: 300 },
+            width: { xs: '100%', md: 268 },
+            minWidth: { md: 248 },
+            maxWidth: { md: 280 },
             flexShrink: 0,
             borderLeft: { xs: 0, md: 1 },
             borderTop: { xs: 1, md: 0 },
             borderColor: 'divider',
             bgcolor: 'rgba(85, 139, 113, 0.04)',
-            p: 2.5,
+            p: 2,
             display: 'flex',
             flexDirection: 'column',
-            gap: 2,
-            position: { md: 'sticky' },
-            top: { md: 0 },
-            alignSelf: 'stretch',
+            gap: 1.25,
+            alignSelf: { xs: 'stretch', md: 'flex-start' },
           }}
         >
-          <Box>
-            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.1 }}>
-              Resumo
-            </Typography>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.25 }}>
-              Dados do Processo
-            </Typography>
-            <Box sx={{ display: 'grid', gap: 0.85 }}>
-              <Typography variant="body2">
-                <strong>Clínica:</strong> {pedido.clinica.nome}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+            }}
+          >
+            <Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  color: 'text.secondary',
+                  fontWeight: 700,
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                  fontSize: '0.65rem',
+                  lineHeight: 1.2,
+                }}
+              >
+                Resumo
               </Typography>
-              <Typography variant="body2">
-                <strong>Material:</strong> {pedido.material.descricao}
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
+                Dados do Processo
               </Typography>
-              <Typography variant="body2">
-                <strong>Valor:</strong> {formatCurrency(pedido.valor)}
+            </Box>
+            <Chip
+              label={statusLabel}
+              color={statusColor}
+              size="small"
+              sx={{ fontWeight: 700, maxWidth: 132, '& .MuiChip-label': { px: 0.75 } }}
+            />
+          </Box>
+
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 0.7,
+              p: 1.25,
+              borderRadius: 1.5,
+              bgcolor: 'background.paper',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            {(
+              [
+                ['Clínica', pedido.clinica.nome],
+                ['Material', pedido.material.descricao],
+                ['Solicitação', formatDate(pedido.dataSolicitacao)],
+              ] as const
+            ).map(([label, value]) => (
+              <Box
+                key={label}
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '78px 1fr',
+                  columnGap: 0.75,
+                  alignItems: 'baseline',
+                  minWidth: 0,
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  {label}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: 700,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={value}
+                >
+                  {value}
+                </Typography>
+              </Box>
+            ))}
+            <Divider sx={{ my: 0.15 }} />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Valor
               </Typography>
-              <Typography variant="body2">
-                <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                {formatCurrency(pedido.valor)}
               </Typography>
-              <Chip
-                label={statusLabel}
-                color={statusColor}
-                size="small"
-                sx={{ width: 'fit-content', mt: 0.5, fontWeight: 700 }}
-              />
             </Box>
           </Box>
 
           {pedido.solemp && (
-            <>
-              <Divider />
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.75 }}>
-                  SOLEMP
-                </Typography>
-                <Typography variant="h6" color="primary" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
-                  {pedido.solemp.numero}
-                </Typography>
+            <Box
+              sx={{
+                p: 1.25,
+                borderRadius: 1.5,
+                bgcolor: 'rgba(85, 139, 113, 0.1)',
+                border: 1,
+                borderColor: 'rgba(85, 139, 113, 0.22)',
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  color: 'primary.dark',
+                  fontSize: '0.65rem',
+                  mb: 0.35,
+                }}
+              >
+                SOLEMP
+              </Typography>
+              <Typography
+                variant="subtitle2"
+                color="primary"
+                sx={{ fontWeight: 800, lineHeight: 1.25, wordBreak: 'break-word' }}
+              >
+                {pedido.solemp.numero}
+              </Typography>
+              <Box
+                sx={{
+                  mt: 0.65,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 0.75,
+                }}
+              >
                 {pedido.solemp.valor != null && (
-                  <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700 }}>
                     {formatCurrency(pedido.solemp.valor)}
                   </Typography>
                 )}
                 {pedido.notaFiscal && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Nota fiscal:</strong> {pedido.notaFiscal.numero}
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    NF {pedido.notaFiscal.numero}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.25, lineHeight: 1.45 }}>
-                  {pagamentoConcluido
-                    ? 'Pagamento registrado e processo arquivado pelo Financeiro.'
-                    : pedido.aguardandoEmpenho
-                      ? 'Marcado como Aguardando Empenhar. A timeline permanece em Aguardando NE até o registro do pagamento.'
-                      : 'Use Aguardando Empenhar para a tarja laranja, ou Registrar pagamento para avançar.'}
-                </Typography>
               </Box>
-            </>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mt: 0.75, lineHeight: 1.35 }}
+              >
+                {pagamentoConcluido
+                  ? 'Pagamento registrado e arquivado.'
+                  : pedido.aguardandoEmpenho
+                    ? 'Aguardando empenho — timeline permanece em Aguardando NE.'
+                    : 'Aguardando Empenhar ou Registrar pagamento.'}
+              </Typography>
+            </Box>
           )}
         </Box>
       </Box>
