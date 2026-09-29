@@ -3,17 +3,17 @@ import {
   Button,
   CircularProgress,
   Dialog,
-  DialogActions,
   DialogContent,
-  DialogTitle,
   IconButton,
   Stack,
   Typography,
   alpha,
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import DownloadIcon from '@mui/icons-material/Download'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
+import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import { useEffect, useState } from 'react'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
@@ -47,6 +47,7 @@ function mergeAnexos(local: ArquivoAnexo[], remote: ArquivoAnexo[]): ArquivoAnex
 }
 
 export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosModalProps) {
+  const theme = useTheme()
   const cloudSync = useCloudAppDataSync()
   const [anexos, setAnexos] = useState<ArquivoAnexo[]>([])
   const [loading, setLoading] = useState(false)
@@ -87,25 +88,82 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
   }, [open, pedidoId, cloudSync])
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
-        Arquivos anexados
-        <IconButton
-          onClick={onClose}
-          sx={{ position: 'absolute', right: 12, top: 12 }}
-          aria-label="Fechar"
-        >
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        backdrop: {
+          sx: {
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha('#0b1220', 0.55),
+          },
+        },
+        paper: {
+          sx: {
+            borderRadius: 5,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+            background: `
+              radial-gradient(120% 80% at 0% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 55%),
+              radial-gradient(100% 70% at 100% 100%, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 50%),
+              ${theme.palette.background.paper}
+            `,
+            boxShadow: `0 32px 100px ${alpha('#000', 0.35)}`,
+          },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          px: 3,
+          pt: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `linear-gradient(145deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              color: '#fff',
+              boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
+            }}
+          >
+            <FolderOpenIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Box>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
+              Planilha
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+              Arquivos anexados
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton onClick={onClose} size="small" aria-label="Fechar">
           <CloseIcon />
         </IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
+      </Box>
+
+      <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
         {loading && anexos.length === 0 ? (
           <Box sx={{ py: 4, display: 'grid', placeItems: 'center' }}>
             <CircularProgress size={28} />
           </Box>
         ) : anexos.length === 0 ? (
-          <Box sx={{ py: 3, textAlign: 'center', opacity: 0.7 }}>
-            <AttachFileIcon sx={{ fontSize: 36, mb: 1, opacity: 0.5 }} />
+          <Box sx={{ py: 3, textAlign: 'center' }}>
+            <AttachFileIcon sx={{ fontSize: 36, mb: 1, color: 'text.secondary', opacity: 0.5 }} />
             <Typography variant="body2" color="text.secondary">
               Nenhum arquivo foi anexado nesta planilha.
             </Typography>
@@ -122,15 +180,15 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
               return (
                 <Box
                   key={arquivo.id}
-                  sx={(theme) => ({
+                  sx={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1.25,
                     p: 1.5,
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                    bgcolor: alpha(theme.palette.primary.main, 0.03),
-                  })}
+                    borderRadius: 2.5,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+                    bgcolor: alpha(theme.palette.primary.main, 0.04),
+                  }}
                 >
                   <AttachFileIcon color="primary" sx={{ flexShrink: 0 }} />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -148,6 +206,7 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
                   <Button
                     size="small"
                     variant="contained"
+                    color="primary"
                     startIcon={
                       baixandoId === arquivo.id ? (
                         <CircularProgress size={14} color="inherit" />
@@ -171,12 +230,13 @@ export function PlanilhaAnexosModal({ open, pedidoId, onClose }: PlanilhaAnexosM
             })}
           </Stack>
         )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          <Button onClick={onClose} color="inherit" sx={{ fontWeight: 700 }}>
+            Fechar
+          </Button>
+        </Box>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 700 }}>
-          Fechar
-        </Button>
-      </DialogActions>
     </Dialog>
   )
 }

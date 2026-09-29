@@ -2,10 +2,12 @@ import {
   Box,
   Button,
   Dialog,
+  DialogContent,
   IconButton,
   Stack,
   Typography,
   alpha,
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -35,6 +37,7 @@ export function ClinicaEnvioParaleloModal({
   onVisualizarConfeccao,
   onEnviarAmbas,
 }: ClinicaEnvioParaleloModalProps) {
+  const theme = useTheme()
   const total = rows.reduce((sum, row) => sum + (row.valorNumerico || 0), 0)
 
   return (
@@ -44,57 +47,80 @@ export function ClinicaEnvioParaleloModal({
       maxWidth="sm"
       fullWidth
       slotProps={{
-        paper: {
+        backdrop: {
           sx: {
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'linear-gradient(165deg, #0f172a 0%, #1e293b 55%, #0b3d91 140%)',
-            color: '#f8fafc',
-            boxShadow: '0 28px 80px rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha('#0b1220', 0.55),
           },
         },
-        backdrop: {
-          sx: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(2,6,23,0.55)' },
+        paper: {
+          sx: {
+            borderRadius: 5,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+            background: `
+              radial-gradient(120% 80% at 0% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 55%),
+              radial-gradient(100% 70% at 100% 100%, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 50%),
+              ${theme.palette.background.paper}
+            `,
+            boxShadow: `0 32px 100px ${alpha('#000', 0.35)}`,
+          },
         },
       }}
     >
-      <Box sx={{ position: 'relative', p: { xs: 2.5, sm: 3.5 } }}>
-        <IconButton
-          onClick={onClose}
-          disabled={isSubmitting}
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            color: alpha('#fff', 0.8),
-            '&:hover': { bgcolor: alpha('#fff', 0.08) },
-          }}
-          aria-label="Fechar"
-        >
+      <Box
+        sx={{
+          px: 3,
+          pt: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `linear-gradient(145deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              color: '#fff',
+              boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
+            }}
+          >
+            <SendIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Box>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
+              Envio para Auditoria
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+              Div. de Material — Auditoria
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton onClick={onClose} disabled={isSubmitting} size="small" aria-label="Fechar">
           <CloseIcon />
         </IconButton>
+      </Box>
 
-        <Stack spacing={0.75} sx={{ pr: 5, mb: 3 }}>
-          <Typography
-            variant="overline"
-            sx={{ letterSpacing: 1.6, color: alpha('#93c5fd', 0.95), fontWeight: 700 }}
-          >
-            Envio para Auditoria
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-            Div. de Material — Auditoria
-          </Typography>
-          <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.82) }}>
-            {rows.length} lançamento(s) selecionado(s) · Total {formatValorBrasileiro(total)}. A
-            Auditoria encaminhará a planilha para IMH e Confecção de Solemp.
-          </Typography>
-        </Stack>
+      <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          {rows.length} lançamento(s) selecionado(s) · Total {formatValorBrasileiro(total)}. A
+          Auditoria encaminhará a planilha para IMH e Confecção de Solemp.
+        </Typography>
 
         <Stack spacing={1.5}>
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
             <Button
               fullWidth
-              variant="contained"
+              variant="outlined"
+              color="info"
               size="large"
               startIcon={<DescriptionIcon />}
               endIcon={<VisibilityIcon />}
@@ -107,14 +133,6 @@ export function ClinicaEnvioParaleloModal({
                 borderRadius: 3,
                 textTransform: 'none',
                 fontWeight: 700,
-                bgcolor: alpha('#38bdf8', 0.16),
-                color: '#e0f2fe',
-                border: `1px solid ${alpha('#38bdf8', 0.35)}`,
-                boxShadow: 'none',
-                '&:hover': {
-                  bgcolor: alpha('#38bdf8', 0.24),
-                  boxShadow: `0 12px 28px ${alpha('#0ea5e9', 0.25)}`,
-                },
               }}
             >
               Visualizar planilha — Auditoria
@@ -124,7 +142,8 @@ export function ClinicaEnvioParaleloModal({
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
             <Button
               fullWidth
-              variant="contained"
+              variant="outlined"
+              color="primary"
               size="large"
               startIcon={<InventoryIcon />}
               endIcon={<VisibilityIcon />}
@@ -137,14 +156,6 @@ export function ClinicaEnvioParaleloModal({
                 borderRadius: 3,
                 textTransform: 'none',
                 fontWeight: 700,
-                bgcolor: alpha('#a78bfa', 0.16),
-                color: '#ede9fe',
-                border: `1px solid ${alpha('#a78bfa', 0.35)}`,
-                boxShadow: 'none',
-                '&:hover': {
-                  bgcolor: alpha('#a78bfa', 0.24),
-                  boxShadow: `0 12px 28px ${alpha('#8b5cf6', 0.25)}`,
-                },
               }}
             >
               Visualizar planilha — Confecção de Solemp
@@ -152,45 +163,29 @@ export function ClinicaEnvioParaleloModal({
           </motion.div>
         </Stack>
 
-        <Box
-          sx={{
-            mt: 3,
-            pt: 2.5,
-            borderTop: `1px solid ${alpha('#fff', 0.12)}`,
-          }}
-        >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 3 }}>
+          <Button onClick={onClose} disabled={isSubmitting} color="inherit">
+            Cancelar
+          </Button>
           <Button
-            fullWidth
             variant="contained"
-            size="large"
-            startIcon={<SendIcon />}
+            color="primary"
             onClick={onEnviarAmbas}
             disabled={isSubmitting || rows.length === 0}
-            sx={{
-              py: 1.9,
-              borderRadius: 3,
-              textTransform: 'none',
-              fontWeight: 800,
-              fontSize: '1rem',
-              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-              boxShadow: '0 14px 34px rgba(37,99,235,0.35)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%)',
-              },
-            }}
+            startIcon={<SendIcon />}
+            sx={{ fontWeight: 700 }}
           >
-            {isSubmitting
-              ? 'Enviando para Auditoria...'
-              : 'Enviar para Auditoria'}
+            {isSubmitting ? 'Enviando...' : 'Enviar para Auditoria'}
           </Button>
-          <Typography
-            variant="caption"
-            sx={{ display: 'block', mt: 1.25, textAlign: 'center', color: alpha('#cbd5e1', 0.8) }}
-          >
-            Após a Auditoria, a planilha segue para IMH e Confecção de Solemp.
-          </Typography>
         </Box>
-      </Box>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 1.25, textAlign: 'right' }}
+        >
+          Após a Auditoria, a planilha segue para IMH e Confecção de Solemp.
+        </Typography>
+      </DialogContent>
     </Dialog>
   )
 }
