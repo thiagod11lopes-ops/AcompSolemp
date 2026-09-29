@@ -1,26 +1,22 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Grid,
   Paper,
   Typography,
   Button,
   Chip,
   Box,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
+import { TimelineDetalhesPanel } from '@/components/timeline/TimelineDetalhesPanel'
 import { useDemoPedido, usePedido } from '@/hooks/usePedidos'
 import { useDemoHistorico, useDemoWorkflowEtapas, useHistorico, useWorkflowEtapas } from '@/hooks/useCadastros'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
-import { formatCurrency, formatDate, formatDateTime, formatNip } from '@/utils/format'
+import { formatCurrency } from '@/utils/format'
 
 export default function GestorTimelineDetailPage() {
   const { id = '' } = useParams()
@@ -116,132 +112,24 @@ export default function GestorTimelineDetailPage() {
         </Typography>
       </Paper>
 
-      <Box sx={{ mb: 3 }}>
-        <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 2,
+          alignItems: 'stretch',
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
+        </Box>
+        <TimelineDetalhesPanel
+          pedido={pedido}
+          historico={historico}
+          mostrarClinica
+        />
       </Box>
-
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
-              Dados do lançamento
-            </Typography>
-            <Box sx={{ display: 'grid', gap: 1 }}>
-              <Typography variant="body2">
-                <strong>Clínica:</strong> {pedido.clinica.nome}
-              </Typography>
-              {pedido.paciente && (
-                <>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 0.5 }}>
-                    Paciente
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Nome:</strong> {pedido.paciente.nome}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Vínculo:</strong>{' '}
-                    {pedido.paciente.vinculo === 'TITULAR' ? 'Titular' : 'Dependente'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>NIP:</strong> {formatNip(pedido.paciente.nip)}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>NIP do titular:</strong> {formatNip(pedido.paciente.nipTitular)}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Nome do titular:</strong> {pedido.paciente.nomeTitular}
-                  </Typography>
-                </>
-              )}
-              {pedido.dadosClinica && (
-                <>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1.5 }}>
-                    Procedimento
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Médico:</strong> {pedido.dadosClinica.medico}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Procedimento:</strong> {pedido.dadosClinica.procedimento}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Data da Cirurgia:</strong>{' '}
-                    {formatDate(pedido.dadosClinica.dataCirurgia)}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Material:</strong> {pedido.dadosClinica.materialUtilizado}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Valor Total:</strong>{' '}
-                    {formatCurrency(pedido.dadosClinica.valorTotal)}
-                  </Typography>
-                </>
-              )}
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                <strong>Solicitação:</strong> {formatDate(pedido.dataSolicitacao)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Valor:</strong> {formatCurrency(pedido.valor)}
-              </Typography>
-            </Box>
-          </Paper>
-
-          {pedido.solemp && (
-            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                SOLEMP
-              </Typography>
-              <Typography variant="body2">
-                <strong>Número:</strong> {pedido.solemp.numero}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Data:</strong> {formatDate(pedido.solemp.data)}
-              </Typography>
-            </Paper>
-          )}
-
-          {pedido.notaFiscal && (
-            <Paper sx={{ p: 2.5, mt: 2, borderRadius: 3 }} elevation={0} variant="outlined">
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                Nota Fiscal
-              </Typography>
-              <Typography variant="body2">
-                <strong>Número:</strong> {pedido.notaFiscal.numero}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Data:</strong> {formatDate(pedido.notaFiscal.dataEmissao)}
-              </Typography>
-            </Paper>
-          )}
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Paper sx={{ p: 2.5, borderRadius: 3 }} elevation={0} variant="outlined">
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-              Histórico
-            </Typography>
-            <List dense>
-              {historico.map((h, i) => (
-                <Box key={h.id}>
-                  <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={h.etapaNome}
-                      secondary={
-                        <>
-                          {h.usuarioNome} · {formatDateTime(h.data)}
-                          <br />
-                          {h.observacao}
-                        </>
-                      }
-                    />
-                  </ListItem>
-                  {i < historico.length - 1 && <Divider />}
-                </Box>
-              ))}
-            </List>
-          </Paper>
-        </Grid>
-      </Grid>
     </>
   )
 }
