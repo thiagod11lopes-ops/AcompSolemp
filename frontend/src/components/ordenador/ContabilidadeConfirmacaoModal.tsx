@@ -223,13 +223,13 @@ export function ContabilidadeConfirmacaoModal({
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Anotações são opcionais. Se quiser, registre observações ao concluir a IMH.
+          Comentários são opcionais. Se quiser, registre observações ao concluir a IMH.
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <NotesIcon fontSize="small" color="action" />
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            Anotações
+            Comentários
           </Typography>
           <Chip label="Opcional" size="small" variant="outlined" sx={{ height: 22 }} />
         </Box>
@@ -241,7 +241,7 @@ export function ContabilidadeConfirmacaoModal({
           maxRows={8}
           value={anotacoes}
           onChange={(e) => setAnotacoes(e.target.value)}
-          placeholder="Escreva anotações da IMH, se necessário…"
+          placeholder="Escreva comentários da IMH, se necessário…"
           disabled={loading}
           sx={{
             mb: 3,

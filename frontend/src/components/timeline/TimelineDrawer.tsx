@@ -9,7 +9,10 @@ import { timelineTheme } from './theme'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import {
+  listComentariosTimeline,
+  pedidoPlanilhaEnvioService,
+} from '@/services/pedidoPlanilhaEnvioService'
 import {
   buildCorrigirDevolucaoPath,
   usuarioPodeCorrigirDevolucao,
@@ -74,7 +77,8 @@ export const TimelineDrawer = memo(function TimelineDrawer({
     detail?.pedido.etapasHistorico.find((h) => h.responsavelNome)?.responsavelNome ||
     'Não atribuído'
 
-  const comentarioEnvio = planilhaEnvio?.comentarioEnvio?.trim() || ''
+  const comentariosTimeline = listComentariosTimeline(planilhaEnvio)
+  const COR_COMENTARIO = '#fb923c'
 
   const corrigirPath =
     detail && isDevolvido
@@ -375,13 +379,49 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
                       Justificativa não registrada.
                     </span>
-                  ) : comentarioEnvio ? (
-                    <span style={{ color: WHITE, fontSize: '0.9rem', lineHeight: 1.55 }}>
-                      {comentarioEnvio}
-                    </span>
+                  ) : comentariosTimeline.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {comentariosTimeline.map((item) => (
+                        <div key={item.id}>
+                          <div
+                            style={{
+                              color: WHITE,
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              marginBottom: 4,
+                              letterSpacing: '0.01em',
+                            }}
+                          >
+                            {item.responsavelNome}
+                            {item.etapaNome ? (
+                              <span
+                                style={{
+                                  color: WHITE_SOFT,
+                                  fontWeight: 500,
+                                  marginLeft: 6,
+                                }}
+                              >
+                                · {item.etapaNome}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p
+                            style={{
+                              margin: 0,
+                              color: COR_COMENTARIO,
+                              fontSize: '0.9rem',
+                              fontWeight: 600,
+                              lineHeight: 1.55,
+                            }}
+                          >
+                            {item.texto}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
-                      Nenhum comentário registrado nesta etapa.
+                      Nenhum comentário registrado neste processo.
                     </span>
                   )}
                   {isDevolvido && podeCorrigir && corrigirPath ? (

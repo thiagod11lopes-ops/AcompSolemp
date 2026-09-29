@@ -1140,6 +1140,8 @@ export default function ClinicaNovoPedidoPage() {
         comentarioEnvio,
         enviadoPorId: user?.id ?? null,
         enviadoPorNome: user?.nome ?? clinicaNome,
+        etapaChave: 'SOLICITACAO',
+        etapaNome: 'Clínica',
       })
 
       const anexosParaEnviar =

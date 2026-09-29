@@ -378,9 +378,22 @@ export default function OrdenadorTimelineDetailPage() {
     )
   }
 
-  const handleEnviarConfeccao = ({ numero, valor }: { numero: string; valor: number }) => {
+  const handleEnviarConfeccao = ({
+    numero,
+    valor,
+    comentario,
+  }: {
+    numero: string
+    valor: number
+    comentario?: string
+  }) => {
     assinar.mutate(
-      { pedidoId: pedido.id, solempNumero: numero, solempValor: valor },
+      {
+        pedidoId: pedido.id,
+        solempNumero: numero,
+        solempValor: valor,
+        anotacoes: comentario,
+      },
       { onSuccess: concluirComSucesso },
     )
   }

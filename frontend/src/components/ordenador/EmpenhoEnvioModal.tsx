@@ -179,10 +179,10 @@ export function EmpenhoEnvioModal({
 
         <TextField
           fullWidth
-          label="Observações"
+          label="Comentários"
           value={observacoes}
           onChange={(e) => setObservacoes(e.target.value)}
-          placeholder="Observações opcionais sobre o empenho"
+          placeholder="Comentários opcionais — seguem na timeline com o seu nome"
           disabled={loading}
           margin="normal"
           multiline

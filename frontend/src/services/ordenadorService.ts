@@ -186,7 +186,22 @@ export const ordenadorService = {
       )
     }
 
+    let comentarioParaSalvar: {
+      texto: string
+      etapaChave: string
+      etapaNome: string
+    } | null = null
+
     if (usaCadeiaSolemp) {
+      const notasCadeia = (options?.observacoes ?? options?.anotacoes)?.trim()
+      if (notasCadeia && chavePendente) {
+        const etapaCadeia = data.workflowEtapas.find((e) => e.chave === chavePendente)
+        comentarioParaSalvar = {
+          texto: notasCadeia,
+          etapaChave: chavePendente,
+          etapaNome: etapaCadeia?.nome ?? chavePendente,
+        }
+      }
       data = assinarSolempForPedido(data, pedidoId, usuario, {
         numero: options?.solempNumero,
         valor: options?.solempValor,
@@ -216,16 +231,24 @@ export const ordenadorService = {
       let observacao: string
       if (chave === 'DIV_MAT_AUDITORIA') {
         observacao = notas
-          ? `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para IMH e Confecção de Solemp. Anotações: ${notas}`
+          ? `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para IMH e Confecção de Solemp. Comentários: ${notas}`
           : `Auditoria concluída por ${usuario.nome}. Planilha da Div. de Material enviada para IMH e Confecção de Solemp.`
       } else if (chave === 'DIV_MAT_CONTABILIDADE_IMH') {
         observacao = notas
-          ? `IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Anotações: ${notas}`
+          ? `IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Comentários: ${notas}`
           : `IMH concluída por ${usuario.nome}. Itens conferidos e confirmados como corretos. Etapa finalizada.`
       } else {
         observacao = notas
-          ? `${etapa.nome} concluída por ${usuario.nome}. Anotações: ${notas}`
+          ? `${etapa.nome} concluída por ${usuario.nome}. Comentários: ${notas}`
           : `${etapa.nome} concluída por ${usuario.nome}.`
+      }
+
+      if (notas) {
+        comentarioParaSalvar = {
+          texto: notas,
+          etapaChave: chave,
+          etapaNome: etapa.nome,
+        }
       }
 
       data = advancePedidoEtapa(data, pedidoId, usuario, observacao, etapa.id)
@@ -233,15 +256,30 @@ export const ordenadorService = {
 
     await persistSetorData(data)
 
-    // Depois do avanço persistido: marca encaminhamento sem sobrescrever o pedido.
+    // Depois do avanço: comentário cumulativo + encaminhamento (não sobrescrever o pedido).
+    if (comentarioParaSalvar) {
+      pedidoPlanilhaEnvioService.addComentario(pedidoId, {
+        texto: comentarioParaSalvar.texto,
+        responsavelId: usuario.id,
+        responsavelNome: usuario.nome,
+        etapaChave: comentarioParaSalvar.etapaChave,
+        etapaNome: comentarioParaSalvar.etapaNome,
+      })
+    }
     if (!usaCadeiaSolemp) {
       const chaveFinal = chavePendente ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]
       if (chaveFinal === 'DIV_MAT_AUDITORIA') {
         pedidoPlanilhaEnvioService.markEncaminhadaImh(pedidoId)
-        if (useCloudAppDataSync()) {
-          await flushSupabaseAppDataSync()
-        }
       }
+    }
+    if (
+      (comentarioParaSalvar ||
+        (!usaCadeiaSolemp &&
+          (chavePendente ?? PERFIL_PARA_CHAVE_ETAPA[usuario.perfil]) ===
+            'DIV_MAT_AUDITORIA')) &&
+      useCloudAppDataSync()
+    ) {
+      await flushSupabaseAppDataSync()
     }
 
     const dataFinal = loadAppData()
