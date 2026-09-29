@@ -61,29 +61,22 @@ export function TimelineDetalhesPanel({
   const [open, setOpen] = useState(false)
   const fotos = asStringArray(pedido.dadosClinica?.fotos)
 
-  const resumo = useMemo(() => {
-    const linhas: string[] = []
-    if (mostrarClinica) linhas.push(pedido.clinica.nome)
-    if (pedido.paciente?.nome) linhas.push(pedido.paciente.nome)
-    else if (pedido.material.descricao) linhas.push(pedido.material.descricao)
+  const linhasResumo = useMemo(() => {
+    const linhas: { label: string; value: string }[] = []
+    if (mostrarClinica) {
+      linhas.push({ label: 'Clínica', value: pedido.clinica.nome })
+    }
+    if (pedido.paciente?.nome) {
+      linhas.push({ label: 'Paciente', value: pedido.paciente.nome })
+    } else if (pedido.material.descricao) {
+      linhas.push({ label: 'Material', value: pedido.material.descricao })
+    }
     if (pedido.dadosClinica?.procedimento) {
-      linhas.push(pedido.dadosClinica.procedimento)
+      linhas.push({ label: 'Procedimento', value: pedido.dadosClinica.procedimento })
     }
-    return linhas.slice(0, 3)
+    linhas.push({ label: 'Solicitação', value: formatDate(pedido.dataSolicitacao) })
+    return linhas.slice(0, 4)
   }, [pedido, mostrarClinica])
-
-  const chipsResumo = useMemo(() => {
-    const items: string[] = []
-    items.push(formatCurrency(pedido.valor))
-    if (pedido.solemp?.numero) items.push(`SOLEMP ${pedido.solemp.numero}`)
-    if (pedido.notaFiscal?.numero) items.push(`NF ${pedido.notaFiscal.numero}`)
-    if (historico.length > 0) {
-      items.push(
-        historico.length === 1 ? '1 evento' : `${historico.length} eventos`,
-      )
-    }
-    return items
-  }, [pedido, historico.length])
 
   return (
     <>
@@ -97,25 +90,24 @@ export function TimelineDetalhesPanel({
           border: '1px solid',
           borderColor: 'divider',
           bgcolor: 'background.paper',
-          borderRadius: 3,
-          width: { xs: '100%', md: 220 },
-          minWidth: { md: 200 },
-          maxWidth: { md: 240 },
+          borderRadius: 2.5,
+          width: { xs: '100%', md: 248 },
+          minWidth: { md: 232 },
+          maxWidth: { md: 264 },
           flexShrink: 0,
-          p: 2,
+          alignSelf: { xs: 'stretch', md: 'flex-start' },
+          p: 1.75,
           textAlign: 'left',
           cursor: 'pointer',
           display: 'flex',
           flexDirection: 'column',
-          gap: 1.25,
-          alignSelf: { xs: 'stretch', md: 'stretch' },
-          minHeight: { md: 220 },
-          boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-          transition: 'transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+          gap: 1.1,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
           '&:hover': {
-            transform: 'translateY(-2px)',
             borderColor: 'primary.main',
-            boxShadow: '0 8px 22px rgba(63, 107, 86, 0.16)',
+            boxShadow: '0 6px 18px rgba(63, 107, 86, 0.14)',
+            '& .resumo-cta': { color: 'primary.dark' },
           },
         }}
       >
@@ -123,77 +115,179 @@ export function TimelineDetalhesPanel({
           sx={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
             gap: 1,
           }}
         >
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: 2,
+              width: 30,
+              height: 30,
+              borderRadius: 1.5,
               display: 'grid',
               placeItems: 'center',
               bgcolor: 'rgba(85, 139, 113, 0.12)',
               color: 'primary.main',
+              flexShrink: 0,
             }}
           >
-            <DescriptionOutlinedIcon fontSize="small" />
+            <DescriptionOutlinedIcon sx={{ fontSize: 18 }} />
           </Box>
-          <ChevronRightIcon sx={{ color: 'text.secondary' }} />
-        </Box>
-
-        <Typography
-          variant="overline"
-          sx={{ letterSpacing: 1.1, color: 'text.secondary', lineHeight: 1.2 }}
-        >
-          Resumo
-        </Typography>
-        <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
-          Dados do lançamento
-        </Typography>
-
-        <Box sx={{ display: 'grid', gap: 0.35, flex: 1 }}>
-          {resumo.map((linha) => (
+          <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography
-              key={linha}
-              variant="body2"
-              color="text.secondary"
+              variant="caption"
               sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                display: 'block',
+                color: 'text.secondary',
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                lineHeight: 1.2,
+                fontSize: '0.65rem',
               }}
-              title={linha}
             >
-              {linha}
+              Resumo
             </Typography>
-          ))}
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 800, lineHeight: 1.2, mt: 0.15 }}
+            >
+              Dados do lançamento
+            </Typography>
+          </Box>
+          <ChevronRightIcon sx={{ color: 'text.secondary', fontSize: 20, flexShrink: 0 }} />
         </Box>
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6, mt: 'auto' }}>
-          {chipsResumo.map((chip) => (
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 0.65,
+            py: 0.85,
+            px: 1,
+            borderRadius: 1.5,
+            bgcolor: 'rgba(85, 139, 113, 0.06)',
+          }}
+        >
+          {linhasResumo.map((linha) => (
             <Box
-              key={chip}
+              key={linha.label}
               sx={{
-                px: 0.9,
-                py: 0.35,
-                borderRadius: 999,
-                bgcolor: 'rgba(85, 139, 113, 0.1)',
-                color: 'primary.dark',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                letterSpacing: '0.02em',
+                display: 'grid',
+                gridTemplateColumns: '76px 1fr',
+                columnGap: 0.75,
+                alignItems: 'baseline',
+                minWidth: 0,
               }}
             >
-              {chip}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 600, lineHeight: 1.35 }}
+              >
+                {linha.label}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  lineHeight: 1.35,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  color: 'text.primary',
+                }}
+                title={linha.value}
+              >
+                {linha.value}
+              </Typography>
             </Box>
           ))}
         </Box>
 
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 1,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+            Valor
+          </Typography>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+            {formatCurrency(pedido.valor)}
+          </Typography>
+        </Box>
+
+        {(pedido.solemp?.numero || pedido.notaFiscal?.numero || historico.length > 0) && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              pt: 0.35,
+              borderTop: 1,
+              borderColor: 'divider',
+            }}
+          >
+            {pedido.solemp?.numero && (
+              <Box
+                sx={{
+                  px: 0.75,
+                  py: 0.2,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(85, 139, 113, 0.1)',
+                  color: 'primary.dark',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                }}
+                title={`SOLEMP ${pedido.solemp.numero}`}
+              >
+                SOLEMP {pedido.solemp.numero}
+              </Box>
+            )}
+            {pedido.notaFiscal?.numero && (
+              <Box
+                sx={{
+                  px: 0.75,
+                  py: 0.2,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(0,0,0,0.05)',
+                  color: 'text.secondary',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                }}
+              >
+                NF {pedido.notaFiscal.numero}
+              </Box>
+            )}
+            {historico.length > 0 && (
+              <Box
+                sx={{
+                  px: 0.75,
+                  py: 0.2,
+                  borderRadius: 1,
+                  bgcolor: 'rgba(0,0,0,0.05)',
+                  color: 'text.secondary',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                }}
+              >
+                {historico.length === 1 ? '1 evento' : `${historico.length} eventos`}
+              </Box>
+            )}
+          </Box>
+        )}
+
         <Typography
+          className="resumo-cta"
           variant="caption"
-          sx={{ color: 'primary.main', fontWeight: 700, mt: 0.25 }}
+          sx={{
+            color: 'primary.main',
+            fontWeight: 700,
+            lineHeight: 1.2,
+            transition: 'color 0.15s ease',
+          }}
         >
           Ver detalhes
         </Typography>
