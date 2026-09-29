@@ -9,8 +9,6 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import SendIcon from '@mui/icons-material/Send'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import DescriptionIcon from '@mui/icons-material/Description'
 import type { ConsumoMaterialRow } from '@/utils/consumoMaterialOds'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 
@@ -39,58 +37,38 @@ export function ClinicaEnvioParaleloModal({
     <Dialog
       open={open}
       onClose={isSubmitting ? undefined : onClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
     >
-      <DialogTitle sx={{ fontWeight: 800 }}>Div. de Material — Auditoria</DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {rows.length} lançamento(s) selecionado(s) · Total {formatValorBrasileiro(total)}. A
-          Auditoria encaminhará a planilha para IMH e Confecção de Solemp.
+      <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Enviar para Auditoria</DialogTitle>
+      <DialogContent sx={{ pt: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          {rows.length} lançamento(s) · {formatValorBrasileiro(total)}
         </Typography>
-
-        <Stack spacing={1.25}>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
           <Button
-            fullWidth
+            size="small"
             variant="outlined"
-            color="info"
-            startIcon={<DescriptionIcon />}
             endIcon={<VisibilityIcon />}
             onClick={onVisualizarAuditoria}
             disabled={isSubmitting || rows.length === 0}
-            sx={{
-              justifyContent: 'space-between',
-              py: 1.5,
-              textTransform: 'none',
-              fontWeight: 700,
-            }}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
           >
-            Visualizar planilha — Auditoria
+            Ver Auditoria
           </Button>
           <Button
-            fullWidth
+            size="small"
             variant="outlined"
-            color="primary"
-            startIcon={<InventoryIcon />}
             endIcon={<VisibilityIcon />}
             onClick={onVisualizarConfeccao}
             disabled={isSubmitting || rows.length === 0}
-            sx={{
-              justifyContent: 'space-between',
-              py: 1.5,
-              textTransform: 'none',
-              fontWeight: 700,
-            }}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
           >
-            Visualizar planilha — Confecção de Solemp
+            Ver Solemp
           </Button>
         </Stack>
-
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-          Após a Auditoria, a planilha segue para IMH e Confecção de Solemp.
-        </Typography>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 2.5, pb: 2 }}>
         <Button onClick={onClose} disabled={isSubmitting} color="inherit">
           Cancelar
         </Button>
@@ -101,7 +79,7 @@ export function ClinicaEnvioParaleloModal({
           disabled={isSubmitting || rows.length === 0}
           startIcon={<SendIcon />}
         >
-          {isSubmitting ? 'Enviando...' : 'Enviar para Auditoria'}
+          {isSubmitting ? 'Enviando...' : 'Enviar'}
         </Button>
       </DialogActions>
     </Dialog>

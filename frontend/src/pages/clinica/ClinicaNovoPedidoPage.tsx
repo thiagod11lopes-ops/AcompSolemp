@@ -33,7 +33,6 @@ import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaMo
 import { DivMaterialForm } from '@/components/clinica/DivMaterialForm'
 import { ImhAbaForm } from '@/components/clinica/ImhAbaForm'
 import { ImhDivMaterialEnvioModal } from '@/components/clinica/ImhDivMaterialEnvioModal'
-import { PlanilhaAnexoPerguntaModal } from '@/components/clinica/PlanilhaAnexoPerguntaModal'
 import {
   PlanilhaApagarModal,
   type PlanilhaApagarConfirmacao,
@@ -219,7 +218,6 @@ export default function ClinicaNovoPedidoPage() {
   const [divMaterialDataFiltro, setDivMaterialDataFiltro] = useState<PlanilhaDataFiltro>(() =>
     createDefaultPlanilhaDataFiltro(),
   )
-  const [anexoPerguntaOpen, setAnexoPerguntaOpen] = useState(false)
   const [envioAnexos, setEnvioAnexos] = useState<File[]>([])
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
@@ -240,11 +238,8 @@ export default function ClinicaNovoPedidoPage() {
 
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const anexoInputRef = useRef<HTMLInputElement | null>(null)
-  const abrirEnvioTimeoutRef = useRef<number | null>(null)
   const envioModalIgnoreCloseUntilRef = useRef(0)
   const envioAnexosRef = useRef<File[]>([])
-  /** replace = após "Sim" na pergunta; append = botão Adicionar no modal de envio. */
-  const anexoPickerModeRef = useRef<'replace' | 'append'>('replace')
   const hydratedModoRef = useRef<string | null>(null)
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
@@ -950,7 +945,7 @@ export default function ClinicaNovoPedidoPage() {
     }
     envioAnexosRef.current = []
     setEnvioAnexos([])
-    setAnexoPerguntaOpen(true)
+    setEnvioModalOpen(true)
   }
 
   const mergeEnvioAnexos = (atuais: File[], novos: File[]): File[] => {
@@ -966,40 +961,15 @@ export default function ClinicaNovoPedidoPage() {
     return merged
   }
 
-  const aplicarAnexosSelecionados = (validos: File[], mode: 'replace' | 'append') => {
-    if (mode === 'append') {
-      const merged = mergeEnvioAnexos(envioAnexosRef.current, validos)
-      envioAnexosRef.current = merged
-      setEnvioAnexos(merged)
-      return
-    }
-    abrirModalEnvioPlanilha(validos)
-  }
-
-  const abrirModalEnvioPlanilha = (anexos: File[] = []) => {
-    if (abrirEnvioTimeoutRef.current != null) {
-      window.clearTimeout(abrirEnvioTimeoutRef.current)
-      abrirEnvioTimeoutRef.current = null
-    }
-
-    envioAnexosRef.current = anexos
-    setEnvioAnexos(anexos)
-    setAnexoPerguntaOpen(false)
+  const aplicarAnexosSelecionados = (validos: File[]) => {
     // Bloqueia fechamento imediato por clique fantasma do diálogo do Windows.
     envioModalIgnoreCloseUntilRef.current = Date.now() + 800
-    // Atraso curto: o seletor nativo devolve o foco e pode “clicar” no backdrop.
-    abrirEnvioTimeoutRef.current = window.setTimeout(() => {
-      setEnvioModalOpen(true)
-      abrirEnvioTimeoutRef.current = null
-    }, 280)
+    const merged = mergeEnvioAnexos(envioAnexosRef.current, validos)
+    envioAnexosRef.current = merged
+    setEnvioAnexos(merged)
   }
 
-  const handleAnexoPerguntaNao = () => {
-    abrirModalEnvioPlanilha([])
-  }
-
-  const pickAnexos = async (mode: 'replace' | 'append') => {
-    anexoPickerModeRef.current = mode
+  const handleAdicionarAnexosNoEnvio = async () => {
     const picker = (
       window as Window & {
         showOpenFilePicker?: (options?: {
@@ -1025,7 +995,6 @@ export default function ClinicaNovoPedidoPage() {
             message:
               'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
           })
-          if (mode === 'replace') abrirModalEnvioPlanilha([])
           return
         }
         if (validos.length < files.length) {
@@ -1035,7 +1004,7 @@ export default function ClinicaNovoPedidoPage() {
             message: `${files.length - validos.length} arquivo(s) ignorado(s) por formato não aceito.`,
           })
         }
-        aplicarAnexosSelecionados(validos, mode)
+        if (validos.length > 0) aplicarAnexosSelecionados(validos)
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
@@ -1044,14 +1013,6 @@ export default function ClinicaNovoPedidoPage() {
     }
 
     anexoInputRef.current?.click()
-  }
-
-  const handleAnexoPerguntaSim = async () => {
-    await pickAnexos('replace')
-  }
-
-  const handleAdicionarAnexosNoEnvio = async () => {
-    await pickAnexos('append')
   }
 
   const handleRemoverAnexoEnvio = (index: number) => {
@@ -1063,9 +1024,8 @@ export default function ClinicaNovoPedidoPage() {
   const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files
     event.target.value = ''
-    const mode = anexoPickerModeRef.current
 
-    // Cancelou o seletor: não altera anexos / não abre o modal de destinos.
+    // Cancelou o seletor: não altera anexos.
     if (!selected || selected.length === 0) return
 
     const validos = filterPlanilhaAnexoFiles(selected)
@@ -1077,7 +1037,6 @@ export default function ClinicaNovoPedidoPage() {
         message:
           'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
       })
-      if (mode === 'replace') abrirModalEnvioPlanilha([])
       return
     }
 
@@ -1089,7 +1048,7 @@ export default function ClinicaNovoPedidoPage() {
       })
     }
 
-    aplicarAnexosSelecionados(validos, mode)
+    aplicarAnexosSelecionados(validos)
   }
 
   const handleFecharEnvioModal = () => {
@@ -1239,7 +1198,6 @@ export default function ClinicaNovoPedidoPage() {
       }
 
       setEnvioModalOpen(false)
-      setAnexoPerguntaOpen(false)
       const partes: string[] = []
       if (temImh) partes.push(`IMH (${imhSelecionadas.length}) → Auditoria`)
       if (temDiv) partes.push(`Div. Material (${divSelecionadas.length}) → Confecção de Solemp`)
@@ -1483,15 +1441,6 @@ export default function ClinicaNovoPedidoPage() {
           setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
         }
         onConfirm={handleConfirmSheet}
-      />
-
-      <PlanilhaAnexoPerguntaModal
-        open={anexoPerguntaOpen}
-        onClose={() => {
-          if (!isEnviando) setAnexoPerguntaOpen(false)
-        }}
-        onSim={handleAnexoPerguntaSim}
-        onNao={handleAnexoPerguntaNao}
       />
 
       <ImhDivMaterialEnvioModal
