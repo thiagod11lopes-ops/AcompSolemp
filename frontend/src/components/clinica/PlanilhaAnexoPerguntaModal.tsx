@@ -102,7 +102,11 @@ export function PlanilhaAnexoPerguntaModal({
           relacionados antes de concluir o envio.
         </Typography>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} justifyContent="flex-end">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          sx={{ justifyContent: 'flex-end' }}
+        >
           <Button onClick={onNao} color="inherit" sx={{ fontWeight: 700 }}>
             Não
           </Button>
