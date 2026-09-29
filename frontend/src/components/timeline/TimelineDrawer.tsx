@@ -253,11 +253,21 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     {detail.node.tempoNaEtapa && (
                       <Row label="Tempo na etapa" value={detail.node.tempoNaEtapa} />
                     )}
+                    <Row
+                      label="Prazo da etapa"
+                      value={`${detail.node.etapa.prazoDias} dias`}
+                    />
                   </>
                 ) : (
-                  <p style={{ margin: 0, color: WHITE, fontSize: '0.85rem' }}>
-                    Etapa ainda não iniciada
-                  </p>
+                  <>
+                    <p style={{ margin: '0 0 6px', color: WHITE, fontSize: '0.85rem' }}>
+                      Etapa ainda não iniciada
+                    </p>
+                    <Row
+                      label="Prazo da etapa"
+                      value={`${detail.node.etapa.prazoDias} dias`}
+                    />
+                  </>
                 )}
               </Section>
 
@@ -393,7 +403,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 <Row label="Empresa" value={detail.pedido.empresa.nomeFantasia} />
                 <Row label="Material" value={detail.pedido.material.descricao} />
                 <Row label="Valor" value={formatCurrency(detail.pedido.valor)} />
-                <Row label="Prazo da etapa" value={`${detail.node.etapa.prazoDias} dias`} />
               </Section>
             </div>
           </motion.aside>
