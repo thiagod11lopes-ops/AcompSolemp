@@ -7,10 +7,8 @@ import {
   Stack,
   TextField,
   Typography,
-  alpha,
-  useTheme,
 } from '@mui/material'
-import TimelineIcon from '@mui/icons-material/Timeline'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -24,7 +22,6 @@ import { SignUpButton } from '@/components/auth/SignUpButton'
  * Portão de acesso à Timeline — e-mail institucional cadastrado pelo gestor.
  */
 export default function TimelineEntryPage() {
-  const theme = useTheme()
   const navigate = useNavigate()
   const { loginWithEmailTimeline, registerWithEmailTimeline } = useAuth()
   const isSupabase = useSupabaseDataSource()
@@ -113,26 +110,9 @@ export default function TimelineEntryPage() {
           textAlign: 'center',
         }}
       >
-        <Box
-          sx={{
-            width: 64,
-            height: 64,
-            mx: 'auto',
-            mb: 2,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: alpha(theme.palette.primary.main, 0.12),
-            color: 'primary.main',
-          }}
-        >
-          <TimelineIcon sx={{ fontSize: 36 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <BrandLogo />
         </Box>
-
-        <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
-          AcompSOLEMP
-        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Timeline de Materiais Consignados
         </Typography>

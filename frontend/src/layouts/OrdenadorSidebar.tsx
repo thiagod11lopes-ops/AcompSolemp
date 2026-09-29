@@ -14,7 +14,6 @@ import {
 } from '@mui/material'
 import ArchiveIcon from '@mui/icons-material/Archive'
 import DashboardIcon from '@mui/icons-material/Dashboard'
-import GavelIcon from '@mui/icons-material/Gavel'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import HourglassTopIcon from '@mui/icons-material/HourglassTop'
@@ -29,7 +28,6 @@ import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useContagemPendenciasSetores } from '@/hooks/useContagemPendenciasSetores'
-import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
 import {
   setorNavItemsParaUsuario,
@@ -119,45 +117,15 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar
-        sx={{
-          px: multiSetor ? 2.25 : 2,
-          minHeight: multiSetor ? 72 : `${56 + demoBannerHeight}px !important`,
-          flexShrink: 0,
-        }}
-      >
-        {multiSetor ? (
-          <BrandLogo />
-        ) : (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <GavelIcon color="warning" />
-            <Box>
-              <Typography variant="subtitle1" color="warning.dark" sx={{ fontWeight: 700 }}>
-                Ordenador de Despesa
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Assinatura de SOLEMP
-              </Typography>
-            </Box>
-          </Box>
-        )}
+      <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
+        <BrandLogo />
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: multiSetor ? 2.25 : 2, py: multiSetor ? 1.75 : 1.5, flexShrink: 0 }}>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, letterSpacing: multiSetor ? '-0.015em' : undefined }}
-          >
-            {multiSetor
-              ? `Usuário logado: ${user.posto ? `${user.posto} ${user.nome}` : user.nome}`
-              : user.nome}
+        <Box sx={{ px: 2.25, py: 1.75, flexShrink: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
+            Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
-          {!multiSetor && (
-            <Typography variant="caption" color="text.secondary">
-              {loginPerfilLabel(user.perfil)}
-            </Typography>
-          )}
         </Box>
       )}
       <Divider />

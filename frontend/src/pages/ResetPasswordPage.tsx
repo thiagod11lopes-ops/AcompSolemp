@@ -6,8 +6,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import AnchorIcon from '@mui/icons-material/Anchor'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -77,7 +77,9 @@ export default function ResetPasswordPage() {
   return (
     <Box>
       <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <AnchorIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
+          <BrandLogo />
+        </Box>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           Redefinir senha
         </Typography>

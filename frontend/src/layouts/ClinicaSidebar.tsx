@@ -107,7 +107,7 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
-        <BrandLogo subtitle="Portal da Clínica" />
+        <BrandLogo />
       </Toolbar>
       <Divider />
       {user && (

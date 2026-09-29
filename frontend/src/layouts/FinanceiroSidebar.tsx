@@ -111,45 +111,15 @@ export function FinanceiroSidebar({ mobileOpen, onClose }: FinanceiroSidebarProp
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar
-        sx={{
-          px: multiSetor ? 2.25 : 2,
-          minHeight: multiSetor ? 72 : `${56 + demoBannerHeight}px !important`,
-          flexShrink: 0,
-        }}
-      >
-        {multiSetor ? (
-          <BrandLogo />
-        ) : (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AccountBalanceIcon color="success" />
-            <Box>
-              <Typography variant="subtitle1" color="success.dark" sx={{ fontWeight: 700 }}>
-                Financeiro
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Pagamento de NF
-              </Typography>
-            </Box>
-          </Box>
-        )}
+      <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
+        <BrandLogo />
       </Toolbar>
       <Divider />
       {user && (
-        <Box sx={{ px: multiSetor ? 2.25 : 2, py: multiSetor ? 1.75 : 1.5, flexShrink: 0 }}>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, letterSpacing: multiSetor ? '-0.015em' : undefined }}
-          >
-            {multiSetor
-              ? `Usuário logado: ${user.posto ? `${user.posto} ${user.nome}` : user.nome}`
-              : user.nome}
+        <Box sx={{ px: 2.25, py: 1.75, flexShrink: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
+            Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
-          {!multiSetor && (
-            <Typography variant="caption" color="text.secondary">
-              Setor Financeiro
-            </Typography>
-          )}
         </Box>
       )}
       <Divider />

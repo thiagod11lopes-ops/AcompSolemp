@@ -60,7 +60,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
-        <BrandLogo subtitle="Portal do Gestor" />
+        <BrandLogo />
       </Toolbar>
       <Divider />
       {user && (

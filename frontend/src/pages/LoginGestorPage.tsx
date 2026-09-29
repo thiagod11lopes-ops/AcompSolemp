@@ -1,6 +1,5 @@
 import {
   Box,
-  Typography,
   TextField,
   Button,
   Alert,
@@ -10,12 +9,12 @@ import {
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
-import AnchorIcon from '@mui/icons-material/Anchor'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { BrandLogo } from '@/components/common/BrandLogo'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
@@ -25,7 +24,6 @@ import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
-import { premiumTokens } from '@/theme/tokens'
 import {
   clearTeamInviteAccepted,
   isTeamInviteAccepted,
@@ -315,28 +313,8 @@ export default function LoginGestorPage() {
 
   return (
     <Box>
-      <Box sx={{ textAlign: 'center', mb: 3.5 }}>
-        <Box
-          sx={{
-            width: 64,
-            height: 64,
-            mx: 'auto',
-            mb: 1.75,
-            borderRadius: '16px',
-            display: 'grid',
-            placeItems: 'center',
-            background: `linear-gradient(145deg, ${premiumTokens.primary} 0%, ${premiumTokens.primaryDark} 100%)`,
-            boxShadow: `0 12px 28px rgba(85, 139, 113, 0.28)`,
-          }}
-        >
-          <AnchorIcon sx={{ fontSize: 34, color: '#FFFFFF' }} />
-        </Box>
-        <Typography
-          variant="h5"
-          sx={{ fontWeight: 800, letterSpacing: '-0.035em', color: '#1D1D1F' }}
-        >
-          AcompSOLEMP
-        </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3.5 }}>
+        <BrandLogo />
       </Box>
 
       {error && (
