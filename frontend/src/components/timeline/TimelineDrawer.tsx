@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, User, FileText, FolderOpen, Clock3, ShieldCheck } from 'lucide-react'
+import { X, User, FileText, Clock3, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { TimelineDrawerDetail } from './types'
 import { TimelineStatus } from './TimelineStatus'
@@ -240,20 +240,6 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   </span>
                 ) : (
                   historico?.observacao ?? 'Sem observações registradas.'
-                )}
-              </Section>
-
-              <Section title="Arquivos" icon={FolderOpen}>
-                {historico?.arquivos?.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.85rem' }}>
-                    {historico.arquivos.map((arquivo) => (
-                      <li key={arquivo}>{arquivo}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <span style={{ color: timelineTheme.textSecondary, fontSize: '0.85rem' }}>
-                    Nenhum arquivo anexado nesta etapa.
-                  </span>
                 )}
               </Section>
 
