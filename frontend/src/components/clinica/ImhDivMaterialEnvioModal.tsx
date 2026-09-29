@@ -2,10 +2,12 @@ import {
   Box,
   Button,
   Dialog,
+  DialogContent,
   IconButton,
   Stack,
   Typography,
   alpha,
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
@@ -40,6 +42,7 @@ export function ImhDivMaterialEnvioModal({
   onAdicionarAnexos,
   onRemoverAnexo,
 }: ImhDivMaterialEnvioModalProps) {
+  const theme = useTheme()
   const canSend = (imhCount > 0 || divMaterialCount > 0) && !isSubmitting
 
   return (
@@ -59,50 +62,72 @@ export function ImhDivMaterialEnvioModal({
       maxWidth="sm"
       fullWidth
       slotProps={{
-        paper: {
+        backdrop: {
           sx: {
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'linear-gradient(165deg, #0f172a 0%, #1e293b 55%, #0b3d91 140%)',
-            color: '#f8fafc',
-            boxShadow: '0 28px 80px rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha('#0b1220', 0.55),
           },
         },
-        backdrop: {
-          sx: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(2,6,23,0.55)' },
+        paper: {
+          sx: {
+            borderRadius: 5,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+            background: `
+              radial-gradient(120% 80% at 0% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 55%),
+              radial-gradient(100% 70% at 100% 100%, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 50%),
+              ${theme.palette.background.paper}
+            `,
+            boxShadow: `0 32px 100px ${alpha('#000', 0.35)}`,
+          },
         },
       }}
     >
-      <Box sx={{ position: 'relative', p: { xs: 2.5, sm: 3.5 } }}>
-        <IconButton
-          onClick={onClose}
-          disabled={isSubmitting}
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            color: alpha('#fff', 0.8),
-            '&:hover': { bgcolor: alpha('#fff', 0.08) },
-          }}
-          aria-label="Fechar"
-        >
+      <Box
+        sx={{
+          px: 3,
+          pt: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `linear-gradient(145deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              color: '#fff',
+              boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
+            }}
+          >
+            <SendIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Box>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
+              Enviar planilha
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+              Destinos do envio
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton onClick={onClose} disabled={isSubmitting} size="small" aria-label="Fechar">
           <CloseIcon />
         </IconButton>
+      </Box>
 
-        <Stack spacing={0.75} sx={{ pr: 5, mb: 3 }}>
-          <Typography
-            variant="overline"
-            sx={{ letterSpacing: 1.6, color: alpha('#93c5fd', 0.95), fontWeight: 700 }}
-          >
-            Enviar planilha
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-            Destinos do envio
-          </Typography>
-          <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.82) }}>
-            Somente as linhas marcadas no checklist serão enviadas.
-          </Typography>
-        </Stack>
+      <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          Somente as linhas marcadas no checklist serão enviadas.
+        </Typography>
 
         <Stack spacing={1.5}>
           <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }}>
@@ -111,19 +136,17 @@ export function ImhDivMaterialEnvioModal({
                 py: 1.75,
                 px: 2.25,
                 borderRadius: 3,
-                bgcolor: alpha('#38bdf8', 0.16),
-                border: `1px solid ${alpha('#38bdf8', 0.35)}`,
+                bgcolor: alpha(theme.palette.info.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.info.main, 0.28)}`,
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: 1.5,
               }}
             >
-              <DescriptionIcon sx={{ mt: 0.25, color: '#e0f2fe' }} />
+              <DescriptionIcon sx={{ mt: 0.25, color: 'info.main' }} />
               <Box>
-                <Typography sx={{ fontWeight: 800, color: '#e0f2fe' }}>
-                  Planilha IMH → Auditoria
-                </Typography>
-                <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.8), mt: 0.35 }}>
+                <Typography sx={{ fontWeight: 800 }}>Planilha IMH → Auditoria</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
                   {imhCount > 0
                     ? `${imhCount} lançamento(s) marcado(s) serão encaminhados para Auditoria.`
                     : 'Nenhuma linha marcada na IMH — este destino não será enviado agora.'}
@@ -138,19 +161,19 @@ export function ImhDivMaterialEnvioModal({
                 py: 1.75,
                 px: 2.25,
                 borderRadius: 3,
-                bgcolor: alpha('#a78bfa', 0.16),
-                border: `1px solid ${alpha('#a78bfa', 0.35)}`,
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: 1.5,
               }}
             >
-              <InventoryIcon sx={{ mt: 0.25, color: '#ede9fe' }} />
+              <InventoryIcon sx={{ mt: 0.25, color: 'primary.main' }} />
               <Box>
-                <Typography sx={{ fontWeight: 800, color: '#ede9fe' }}>
+                <Typography sx={{ fontWeight: 800 }}>
                   Div. Material → Confecção de Solemp
                 </Typography>
-                <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.8), mt: 0.35 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
                   {divMaterialCount > 0
                     ? `${divMaterialCount} lançamento(s) marcado(s) serão encaminhados para Confecção de Solemp.`
                     : 'Nenhuma linha marcada na Div. Material — este destino não será enviado agora.'}
@@ -164,8 +187,8 @@ export function ImhDivMaterialEnvioModal({
               py: 1.5,
               px: 2.25,
               borderRadius: 3,
-              bgcolor: alpha('#34d399', 0.12),
-              border: `1px solid ${alpha('#34d399', 0.35)}`,
+              bgcolor: alpha(theme.palette.success.main, 0.06),
+              border: `1px solid ${alpha(theme.palette.success.main, 0.28)}`,
             }}
           >
             <Stack
@@ -178,8 +201,8 @@ export function ImhDivMaterialEnvioModal({
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-                <AttachFileIcon sx={{ color: '#d1fae5', flexShrink: 0 }} />
-                <Typography sx={{ fontWeight: 800, color: '#d1fae5' }}>
+                <AttachFileIcon sx={{ color: 'success.main', flexShrink: 0 }} />
+                <Typography sx={{ fontWeight: 800 }}>
                   {anexos.length > 0
                     ? `${anexos.length} arquivo(s) em anexo`
                     : 'Nenhum arquivo em anexo'}
@@ -189,20 +212,11 @@ export function ImhDivMaterialEnvioModal({
                 <Button
                   size="small"
                   variant="outlined"
+                  color="success"
                   startIcon={<AddIcon />}
                   disabled={isSubmitting}
                   onClick={onAdicionarAnexos}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    flexShrink: 0,
-                    color: '#d1fae5',
-                    borderColor: alpha('#6ee7b7', 0.55),
-                    '&:hover': {
-                      borderColor: '#a7f3d0',
-                      bgcolor: alpha('#34d399', 0.12),
-                    },
-                  }}
+                  sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
                 >
                   Adicionar
                 </Button>
@@ -221,8 +235,8 @@ export function ImhDivMaterialEnvioModal({
                       px: 1.25,
                       py: 0.85,
                       borderRadius: 2,
-                      bgcolor: alpha('#022c22', 0.35),
-                      border: `1px solid ${alpha('#6ee7b7', 0.25)}`,
+                      bgcolor: alpha(theme.palette.success.main, 0.04),
+                      border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
                     }}
                   >
                     <Typography
@@ -230,7 +244,6 @@ export function ImhDivMaterialEnvioModal({
                       sx={{
                         flex: 1,
                         minWidth: 0,
-                        color: alpha('#ecfdf5', 0.95),
                         wordBreak: 'break-word',
                         fontWeight: 600,
                       }}
@@ -243,10 +256,7 @@ export function ImhDivMaterialEnvioModal({
                         aria-label={`Remover ${file.name}`}
                         disabled={isSubmitting}
                         onClick={() => onRemoverAnexo(index)}
-                        sx={{
-                          color: alpha('#fecaca', 0.95),
-                          '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
-                        }}
+                        color="error"
                       >
                         <DeleteOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -256,58 +266,41 @@ export function ImhDivMaterialEnvioModal({
               </Stack>
             )}
 
-            <Typography
-              variant="caption"
-              sx={{ display: 'block', mt: 1, color: alpha('#a7f3d0', 0.75) }}
-            >
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
               É possível anexar vários documentos (PDF, Word, Excel, LibreOffice e afins).
             </Typography>
           </Box>
         </Stack>
 
-        <Box
-          sx={{
-            mt: 3,
-            pt: 2.5,
-            borderTop: `1px solid ${alpha('#fff', 0.12)}`,
-          }}
-        >
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 3 }}>
+          <Button onClick={onClose} disabled={isSubmitting} color="inherit">
+            Cancelar
+          </Button>
           <Button
-            fullWidth
             variant="contained"
-            size="large"
-            startIcon={<SendIcon />}
+            color="primary"
             onClick={onEnviar}
             disabled={!canSend}
-            sx={{
-              py: 1.9,
-              borderRadius: 3,
-              textTransform: 'none',
-              fontWeight: 800,
-              fontSize: '1rem',
-              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-              boxShadow: '0 14px 34px rgba(37,99,235,0.35)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%)',
-              },
-            }}
+            startIcon={<SendIcon />}
+            sx={{ fontWeight: 700 }}
           >
             {isSubmitting
-              ? 'Enviando planilhas...'
+              ? 'Enviando...'
               : imhCount > 0 && divMaterialCount > 0
-                ? 'Enviar para Auditoria e Confecção de Solemp'
+                ? 'Enviar para Auditoria e Confecção'
                 : imhCount > 0
                   ? 'Enviar IMH para Auditoria'
-                  : 'Enviar Div. Material para Confecção de Solemp'}
+                  : 'Enviar Div. Material'}
           </Button>
-          <Typography
-            variant="caption"
-            sx={{ display: 'block', mt: 1.25, textAlign: 'center', color: alpha('#cbd5e1', 0.8) }}
-          >
-            É necessário marcar ao menos uma linha em IMH ou em Div. Material.
-          </Typography>
         </Box>
-      </Box>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 1.25, textAlign: 'right' }}
+        >
+          É necessário marcar ao menos uma linha em IMH ou em Div. Material.
+        </Typography>
+      </DialogContent>
     </Dialog>
   )
 }

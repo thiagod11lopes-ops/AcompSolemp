@@ -2,10 +2,12 @@ import {
   Box,
   Button,
   Dialog,
+  DialogContent,
   IconButton,
   Stack,
   Typography,
   alpha,
+  useTheme,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
@@ -23,6 +25,8 @@ export function PlanilhaAnexoPerguntaModal({
   onSim,
   onNao,
 }: PlanilhaAnexoPerguntaModalProps) {
+  const theme = useTheme()
+
   return (
     <Dialog
       open={open}
@@ -30,106 +34,89 @@ export function PlanilhaAnexoPerguntaModal({
       maxWidth="xs"
       fullWidth
       slotProps={{
-        paper: {
+        backdrop: {
           sx: {
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'linear-gradient(165deg, #0f172a 0%, #1e293b 55%, #0b3d91 140%)',
-            color: '#f8fafc',
-            boxShadow: '0 28px 80px rgba(15,23,42,0.55)',
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha('#0b1220', 0.55),
           },
         },
-        backdrop: {
-          sx: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(2,6,23,0.55)' },
+        paper: {
+          sx: {
+            borderRadius: 5,
+            overflow: 'hidden',
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.28)}`,
+            background: `
+              radial-gradient(120% 80% at 0% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 55%),
+              radial-gradient(100% 70% at 100% 100%, ${alpha(theme.palette.secondary.main, 0.12)} 0%, transparent 50%),
+              ${theme.palette.background.paper}
+            `,
+            boxShadow: `0 32px 100px ${alpha('#000', 0.35)}`,
+          },
         },
       }}
     >
-      <Box sx={{ position: 'relative', p: { xs: 2.5, sm: 3 } }}>
-        <IconButton
-          onClick={onClose}
-          sx={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            color: alpha('#fff', 0.8),
-            '&:hover': { bgcolor: alpha('#fff', 0.08) },
-          }}
-          aria-label="Fechar"
-        >
-          <CloseIcon />
-        </IconButton>
-
-        <Stack spacing={1} sx={{ pr: 4, mb: 3 }}>
+      <Box
+        sx={{
+          px: 3,
+          pt: 3,
+          pb: 2,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box
             sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: alpha('#38bdf8', 0.18),
-              border: `1px solid ${alpha('#38bdf8', 0.35)}`,
-              mb: 0.5,
+              width: 56,
+              height: 56,
+              borderRadius: 3,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `linear-gradient(145deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              color: '#fff',
+              boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.45)}`,
             }}
           >
-            <AttachFileIcon sx={{ color: '#e0f2fe' }} />
+            <AttachFileIcon sx={{ fontSize: 28 }} />
           </Box>
-          <Typography
-            variant="overline"
-            sx={{ letterSpacing: 1.6, color: alpha('#93c5fd', 0.95), fontWeight: 700 }}
-          >
-            Enviar planilha
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
-            Deseja enviar algum arquivo em anexo?
-          </Typography>
-          <Typography variant="body2" sx={{ color: alpha('#e2e8f0', 0.82) }}>
-            Você pode anexar documentos de texto, PDF, Word, Excel, LibreOffice e formatos
-            relacionados antes de concluir o envio.
-          </Typography>
-        </Stack>
+          <Box>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
+              Enviar planilha
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.25 }}>
+              Anexar documentos?
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton onClick={onClose} size="small" aria-label="Fechar">
+          <CloseIcon />
+        </IconButton>
+      </Box>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={onNao}
-            sx={{
-              py: 1.35,
-              borderRadius: 2.5,
-              textTransform: 'none',
-              fontWeight: 700,
-              color: '#f8fafc',
-              borderColor: alpha('#fff', 0.28),
-              '&:hover': {
-                borderColor: alpha('#fff', 0.5),
-                bgcolor: alpha('#fff', 0.06),
-              },
-            }}
-          >
+      <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          Você pode anexar documentos de texto, PDF, Word, Excel, LibreOffice e formatos
+          relacionados antes de concluir o envio.
+        </Typography>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} justifyContent="flex-end">
+          <Button onClick={onNao} color="inherit" sx={{ fontWeight: 700 }}>
             Não
           </Button>
           <Button
-            fullWidth
             variant="contained"
+            color="primary"
             onClick={onSim}
             startIcon={<AttachFileIcon />}
-            sx={{
-              py: 1.35,
-              borderRadius: 2.5,
-              textTransform: 'none',
-              fontWeight: 800,
-              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-              boxShadow: '0 12px 28px rgba(37,99,235,0.35)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%)',
-              },
-            }}
+            sx={{ fontWeight: 700 }}
           >
-            Sim
+            Sim, anexar
           </Button>
         </Stack>
-      </Box>
+      </DialogContent>
     </Dialog>
   )
 }
