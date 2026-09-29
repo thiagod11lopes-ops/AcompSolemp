@@ -203,10 +203,12 @@ export function TimelineDetalhesPanel({
         anchor="right"
         open={open}
         onClose={() => setOpen(false)}
-        PaperProps={{
-          sx: {
-            width: { xs: '100%', sm: 420 },
-            maxWidth: '100%',
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: '100%', sm: 420 },
+              maxWidth: '100%',
+            },
           },
         }}
       >
