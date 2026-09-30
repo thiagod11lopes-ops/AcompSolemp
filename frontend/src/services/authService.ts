@@ -27,7 +27,13 @@ import {
 } from '@/utils/permissions'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
-import { userHasPerfil, userPerfis, userTemCadeiaSolemp, normalizeUserPerfis } from '@/utils/userPerfis'
+import {
+  buildUserPerfis,
+  userHasPerfil,
+  userPerfis,
+  userTemCadeiaSolemp,
+  normalizeUserPerfis,
+} from '@/utils/userPerfis'
 import { DEMO_ROUTE_BASE, mapPortalPath } from '@/utils/portalPaths'
 import { portalForPerfil } from '@/utils/portalForPerfil'
 import { ensureDemoUserById, initDemoAppData } from '@/services/demoCadastrosService'
@@ -663,10 +669,29 @@ export const authService = {
       }
     }
 
+    // Liberado em email_access = já cadastrado pelo gestor.
+    // Recria no AppData se sumiu do blob/tabela (migração / sync enxuto).
     if (!user) {
-      throw new Error(
-        'E-mail liberado, mas o usuário não está ativo na organização. Peça ao gestor para cadastrá-lo novamente em Cadastros.',
-      )
+      const selected = (
+        access.perfis.length > 0 ? access.perfis : [access.perfil || 'CLINICA']
+      ).map((p) => String(p).toUpperCase()) as UserRole[]
+      const { perfil, perfis } = buildUserPerfis(selected, access.perfil as UserRole | undefined)
+      user = {
+        id: access.app_user_id,
+        nome: access.nome?.trim() || marinhaEmail.split('@')[0] || 'Usuário',
+        posto: '',
+        graduacao: '',
+        login: marinhaEmail.split('@')[0] || 'user',
+        email: marinhaEmail,
+        perfil,
+        perfis,
+        clinicaId: access.clinica_id,
+        ativo: true,
+      }
+      saveAppData({
+        ...data,
+        usuarios: [...data.usuarios.filter((item) => item.id !== user!.id), user],
+      })
     }
 
     if (expectedPerfil && !userHasPerfil(user, expectedPerfil)) {
