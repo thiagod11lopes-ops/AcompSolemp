@@ -293,7 +293,7 @@ export default function LoginGestorPage() {
             disabled={blockUntilInviteAccepted}
             helperText={
               blockUntilInviteAccepted
-                ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
+                ? 'Responda ao convite do gestor (Sim ou Não) para liberar Entrar e Cadastrar-se.'
                 : 'E-mail novo: use Cadastrar no aviso (ou Cadastrar-se) para criar senha e virar Gestor com banco próprio.'
             }
             onSubmit={handleSignUp}
