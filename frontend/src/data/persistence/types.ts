@@ -1,4 +1,5 @@
 import type { AppData } from '@/types'
+import { stripAnexoBase64FromAppData } from '@/data/persistence/appDataAnexoSanitize'
 
 export const APP_DATA_SEED_VERSION = 'v15'
 
@@ -24,5 +25,7 @@ export function serializeAppData(data: AppData, version: string): AppDataSnapsho
 }
 
 export function deserializeAppData(snapshot: AppDataSnapshot): AppData {
-  return JSON.parse(snapshot.payload) as AppData
+  const data = JSON.parse(snapshot.payload) as AppData
+  // Fase 1: não reintroduzir base64 do snapshot cloud na memória.
+  return stripAnexoBase64FromAppData(data)
 }

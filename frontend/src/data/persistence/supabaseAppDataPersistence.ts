@@ -84,7 +84,13 @@ export async function saveAppDataToSupabase(
     throw new Error('Tenant não definido para salvar AppData no Supabase.')
   }
 
-  const snapshot = serializeAppData(appData, version)
+  // Fase 1: nunca persistir conteudoBase64 no monolito cloud (Storage + storagePath).
+  const { stripAnexoBase64FromAppData } = await import(
+    '@/data/persistence/appDataAnexoSanitize'
+  )
+  const appDataLeve = stripAnexoBase64FromAppData(appData)
+
+  const snapshot = serializeAppData(appDataLeve, version)
   const payload = JSON.parse(snapshot.payload) as AppData
 
   // Fase 0: inventário de tamanho do monolito (diagnóstico de egress).
