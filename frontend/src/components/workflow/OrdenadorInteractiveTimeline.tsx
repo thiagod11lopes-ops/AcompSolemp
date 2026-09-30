@@ -1,5 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import { useMemo, useState } from 'react'
 import type { PedidoComDetalhes, ProcessoArquivado, WorkflowEtapa } from '@/types'
 import { formatDate } from '@/utils/format'
 import { ORDENADOR_ETAPA_ACOES } from '@/utils/portal'
@@ -21,10 +20,10 @@ import {
   type TimelineNodeData,
 } from '@/components/timeline'
 import { TimelineActionButton } from '@/components/timeline/TimelineActionButton'
+import { PlanilhaFlowActions } from '@/components/timeline/PlanilhaFlowActions'
 import { DocumentoAnexoEscolherModal } from '@/components/clinica/DocumentoAnexoEscolherModal'
 import { DocumentoAnexoPreviewModal } from '@/components/clinica/DocumentoAnexoPreviewModal'
 import { PlanilhaAnexosModal } from '@/components/clinica/PlanilhaAnexosModal'
-import { timelineTheme } from '@/components/timeline/theme'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
@@ -92,55 +91,11 @@ export function OrdenadorInteractiveTimeline({
   const isCadeiaConfeccao = Boolean(user && userTemCadeiaSolemp(user))
   const isAuditoriaUser = Boolean(user && userHasPerfil(user, 'AUDITORIA'))
 
-  const botaoVisualizarDocumento = (
-    <TimelineActionButton
-      type="button"
-      variant="ghost"
-      data-keep-drawer=""
-      aria-label="Visualizar documento"
-      title="Visualizar documento"
-      onClick={() => setEscolherAnexoOpen(true)}
-      style={{
-        padding: '8px 10px',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        lineHeight: 0,
-      }}
-    >
-      <VisibilityOutlinedIcon sx={{ fontSize: 18, color: timelineTheme.textSecondary }} />
-    </TimelineActionButton>
-  )
-
-  const botaoArquivoAnexado = (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
-      }}
-    >
-      <TimelineActionButton
-        type="button"
-        variant="ghost"
-        data-keep-drawer=""
-        onClick={() => setAnexosModalOpen(true)}
-      >
-        {anexosCount > 0
-          ? `Arquivo anexado (${anexosCount})`
-          : 'Arquivo anexado (0)'}
-      </TimelineActionButton>
-      {botaoVisualizarDocumento}
-    </div>
-  )
-
-  const comArquivoAnexado = (acoes: ReactNode) => (
-    <>
-      {botaoArquivoAnexado}
-      {acoes}
-    </>
-  )
+  const acoesPlanilhaComuns = {
+    anexosCount,
+    onAbrirAnexos: () => setAnexosModalOpen(true),
+    onVisualizarDocumento: () => setEscolherAnexoOpen(true),
+  }
 
   // Mantém a timeline completa (todas as etapas), como antes do filtro por trilha.
   const visiveis = useMemo(() => filtrarEtapasParaTimeline(etapas), [etapas])
@@ -190,31 +145,22 @@ export function OrdenadorInteractiveTimeline({
       )
     }
 
-    const tituloBloqueado =
-      'Receba a planilha primeiro — clique em Receber Planilha para liberar o envio'
-
     if (
       node.etapa.chave === 'DIV_MAT_AUDITORIA' &&
       isAuditoriaAtiva &&
       onReceberPlanilha &&
       onEncaminharImh
     ) {
-      // Sem data-keep-drawer: o drawer (z-index 1301) precisa fechar para o modal
-      // de encaminhamento (MUI Dialog ~1300) ficar visível e concluir o avanço.
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilha} disabled={assinando}>
-            {planilhaRecebida ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onEncaminharImh}
-            disabled={assinando || !planilhaRecebida}
-            title={!planilhaRecebida ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      // Sem data-keep-drawer nos botões Receber/Enviar: o drawer precisa fechar
+      // para o modal de encaminhamento (MUI Dialog) ficar visível.
+      return (
+        <PlanilhaFlowActions
+          recebida={planilhaRecebida}
+          onReceber={onReceberPlanilha}
+          onEnviar={onEncaminharImh}
+          disabled={assinando}
+          {...acoesPlanilhaComuns}
+        />
       )
     }
 
@@ -225,23 +171,15 @@ export function OrdenadorInteractiveTimeline({
       onAssinar
     ) {
       const planilhaDisponivel = planilhaEncaminhadaImh || fluxoDiretoImh
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton
-            onClick={onReceberPlanilhaImh}
-            disabled={assinando || !planilhaDisponivel}
-          >
-            {planilhaRecebidaImh ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaImh}
-            title={!planilhaRecebidaImh ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return (
+        <PlanilhaFlowActions
+          recebida={planilhaRecebidaImh}
+          onReceber={onReceberPlanilhaImh}
+          onEnviar={onAssinar}
+          disabled={assinando}
+          receberDisabled={!planilhaDisponivel}
+          {...acoesPlanilhaComuns}
+        />
       )
     }
 
@@ -250,20 +188,14 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaConfeccao &&
       onAssinar
     ) {
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilhaConfeccao} disabled={assinando}>
-            {planilhaRecebidaConfeccao ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaConfeccao}
-            title={!planilhaRecebidaConfeccao ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return (
+        <PlanilhaFlowActions
+          recebida={planilhaRecebidaConfeccao}
+          onReceber={onReceberPlanilhaConfeccao}
+          onEnviar={onAssinar}
+          disabled={assinando}
+          {...acoesPlanilhaComuns}
+        />
       )
     }
 
@@ -273,20 +205,14 @@ export function OrdenadorInteractiveTimeline({
       onReceberPlanilhaRascunho &&
       onAssinar
     ) {
-      return comArquivoAnexado(
-        <>
-          <TimelineActionButton onClick={onReceberPlanilhaRascunho} disabled={assinando}>
-            {planilhaRecebidaRascunho ? 'Planilha recebida' : 'Receber Planilha'}
-          </TimelineActionButton>
-          <TimelineActionButton
-            variant="warning"
-            onClick={onAssinar}
-            disabled={assinando || !planilhaRecebidaRascunho}
-            title={!planilhaRecebidaRascunho ? tituloBloqueado : 'Enviar Planilha'}
-          >
-            Enviar Planilha
-          </TimelineActionButton>
-        </>,
+      return (
+        <PlanilhaFlowActions
+          recebida={planilhaRecebidaRascunho}
+          onReceber={onReceberPlanilhaRascunho}
+          onEnviar={onAssinar}
+          disabled={assinando}
+          {...acoesPlanilhaComuns}
+        />
       )
     }
 
@@ -311,7 +237,7 @@ export function OrdenadorInteractiveTimeline({
                 <strong>Ação necessária:</strong> {acaoAtual.descricao}
                 {isAuditoriaAtiva && !planilhaRecebida && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Enviar Planilha fica bloqueado até clicar em Receber Planilha.
+                    Enviar planilha fica bloqueado até clicar em Receber planilha.
                   </p>
                 )}
                 {isContabilidadeAtiva && !planilhaEncaminhadaImh && !fluxoDiretoImh && (
@@ -323,17 +249,17 @@ export function OrdenadorInteractiveTimeline({
                   (planilhaEncaminhadaImh || fluxoDiretoImh) &&
                   !planilhaRecebidaImh && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Enviar Planilha fica bloqueado até clicar em Receber Planilha.
+                    Enviar planilha fica bloqueado até clicar em Receber planilha.
                   </p>
                 )}
                 {isConfeccaoAtiva && !planilhaRecebidaConfeccao && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Enviar Planilha fica bloqueado até clicar em Receber Planilha.
+                    Enviar planilha fica bloqueado até clicar em Receber planilha.
                   </p>
                 )}
                 {isRascunhoAtivo && !planilhaRecebidaRascunho && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
-                    Enviar Planilha fica bloqueado até clicar em Receber Planilha.
+                    Enviar planilha fica bloqueado até clicar em Receber planilha.
                   </p>
                 )}
                 {pedido.solemp && !trilhaAuditoria && (
