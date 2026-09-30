@@ -1,23 +1,7 @@
-import {
-  Dialog,
-  DialogContent,
-  Box,
-  Typography,
-  Button,
-  IconButton,
-  TextField,
-  alpha,
-  useTheme,
-  Chip,
-  Divider,
-} from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
-import CalculateIcon from '@mui/icons-material/Calculate'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CancelIcon from '@mui/icons-material/Cancel'
-import NotesIcon from '@mui/icons-material/Notes'
+import { Box, Divider, TextField, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import type { PedidoComDetalhes } from '@/types'
+import { EnvioFluxoDialog } from '@/components/common/EnvioFluxoDialog'
 import { formatCurrency, formatDate, formatNip } from '@/utils/format'
 
 const TIPO_USUARIO_LABEL: Record<string, string> = {
@@ -39,7 +23,7 @@ interface ContabilidadeConfirmacaoModalProps {
 
 function Dado({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ display: 'grid', gap: 0.25 }}>
+    <Box sx={{ display: 'grid', gap: 0.15 }}>
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
         {label}
       </Typography>
@@ -57,7 +41,6 @@ export function ContabilidadeConfirmacaoModal({
   loading = false,
   pedido,
 }: ContabilidadeConfirmacaoModalProps) {
-  const theme = useTheme()
   const [anotacoes, setAnotacoes] = useState('')
   const paciente = pedido.paciente
   const dados = pedido.dadosClinica
@@ -70,224 +53,116 @@ export function ContabilidadeConfirmacaoModal({
   }, [open])
 
   return (
-    <Dialog
+    <EnvioFluxoDialog
       open={open}
-      onClose={loading ? undefined : onClose}
+      title="Finalizar IMH"
+      onClose={onClose}
+      onSubmit={() => onConfirmar(anotacoes.trim())}
+      loading={loading}
+      loadingLabel="Finalizando..."
+      submitLabel="Sim, finalizar"
+      cancelLabel="Não"
+      hideSubmitIcon
       maxWidth="sm"
-      fullWidth
-      slotProps={{
-        backdrop: {
-          sx: {
-            backdropFilter: 'blur(10px)',
-            backgroundColor: alpha('#0b1220', 0.55),
-          },
-        },
-        paper: {
-          sx: {
-            borderRadius: 5,
-            overflow: 'hidden',
-            border: `1px solid ${alpha(theme.palette.warning.main, 0.28)}`,
-            background: `
-              radial-gradient(120% 80% at 0% 0%, ${alpha(theme.palette.warning.main, 0.2)} 0%, transparent 55%),
-              radial-gradient(100% 70% at 100% 100%, ${alpha(theme.palette.primary.main, 0.14)} 0%, transparent 50%),
-              ${theme.palette.background.paper}
-            `,
-            boxShadow: `0 32px 100px ${alpha('#000', 0.35)}`,
-          },
-        },
-      }}
+      chips={[
+        { label: pedido.numero, color: 'primary' },
+        { label: 'IMH', color: 'warning' },
+      ]}
     >
       <Box
         sx={{
-          px: 3,
-          pt: 3,
-          pb: 2,
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 2,
+          mb: 1.5,
+          p: 1.25,
+          borderRadius: '12px',
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'rgba(85, 139, 113, 0.06)',
+          display: 'grid',
+          gap: 1.25,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: 3,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: `linear-gradient(145deg, ${theme.palette.warning.main}, ${theme.palette.primary.main})`,
-              color: '#fff',
-              boxShadow: `0 12px 28px ${alpha(theme.palette.warning.main, 0.45)}`,
-            }}
-          >
-            <CalculateIcon sx={{ fontSize: 28 }} />
-          </Box>
-          <Box>
-            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1.2 }}>
-              Conclusão de IMH
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-              Finalizar IMH
-            </Typography>
-            <Chip
-              label={pedido.numero}
-              size="small"
-              color="warning"
-              variant="outlined"
-              sx={{ mt: 1, fontWeight: 600 }}
-            />
-          </Box>
-        </Box>
-        <IconButton onClick={onClose} disabled={loading} size="small" aria-label="Fechar">
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      <DialogContent sx={{ px: 3, pb: 3, pt: 0 }}>
-        <Box
+        <Typography
+          variant="caption"
           sx={{
-            p: 2.5,
-            borderRadius: 3,
-            mb: 2.5,
-            bgcolor: alpha(theme.palette.warning.main, 0.06),
-            border: `1px solid ${alpha(theme.palette.warning.main, 0.18)}`,
-            display: 'grid',
-            gap: 2,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            color: 'text.secondary',
           }}
         >
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'warning.dark' }}>
-            Paciente
-          </Typography>
-          {paciente ? (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 1.5,
-              }}
-            >
-              <Dado label="Nome" value={paciente.nome} />
-              <Dado
-                label="Vínculo"
-                value={paciente.vinculo === 'TITULAR' ? 'Titular' : 'Dependente'}
-              />
-              <Dado label="NIP" value={formatNip(paciente.nip)} />
-              <Dado label="NIP do titular" value={formatNip(paciente.nipTitular)} />
-              <Dado label="Nome do titular" value={paciente.nomeTitular} />
-              <Dado
-                label="Tipo de usuário"
-                value={TIPO_USUARIO_LABEL[paciente.tipoUsuario] ?? paciente.tipoUsuario}
-              />
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              Dados do paciente não informados neste lançamento.
-            </Typography>
-          )}
-
-          <Divider />
-
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'warning.dark' }}>
-            Material, valor e data
-          </Typography>
+          Paciente
+        </Typography>
+        {paciente ? (
           <Box
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-              gap: 1.5,
+              gap: 1,
             }}
           >
-            <Dado label="Material" value={material} />
-            {dados?.quantidade != null && (
-              <Dado label="Quantidade" value={String(dados.quantidade)} />
-            )}
-            <Dado label="Valor" value={formatCurrency(valor)} />
-            <Dado label="Data" value={formatDate(dataRef)} />
+            <Dado label="Nome" value={paciente.nome} />
+            <Dado
+              label="Vínculo"
+              value={paciente.vinculo === 'TITULAR' ? 'Titular' : 'Dependente'}
+            />
+            <Dado label="NIP" value={formatNip(paciente.nip)} />
+            <Dado label="NIP do titular" value={formatNip(paciente.nipTitular)} />
+            <Dado label="Nome do titular" value={paciente.nomeTitular} />
+            <Dado
+              label="Tipo de usuário"
+              value={TIPO_USUARIO_LABEL[paciente.tipoUsuario] ?? paciente.tipoUsuario}
+            />
           </Box>
-        </Box>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            Dados do paciente não informados neste lançamento.
+          </Typography>
+        )}
 
-        <Box
+        <Divider />
+
+        <Typography
+          variant="caption"
           sx={{
-            p: 2,
-            borderRadius: 3,
-            mb: 1.5,
-            bgcolor: alpha(theme.palette.info.main, 0.08),
-            border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            color: 'text.secondary',
           }}
         >
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, textAlign: 'center' }}>
-            Verifique se todos os itens foram cadastrados corretamente.
-          </Typography>
-        </Box>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Comentários são opcionais. Se quiser, registre observações ao concluir a IMH.
+          Material, valor e data
         </Typography>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <NotesIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            Comentários
-          </Typography>
-          <Chip label="Opcional" size="small" variant="outlined" sx={{ height: 22 }} />
-        </Box>
-
-        <TextField
-          fullWidth
-          multiline
-          minRows={4}
-          maxRows={8}
-          value={anotacoes}
-          onChange={(e) => setAnotacoes(e.target.value)}
-          placeholder="Escreva comentários da IMH, se necessário…"
-          disabled={loading}
-          sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 3,
-              bgcolor: alpha(theme.palette.background.default, 0.65),
-            },
-          }}
-        />
-
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: 1.5,
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+            gap: 1,
           }}
         >
-          <Button
-            fullWidth
-            variant="outlined"
-            color="inherit"
-            onClick={onClose}
-            disabled={loading}
-            startIcon={<CancelIcon />}
-            sx={{ borderRadius: 3, py: 1.25, fontWeight: 700 }}
-          >
-            Não
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            color="success"
-            onClick={() => onConfirmar(anotacoes.trim())}
-            disabled={loading}
-            startIcon={<CheckCircleIcon />}
-            sx={{
-              borderRadius: 3,
-              py: 1.25,
-              fontWeight: 700,
-              boxShadow: `0 12px 28px ${alpha(theme.palette.success.main, 0.35)}`,
-            }}
-          >
-            {loading ? 'Finalizando...' : 'Sim, finalizar'}
-          </Button>
+          <Dado label="Material" value={material} />
+          {dados?.quantidade != null && (
+            <Dado label="Quantidade" value={String(dados.quantidade)} />
+          )}
+          <Dado label="Valor" value={formatCurrency(valor)} />
+          <Dado label="Data" value={formatDate(dataRef)} />
         </Box>
-      </DialogContent>
-    </Dialog>
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, fontWeight: 600 }}>
+        Verifique se todos os itens foram cadastrados corretamente.
+      </Typography>
+
+      <TextField
+        fullWidth
+        size="small"
+        label="Comentários"
+        placeholder="Opcional — aparece na aba lateral da timeline com o seu nome"
+        value={anotacoes}
+        onChange={(e) => setAnotacoes(e.target.value)}
+        disabled={loading}
+        multiline
+        minRows={2}
+      />
+    </EnvioFluxoDialog>
   )
 }
