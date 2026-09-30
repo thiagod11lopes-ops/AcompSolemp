@@ -45,7 +45,7 @@ export default function TimelineEntryPage() {
     ensureTeamInviteAccepted,
     handleAcceptTeamInvite,
     handleDeclineTeamInvite,
-  } = useTeamEmailInvite(email)
+  } = useTeamEmailInvite(email, { unregisteredModal: false })
 
   useEffect(() => {
     let cancelled = false

@@ -41,13 +41,24 @@ function resolveTeamPerfis(access: {
   ]
 }
 
+export interface UseTeamEmailInviteOptions {
+  /** Quando true (padrão), mostra modal se o e-mail não está em Emails Cadastrados. */
+  unregisteredModal?: boolean
+}
+
 /**
  * Detecta e-mail liberado pelo gestor no campo de login e controla o modal
  * de aceite (entrar no banco do gestor) ou recusa (virar gestor próprio).
+ * Também pode exibir o modal "E-mail não cadastrado".
  */
-export function useTeamEmailInvite(emailHint: string) {
+export function useTeamEmailInvite(
+  emailHint: string,
+  options: UseTeamEmailInviteOptions = {},
+) {
+  const unregisteredModalEnabled = options.unregisteredModal !== false
   const isSupabase = useSupabaseDataSource()
   const [teamModalOpen, setTeamModalOpen] = useState(false)
+  const [unregisteredModalOpen, setUnregisteredModalOpen] = useState(false)
   const [recognizedEmail, setRecognizedEmail] = useState('')
   const [gestorEmail, setGestorEmail] = useState<string | null>(null)
   const [recognizedPerfis, setRecognizedPerfis] = useState<UserRole[]>([])
@@ -55,6 +66,7 @@ export function useTeamEmailInvite(emailHint: string) {
   const [info, setInfo] = useState('')
   const [signUpOpenSignal, setSignUpOpenSignal] = useState(0)
   const emailLookupSeq = useRef(0)
+  const dismissedUnregisteredRef = useRef<Set<string>>(new Set())
 
   const recognizedPerfilLabels = useMemo(
     () =>
@@ -69,6 +81,7 @@ export function useTeamEmailInvite(emailHint: string) {
       email: string,
       access: { gestor_email: string | null; perfil: string; perfis?: string[] | null },
     ) => {
+      setUnregisteredModalOpen(false)
       setRecognizedEmail(email)
       setGestorEmail(access.gestor_email)
       setRecognizedPerfis(resolveTeamPerfis(access))
@@ -78,18 +91,29 @@ export function useTeamEmailInvite(emailHint: string) {
     [],
   )
 
+  const openUnregisteredModal = useCallback((email: string) => {
+    setTeamModalOpen(false)
+    setPendingTeamInvite(false)
+    setRecognizedEmail(email)
+    setGestorEmail(null)
+    setRecognizedPerfis([])
+    setUnregisteredModalOpen(true)
+  }, [])
+
   useEffect(() => {
     if (!isSupabase) return
 
     const raw = emailHint?.trim() ?? ''
     if (!isMarinhaEmail(raw)) {
       setPendingTeamInvite(false)
+      setUnregisteredModalOpen(false)
       return
     }
 
     const normalized = normalizeEmailKey(raw)
     if (isTeamInviteAccepted(normalized)) {
       setPendingTeamInvite(false)
+      setUnregisteredModalOpen(false)
       return
     }
 
@@ -97,18 +121,45 @@ export function useTeamEmailInvite(emailHint: string) {
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const access = await authService.getTeamEmailAccess(normalized)
+          const status = await authService.getLoginEmailStatus(normalized)
           if (seq !== emailLookupSeq.current) return
-          if (!access) {
-            setPendingTeamInvite(false)
+
+          if (status.status === 'team') {
+            const access = await authService.getTeamEmailAccess(normalized)
+            if (seq !== emailLookupSeq.current) return
+            if (!access) {
+              setPendingTeamInvite(false)
+              return
+            }
+            setRecognizedEmail(normalized)
+            setGestorEmail(access.gestor_email)
+            setRecognizedPerfis(resolveTeamPerfis(access))
+            setPendingTeamInvite(true)
+            setInfo('')
+            setUnregisteredModalOpen(false)
+            setTeamModalOpen(true)
             return
           }
-          setRecognizedEmail(normalized)
-          setGestorEmail(access.gestor_email)
-          setRecognizedPerfis(resolveTeamPerfis(access))
-          setPendingTeamInvite(true)
+
+          if (status.status === 'gestor') {
+            setPendingTeamInvite(false)
+            setUnregisteredModalOpen(false)
+            setTeamModalOpen(false)
+            return
+          }
+
+          // unknown — não está em Emails Cadastrados
+          setPendingTeamInvite(false)
+          setTeamModalOpen(false)
+          if (
+            !unregisteredModalEnabled ||
+            dismissedUnregisteredRef.current.has(normalized)
+          ) {
+            setUnregisteredModalOpen(false)
+            return
+          }
           setInfo('')
-          setTeamModalOpen(true)
+          openUnregisteredModal(normalized)
         } catch {
           // Silencioso — rede/lookup
         }
@@ -116,7 +167,7 @@ export function useTeamEmailInvite(emailHint: string) {
     }, 450)
 
     return () => window.clearTimeout(timer)
-  }, [emailHint, isSupabase])
+  }, [emailHint, isSupabase, openUnregisteredModal, unregisteredModalEnabled])
 
   const ensureTeamInviteAccepted = useCallback(
     async (email: string): Promise<boolean> => {
@@ -133,6 +184,33 @@ export function useTeamEmailInvite(emailHint: string) {
       return false
     },
     [isSupabase, openTeamInviteModal],
+  )
+
+  /**
+   * Garante que e-mail não cadastrado passe pelo modal (Cadastrar) antes de
+   * criar conta via Entrar. Gestores e equipe já cadastrados liberam.
+   */
+  const ensureRegisteredOrSignup = useCallback(
+    async (email: string): Promise<boolean> => {
+      if (!isSupabase) return true
+      if (!isMarinhaEmail(email)) return true
+      if (!unregisteredModalEnabled) return true
+      const normalized = normalizeEmailKey(email)
+      const status = await authService.getLoginEmailStatus(normalized)
+      if (status.status === 'gestor') return true
+      if (status.status === 'team') {
+        return ensureTeamInviteAccepted(normalized)
+      }
+      dismissedUnregisteredRef.current.delete(normalized)
+      openUnregisteredModal(normalized)
+      return false
+    },
+    [
+      ensureTeamInviteAccepted,
+      isSupabase,
+      openUnregisteredModal,
+      unregisteredModalEnabled,
+    ],
   )
 
   const handleAcceptTeamInvite = useCallback(() => {
@@ -152,14 +230,34 @@ export function useTeamEmailInvite(emailHint: string) {
     setGestorEmail(null)
     setRecognizedPerfis([])
     setPendingTeamInvite(false)
+    const normalized = normalizeEmailKey(recognizedEmail)
+    dismissedUnregisteredRef.current.delete(normalized)
     setInfo(
       'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor com banco próprio.',
     )
+    if (unregisteredModalEnabled) {
+      openUnregisteredModal(normalized)
+    }
+  }, [openUnregisteredModal, recognizedEmail, unregisteredModalEnabled])
+
+  const handleCadastrarUnregistered = useCallback(() => {
+    const email = normalizeEmailKey(recognizedEmail)
+    if (email) dismissedUnregisteredRef.current.add(email)
+    setUnregisteredModalOpen(false)
+    setInfo('Defina uma senha para cadastrar este e-mail.')
+    setSignUpOpenSignal((n) => n + 1)
+  }, [recognizedEmail])
+
+  const handleCancelarUnregistered = useCallback(() => {
+    const email = normalizeEmailKey(recognizedEmail)
+    if (email) dismissedUnregisteredRef.current.add(email)
+    setUnregisteredModalOpen(false)
   }, [recognizedEmail])
 
   return {
     isSupabase,
     teamModalOpen,
+    unregisteredModalOpen,
     recognizedEmail,
     gestorEmail,
     recognizedPerfilLabels,
@@ -168,7 +266,10 @@ export function useTeamEmailInvite(emailHint: string) {
     setInfo,
     signUpOpenSignal,
     ensureTeamInviteAccepted,
+    ensureRegisteredOrSignup,
     handleAcceptTeamInvite,
     handleDeclineTeamInvite,
+    handleCadastrarUnregistered,
+    handleCancelarUnregistered,
   }
 }

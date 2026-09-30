@@ -303,6 +303,47 @@ export async function getEmailAccess(email: string): Promise<{
   }
 }
 
+export type LoginEmailStatus = 'team' | 'gestor' | 'unknown'
+
+/**
+ * Classifica o e-mail na tela de login conforme a aba Emails Cadastrados:
+ * team = liberado pelo gestor; gestor = dono de tenant; unknown = não cadastrado.
+ */
+export async function getLoginEmailStatus(email: string): Promise<{
+  status: LoginEmailStatus
+  gestorEmail: string | null
+}> {
+  const normalized = email.trim().toLowerCase()
+  const { data, error } = await getSupabaseClient().rpc('lookup_login_email_status', {
+    p_email: normalized,
+  })
+
+  if (error) {
+    // Migration ainda não aplicada: cai no lookup de equipe.
+    if (/could not find the function|does not exist|PGRST202/i.test(error.message)) {
+      const access = await getEmailAccess(normalized)
+      if (access) {
+        return { status: 'team', gestorEmail: access.gestor_email }
+      }
+      return { status: 'unknown', gestorEmail: null }
+    }
+    throw new Error(error.message)
+  }
+
+  const row = Array.isArray(data) ? data[0] : data
+  const raw = typeof row?.status === 'string' ? row.status.trim().toLowerCase() : ''
+  if (raw === 'team' || raw === 'gestor') {
+    return {
+      status: raw,
+      gestorEmail:
+        typeof row?.gestor_email === 'string' && row.gestor_email.trim()
+          ? row.gestor_email.trim().toLowerCase()
+          : null,
+    }
+  }
+  return { status: 'unknown', gestorEmail: null }
+}
+
 /** Remove o e-mail do Cadastros do gestor (recusa de convite na tela de login). */
 export async function declineTeamEmailInvite(email: string): Promise<{
   removed: boolean
