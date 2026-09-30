@@ -993,7 +993,7 @@ export default function ClinicaNovoPedidoPage() {
             open: true,
             severity: 'error',
             message:
-              'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
+              'Nenhum arquivo com formato aceito. Use PDF, Word, Excel, imagens (PNG/JPG) ou LibreOffice.',
           })
           return
         }
@@ -1035,7 +1035,7 @@ export default function ClinicaNovoPedidoPage() {
         open: true,
         severity: 'error',
         message:
-          'Nenhum arquivo com formato aceito. Use documentos, PDF, Word, Excel ou LibreOffice.',
+          'Nenhum arquivo com formato aceito. Use PDF, Word, Excel, imagens (PNG/JPG) ou LibreOffice.',
       })
       return
     }
@@ -1147,7 +1147,21 @@ export default function ClinicaNovoPedidoPage() {
       const anexosParaEnviar =
         envioAnexosRef.current.length > 0 ? envioAnexosRef.current : envioAnexos
       if (anexosParaEnviar.length > 0) {
-        await pedidoAnexoService.saveForPedido(pedidoId, anexosParaEnviar)
+        try {
+          await pedidoAnexoService.saveForPedido(pedidoId, anexosParaEnviar)
+        } catch (error) {
+          console.error('[AcompSolemp] Falha ao gravar anexos:', error)
+          setFeedback({
+            open: true,
+            severity: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Erro ao enviar anexos para a Auditoria. Tente novamente.',
+          })
+          // Planilha já foi criada — mantém o pedido e evita navegação como sucesso.
+          return
+        }
       }
 
       // Garante que planilha + anexos subam à nuvem para o próximo setor da timeline.
