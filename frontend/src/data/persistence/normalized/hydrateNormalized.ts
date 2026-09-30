@@ -1,10 +1,16 @@
-import type { AppData } from '@/types'
+import type {
+  AppData,
+  ChatMessage,
+  HistoricoEvento,
+  Notification,
+  ProcessoArquivado,
+  ReversaoTimeline,
+} from '@/types'
 import type { AppDataSnapshot } from '@/data/persistence/types'
 import { deserializeAppData } from '@/data/persistence/types'
 import { mergePedidosFromNormalized } from '@/data/persistence/normalized/pedidosSync'
 import { mergeAnexosFromNormalized } from '@/data/persistence/normalized/anexosSync'
 import { mergeSimpleArrayFromNormalized } from '@/data/persistence/normalized/simpleArraySync'
-import type { ChatMessage, HistoricoEvento } from '@/types'
 
 /** Deserializa o blob e mescla domínios normalizados com leitura ativa. */
 export async function hydrateAppDataFromCloudSnapshot(
@@ -24,6 +30,24 @@ export async function hydrateAppDataFromCloudSnapshot(
     'chat_mensagens',
     data,
     'chatMensagens',
+  )
+  data = await mergeSimpleArrayFromNormalized<ReversaoTimeline>(
+    'reversoes',
+    'reversoes',
+    data,
+    'reversoes',
+  )
+  data = await mergeSimpleArrayFromNormalized<Notification>(
+    'notificacoes',
+    'notificacoes',
+    data,
+    'notificacoes',
+  )
+  data = await mergeSimpleArrayFromNormalized<ProcessoArquivado>(
+    'arquivados',
+    'processos_arquivados',
+    data,
+    'processosArquivados',
   )
   return data
 }
