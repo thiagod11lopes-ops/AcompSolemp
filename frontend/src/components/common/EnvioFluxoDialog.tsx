@@ -45,22 +45,29 @@ interface EnvioFluxoDialogProps {
   title: string
   onClose: () => void
   onSubmit: () => void
+  /** Ação do botão secundário (padrão: onClose). */
+  onCancel?: () => void
   loading?: boolean
   submitLabel?: string
   cancelLabel?: string
   loadingLabel?: string
+  cancelLoadingLabel?: string
   submitDisabled?: boolean
   /** Esconde o ícone Send no botão (ex.: confirmar). */
   hideSubmitIcon?: boolean
+  /** Ícone customizado do botão primário. */
+  submitStartIcon?: ReactNode
   chips?: EnvioFluxoChip[]
   maxWidth?: DialogProps['maxWidth']
   /** Impede fechar no clique do backdrop (útil com seletor de arquivo). */
   blockBackdropClose?: boolean
+  /** Impede fechar por backdrop ou Escape — só pelos botões. */
+  preventDismiss?: boolean
   children: ReactNode
 }
 
 /**
- * Dialog leve e padronizado para envios da timeline —
+ * Dialog leve e padronizado —
  * mesma aparência do modal "Enviar planilha" da clínica.
  */
 export function EnvioFluxoDialog({
@@ -68,23 +75,32 @@ export function EnvioFluxoDialog({
   title,
   onClose,
   onSubmit,
+  onCancel,
   loading = false,
   submitLabel = 'Enviar planilha',
   cancelLabel = 'Cancelar',
   loadingLabel = 'Enviando...',
+  cancelLoadingLabel,
   submitDisabled = false,
   hideSubmitIcon = false,
+  submitStartIcon,
   chips,
   maxWidth = 'xs',
   blockBackdropClose = false,
+  preventDismiss = false,
   children,
 }: EnvioFluxoDialogProps) {
+  const handleCancel = onCancel ?? onClose
+
   return (
     <Dialog
       open={open}
       onClose={
-        loading
-          ? undefined
+        loading || preventDismiss
+          ? (_event, reason) => {
+              if (preventDismiss) return
+              if (blockBackdropClose && reason === 'backdropClick') return
+            }
           : (_event, reason) => {
               if (blockBackdropClose && reason === 'backdropClick') return
               onClose()
@@ -118,21 +134,23 @@ export function EnvioFluxoDialog({
       </DialogContent>
       <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
         <Button
-          onClick={onClose}
+          onClick={handleCancel}
           disabled={loading}
           color="inherit"
           sx={ENVIO_FLUXO_CANCEL_SX}
         >
-          {cancelLabel}
+          {loading && cancelLoadingLabel ? cancelLoadingLabel : cancelLabel}
         </Button>
         <Button
           variant="contained"
           onClick={onSubmit}
           disabled={loading || submitDisabled}
-          startIcon={hideSubmitIcon ? undefined : <SendIcon />}
+          startIcon={
+            hideSubmitIcon ? undefined : (submitStartIcon ?? <SendIcon />)
+          }
           sx={ENVIO_FLUXO_SUBMIT_SX}
         >
-          {loading ? loadingLabel : submitLabel}
+          {loading && !cancelLoadingLabel ? loadingLabel : submitLabel}
         </Button>
       </DialogActions>
     </Dialog>
