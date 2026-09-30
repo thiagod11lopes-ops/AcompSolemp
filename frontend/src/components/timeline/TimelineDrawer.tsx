@@ -163,11 +163,11 @@ export const TimelineDrawer = memo(function TimelineDrawer({
             >
               <header
                 style={{
-                  padding: '20px 22px 16px',
+                  padding: '12px 16px 10px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
-                  gap: 12,
+                  gap: 10,
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -175,23 +175,23 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 10,
+                      gap: 6,
+                      marginBottom: 4,
                     }}
                   >
                     <span
                       style={{
-                        width: 7,
-                        height: 7,
+                        width: 6,
+                        height: 6,
                         borderRadius: 99,
                         background: timelineTheme.blue,
-                        boxShadow: `0 0 0 3px rgba(85,139,113,0.22)`,
+                        boxShadow: `0 0 0 2px rgba(85,139,113,0.22)`,
                       }}
                     />
                     <span
                       style={{
-                        fontSize: '0.68rem',
-                        letterSpacing: '0.14em',
+                        fontSize: '0.62rem',
+                        letterSpacing: '0.12em',
                         textTransform: 'uppercase',
                         fontWeight: 700,
                         color: WHITE_SOFT,
@@ -202,8 +202,8 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   </div>
                   <h2
                     style={{
-                      margin: '0 0 12px',
-                      fontSize: '1.4rem',
+                      margin: '0 0 6px',
+                      fontSize: '1.1rem',
                       fontWeight: 750,
                       letterSpacing: '-0.03em',
                       lineHeight: 1.15,
@@ -217,7 +217,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
-                      gap: 8,
+                      gap: 6,
                     }}
                   >
                     <div className="timeline-drawer-status-white">
@@ -225,10 +225,10 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     </div>
                     <span
                       style={{
-                        fontSize: '0.75rem',
+                        fontSize: '0.7rem',
                         fontWeight: 600,
                         color: WHITE,
-                        padding: '5px 10px',
+                        padding: '3px 8px',
                         borderRadius: 999,
                         background: SURFACE,
                         border: `1px solid ${LINE}`,
@@ -245,9 +245,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                   style={{
                     border: `1px solid ${LINE}`,
                     background: SURFACE,
-                    borderRadius: 12,
-                    width: 34,
-                    height: 34,
+                    borderRadius: 10,
+                    width: 30,
+                    height: 30,
                     display: 'grid',
                     placeItems: 'center',
                     color: WHITE,
@@ -255,7 +255,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     flexShrink: 0,
                   }}
                 >
-                  <X size={16} />
+                  <X size={14} />
                 </button>
               </header>
 
@@ -263,7 +263,7 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 style={{
                   flex: 1,
                   overflowY: 'auto',
-                  padding: '4px 22px 28px',
+                  padding: '0 16px 14px',
                   color: WHITE,
                 }}
               >
@@ -273,10 +273,10 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      gap: 8,
-                      marginBottom: 22,
-                      padding: '12px',
-                      borderRadius: 14,
+                      gap: 6,
+                      marginBottom: 10,
+                      padding: '8px',
+                      borderRadius: 10,
                       background: SURFACE,
                       border: `1px solid ${LINE}`,
                     }}
@@ -345,9 +345,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                 {!historico && (
                   <p
                     style={{
-                      margin: '0 0 18px',
+                      margin: '0 0 8px',
                       color: WHITE_SOFT,
-                      fontSize: '0.82rem',
+                      fontSize: '0.76rem',
                     }}
                   >
                     Etapa ainda não iniciada
@@ -368,27 +368,27 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                       style={{
                         margin: 0,
                         color: corDevolvido,
-                        fontSize: '0.9rem',
+                        fontSize: '0.8rem',
                         fontWeight: 600,
-                        lineHeight: 1.55,
+                        lineHeight: 1.35,
                       }}
                     >
                       {justificativaDevolucao}
                     </p>
                   ) : isDevolvido ? (
-                    <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
+                    <span style={{ color: WHITE_SOFT, fontSize: '0.78rem' }}>
                       Justificativa não registrada.
                     </span>
                   ) : comentariosTimeline.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {comentariosTimeline.map((item) => (
                         <div key={item.id}>
                           <div
                             style={{
                               color: WHITE,
-                              fontSize: '0.82rem',
+                              fontSize: '0.74rem',
                               fontWeight: 700,
-                              marginBottom: 4,
+                              marginBottom: 2,
                               letterSpacing: '0.01em',
                             }}
                           >
@@ -409,9 +409,9 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                             style={{
                               margin: 0,
                               color: COR_COMENTARIO,
-                              fontSize: '0.9rem',
+                              fontSize: '0.8rem',
                               fontWeight: 600,
-                              lineHeight: 1.55,
+                              lineHeight: 1.35,
                             }}
                           >
                             {item.texto}
@@ -420,12 +420,12 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                       ))}
                     </div>
                   ) : (
-                    <span style={{ color: WHITE_SOFT, fontSize: '0.85rem' }}>
+                    <span style={{ color: WHITE_SOFT, fontSize: '0.78rem' }}>
                       Nenhum comentário registrado neste processo.
                     </span>
                   )}
                   {isDevolvido && podeCorrigir && corrigirPath ? (
-                    <div style={{ marginTop: 12 }}>
+                    <div style={{ marginTop: 8 }}>
                       <TimelineActionButton
                         onClick={handleCorrigir}
                         style={{
@@ -444,43 +444,43 @@ export const TimelineDrawer = memo(function TimelineDrawer({
 
                 {devolucoesOrdenadas.length > 0 && (
                   <Section title="Devoluções da planilha" icon={Clock3}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {devolucoesOrdenadas.map((item, index) => {
                         const isLatest = index === 0
                         return (
                           <div
                             key={item.id}
                             style={{
-                              padding: '12px 13px',
-                              borderRadius: 12,
+                              padding: '7px 9px',
+                              borderRadius: 8,
                               border: `1px solid ${
                                 isLatest ? 'rgba(251, 146, 60, 0.4)' : LINE
                               }`,
                               background: isLatest
                                 ? 'rgba(251, 146, 60, 0.1)'
                                 : SURFACE,
-                              fontSize: '0.84rem',
-                              lineHeight: 1.5,
+                              fontSize: '0.76rem',
+                              lineHeight: 1.35,
                               color: WHITE,
                             }}
                           >
                             <div
                               style={{
                                 color: WHITE_SOFT,
-                                fontSize: '0.72rem',
-                                marginBottom: 6,
+                                fontSize: '0.66rem',
+                                marginBottom: 3,
                                 fontWeight: 600,
                               }}
                             >
                               {formatDateTime(item.em)}
                               {isLatest ? ' · mais recente' : ''}
                             </div>
-                            <div style={{ marginBottom: 4 }}>
+                            <div style={{ marginBottom: 2 }}>
                               <strong>{item.deEtapaNome}</strong>
                               {' → '}
                               <strong>{item.paraEtapaNome}</strong>
                             </div>
-                            <div style={{ color: WHITE_SOFT, marginBottom: 6 }}>
+                            <div style={{ color: WHITE_SOFT, marginBottom: 3 }}>
                               Por {item.porUsuarioNome}
                             </div>
                             <div
@@ -500,19 +500,19 @@ export const TimelineDrawer = memo(function TimelineDrawer({
 
                 {historicoEtapa.length > 0 && (
                   <Section title="Histórico" icon={Clock3}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {historicoEtapa.map((h, index) => (
                         <div
                           key={`${h.etapaId}-${index}`}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 10,
-                            padding: '9px 12px',
-                            borderRadius: 10,
+                            gap: 8,
+                            padding: '5px 8px',
+                            borderRadius: 8,
                             background: SURFACE,
                             border: `1px solid ${LINE}`,
-                            fontSize: '0.8rem',
+                            fontSize: '0.72rem',
                             color: WHITE,
                           }}
                         >
@@ -647,25 +647,25 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section style={{ marginBottom: 22, color: WHITE }}>
+    <section style={{ marginBottom: 10, color: WHITE }}>
       <h3
         className={titleClassName}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 7,
-          margin: '0 0 10px',
-          fontSize: '0.7rem',
+          gap: 5,
+          margin: '0 0 5px',
+          fontSize: '0.62rem',
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           color: WHITE_SOFT,
           fontWeight: 700,
         }}
       >
-        <Icon size={13} color={WHITE_SOFT} />
+        <Icon size={11} color={WHITE_SOFT} />
         {title}
       </h3>
-      <div style={{ fontSize: '0.88rem', lineHeight: 1.5, color: WHITE }}>{children}</div>
+      <div style={{ fontSize: '0.8rem', lineHeight: 1.35, color: WHITE }}>{children}</div>
     </section>
   )
 }
@@ -681,9 +681,9 @@ function MetaBlock({
     <div
       style={{
         display: 'grid',
-        gap: compact ? 0 : 2,
-        marginBottom: compact ? 0 : 18,
-        borderRadius: compact ? 0 : 14,
+        gap: 0,
+        marginBottom: compact ? 0 : 10,
+        borderRadius: compact ? 0 : 10,
         border: compact ? 'none' : `1px solid ${LINE}`,
         background: compact ? 'transparent' : SURFACE,
         overflow: 'hidden',
@@ -696,28 +696,22 @@ function MetaBlock({
             key={`${item.label}-${index}`}
             style={{
               display: 'grid',
-              gridTemplateColumns: '18px 1fr auto',
-              alignItems: 'start',
-              gap: 10,
-              padding: compact ? '7px 0' : '11px 13px',
-              borderTop: compact
-                ? index === 0
-                  ? 'none'
-                  : `1px solid ${LINE}`
-                : index === 0
-                  ? 'none'
-                  : `1px solid ${LINE}`,
+              gridTemplateColumns: '14px 1fr auto',
+              alignItems: 'center',
+              gap: 8,
+              padding: compact ? '4px 0' : '6px 10px',
+              borderTop: index === 0 ? 'none' : `1px solid ${LINE}`,
             }}
           >
-            <Icon size={14} color={WHITE_SOFT} style={{ marginTop: 2 }} />
-            <span style={{ color: WHITE_SOFT, fontSize: '0.78rem' }}>{item.label}</span>
+            <Icon size={12} color={WHITE_SOFT} />
+            <span style={{ color: WHITE_SOFT, fontSize: '0.72rem' }}>{item.label}</span>
             <span
               style={{
                 color: WHITE,
-                fontSize: '0.84rem',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 textAlign: 'right',
-                lineHeight: 1.35,
+                lineHeight: 1.25,
                 maxWidth: 210,
                 wordBreak: 'break-word',
               }}
