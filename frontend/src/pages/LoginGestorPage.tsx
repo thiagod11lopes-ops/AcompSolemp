@@ -23,6 +23,7 @@ import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
+import { EmailNaoCadastradoModal } from '@/components/auth/EmailNaoCadastradoModal'
 import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
 
 const localLoginSchema = z.object({
@@ -43,7 +44,8 @@ type LoginForm = z.infer<typeof localLoginSchema>
 /**
  * Entrada unificada: só e-mail + senha.
  * - E-mail liberado pelo gestor → modal de aceite (1º acesso) e entra nos setores cadastrados.
- * - E-mail livre → cria/entra como Gestor com banco próprio.
+ * - E-mail já gestor → entra no Portal do Gestor.
+ * - E-mail não cadastrado → modal com Cadastrar (senha) ou Cancelar.
  */
 export default function LoginGestorPage() {
   const { login, loginSemSenha, register, logout } = useGestorAuth()
@@ -72,6 +74,7 @@ export default function LoginGestorPage() {
   const emailHint = watch('login')
   const {
     teamModalOpen,
+    unregisteredModalOpen,
     recognizedEmail,
     gestorEmail,
     recognizedPerfilLabels,
@@ -80,8 +83,11 @@ export default function LoginGestorPage() {
     setInfo,
     signUpOpenSignal,
     ensureTeamInviteAccepted,
+    ensureRegisteredOrSignup,
     handleAcceptTeamInvite,
     handleDeclineTeamInvite,
+    handleCadastrarUnregistered,
+    handleCancelarUnregistered,
   } = useTeamEmailInvite(emailHint)
 
   const finishGestorLogin = async () => {
@@ -107,6 +113,9 @@ export default function LoginGestorPage() {
       setError('')
 
       if (isSupabase) {
+        const allowed = await ensureRegisteredOrSignup(data.login)
+        if (!allowed) return
+
         const teamAccess = await authService.getTeamEmailAccess(data.login)
         if (teamAccess) {
           const ok = await ensureTeamInviteAccepted(data.login)
@@ -144,6 +153,8 @@ export default function LoginGestorPage() {
       setError('')
       setOpenAccessLoading(true)
       if (isSupabase && emailHint?.trim() && isMarinhaEmail(emailHint)) {
+        const allowed = await ensureRegisteredOrSignup(emailHint)
+        if (!allowed) return
         const teamAccess = await authService.getTeamEmailAccess(emailHint)
         if (teamAccess) {
           setError(
@@ -283,7 +294,7 @@ export default function LoginGestorPage() {
             helperText={
               blockUntilInviteAccepted
                 ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
-                : 'Sem convite de gestor: ao entrar ou cadastrar-se você vira Gestor com banco próprio e pode liberar e-mails da equipe.'
+                : 'E-mail novo: use Cadastrar no aviso (ou Cadastrar-se) para criar senha e virar Gestor com banco próprio.'
             }
             onSubmit={handleSignUp}
           />
@@ -297,6 +308,13 @@ export default function LoginGestorPage() {
         perfilLabels={recognizedPerfilLabels}
         onAccept={handleAcceptTeamInvite}
         onDecline={handleDeclineTeamInvite}
+      />
+
+      <EmailNaoCadastradoModal
+        open={unregisteredModalOpen}
+        email={recognizedEmail || emailHint}
+        onCadastrar={handleCadastrarUnregistered}
+        onCancelar={handleCancelarUnregistered}
       />
     </Box>
   )

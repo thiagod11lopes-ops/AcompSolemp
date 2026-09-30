@@ -48,6 +48,7 @@ import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/i
 import { supabaseAuthAdapter } from '@/supabase/authAdapter'
 import {
   getEmailAccess,
+  getLoginEmailStatus as fetchLoginEmailStatus,
   getProfileForCurrentUser,
   declineTeamEmailInvite,
   provisionGestorTenant,
@@ -505,6 +506,12 @@ export const authService = {
   async getTeamEmailAccess(email: string) {
     if (!useSupabaseDataSource()) return null
     return getEmailAccess(assertMarinhaEmail(email))
+  },
+
+  /** Status do e-mail na aba Emails Cadastrados (equipe / gestor / não cadastrado). */
+  async getLoginEmailStatus(email: string) {
+    if (!useSupabaseDataSource()) return { status: 'gestor' as const, gestorEmail: null }
+    return fetchLoginEmailStatus(assertMarinhaEmail(email))
   },
 
   /** Recusa o convite: remove o e-mail do Cadastros do gestor. */
