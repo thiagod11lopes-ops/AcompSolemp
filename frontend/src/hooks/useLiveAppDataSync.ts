@@ -2,10 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCloudAppDataSync } from '@/config/dataSource'
 import { applyRemoteAppData, subscribeAppDataChanged } from '@/mocks/seed'
-import {
-  deserializeAppData,
-  loadAppDataFromSupabase,
-} from '@/data/persistence/supabaseAppDataPersistence'
+import { loadAppDataFromSupabase } from '@/data/persistence/supabaseAppDataPersistence'
 
 const LIVE_QUERY_KEYS = [
   'notifications',
@@ -80,7 +77,10 @@ export function useLiveAppDataSync(): void {
           return
         }
         lastRemoteUpdatedAt.current = snapshot.updatedAt
-        applyRemoteAppData(deserializeAppData(snapshot))
+        const { hydrateAppDataFromCloudSnapshot } = await import(
+          '@/data/persistence/normalized/hydrateNormalized'
+        )
+        applyRemoteAppData(await hydrateAppDataFromCloudSnapshot(snapshot))
         invalidateLiveQueries(queryClient)
       } catch {
         // Rede/realtime indisponível — próxima tentativa ao focar a aba ou remount.

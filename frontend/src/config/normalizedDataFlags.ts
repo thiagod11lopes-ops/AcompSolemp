@@ -1,6 +1,6 @@
 /**
  * Flags da migração do monolito `app_state` → tabelas normalizadas.
- * Fase 0: dual-write e leitura desligados — zero mudança de comportamento.
+ * Pedidos (Fase 2): dual-write + leitura ligados (fallback no blob se tabela vazia).
  *
  * Override opcional (debug):
  *   localStorage.setItem('acompsolemp:normalized:pedidos:read', '1')
@@ -23,7 +23,7 @@ type DomainFlags = Record<NormalizedDomain, boolean>
 
 /** Dual-write: espelha no SQL além do blob. */
 const DEFAULT_DUAL_WRITE: DomainFlags = {
-  pedidos: false,
+  pedidos: true,
   anexos: false,
   historico: false,
   chat: false,
@@ -37,7 +37,7 @@ const DEFAULT_DUAL_WRITE: DomainFlags = {
 
 /** Leitura cutover: listas/detalhe leem a tabela (fallback blob se vazio). */
 const DEFAULT_READ: DomainFlags = {
-  pedidos: false,
+  pedidos: true,
   anexos: false,
   historico: false,
   chat: false,
