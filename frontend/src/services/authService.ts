@@ -17,6 +17,7 @@ import {
   MOCK_CREDENTIALS,
   reloadFreshAppData,
   resetAppData,
+  saveAppData,
 } from '@/mocks/seed'
 import {
   canAccessGestorRoute,
@@ -448,12 +449,47 @@ export const authService = {
     setStoredOrgCode(loadAppData().tenantMeta?.orgCode ?? null)
 
     const data = loadAppData()
-    const owner =
+    let owner =
       data.usuarios.find((u) => u.id === profile!.app_user_id && u.ativo) ??
+      data.usuarios.find(
+        (u) =>
+          u.perfil === 'GESTOR' &&
+          u.ativo &&
+          normalizeEmailKey(u.email ?? '') === normalizeEmailKey(marinhaEmail),
+      ) ??
       data.usuarios.find((u) => u.perfil === 'GESTOR' && u.ativo)
 
+    // E-mail livre com perfil GESTOR: não depende de já existir em Cadastros.
+    // Recria o owner se o blob/tabela estiver vazio (ex.: migração / primeiro acesso).
     if (!owner) {
-      throw new Error('Usuário gestor não encontrado na organização.')
+      const orgCode = loadAppData().tenantMeta?.orgCode ?? getStoredOrgCode()
+      owner = {
+        id: profile.app_user_id || `user-owner-${profile.tenant_id}`,
+        nome:
+          authSession.user.user_metadata?.full_name?.trim() ||
+          marinhaEmail.split('@')[0] ||
+          'Gestor',
+        posto: '',
+        graduacao: 'Gestor Geral',
+        login: 'gestor',
+        email: marinhaEmail,
+        perfil: 'GESTOR',
+        clinicaId: null,
+        ativo: true,
+      }
+      saveAppData({
+        ...data,
+        usuarios: [
+          ...data.usuarios.filter((u) => u.id !== owner!.id),
+          owner,
+        ],
+        tenantMeta: data.tenantMeta ?? {
+          orgCode: orgCode || profile.tenant_id.slice(0, 8).toUpperCase(),
+          ownerEmail: marinhaEmail,
+          ownerUid: profile.tenant_id,
+          createdAt: new Date().toISOString(),
+        },
+      })
     }
 
     return completePortalLogin('gestor', owner)
