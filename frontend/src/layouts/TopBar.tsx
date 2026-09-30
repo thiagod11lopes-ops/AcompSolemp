@@ -33,7 +33,6 @@ import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { DRAWER_WIDTH } from './Sidebar'
 import { TIPOS_NOTIFICACAO_REVERSAO, notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { useNotifications } from '@/hooks/useCadastros'
-import { useSupabaseDataSource } from '@/config/dataSource'
 import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 import {
   isFictionalDashboardSeedActive,
@@ -46,10 +45,9 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const { user, logout } = useGestorAuth()
-  const { impersonationTargetEmail, demoMode } = useAuth()
+  const { demoMode } = useAuth()
   const { mode, toggleTheme } = useThemeMode()
   const { demoBannerHeight, mapPath, isDemo } = usePortalPaths()
-  const isSupabase = useSupabaseDataSource()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
