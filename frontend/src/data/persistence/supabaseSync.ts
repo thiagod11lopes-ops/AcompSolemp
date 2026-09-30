@@ -91,14 +91,20 @@ export async function hydrateLocalCacheFromSupabase(
   const snapshot = await loadAppDataFromSupabase(tenantId)
   if (!snapshot) return false
 
-  apply(deserializeAppData(snapshot))
+  const { hydrateAppDataFromCloudSnapshot } = await import(
+    '@/data/persistence/normalized/hydrateNormalized'
+  )
+  apply(await hydrateAppDataFromCloudSnapshot(snapshot))
   return true
 }
 
 export async function refreshAppDataFromCloud(): Promise<AppData | null> {
   const snapshot = await loadAppDataFromSupabase()
   if (!snapshot) return null
-  return deserializeAppData(snapshot)
+  const { hydrateAppDataFromCloudSnapshot } = await import(
+    '@/data/persistence/normalized/hydrateNormalized'
+  )
+  return hydrateAppDataFromCloudSnapshot(snapshot)
 }
 
 /**

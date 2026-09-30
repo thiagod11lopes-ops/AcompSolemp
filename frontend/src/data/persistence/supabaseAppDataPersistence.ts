@@ -101,6 +101,11 @@ export async function saveAppDataToSupabase(
 
   if (isImpersonationSession()) {
     await adminSaveAppState(id, snapshot.version, payload)
+    // Dual-write normalizado também no fluxo admin quando possível.
+    const { dualWritePedidos } = await import(
+      '@/data/persistence/normalized/pedidosSync'
+    )
+    await dualWritePedidos(appDataLeve)
     return
   }
 
@@ -113,7 +118,13 @@ export async function saveAppDataToSupabase(
     p_payload: payload,
   })
 
-  if (!rpcError) return
+  if (!rpcError) {
+    const { dualWritePedidos } = await import(
+      '@/data/persistence/normalized/pedidosSync'
+    )
+    await dualWritePedidos(appDataLeve)
+    return
+  }
 
   // Fallback enquanto a migration não foi aplicada no projeto.
   if (/could not find the function|does not exist|PGRST202/i.test(rpcError.message)) {
@@ -127,6 +138,10 @@ export async function saveAppDataToSupabase(
       { onConflict: 'tenant_id' },
     )
     if (error) throw new Error(error.message)
+    const { dualWritePedidos } = await import(
+      '@/data/persistence/normalized/pedidosSync'
+    )
+    await dualWritePedidos(appDataLeve)
     return
   }
 
