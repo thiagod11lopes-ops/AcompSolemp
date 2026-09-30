@@ -7,6 +7,9 @@ import {
   loadAppDataFromSupabase,
 } from '@/data/persistence/supabaseAppDataPersistence'
 
+/** Fallback raro — Realtime é a fonte principal; evita egress do snapshot a cada 2,5s. */
+const FALLBACK_POLL_MS = 60_000
+
 const LIVE_QUERY_KEYS = [
   'notifications',
   'pedidos',
@@ -42,7 +45,7 @@ function invalidateLiveQueries(queryClient: ReturnType<typeof useQueryClient>): 
 
 /**
  * Mantém timelines/notificações sincronizadas quando planilha é enviada ou devolvida
- * (mesma aba, outras abas e outras sessões via Supabase realtime + polling de apoio).
+ * (mesma aba, outras abas e outras sessões via Supabase Realtime + fallback leve).
  */
 export function useLiveAppDataSync(): void {
   const queryClient = useQueryClient()
@@ -60,6 +63,7 @@ export function useLiveAppDataSync(): void {
 
     let unsubscribe: () => void = () => undefined
     let cancelled = false
+    let pollId: number | null = null
 
     const applyIfNewer = async () => {
       try {
@@ -83,8 +87,13 @@ export function useLiveAppDataSync(): void {
         applyRemoteAppData(deserializeAppData(snapshot))
         invalidateLiveQueries(queryClient)
       } catch {
-        // Rede/realtime indisponível — próxima tentativa no intervalo.
+        // Rede/realtime indisponível — próxima tentativa no fallback ou ao focar a aba.
       }
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      void applyIfNewer()
     }
 
     void import('@/data/persistence/supabaseSync').then(({ subscribeAppStateRealtime }) => {
@@ -96,15 +105,23 @@ export function useLiveAppDataSync(): void {
       })
     })
 
-    // Apoio caso realtime não esteja habilitado no projeto Supabase.
-    const pollId = window.setInterval(() => {
+    // Hidratação inicial + sync ao voltar à aba (sem polling agressivo).
+    void applyIfNewer()
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    window.addEventListener('focus', refreshWhenVisible)
+
+    // Apoio raro caso Realtime falhe ou esteja desabilitado no projeto Supabase.
+    pollId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
       void applyIfNewer()
-    }, 2_500)
+    }, FALLBACK_POLL_MS)
 
     return () => {
       cancelled = true
       unsubscribe()
-      window.clearInterval(pollId)
+      if (pollId != null) window.clearInterval(pollId)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.removeEventListener('focus', refreshWhenVisible)
     }
   }, [cloud, queryClient])
 }
