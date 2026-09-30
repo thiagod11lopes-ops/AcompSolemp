@@ -17,6 +17,8 @@ import { premiumTokens } from '@/theme/tokens'
 import { MARINHA_EMAIL_HINT } from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
+import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
+import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
 
 /**
  * Portão de acesso à Timeline — e-mail institucional cadastrado pelo gestor.
@@ -31,11 +33,24 @@ export default function TimelineEntryPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
+  const {
+    teamModalOpen,
+    recognizedEmail,
+    gestorEmail,
+    recognizedPerfilLabels,
+    pendingTeamInvite,
+    info,
+    setInfo,
+    signUpOpenSignal,
+    ensureTeamInviteAccepted,
+    handleAcceptTeamInvite,
+    handleDeclineTeamInvite,
+  } = useTeamEmailInvite(email)
+
   useEffect(() => {
     let cancelled = false
 
     const abrirPorta = async () => {
-      // Personificação ativa: não limpar sessão nem pedir login/senha
       const impersonation = authService.getImpersonation()
       if (impersonation) {
         const clinica = authService.getClinicaUser()
@@ -65,6 +80,13 @@ export default function TimelineEntryPage() {
     setLoading(true)
     setErro('')
     try {
+      if (isSupabase) {
+        const ok = await ensureTeamInviteAccepted(email)
+        if (!ok) {
+          setErro('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
+          return
+        }
+      }
       const result = await loginWithEmailTimeline(
         email,
         isSupabase ? password : undefined,
@@ -79,11 +101,20 @@ export default function TimelineEntryPage() {
 
   const handleSignUp = async (values: { email: string; senha: string }) => {
     setErro('')
+    if (isSupabase) {
+      const ok = await ensureTeamInviteAccepted(values.email)
+      if (!ok) {
+        setErro('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
+        return
+      }
+    }
     const result = await registerWithEmailTimeline(values.email, values.senha)
     navigate(result.route, { replace: true })
   }
 
   if (!gateReady) return <LoadingSpinner />
+
+  const blockUntilInviteAccepted = pendingTeamInvite
 
   return (
     <Box
@@ -122,6 +153,13 @@ export default function TimelineEntryPage() {
             ? 'E-mail @marinha.mil.br liberado pelo gestor. Use Entrar ou Cadastrar-se no primeiro acesso.'
             : 'Informe o e-mail @marinha.mil.br cadastrado pelo gestor.'}
         </Typography>
+
+        {info && (
+          <Alert severity="success" sx={{ mb: 2, textAlign: 'left' }} onClose={() => setInfo('')}>
+            {info}
+          </Alert>
+        )}
+
         <TextField
           fullWidth
           type="email"
@@ -140,6 +178,7 @@ export default function TimelineEntryPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             sx={{ mb: 0.5 }}
+            disabled={blockUntilInviteAccepted}
           />
         )}
         {isSupabase && (
@@ -152,7 +191,12 @@ export default function TimelineEntryPage() {
           variant="contained"
           size="large"
           onClick={() => void handleEmailLogin()}
-          disabled={loading || !email.trim() || (isSupabase && password.length < 6)}
+          disabled={
+            loading ||
+            blockUntilInviteAccepted ||
+            !email.trim() ||
+            (isSupabase && password.length < 6)
+          }
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>
@@ -160,8 +204,14 @@ export default function TimelineEntryPage() {
         {isSupabase && (
           <Stack spacing={1.5} sx={{ mt: 1.5 }}>
             <SignUpButton
-              emailHint={email}
-              helperText="O gestor libera o e-mail @marinha.mil.br. O link de recuperação de senha é enviado para este mesmo e-mail."
+              emailHint={recognizedEmail || email}
+              openSignal={signUpOpenSignal}
+              disabled={blockUntilInviteAccepted}
+              helperText={
+                blockUntilInviteAccepted
+                  ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
+                  : 'O gestor libera o e-mail @marinha.mil.br. Ao aceitar, defina a senha para entrar na organização.'
+              }
               onSubmit={handleSignUp}
             />
           </Stack>
@@ -173,6 +223,15 @@ export default function TimelineEntryPage() {
           </Alert>
         )}
       </Box>
+
+      <TeamEmailRecognizedModal
+        open={teamModalOpen}
+        email={recognizedEmail}
+        gestorEmail={gestorEmail}
+        perfilLabels={recognizedPerfilLabels}
+        onAccept={handleAcceptTeamInvite}
+        onDecline={handleDeclineTeamInvite}
+      />
     </Box>
   )
 }
