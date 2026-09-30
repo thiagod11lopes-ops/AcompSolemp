@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EmailIcon from '@mui/icons-material/Email'
 import { Navigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -224,7 +224,7 @@ export default function GestorEmailsCadastradosPage() {
                               {busyEmail === gestor.email ? (
                                 <CircularProgress size={18} />
                               ) : (
-                                <DeleteOutlineIcon fontSize="small" />
+                                <DeleteOutlinedIcon fontSize="small" />
                               )}
                             </IconButton>
                           </span>
@@ -279,7 +279,7 @@ export default function GestorEmailsCadastradosPage() {
                               {busyEmail === row.email ? (
                                 <CircularProgress size={18} />
                               ) : (
-                                <DeleteOutlineIcon fontSize="small" />
+                                <DeleteOutlinedIcon fontSize="small" />
                               )}
                             </IconButton>
                           </span>
