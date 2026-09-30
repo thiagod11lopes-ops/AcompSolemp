@@ -306,7 +306,7 @@ export async function getEmailAccess(email: string): Promise<{
 export type LoginEmailStatus = 'team' | 'gestor' | 'unknown'
 
 /**
- * Classifica o e-mail na tela de login conforme a aba Emails Cadastrados:
+ * Classifica o e-mail na tela de login:
  * team = liberado pelo gestor; gestor = dono de tenant; unknown = não cadastrado.
  */
 export async function getLoginEmailStatus(email: string): Promise<{

@@ -42,7 +42,7 @@ function resolveTeamPerfis(access: {
 }
 
 export interface UseTeamEmailInviteOptions {
-  /** Quando true (padrão), mostra modal se o e-mail não está em Emails Cadastrados. */
+  /** Quando true (padrão), mostra modal se o e-mail ainda não existe no sistema. */
   unregisteredModal?: boolean
 }
 
@@ -148,7 +148,7 @@ export function useTeamEmailInvite(
             return
           }
 
-          // unknown — não está em Emails Cadastrados
+          // unknown — e-mail ainda não cadastrado no sistema
           setPendingTeamInvite(false)
           setTeamModalOpen(false)
           if (

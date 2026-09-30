@@ -508,7 +508,7 @@ export const authService = {
     return getEmailAccess(assertMarinhaEmail(email))
   },
 
-  /** Status do e-mail na aba Emails Cadastrados (equipe / gestor / não cadastrado). */
+  /** Status do e-mail no login (equipe / gestor / não cadastrado). */
   async getLoginEmailStatus(email: string) {
     if (!useSupabaseDataSource()) return { status: 'gestor' as const, gestorEmail: null }
     return fetchLoginEmailStatus(assertMarinhaEmail(email))
