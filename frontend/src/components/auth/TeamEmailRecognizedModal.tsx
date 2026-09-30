@@ -49,7 +49,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** Modal de convite no primeiro acesso: e-mail liberado pelo gestor em Cadastros. */
+/**
+ * Primeiro acesso: e-mail liberado pelo gestor, usuário ainda sem login/senha.
+ * Sim → entra no sistema do gestor (setor cadastrado).
+ * Não → cadastro de senha para criar Portal do Gestor próprio.
+ */
 export function TeamEmailRecognizedModal({
   open,
   email,
@@ -69,7 +73,7 @@ export function TeamEmailRecognizedModal({
 
   const representText =
     labels.length === 0
-      ? 'um setor da organização'
+      ? 'um setor'
       : labels.length === 1
         ? labels[0]
         : labels.slice(0, -1).join(', ') + ' e ' + labels[labels.length - 1]
@@ -89,22 +93,22 @@ export function TeamEmailRecognizedModal({
   return (
     <EnvioFluxoDialog
       open={open}
-      title="E-mail cadastrado pelo gestor"
+      title="Fazer parte do sistema do gestor?"
       onClose={() => undefined}
       onCancel={() => void handleDecline()}
       onSubmit={onAccept}
       loading={loading}
-      cancelLabel="Não aceitar"
+      cancelLabel="Não"
       cancelLoadingLabel="Removendo..."
-      submitLabel="Aceitar cadastro"
+      submitLabel="Sim"
       submitStartIcon={<CheckCircleRoundedIcon />}
       preventDismiss
-      chips={[{ label: 'Cadastro do gestor', color: 'success' }]}
+      chips={[{ label: 'Convite do gestor', color: 'success' }]}
     >
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Este e-mail foi cadastrado para representar{' '}
-        <strong>{representText}</strong>. Aceite para entrar no banco de dados do
-        gestor ou recuse para ficar livre e criar o seu próprio Portal do Gestor.
+        Este e-mail foi cadastrado por um gestor para representar{' '}
+        <strong>{representText}</strong>, mas você ainda não fez o primeiro
+        acesso. Deseja fazer parte do sistema desse gestor?
       </Typography>
 
       <Box
@@ -120,7 +124,7 @@ export function TeamEmailRecognizedModal({
         }}
       >
         <InfoRow
-          label="Gestor que cadastrou"
+          label="E-mail do gestor"
           value={gestorEmail || 'E-mail do gestor indisponível'}
         />
         <InfoRow label="Seu e-mail" value={email} />
@@ -146,7 +150,7 @@ export function TeamEmailRecognizedModal({
                 mb: 0.25,
               }}
             >
-              {labels.length > 1 ? 'Setores a representar' : 'Setor a representar'}
+              {labels.length > 1 ? 'Setores cadastrados' : 'Setor cadastrado'}
             </Typography>
             <Box
               component="ul"
@@ -176,11 +180,11 @@ export function TeamEmailRecognizedModal({
         color="text.secondary"
         sx={{ display: 'block', mb: error ? 1.5 : 0, lineHeight: 1.45 }}
       >
-        <strong>Aceitar cadastro</strong> pede para criar uma senha e entra na
-        organização do gestor.
+        <strong>Sim</strong> — você cria a senha e entra no sistema do gestor
+        no setor cadastrado.
         {' '}
-        <strong>Não aceitar</strong> remove seu e-mail da lista de Cadastros desse
-        gestor e libera a criação do seu próprio banco como Gestor.
+        <strong>Não</strong> — remove o convite e abre o cadastro de senha para
+        criar seu próprio login e banco de dados como Gestor.
       </Typography>
 
       {error && (

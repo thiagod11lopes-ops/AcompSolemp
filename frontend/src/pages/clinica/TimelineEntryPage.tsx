@@ -209,8 +209,8 @@ export default function TimelineEntryPage() {
               disabled={blockUntilInviteAccepted}
               helperText={
                 blockUntilInviteAccepted
-                  ? 'Aceite o cadastro do gestor no aviso acima para liberar Entrar e Cadastrar-se.'
-                  : 'O gestor libera o e-mail @marinha.mil.br. Ao aceitar, defina a senha para entrar na organização.'
+                  ? 'Responda ao convite do gestor (Sim ou Não) para liberar Entrar e Cadastrar-se.'
+                  : 'O gestor libera o e-mail @marinha.mil.br. Ao aceitar (Sim), defina a senha para entrar no setor cadastrado.'
               }
               onSubmit={handleSignUp}
             />

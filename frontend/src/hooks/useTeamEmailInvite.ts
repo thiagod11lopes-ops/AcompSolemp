@@ -217,8 +217,9 @@ export function useTeamEmailInvite(
     markTeamInviteAccepted(recognizedEmail)
     setPendingTeamInvite(false)
     setTeamModalOpen(false)
+    setUnregisteredModalOpen(false)
     setInfo(
-      'Cadastro aceito. Defina sua senha para entrar na organização do gestor.',
+      'Você aceitou fazer parte do sistema do gestor. Defina sua senha para entrar no setor cadastrado.',
     )
     setSignUpOpenSignal((n) => n + 1)
   }, [recognizedEmail])
@@ -231,14 +232,14 @@ export function useTeamEmailInvite(
     setRecognizedPerfis([])
     setPendingTeamInvite(false)
     const normalized = normalizeEmailKey(recognizedEmail)
-    dismissedUnregisteredRef.current.delete(normalized)
+    // Evita o modal "não cadastrado" e vai direto ao cadastro de senha (banco próprio).
+    if (normalized) dismissedUnregisteredRef.current.add(normalized)
+    setUnregisteredModalOpen(false)
     setInfo(
-      'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor com banco próprio.',
+      'Convite recusado. Defina uma senha para criar seu próprio login e banco de dados como Gestor.',
     )
-    if (unregisteredModalEnabled) {
-      openUnregisteredModal(normalized)
-    }
-  }, [openUnregisteredModal, recognizedEmail, unregisteredModalEnabled])
+    setSignUpOpenSignal((n) => n + 1)
+  }, [recognizedEmail])
 
   const handleCadastrarUnregistered = useCallback(() => {
     const email = normalizeEmailKey(recognizedEmail)
