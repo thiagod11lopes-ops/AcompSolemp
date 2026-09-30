@@ -98,29 +98,31 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
   if (!clinicSection || !clinicNode) {
     return (
       <div className="timeline-flow timeline-flow--horizontal" ref={flowRef}>
-        {sections.map((section, index) => (
-          <div key={section.id} className="timeline-flow-segment">
-            {index > 0 && (
-              <div className="timeline-flow-connector">
-                <TimelineEdge
-                  state={resolvePlanilhaConnectorState(
-                    getSectionExitNodes(sections[index - 1]),
-                    getSectionEntryNodes(section),
-                    pedido,
-                    etapas,
-                    planilhaEnvio,
-                  )}
-                  vertical={false}
-                />
-              </div>
-            )}
-            <FlowSection
-              section={section}
-              onOpenDetails={onOpenDetails}
-              showTitle
-            />
-          </div>
-        ))}
+        <div className="timeline-flow-track">
+          {sections.map((section, index) => (
+            <div key={section.id} className="timeline-flow-segment">
+              {index > 0 && (
+                <div className="timeline-flow-connector">
+                  <TimelineEdge
+                    state={resolvePlanilhaConnectorState(
+                      getSectionExitNodes(sections[index - 1]),
+                      getSectionEntryNodes(section),
+                      pedido,
+                      etapas,
+                      planilhaEnvio,
+                    )}
+                    vertical={false}
+                  />
+                </div>
+              )}
+              <FlowSection
+                section={section}
+                onOpenDetails={onOpenDetails}
+                showTitle
+              />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -130,41 +132,43 @@ export const TimelineFlowLayout = memo(function TimelineFlowLayout({
       className="timeline-flow timeline-flow--horizontal timeline-flow--with-direct-imh"
       ref={flowRef}
     >
-      <div className="timeline-flow-clinic" data-timeline-anchor="clinic">
-        <TimelineNode
-          node={clinicNode}
-          vertical={false}
-          showEdgeAfter={false}
-          onOpenDetails={() => onOpenDetails(clinicNode)}
-        />
-      </div>
+      <div className="timeline-flow-track">
+        <div className="timeline-flow-clinic" data-timeline-anchor="clinic">
+          <TimelineNode
+            node={clinicNode}
+            vertical={false}
+            showEdgeAfter={false}
+            onOpenDetails={() => onOpenDetails(clinicNode)}
+          />
+        </div>
 
-      {flowSections.map((section, index) => {
-        const prevSection = index === 0 ? clinicSection : flowSections[index - 1]
-        const prevExitNodes = getSectionExitNodes(prevSection)
-        const entryNodes = getSectionEntryNodes(section)
-        const connectorState = resolvePlanilhaConnectorState(
-          index === 0 ? [clinicNode] : prevExitNodes,
-          entryNodes,
-          pedido,
-          etapas,
-          planilhaEnvio,
-        )
+        {flowSections.map((section, index) => {
+          const prevSection = index === 0 ? clinicSection : flowSections[index - 1]
+          const prevExitNodes = getSectionExitNodes(prevSection)
+          const entryNodes = getSectionEntryNodes(section)
+          const connectorState = resolvePlanilhaConnectorState(
+            index === 0 ? [clinicNode] : prevExitNodes,
+            entryNodes,
+            pedido,
+            etapas,
+            planilhaEnvio,
+          )
 
-        return (
-          <div key={section.id} className="timeline-flow-segment">
-            <div className="timeline-flow-connector">
-              <TimelineEdge state={connectorState} vertical={false} />
+          return (
+            <div key={section.id} className="timeline-flow-segment">
+              <div className="timeline-flow-connector">
+                <TimelineEdge state={connectorState} vertical={false} />
+              </div>
+
+              <FlowSection
+                section={section}
+                onOpenDetails={onOpenDetails}
+                showTitle={Boolean(section.title)}
+              />
             </div>
-
-            <FlowSection
-              section={section}
-              onOpenDetails={onOpenDetails}
-              showTitle={Boolean(section.title)}
-            />
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
 
       {contabilidadeImhNode && (
         <TimelineDirectClinicImhLink
