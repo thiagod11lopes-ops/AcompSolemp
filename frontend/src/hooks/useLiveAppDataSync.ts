@@ -7,9 +7,6 @@ import {
   loadAppDataFromSupabase,
 } from '@/data/persistence/supabaseAppDataPersistence'
 
-/** Fallback raro — Realtime é a fonte principal; evita egress do snapshot a cada 2,5s. */
-const FALLBACK_POLL_MS = 60_000
-
 const LIVE_QUERY_KEYS = [
   'notifications',
   'pedidos',
@@ -45,7 +42,7 @@ function invalidateLiveQueries(queryClient: ReturnType<typeof useQueryClient>): 
 
 /**
  * Mantém timelines/notificações sincronizadas quando planilha é enviada ou devolvida
- * (mesma aba, outras abas e outras sessões via Supabase Realtime + fallback leve).
+ * (mesma aba, outras abas e outras sessões via Supabase Realtime + refresh no mount/foco).
  */
 export function useLiveAppDataSync(): void {
   const queryClient = useQueryClient()
@@ -63,7 +60,6 @@ export function useLiveAppDataSync(): void {
 
     let unsubscribe: () => void = () => undefined
     let cancelled = false
-    let pollId: number | null = null
 
     const applyIfNewer = async () => {
       try {
@@ -73,7 +69,7 @@ export function useLiveAppDataSync(): void {
           '@/data/persistence/supabaseSync'
         )
         const remoteMs = Date.parse(snapshot.updatedAt)
-        // Poll/realtime com snapshot antigo não pode apagar cadastro acabado de criar.
+        // Snapshot antigo não pode apagar cadastro acabado de criar.
         if (shouldIgnoreRemoteAppData(remoteMs)) {
           return
         }
@@ -87,7 +83,7 @@ export function useLiveAppDataSync(): void {
         applyRemoteAppData(deserializeAppData(snapshot))
         invalidateLiveQueries(queryClient)
       } catch {
-        // Rede/realtime indisponível — próxima tentativa no fallback ou ao focar a aba.
+        // Rede/realtime indisponível — próxima tentativa ao focar a aba ou remount.
       }
     }
 
@@ -105,21 +101,14 @@ export function useLiveAppDataSync(): void {
       })
     })
 
-    // Hidratação inicial + sync ao voltar à aba (sem polling agressivo).
+    // Hidratação inicial + sync ao voltar à aba (sem polling periódico).
     void applyIfNewer()
     document.addEventListener('visibilitychange', refreshWhenVisible)
     window.addEventListener('focus', refreshWhenVisible)
 
-    // Apoio raro caso Realtime falhe ou esteja desabilitado no projeto Supabase.
-    pollId = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return
-      void applyIfNewer()
-    }, FALLBACK_POLL_MS)
-
     return () => {
       cancelled = true
       unsubscribe()
-      if (pollId != null) window.clearInterval(pollId)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
       window.removeEventListener('focus', refreshWhenVisible)
     }
