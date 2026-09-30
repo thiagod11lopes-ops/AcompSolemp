@@ -102,10 +102,10 @@ export async function saveAppDataToSupabase(
   if (isImpersonationSession()) {
     await adminSaveAppState(id, snapshot.version, payload)
     // Dual-write normalizado também no fluxo admin quando possível.
-    const { dualWritePedidos } = await import(
-      '@/data/persistence/normalized/pedidosSync'
+    const { dualWriteNormalizedDomains } = await import(
+      '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWritePedidos(appDataLeve)
+    await dualWriteNormalizedDomains(appDataLeve)
     return
   }
 
@@ -119,10 +119,10 @@ export async function saveAppDataToSupabase(
   })
 
   if (!rpcError) {
-    const { dualWritePedidos } = await import(
-      '@/data/persistence/normalized/pedidosSync'
+    const { dualWriteNormalizedDomains } = await import(
+      '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWritePedidos(appDataLeve)
+    await dualWriteNormalizedDomains(appDataLeve)
     return
   }
 
@@ -138,10 +138,10 @@ export async function saveAppDataToSupabase(
       { onConflict: 'tenant_id' },
     )
     if (error) throw new Error(error.message)
-    const { dualWritePedidos } = await import(
-      '@/data/persistence/normalized/pedidosSync'
+    const { dualWriteNormalizedDomains } = await import(
+      '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWritePedidos(appDataLeve)
+    await dualWriteNormalizedDomains(appDataLeve)
     return
   }
 
