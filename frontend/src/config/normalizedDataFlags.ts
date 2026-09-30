@@ -25,7 +25,7 @@ type DomainFlags = Record<NormalizedDomain, boolean>
 const DEFAULT_DUAL_WRITE: DomainFlags = {
   pedidos: true,
   anexos: true,
-  historico: false,
+  historico: true,
   chat: false,
   reversoes: false,
   notificacoes: false,
@@ -39,7 +39,7 @@ const DEFAULT_DUAL_WRITE: DomainFlags = {
 const DEFAULT_READ: DomainFlags = {
   pedidos: true,
   anexos: true,
-  historico: false,
+  historico: true,
   chat: false,
   reversoes: false,
   notificacoes: false,
