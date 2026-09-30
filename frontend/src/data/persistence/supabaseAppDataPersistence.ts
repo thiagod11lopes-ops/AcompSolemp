@@ -87,6 +87,12 @@ export async function saveAppDataToSupabase(
   const snapshot = serializeAppData(appData, version)
   const payload = JSON.parse(snapshot.payload) as AppData
 
+  // Fase 0: inventário de tamanho do monolito (diagnóstico de egress).
+  const { logAppDataPayloadMetrics } = await import(
+    '@/data/persistence/appDataPayloadMetrics'
+  )
+  logAppDataPayloadMetrics(payload, `save tenant=${id}`)
+
   if (isImpersonationSession()) {
     await adminSaveAppState(id, snapshot.version, payload)
     return
