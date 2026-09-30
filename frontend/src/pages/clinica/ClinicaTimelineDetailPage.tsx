@@ -14,9 +14,8 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
-import { TimelineDetalhesPanel } from '@/components/timeline/TimelineDetalhesPanel'
 import { useClinicaPedido } from '@/hooks/useClinicaPedidos'
-import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
+import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency, formatNip } from '@/utils/format'
 
@@ -25,7 +24,6 @@ export default function ClinicaTimelineDetailPage() {
   const { navigatePortal } = usePortalPaths()
   const { data: pedido, isLoading } = useClinicaPedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
-  const { data: historico = [] } = useHistorico(id)
 
   if (isLoading) return <LoadingSpinner />
   if (!pedido) {
@@ -100,26 +98,11 @@ export default function ClinicaTimelineDetailPage() {
         </Typography>
       </Paper>
 
-      <Box
-        sx={{
-          mb: 3,
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          gap: 2,
-          alignItems: 'stretch',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <ClinicaInteractiveTimeline
-            pedido={pedido}
-            etapas={etapas}
-            somenteLeitura
-          />
-        </Box>
-        <TimelineDetalhesPanel
+      <Box sx={{ mb: 3 }}>
+        <ClinicaInteractiveTimeline
           pedido={pedido}
-          historico={historico}
-          detalheCompleto
+          etapas={etapas}
+          somenteLeitura
         />
       </Box>
     </>

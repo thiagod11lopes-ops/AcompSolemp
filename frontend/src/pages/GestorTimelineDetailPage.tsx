@@ -11,9 +11,8 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
-import { TimelineDetalhesPanel } from '@/components/timeline/TimelineDetalhesPanel'
 import { useDemoPedido, usePedido } from '@/hooks/usePedidos'
-import { useDemoHistorico, useDemoWorkflowEtapas, useHistorico, useWorkflowEtapas } from '@/hooks/useCadastros'
+import { useDemoWorkflowEtapas, useWorkflowEtapas } from '@/hooks/useCadastros'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
 import { formatCurrency } from '@/utils/format'
@@ -31,9 +30,6 @@ export default function GestorTimelineDetailPage() {
   const { data: etapasOrg = [] } = useWorkflowEtapas()
   const { data: etapasDemo = [] } = useDemoWorkflowEtapas()
   const etapas = fonteDemo ? etapasDemo : etapasOrg
-  const { data: historicoOrg = [] } = useHistorico(id)
-  const { data: historicoDemo = [] } = useDemoHistorico(id)
-  const historico = fonteDemo ? historicoDemo : historicoOrg
 
   const voltar = () => {
     if (isDemo) {
@@ -112,23 +108,8 @@ export default function GestorTimelineDetailPage() {
         </Typography>
       </Paper>
 
-      <Box
-        sx={{
-          mb: 3,
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          gap: 2,
-          alignItems: 'stretch',
-        }}
-      >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
-        </Box>
-        <TimelineDetalhesPanel
-          pedido={pedido}
-          historico={historico}
-          mostrarClinica
-        />
+      <Box sx={{ mb: 3 }}>
+        <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
       </Box>
     </>
   )
