@@ -30,7 +30,7 @@ const DEFAULT_DUAL_WRITE: DomainFlags = {
   reversoes: true,
   notificacoes: true,
   arquivados: true,
-  cadastros: false,
+  cadastros: true,
   config: false,
   auxiliares: false,
 }
@@ -44,7 +44,7 @@ const DEFAULT_READ: DomainFlags = {
   reversoes: true,
   notificacoes: true,
   arquivados: true,
-  cadastros: false,
+  cadastros: true,
   config: false,
   auxiliares: false,
 }
