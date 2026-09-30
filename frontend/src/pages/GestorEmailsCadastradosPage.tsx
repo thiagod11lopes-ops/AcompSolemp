@@ -23,10 +23,8 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import EmailIcon from '@mui/icons-material/Email'
 import { Navigate } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
-import { useGestorAuth } from '@/contexts/AuthContext'
-import { useSupabaseDataSource } from '@/config/dataSource'
-import { isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '@/utils/email'
-import { loadAppData } from '@/mocks/seed'
+import { SUPER_ADMIN_EMAIL } from '@/utils/email'
+import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 import {
   adminDeleteGestorTenant,
   adminDeleteTeamEmail,
@@ -39,13 +37,7 @@ import { loginPerfilLabel } from '@/utils/loginPerfis'
 import type { UserRole } from '@/types'
 
 export default function GestorEmailsCadastradosPage() {
-  const { user } = useGestorAuth()
-  const isSupabase = useSupabaseDataSource()
-  const sessionEmail =
-    user?.email?.trim().toLowerCase() ||
-    loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
-    ''
-  const isSuperAdmin = isSupabase && isSuperAdminEmail(sessionEmail)
+  const isSuperAdmin = useIsSuperAdminSession()
 
   const [loading, setLoading] = useState(true)
   const [teamLoading, setTeamLoading] = useState(false)
