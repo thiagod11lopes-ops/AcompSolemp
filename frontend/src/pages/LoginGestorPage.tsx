@@ -12,34 +12,18 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { isMarinhaEmail, MARINHA_EMAIL_HINT, normalizeEmailKey } from '@/utils/email'
+import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
-import { loginPerfilLabel } from '@/utils/loginPerfis'
-import {
-  clearTeamInviteAccepted,
-  isTeamInviteAccepted,
-  markTeamInviteAccepted,
-} from '@/utils/teamInviteAcceptance'
-import type { UserRole } from '@/types'
-
-const PERFIS_EQUIPE = [
-  'CLINICA',
-  'MEDICAMENTO',
-  'AUDITORIA',
-  'CONTABILIDADE_IMH',
-  'CONFECCAO_SOLEMP',
-  'FINANCEIRO',
-  'EMPENHADO',
-] as const
+import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
 
 const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o e-mail ou login'),
@@ -72,15 +56,6 @@ export default function LoginGestorPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
-  const [teamModalOpen, setTeamModalOpen] = useState(false)
-  const [recognizedEmail, setRecognizedEmail] = useState('')
-  const [gestorEmail, setGestorEmail] = useState<string | null>(null)
-  const [recognizedPerfis, setRecognizedPerfis] = useState<UserRole[]>([])
-  /** E-mail da equipe reconhecido e ainda sem aceite neste navegador. */
-  const [pendingTeamInvite, setPendingTeamInvite] = useState(false)
-  const [info, setInfo] = useState('')
-  const [signUpOpenSignal, setSignUpOpenSignal] = useState(0)
-  const emailLookupSeq = useRef(0)
 
   const {
     register: registerField,
@@ -95,130 +70,27 @@ export default function LoginGestorPage() {
   })
 
   const emailHint = watch('login')
-
-  const recognizedPerfilLabels = useMemo(
-    () =>
-      recognizedPerfis
-        .filter((p) => (PERFIS_EQUIPE as readonly string[]).includes(p))
-        .map((p) => loginPerfilLabel(p)),
-    [recognizedPerfis],
-  )
-
-  const resolveTeamPerfis = (access: {
-    perfil?: string
-    perfis?: string[] | null
-  }): UserRole[] => {
-    const raw =
-      Array.isArray(access.perfis) && access.perfis.length > 0
-        ? access.perfis
-        : access.perfil
-          ? [access.perfil]
-          : []
-    return [
-      ...new Set(
-        raw
-          .map((p) => p.trim())
-          .filter((p): p is UserRole =>
-            (PERFIS_EQUIPE as readonly string[]).includes(p),
-          ),
-      ),
-    ]
-  }
-
-  /** E-mail liberado pelo gestor: modal no primeiro acesso até aceitar. */
-  useEffect(() => {
-    if (!isSupabase) return
-
-    const raw = emailHint?.trim() ?? ''
-    if (!isMarinhaEmail(raw)) {
-      setPendingTeamInvite(false)
-      return
-    }
-
-    const normalized = normalizeEmailKey(raw)
-    if (isTeamInviteAccepted(normalized)) {
-      setPendingTeamInvite(false)
-      return
-    }
-
-    const seq = ++emailLookupSeq.current
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const access = await authService.getTeamEmailAccess(normalized)
-          if (seq !== emailLookupSeq.current) return
-          if (!access) {
-            setPendingTeamInvite(false)
-            return
-          }
-          setRecognizedEmail(normalized)
-          setGestorEmail(access.gestor_email)
-          setRecognizedPerfis(resolveTeamPerfis(access))
-          setPendingTeamInvite(true)
-          setInfo('')
-          setTeamModalOpen(true)
-        } catch {
-          // Silencioso
-        }
-      })()
-    }, 450)
-
-    return () => window.clearTimeout(timer)
-  }, [emailHint, isSupabase])
-
-  const openTeamInviteModal = (
-    email: string,
-    access: { gestor_email: string | null; perfil: string; perfis?: string[] | null },
-  ) => {
-    setRecognizedEmail(email)
-    setGestorEmail(access.gestor_email)
-    setRecognizedPerfis(resolveTeamPerfis(access))
-    setPendingTeamInvite(true)
-    setTeamModalOpen(true)
-  }
-
-  const ensureTeamInviteAccepted = async (email: string): Promise<boolean> => {
-    if (!isSupabase) return true
-    if (!isMarinhaEmail(email)) return true
-    const normalized = normalizeEmailKey(email)
-    if (isTeamInviteAccepted(normalized)) {
-      setPendingTeamInvite(false)
-      return true
-    }
-    const access = await authService.getTeamEmailAccess(normalized)
-    if (!access) return true
-    openTeamInviteModal(normalized, access)
-    setError('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
-    return false
-  }
-
-  const handleAcceptTeamInvite = () => {
-    markTeamInviteAccepted(recognizedEmail)
-    setPendingTeamInvite(false)
-    setTeamModalOpen(false)
-    setInfo(
-      'Cadastro aceito. Defina sua senha em Cadastrar-se (primeiro acesso) ou use Entrar se já tiver senha.',
-    )
-    setSignUpOpenSignal((n) => n + 1)
-  }
-
-  const handleDeclineTeamInvite = async () => {
-    await authService.declineTeamInvite(recognizedEmail)
-    clearTeamInviteAccepted(recognizedEmail)
-    setTeamModalOpen(false)
-    setGestorEmail(null)
-    setRecognizedPerfis([])
-    setPendingTeamInvite(false)
-    setInfo(
-      'Você saiu do cadastro desse gestor. Agora pode criar sua própria conta como Gestor e montar o seu banco de dados.',
-    )
-  }
+  const {
+    teamModalOpen,
+    recognizedEmail,
+    gestorEmail,
+    recognizedPerfilLabels,
+    pendingTeamInvite,
+    info,
+    setInfo,
+    signUpOpenSignal,
+    ensureTeamInviteAccepted,
+    handleAcceptTeamInvite,
+    handleDeclineTeamInvite,
+  } = useTeamEmailInvite(emailHint)
 
   const finishGestorLogin = async () => {
     const authUser = authService.getGestorUser()
     if (!authUser || !canAccessGestorRoute(authUser.perfil)) {
       await logout()
-      setError('Este e-mail não tem acesso de Gestor. Se foi cadastrado por um gestor, use o e-mail liberado em Cadastros.')
+      setError(
+        'Este e-mail não tem acesso de Gestor. Se foi cadastrado por um gestor, use o e-mail liberado em Cadastros.',
+      )
       return
     }
     navigate(redirectTo && redirectTo.startsWith('/gestor') ? redirectTo : '/gestor/dashboard')
@@ -238,7 +110,10 @@ export default function LoginGestorPage() {
         const teamAccess = await authService.getTeamEmailAccess(data.login)
         if (teamAccess) {
           const ok = await ensureTeamInviteAccepted(data.login)
-          if (!ok) return
+          if (!ok) {
+            setError('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
+            return
+          }
           const result = await loginWithEmailTimeline(data.login, data.senha)
           finishTimelineLogin(result.route)
           return
@@ -248,7 +123,6 @@ export default function LoginGestorPage() {
         return
       }
 
-      // Modo local: tenta timeline pelo e-mail; senão entra como gestor.
       try {
         const result = await loginWithEmailTimeline(
           data.login,
@@ -294,7 +168,10 @@ export default function LoginGestorPage() {
       const teamAccess = await authService.getTeamEmailAccess(values.email)
       if (teamAccess) {
         const ok = await ensureTeamInviteAccepted(values.email)
-        if (!ok) return
+        if (!ok) {
+          setError('Aceite o cadastro feito pelo gestor para continuar o primeiro acesso.')
+          return
+        }
         const result = await registerWithEmailTimeline(values.email, values.senha)
         finishTimelineLogin(result.route)
         return

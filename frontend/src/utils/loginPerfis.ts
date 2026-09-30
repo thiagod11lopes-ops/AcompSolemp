@@ -46,6 +46,11 @@ export const LOGIN_PERFIL_OPCOES: LoginPerfilOpcao[] = [
     label: 'Aguardando NE',
     perfil: 'FINANCEIRO',
   },
+  {
+    id: 'empenhado',
+    label: 'Empenhado',
+    perfil: 'EMPENHADO',
+  },
 ]
 
 export function loginPerfilLabel(perfil: UserRole): string {

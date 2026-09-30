@@ -67,6 +67,13 @@ export function TeamEmailRecognizedModal({
     (perfilLabel?.trim() ? [perfilLabel.trim()] : [])
   )
 
+  const representText =
+    labels.length === 0
+      ? 'um setor da organização'
+      : labels.length === 1
+        ? labels[0]
+        : labels.slice(0, -1).join(', ') + ' e ' + labels[labels.length - 1]
+
   const handleDecline = async () => {
     setError('')
     setLoading(true)
@@ -82,12 +89,12 @@ export function TeamEmailRecognizedModal({
   return (
     <EnvioFluxoDialog
       open={open}
-      title="Você foi cadastrado no AcompSOLEMP"
+      title="E-mail cadastrado pelo gestor"
       onClose={() => undefined}
       onCancel={() => void handleDecline()}
       onSubmit={onAccept}
       loading={loading}
-      cancelLabel="Não fazer parte"
+      cancelLabel="Não aceitar"
       cancelLoadingLabel="Removendo..."
       submitLabel="Aceitar cadastro"
       submitStartIcon={<CheckCircleRoundedIcon />}
@@ -95,8 +102,9 @@ export function TeamEmailRecognizedModal({
       chips={[{ label: 'Cadastro do gestor', color: 'success' }]}
     >
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Um gestor liberou o seu e-mail para o primeiro acesso. Aceite para entrar na
-        organização ou recuse para sair desse cadastro.
+        Este e-mail foi cadastrado para representar{' '}
+        <strong>{representText}</strong>. Aceite para entrar no banco de dados do
+        gestor ou recuse para ficar livre e criar o seu próprio Portal do Gestor.
       </Typography>
 
       <Box
@@ -138,7 +146,7 @@ export function TeamEmailRecognizedModal({
                 mb: 0.25,
               }}
             >
-              {labels.length > 1 ? 'Setores cadastrados' : 'Perfil cadastrado'}
+              {labels.length > 1 ? 'Setores a representar' : 'Setor a representar'}
             </Typography>
             <Box
               component="ul"
@@ -163,10 +171,16 @@ export function TeamEmailRecognizedModal({
         )}
       </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: error ? 1.5 : 0, lineHeight: 1.45 }}>
-        <strong>Aceitar cadastro</strong> confirma e segue para criar a senha ou entrar.
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: 'block', mb: error ? 1.5 : 0, lineHeight: 1.45 }}
+      >
+        <strong>Aceitar cadastro</strong> pede para criar uma senha e entra na
+        organização do gestor.
         {' '}
-        <strong>Não fazer parte</strong> remove seu e-mail do cadastro do gestor.
+        <strong>Não aceitar</strong> remove seu e-mail da lista de Cadastros desse
+        gestor e libera a criação do seu próprio banco como Gestor.
       </Typography>
 
       {error && (
