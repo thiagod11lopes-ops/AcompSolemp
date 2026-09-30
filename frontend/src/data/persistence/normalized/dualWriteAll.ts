@@ -10,5 +10,8 @@ export async function dualWriteNormalizedDomains(data: AppData): Promise<void> {
     dualWriteAnexos(data),
     dualWriteSimpleArray('historico', 'pedido_historico', data.historico),
     dualWriteSimpleArray('chat', 'chat_mensagens', data.chatMensagens),
+    dualWriteSimpleArray('reversoes', 'reversoes', data.reversoes),
+    dualWriteSimpleArray('notificacoes', 'notificacoes', data.notificacoes),
+    dualWriteSimpleArray('arquivados', 'processos_arquivados', data.processosArquivados),
   ])
 }
