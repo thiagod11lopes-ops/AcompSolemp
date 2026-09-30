@@ -24,7 +24,7 @@ type DomainFlags = Record<NormalizedDomain, boolean>
 /** Dual-write: espelha no SQL além do blob. */
 const DEFAULT_DUAL_WRITE: DomainFlags = {
   pedidos: true,
-  anexos: false,
+  anexos: true,
   historico: false,
   chat: false,
   reversoes: false,
@@ -38,7 +38,7 @@ const DEFAULT_DUAL_WRITE: DomainFlags = {
 /** Leitura cutover: listas/detalhe leem a tabela (fallback blob se vazio). */
 const DEFAULT_READ: DomainFlags = {
   pedidos: true,
-  anexos: false,
+  anexos: true,
   historico: false,
   chat: false,
   reversoes: false,
