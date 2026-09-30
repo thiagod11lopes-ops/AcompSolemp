@@ -1401,6 +1401,14 @@ export default function ClinicaNovoPedidoPage() {
                 fontWeight: 700,
                 fontSize: '0.8rem',
                 whiteSpace: 'nowrap',
+                borderRadius: '11px',
+                px: 1.5,
+                boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
+                background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
+                  boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
+                },
               }}
             >
               {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}

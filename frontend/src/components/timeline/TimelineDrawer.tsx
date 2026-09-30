@@ -621,14 +621,79 @@ export const TimelineDrawer = memo(function TimelineDrawer({
           border-color: ${LINE} !important;
           background: ${SURFACE} !important;
         }
-        .timeline-drawer-actions-white button {
+        .timeline-drawer-actions-white button:not(.planilha-flow-btn) {
           color: ${WHITE} !important;
           border-color: ${LINE} !important;
           background: rgba(255,255,255,0.03) !important;
-          border-radius: 10px !important;
+          border-radius: 11px !important;
         }
-        .timeline-drawer-actions-white button:hover:not(:disabled) {
+        .timeline-drawer-actions-white button:not(.planilha-flow-btn):hover:not(:disabled) {
           background: rgba(255,255,255,0.08) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-panel {
+          width: 100%;
+          border-color: rgba(122, 168, 146, 0.35) !important;
+          background:
+            linear-gradient(165deg, rgba(85, 139, 113, 0.2) 0%, transparent 60%),
+            rgba(255,255,255,0.03) !important;
+          box-shadow: none !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-panel__eyebrow,
+        .timeline-drawer-actions-white .planilha-flow-panel__hint {
+          color: ${WHITE_SOFT} !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-panel__title {
+          color: ${WHITE} !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-anexos {
+          border-top-color: ${LINE} !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--receive {
+          color: ${WHITE} !important;
+          background: rgba(85, 139, 113, 0.18) !important;
+          border-color: rgba(122, 168, 146, 0.45) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--receive:hover:not(:disabled) {
+          background: rgba(85, 139, 113, 0.28) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--receive-done {
+          color: #ecfdf5 !important;
+          background: linear-gradient(135deg, rgba(48, 209, 88, 0.24), rgba(85, 139, 113, 0.3)) !important;
+          border-color: rgba(48, 209, 88, 0.5) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--send {
+          color: #fff !important;
+          background: linear-gradient(135deg, #558b71 0%, #3f6b56 100%) !important;
+          border-color: rgba(122, 168, 146, 0.55) !important;
+          box-shadow: 0 6px 16px rgba(63, 107, 86, 0.3) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--send:hover:not(:disabled) {
+          background: linear-gradient(135deg, #61987d 0%, #4a7a63 100%) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--send:disabled {
+          color: rgba(245, 245, 247, 0.5) !important;
+          background: rgba(85, 139, 113, 0.14) !important;
+          border-color: rgba(85, 139, 113, 0.22) !important;
+          box-shadow: none !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--anexo,
+        .timeline-drawer-actions-white .planilha-flow-btn--preview {
+          color: ${WHITE} !important;
+          background: rgba(255,255,255,0.04) !important;
+          border-color: ${LINE} !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-btn--anexo:hover:not(:disabled),
+        .timeline-drawer-actions-white .planilha-flow-btn--preview:hover:not(:disabled) {
+          background: rgba(85, 139, 113, 0.22) !important;
+          border-color: rgba(122, 168, 146, 0.45) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-badge {
+          color: ${WHITE_SOFT} !important;
+          background: rgba(255,255,255,0.1) !important;
+        }
+        .timeline-drawer-actions-white .planilha-flow-badge--active {
+          color: #ecfdf5 !important;
+          background: rgba(85, 139, 113, 0.55) !important;
         }
       `}</style>
     </>

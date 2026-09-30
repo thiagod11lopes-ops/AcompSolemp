@@ -89,66 +89,94 @@ export function ImhDivMaterialEnvioModal({
 
         <Box
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 1,
-            mb: anexos.length > 0 ? 1 : 1.5,
+            mb: 1.5,
+            p: 1.25,
+            borderRadius: '12px',
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'rgba(85, 139, 113, 0.06)',
           }}
         >
-          <Typography variant="body2" color="text.secondary">
-            {anexos.length > 0
-              ? `${anexos.length} arquivo(s) em anexo`
-              : 'Anexo opcional'}
-          </Typography>
-          {onAdicionarAnexos && (
-            <Button
-              size="small"
-              startIcon={<AttachFileIcon />}
-              disabled={isSubmitting}
-              onClick={onAdicionarAnexos}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              Anexar
-            </Button>
-          )}
-        </Box>
-
-        {anexos.length > 0 && (
-          <Stack spacing={0.5} sx={{ mb: 1.5 }}>
-            {anexos.map((file, index) => (
-              <Box
-                key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              mb: anexos.length > 0 ? 1 : 0,
+            }}
+          >
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'text.secondary' }}>
+                Arquivo anexado
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {anexos.length > 0
+                  ? `${anexos.length} arquivo(s) pronto(s)`
+                  : 'Opcional — anexe se necessário'}
+              </Typography>
+            </Box>
+            {onAdicionarAnexos && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AttachFileIcon />}
+                disabled={isSubmitting}
+                onClick={onAdicionarAnexos}
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  minWidth: 0,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  borderRadius: '11px',
+                  borderColor: 'rgba(85, 139, 113, 0.45)',
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}
-                  noWrap
-                  title={file.name}
+                Anexar
+              </Button>
+            )}
+          </Box>
+
+          {anexos.length > 0 && (
+            <Stack spacing={0.5}>
+              {anexos.map((file, index) => (
+                <Box
+                  key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    minWidth: 0,
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: '8px',
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
                 >
-                  {file.name}
-                </Typography>
-                {onRemoverAnexo && (
-                  <IconButton
-                    size="small"
-                    aria-label={`Remover ${file.name}`}
-                    disabled={isSubmitting}
-                    onClick={() => onRemoverAnexo(index)}
-                    color="error"
+                  <Typography
+                    variant="body2"
+                    sx={{ flex: 1, minWidth: 0, wordBreak: 'break-word', fontWeight: 600 }}
+                    noWrap
+                    title={file.name}
                   >
-                    <DeleteOutlinedIcon fontSize="small" />
-                  </IconButton>
-                )}
-              </Box>
-            ))}
-          </Stack>
-        )}
+                    {file.name}
+                  </Typography>
+                  {onRemoverAnexo && (
+                    <IconButton
+                      size="small"
+                      aria-label={`Remover ${file.name}`}
+                      disabled={isSubmitting}
+                      onClick={() => onRemoverAnexo(index)}
+                      color="error"
+                    >
+                      <DeleteOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Box>
 
         <TextField
           fullWidth
@@ -162,18 +190,38 @@ export function ImhDivMaterialEnvioModal({
           minRows={2}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 2.5, pb: 2 }}>
-        <Button onClick={onClose} disabled={isSubmitting} color="inherit">
+      <DialogActions sx={{ px: 2.5, pb: 2, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          disabled={isSubmitting}
+          color="inherit"
+          sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '11px' }}
+        >
           Cancelar
         </Button>
         <Button
           variant="contained"
-          color="primary"
           onClick={() => onEnviar(comentario.trim())}
           disabled={!canSend}
           startIcon={<SendIcon />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: '11px',
+            px: 2,
+            boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
+            background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
+              boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
+            },
+            '&.Mui-disabled': {
+              background: 'rgba(85, 139, 113, 0.2)',
+              color: 'rgba(0,0,0,0.38)',
+            },
+          }}
         >
-          {isSubmitting ? 'Enviando...' : 'Enviar'}
+          {isSubmitting ? 'Enviando...' : 'Enviar planilha'}
         </Button>
       </DialogActions>
     </Dialog>
