@@ -1,10 +1,14 @@
 import type {
   AppData,
   ChatMessage,
+  Clinica,
+  Empresa,
   HistoricoEvento,
+  Material,
   Notification,
   ProcessoArquivado,
   ReversaoTimeline,
+  User,
 } from '@/types'
 import type { AppDataSnapshot } from '@/data/persistence/types'
 import { deserializeAppData } from '@/data/persistence/types'
@@ -49,5 +53,14 @@ export async function hydrateAppDataFromCloudSnapshot(
     data,
     'processosArquivados',
   )
+  data = await mergeSimpleArrayFromNormalized<Clinica>('cadastros', 'clinicas', data, 'clinicas')
+  data = await mergeSimpleArrayFromNormalized<Empresa>('cadastros', 'empresas', data, 'empresas')
+  data = await mergeSimpleArrayFromNormalized<Material>(
+    'cadastros',
+    'materiais',
+    data,
+    'materiais',
+  )
+  data = await mergeSimpleArrayFromNormalized<User>('cadastros', 'usuarios', data, 'usuarios')
   return data
 }
