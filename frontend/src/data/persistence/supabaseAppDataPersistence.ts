@@ -88,9 +88,14 @@ export async function saveAppDataToSupabase(
   const { stripAnexoBase64FromAppData } = await import(
     '@/data/persistence/appDataAnexoSanitize'
   )
+  // Fase 9: dual-write primeiro precisa do AppData completo; o blob salva versão enxuta.
   const appDataLeve = stripAnexoBase64FromAppData(appData)
+  const { stripNormalizedDomainsFromAppData } = await import(
+    '@/data/persistence/normalized/stripFromBlob'
+  )
+  const appDataBlob = stripNormalizedDomainsFromAppData(appDataLeve)
 
-  const snapshot = serializeAppData(appDataLeve, version)
+  const snapshot = serializeAppData(appDataBlob, version)
   const payload = JSON.parse(snapshot.payload) as AppData
 
   // Fase 0: inventário de tamanho do monolito (diagnóstico de egress).

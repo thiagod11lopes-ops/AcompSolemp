@@ -1,6 +1,6 @@
 /**
  * Flags da migração do monolito `app_state` → tabelas normalizadas.
- * Pedidos (Fase 2): dual-write + leitura ligados (fallback no blob se tabela vazia).
+ * Fases 2–9: dual-write + leitura + strip do blob para domínios migrados.
  *
  * Override opcional (debug):
  *   localStorage.setItem('acompsolemp:normalized:pedidos:read', '1')
@@ -51,16 +51,16 @@ const DEFAULT_READ: DomainFlags = {
 
 /** Quando true, o domínio deixa de ser incluído no payload de `app_state` (Fase 9). */
 const DEFAULT_STRIP_FROM_BLOB: DomainFlags = {
-  pedidos: false,
-  anexos: false,
-  historico: false,
-  chat: false,
-  reversoes: false,
-  notificacoes: false,
-  arquivados: false,
-  cadastros: false,
-  config: false,
-  auxiliares: false,
+  pedidos: true,
+  anexos: true,
+  historico: true,
+  chat: true,
+  reversoes: true,
+  notificacoes: true,
+  arquivados: true,
+  cadastros: true,
+  config: true,
+  auxiliares: true,
 }
 
 const STORAGE_PREFIX = 'acompsolemp:normalized:'
