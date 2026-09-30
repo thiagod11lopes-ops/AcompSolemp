@@ -18,15 +18,20 @@ import AssessmentIcon from '@mui/icons-material/Assessment'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import ScheduleIcon from '@mui/icons-material/Schedule'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import EmailIcon from '@mui/icons-material/Email'
 import { NavLink } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
-import { useGestorAuth } from '@/contexts/AuthContext'
+import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
+import { useSupabaseDataSource } from '@/config/dataSource'
+import { isSuperAdminEmail } from '@/utils/email'
+import { loadAppData } from '@/mocks/seed'
+import type { ReactNode } from 'react'
 
 const DRAWER_WIDTH = 260
 
-const menuItems = [
+const menuItems: { path: string; label: string; icon: ReactNode; superAdminOnly?: boolean }[] = [
   { path: '/gestor/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/gestor/timeline', label: 'Timeline', icon: <TimelineIcon /> },
   { path: '/gestor/cadastros', label: 'Cadastro', icon: <PeopleIcon /> },
@@ -34,6 +39,12 @@ const menuItems = [
   { path: '/gestor/balanco', label: 'Balanço', icon: <AccountBalanceWalletIcon /> },
   { path: '/gestor/relatorios', label: 'Relatório', icon: <AssessmentIcon /> },
   { path: '/gestor/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+  {
+    path: '/gestor/emails-cadastrados',
+    label: 'Emails Cadastrados',
+    icon: <EmailIcon />,
+    superAdminOnly: true,
+  },
 ]
 
 interface SidebarProps {
@@ -43,9 +54,20 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { user } = useGestorAuth()
+  const { impersonationTargetEmail } = useAuth()
+  const isSupabase = useSupabaseDataSource()
   const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const sessionEmail =
+    user?.email?.trim().toLowerCase() ||
+    loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
+    ''
+  const showSuperAdminItems =
+    isSupabase && isSuperAdminEmail(sessionEmail) && !impersonationTargetEmail
+  const visibleMenuItems = menuItems.filter(
+    (item) => !item.superAdminOnly || showSuperAdminItems,
+  )
   const drawerPaperSx = {
     width: DRAWER_WIDTH,
     boxSizing: 'border-box' as const,
@@ -73,7 +95,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <Divider />
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         <List sx={{ px: 0.5, py: 1, flexShrink: 0 }}>
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <ListItemButton
               key={item.path}
               component={NavLink}
