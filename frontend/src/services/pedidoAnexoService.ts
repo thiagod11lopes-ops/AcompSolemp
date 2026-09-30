@@ -172,17 +172,17 @@ export const pedidoAnexoService = {
       if (cloud && tenantId) {
         storagePath = (await uploadToStorage(tenantId, pedidoId, id, file, mimeType)) ?? undefined
         if (!storagePath) falhasStorage.push(file.name)
-      }
-
-      if (!storagePath) {
-        // Sempre guarda base64 como fallback para o arquivo aparecer/baixar.
-        // Arquivos grandes podem falhar no sync; o Storage é o caminho preferencial.
+      } else {
+        // Local/demo: base64 no IndexedDB (não vai para o monolito Supabase).
         try {
           conteudoBase64 = await fileToBase64(file)
         } catch (error) {
           console.warn('[AcompSolemp] Falha ao ler anexo:', file.name, error)
         }
       }
+
+      // Cloud: só metadados + storagePath (Fase 1 — sem base64 no app_state).
+      if (cloud && !storagePath) continue
 
       criados.push({
         id,
@@ -193,15 +193,20 @@ export const pedidoAnexoService = {
         tamanhoKb: Math.max(1, Math.round(file.size / 1024)),
         mimeType,
         storagePath,
-        conteudoBase64,
+        conteudoBase64: cloud ? undefined : conteudoBase64,
       })
     }
 
-    const anexosLeves = criados.map((arquivo) =>
-      arquivo.storagePath
-        ? { ...cloneAnexo(arquivo), conteudoBase64: undefined }
-        : cloneAnexo(arquivo),
-    )
+    if (cloud && falhasStorage.length > 0 && criados.length === 0) {
+      throw new Error(
+        `Falha ao enviar anexos ao Storage: ${falhasStorage.join(', ')}. Tente novamente.`,
+      )
+    }
+
+    const anexosLeves = criados.map((arquivo) => ({
+      ...cloneAnexo(arquivo),
+      ...(arquivo.storagePath ? { conteudoBase64: undefined } : {}),
+    }))
 
     // Grava em snapshot fresco (após awaits de upload).
     const data = readData()
@@ -217,7 +222,7 @@ export const pedidoAnexoService = {
       console.warn(
         '[AcompSolemp] Storage falhou para:',
         falhasStorage.join(', '),
-        '— anexos salvos com fallback no AppData.',
+        '— esses arquivos não foram gravados no AppData (política cloud sem base64).',
       )
     }
 
