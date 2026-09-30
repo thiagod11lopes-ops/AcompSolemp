@@ -2,23 +2,24 @@ import { useEffect, useState } from 'react'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { isSuperAdminEmail, normalizeEmailKey } from '@/utils/email'
-import { loadAppData } from '@/mocks/seed'
 import { supabaseAuthAdapter } from '@/supabase/authAdapter'
 import { getSupabaseClient } from '@/supabase/client'
 
 /**
- * Detecta super-admin de forma confiável:
- * e-mail do usuário da sessão, tenantMeta e JWT do Supabase Auth.
+ * Super-admin só pelo e-mail autenticado (JWT / sessão do gestor).
+ * Não usa tenantMeta.ownerEmail — evitava liberar "Gestores ativos" para outros gestores.
  */
 export function useIsSuperAdminSession(): boolean {
   const { user } = useGestorAuth()
   const { impersonationTargetEmail } = useAuth()
   const isSupabase = useSupabaseDataSource()
   const [authEmail, setAuthEmail] = useState<string>('')
+  const [authReady, setAuthReady] = useState(!isSupabase)
 
   useEffect(() => {
     if (!isSupabase) {
       setAuthEmail('')
+      setAuthReady(true)
       return
     }
     let cancelled = false
@@ -26,6 +27,7 @@ export function useIsSuperAdminSession(): boolean {
     const applyEmail = (email: string | null | undefined) => {
       if (cancelled) return
       setAuthEmail(normalizeEmailKey(email ?? ''))
+      setAuthReady(true)
     }
 
     void (async () => {
@@ -53,11 +55,9 @@ export function useIsSuperAdminSession(): boolean {
 
   if (!isSupabase || impersonationTargetEmail) return false
 
-  const localEmail = normalizeEmailKey(
-    user?.email?.trim() ||
-      loadAppData().tenantMeta?.ownerEmail?.trim() ||
-      '',
-  )
+  const sessionEmail = normalizeEmailKey(user?.email?.trim() || '')
+  // JWT é a fonte de verdade; user.email só vale se o Auth ainda não respondeu.
+  const effectiveEmail = authReady && authEmail ? authEmail : sessionEmail
 
-  return isSuperAdminEmail(localEmail) || isSuperAdminEmail(authEmail)
+  return isSuperAdminEmail(effectiveEmail)
 }

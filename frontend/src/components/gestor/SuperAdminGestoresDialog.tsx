@@ -31,6 +31,7 @@ import {
 } from '@/data/persistence/supabaseAdmin'
 import { SUPER_ADMIN_EMAIL } from '@/utils/email'
 import { useAuth } from '@/contexts/AuthContext'
+import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 
 interface SuperAdminGestoresDialogProps {
   open: boolean
@@ -40,6 +41,7 @@ interface SuperAdminGestoresDialogProps {
 export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDialogProps) {
   const navigate = useNavigate()
   const { startImpersonation } = useAuth()
+  const isSuperAdmin = useIsSuperAdminSession()
   const [loading, setLoading] = useState(false)
   const [teamLoading, setTeamLoading] = useState(false)
   const [enteringEmail, setEnteringEmail] = useState<string | null>(null)
@@ -51,6 +53,10 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
   const [busyEmail, setBusyEmail] = useState<string | null>(null)
 
   const loadGestores = useCallback(async () => {
+    if (!isSuperAdmin) {
+      setGestores([])
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -60,7 +66,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSuperAdmin])
 
   const loadTeam = useCallback(async (gestor: ActiveGestorRow) => {
     setTeamLoading(true)
@@ -103,8 +109,12 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
       setEnteringEmail(null)
       return
     }
+    if (!isSuperAdmin) {
+      onClose()
+      return
+    }
     void loadGestores()
-  }, [open, loadGestores])
+  }, [open, loadGestores, isSuperAdmin, onClose])
 
   const handleOpenTeam = async (gestor: ActiveGestorRow) => {
     setSelectedGestor(gestor)
@@ -164,7 +174,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <Dialog open={open && isSuperAdmin} onClose={onClose} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 800 }}>Gestores ativos</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

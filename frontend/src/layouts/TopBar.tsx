@@ -18,7 +18,7 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import LogoutIcon from '@mui/icons-material/Logout'
 import GroupsIcon from '@mui/icons-material/Groups'
 import UndoIcon from '@mui/icons-material/Undo'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
@@ -64,6 +64,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   ).length
 
   const showSuperAdmin = useIsSuperAdminSession()
+
+  useEffect(() => {
+    if (!showSuperAdmin) setAdminOpen(false)
+  }, [showSuperAdmin])
 
   const handleLogout = async () => {
     await logout()
