@@ -53,15 +53,20 @@
 }
 
 .timeline-lane-wrap {
-  display: flex;
-  justify-content: center;
-  justify-content: safe center;
+  display: block;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 8px;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--tl-line) transparent;
+}
+
+.timeline-lane-wrap > .timeline-lane {
+  width: max-content;
+  margin-inline: auto;
 }
 
 .timeline-lane-wrap::-webkit-scrollbar {
@@ -494,23 +499,28 @@
   animation: tl-devolucao-title-blink 1.35s ease-in-out infinite;
 }
 
-/* Layout em fluxo horizontal: esquerda → direita (centralizado no campo) */
+/* Layout em fluxo horizontal: track centralizado no campo Fluxo do processo */
 .timeline-flow,
 .timeline-flow--horizontal {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  justify-content: safe center;
+  display: block;
   width: 100%;
-  min-width: min-content;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  gap: 0;
   padding: 8px 4px 14px;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--tl-line) transparent;
+}
+
+.timeline-flow-track {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: max-content;
+  max-width: none;
+  margin-inline: auto;
+  gap: 0;
 }
 
 .timeline-flow--horizontal::-webkit-scrollbar {

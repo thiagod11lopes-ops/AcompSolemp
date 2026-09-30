@@ -188,37 +188,39 @@ const LinearFlowLayout = memo(function LinearFlowLayout({
 
   return (
     <div className="timeline-flow timeline-flow--horizontal">
-      <div className="timeline-flow-clinic">
-        <TimelineNode
-          node={clinicNode}
-          vertical={false}
-          showEdgeAfter={false}
-          onOpenDetails={() => onOpenDetails(clinicNode)}
-        />
-      </div>
-      {restNodes.length > 0 && (
-        <>
-          <div className="timeline-flow-connector">
-            <TimelineEdge state={clinicNode.edgeAfter} vertical={false} />
-          </div>
-          <div className="timeline-flow-sequential-grid">
-            <div className="timeline-flow-lane">
-              {restNodes.map((node, index) => (
-                <TimelineNode
-                  key={node.id}
-                  node={node}
-                  vertical={false}
-                  showEdgeAfter={
-                    index < restNodes.length - 1 &&
-                    timelineConnectorVisivel(node.etapa.chave, restNodes[index + 1].etapa.chave)
-                  }
-                  onOpenDetails={() => onOpenDetails(node)}
-                />
-              ))}
+      <div className="timeline-flow-track">
+        <div className="timeline-flow-clinic">
+          <TimelineNode
+            node={clinicNode}
+            vertical={false}
+            showEdgeAfter={false}
+            onOpenDetails={() => onOpenDetails(clinicNode)}
+          />
+        </div>
+        {restNodes.length > 0 && (
+          <>
+            <div className="timeline-flow-connector">
+              <TimelineEdge state={clinicNode.edgeAfter} vertical={false} />
             </div>
-          </div>
-        </>
-      )}
+            <div className="timeline-flow-sequential-grid">
+              <div className="timeline-flow-lane">
+                {restNodes.map((node, index) => (
+                  <TimelineNode
+                    key={node.id}
+                    node={node}
+                    vertical={false}
+                    showEdgeAfter={
+                      index < restNodes.length - 1 &&
+                      timelineConnectorVisivel(node.etapa.chave, restNodes[index + 1].etapa.chave)
+                    }
+                    onOpenDetails={() => onOpenDetails(node)}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 })
