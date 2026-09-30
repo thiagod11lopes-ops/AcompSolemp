@@ -30,7 +30,7 @@ import {
   buildPedidosConsumoMaterialSeed,
   USUARIO_CLINICA_OPME_ID,
 } from '@/mocks/consumoMaterialPedidosSeed'
-import { normalizeUserPerfis, userHasPerfil } from '@/utils/userPerfis'
+import { normalizeUserPerfis } from '@/utils/userPerfis'
 import {
   CLINICA_CONSUMO_OPME_NOME,
   CONSUMO_MATERIAL_SEED,
@@ -428,29 +428,25 @@ export function generateSeedData(): AppData {
   }
 }
 
-function ensureDefaultConfeccaoUser(data: AppData): boolean {
-  if (data.tenantMeta) return false
-  if (data.usuarios.some((user) => userHasPerfil(user, 'CONFECCAO_SOLEMP') && user.ativo)) {
-    return false
-  }
-
-  data.usuarios.push({
-    id: USUARIO_CONFECCAO_SOLEMP_ID,
-    nome: 'Solemp',
-    posto: '',
-    graduacao: 'Confecção de Solemp',
-    login: 'solemp',
-    perfil: 'CONFECCAO_SOLEMP',
-    perfis: ['CONFECCAO_SOLEMP'],
-    clinicaId: null,
-    ativo: true,
+/**
+ * Remove o usuário demo "Confecção de Solemp" que vazava para tenants reais
+ * via merge do cache local (antes do tenantMeta existir).
+ * O seed local/demo continua em generateSeedData().
+ */
+function stripDemoConfeccaoFromCloudTenant(data: AppData): boolean {
+  if (!useCloudAppDataSync() || !data.tenantMeta) return false
+  const before = data.usuarios.length
+  data.usuarios = (data.usuarios ?? []).filter((user) => {
+    if (user.id !== USUARIO_CONFECCAO_SOLEMP_ID) return true
+    const login = user.login?.trim().toLowerCase()
+    const nome = user.nome?.trim().toLowerCase()
+    // Só remove o fantasma do seed — não apaga cadastro real com outro id.
+    return login !== 'solemp' && nome !== 'solemp'
   })
-
-  if (!data.credenciais) data.credenciais = {}
-  if (!data.credenciais.solemp) {
-    data.credenciais.solemp = { senha: '123456', userId: USUARIO_CONFECCAO_SOLEMP_ID }
+  if (data.usuarios.length === before) return false
+  if (data.credenciais?.solemp?.userId === USUARIO_CONFECCAO_SOLEMP_ID) {
+    delete data.credenciais.solemp
   }
-
   return true
 }
 
@@ -491,7 +487,7 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
     editadoEm: m.editadoEm ?? null,
     respostaAId: m.respostaAId ?? null,
   }))
-  const confeccaoUserChanged = ensureDefaultConfeccaoUser(data)
+  const confeccaoUserChanged = stripDemoConfeccaoFromCloudTenant(data)
   const bootstrapEmailChanged = ensureBootstrapGoogleEmails(data)
   let perfisChanged = false
   data.usuarios = (data.usuarios ?? []).map((user) => {
@@ -1233,7 +1229,12 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
 
   // Cadastros / pedidos acabaram de ser criados localmente: um poll/realtime
   // atrasado não deve apagá-los antes do flush refletir na nuvem.
-  remote.usuarios = mergeById(remote.usuarios ?? [], local.usuarios ?? [])
+  // Não arrasta o usuário demo de Confecção de Solemp para tenants reais.
+  const localUsuarios = (local.usuarios ?? []).filter((user) => {
+    if (!remote.tenantMeta) return true
+    return user.id !== USUARIO_CONFECCAO_SOLEMP_ID
+  })
+  remote.usuarios = mergeById(remote.usuarios ?? [], localUsuarios)
   remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
   remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
   remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
@@ -1338,10 +1339,25 @@ export function applyRemoteAppData(raw: AppData): AppData {
   }
 
   const mergedRaw = mergeRemotePreservingAnexos(appDataCache, cloneData(raw))
+  const hadDemoConfeccao = (mergedRaw.usuarios ?? []).some(
+    (user) =>
+      user.id === USUARIO_CONFECCAO_SOLEMP_ID &&
+      (user.login?.trim().toLowerCase() === 'solemp' ||
+        user.nome?.trim().toLowerCase() === 'solemp'),
+  )
   const { data, changed } = normalizeAppData(mergedRaw)
   appDataCache = data
   if (usesIndexedDbAppData() && !isDemoDataSession()) {
     persistAppData(data)
+  } else if (
+    changed &&
+    hadDemoConfeccao &&
+    useCloudAppDataSync() &&
+    data.tenantMeta &&
+    !(data.usuarios ?? []).some((user) => user.id === USUARIO_CONFECCAO_SOLEMP_ID)
+  ) {
+    // Persiste a remoção do fantasma Confecção de Solemp no tenant.
+    persistAppData(data, { silent: true })
   }
   if (changed && import.meta.env.DEV) {
     console.info('[AcompSolemp] AppData normalizado após hidratação Supabase')
