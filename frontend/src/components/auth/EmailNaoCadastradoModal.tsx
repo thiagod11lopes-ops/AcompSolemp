@@ -9,7 +9,7 @@ interface EmailNaoCadastradoModalProps {
   onCancelar: () => void
 }
 
-/** Modal quando o e-mail digitado no login não está na aba Emails Cadastrados. */
+/** Modal quando o e-mail digitado no login ainda não existe no sistema. */
 export function EmailNaoCadastradoModal({
   open,
   email,
@@ -29,8 +29,8 @@ export function EmailNaoCadastradoModal({
       chips={[{ label: 'Novo acesso', color: 'warning' }]}
     >
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Este e-mail não está salvo na lista de <strong>Emails Cadastrados</strong>.
-        Para criar sua conta, use <strong>Cadastrar</strong> e defina uma senha.
+        Este e-mail ainda não está cadastrado no sistema. Para criar sua conta,
+        use <strong>Cadastrar</strong> e defina uma senha.
       </Typography>
 
       <Box

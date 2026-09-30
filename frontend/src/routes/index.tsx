@@ -45,7 +45,6 @@ const RelatoriosPage = lazy(() => import('@/pages/RelatoriosPage'))
 const GestorReversoesPage = lazy(() => import('@/pages/GestorReversoesPage'))
 const GestorTimelinesPage = lazy(() => import('@/pages/GestorTimelinesPage'))
 const GestorArquivadosPage = lazy(() => import('@/pages/GestorArquivadosPage'))
-const GestorEmailsCadastradosPage = lazy(() => import('@/pages/GestorEmailsCadastradosPage'))
 const ConfigurarPrazosPage = lazy(() => import('@/pages/ConfigurarPrazosPage'))
 const GestorBalancoPage = lazy(() => import('@/pages/GestorBalancoPage'))
 const DemoEntryPage = lazy(() => import('@/pages/gestor/DemoEntryPage'))
@@ -147,11 +146,7 @@ export function AppRoutes() {
           <Route path="/gestor/arquivados" element={<LazyPage><GestorArquivadosPage /></LazyPage>} />
           <Route
             path="/gestor/emails-cadastrados"
-            element={
-              <LazyPage>
-                <GestorEmailsCadastradosPage />
-              </LazyPage>
-            }
+            element={<Navigate to="/gestor/dashboard" replace />}
           />
           <Route path="/gestor/prazos" element={<LazyPage><ConfigurarPrazosPage /></LazyPage>} />
           <Route path="/gestor/balanco" element={<LazyPage><GestorBalancoPage /></LazyPage>} />

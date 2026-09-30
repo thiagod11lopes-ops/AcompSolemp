@@ -81,22 +81,6 @@ export async function setAccountPaused(email: string, paused: boolean): Promise<
   return Boolean(row?.result_paused ?? row?.paused)
 }
 
-/** Super-admin: remove e-mail da equipe de um gestor. */
-export async function adminDeleteTeamEmail(email: string): Promise<void> {
-  const { error } = await getSupabaseClient().rpc('admin_delete_team_email', {
-    p_email: assertMarinhaEmail(email),
-  })
-  if (error) throw new Error(error.message)
-}
-
-/** Super-admin: exclui gestor e todo o tenant (banco da organização). */
-export async function adminDeleteGestorTenant(gestorEmail: string): Promise<void> {
-  const { error } = await getSupabaseClient().rpc('admin_delete_gestor_tenant', {
-    p_gestor_email: assertMarinhaEmail(gestorEmail),
-  })
-  if (error) throw new Error(error.message)
-}
-
 export async function assertAccountNotPaused(email: string): Promise<void> {
   const paused = await isAccountPaused(email)
   if (paused) {
