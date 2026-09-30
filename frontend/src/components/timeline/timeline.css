@@ -491,12 +491,14 @@
   animation: tl-devolucao-title-blink 1.35s ease-in-out infinite;
 }
 
-/* Layout em fluxo horizontal: esquerda → direita */
+/* Layout em fluxo horizontal: esquerda → direita (centralizado no campo) */
 .timeline-flow,
 .timeline-flow--horizontal {
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: center;
+  justify-content: safe center;
   width: 100%;
   min-width: min-content;
   overflow-x: auto;
