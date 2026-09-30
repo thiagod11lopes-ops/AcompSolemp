@@ -39,10 +39,11 @@ export function useChatUnreadCount() {
     queryKey: ['chat-unread', user?.id],
     queryFn: () => chatService.unreadCount(user!),
     enabled: Boolean(user?.id),
-    staleTime: 0,
-    refetchInterval: 2_000,
+    staleTime: 5_000,
+    // Fase 5: sem poll 2s — Realtime/app_state + invalidate em subscribeAppDataChanged.
+    refetchInterval: false,
     refetchOnWindowFocus: true,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -52,8 +53,9 @@ export function useChatThreads(enabled: boolean) {
     queryKey: ['chat-threads', user?.id],
     queryFn: () => chatService.listThreads(user!),
     enabled: enabled && Boolean(user?.id),
-    staleTime: 0,
-    refetchInterval: enabled ? 3_000 : false,
+    staleTime: 5_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -63,8 +65,9 @@ export function useChatMessages(threadId: string | null, enabled: boolean) {
     queryKey: ['chat-messages', threadId, user?.id],
     queryFn: () => chatService.listMessages(threadId!, user!),
     enabled: enabled && Boolean(threadId && user?.id),
-    staleTime: 0,
-    refetchInterval: enabled && threadId ? 2_000 : false,
+    staleTime: 5_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
   })
 }
 

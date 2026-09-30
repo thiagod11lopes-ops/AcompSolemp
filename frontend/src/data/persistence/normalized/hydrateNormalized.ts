@@ -4,7 +4,7 @@ import { deserializeAppData } from '@/data/persistence/types'
 import { mergePedidosFromNormalized } from '@/data/persistence/normalized/pedidosSync'
 import { mergeAnexosFromNormalized } from '@/data/persistence/normalized/anexosSync'
 import { mergeSimpleArrayFromNormalized } from '@/data/persistence/normalized/simpleArraySync'
-import type { HistoricoEvento } from '@/types'
+import type { ChatMessage, HistoricoEvento } from '@/types'
 
 /** Deserializa o blob e mescla domínios normalizados com leitura ativa. */
 export async function hydrateAppDataFromCloudSnapshot(
@@ -18,6 +18,12 @@ export async function hydrateAppDataFromCloudSnapshot(
     'pedido_historico',
     data,
     'historico',
+  )
+  data = await mergeSimpleArrayFromNormalized<ChatMessage>(
+    'chat',
+    'chat_mensagens',
+    data,
+    'chatMensagens',
   )
   return data
 }
