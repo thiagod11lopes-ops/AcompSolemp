@@ -17,5 +17,8 @@ export async function dualWriteNormalizedDomains(data: AppData): Promise<void> {
     dualWriteSimpleArray('cadastros', 'empresas', data.empresas),
     dualWriteSimpleArray('cadastros', 'materiais', data.materiais),
     dualWriteSimpleArray('cadastros', 'usuarios', data.usuarios),
+    dualWriteSimpleArray('config', 'workflow_etapas', data.workflowEtapas),
+    dualWriteSimpleArray('auxiliares', 'solemp', data.solemp),
+    dualWriteSimpleArray('auxiliares', 'notas_fiscais', data.notasFiscais),
   ])
 }

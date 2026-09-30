@@ -31,8 +31,8 @@ const DEFAULT_DUAL_WRITE: DomainFlags = {
   notificacoes: true,
   arquivados: true,
   cadastros: true,
-  config: false,
-  auxiliares: false,
+  config: true,
+  auxiliares: true,
 }
 
 /** Leitura cutover: listas/detalhe leem a tabela (fallback blob se vazio). */
@@ -45,8 +45,8 @@ const DEFAULT_READ: DomainFlags = {
   notificacoes: true,
   arquivados: true,
   cadastros: true,
-  config: false,
-  auxiliares: false,
+  config: true,
+  auxiliares: true,
 }
 
 /** Quando true, o domínio deixa de ser incluído no payload de `app_state` (Fase 9). */

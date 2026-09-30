@@ -5,10 +5,13 @@ import type {
   Empresa,
   HistoricoEvento,
   Material,
+  NotaFiscal,
   Notification,
   ProcessoArquivado,
   ReversaoTimeline,
+  Solemp,
   User,
+  WorkflowEtapa,
 } from '@/types'
 import type { AppDataSnapshot } from '@/data/persistence/types'
 import { deserializeAppData } from '@/data/persistence/types'
@@ -62,5 +65,18 @@ export async function hydrateAppDataFromCloudSnapshot(
     'materiais',
   )
   data = await mergeSimpleArrayFromNormalized<User>('cadastros', 'usuarios', data, 'usuarios')
+  data = await mergeSimpleArrayFromNormalized<WorkflowEtapa>(
+    'config',
+    'workflow_etapas',
+    data,
+    'workflowEtapas',
+  )
+  data = await mergeSimpleArrayFromNormalized<Solemp>('auxiliares', 'solemp', data, 'solemp')
+  data = await mergeSimpleArrayFromNormalized<NotaFiscal>(
+    'auxiliares',
+    'notas_fiscais',
+    data,
+    'notasFiscais',
+  )
   return data
 }
