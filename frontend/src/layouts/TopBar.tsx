@@ -33,9 +33,8 @@ import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { DRAWER_WIDTH } from './Sidebar'
 import { TIPOS_NOTIFICACAO_REVERSAO, notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { useNotifications } from '@/hooks/useCadastros'
-import { isSuperAdminEmail } from '@/utils/email'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { loadAppData } from '@/mocks/seed'
+import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 import {
   isFictionalDashboardSeedActive,
   toggleFictionalDashboardSeed,
@@ -66,12 +65,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       !n.lida && notificacaoPertenceAosTipos(n, TIPOS_NOTIFICACAO_REVERSAO),
   ).length
 
-  const sessionEmail =
-    user?.email?.trim().toLowerCase() ||
-    loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
-    ''
-  const showSuperAdmin =
-    isSupabase && isSuperAdminEmail(sessionEmail) && !impersonationTargetEmail
+  const showSuperAdmin = useIsSuperAdminSession()
 
   const handleLogout = async () => {
     await logout()

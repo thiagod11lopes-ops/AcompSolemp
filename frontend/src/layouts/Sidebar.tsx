@@ -22,11 +22,9 @@ import EmailIcon from '@mui/icons-material/Email'
 import { NavLink } from 'react-router-dom'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
-import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
+import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { useSupabaseDataSource } from '@/config/dataSource'
-import { isSuperAdminEmail } from '@/utils/email'
-import { loadAppData } from '@/mocks/seed'
+import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 import type { ReactNode } from 'react'
 
 const DRAWER_WIDTH = 260
@@ -54,17 +52,10 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { user } = useGestorAuth()
-  const { impersonationTargetEmail } = useAuth()
-  const isSupabase = useSupabaseDataSource()
+  const showSuperAdminItems = useIsSuperAdminSession()
   const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const sessionEmail =
-    user?.email?.trim().toLowerCase() ||
-    loadAppData().tenantMeta?.ownerEmail?.trim().toLowerCase() ||
-    ''
-  const showSuperAdminItems =
-    isSupabase && isSuperAdminEmail(sessionEmail) && !impersonationTargetEmail
   const visibleMenuItems = menuItems.filter(
     (item) => !item.superAdminOnly || showSuperAdminItems,
   )
