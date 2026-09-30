@@ -53,6 +53,9 @@
 }
 
 .timeline-lane-wrap {
+  display: flex;
+  justify-content: center;
+  justify-content: safe center;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 8px;
