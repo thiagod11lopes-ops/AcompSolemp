@@ -6,7 +6,7 @@ import type { TimelineDrawerDetail } from './types'
 import { TimelineStatus } from './TimelineStatus'
 import { TimelineActionButton } from './TimelineActionButton'
 import { timelineTheme } from './theme'
-import { formatCurrency, formatDateTime } from '@/utils/format'
+import { formatCurrency, formatDateTime, formatNip } from '@/utils/format'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -536,6 +536,34 @@ export const TimelineDrawer = memo(function TimelineDrawer({
                         </div>
                       ))}
                     </div>
+                  </Section>
+                )}
+
+                {detail.pedido.paciente && (
+                  <Section title="Paciente" icon={User}>
+                    <MetaBlock
+                      compact
+                      items={[
+                        {
+                          icon: User,
+                          label: 'Nome',
+                          value: detail.pedido.paciente.nome,
+                        },
+                        {
+                          icon: User,
+                          label: 'NIP',
+                          value: formatNip(detail.pedido.paciente.nip),
+                        },
+                        {
+                          icon: User,
+                          label: 'Titularidade',
+                          value:
+                            detail.pedido.paciente.vinculo === 'TITULAR'
+                              ? 'Titular'
+                              : 'Dependente',
+                        },
+                      ]}
+                    />
                   </Section>
                 )}
 
