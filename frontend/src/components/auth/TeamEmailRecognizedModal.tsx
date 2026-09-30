@@ -1,18 +1,7 @@
 import { useState } from 'react'
-import { Alert, Box, Button, Dialog, Stack, Typography, keyframes } from '@mui/material'
+import { Alert, Box, Typography } from '@mui/material'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
-
-const pulseRing = keyframes`
-  0% { transform: scale(0.85); opacity: 0.55; }
-  70% { transform: scale(1.35); opacity: 0; }
-  100% { transform: scale(1.35); opacity: 0; }
-`
-
-const floatIn = keyframes`
-  from { opacity: 0; transform: translateY(18px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-`
+import { EnvioFluxoDialog } from '@/components/common/EnvioFluxoDialog'
 
 interface TeamEmailRecognizedModalProps {
   open: boolean
@@ -28,6 +17,38 @@ interface TeamEmailRecognizedModalProps {
   onDecline: () => Promise<void>
 }
 
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box
+      sx={{
+        px: 1.25,
+        py: 1,
+        borderRadius: '10px',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          display: 'block',
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          color: 'text.secondary',
+          mb: 0.25,
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography variant="body2" sx={{ fontWeight: 700, wordBreak: 'break-all' }}>
+        {value}
+      </Typography>
+    </Box>
+  )
+}
+
 /** Modal de convite no primeiro acesso: e-mail liberado pelo gestor em Cadastros. */
 export function TeamEmailRecognizedModal({
   open,
@@ -40,6 +61,11 @@ export function TeamEmailRecognizedModal({
 }: TeamEmailRecognizedModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const labels = (
+    perfilLabels?.filter((l) => l.trim().length > 0) ??
+    (perfilLabel?.trim() ? [perfilLabel.trim()] : [])
+  )
 
   const handleDecline = async () => {
     setError('')
@@ -54,276 +80,100 @@ export function TeamEmailRecognizedModal({
   }
 
   return (
-    <Dialog
+    <EnvioFluxoDialog
       open={open}
-      onClose={(_event, reason) => {
-        if (reason === 'backdropClick' || reason === 'escapeKeyDown') return
-      }}
-      maxWidth="xs"
-      fullWidth
-      slotProps={{
-        backdrop: {
-          sx: {
-            backgroundColor: 'rgba(6, 24, 18, 0.55)',
-            backdropFilter: 'blur(8px)',
-          },
-        },
-        paper: {
-          sx: {
-            m: 2,
-            overflow: 'hidden',
-            borderRadius: 4,
-            border: '1px solid rgba(34, 197, 94, 0.35)',
-            background:
-              'linear-gradient(165deg, #064E3B 0%, #047857 42%, #10B981 100%)',
-            boxShadow:
-              '0 24px 64px rgba(4, 120, 87, 0.45), 0 0 0 1px rgba(255,255,255,0.08) inset',
-            animation: `${floatIn} 0.4s cubic-bezier(0.22, 1, 0.36, 1)`,
-          },
-        },
-      }}
+      title="Você foi cadastrado no AcompSOLEMP"
+      onClose={() => undefined}
+      onCancel={() => void handleDecline()}
+      onSubmit={onAccept}
+      loading={loading}
+      cancelLabel="Não fazer parte"
+      cancelLoadingLabel="Removendo..."
+      submitLabel="Aceitar cadastro"
+      submitStartIcon={<CheckCircleRoundedIcon />}
+      preventDismiss
+      chips={[{ label: 'Cadastro do gestor', color: 'success' }]}
     >
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Um gestor liberou o seu e-mail para o primeiro acesso. Aceite para entrar na
+        organização ou recuse para sair desse cadastro.
+      </Typography>
+
       <Box
         sx={{
-          position: 'relative',
-          px: 3.5,
-          pt: 4,
-          pb: 3.5,
-          textAlign: 'center',
-          color: '#ECFDF5',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,255,255,0.22), transparent 55%)',
-            pointerEvents: 'none',
-          },
+          mb: 1.5,
+          p: 1.25,
+          borderRadius: '12px',
+          border: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'rgba(85, 139, 113, 0.06)',
+          display: 'grid',
+          gap: 0.75,
         }}
       >
-        <Box
-          sx={{
-            position: 'relative',
-            width: 88,
-            height: 88,
-            mx: 'auto',
-            mb: 2.5,
-            display: 'grid',
-            placeItems: 'center',
-          }}
-        >
+        <InfoRow
+          label="Gestor que cadastrou"
+          value={gestorEmail || 'E-mail do gestor indisponível'}
+        />
+        <InfoRow label="Seu e-mail" value={email} />
+        {labels.length > 0 && (
           <Box
             sx={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '50%',
-              border: '2px solid rgba(236, 253, 245, 0.45)',
-              animation: `${pulseRing} 1.8s ease-out infinite`,
-            }}
-          />
-          <Box
-            sx={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              display: 'grid',
-              placeItems: 'center',
-              bgcolor: 'rgba(236, 253, 245, 0.18)',
-              border: '1px solid rgba(236, 253, 245, 0.35)',
-              boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
-            }}
-          >
-            <PersonAddAlt1RoundedIcon sx={{ fontSize: 40, color: '#ECFDF5' }} />
-          </Box>
-        </Box>
-
-        <Typography
-          variant="overline"
-          sx={{
-            letterSpacing: '0.16em',
-            fontWeight: 700,
-            color: 'rgba(236, 253, 245, 0.75)',
-            display: 'block',
-            mb: 1,
-          }}
-        >
-          Cadastro do gestor
-        </Typography>
-
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            lineHeight: 1.25,
-            mb: 1.5,
-            color: '#FFFFFF',
-          }}
-        >
-          Você foi cadastrado no AcompSOLEMP
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '0.95rem',
-            lineHeight: 1.55,
-            color: 'rgba(236, 253, 245, 0.92)',
-            mb: 1.5,
-          }}
-        >
-          Um gestor liberou o seu e-mail para o primeiro acesso. Aceite para entrar na
-          organização ou recuse para sair desse cadastro.
-        </Typography>
-
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2.5 }}>
-          <Box
-            sx={{
-              px: 1.75,
+              px: 1.25,
               py: 1,
-              borderRadius: 2,
-              bgcolor: 'rgba(0,0,0,0.18)',
-              border: '1px solid rgba(255,255,255,0.16)',
-              textAlign: 'left',
+              borderRadius: '10px',
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
             }}
           >
-            <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
-              Gestor que cadastrou
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                textTransform: 'uppercase',
+                color: 'text.secondary',
+                mb: 0.25,
+              }}
+            >
+              {labels.length > 1 ? 'Setores cadastrados' : 'Perfil cadastrado'}
             </Typography>
-            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', wordBreak: 'break-all' }}>
-              {gestorEmail || 'E-mail do gestor indisponível'}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              px: 1.75,
-              py: 1,
-              borderRadius: 2,
-              bgcolor: 'rgba(0,0,0,0.12)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              textAlign: 'left',
-            }}
-          >
-            <Typography sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}>
-              Seu e-mail
-            </Typography>
-            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', wordBreak: 'break-all' }}>
-              {email}
-            </Typography>
-          </Box>
-          {(() => {
-            const labels = (
-              perfilLabels?.filter((l) => l.trim().length > 0) ??
-              (perfilLabel?.trim() ? [perfilLabel.trim()] : [])
-            )
-            if (labels.length === 0) return null
-            return (
-              <Box
-                sx={{
-                  px: 1.75,
-                  py: 1,
-                  borderRadius: 2,
-                  bgcolor: 'rgba(0,0,0,0.12)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  textAlign: 'left',
-                }}
-              >
+            <Box
+              component="ul"
+              sx={{
+                m: 0,
+                pl: labels.length > 1 ? 2.25 : 0,
+                listStyle: labels.length > 1 ? 'disc' : 'none',
+              }}
+            >
+              {labels.map((label) => (
                 <Typography
-                  sx={{ fontSize: '0.72rem', opacity: 0.75, mb: 0.35, fontWeight: 700 }}
+                  key={label}
+                  component="li"
+                  variant="body2"
+                  sx={{ fontWeight: 700, lineHeight: 1.45 }}
                 >
-                  {labels.length > 1 ? 'Setores cadastrados' : 'Perfil cadastrado'}
+                  {label}
                 </Typography>
-                <Box
-                  component="ul"
-                  sx={{
-                    m: 0,
-                    pl: labels.length > 1 ? 2.25 : 0,
-                    listStyle: labels.length > 1 ? 'disc' : 'none',
-                  }}
-                >
-                  {labels.map((label) => (
-                    <Typography
-                      key={label}
-                      component="li"
-                      sx={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.45 }}
-                    >
-                      {label}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
-            )
-          })()}
-        </Box>
-
-        <Typography
-          sx={{
-            fontSize: '0.86rem',
-            color: 'rgba(236, 253, 245, 0.8)',
-            mb: 2.5,
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>Aceitar</strong> — confirma o cadastro e segue para criar a senha ou entrar.
-          <br />
-          <strong>Não fazer parte</strong> — remove seu e-mail do cadastro do gestor para você
-          poder criar o próprio banco (Portal do Gestor).
-        </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>
-            {error}
-          </Alert>
+              ))}
+            </Box>
+          </Box>
         )}
-
-        <Stack spacing={1.25}>
-          <Button
-            fullWidth
-            size="large"
-            disabled={loading}
-            onClick={onAccept}
-            startIcon={<CheckCircleRoundedIcon />}
-            sx={{
-              py: 1.35,
-              borderRadius: 2.5,
-              fontWeight: 800,
-              textTransform: 'none',
-              fontSize: '1rem',
-              color: '#065F46',
-              bgcolor: '#ECFDF5',
-              boxShadow: '0 10px 28px rgba(0,0,0,0.2)',
-              '&:hover': {
-                bgcolor: '#FFFFFF',
-                boxShadow: '0 14px 32px rgba(0,0,0,0.28)',
-              },
-            }}
-          >
-            Aceitar cadastro
-          </Button>
-          <Button
-            fullWidth
-            size="large"
-            disabled={loading}
-            onClick={() => void handleDecline()}
-            sx={{
-              py: 1.25,
-              borderRadius: 2.5,
-              fontWeight: 700,
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              color: '#ECFDF5',
-              border: '1px solid rgba(236, 253, 245, 0.45)',
-              bgcolor: 'rgba(0,0,0,0.12)',
-              '&:hover': {
-                bgcolor: 'rgba(0,0,0,0.22)',
-                borderColor: 'rgba(236, 253, 245, 0.7)',
-              },
-            }}
-          >
-            {loading ? 'Removendo...' : 'Não fazer parte'}
-          </Button>
-        </Stack>
       </Box>
-    </Dialog>
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: error ? 1.5 : 0, lineHeight: 1.45 }}>
+        <strong>Aceitar cadastro</strong> confirma e segue para criar a senha ou entrar.
+        {' '}
+        <strong>Não fazer parte</strong> remove seu e-mail do cadastro do gestor.
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mt: 1.5 }}>
+          {error}
+        </Alert>
+      )}
+    </EnvioFluxoDialog>
   )
 }
