@@ -183,16 +183,13 @@ function appendImhMedicamentoLivre(
     abas: [],
     abaAtivaId: null,
   }
-  const imh = atuais.imhMedicamento ?? {
-    linhas: [],
-    finalizedImhIds: [],
-    devolvidosImhIds: [],
+  const finalizedImhIds = [...(atuais.imhMedicamento?.finalizedImhIds ?? [])]
+  const devolvidosImhIds = [...(atuais.imhMedicamento?.devolvidosImhIds ?? [])]
+  const linhas = [...(atuais.imhMedicamento?.linhas ?? []), linha]
+  if (finalizada && !finalizedImhIds.includes(linha.id)) {
+    finalizedImhIds.push(linha.id)
   }
-  imh.linhas = [...imh.linhas, linha]
-  if (finalizada && !imh.finalizedImhIds.includes(linha.id)) {
-    imh.finalizedImhIds = [...imh.finalizedImhIds, linha.id]
-  }
-  atuais.imhMedicamento = imh
+  atuais.imhMedicamento = { linhas, finalizedImhIds, devolvidosImhIds }
   data.planilhasLivres[clinicaId] = atuais
 }
 
