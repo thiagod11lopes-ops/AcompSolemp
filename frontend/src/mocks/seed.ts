@@ -880,9 +880,17 @@ let persistScheduleSeq = 0
 
 function persistAppData(data: AppData, options?: { silent?: boolean }): void {
   // Seed fictício: só atualiza o snapshot local — nunca AppData real nem Supabase.
+  // Espelha também no store da Demonstração para os setores demo verem os mesmos dados.
   if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') {
     storageSet(STORAGE_KEYS.FICTIONAL_SNAPSHOT, JSON.stringify(data))
-    if (!options?.silent) notifyAppDataChanged()
+    const demoPayload = JSON.stringify({ ...data, _version: SEED_VERSION })
+    void storageSetAndWait(STORAGE_KEYS.DEMO_APP_DATA, demoPayload)
+      .then(() => {
+        if (!options?.silent) notifyAppDataChanged()
+      })
+      .catch(() => {
+        if (!options?.silent) notifyAppDataChanged()
+      })
     return
   }
 
@@ -1495,6 +1503,11 @@ export function tryRestoreFictionalSnapshotIntoCache(): boolean {
     const parsed = JSON.parse(raw) as AppData
     const { data } = normalizeAppData(parsed)
     appDataCache = data
+    // Mantém a aba Demonstração / portais demo alinhados após reload.
+    void storageSetAndWait(
+      STORAGE_KEYS.DEMO_APP_DATA,
+      JSON.stringify({ ...data, _version: SEED_VERSION }),
+    )
     return true
   } catch {
     return false

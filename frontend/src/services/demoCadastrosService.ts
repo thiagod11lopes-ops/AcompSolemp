@@ -1,4 +1,4 @@
-import type { Clinica, User } from '@/types'
+import type { AppData, Clinica, User } from '@/types'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { isDemoDataSession } from '@/config/dataSource'
 import {
@@ -6,7 +6,9 @@ import {
   loadAppData,
   reloadAppDataFromStorage,
   saveAppData,
+  saveDemoAppDataAndWait,
 } from '@/mocks/seed'
+import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
 import { createDemoMedicamentoPlanilhaExemploState, createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
@@ -260,7 +262,8 @@ function findOrEnsureSetorUser(opcao: CadastroPerfilOpcao, data: ReturnType<type
   return user
 }
 
-function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
+/** Garante clínicas/usuários de exemplo em qualquer AppData (demo ou seed fictício). */
+export function seedDemoExampleCadastros(data: ReturnType<typeof loadAppData>): void {
   const clinica = ensureDefaultClinica(data)
   findOrEnsureClinicaUser(clinica, data)
 
@@ -355,6 +358,23 @@ export function ensureDemoExampleEmpenhadoPlanilha(): boolean {
 /** Inicializa AppData de demonstração no IndexedDB (isolado da nuvem). */
 export async function initDemoAppData(): Promise<void> {
   if (!isDemoDataSession()) return
+
+  // Seed fictício do dashboard: espelha o mesmo snapshot em todos os setores demo.
+  if (storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1') {
+    const raw = storageGet(STORAGE_KEYS.FICTIONAL_SNAPSHOT)
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as AppData
+        seedDemoExampleCadastros(parsed)
+        await saveDemoAppDataAndWait(parsed)
+        clearAppDataCache()
+        reloadAppDataFromStorage()
+        return
+      } catch {
+        // fallback para seed de exemplo abaixo
+      }
+    }
+  }
 
   clearAppDataCache()
   reloadAppDataFromStorage()

@@ -11,6 +11,7 @@ import { useCloudAppDataSync } from '@/config/dataSource'
 import {
   loadAppData,
   replaceAppDataCache,
+  saveDemoAppDataAndWait,
   wipeDemoAppDataStore,
 } from '@/mocks/seed'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
@@ -21,6 +22,7 @@ import {
   DEMO_EMPENHADO_EXEMPLO_ID,
   DEMO_MEDICAMENTO_EXEMPLO_ID,
   isDemoExampleUser,
+  seedDemoExampleCadastros,
 } from '@/services/demoCadastrosService'
 
 const TARGET_CONCLUIDOS = 520
@@ -389,16 +391,46 @@ export function stripFictionalSeedArtifacts(data: AppData): AppData {
   return next
 }
 
-export function activateFictionalDashboardSeed(): void {
+/**
+ * Espalha pedidos fictícios também nas clínicas/medicamento de exemplo
+ * para os portais demo (setores) enxergarem o mesmo volume.
+ */
+function espelharPedidosNasEntidadesDemo(data: AppData): void {
+  const demoIds = [
+    DEMO_CLINICA_EXEMPLO_ID,
+    DEMO_MEDICAMENTO_EXEMPLO_ID,
+    DEMO_EMPENHADO_EXEMPLO_ID,
+  ].filter((id) => data.clinicas.some((c) => c.id === id))
+  if (demoIds.length === 0) return
+
+  data.pedidos.forEach((pedido, index) => {
+    if (!pedido.id.startsWith('fic-ped-')) return
+    // ~1/3 dos pedidos fictícios fica vinculado às entidades demo.
+    if (index % 3 === 0) {
+      pedido.clinicaId = demoIds[index % demoIds.length]
+    }
+  })
+}
+
+export async function activateFictionalDashboardSeed(): Promise<void> {
   if (isFictionalDashboardSeedActive()) return
 
   const real = stripFictionalSeedArtifacts(loadAppData())
   storageSet(STORAGE_KEYS.FICTIONAL_BACKUP, JSON.stringify(real))
 
-  const fictional = buildFictionalDashboardAppData(real)
+  // Inclui clínicas/usuários dos setores demo no pool antes de gerar pedidos.
+  const base = structuredClone(real)
+  seedDemoExampleCadastros(base)
+
+  const fictional = buildFictionalDashboardAppData(base)
+  seedDemoExampleCadastros(fictional)
+  espelharPedidosNasEntidadesDemo(fictional)
+
   storageSet(STORAGE_KEYS.FICTIONAL_SNAPSHOT, JSON.stringify(fictional))
   storageSet(STORAGE_KEYS.FICTIONAL_ACTIVE, '1')
   replaceAppDataCache(fictional)
+  // Espelha na aba Demonstração e nos portais demo de todos os setores.
+  await saveDemoAppDataAndWait(fictional)
 }
 
 export async function deactivateFictionalDashboardSeed(): Promise<void> {
@@ -443,7 +475,7 @@ export async function deactivateFictionalDashboardSeed(): Promise<void> {
     await flushSupabaseAppDataSync()
   }
 
-  // Dados fictícios do dashboard ≠ aba Demonstração — limpa as duas.
+  // Remove o espelho da aba Demonstração / portais demo.
   await wipeDemoAppDataStore()
 }
 
@@ -452,6 +484,6 @@ export async function toggleFictionalDashboardSeed(): Promise<boolean> {
     await deactivateFictionalDashboardSeed()
     return false
   }
-  activateFictionalDashboardSeed()
+  await activateFictionalDashboardSeed()
   return true
 }
