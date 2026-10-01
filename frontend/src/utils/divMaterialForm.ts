@@ -87,6 +87,34 @@ function normData(raw: string): string {
   return raw.trim()
 }
 
+/**
+ * Separa "Modalidade - NUP" vindos do import:
+ * esquerda → Modalidade licitatória; direita do "-" → NUP (modalidade).
+ */
+export function splitModalidadeENup(raw: string): { modalidade: string; nup: string } {
+  const text = raw.trim()
+  if (!text) return { modalidade: '', nup: '' }
+  const match = text.match(/^(.+?)\s*[-–—]\s+(.+)$/) ?? text.match(/^(.+?)\s*[-–—](.+)$/)
+  if (!match) return { modalidade: text, nup: '' }
+  const modalidade = match[1].trim()
+  const nup = match[2].trim()
+  if (!modalidade || !nup) return { modalidade: text, nup: '' }
+  return { modalidade, nup }
+}
+
+/** Conteúdo à direita de Nº no MODELO → coluna Mapa. */
+function mapaFromConmedNumero(conmed: ConmedComrjFormData | undefined): string {
+  return conmed?.numero?.trim() || ''
+}
+
+function modalidadeENupFromFonte(rawModalidade: string): {
+  modalidadeLicitatoria: string
+  nupModalidade: string
+} {
+  const { modalidade, nup } = splitModalidadeENup(rawModalidade)
+  return { modalidadeLicitatoria: modalidade, nupModalidade: nup }
+}
+
 /** Chave numérica aaaammdd para ordenar datas dd/mm/aa(aa) como na IMH. */
 export function parseDivMaterialDataSortKey(data: string): number {
   const match = data.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)
@@ -172,20 +200,22 @@ function rowFromConsumo(
 
   const fornecedorRaw = row.fornecedor.trim() || conmed?.fornecedor?.trim() || ''
   const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
-  // Mapa de Sala → Vale de sala; Processo → Mapa; Vigência → Vigência.
+  // Mapa de Sala → Vale de sala; Nº (direita) → Mapa; modalidade "X - NUP" → colunas.
   const valeSala = row.mapaSala.trim() || row.mapa.trim()
-  const processo = conmed?.processo?.trim() || ''
+  const { modalidadeLicitatoria, nupModalidade } = modalidadeENupFromFonte(
+    row.ref.trim() || conmed?.pregaoTad?.trim() || '',
+  )
   return {
     id: `div-mat-consumo-${row.id}`,
     sourceKey: buildSourceKey(nip || row.nip, data, `consumo:${row.id}`),
-    modalidadeLicitatoria: row.ref.trim() || conmed?.pregaoTad?.trim() || '',
+    modalidadeLicitatoria,
     uasg: '',
-    nupModalidade: processo,
+    nupModalidade,
     numeroItem: row.numero.trim(),
     descricaoMaterial: row.materiais.trim() || row.itemPme.trim(),
     nomePaciente: row.nome.trim() || row.iniciais.trim(),
     nip: nip || row.nip.trim(),
-    mapa: processo,
+    mapa: mapaFromConmedNumero(conmed),
     valeSala,
     vigencia: conmed?.vigencia?.trim() || '',
     nupSigad: '',
@@ -219,18 +249,20 @@ function rowsFromConmed(
       if (existingKeys.has(sourceKey)) continue
       const fornecedorRaw = conmed.fornecedor.trim()
       const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
-      const processo = conmed.processo.trim()
+      const { modalidadeLicitatoria, nupModalidade } = modalidadeENupFromFonte(
+        conmed.pregaoTad.trim(),
+      )
       out.push({
         id: `div-mat-conmed-${paciente.id}`,
         sourceKey,
-        modalidadeLicitatoria: conmed.pregaoTad.trim(),
+        modalidadeLicitatoria,
         uasg: '',
-        nupModalidade: processo,
+        nupModalidade,
         numeroItem: '',
         descricaoMaterial: paciente.procedimento.trim(),
         nomePaciente: paciente.iniciais.trim(),
         nip: nip || paciente.nip.trim(),
-        mapa: processo,
+        mapa: mapaFromConmedNumero(conmed),
         valeSala: '',
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
@@ -248,18 +280,20 @@ function rowsFromConmed(
       if (existingKeys.has(sourceKey)) continue
       const fornecedorRaw = conmed.fornecedor.trim()
       const { fornecedor, cnpj } = splitFornecedorCampos(fornecedorRaw, empresas)
-      const processo = conmed.processo.trim()
+      const { modalidadeLicitatoria, nupModalidade } = modalidadeENupFromFonte(
+        conmed.pregaoTad.trim(),
+      )
       out.push({
         id: `div-mat-conmed-${mat.id}`,
         sourceKey,
-        modalidadeLicitatoria: conmed.pregaoTad.trim(),
+        modalidadeLicitatoria,
         uasg: '',
-        nupModalidade: processo,
+        nupModalidade,
         numeroItem: mat.item.trim(),
         descricaoMaterial: mat.descricao.trim(),
         nomePaciente: paciente.iniciais.trim(),
         nip: nip || paciente.nip.trim(),
-        mapa: processo,
+        mapa: mapaFromConmedNumero(conmed),
         valeSala: mat.mapaDaSala.trim(),
         vigencia: conmed.vigencia.trim(),
         nupSigad: '',
