@@ -142,7 +142,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             title={
               fictionalActive
                 ? 'Remover dados fictícios, limpar aba Demonstração e voltar aos dados reais'
-                : 'Preencher o sistema com dados fictícios (dashboard)'
+                : 'Preencher o sistema com dados fictícios (dashboard, setores e Demonstração)'
             }
           >
             <IconButton
