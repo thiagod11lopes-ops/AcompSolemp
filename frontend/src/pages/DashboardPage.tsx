@@ -521,102 +521,84 @@ export default function DashboardPage({
       <PageHeader title={title} subtitle={subtitle} />
 
       {isDashboardImh ? (
-        <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
-          {/* Esquerda: volume/atendimento em cima; valores de indenização embaixo */}
-          <Grid size={{ xs: 12, md: 9 }} sx={{ display: 'flex' }}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                width: '100%',
-                flex: 1,
-              }}
-            >
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: '1fr 1fr',
-                    md: 'repeat(4, 1fr)',
-                  },
-                  gap: 2,
-                  flex: 1,
-                  minHeight: 0,
-                  alignItems: 'stretch',
-                }}
-              >
-                <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
-                  <KpiCard
-                    title="Total de processos"
-                    value={metrics.totalProcessos}
-                    subtitle="Clique para detalhes"
-                    icon={<AssignmentIcon />}
-                    onClick={() => setKpiAberto('total')}
-                  />
-                </Box>
-                <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
-                  <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
-                </Box>
-                <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
-                  <ProcedimentosCard value={metrics.procedimentos ?? 0} />
-                </Box>
-                <Box
-                  sx={{
-                    minHeight: 0,
-                    height: '100%',
-                    display: 'flex',
-                    '& > *': { flex: 1, width: '100%', height: '100%' },
-                  }}
-                >
-                  <EmAndamentoCard
-                    total={metrics.emAndamento}
-                    porEtapa={metrics.emAndamentoPorEtapa ?? []}
-                    onClick={() => setKpiAberto('emAndamento')}
-                  />
-                </Box>
-              </Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            alignItems: 'stretch',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: '1fr 1fr',
+              md: 'repeat(4, 1fr)',
+            },
+            gridTemplateRows: { md: '1fr 1fr' },
+            minHeight: { md: 420 },
+          }}
+        >
+          <Box
+            sx={{
+              minHeight: 0,
+              height: '100%',
+              gridRow: { md: '1 / span 2' },
+              '& > *': { height: '100%' },
+            }}
+          >
+            <KpiCard
+              title="Total de processos"
+              value={metrics.totalProcessos}
+              subtitle="Clique para detalhes"
+              icon={<AssignmentIcon />}
+              onClick={() => setKpiAberto('total')}
+            />
+          </Box>
 
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                  flex: 1,
-                  minHeight: 0,
-                  '& > *': { minHeight: 0, height: '100%' },
-                }}
-              >
-                <ValorASerIndenizadoCard
-                  linhas={metrics.valorASerIndenizadoLinhas ?? []}
-                />
-                <TotalIndenizadoCard linhas={metrics.totalIndenizadoLinhas ?? []} />
-              </Box>
-            </Box>
-          </Grid>
+          <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+            <ValorASerIndenizadoCard
+              linhas={metrics.valorASerIndenizadoLinhas ?? []}
+            />
+          </Box>
+          <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+            <TotalIndenizadoCard linhas={metrics.totalIndenizadoLinhas ?? []} />
+          </Box>
+          <Box
+            sx={{
+              minHeight: 0,
+              height: '100%',
+              display: 'flex',
+              '& > *': { flex: 1, width: '100%', height: '100%' },
+            }}
+          >
+            <EmAndamentoCard
+              total={metrics.emAndamento}
+              porEtapa={metrics.emAndamentoPorEtapa ?? []}
+              onClick={() => setKpiAberto('emAndamento')}
+            />
+          </Box>
 
-          {/* Direita: Processos concluídos acompanha a altura total */}
-          <Grid size={{ xs: 12, md: 3 }} sx={{ display: 'flex' }}>
-            <Box
-              sx={{
-                flex: 1,
-                width: '100%',
-                display: 'flex',
-                '& > *': { flex: 1, width: '100%' },
-              }}
-            >
-              <ConcluidosCard
-                concluidos={metrics.concluidos}
-                totalProcessos={metrics.totalProcessos}
-                emAndamento={metrics.emAndamento}
-                valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
-                tempoMedioDias={metrics.tempoMedioPagamento}
-                onClick={() => setKpiAberto('concluidos')}
-              />
-            </Box>
-          </Grid>
-        </Grid>
+          <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+            <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
+          </Box>
+          <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+            <ProcedimentosCard value={metrics.procedimentos ?? 0} />
+          </Box>
+          <Box
+            sx={{
+              minHeight: 0,
+              height: '100%',
+              display: 'flex',
+              '& > *': { flex: 1, width: '100%', height: '100%' },
+            }}
+          >
+            <ConcluidosCard
+              concluidos={metrics.concluidos}
+              totalProcessos={metrics.totalProcessos}
+              emAndamento={metrics.emAndamento}
+              valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
+              tempoMedioDias={metrics.tempoMedioPagamento}
+              onClick={() => setKpiAberto('concluidos')}
+            />
+          </Box>
+        </Box>
       ) : (
         <>
           <Grid container spacing={2}>
