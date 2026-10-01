@@ -27,7 +27,13 @@ import {
   contarPessoasAtendidas,
   contarProcedimentosDivMaterial,
 } from '@/utils/dashboardAtendimentos'
-import { coletarLinhasTotalIndenizado, separarLinhasIndenizadoPorStatus, somarPctIndenizarDoPedido } from '@/utils/totalIndenizado'
+import {
+  coletarLinhasTotalIndenizado,
+  separarLinhasIndenizadoPorStatus,
+  serieMensalIndenizadoPorOrigem,
+  somarPctIndenizarDoPedido,
+  somarValoresPorOrigem,
+} from '@/utils/totalIndenizado'
 import { etapaVisivelNaTimeline } from '@/utils/timelineFlow'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { authService } from '@/services/authService'
@@ -625,15 +631,22 @@ export const pedidoService = {
         try {
           const todas = coletarLinhasTotalIndenizado(data)
           const { aIndenizar, indenizado } = separarLinhasIndenizadoPorStatus(todas)
+          const { opme, pme } = somarValoresPorOrigem(todas)
           return {
             valorASerIndenizadoLinhas: aIndenizar,
             totalIndenizadoLinhas: indenizado,
+            valorTotalOpme: opme,
+            valorTotalPme: pme,
+            indenizadoMensalPorOrigem: serieMensalIndenizadoPorOrigem(indenizado, 12),
           }
         } catch (err) {
           console.error('Falha ao coletar totais de indenização para o dashboard:', err)
           return {
             valorASerIndenizadoLinhas: [],
             totalIndenizadoLinhas: [],
+            valorTotalOpme: 0,
+            valorTotalPme: 0,
+            indenizadoMensalPorOrigem: [],
           }
         }
       })(),
