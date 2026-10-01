@@ -895,10 +895,21 @@ function persistAppData(data: AppData, options?: { silent?: boolean }): void {
     return
   }
 
-  storageSet(getAppDataStorageKey(), JSON.stringify({ ...data, _version: SEED_VERSION }))
+  // Local/demo: memória imediata + IndexedDB durável antes do broadcast entre abas.
+  // Evita a aba Auditoria ler IDB ainda sem o pedido recém-enviado pela Clínica.
+  const key = getAppDataStorageKey()
+  const payload = JSON.stringify({ ...data, _version: SEED_VERSION })
   if (!options?.silent) {
-    notifyAppDataChanged()
+    notifyAppDataChangedLocal()
   }
+  void storageSetAndWait(key, payload)
+    .then(() => {
+      if (!options?.silent) broadcastAppDataToPeers()
+    })
+    .catch((err) => {
+      console.error('Falha ao persistir AppData no IndexedDB', err)
+      if (!options?.silent) broadcastAppDataToPeers()
+    })
 }
 
 const APP_DATA_CHANGED_EVENT = 'acomp-app-data-changed'
@@ -912,11 +923,15 @@ const APP_DATA_TAB_ID =
     ? crypto.randomUUID()
     : `tab-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-export function notifyAppDataChanged(): void {
+function notifyAppDataChangedLocal(): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent(APP_DATA_CHANGED_EVENT))
   // Compat: listeners de demo ainda escutam o evento legado.
   window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT))
+}
+
+function broadcastAppDataToPeers(): void {
+  if (typeof window === 'undefined') return
   const message = { type: APP_DATA_CHANGED_EVENT, tabId: APP_DATA_TAB_ID }
   try {
     const channel = new BroadcastChannel(APP_DATA_BROADCAST)
@@ -934,6 +949,11 @@ export function notifyAppDataChanged(): void {
   }
 }
 
+export function notifyAppDataChanged(): void {
+  notifyAppDataChangedLocal()
+  broadcastAppDataToPeers()
+}
+
 export function notifyDemoAppDataChanged(): void {
   notifyAppDataChanged()
 }
@@ -941,7 +961,16 @@ export function notifyDemoAppDataChanged(): void {
 async function reloadCacheFromPeerStorage(): Promise<void> {
   if (useCloudAppDataSync()) return
   const key = getAppDataStorageKey()
-  await storageReloadKey(key)
+  const before = storageGet(key)
+  // Retry curto: cobre latência residual do IDB mesmo após broadcast pós-gravação.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, 40 * attempt))
+    }
+    await storageReloadKey(key)
+    const after = storageGet(key)
+    if (after && after !== before) break
+  }
   reloadAppDataFromStorage()
 }
 
@@ -999,11 +1028,17 @@ export function subscribeDemoAppDataChanged(listener: () => void): () => void {
 /** Persiste AppData de demonstração sem depender da rota atual. */
 export function saveDemoAppData(data: AppData): void {
   const cloned = cloneData(data)
-  storageSet(STORAGE_KEYS.DEMO_APP_DATA, JSON.stringify({ ...cloned, _version: SEED_VERSION }))
+  const payload = JSON.stringify({ ...cloned, _version: SEED_VERSION })
   if (isDemoDataSession()) {
     appDataCache = cloned
   }
-  notifyDemoAppDataChanged()
+  notifyAppDataChangedLocal()
+  void storageSetAndWait(STORAGE_KEYS.DEMO_APP_DATA, payload)
+    .then(() => broadcastAppDataToPeers())
+    .catch((err) => {
+      console.error('Falha ao persistir demo AppData no IndexedDB', err)
+      broadcastAppDataToPeers()
+    })
 }
 
 /** Persiste demo data e aguarda IndexedDB (para sincronizar outras abas). */
@@ -1419,6 +1454,9 @@ export async function loadFreshAppData(): Promise<AppData> {
     if (appDataCache) return cloneData(appDataCache)
     return reloadFreshAppData()
   }
+  // Local/demo: sempre relê o IndexedDB — outras abas (ex.: Clínica → Auditoria) podem
+  // ter gravado pedidos/anexos que o cache em memória desta aba ainda não viu.
+  await storageReloadKey(getAppDataStorageKey())
   return reloadAppDataFromStorage()
 }
 
