@@ -1,5 +1,6 @@
 import type {
   AppData,
+  Clinica,
   ImhMedicamentoLinha,
   Pedido,
   PedidoEtapaHistorico,
@@ -16,6 +17,7 @@ import {
 } from '@/mocks/seed'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
+import { createLinhaVazia } from '@/utils/consumoMaterialTemplate'
 import { EMPTY_CABECALHO } from '@/utils/fictionalSeedCabecalho'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
@@ -27,7 +29,12 @@ import {
 
 const TARGET_CONCLUIDOS = 520
 const TARGET_EMPENHO = 5_000_000
+/** Total indenizado (OPME clínicas + PME medicamento). */
 const TARGET_INDENIZADO = 250_000
+/** Fatia PME — valores das tabelas medicamento enviadas ao IMH. */
+const TARGET_INDENIZADO_PME = 100_000
+const TARGET_INDENIZADO_OPME = TARGET_INDENIZADO - TARGET_INDENIZADO_PME
+const PME_CONCLUIDOS_SHARE = 0.4
 const ANDAMENTO_MIN = 80
 const ANDAMENTO_MAX = 160
 
@@ -118,13 +125,22 @@ function emptyImhMedLinha(
 }
 
 function ensureCadastrosBase(data: AppData): void {
-  if (data.clinicas.length === 0) {
+  if (!data.clinicas.some((c) => c.tipo !== 'medicamento' && c.tipo !== 'empenhado')) {
     data.clinicas.push({
       id: 'fic-clinica-1',
       nome: 'Clínica Fictícia Ortopedia',
       responsavel: 'Responsável Fictício',
       telefone: '(21) 0000-0000',
       tipo: 'clinica',
+    })
+  }
+  if (!data.clinicas.some((c) => c.tipo === 'medicamento')) {
+    data.clinicas.push({
+      id: 'fic-medicamento-1',
+      nome: 'Medicamento Fictício PME',
+      responsavel: 'Farmácia Fictícia',
+      telefone: '(21) 0000-0001',
+      tipo: 'medicamento',
     })
   }
   if (data.empresas.length === 0) {
@@ -146,6 +162,68 @@ function ensureCadastrosBase(data: AppData): void {
       unidade: 'UN',
     })
   }
+}
+
+function clinicasOpme(data: AppData): Clinica[] {
+  return data.clinicas.filter((c) => c.tipo !== 'medicamento')
+}
+
+function clinicasPme(data: AppData): Clinica[] {
+  return data.clinicas.filter((c) => c.tipo === 'medicamento')
+}
+
+function appendImhMedicamentoLivre(
+  data: AppData,
+  clinicaId: string,
+  linha: ImhMedicamentoLinha,
+  finalizada: boolean,
+): void {
+  if (!data.planilhasLivres) data.planilhasLivres = {}
+  const atuais = data.planilhasLivres[clinicaId] ?? {
+    abas: [],
+    abaAtivaId: null,
+  }
+  const imh = atuais.imhMedicamento ?? {
+    linhas: [],
+    finalizedImhIds: [],
+    devolvidosImhIds: [],
+  }
+  imh.linhas = [...imh.linhas, linha]
+  if (finalizada && !imh.finalizedImhIds.includes(linha.id)) {
+    imh.finalizedImhIds = [...imh.finalizedImhIds, linha.id]
+  }
+  atuais.imhMedicamento = imh
+  data.planilhasLivres[clinicaId] = atuais
+}
+
+function appendConsumoOpmeRow(
+  data: AppData,
+  clinicaId: string,
+  rowId: string,
+  dataBr: string,
+  valorIndenizar: number,
+): void {
+  if (!data.consumoPlanilha) data.consumoPlanilha = {}
+  const state = data.consumoPlanilha[clinicaId] ?? {
+    finalizedRowIds: [],
+    finalizedAuditoriaRowIds: [],
+    finalizedMaterialRowIds: [],
+    extraRows: [],
+  }
+  const row = createLinhaVazia(rowId, rowId.replace(/\D/g, '').slice(-4) || '1')
+  row.data = dataBr
+  row.nip = String(10000000 + randInt(0, 89999999))
+  row.nome = `Paciente OPME ${rowId.slice(-4)}`
+  row.materiais = 'Material OPME fictício'
+  row.valor = formatValorBrasileiro(valorIndenizar)
+  row.valorNumerico = valorIndenizar
+  row.pctIndenizar = '100'
+  row.valorIndenizar = formatValorBrasileiro(valorIndenizar)
+  state.extraRows = [...(state.extraRows ?? []), row]
+  if (!state.finalizedAuditoriaRowIds?.includes(rowId)) {
+    state.finalizedAuditoriaRowIds = [...(state.finalizedAuditoriaRowIds ?? []), rowId]
+  }
+  data.consumoPlanilha[clinicaId] = state
 }
 
 function distributeExact(total: number, parts: number): number[] {
@@ -184,8 +262,17 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
       ativo: true,
     }
 
-  const empenhoValores = distributeExact(TARGET_EMPENHO, TARGET_CONCLUIDOS)
-  const indenizadoValores = distributeExact(TARGET_INDENIZADO, TARGET_CONCLUIDOS)
+  const opmeClinicas = clinicasOpme(data)
+  const pmeClinicas = clinicasPme(data)
+  if (opmeClinicas.length === 0 || pmeClinicas.length === 0) {
+    throw new Error('Cadastros OPME/PME insuficientes para gerar dados fictícios.')
+  }
+
+  const nPmeConcluidos = Math.max(1, Math.round(TARGET_CONCLUIDOS * PME_CONCLUIDOS_SHARE))
+  const nOpmeConcluidos = Math.max(1, TARGET_CONCLUIDOS - nPmeConcluidos)
+  const empenhoValores = distributeExact(TARGET_EMPENHO, nOpmeConcluidos + nPmeConcluidos)
+  const indenizadoOpmeValores = distributeExact(TARGET_INDENIZADO_OPME, nOpmeConcluidos)
+  const indenizadoPmeValores = distributeExact(TARGET_INDENIZADO_PME, nPmeConcluidos)
 
   const novosPedidos: Pedido[] = []
   const novasSolemps: Solemp[] = []
@@ -193,26 +280,98 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
     ...(data.pedidoPlanilhaEnvio ?? {}),
   }
 
-  for (let i = 0; i < TARGET_CONCLUIDOS; i++) {
-    const id = `fic-ped-c-${String(i + 1).padStart(4, '0')}`
-    const clinica = pick(data.clinicas)
+  const arquivadaEmFromHistorico = (
+    historico: PedidoEtapaHistorico[],
+    dataSolic: string,
+  ): string =>
+    historico.find(
+      (h) => h.etapaNome.includes('IMH') || h.etapaNome.includes('Contabilidade'),
+    )?.dataConclusao
+    ?? historico[Math.min(2, historico.length - 1)]?.dataConclusao
+    ?? dataSolic
+
+  // —— OPME: valores provenientes das clínicas (consumo consignado) ——
+  for (let i = 0; i < nOpmeConcluidos; i++) {
+    const id = `fic-ped-c-opme-${String(i + 1).padStart(4, '0')}`
+    const clinica = pick(opmeClinicas)
     const empresa = pick(data.empresas)
     const material = pick(data.materiais)
     const startAgo = randInt(40, 320)
     const historico = buildHistorico(etapas, usuario.nome, usuario.id, startAgo, lastIdx)
     const valorEmpenho = empenhoValores[i]
-    const valorInd = indenizadoValores[i]
+    const valorInd = indenizadoOpmeValores[i]
     const dataSolic = historico[0]?.dataInicio ?? isoDaysAgo(startAgo)
+    const dataBr = brDateFromIso(dataSolic)
+    const rowId = `fic-opme-row-${i + 1}`
+
+    appendConsumoOpmeRow(data, clinica.id, rowId, dataBr, valorInd)
 
     novosPedidos.push({
       id,
-      numero: `PED-FIC-${20260000 + i}`,
+      numero: `PED-FIC-OPME-${20260000 + i}`,
       clinicaId: clinica.id,
       empresaId: empresa.id,
       materialId: material.id,
       quantidade: randInt(1, 8),
       valor: valorEmpenho,
-      observacoes: 'Pedido fictício (demonstração do dashboard)',
+      observacoes: 'Pedido fictício OPME (clínica → IMH)',
+      paciente: null,
+      dadosClinica: null,
+      dataSolicitacao: dataSolic,
+      dataEntrega: historico[historico.length - 1]?.dataConclusao ?? null,
+      etapaAtualId: etapaFinal.id,
+      etapasAtivasIds: [etapaFinal.id],
+      responsavelAtualId: usuario.id,
+      concluido: true,
+      etapasHistorico: historico,
+      consumoRowIds: [rowId],
+    })
+
+    novasSolemps.push({
+      id: `fic-solemp-opme-${i + 1}`,
+      numero: `SL-FIC-OPME-${100000 + i}`,
+      pedidoId: id,
+      data: historico[historico.length - 1]?.dataConclusao ?? dataSolic,
+      assinada: true,
+      arquivoPDF: null,
+      valor: valorEmpenho,
+    })
+
+    planilhaEnvio[id] = {
+      formato: 'imh',
+      cabecalho: { ...EMPTY_CABECALHO, data: dataBr },
+      linhas: [],
+      enviadoEm: dataSolic,
+      arquivadaEm: arquivadaEmFromHistorico(historico, dataSolic),
+    }
+  }
+
+  // —— PME: valores das tabelas medicamento enviadas ao IMH ——
+  for (let i = 0; i < nPmeConcluidos; i++) {
+    const id = `fic-ped-c-pme-${String(i + 1).padStart(4, '0')}`
+    const clinica = pick(pmeClinicas)
+    const empresa = pick(data.empresas)
+    const material = pick(data.materiais)
+    const startAgo = randInt(40, 320)
+    const historico = buildHistorico(etapas, usuario.nome, usuario.id, startAgo, lastIdx)
+    const valorEmpenho = empenhoValores[nOpmeConcluidos + i]
+    const valorInd = indenizadoPmeValores[i]
+    const dataSolic = historico[0]?.dataInicio ?? isoDaysAgo(startAgo)
+    const dataBr = brDateFromIso(dataSolic)
+    const linha = emptyImhMedLinha(`fic-pme-imh-${i + 1}`, dataBr, valorInd)
+
+    // Tabela livre do medicamento + planilha anexada ao pedido (fluxo IMH).
+    appendImhMedicamentoLivre(data, clinica.id, linha, true)
+
+    novosPedidos.push({
+      id,
+      numero: `PED-FIC-PME-${20261000 + i}`,
+      clinicaId: clinica.id,
+      empresaId: empresa.id,
+      materialId: material.id,
+      quantidade: randInt(1, 8),
+      valor: valorEmpenho,
+      observacoes: 'Pedido fictício PME (medicamento → IMH)',
       paciente: null,
       dadosClinica: null,
       dataSolicitacao: dataSolic,
@@ -225,8 +384,8 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
     })
 
     novasSolemps.push({
-      id: `fic-solemp-${i + 1}`,
-      numero: `SL-FIC-${100000 + i}`,
+      id: `fic-solemp-pme-${i + 1}`,
+      numero: `SL-FIC-PME-${150000 + i}`,
       pedidoId: id,
       data: historico[historico.length - 1]?.dataConclusao ?? dataSolic,
       assinada: true,
@@ -234,25 +393,21 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
       valor: valorEmpenho,
     })
 
-    const dataBr = brDateFromIso(dataSolic)
     planilhaEnvio[id] = {
       formato: 'imhMedicamento',
       cabecalho: { ...EMPTY_CABECALHO, data: dataBr },
       linhas: [],
-      imhMedicamentoLinhas: [emptyImhMedLinha(`fic-imh-${i + 1}`, dataBr, valorInd)],
+      imhMedicamentoLinhas: [linha],
       enviadoEm: dataSolic,
-      arquivadaEm: historico.find(
-        (h) => h.etapaNome.includes('IMH') || h.etapaNome.includes('Contabilidade'),
-      )?.dataConclusao
-        ?? historico[Math.min(2, historico.length - 1)]?.dataConclusao
-        ?? dataSolic,
+      arquivadaEm: arquivadaEmFromHistorico(historico, dataSolic),
     }
   }
 
   const nAndamento = randInt(ANDAMENTO_MIN, ANDAMENTO_MAX)
   for (let i = 0; i < nAndamento; i++) {
-    const id = `fic-ped-a-${String(i + 1).padStart(4, '0')}`
-    const clinica = pick(data.clinicas)
+    const isPme = i % 3 === 0
+    const id = `fic-ped-a-${isPme ? 'pme' : 'opme'}-${String(i + 1).padStart(4, '0')}`
+    const clinica = isPme ? pick(pmeClinicas) : pick(opmeClinicas)
     const empresa = pick(data.empresas)
     const material = pick(data.materiais)
     const maxOpen = Math.max(0, lastIdx - 1)
@@ -275,19 +430,24 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
     }
     const etapaAtual = etapas[openAt]
     const valor = randInt(8_000, 95_000)
+    const valorInd = randInt(400, 2_500)
+    const dataSolic = historico[0]?.dataInicio ?? isoDaysAgo(startAgo)
+    const dataBr = brDateFromIso(dataSolic)
 
-    novosPedidos.push({
+    const pedidoBase: Pedido = {
       id,
-      numero: `PED-FIC-A-${30000 + i}`,
+      numero: `PED-FIC-A-${isPme ? 'PME' : 'OPME'}-${30000 + i}`,
       clinicaId: clinica.id,
       empresaId: empresa.id,
       materialId: material.id,
       quantidade: randInt(1, 5),
       valor,
-      observacoes: 'Pedido fictício em andamento',
+      observacoes: isPme
+        ? 'Pedido fictício PME em andamento'
+        : 'Pedido fictício OPME em andamento',
       paciente: null,
       dadosClinica: null,
-      dataSolicitacao: historico[0]?.dataInicio ?? isoDaysAgo(startAgo),
+      dataSolicitacao: dataSolic,
       dataEntrega: null,
       etapaAtualId: etapaAtual.id,
       etapasAtivasIds: [etapaAtual.id],
@@ -300,7 +460,31 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
         etapaAtual.chave === 'DIV_MAT_FINANCAS' && Math.random() > 0.55
           ? isoDaysAgo(randInt(0, 5))
           : undefined,
-    })
+    }
+
+    if (isPme) {
+      const linha = emptyImhMedLinha(`fic-pme-and-${i + 1}`, dataBr, valorInd)
+      appendImhMedicamentoLivre(data, clinica.id, linha, false)
+      planilhaEnvio[id] = {
+        formato: 'imhMedicamento',
+        cabecalho: { ...EMPTY_CABECALHO, data: dataBr },
+        linhas: [],
+        imhMedicamentoLinhas: [linha],
+        enviadoEm: dataSolic,
+      }
+    } else {
+      const rowId = `fic-opme-and-${i + 1}`
+      appendConsumoOpmeRow(data, clinica.id, rowId, dataBr, valorInd)
+      pedidoBase.consumoRowIds = [rowId]
+      planilhaEnvio[id] = {
+        formato: 'imh',
+        cabecalho: { ...EMPTY_CABECALHO, data: dataBr },
+        linhas: [],
+        enviadoEm: dataSolic,
+      }
+    }
+
+    novosPedidos.push(pedidoBase)
 
     if (Math.random() > 0.4) {
       novasSolemps.push({
@@ -331,7 +515,7 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
       id: 'fic-notif-dashboard',
       tipo: 'ETAPA_PENDENTE',
       titulo: 'Dados fictícios ativos',
-      mensagem: `Dashboard preenchido com ${TARGET_CONCLUIDOS} concluídos, R$ 5 mi empenhados e R$ 250 mil indenizados (seed local).`,
+      mensagem: `Dashboard preenchido com ${TARGET_CONCLUIDOS} concluídos, R$ 5 mi empenhados, R$ ${TARGET_INDENIZADO_OPME / 1000} mil OPME e R$ ${TARGET_INDENIZADO_PME / 1000} mil PME (seed local).`,
       pedidoId: null,
       reversaoId: null,
       perfilDestino: 'GESTOR',
@@ -377,14 +561,18 @@ export function stripFictionalSeedArtifacts(data: AppData): AppData {
   }
 
   if (next.consumoPlanilha) {
-    for (const key of [...DEMO_ENTIDADE_IDS]) {
-      delete next.consumoPlanilha[key]
+    for (const key of Object.keys(next.consumoPlanilha)) {
+      if (key.startsWith('fic-') || DEMO_ENTIDADE_IDS.has(key)) {
+        delete next.consumoPlanilha[key]
+      }
     }
   }
 
   if (next.planilhasLivres) {
-    for (const key of [...DEMO_ENTIDADE_IDS]) {
-      delete next.planilhasLivres[key]
+    for (const key of Object.keys(next.planilhasLivres)) {
+      if (key.startsWith('fic-') || DEMO_ENTIDADE_IDS.has(key)) {
+        delete next.planilhasLivres[key]
+      }
     }
   }
 
@@ -392,23 +580,48 @@ export function stripFictionalSeedArtifacts(data: AppData): AppData {
 }
 
 /**
- * Espalha pedidos fictícios também nas clínicas/medicamento de exemplo
- * para os portais demo (setores) enxergarem o mesmo volume.
+ * Espalha pedidos fictícios nas entidades demo preservando a origem:
+ * PME continua em medicamento (com tabelas IMH); OPME em clínica/empenhado.
  */
 function espelharPedidosNasEntidadesDemo(data: AppData): void {
-  const demoIds = [
-    DEMO_CLINICA_EXEMPLO_ID,
-    DEMO_MEDICAMENTO_EXEMPLO_ID,
-    DEMO_EMPENHADO_EXEMPLO_ID,
-  ].filter((id) => data.clinicas.some((c) => c.id === id))
-  if (demoIds.length === 0) return
+  const demoMed = data.clinicas.find((c) => c.id === DEMO_MEDICAMENTO_EXEMPLO_ID)
+  const demoCli = data.clinicas.find((c) => c.id === DEMO_CLINICA_EXEMPLO_ID)
+  const demoEmp = data.clinicas.find((c) => c.id === DEMO_EMPENHADO_EXEMPLO_ID)
+  if (!demoMed && !demoCli && !demoEmp) return
+
+  // Consolida tabelas PME (imhMedicamento) no medicamento demo.
+  if (demoMed && data.planilhasLivres) {
+    for (const [clinicaId, state] of Object.entries(data.planilhasLivres)) {
+      if (clinicaId === demoMed.id) continue
+      const clinica = data.clinicas.find((c) => c.id === clinicaId)
+      if (clinica?.tipo !== 'medicamento') continue
+      const form = state.imhMedicamento
+      if (!form?.linhas?.length) continue
+      for (const linha of form.linhas) {
+        appendImhMedicamentoLivre(
+          data,
+          demoMed.id,
+          linha,
+          Boolean(form.finalizedImhIds?.includes(linha.id)),
+        )
+      }
+      state.imhMedicamento = { linhas: [], finalizedImhIds: [], devolvidosImhIds: [] }
+    }
+  }
 
   data.pedidos.forEach((pedido, index) => {
     if (!pedido.id.startsWith('fic-ped-')) return
-    // ~1/3 dos pedidos fictícios fica vinculado às entidades demo.
-    if (index % 3 === 0) {
-      pedido.clinicaId = demoIds[index % demoIds.length]
+    const isPme = pedido.id.includes('-pme-')
+
+    if (isPme) {
+      if (demoMed) pedido.clinicaId = demoMed.id
+      return
     }
+
+    // OPME: só remapeia clínica quando não há consumoRowIds (evita quebrar vínculo da planilha).
+    if (pedido.consumoRowIds?.length) return
+    if (index % 3 === 0 && demoCli) pedido.clinicaId = demoCli.id
+    else if (index % 3 === 1 && demoEmp) pedido.clinicaId = demoEmp.id
   })
 }
 
