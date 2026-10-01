@@ -526,7 +526,7 @@ export default function DashboardPage({
             display: 'grid',
             gap: 2,
             alignItems: 'stretch',
-            gridTemplateColumns: { xs: '1fr', md: '3fr 1fr' },
+            gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' },
             minHeight: { md: 420 },
           }}
         >
@@ -587,17 +587,18 @@ export default function DashboardPage({
 
           <Box
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
               gap: 2,
               minHeight: 0,
               height: '100%',
+              alignItems: 'stretch',
             }}
           >
             <Box
               sx={{
-                flex: 1,
                 minHeight: 0,
+                height: '100%',
                 display: 'flex',
                 '& > *': { flex: 1, width: '100%', height: '100%' },
               }}
@@ -610,8 +611,8 @@ export default function DashboardPage({
             </Box>
             <Box
               sx={{
-                flex: 1,
                 minHeight: 0,
+                height: '100%',
                 display: 'flex',
                 '& > *': { flex: 1, width: '100%', height: '100%' },
               }}
