@@ -1,5 +1,10 @@
 import { isDemoDataSession, useCloudAppDataSync } from '@/config/dataSource'
-import { loadAppData, reloadAppDataFromStorage, saveAppData } from '@/mocks/seed'
+import {
+  loadAppData,
+  loadFreshAppData,
+  reloadAppDataFromStorage,
+  saveAppData,
+} from '@/mocks/seed'
 import { getSupabaseClient } from '@/supabase/client'
 import { getTenantId } from '@/services/tenantService'
 import type { ArquivoAnexo, PedidoPlanilhaEnvioState } from '@/types'
@@ -208,8 +213,9 @@ export const pedidoAnexoService = {
       ...(arquivo.storagePath ? { conteudoBase64: undefined } : {}),
     }))
 
-    // Grava em snapshot fresco (após awaits de upload).
-    const data = readData()
+    // Grava em snapshot fresco (após awaits de upload / base64).
+    // Em demo, relê o IndexedDB para não sobrescrever o pedido acabado de criar.
+    const data = isDemoDataSession() ? await loadFreshAppData() : readData()
     writeAnexosIntoData(data, pedidoId, anexosLeves)
     saveAppData(data)
 
