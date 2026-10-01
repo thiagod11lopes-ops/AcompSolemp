@@ -522,7 +522,7 @@ export default function DashboardPage({
 
       {isDashboardImh ? (
         <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
-          {/* Esquerda: indenização/atendimento em cima; volume embaixo */}
+          {/* Esquerda: volume/atendimento em cima; valores de indenização embaixo */}
           <Grid size={{ xs: 12, md: 9 }} sx={{ display: 'flex' }}>
             <Box
               sx={{
@@ -544,24 +544,6 @@ export default function DashboardPage({
                   gap: 2,
                   flex: 1,
                   minHeight: 0,
-                  '& > *': { minHeight: 0, height: '100%' },
-                }}
-              >
-                <ValorASerIndenizadoCard
-                  linhas={metrics.valorASerIndenizadoLinhas ?? []}
-                />
-                <TotalIndenizadoCard linhas={metrics.totalIndenizadoLinhas ?? []} />
-                <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
-                <ProcedimentosCard value={metrics.procedimentos ?? 0} />
-              </Box>
-
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 2,
-                  flex: 1,
-                  minHeight: 0,
                   alignItems: 'stretch',
                 }}
               >
@@ -573,6 +555,12 @@ export default function DashboardPage({
                     icon={<AssignmentIcon />}
                     onClick={() => setKpiAberto('total')}
                   />
+                </Box>
+                <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+                  <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
+                </Box>
+                <Box sx={{ minHeight: 0, height: '100%', '& > *': { height: '100%' } }}>
+                  <ProcedimentosCard value={metrics.procedimentos ?? 0} />
                 </Box>
                 <Box
                   sx={{
@@ -588,6 +576,22 @@ export default function DashboardPage({
                     onClick={() => setKpiAberto('emAndamento')}
                   />
                 </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 2,
+                  flex: 1,
+                  minHeight: 0,
+                  '& > *': { minHeight: 0, height: '100%' },
+                }}
+              >
+                <ValorASerIndenizadoCard
+                  linhas={metrics.valorASerIndenizadoLinhas ?? []}
+                />
+                <TotalIndenizadoCard linhas={metrics.totalIndenizadoLinhas ?? []} />
               </Box>
             </Box>
           </Grid>
