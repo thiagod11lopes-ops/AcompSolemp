@@ -104,8 +104,9 @@ export default function DashboardPage({
   metricsEnabled = true,
 }: DashboardPageProps = {}) {
   const { user: ordenadorUser } = useOrdenadorAuth()
-  // IMH não exibe cards de empenho no dashboard.
-  const ocultarCardsEmpenho = ordenadorUser?.perfil === 'CONTABILIDADE_IMH'
+  /** Dashboard IMH: sem empenho e sem cards de atraso/prazo/tempo médio. */
+  const isDashboardImh = ordenadorUser?.perfil === 'CONTABILIDADE_IMH'
+  const ocultarCardsEmpenho = isDashboardImh
   const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics(
     clinicaId,
     metricsEnabled,
@@ -519,158 +520,254 @@ export default function DashboardPage({
     <>
       <PageHeader title={title} subtitle={subtitle} />
 
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Total"
-            value={metrics.totalProcessos}
-            subtitle="Clique para detalhes"
-            icon={<AssignmentIcon />}
-            onClick={() => setKpiAberto('total')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Atrasados"
-            value={metrics.atrasados}
-            subtitle="Clique para detalhes"
-            icon={<WarningIcon />}
-            color={premiumTokens.red}
-            onClick={() => setKpiAberto('atrasados')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Próx. vencimento"
-            value={metrics.proximosVencimento}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            color={premiumTokens.purple}
-            onClick={() => setKpiAberto('proximos')}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Correções vencidas"
-            value={metrics.correcoesVencidas}
-            subtitle="Prazo de correção ultrapassado"
-            icon={<BuildCircleIcon />}
-            color={premiumTokens.orange}
-            onClick={() => setKpiAberto('correcoesVencidas')}
-          />
-        </Grid>
-      </Grid>
+      {isDashboardImh ? (
+        <>
+          {/* Faixa principal: volume e status */}
+          <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
+            <Grid size={{ xs: 12, sm: 4 }} sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, width: '100%' }}>
+                <KpiCard
+                  title="Total de processos"
+                  value={metrics.totalProcessos}
+                  subtitle="Clique para detalhes"
+                  icon={<AssignmentIcon />}
+                  onClick={() => setKpiAberto('total')}
+                />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }} sx={{ display: 'flex' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  width: '100%',
+                  display: 'flex',
+                  '& > *': { flex: 1, width: '100%' },
+                }}
+              >
+                <EmAndamentoCard
+                  total={metrics.emAndamento}
+                  porEtapa={metrics.emAndamentoPorEtapa ?? []}
+                  onClick={() => setKpiAberto('emAndamento')}
+                />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }} sx={{ display: 'flex' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  width: '100%',
+                  display: 'flex',
+                  '& > *': { flex: 1, width: '100%' },
+                }}
+              >
+                <ConcluidosCard
+                  concluidos={metrics.concluidos}
+                  totalProcessos={metrics.totalProcessos}
+                  emAndamento={metrics.emAndamento}
+                  valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
+                  tempoMedioDias={metrics.tempoMedioPagamento}
+                  onClick={() => setKpiAberto('concluidos')}
+                />
+              </Box>
+            </Grid>
+          </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 1 }}>
-        {!ocultarCardsEmpenho && (
-          <>
+          {/* Indenização e atendimento — quatro cards alinhados */}
+          <Grid container spacing={2} sx={{ mt: 1, alignItems: 'stretch' }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, width: '100%', '& > *': { height: '100%' } }}>
+                <ValorASerIndenizadoCard
+                  linhas={metrics.valorASerIndenizadoLinhas ?? []}
+                />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, width: '100%', '& > *': { height: '100%' } }}>
+                <TotalIndenizadoCard linhas={metrics.totalIndenizadoLinhas ?? []} />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, width: '100%', '& > *': { height: '100%' } }}>
+                <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box sx={{ flex: 1, width: '100%', '& > *': { height: '100%' } }}>
+                <ProcedimentosCard value={metrics.procedimentos ?? 0} />
+              </Box>
+            </Grid>
+          </Grid>
+        </>
+      ) : (
+        <>
+          <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
-                title="Aguardando Empenho"
-                value={formatCurrency(metrics.valorAguardandoEmpenho)}
-                subtitle={subtitleAguardando}
-                icon={<HourglassTopIcon />}
+                title="Total"
+                value={metrics.totalProcessos}
+                subtitle="Clique para detalhes"
+                icon={<AssignmentIcon />}
+                onClick={() => setKpiAberto('total')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Atrasados"
+                value={metrics.atrasados}
+                subtitle="Clique para detalhes"
+                icon={<WarningIcon />}
+                color={premiumTokens.red}
+                onClick={() => setKpiAberto('atrasados')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Próx. vencimento"
+                value={metrics.proximosVencimento}
+                subtitle="Clique para detalhes"
+                icon={<ScheduleIcon />}
+                color={premiumTokens.purple}
+                onClick={() => setKpiAberto('proximos')}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Correções vencidas"
+                value={metrics.correcoesVencidas}
+                subtitle="Prazo de correção ultrapassado"
+                icon={<BuildCircleIcon />}
                 color={premiumTokens.orange}
-                onClick={() => setKpiAberto('aguardandoEmpenho')}
+                onClick={() => setKpiAberto('correcoesVencidas')}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <KpiCard
-                title="Total empenhado do mês"
-                value={formatCurrency(mesFiltrado.valor)}
-                subtitle={subtitleMes}
-                icon={<CalendarMonthIcon />}
-                color={premiumTokens.primary}
-                onClick={() => setKpiAberto('empenhadoMes')}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <KpiCard
-                title="Total empenhado no ano"
-                value={formatCurrency(empenhadoAnoCard.valor)}
-                subtitle={subtitleTotalEmpenhado}
-                icon={<AccountBalanceIcon />}
-                color={premiumTokens.green}
-                onClick={() => abrirKpi('totalEmpenhado')}
-              />
-            </Grid>
-          </>
-        )}
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <KpiCard
-            title="Tempo Médio de Finalização"
-            value={`${metrics.tempoMedioPagamento}d`}
-            subtitle="Clique para detalhes"
-            icon={<ScheduleIcon />}
-            onClick={() => setKpiAberto('tempoMedio')}
-          />
-        </Grid>
-      </Grid>
+          </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 1, alignItems: 'stretch' }}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              height: '100%',
-            }}
-          >
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 2,
-                flex: 1,
-                minHeight: 0,
-                '& > *': { minHeight: 0, height: '100%' },
-              }}
-            >
-              <ValorASerIndenizadoCard
-                linhas={metrics.valorASerIndenizadoLinhas ?? []}
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {!ocultarCardsEmpenho && (
+              <>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <KpiCard
+                    title="Aguardando Empenho"
+                    value={formatCurrency(metrics.valorAguardandoEmpenho)}
+                    subtitle={subtitleAguardando}
+                    icon={<HourglassTopIcon />}
+                    color={premiumTokens.orange}
+                    onClick={() => setKpiAberto('aguardandoEmpenho')}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <KpiCard
+                    title="Total empenhado do mês"
+                    value={formatCurrency(mesFiltrado.valor)}
+                    subtitle={subtitleMes}
+                    icon={<CalendarMonthIcon />}
+                    color={premiumTokens.primary}
+                    onClick={() => setKpiAberto('empenhadoMes')}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <KpiCard
+                    title="Total empenhado no ano"
+                    value={formatCurrency(empenhadoAnoCard.valor)}
+                    subtitle={subtitleTotalEmpenhado}
+                    icon={<AccountBalanceIcon />}
+                    color={premiumTokens.green}
+                    onClick={() => abrirKpi('totalEmpenhado')}
+                  />
+                </Grid>
+              </>
+            )}
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <KpiCard
+                title="Tempo Médio de Finalização"
+                value={`${metrics.tempoMedioPagamento}d`}
+                subtitle="Clique para detalhes"
+                icon={<ScheduleIcon />}
+                onClick={() => setKpiAberto('tempoMedio')}
               />
-              <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
-            </Box>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: 2,
-                flex: 1,
-                minHeight: 0,
-                '& > *': { minHeight: 0, height: '100%' },
-              }}
-            >
-              <TotalIndenizadoCard
-                linhas={metrics.totalIndenizadoLinhas ?? []}
-              />
-              <ProcedimentosCard value={metrics.procedimentos ?? 0} />
-            </Box>
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
-            <EmAndamentoCard
-              total={metrics.emAndamento}
-              porEtapa={metrics.emAndamentoPorEtapa ?? []}
-              onClick={() => setKpiAberto('emAndamento')}
-            />
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
-          <Box sx={{ flex: 1, width: '100%', display: 'flex', '& > *': { flex: 1, width: '100%' } }}>
-            <ConcluidosCard
-              concluidos={metrics.concluidos}
-              totalProcessos={metrics.totalProcessos}
-              emAndamento={metrics.emAndamento}
-              valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
-              tempoMedioDias={metrics.tempoMedioPagamento}
-              onClick={() => setKpiAberto('concluidos')}
-            />
-          </Box>
-        </Grid>
-      </Grid>
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2} sx={{ mt: 1, alignItems: 'stretch' }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                  height: '100%',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    flex: 1,
+                    minHeight: 0,
+                    '& > *': { minHeight: 0, height: '100%' },
+                  }}
+                >
+                  <ValorASerIndenizadoCard
+                    linhas={metrics.valorASerIndenizadoLinhas ?? []}
+                  />
+                  <PessoasAtendidasCard value={metrics.pessoasAtendidas ?? 0} />
+                </Box>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                    gap: 2,
+                    flex: 1,
+                    minHeight: 0,
+                    '& > *': { minHeight: 0, height: '100%' },
+                  }}
+                >
+                  <TotalIndenizadoCard
+                    linhas={metrics.totalIndenizadoLinhas ?? []}
+                  />
+                  <ProcedimentosCard value={metrics.procedimentos ?? 0} />
+                </Box>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  width: '100%',
+                  display: 'flex',
+                  '& > *': { flex: 1, width: '100%' },
+                }}
+              >
+                <EmAndamentoCard
+                  total={metrics.emAndamento}
+                  porEtapa={metrics.emAndamentoPorEtapa ?? []}
+                  onClick={() => setKpiAberto('emAndamento')}
+                />
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={{ display: 'flex' }}>
+              <Box
+                sx={{
+                  flex: 1,
+                  width: '100%',
+                  display: 'flex',
+                  '& > *': { flex: 1, width: '100%' },
+                }}
+              >
+                <ConcluidosCard
+                  concluidos={metrics.concluidos}
+                  totalProcessos={metrics.totalProcessos}
+                  emAndamento={metrics.emAndamento}
+                  valorConcluidos={metrics.concluidosItens.reduce((a, i) => a + i.valor, 0)}
+                  tempoMedioDias={metrics.tempoMedioPagamento}
+                  onClick={() => setKpiAberto('concluidos')}
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </>
+      )}
 
       {ativo && (
         <KpiDetalheDialog
