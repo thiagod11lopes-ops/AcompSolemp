@@ -48,6 +48,7 @@ import {
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
+  normalizeImhNipKey,
 } from '@/utils/imhAbaForm'
 import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
 import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
@@ -279,9 +280,18 @@ export function ImhAbaPlanilhaPreview({
 
   const toggleOne = (linhaId: string, checked: boolean) => {
     if (!onSelectedImhIdsChange || finalizedIds.has(linhaId)) return
+    const clicked = selecionaveis.find((l) => l.id === linhaId)
+    if (!clicked) return
+    const nipKey = normalizeImhNipKey(clicked.nip)
+    /** Mesmo NIP (grupo do VALOR TOTAL mesclado): marca/desmarca todos juntos. */
+    const grupo = nipKey
+      ? selecionaveis.filter((l) => normalizeImhNipKey(l.nip) === nipKey)
+      : [clicked]
     const next = new Set(selection)
-    if (checked) next.add(linhaId)
-    else next.delete(linhaId)
+    for (const linha of grupo) {
+      if (checked) next.add(linha.id)
+      else next.delete(linha.id)
+    }
     onSelectedImhIdsChange(next)
   }
 
