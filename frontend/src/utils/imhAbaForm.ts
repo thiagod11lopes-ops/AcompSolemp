@@ -119,7 +119,8 @@ function parseQuantidade(raw: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-function normalizeImhNipKey(nip: string): string {
+/** Chave estável do NIP para agrupar merge/seleção (só dígitos; senão texto normalizado). */
+export function normalizeImhNipKey(nip: string): string {
   return nip.trim().replace(/\D/g, '') || nip.trim().toLowerCase()
 }
 
