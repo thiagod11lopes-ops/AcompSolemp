@@ -28,6 +28,8 @@ interface DivMaterialFormProps {
   onRequestClear?: () => void
   dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
   onDataFiltroChange: (next: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro) => void
+  /** Busca geral nas células da planilha. */
+  buscaGeral?: string
 }
 
 function cloneLinha(linha: DivMaterialLinha): DivMaterialLinha {
@@ -63,6 +65,7 @@ export function DivMaterialForm({
   onRequestClear,
   dataFiltro,
   onDataFiltroChange,
+  buscaGeral = '',
 }: DivMaterialFormProps) {
   const [linhaDraft, setLinhaDraft] = useState<DivMaterialLinha>(() => createEmptyDivMaterialLinha())
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
@@ -166,6 +169,7 @@ export function DivMaterialForm({
         onRequestClear={onRequestClear}
         dataFiltro={dataFiltro}
         onDataFiltroChange={onDataFiltroChange}
+        buscaGeral={buscaGeral}
         onExpandedChange={setSheetExpanded}
       />
 

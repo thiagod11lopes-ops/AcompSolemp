@@ -9,6 +9,7 @@ import {
   usePlanilhaBoldPreference,
 } from '@/components/clinica/PlanilhaBoldToggle'
 import {
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -20,9 +21,16 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
 import {
@@ -65,6 +73,8 @@ function formatDivMatCellText(colKey: string, raw: string): string {
   return wrapTextGramatical(base, DIV_MAT_WRAP_MAX_CHARS[colKey] ?? 50)
 }
 
+const FORNECEDOR_TODOS = '__todos__'
+
 interface DivMaterialPlanilhaPreviewProps {
   linhas: DivMaterialLinha[]
   editingLinhaId?: string | null
@@ -78,6 +88,8 @@ interface DivMaterialPlanilhaPreviewProps {
   onRequestClear?: () => void
   dataFiltro: PlanilhaDataFiltro
   onDataFiltroChange: (next: PlanilhaDataFiltro) => void
+  /** Busca geral nas células (controlada pelo pai, ao lado de Enviar planilha). */
+  buscaGeral?: string
   /** Notifica o pai quando a planilha entra/sai do modo expandido. */
   onExpandedChange?: (expanded: boolean) => void
 }
@@ -85,6 +97,53 @@ interface DivMaterialPlanilhaPreviewProps {
 function dash(value: string): string {
   const trimmed = value.trim()
   return trimmed || '—'
+}
+
+function fornecedoresDisponiveis(linhas: DivMaterialLinha[]): string[] {
+  const set = new Set<string>()
+  for (const linha of linhas) {
+    const nome = linha.fornecedor.trim()
+    if (nome) set.add(nome)
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}
+
+function linhaContemBusca(linha: DivMaterialLinha, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return DIV_MATERIAL_COLUNAS.some((col) =>
+    String(linha[col.key] ?? '')
+      .toLowerCase()
+      .includes(q),
+  )
+}
+
+/** Destaca trechos da busca em negrito (case-insensitive). */
+function highlightBusca(text: string, query: string): ReactNode {
+  const q = query.trim()
+  if (!q || text === '—') return text
+  const lower = text.toLowerCase()
+  const qLower = q.toLowerCase()
+  const parts: ReactNode[] = []
+  let start = 0
+  let idx = lower.indexOf(qLower, start)
+  let key = 0
+  while (idx !== -1) {
+    if (idx > start) parts.push(text.slice(start, idx))
+    parts.push(
+      <Box
+        component="strong"
+        key={`m-${key++}`}
+        sx={{ fontWeight: 800, color: 'inherit' }}
+      >
+        {text.slice(idx, idx + q.length)}
+      </Box>,
+    )
+    start = idx + q.length
+    idx = lower.indexOf(qLower, start)
+  }
+  if (start < text.length) parts.push(text.slice(start))
+  return parts.length > 0 ? <>{parts}</> : text
 }
 
 const cellSx = {
@@ -152,9 +211,11 @@ export function DivMaterialPlanilhaPreview({
   onRequestClear,
   dataFiltro,
   onDataFiltroChange,
+  buscaGeral = '',
   onExpandedChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [filtroFornecedor, setFiltroFornecedor] = useState(FORNECEDOR_TODOS)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const tableRef = useRef<HTMLTableElement | null>(null)
@@ -165,9 +226,30 @@ export function DivMaterialPlanilhaPreview({
   }, [expanded, onExpandedChange])
 
   const datas = useMemo(() => linhas.map((l) => l.dataProcedimento), [linhas])
+  const fornecedoresOptions = useMemo(() => fornecedoresDisponiveis(linhas), [linhas])
+  const filtroFornecedorAtivo = useMemo(
+    () =>
+      filtroFornecedor === FORNECEDOR_TODOS ||
+      fornecedoresOptions.includes(filtroFornecedor)
+        ? filtroFornecedor
+        : FORNECEDOR_TODOS,
+    [filtroFornecedor, fornecedoresOptions],
+  )
+  const buscaTrim = buscaGeral.trim()
   const linhasFiltradas = useMemo(
-    () => linhas.filter((linha) => linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)),
-    [linhas, dataFiltro],
+    () =>
+      linhas.filter((linha) => {
+        if (!linhaPassaNoFiltroData(linha.dataProcedimento, dataFiltro)) return false
+        if (
+          filtroFornecedorAtivo !== FORNECEDOR_TODOS &&
+          linha.fornecedor.trim() !== filtroFornecedorAtivo
+        ) {
+          return false
+        }
+        if (!linhaContemBusca(linha, buscaTrim)) return false
+        return true
+      }),
+    [linhas, dataFiltro, filtroFornecedorAtivo, buscaTrim],
   )
   /** Em edição: linha ativa sobe para o topo (ordem só visual). */
   const linhasExibidas = useMemo(() => {
@@ -336,6 +418,31 @@ export function DivMaterialPlanilhaPreview({
             value={dataFiltro}
             onChange={onDataFiltroChange}
             datas={datas}
+          />
+
+          <Autocomplete
+            size="small"
+            sx={{ minWidth: 160, maxWidth: 240 }}
+            options={[FORNECEDOR_TODOS, ...fornecedoresOptions]}
+            value={filtroFornecedorAtivo}
+            onChange={(_, next) => {
+              setFiltroFornecedor(next ?? FORNECEDOR_TODOS)
+            }}
+            getOptionLabel={(option) =>
+              option === FORNECEDOR_TODOS ? 'Todos' : option
+            }
+            isOptionEqualToValue={(option, selected) => option === selected}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Fornecedor"
+                placeholder="Todos"
+                sx={{
+                  '& .MuiInputBase-root': { height: 32, fontSize: '0.8rem' },
+                  '& .MuiInputLabel-root': { fontSize: '0.8rem' },
+                }}
+              />
+            )}
           />
 
           {expanded ? (
@@ -557,7 +664,9 @@ export function DivMaterialPlanilhaPreview({
                   {linhasExibidas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                        Nenhum registro no período filtrado.
+                        {buscaTrim || filtroFornecedorAtivo !== FORNECEDOR_TODOS
+                          ? 'Nenhum registro corresponde aos filtros aplicados.'
+                          : 'Nenhum registro no período filtrado.'}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -683,7 +792,7 @@ export function DivMaterialPlanilhaPreview({
                                   showFull={hovered}
                                   allowWrap={allowWrap}
                                 >
-                                  {text}
+                                  {buscaTrim ? highlightBusca(text, buscaTrim) : text}
                                 </PlanilhaExpandedCellContent>
                               </TableCell>
                             )

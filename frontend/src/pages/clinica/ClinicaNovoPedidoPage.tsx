@@ -2,12 +2,15 @@ import {
   Alert,
   Box,
   Button,
+  InputAdornment,
   Snackbar,
   Tab,
   Tabs,
+  TextField,
   Typography,
   alpha,
 } from '@mui/material'
+import SearchIcon from '@mui/icons-material/Search'
 import SendIcon from '@mui/icons-material/Send'
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import {
@@ -218,6 +221,7 @@ export default function ClinicaNovoPedidoPage() {
   const [divMaterialDataFiltro, setDivMaterialDataFiltro] = useState<PlanilhaDataFiltro>(() =>
     createDefaultPlanilhaDataFiltro(),
   )
+  const [buscaDivMaterial, setBuscaDivMaterial] = useState('')
   const [envioAnexos, setEnvioAnexos] = useState<File[]>([])
   const [envioModalOpen, setEnvioModalOpen] = useState(false)
   const [isEnviando, setIsEnviando] = useState(false)
@@ -719,6 +723,7 @@ export default function ClinicaNovoPedidoPage() {
 
   const handleChangeAba = (abaId: string) => {
     setAbaAtivaId(abaId)
+    if (abaId !== DIV_MATERIAL_ABA_ID) setBuscaDivMaterial('')
     persist({ abaAtivaId: abaId })
   }
 
@@ -1309,6 +1314,7 @@ export default function ClinicaNovoPedidoPage() {
               : divMaterialDataFiltro
           }
           onDataFiltroChange={handleDivMaterialDataFiltroChange}
+          buscaGeral={buscaDivMaterial}
         />
       )
     }
@@ -1387,32 +1393,68 @@ export default function ClinicaNovoPedidoPage() {
             ))}
           </Tabs>
           {!isMedicamento ? (
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SendIcon sx={{ fontSize: 16 }} />}
-              onClick={handleAbrirEnvio}
-              disabled={isEnviando}
+            <Box
               sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexShrink: 0,
                 mr: 1,
                 my: 0.5,
-                flexShrink: 0,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                whiteSpace: 'nowrap',
-                borderRadius: '11px',
-                px: 1.5,
-                boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
-                background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
-                  boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
-                },
               }}
             >
-              {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}
-            </Button>
+              {abaAtivaId === DIV_MATERIAL_ABA_ID ? (
+                <TextField
+                  size="small"
+                  placeholder="Buscar na planilha…"
+                  value={buscaDivMaterial}
+                  onChange={(e) => setBuscaDivMaterial(e.target.value)}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                      sx: {
+                        bgcolor: '#fff',
+                        fontSize: '0.8rem',
+                        height: 32,
+                      },
+                    },
+                  }}
+                  sx={{
+                    minWidth: { xs: 160, sm: 220 },
+                    maxWidth: 280,
+                    flex: 1,
+                  }}
+                />
+              ) : null}
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<SendIcon sx={{ fontSize: 16 }} />}
+                onClick={handleAbrirEnvio}
+                disabled={isEnviando}
+                sx={{
+                  flexShrink: 0,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  whiteSpace: 'nowrap',
+                  borderRadius: '11px',
+                  px: 1.5,
+                  boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
+                  background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
+                    boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
+                  },
+                }}
+              >
+                {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}
+              </Button>
+            </Box>
           ) : null}
         </Box>
       </Box>
