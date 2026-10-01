@@ -152,9 +152,12 @@ export function formatConmedProcesso(raw: string): string {
   return raw.replace(/\D/g, '')
 }
 
-/** Pregão/TAD no espírito 58/2025 COMRJ — permite dígitos, barra e texto */
+/**
+ * Pregão/TAD (ex.: "58/2025 COMRJ - 64015.001234/2024-56").
+ * Mantém texto completo para a Div. Material separar modalidade e NUP pelo "-".
+ */
 export function formatConmedPregaoTad(raw: string): string {
-  return raw.replace(/\s+/g, ' ').slice(0, 40)
+  return raw.replace(/\s+/g, ' ').trim().slice(0, 120)
 }
 
 /** NIP no formato 00.0000.00 */
