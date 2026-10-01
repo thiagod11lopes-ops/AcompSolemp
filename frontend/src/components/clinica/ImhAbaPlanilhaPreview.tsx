@@ -43,6 +43,7 @@ import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
+  buildImhPctIndenizarNipSpans,
   buildImhValorTotalNipSpans,
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
@@ -207,6 +208,10 @@ export function ImhAbaPlanilhaPreview({
     () => buildImhValorTotalNipSpans(linhasExibidas),
     [linhasExibidas],
   )
+  const pctIndenizarNipSpans = useMemo(
+    () => buildImhPctIndenizarNipSpans(linhasExibidas),
+    [linhasExibidas],
+  )
   const cellTextsByKey = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const col of IMH_ABA_COLUNAS) {
@@ -216,10 +221,16 @@ export function ImhAbaPlanilhaPreview({
         )
         continue
       }
+      if (col.key === 'pctIndenizar') {
+        map[col.key] = pctIndenizarNipSpans.map((span) =>
+          span.show ? span.text : '',
+        )
+        continue
+      }
       map[col.key] = linhasExibidas.map((linha) => dash(String(linha[col.key] ?? '')))
     }
     return map
-  }, [linhasExibidas, valorTotalNipSpans])
+  }, [linhasExibidas, valorTotalNipSpans, pctIndenizarNipSpans])
   const somas = useMemo(
     () => calcImhSomasValorEIndenizar(linhasFiltradas),
     [linhasFiltradas],
@@ -718,21 +729,26 @@ export function ImhAbaPlanilhaPreview({
                           const colWidth = resolveColWidth(col.key)
                           const colMinWidth = resolveColMinWidth(col.key)
                           const hovered = isColHovered(col.key)
-                          if (col.key === 'valorTotal') {
-                            const span = valorTotalNipSpans[index]
-                            if (!span?.show) return null
+                          const nipSpan =
+                            col.key === 'valorTotal'
+                              ? valorTotalNipSpans[index]
+                              : col.key === 'pctIndenizar'
+                                ? pctIndenizarNipSpans[index]
+                                : null
+                          if (nipSpan) {
+                            if (!nipSpan.show) return null
                             return (
                               <TableCell
                                 key={col.key}
                                 data-col-key={col.key}
-                                rowSpan={span.rowSpan > 1 ? span.rowSpan : undefined}
+                                rowSpan={nipSpan.rowSpan > 1 ? nipSpan.rowSpan : undefined}
                                 {...colHoverHandlers(col.key)}
                                 sx={{
                                   ...cellSx,
                                   width: colWidth,
                                   fontSize: cellFontSize,
                                   fontWeight:
-                                    span.rowSpan > 1
+                                    nipSpan.rowSpan > 1
                                       ? EXCEL_SHEET.fontWeightBold
                                       : cellFontWeight,
                                   textAlign: 'center',
@@ -749,7 +765,7 @@ export function ImhAbaPlanilhaPreview({
                                 }}
                               >
                                 <PlanilhaExpandedCellContent showFull={hovered}>
-                                  {span.text}
+                                  {nipSpan.text}
                                 </PlanilhaExpandedCellContent>
                               </TableCell>
                             )

@@ -427,7 +427,7 @@ export function syncImhAbaFromFontes(
 }
 
 /**
- * Ordena lançamentos IMH agrupando NIP (para mesclar VALOR TOTAL),
+ * Ordena lançamentos IMH agrupando NIP (para mesclar VALOR TOTAL e % A INDENIZAR),
  * depois data (dd/mm/aa) e nome.
  */
 export function sortImhLinhasByData(linhas: ImhAbaLinha[]): ImhAbaLinha[] {
@@ -527,12 +527,15 @@ export type ImhValorTotalNipSpan = {
   soma: number
 }
 
-/**
- * Mescla VALOR TOTAL por NIP repetido em sequências consecutivas:
- * uma célula com a soma, rowSpan cobrindo as linhas do mesmo NIP.
- */
-export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotalNipSpan[] {
-  const spans: ImhValorTotalNipSpan[] = linhas.map(() => ({
+/** Alias: mesmo formato de merge por NIP usado em VALOR TOTAL e % A INDENIZAR. */
+export type ImhNipMergeSpan = ImhValorTotalNipSpan
+
+function buildImhNipGroupSpans(
+  linhas: ImhAbaLinha[],
+  somaLinha: (linha: ImhAbaLinha) => number,
+  fallbackText: (linha: ImhAbaLinha) => string,
+): ImhNipMergeSpan[] {
+  const spans: ImhNipMergeSpan[] = linhas.map(() => ({
     show: false,
     rowSpan: 1,
     text: '—',
@@ -551,9 +554,9 @@ export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotal
 
     let soma = 0
     for (let k = i; k < j; k += 1) {
-      soma += linhaImhValorTotalNumerico(linhas[k]!)
+      soma += somaLinha(linhas[k]!)
     }
-    const text = soma > 0 ? formatValorBrasileiro(soma) : linhas[i]!.valorTotal.trim() || '—'
+    const text = soma > 0 ? formatValorBrasileiro(soma) : fallbackText(linhas[i]!)
     spans[i] = { show: true, rowSpan: j - i, text, soma }
     for (let k = i + 1; k < j; k += 1) {
       spans[k] = { show: false, rowSpan: 1, text: '', soma: 0 }
@@ -562,4 +565,28 @@ export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotal
   }
 
   return spans
+}
+
+/**
+ * Mescla VALOR TOTAL por NIP repetido em sequências consecutivas:
+ * uma célula com a soma, rowSpan cobrindo as linhas do mesmo NIP.
+ */
+export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotalNipSpan[] {
+  return buildImhNipGroupSpans(
+    linhas,
+    linhaImhValorTotalNumerico,
+    (linha) => linha.valorTotal.trim() || '—',
+  )
+}
+
+/**
+ * Mescla % A INDENIZAR pelo mesmo agrupamento de NIP do VALOR TOTAL:
+ * soma os valores a indenizar do grupo e cobre as linhas com rowSpan.
+ */
+export function buildImhPctIndenizarNipSpans(linhas: ImhAbaLinha[]): ImhNipMergeSpan[] {
+  return buildImhNipGroupSpans(
+    linhas,
+    (linha) => parseValorBrasileiro(linha.pctIndenizar),
+    (linha) => linha.pctIndenizar.trim() || '—',
+  )
 }
