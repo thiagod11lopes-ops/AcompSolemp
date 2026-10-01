@@ -181,13 +181,30 @@ export function ImhAbaPlanilhaPreview({
     () => value.linhas.filter((linha) => linhaPassaNoFiltroData(linha.data, dataFiltro)),
     [value.linhas, dataFiltro],
   )
-  /** Em edição: linha ativa sobe para o topo (ordem só visual). */
+  const editingNipKey = useMemo(() => {
+    if (!editingLinhaId) return ''
+    const ativa =
+      linhasFiltradas.find((l) => l.id === editingLinhaId) ??
+      value.linhas.find((l) => l.id === editingLinhaId)
+    return ativa ? normalizeImhNipKey(ativa.nip) : ''
+  }, [editingLinhaId, linhasFiltradas, value.linhas])
+
+  /** Em edição: o grupo do NIP sobe para o topo (ordem só visual). */
   const linhasExibidas = useMemo(() => {
     if (!editingLinhaId) return linhasFiltradas
     const ativa = linhasFiltradas.find((l) => l.id === editingLinhaId)
     if (!ativa) return linhasFiltradas
-    return [ativa, ...linhasFiltradas.filter((l) => l.id !== editingLinhaId)]
-  }, [linhasFiltradas, editingLinhaId])
+    if (!editingNipKey) {
+      return [ativa, ...linhasFiltradas.filter((l) => l.id !== editingLinhaId)]
+    }
+    const grupo = linhasFiltradas.filter(
+      (l) => normalizeImhNipKey(l.nip) === editingNipKey,
+    )
+    const resto = linhasFiltradas.filter(
+      (l) => normalizeImhNipKey(l.nip) !== editingNipKey,
+    )
+    return [...grupo, ...resto]
+  }, [linhasFiltradas, editingLinhaId, editingNipKey])
 
   useEffect(() => {
     if (!expanded || !editingLinhaId) return
@@ -663,10 +680,14 @@ export function ImhAbaPlanilhaPreview({
                     </TableRow>
                   ) : (
                     linhasExibidas.map((linha, index) => {
-                    const editing = editingLinhaId === linha.id
+                    const editing =
+                      editingLinhaId === linha.id ||
+                      (Boolean(editingNipKey) &&
+                        normalizeImhNipKey(linha.nip) === editingNipKey)
                     const finalizado = finalizedIds.has(linha.id)
                     const devolvido = !finalizado && devolvidosIds.has(linha.id)
                     const checked = finalizado || selection.has(linha.id)
+                    const actionsSpan = valorTotalNipSpans[index]
                     return (
                       <TableRow
                         key={linha.id}
@@ -811,40 +832,54 @@ export function ImhAbaPlanilhaPreview({
                           )
                         })}
                         {actionsEnabled ? (
-                          <TableCell
-                            className="excel-planilha-actions-col"
-                            sx={{
-                              ...cellSx,
-                              ...planilhaActionsCellSx,
-                              width: actionsWidth,
-                              fontSize: cellFontSize,
-                              fontWeight: cellFontWeight,
-                            }}
-                          >
-                            <PlanilhaActionsButtons>
-                              {editEnabled ? (
-                                <IconButton
-                                  size="small"
-                                  aria-label={`Editar linha IMH ${index + 1}`}
-                                  onClick={() => onEditLinha?.(linha.id)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <EditIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              ) : null}
-                              {deleteEnabled ? (
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  aria-label={`Excluir linha IMH ${index + 1}`}
-                                  onClick={() => onDeleteLinha?.(linha.id)}
-                                  sx={{ p: 0.25 }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              ) : null}
-                            </PlanilhaActionsButtons>
-                          </TableCell>
+                          !actionsSpan?.show ? null : (
+                            <TableCell
+                              className="excel-planilha-actions-col"
+                              rowSpan={
+                                actionsSpan.rowSpan > 1 ? actionsSpan.rowSpan : undefined
+                              }
+                              sx={{
+                                ...cellSx,
+                                ...planilhaActionsCellSx,
+                                width: actionsWidth,
+                                fontSize: cellFontSize,
+                                fontWeight: cellFontWeight,
+                                verticalAlign: 'middle',
+                              }}
+                            >
+                              <PlanilhaActionsButtons>
+                                {editEnabled ? (
+                                  <IconButton
+                                    size="small"
+                                    aria-label={
+                                      actionsSpan.rowSpan > 1
+                                        ? `Editar ${actionsSpan.rowSpan} lançamentos do NIP`
+                                        : `Editar linha IMH ${index + 1}`
+                                    }
+                                    onClick={() => onEditLinha?.(linha.id)}
+                                    sx={{ p: 0.25 }}
+                                  >
+                                    <EditIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                ) : null}
+                                {deleteEnabled ? (
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    aria-label={
+                                      actionsSpan.rowSpan > 1
+                                        ? `Excluir ${actionsSpan.rowSpan} lançamentos do NIP`
+                                        : `Excluir linha IMH ${index + 1}`
+                                    }
+                                    onClick={() => onDeleteLinha?.(linha.id)}
+                                    sx={{ p: 0.25 }}
+                                  >
+                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                  </IconButton>
+                                ) : null}
+                              </PlanilhaActionsButtons>
+                            </TableCell>
+                          )
                         ) : null}
                       </TableRow>
                     )

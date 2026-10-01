@@ -1,5 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
-import { Alert, Box, MenuItem, Snackbar, TextField } from '@mui/material'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DeleteOutlined as DeleteOutlineIcon } from '@mui/icons-material'
+import {
+  Alert,
+  Box,
+  Chip,
+  IconButton,
+  MenuItem,
+  Snackbar,
+  TextField,
+  Typography,
+  alpha,
+} from '@mui/material'
 import type { ImhAbaFormData, ImhAbaLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { ImhAbaPlanilhaPreview } from '@/components/clinica/ImhAbaPlanilhaPreview'
@@ -10,7 +21,13 @@ import {
   planilhaEditMultilineSx,
   planilhaEditSelectSlotProps,
 } from '@/components/clinica/PlanilhaLinhaEditDialog'
+import { premiumTokens } from '@/theme/tokens'
 import {
+  formatValorBrasileiro,
+  type SpreadsheetSheetImport,
+} from '@/utils/consumoMaterialOds'
+import {
+  calcImhSomasValorEIndenizar,
   createEmptyImhAbaLinha,
   formatImhData,
   formatImhMoeda,
@@ -18,6 +35,7 @@ import {
   formatImhNumeroCp,
   formatImhQuantidade,
   formatImhUppercase,
+  imhLinhasMesmoNipQue,
   isVinculoTitular,
   linhaHasContent,
   normalizeImhAbaForm,
@@ -31,7 +49,6 @@ import {
   mergeImhImport,
   parseImhAbaFromGrid,
 } from '@/utils/imhAbaImport'
-import type { SpreadsheetSheetImport } from '@/utils/consumoMaterialOds'
 
 interface ImhAbaFormProps {
   value: ImhAbaFormData
@@ -58,6 +75,10 @@ function cloneLinha(linha: ImhAbaLinha): ImhAbaLinha {
   return { ...linha }
 }
 
+function cloneLinhas(linhas: ImhAbaLinha[]): ImhAbaLinha[] {
+  return linhas.map(cloneLinha)
+}
+
 export function ImhAbaForm({
   value,
   onChange,
@@ -69,13 +90,22 @@ export function ImhAbaForm({
   onDataFiltroChange,
   clinicaNomePadrao = '',
 }: ImhAbaFormProps) {
-  const [linhaDraft, setLinhaDraft] = useState<ImhAbaLinha>(() => createEmptyImhAbaLinha())
-  const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
+  const [grupoDrafts, setGrupoDrafts] = useState<ImhAbaLinha[]>([])
   const [sheetExpanded, setSheetExpanded] = useState(false)
-  const linhaSnapshotRef = useRef<ImhAbaLinha | null>(null)
+  const grupoSnapshotRef = useRef<ImhAbaLinha[]>([])
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importing, setImporting] = useState(false)
+
+  const editingLinhaId = grupoDrafts[0]?.id ?? null
+  const editingIds = useMemo(() => new Set(grupoDrafts.map((l) => l.id)), [grupoDrafts])
+  const isEditingGrupo = grupoDrafts.length > 0
+  const isMultiEdit = grupoDrafts.length > 1
+  const draftPrincipal = grupoDrafts[0] ?? createEmptyImhAbaLinha()
+  const somasGrupo = useMemo(
+    () => calcImhSomasValorEIndenizar(grupoDrafts),
+    [grupoDrafts],
+  )
 
   /** Preenche Clínica com o nome da clínica logada quando ainda estiver vazio. */
   useEffect(() => {
@@ -181,59 +211,88 @@ export function ImhAbaForm({
     })
   }
 
-  const syncDraftToList = (nextDraft: ImhAbaLinha) => {
-    const ready = withRecalculatedImhLinha(nextDraft)
-    setLinhaDraft(ready)
-    if (!editingLinhaId) return
+  const syncGrupoToList = (nextDrafts: ImhAbaLinha[]) => {
+    const ready = nextDrafts.map(withRecalculatedImhLinha)
+    setGrupoDrafts(ready)
+    if (ready.length === 0) return
+    const byId = new Map(ready.map((l) => [l.id, l]))
     persistLinhas(
-      value.linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
+      value.linhas.map((l) => {
+        const updated = byId.get(l.id)
+        return updated ? { ...updated, id: l.id } : l
+      }),
     )
   }
 
-  const updateDraft = (patch: Partial<Omit<ImhAbaLinha, 'id' | 'valorTotal'>>) => {
-    syncDraftToList(withRecalculatedImhLinha({ ...linhaDraft, ...patch }))
+  const updateShared = (patch: Partial<Omit<ImhAbaLinha, 'id' | 'valorTotal'>>) => {
+    syncGrupoToList(
+      grupoDrafts.map((linha) =>
+        withRecalculatedImhLinha({ ...linha, ...patch }),
+      ),
+    )
+  }
+
+  const updateLinhaAt = (
+    index: number,
+    patch: Partial<Omit<ImhAbaLinha, 'id' | 'valorTotal'>>,
+  ) => {
+    syncGrupoToList(
+      grupoDrafts.map((linha, i) =>
+        i === index ? withRecalculatedImhLinha({ ...linha, ...patch }) : linha,
+      ),
+    )
+  }
+
+  const removeLinhaAt = (index: number) => {
+    const removed = grupoDrafts[index]
+    if (!removed) return
+    const nextDrafts = grupoDrafts.filter((_, i) => i !== index)
+    setGrupoDrafts(nextDrafts)
+    persistLinhas(value.linhas.filter((l) => l.id !== removed.id))
+    onSelectedImhIdsChange?.(
+      new Set([...(selectedImhIds ?? [])].filter((id) => id !== removed.id)),
+    )
+    if (nextDrafts.length === 0) {
+      grupoSnapshotRef.current = []
+    }
   }
 
   const resetLinhaForm = () => {
-    setLinhaDraft(createEmptyImhAbaLinha())
-    setEditingLinhaId(null)
-    linhaSnapshotRef.current = null
+    setGrupoDrafts([])
+    grupoSnapshotRef.current = []
   }
 
-  const handleAdicionarLinha = () => {
-    const ready = withRecalculatedImhLinha(linhaDraft)
-    if (editingLinhaId) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l,
-        ),
+  const handleSalvarGrupo = () => {
+    if (!isEditingGrupo) return
+    const ready = grupoDrafts.map(withRecalculatedImhLinha).filter(linhaHasContent)
+    const readyIds = new Set(ready.map((l) => l.id))
+    const semGrupo = value.linhas.filter((l) => !editingIds.has(l.id))
+    persistLinhas([...semGrupo, ...ready])
+    // Remove da seleção ids que sumiram por ficarem vazios
+    if (selectedImhIds && onSelectedImhIdsChange) {
+      const nextSel = new Set(
+        [...selectedImhIds].filter((id) => !editingIds.has(id) || readyIds.has(id)),
       )
-      resetLinhaForm()
-      return
+      onSelectedImhIdsChange(nextSel)
     }
-    if (!linhaHasContent(ready)) {
-      resetLinhaForm()
-      return
-    }
-    persistLinhas([...value.linhas, ready])
     resetLinhaForm()
   }
 
   const handleEditLinha = (id: string) => {
-    const found = value.linhas.find((l) => l.id === id)
-    if (!found) return
+    const grupo = imhLinhasMesmoNipQue(value.linhas, id)
+    if (grupo.length === 0) return
     const padraoClinica = clinicaNomePadrao.trim()
     if (padraoClinica && !value.clinica.trim()) {
       onChange({ ...value, clinica: formatImhUppercase(padraoClinica) })
     }
-    linhaSnapshotRef.current = cloneLinha(found)
-    setEditingLinhaId(id)
-    setLinhaDraft(
+    const drafts = grupo.map((found) =>
       cloneLinha({
         ...found,
         vinculo: normalizeImhVinculo(found.vinculo) || found.vinculo,
       }),
     )
+    grupoSnapshotRef.current = cloneLinhas(drafts)
+    setGrupoDrafts(drafts)
     if (!sheetExpanded) {
       requestAnimationFrame(() => {
         linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -242,20 +301,34 @@ export function ImhAbaForm({
   }
 
   const handleDeleteLinha = (id: string) => {
-    persistLinhas(value.linhas.filter((l) => l.id !== id))
-    if (editingLinhaId === id) resetLinhaForm()
+    const grupo = imhLinhasMesmoNipQue(value.linhas, id)
+    const ids = new Set(grupo.map((l) => l.id))
+    persistLinhas(value.linhas.filter((l) => !ids.has(l.id)))
+    onSelectedImhIdsChange?.(
+      new Set([...(selectedImhIds ?? [])].filter((sid) => !ids.has(sid))),
+    )
+    if (grupoDrafts.some((l) => ids.has(l.id))) resetLinhaForm()
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
+    if (grupoSnapshotRef.current.length > 0) {
+      const snapById = new Map(grupoSnapshotRef.current.map((l) => [l.id, l]))
       persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
+        value.linhas.map((l) => {
+          const snap = snapById.get(l.id)
+          return snap ? cloneLinha(snap) : l
+        }),
       )
     }
     resetLinhaForm()
   }
+
+  const nipLabel = draftPrincipal.nip.trim() || '—'
+  const modalSubtitle = isMultiEdit
+    ? `NIP ${nipLabel} · ${grupoDrafts.length} lançamentos do mesmo NIP`
+    : nipLabel !== '—'
+      ? `NIP ${nipLabel}`
+      : undefined
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
@@ -282,12 +355,19 @@ export function ImhAbaForm({
       />
 
       <PlanilhaLinhaEditDialog
-        open={Boolean(editingLinhaId)}
-        title="Editar IMH"
+        open={isEditingGrupo}
+        title={isMultiEdit ? 'Editar grupo IMH' : 'Editar IMH'}
+        subtitle={modalSubtitle}
         badge="IMH"
         onClose={handleCancelLinha}
-        onSave={handleAdicionarLinha}
+        onSave={handleSalvarGrupo}
+        saveLabel={
+          isMultiEdit
+            ? `Salvar ${grupoDrafts.length} lançamentos`
+            : 'Salvar lançamento'
+        }
         anchorLinhaId={editingLinhaId}
+        preferredMaxHeightPx={isMultiEdit ? 900 : 780}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.25 }}>
           <PlanilhaEditSection title="Cabeçalho" columns={2}>
@@ -316,20 +396,18 @@ export function ImhAbaForm({
             />
           </PlanilhaEditSection>
 
-          <PlanilhaEditSection title="Beneficiário" columns={3}>
-            <TextField
-              label="DATA"
-              value={linhaDraft.data}
-              onChange={(e) => updateDraft({ data: formatImhData(e.target.value) })}
-              placeholder="dd/mm/aa"
-              size="small"
-              fullWidth
-              sx={planilhaEditFieldSx}
-            />
+          <PlanilhaEditSection
+            title={
+              isMultiEdit
+                ? 'Beneficiário (comum a todos os lançamentos)'
+                : 'Beneficiário'
+            }
+            columns={3}
+          >
             <TextField
               label="NIP"
-              value={linhaDraft.nip}
-              onChange={(e) => updateDraft({ nip: formatImhNip(e.target.value) })}
+              value={draftPrincipal.nip}
+              onChange={(e) => updateShared({ nip: formatImhNip(e.target.value) })}
               placeholder="00.0000.00"
               size="small"
               fullWidth
@@ -339,13 +417,14 @@ export function ImhAbaForm({
               select
               label="VÍNCULO"
               value={
-                normalizeImhVinculo(linhaDraft.vinculo) ||
-                formatImhUppercase(linhaDraft.vinculo) ||
+                normalizeImhVinculo(draftPrincipal.vinculo) ||
+                formatImhUppercase(draftPrincipal.vinculo) ||
                 ''
               }
               onChange={(e) => {
-                const vinculo = normalizeImhVinculo(e.target.value) || formatImhUppercase(e.target.value)
-                updateDraft(
+                const vinculo =
+                  normalizeImhVinculo(e.target.value) || formatImhUppercase(e.target.value)
+                updateShared(
                   isVinculoTitular(vinculo) ? { vinculo } : { vinculo, nipTitular: '' },
                 )
               }}
@@ -362,81 +441,220 @@ export function ImhAbaForm({
               ))}
             </TextField>
             <TextField
-              label="NOME DO USUÁRIO"
-              value={linhaDraft.nomeUsuario}
-              onChange={(e) => updateDraft({ nomeUsuario: formatImhUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: 'span 2' } }}
-            />
-            <TextField
               label="NIP DO TITULAR"
               value={
-                isVinculoTitular(linhaDraft.vinculo) ? linhaDraft.nip : linhaDraft.nipTitular
+                isVinculoTitular(draftPrincipal.vinculo)
+                  ? draftPrincipal.nip
+                  : draftPrincipal.nipTitular
               }
-              onChange={(e) => updateDraft({ nipTitular: formatImhNip(e.target.value) })}
+              onChange={(e) => updateShared({ nipTitular: formatImhNip(e.target.value) })}
               placeholder="00.0000.00"
               size="small"
               fullWidth
               slotProps={{
-                input: { readOnly: isVinculoTitular(linhaDraft.vinculo) },
+                input: { readOnly: isVinculoTitular(draftPrincipal.vinculo) },
               }}
               title={
-                isVinculoTitular(linhaDraft.vinculo)
+                isVinculoTitular(draftPrincipal.vinculo)
                   ? 'Igual ao NIP quando o vínculo é TITULAR'
-                  : linhaDraft.vinculo
+                  : draftPrincipal.vinculo
                     ? 'Preencha manualmente o NIP do titular'
                     : undefined
               }
               sx={planilhaEditFieldSx}
             />
+            <TextField
+              label="NOME DO USUÁRIO"
+              value={draftPrincipal.nomeUsuario}
+              onChange={(e) =>
+                updateShared({ nomeUsuario: formatImhUppercase(e.target.value) })
+              }
+              size="small"
+              fullWidth
+              sx={{ ...planilhaEditFieldSx, gridColumn: { sm: '1 / -1' } }}
+            />
           </PlanilhaEditSection>
 
-          <PlanilhaEditSection title="Procedimento e valores" columns={4}>
-            <TextField
-              label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
-              value={linhaDraft.descricao}
-              onChange={(e) => updateDraft({ descricao: formatImhUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              multiline
-              minRows={1}
-              maxRows={2}
-              sx={planilhaEditMultilineSx}
-            />
-            <TextField
-              label="VALOR UNIT"
-              value={linhaDraft.valorUnit}
-              onChange={(e) => updateDraft({ valorUnit: formatImhMoeda(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={planilhaEditFieldSx}
-            />
-            <TextField
-              label="QUANTI."
-              value={linhaDraft.quantidade}
-              onChange={(e) => updateDraft({ quantidade: formatImhQuantidade(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={planilhaEditFieldSx}
-            />
-            <TextField
-              label="VALOR TOTAL"
-              value={linhaDraft.valorTotal}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={planilhaEditFieldSx}
-            />
-            <TextField
-              label="% A INDENIZAR"
-              value={linhaDraft.pctIndenizar}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={planilhaEditFieldSx}
-            />
-          </PlanilhaEditSection>
+          {isMultiEdit ? (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+                flexWrap: 'wrap',
+                px: 0.25,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  fontSize: '0.72rem',
+                  letterSpacing: 0.35,
+                  textTransform: 'uppercase',
+                  color: premiumTokens.primaryDark,
+                }}
+              >
+                Lançamentos do NIP
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                <Chip
+                  size="small"
+                  label={`${grupoDrafts.length} linha(s)`}
+                  sx={{ height: 22, fontWeight: 700 }}
+                />
+                {somasGrupo.valorTotal > 0 ? (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`Total ${formatValorBrasileiro(somasGrupo.valorTotal)}`}
+                    sx={{ height: 22, fontWeight: 700 }}
+                  />
+                ) : null}
+                {somasGrupo.pctIndenizar > 0 ? (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`Indenizar ${formatValorBrasileiro(somasGrupo.pctIndenizar)}`}
+                    sx={{ height: 22, fontWeight: 700 }}
+                  />
+                ) : null}
+              </Box>
+            </Box>
+          ) : null}
+
+          <Box sx={{ display: 'grid', gap: 1.1 }}>
+            {grupoDrafts.map((draft, index) => (
+              <Box
+                key={draft.id}
+                sx={{
+                  borderRadius: 1.5,
+                  border: `1px solid ${alpha('#0f172a', 0.1)}`,
+                  bgcolor: '#fff',
+                  overflow: 'hidden',
+                  boxShadow: `0 1px 0 ${alpha('#0f172a', 0.04)}`,
+                }}
+              >
+                {isMultiEdit ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                      px: 1.35,
+                      py: 0.65,
+                      bgcolor: alpha(premiumTokens.primary, 0.06),
+                      borderBottom: `1px solid ${alpha('#0f172a', 0.06)}`,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '0.74rem',
+                        color: '#0f172a',
+                        letterSpacing: '-0.01em',
+                      }}
+                    >
+                      Lançamento {index + 1}
+                      <Typography
+                        component="span"
+                        sx={{
+                          ml: 0.75,
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          color: alpha('#0f172a', 0.55),
+                        }}
+                      >
+                        de {grupoDrafts.length}
+                      </Typography>
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      aria-label={`Remover lançamento ${index + 1} do grupo`}
+                      onClick={() => removeLinhaAt(index)}
+                      sx={{ p: 0.35 }}
+                    >
+                      <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
+                ) : null}
+
+                <Box sx={{ p: { xs: 1.1, sm: 1.25 } }}>
+                  <PlanilhaEditSection
+                    title={isMultiEdit ? 'Procedimento e valores deste lançamento' : 'Procedimento e valores'}
+                    columns={4}
+                  >
+                    <TextField
+                      label="DATA"
+                      value={draft.data}
+                      onChange={(e) =>
+                        updateLinhaAt(index, { data: formatImhData(e.target.value) })
+                      }
+                      placeholder="dd/mm/aa"
+                      size="small"
+                      fullWidth
+                      sx={planilhaEditFieldSx}
+                    />
+                    <TextField
+                      label="VALOR UNIT"
+                      value={draft.valorUnit}
+                      onChange={(e) =>
+                        updateLinhaAt(index, { valorUnit: formatImhMoeda(e.target.value) })
+                      }
+                      size="small"
+                      fullWidth
+                      sx={planilhaEditFieldSx}
+                    />
+                    <TextField
+                      label="QUANTI."
+                      value={draft.quantidade}
+                      onChange={(e) =>
+                        updateLinhaAt(index, {
+                          quantidade: formatImhQuantidade(e.target.value),
+                        })
+                      }
+                      size="small"
+                      fullWidth
+                      sx={planilhaEditFieldSx}
+                    />
+                    <TextField
+                      label="VALOR TOTAL"
+                      value={draft.valorTotal}
+                      size="small"
+                      fullWidth
+                      slotProps={{ input: { readOnly: true } }}
+                      sx={planilhaEditFieldSx}
+                    />
+                    <TextField
+                      label="DESCRIÇÃO DO PROCEDIMENTO/MEDICAMENTO"
+                      value={draft.descricao}
+                      onChange={(e) =>
+                        updateLinhaAt(index, {
+                          descricao: formatImhUppercase(e.target.value),
+                        })
+                      }
+                      size="small"
+                      fullWidth
+                      multiline
+                      minRows={1}
+                      maxRows={3}
+                      sx={planilhaEditMultilineSx}
+                    />
+                    <TextField
+                      label="% A INDENIZAR"
+                      value={draft.pctIndenizar}
+                      size="small"
+                      fullWidth
+                      slotProps={{ input: { readOnly: true } }}
+                      sx={planilhaEditFieldSx}
+                    />
+                  </PlanilhaEditSection>
+                </Box>
+              </Box>
+            ))}
+          </Box>
         </Box>
       </PlanilhaLinhaEditDialog>
 

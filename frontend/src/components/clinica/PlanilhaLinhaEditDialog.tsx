@@ -141,6 +141,8 @@ export function PlanilhaEditSection({
 interface PlanilhaLinhaEditDialogProps {
   open: boolean
   title: string
+  /** Texto auxiliar ao lado do título (ex.: quantidade de lançamentos). */
+  subtitle?: string
   badge?: string
   onClose: () => void
   onSave: () => void
@@ -153,6 +155,8 @@ interface PlanilhaLinhaEditDialogProps {
   anchorLinhaId?: string | null
   /** @deprecated Use anchorLinhaId — mantido por compatibilidade. */
   dockBelowRow?: boolean
+  /** Altura máxima preferida do papel (px), quando há âncora/espaço. */
+  preferredMaxHeightPx?: number
 }
 
 const ROW_GAP_PX = 10
@@ -166,6 +170,7 @@ const MIN_PAPER_HEIGHT_PX = 200
 export function PlanilhaLinhaEditDialog({
   open,
   title,
+  subtitle,
   badge = 'Edição',
   onClose,
   onSave,
@@ -173,6 +178,7 @@ export function PlanilhaLinhaEditDialog({
   children,
   anchorLinhaId = null,
   dockBelowRow = false,
+  preferredMaxHeightPx = 780,
 }: PlanilhaLinhaEditDialogProps) {
   const [anchorTop, setAnchorTop] = useState<number | null>(null)
   const [maxPaperHeight, setMaxPaperHeight] = useState<number | null>(null)
@@ -187,9 +193,10 @@ export function PlanilhaLinhaEditDialog({
 
     const update = () => {
       const vh = window.innerHeight
+      const preferredCap = Math.min(vh * 0.9, preferredMaxHeightPx)
       if (!anchorLinhaId) {
         setAnchorTop(null)
-        setMaxPaperHeight(Math.min(vh * 0.9, 820))
+        setMaxPaperHeight(preferredCap)
         return
       }
 
@@ -199,7 +206,7 @@ export function PlanilhaLinhaEditDialog({
 
       if (!row) {
         setAnchorTop(null)
-        setMaxPaperHeight(Math.min(vh * 0.9, 820))
+        setMaxPaperHeight(preferredCap)
         return
       }
 
@@ -210,7 +217,7 @@ export function PlanilhaLinhaEditDialog({
         Math.round(rect.bottom + ROW_GAP_PX),
       )
       const availableBelow = Math.max(MIN_PAPER_HEIGHT_PX, vh - top - VIEWPORT_PAD_PX)
-      const maxH = Math.min(Math.min(vh * 0.82, 780), availableBelow)
+      const maxH = Math.min(Math.min(vh * 0.88, preferredMaxHeightPx), availableBelow)
       setAnchorTop(top)
       setMaxPaperHeight(maxH)
     }
@@ -229,7 +236,7 @@ export function PlanilhaLinhaEditDialog({
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [open, anchorLinhaId])
+  }, [open, anchorLinhaId, preferredMaxHeightPx])
 
   return (
     <Dialog
@@ -317,18 +324,36 @@ export function PlanilhaLinhaEditDialog({
               border: `1px solid ${alpha(EXCEL_SHEET.selectedCheck, 0.35)}`,
             }}
           />
-          <Typography
-            component="h2"
-            sx={{
-              fontWeight: 800,
-              fontSize: { xs: '0.95rem', sm: '1.05rem' },
-              letterSpacing: '-0.02em',
-              lineHeight: 1.15,
-              color: '#0f172a',
-            }}
-          >
-            {title}
-          </Typography>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              component="h2"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                letterSpacing: '-0.02em',
+                lineHeight: 1.15,
+                color: '#0f172a',
+              }}
+            >
+              {title}
+            </Typography>
+            {subtitle ? (
+              <Typography
+                sx={{
+                  mt: 0.2,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  color: alpha('#0f172a', 0.62),
+                  lineHeight: 1.25,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {subtitle}
+              </Typography>
+            ) : null}
+          </Box>
         </Box>
         <IconButton
           aria-label="Fechar"

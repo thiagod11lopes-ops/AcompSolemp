@@ -124,6 +124,21 @@ export function normalizeImhNipKey(nip: string): string {
   return nip.trim().replace(/\D/g, '') || nip.trim().toLowerCase()
 }
 
+/**
+ * Linhas do mesmo NIP que `linhaId` (ordem da planilha).
+ * NIP vazio → só a própria linha.
+ */
+export function imhLinhasMesmoNipQue(
+  linhas: ImhAbaLinha[],
+  linhaId: string,
+): ImhAbaLinha[] {
+  const base = linhas.find((l) => l.id === linhaId)
+  if (!base) return []
+  const key = normalizeImhNipKey(base.nip)
+  if (!key) return [base]
+  return linhas.filter((l) => normalizeImhNipKey(l.nip) === key)
+}
+
 export function linhaHasContent(linha: ImhAbaLinha): boolean {
   return Boolean(
     linha.data.trim() ||
