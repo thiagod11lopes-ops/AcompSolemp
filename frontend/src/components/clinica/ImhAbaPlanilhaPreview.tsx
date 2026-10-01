@@ -211,11 +211,12 @@ export function ImhAbaPlanilhaPreview({
     const scrollRoot = scrollContainerRef.current
     if (!scrollRoot) return
     const run = () => {
+      // Grupo no topo: primeira linha visível; modal ancora na última (abaixo do bloco).
       scrollRoot.scrollTo({ top: 0, behavior: 'smooth' })
-      const row = scrollRoot.querySelector(
-        `[data-planilha-linha-id="${editingLinhaId}"]`,
+      const first = scrollRoot.querySelector(
+        `[data-planilha-linha-id="${CSS.escape(editingLinhaId)}"]`,
       ) as HTMLElement | null
-      row?.scrollIntoView({ block: 'start', behavior: 'smooth', inline: 'nearest' })
+      first?.scrollIntoView({ block: 'start', behavior: 'smooth', inline: 'nearest' })
     }
     requestAnimationFrame(() => requestAnimationFrame(run))
     const t = window.setTimeout(run, 80)

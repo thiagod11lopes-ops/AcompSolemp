@@ -98,6 +98,8 @@ export function ImhAbaForm({
   const [importing, setImporting] = useState(false)
 
   const editingLinhaId = grupoDrafts[0]?.id ?? null
+  /** Âncora do modal: última linha do grupo, para o bloco editado ficar visível acima. */
+  const anchorLinhaId = grupoDrafts[grupoDrafts.length - 1]?.id ?? null
   const editingIds = useMemo(() => new Set(grupoDrafts.map((l) => l.id)), [grupoDrafts])
   const isEditingGrupo = grupoDrafts.length > 0
   const isMultiEdit = grupoDrafts.length > 1
@@ -366,7 +368,7 @@ export function ImhAbaForm({
             ? `Salvar ${grupoDrafts.length} lançamentos`
             : 'Salvar lançamento'
         }
-        anchorLinhaId={editingLinhaId}
+        anchorLinhaId={anchorLinhaId}
         preferredMaxHeightPx={isMultiEdit ? 900 : 780}
       >
         <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.25 }}>
