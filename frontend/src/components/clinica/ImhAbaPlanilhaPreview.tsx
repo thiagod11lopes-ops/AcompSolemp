@@ -688,6 +688,12 @@ export function ImhAbaPlanilhaPreview({
                     const devolvido = !finalizado && devolvidosIds.has(linha.id)
                     const checked = finalizado || selection.has(linha.id)
                     const actionsSpan = valorTotalNipSpans[index]
+                    /** Primeira linha do bloco NIP (onde ficam as células mescladas). */
+                    const editingGroupLeader = Boolean(editing && actionsSpan?.show)
+                    const editingGroupSize = editingGroupLeader
+                      ? Math.max(1, actionsSpan?.rowSpan ?? 1)
+                      : 1
+                    const editingGroupMulti = editingGroupLeader && editingGroupSize > 1
                     return (
                       <TableRow
                         key={linha.id}
@@ -698,14 +704,19 @@ export function ImhAbaPlanilhaPreview({
                             : selection.has(linha.id)
                               ? EXCEL_SHEET.selectedBg
                               : undefined,
-                          position: editing ? 'relative' : undefined,
-                          zIndex: editing ? 5 : undefined,
-                          isolation: editing ? 'isolate' : undefined,
-                          outline: editing ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
-                          outlineOffset: editing ? -2 : undefined,
-                          boxShadow: editing
-                            ? `0 0 0 1px ${EXCEL_SHEET.selectedCheck}, 0 4px 16px rgba(15,23,42,0.18)`
-                            : undefined,
+                          // Só o líder cria stacking — isolation/outline por linha quebrava o rowSpan.
+                          position: editingGroupLeader ? 'relative' : undefined,
+                          zIndex: editingGroupLeader ? 5 : editing ? 4 : undefined,
+                          outline:
+                            editingGroupLeader && !editingGroupMulti
+                              ? `2px solid ${EXCEL_SHEET.selectedCheck}`
+                              : undefined,
+                          outlineOffset:
+                            editingGroupLeader && !editingGroupMulti ? -2 : undefined,
+                          boxShadow:
+                            editingGroupLeader && !editingGroupMulti
+                              ? `0 0 0 1px ${EXCEL_SHEET.selectedCheck}, 0 4px 16px rgba(15,23,42,0.18)`
+                              : undefined,
                           opacity: editing ? 1 : isEditingMode ? 0.22 : 1,
                           filter: editing ? 'none' : isEditingMode ? 'saturate(0.35)' : undefined,
                           transition: 'opacity 160ms ease, filter 160ms ease',
@@ -719,6 +730,24 @@ export function ImhAbaPlanilhaPreview({
                           '&:hover > .MuiTableCell-root': {
                             bgcolor: editing ? EXCEL_SHEET.editingBg : EXCEL_SHEET.hoverBg,
                           },
+                          // Moldura única cobrindo o grupo mesclado (VALOR TOTAL / % / AÇÕES).
+                          ...(editingGroupMulti
+                            ? {
+                                '&::after': {
+                                  content: '""',
+                                  pointerEvents: 'none',
+                                  position: 'absolute',
+                                  left: 0,
+                                  right: 0,
+                                  top: 0,
+                                  bottom: `calc(-100% * ${editingGroupSize - 1})`,
+                                  border: `2px solid ${EXCEL_SHEET.selectedCheck}`,
+                                  borderRadius: '2px',
+                                  boxShadow: `0 4px 16px rgba(15,23,42,0.18)`,
+                                  zIndex: 7,
+                                },
+                              }
+                            : null),
                         }}
                       >
                         {selectionEnabled ? (
