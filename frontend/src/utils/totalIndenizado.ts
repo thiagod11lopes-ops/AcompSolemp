@@ -20,6 +20,9 @@ export type TotalIndenizadoPeriodoTipo = BalancoPeriodoTipo
 /** Já finalizado em IMH vs ainda em Auditoria ou IMH */
 export type IndenizadoLinhaStatus = 'a_indenizar' | 'indenizado'
 
+/** OPME = clínicas; PME = portal medicamento. */
+export type IndenizadoOrigem = 'opme' | 'pme'
+
 export interface TotalIndenizadoLinha {
   /** Chave única para deduplicação entre fontes */
   linhaKey: string
@@ -28,6 +31,22 @@ export interface TotalIndenizadoLinha {
   nip: string
   status: IndenizadoLinhaStatus
   pedidoId?: string
+  /** Clínica (OPME) vs Medicamento (PME). */
+  origem: IndenizadoOrigem
+}
+
+export interface IndenizadoMensalOrigem {
+  /** Chave YYYY-MM para ordenação */
+  mesChave: string
+  /** Rótulo curto (ex.: set/2026) */
+  mes: string
+  opme: number
+  pme: number
+}
+
+function origemDaClinica(appData: AppData, clinicaId: string): IndenizadoOrigem {
+  const clinica = appData.clinicas?.find((c) => c.id === clinicaId)
+  return clinica?.tipo === 'medicamento' ? 'pme' : 'opme'
 }
 
 export interface TotalIndenizadoFiltro {
@@ -310,6 +329,7 @@ function registrarLinha(
     valorIndenizado,
     nip: nipKey,
     status,
+    origem: origemDaClinica(appData, clinicaId),
     ...(pedido ? { pedidoId: pedido.id } : {}),
   })
 }
@@ -415,10 +435,62 @@ export function coletarLinhasTotalIndenizado(data: AppData): TotalIndenizadoLinh
       nip: nipOuLinhaKey(pedido.paciente?.nip, pedido.id),
       status,
       pedidoId: pedido.id,
+      origem: origemDaClinica(data, pedido.clinicaId),
     })
   }
 
   return [...map.values()]
+}
+
+/** Soma valores totais por origem (clínicas OPME vs medicamento PME). */
+export function somarValoresPorOrigem(linhas: TotalIndenizadoLinha[]): {
+  opme: number
+  pme: number
+} {
+  let opme = 0
+  let pme = 0
+  for (const linha of linhas) {
+    if (linha.origem === 'pme') pme += linha.valorIndenizado
+    else opme += linha.valorIndenizado
+  }
+  return { opme, pme }
+}
+
+/**
+ * Série mensal do valor indenizado (status finalizado) por origem,
+ * nos últimos `quantidadeMeses` meses (mais antigo → mais recente).
+ */
+export function serieMensalIndenizadoPorOrigem(
+  linhas: TotalIndenizadoLinha[],
+  quantidadeMeses = 12,
+  referencia: Date = new Date(),
+): IndenizadoMensalOrigem[] {
+  const meses: IndenizadoMensalOrigem[] = []
+  const base = new Date(referencia.getFullYear(), referencia.getMonth(), 1)
+
+  for (let i = quantidadeMeses - 1; i >= 0; i -= 1) {
+    const d = new Date(base.getFullYear(), base.getMonth() - i, 1)
+    const mesChave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const mes = d
+      .toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+      .replace('.', '')
+    meses.push({ mesChave, mes, opme: 0, pme: 0 })
+  }
+
+  const index = new Map(meses.map((m, idx) => [m.mesChave, idx]))
+
+  for (const linha of linhas) {
+    if (linha.status !== 'indenizado') continue
+    const data = parseIsoOrBrDate(linha.data)
+    if (!data) continue
+    const mesChave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`
+    const idx = index.get(mesChave)
+    if (idx === undefined) continue
+    if (linha.origem === 'pme') meses[idx].pme += linha.valorIndenizado
+    else meses[idx].opme += linha.valorIndenizado
+  }
+
+  return meses
 }
 
 export function separarLinhasIndenizadoPorStatus(

@@ -435,6 +435,12 @@ export interface DashboardMetrics {
   pessoasAtendidas: number
   /** Total de linhas das planilhas Div. Material. */
   procedimentos: number
+  /** Soma dos valores provenientes de clínicas (OPME). */
+  valorTotalOpme: number
+  /** Soma dos valores provenientes de medicamento (PME). */
+  valorTotalPme: number
+  /** Valor indenizado mensal comparado: clínicas (OPME) × medicamento (PME). */
+  indenizadoMensalPorOrigem: import('@/utils/totalIndenizado').IndenizadoMensalOrigem[]
 }
 
 export interface PedidoComDetalhes extends Pedido {
