@@ -93,6 +93,8 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
 
     if (!user || !multiSetor) {
       if (!mostraBalanco) return menuBase
+      // IMH: Balanço fica abaixo de Arquivados.
+      if (isImh) return [...menuBase, menuBalanco]
       return [menuBase[0], menuBase[1], menuBalanco, menuBase[2]]
     }
     const setores = setorNavItemsParaUsuario(user).map((item) => ({
@@ -105,11 +107,17 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
             ? ICON_POR_PERFIL[item.perfil]
             : undefined) ?? <TimelineIcon />,
     }))
+    const arquivados = {
+      path: '/ordenador/arquivados',
+      label: 'Arquivados',
+      icon: <ArchiveIcon />,
+    }
     return [
       { path: '/ordenador/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       ...setores,
-      ...(mostraBalanco ? [menuBalanco] : []),
-      { path: '/ordenador/arquivados', label: 'Arquivados', icon: <ArchiveIcon /> },
+      ...(mostraBalanco && !isImh ? [menuBalanco] : []),
+      arquivados,
+      ...(mostraBalanco && isImh ? [menuBalanco] : []),
     ]
   })()
 

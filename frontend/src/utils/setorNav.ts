@@ -4,10 +4,11 @@ import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { PERFIL_PARA_CHAVE_ETAPA, CHAVES_CONFECCAO_CADEIA } from '@/utils/perfilEtapa'
 import { userHasPerfil, userPerfis, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
-/** Auditoria, Confecção de Solemp e Aguardando NE têm aba Balanço. */
+/** Auditoria, IMH, Confecção de Solemp e Aguardando NE têm aba Balanço. */
 export function userPodeVerAbaBalanco(user: Pick<User, 'perfil' | 'perfis'>): boolean {
   return (
     userHasPerfil(user, 'AUDITORIA') ||
+    userHasPerfil(user, 'CONTABILIDADE_IMH') ||
     userHasPerfil(user, 'CONFECCAO_SOLEMP') ||
     userHasPerfil(user, 'FINANCEIRO')
   )
