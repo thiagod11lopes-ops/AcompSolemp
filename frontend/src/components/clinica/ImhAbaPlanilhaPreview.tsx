@@ -43,6 +43,7 @@ import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import {
   IMH_ABA_COLUNAS,
   IMH_ABA_HOSPITAL,
+  buildImhValorTotalNipSpans,
   calcImhSomasValorEIndenizar,
   imhFormHasPreviewContent,
   imhNumeroCpChip,
@@ -202,13 +203,23 @@ export function ImhAbaPlanilhaPreview({
     return () => window.clearTimeout(t)
   }, [expanded, editingLinhaId, linhasExibidas])
 
+  const valorTotalNipSpans = useMemo(
+    () => buildImhValorTotalNipSpans(linhasExibidas),
+    [linhasExibidas],
+  )
   const cellTextsByKey = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const col of IMH_ABA_COLUNAS) {
+      if (col.key === 'valorTotal') {
+        map[col.key] = valorTotalNipSpans.map((span) =>
+          span.show ? span.text : '',
+        )
+        continue
+      }
       map[col.key] = linhasExibidas.map((linha) => dash(String(linha[col.key] ?? '')))
     }
     return map
-  }, [linhasExibidas])
+  }, [linhasExibidas, valorTotalNipSpans])
   const somas = useMemo(
     () => calcImhSomasValorEIndenizar(linhasFiltradas),
     [linhasFiltradas],
@@ -706,8 +717,44 @@ export function ImhAbaPlanilhaPreview({
                         {IMH_ABA_COLUNAS.map((col) => {
                           const colWidth = resolveColWidth(col.key)
                           const colMinWidth = resolveColMinWidth(col.key)
-                          const text = dash(String(linha[col.key] ?? ''))
                           const hovered = isColHovered(col.key)
+                          if (col.key === 'valorTotal') {
+                            const span = valorTotalNipSpans[index]
+                            if (!span?.show) return null
+                            return (
+                              <TableCell
+                                key={col.key}
+                                data-col-key={col.key}
+                                rowSpan={span.rowSpan > 1 ? span.rowSpan : undefined}
+                                {...colHoverHandlers(col.key)}
+                                sx={{
+                                  ...cellSx,
+                                  width: colWidth,
+                                  fontSize: cellFontSize,
+                                  fontWeight:
+                                    span.rowSpan > 1
+                                      ? EXCEL_SHEET.fontWeightBold
+                                      : cellFontWeight,
+                                  textAlign: 'center',
+                                  verticalAlign: 'middle',
+                                  minWidth: colMinWidth || (hovered ? colWidth : 0),
+                                  transition: 'width 160ms ease',
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                  whiteSpace: 'nowrap',
+                                  wordBreak: 'normal',
+                                  overflowWrap: 'normal',
+                                  textOverflow: hovered ? 'clip' : 'ellipsis',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <PlanilhaExpandedCellContent showFull={hovered}>
+                                  {span.text}
+                                </PlanilhaExpandedCellContent>
+                              </TableCell>
+                            )
+                          }
+                          const text = dash(String(linha[col.key] ?? ''))
                           return (
                             <TableCell
                               key={col.key}

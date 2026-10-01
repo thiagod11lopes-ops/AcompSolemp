@@ -119,6 +119,10 @@ function parseQuantidade(raw: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+function normalizeImhNipKey(nip: string): string {
+  return nip.trim().replace(/\D/g, '') || nip.trim().toLowerCase()
+}
+
 export function linhaHasContent(linha: ImhAbaLinha): boolean {
   return Boolean(
     linha.data.trim() ||
@@ -422,13 +426,22 @@ export function syncImhAbaFromFontes(
   }
 }
 
-/** Ordena lançamentos IMH por data (dd/mm/aa) crescente — mesma regra da Div. Material. */
+/**
+ * Ordena lançamentos IMH agrupando NIP (para mesclar VALOR TOTAL),
+ * depois data (dd/mm/aa) e nome.
+ */
 export function sortImhLinhasByData(linhas: ImhAbaLinha[]): ImhAbaLinha[] {
   return [...linhas].sort((a, b) => {
+    const nipA = normalizeImhNipKey(a.nip)
+    const nipB = normalizeImhNipKey(b.nip)
+    if (nipA && nipB) {
+      const nipCmp = nipA.localeCompare(nipB, 'pt-BR')
+      if (nipCmp !== 0) return nipCmp
+    } else if (nipA || nipB) {
+      return nipA ? -1 : 1
+    }
     const dataCmp = parseImhDataSortKey(a.data) - parseImhDataSortKey(b.data)
     if (dataCmp !== 0) return dataCmp
-    const nipCmp = a.nip.localeCompare(b.nip, 'pt-BR')
-    if (nipCmp !== 0) return nipCmp
     return a.nomeUsuario.localeCompare(b.nomeUsuario, 'pt-BR')
   })
 }
@@ -495,4 +508,58 @@ export function calcImhSomasValorEIndenizar(linhas: ImhAbaLinha[]): {
     }),
     { valorTotal: 0, pctIndenizar: 0 },
   )
+}
+
+/** Valor numérico da linha (QT × UNIT, senão VALOR TOTAL gravado). */
+export function linhaImhValorTotalNumerico(linha: ImhAbaLinha): number {
+  const qtd = parseQuantidade(linha.quantidade)
+  const unit = parseValorBrasileiro(linha.valorUnit)
+  if (qtd > 0 && unit > 0) return qtd * unit
+  return parseValorBrasileiro(linha.valorTotal)
+}
+
+export type ImhValorTotalNipSpan = {
+  /** Se false, a célula não é renderizada (coberta pelo rowSpan anterior). */
+  show: boolean
+  rowSpan: number
+  text: string
+  /** Soma do grupo (NIP repetido) ou da linha isolada. */
+  soma: number
+}
+
+/**
+ * Mescla VALOR TOTAL por NIP repetido em sequências consecutivas:
+ * uma célula com a soma, rowSpan cobrindo as linhas do mesmo NIP.
+ */
+export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotalNipSpan[] {
+  const spans: ImhValorTotalNipSpan[] = linhas.map(() => ({
+    show: false,
+    rowSpan: 1,
+    text: '—',
+    soma: 0,
+  }))
+
+  let i = 0
+  while (i < linhas.length) {
+    const nipKey = normalizeImhNipKey(linhas[i]?.nip ?? '')
+    let j = i + 1
+    if (nipKey) {
+      while (j < linhas.length && normalizeImhNipKey(linhas[j]?.nip ?? '') === nipKey) {
+        j += 1
+      }
+    }
+
+    let soma = 0
+    for (let k = i; k < j; k += 1) {
+      soma += linhaImhValorTotalNumerico(linhas[k]!)
+    }
+    const text = soma > 0 ? formatValorBrasileiro(soma) : linhas[i]!.valorTotal.trim() || '—'
+    spans[i] = { show: true, rowSpan: j - i, text, soma }
+    for (let k = i + 1; k < j; k += 1) {
+      spans[k] = { show: false, rowSpan: 1, text: '', soma: 0 }
+    }
+    i = j
+  }
+
+  return spans
 }
