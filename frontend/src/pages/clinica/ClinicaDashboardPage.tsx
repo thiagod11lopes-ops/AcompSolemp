@@ -111,6 +111,7 @@ export default function ClinicaDashboardPage() {
         balanco={resumo.balanco}
         pacientesPme={resumo.pacientesPme}
         planilhasEmCorrecao={resumo.planilhasEmCorrecao}
+        detalhes={resumo.detalhes}
       />
       <MedicamentoDashboardCharts
         compact

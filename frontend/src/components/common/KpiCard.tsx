@@ -91,7 +91,12 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick, d
     <Card
       sx={
         dense
-          ? { ...dashboardCardShellSx, '&:hover': { transform: 'none', boxShadow: dashboardCardShellSx.boxShadow } }
+          ? {
+              ...dashboardCardShellSx,
+              '&:hover': onClick
+                ? { transform: 'translateY(-2px)', boxShadow: '0 12px 28px rgba(63, 107, 86, 0.2)' }
+                : { transform: 'none', boxShadow: dashboardCardShellSx.boxShadow },
+            }
           : dashboardCardShellSx
       }
     >

@@ -11,7 +11,9 @@ import { EMPTY_LISTA_MEDICAMENTOS_FORM } from '@/utils/listaMedicamentosForm'
 import {
   buildMedicamentoBalanco,
   buildMedicamentoPmeChartData,
+  buildPmeCardDetalhes,
   createMedicamentoBalancoExemploInput,
+  createPacientesAtendidosExemplo,
   type BalancoPeriodoTipo,
   type MedicamentoBalancoInput,
 } from '@/utils/medicamentoBalanco'
@@ -78,10 +80,27 @@ export function useMedicamentoPmeResumo(clinicaId: string, enabled: boolean) {
 
   const charts = useMemo(() => buildMedicamentoPmeChartData(input), [input])
 
-  const pacientesPme = mostrarExemplo ? 186 : (planilhas?.pacientesPme?.length ?? 0)
-  const planilhasEmCorrecao = mostrarExemplo
-    ? 8
-    : pedidos.filter((pedido) => pedido.planilhaDevolvidaParaChave === 'SOLICITACAO').length
+  const pacientesLista = useMemo(
+    () =>
+      mostrarExemplo
+        ? createPacientesAtendidosExemplo(186)
+        : (planilhas?.pacientesPme ?? []).map((paciente) => ({
+            nome: paciente.nome,
+            nipUsuario: paciente.nipUsuario,
+            postoGradTitular: paciente.postoGradTitular,
+            vinculo: paciente.vinculo,
+          })),
+    [mostrarExemplo, planilhas?.pacientesPme],
+  )
+  const detalhes = useMemo(
+    () => buildPmeCardDetalhes(input, pacientesLista),
+    [input, pacientesLista],
+  )
+
+  const pacientesPme = pacientesLista.length
+  const planilhasEmCorrecao = input.pedidos.filter(
+    (pedido) => pedido.planilhaDevolvidaParaChave === 'SOLICITACAO',
+  ).length
 
   return {
     periodoTipo,
@@ -96,5 +115,6 @@ export function useMedicamentoPmeResumo(clinicaId: string, enabled: boolean) {
     charts,
     pacientesPme,
     planilhasEmCorrecao,
+    detalhes,
   }
 }

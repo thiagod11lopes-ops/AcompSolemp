@@ -7,6 +7,7 @@ import type {
   Pedido,
 } from '@/types'
 import { formatValorBrasileiro, parseValorBrasileiro } from '@/utils/consumoMaterialOds'
+import { formatCurrency, formatDate } from '@/utils/format'
 import {
   getListaMedEstoqueStatus,
   getListaMedValidadeStatus,
@@ -542,65 +543,34 @@ export function createMedicamentoBalancoExemploInput(
     return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 12, 0, 0).toISOString()
   }
 
-  const pedidos: Pedido[] = [
-    {
-      id: 'ex-ped-1',
-      numero: 'EX-2026-001',
-      clinicaId: 'ex',
-      empresaId: 'ex',
-      materialId: 'ex',
-      quantidade: 1,
-      valor: 128.9,
-      observacoes: '',
-      paciente: null,
-      dadosClinica: null,
-      dataSolicitacao: iso(ref),
-      dataEntrega: null,
-      etapaAtualId: 'ex',
-      etapasAtivasIds: [],
-      responsavelAtualId: null,
-      concluido: false,
-      etapasHistorico: [],
-    },
-    {
-      id: 'ex-ped-2',
-      numero: 'EX-2026-002',
-      clinicaId: 'ex',
-      empresaId: 'ex',
-      materialId: 'ex',
-      quantidade: 1,
-      valor: 256.4,
-      observacoes: '',
-      paciente: null,
-      dadosClinica: null,
-      dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -3)),
-      dataEntrega: null,
-      etapaAtualId: 'ex',
-      etapasAtivasIds: [],
-      responsavelAtualId: null,
-      concluido: true,
-      etapasHistorico: [],
-    },
-    {
-      id: 'ex-ped-3',
-      numero: 'EX-2026-003',
-      clinicaId: 'ex',
-      empresaId: 'ex',
-      materialId: 'ex',
-      quantidade: 1,
-      valor: 89.5,
-      observacoes: '',
-      paciente: null,
-      dadosClinica: null,
-      dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -8)),
-      dataEntrega: null,
-      etapaAtualId: 'ex',
-      etapasAtivasIds: [],
-      responsavelAtualId: null,
-      concluido: true,
-      etapasHistorico: [],
-    },
+  const justificativasCorrecao = [
+    'Ajuste de lote na planilha PME.',
+    'Quantidade divergente do estoque.',
+    'Validade do lote não confere.',
+    'Paciente ou vínculo incompleto.',
   ]
+  const pedidos: Pedido[] = Array.from({ length: 8 }, (_, i) => ({
+    id: `ex-ped-${i + 1}`,
+    numero: `PME-CORR-${String(i + 1).padStart(3, '0')}`,
+    clinicaId: 'ex',
+    empresaId: 'ex',
+    materialId: 'ex',
+    quantidade: 1,
+    valor: 80 + i * 35,
+    observacoes: '',
+    paciente: null,
+    dadosClinica: null,
+    dataSolicitacao: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -i)),
+    dataEntrega: null,
+    etapaAtualId: 'ex',
+    etapasAtivasIds: [],
+    responsavelAtualId: null,
+    concluido: false,
+    etapasHistorico: [],
+    planilhaDevolvidaParaChave: 'SOLICITACAO',
+    planilhaDevolvidaEm: iso(addDays(ref, periodoTipo === 'dia' ? 0 : -i)),
+    planilhaDevolvidaJustificativa: justificativasCorrecao[i % justificativasCorrecao.length],
+  }))
 
   return {
     listaMedicamentos,
@@ -653,6 +623,217 @@ export function createDemoMedicamentoDashboardConteudo(now = new Date()): {
       devolvidosImhIds: [],
     },
   }
+}
+
+export type PmeCardDetalheId =
+  | 'pacientes'
+  | 'estoque-baixo'
+  | 'estoque-zerado'
+  | 'validade-vencida'
+  | 'validade-proxima'
+  | 'planilhas'
+  | 'lancamentos'
+  | 'quantidade'
+  | 'consumido'
+  | 'indenizar'
+
+export interface PmePacienteDetalhe {
+  nome: string
+  nipUsuario: string
+  postoGradTitular: string
+  vinculo: string
+}
+
+export interface PmeCardDetalhe {
+  id: PmeCardDetalheId
+  titulo: string
+  descricao: string
+  colunas: string[]
+  linhas: string[][]
+}
+
+const NOMES_EXEMPLO = [
+  'ANA BEATRIZ COSTA',
+  'CARLOS EDUARDO NUNES',
+  'MARIA FERNANDA ALVES',
+  'JOÃO PEDRO MARTINS',
+  'PATRICIA HELENA SOUZA',
+  'ROBERTO SILVA FREITAS',
+  'CAMILA RODRIGUES MELO',
+  'FELIPE AUGUSTO DIAS',
+]
+const POSTOS_EXEMPLO = ['CB', 'MN', '1T', 'SO', 'CF']
+const VINCULOS_EXEMPLO = ['TITULAR', 'DEPENDENTE DIRETO', 'DEPENDENTE INDIRETO']
+
+export function createPacientesAtendidosExemplo(total = 186): PmePacienteDetalhe[] {
+  return Array.from({ length: total }, (_, index) => ({
+    nome: `${NOMES_EXEMPLO[index % NOMES_EXEMPLO.length]} ${index + 1}`,
+    nipUsuario: `${String(10 + (index % 80)).padStart(2, '0')}.${1000 + index}.${String(10 + (index % 90)).padStart(2, '0')}`,
+    postoGradTitular: POSTOS_EXEMPLO[index % POSTOS_EXEMPLO.length],
+    vinculo: VINCULOS_EXEMPLO[index % VINCULOS_EXEMPLO.length],
+  }))
+}
+
+function linhasImhNoPeriodo(input: MedicamentoBalancoInput): ImhMedicamentoLinha[] {
+  return input.imhMedicamento.linhas
+    .filter((linha) => {
+      const data = parseIsoOrBrDate(linha.data)
+      return Boolean(data && dateMatchesBalancoPeriodo(data, input.periodoTipo, input.referencia))
+    })
+    .sort((a, b) => (parseIsoOrBrDate(b.data)?.getTime() ?? 0) - (parseIsoOrBrDate(a.data)?.getTime() ?? 0))
+}
+
+function estoquePorStatus(
+  linhas: ListaMedicamentosLinha[],
+  status: 'baixo' | 'zerado',
+): ListaMedicamentosLinha[] {
+  return linhas.filter((linha) => getListaMedEstoqueStatus(linha) === status)
+}
+
+function validadePorStatus(
+  linhas: ListaMedicamentosLinha[],
+  status: 'vencido' | 'proximo',
+): ListaMedicamentosLinha[] {
+  return linhas.filter((linha) => getListaMedValidadeStatus(linha) === status)
+}
+
+/** Listas que explicam cada card do dashboard e do balanço. */
+export function buildPmeCardDetalhes(
+  input: MedicamentoBalancoInput,
+  pacientes: PmePacienteDetalhe[],
+): PmeCardDetalhe[] {
+  const periodo = formatBalancoPeriodoLabel(input.periodoTipo, input.referencia)
+  const imh = linhasImhNoPeriodo(input)
+  const lista = input.listaMedicamentos.linhas
+  const correcoes = input.pedidos.filter((pedido) => pedido.planilhaDevolvidaParaChave === 'SOLICITACAO')
+
+  const linhaImh = (linha: ImhMedicamentoLinha, extra: string[]) => [
+    linha.data || '—',
+    linha.nome || '—',
+    linha.itemPme || '—',
+    formatBalancoQtd(parseListaMedQtdNumber(linha.qtd || '0')),
+    ...extra,
+  ]
+
+  return [
+    {
+      id: 'pacientes',
+      titulo: 'Pacientes atendidos',
+      descricao: 'Pacientes do cadastro da farmácia PME.',
+      colunas: ['Nome', 'NIP', 'Posto/Grad', 'Vínculo'],
+      linhas: pacientes.map((paciente) => [
+        paciente.nome || '—',
+        paciente.nipUsuario || '—',
+        paciente.postoGradTitular || '—',
+        paciente.vinculo || '—',
+      ]),
+    },
+    {
+      id: 'estoque-baixo',
+      titulo: 'Estoque baixo',
+      descricao: 'Lotes com quantidade igual ou abaixo do limite definido.',
+      colunas: ['Medicamento', 'Lote', 'Qtd', 'Limite', 'Validade'],
+      linhas: estoquePorStatus(lista, 'baixo').map((linha) => [
+        linha.medicamento || '—',
+        linha.lote || '—',
+        linha.qtd || '0',
+        linha.estoqueBaixo || '—',
+        linha.validade || '—',
+      ]),
+    },
+    {
+      id: 'estoque-zerado',
+      titulo: 'Estoque zerado',
+      descricao: 'Lotes sem saldo na lista PME.',
+      colunas: ['Medicamento', 'Lote', 'Qtd', 'Validade'],
+      linhas: estoquePorStatus(lista, 'zerado').map((linha) => [
+        linha.medicamento || '—',
+        linha.lote || '—',
+        linha.qtd || '0',
+        linha.validade || '—',
+      ]),
+    },
+    {
+      id: 'validade-vencida',
+      titulo: 'Validade vencida',
+      descricao: 'Lotes cuja validade já passou.',
+      colunas: ['Medicamento', 'Lote', 'Validade', 'Qtd'],
+      linhas: validadePorStatus(lista, 'vencido').map((linha) => [
+        linha.medicamento || '—',
+        linha.lote || '—',
+        linha.validade || '—',
+        linha.qtd || '0',
+      ]),
+    },
+    {
+      id: 'validade-proxima',
+      titulo: 'Validade próxima',
+      descricao: 'Lotes dentro do prazo de aviso de cada item.',
+      colunas: ['Medicamento', 'Lote', 'Validade', 'Qtd'],
+      linhas: validadePorStatus(lista, 'proximo').map((linha) => [
+        linha.medicamento || '—',
+        linha.lote || '—',
+        linha.validade || '—',
+        linha.qtd || '0',
+      ]),
+    },
+    {
+      id: 'planilhas',
+      titulo: 'Planilhas em correção',
+      descricao: 'Planilhas PME devolvidas para a solicitação corrigir.',
+      colunas: ['Número', 'Devolvida em', 'Justificativa'],
+      linhas: correcoes.map((pedido) => [
+        pedido.numero || '—',
+        formatDate(pedido.planilhaDevolvidaEm || pedido.dataSolicitacao),
+        pedido.planilhaDevolvidaJustificativa?.trim() || '—',
+      ]),
+    },
+    {
+      id: 'lancamentos',
+      titulo: 'Lançamentos',
+      descricao: `Linhas da IMH PME em ${periodo}.`,
+      colunas: ['Data', 'Paciente', 'Item', 'Qtd', 'Total'],
+      linhas: imh.map((linha) => linhaImh(linha, [formatCurrency(parseValorBrasileiro(linha.total))])),
+    },
+    {
+      id: 'quantidade',
+      titulo: 'Qtd. fornecida',
+      descricao: `Quantidade somada das linhas da IMH PME em ${periodo}.`,
+      colunas: ['Data', 'Paciente', 'Item', 'Qtd'],
+      linhas: [...imh]
+        .sort(
+          (a, b) =>
+            parseListaMedQtdNumber(b.qtd || '0') - parseListaMedQtdNumber(a.qtd || '0'),
+        )
+        .map((linha) => linhaImh(linha, []).slice(0, 4)),
+    },
+    {
+      id: 'consumido',
+      titulo: 'Valor consumido',
+      descricao: `Soma do total das linhas da IMH PME em ${periodo}.`,
+      colunas: ['Data', 'Paciente', 'Item', 'Qtd', 'Total'],
+      linhas: [...imh]
+        .sort((a, b) => parseValorBrasileiro(b.total) - parseValorBrasileiro(a.total))
+        .map((linha) => linhaImh(linha, [formatCurrency(parseValorBrasileiro(linha.total))])),
+    },
+    {
+      id: 'indenizar',
+      titulo: 'A indenizar',
+      descricao: `Soma do valor a indenizar das linhas da IMH PME em ${periodo}.`,
+      colunas: ['Data', 'Paciente', 'Item', '%', 'A indenizar'],
+      linhas: [...imh]
+        .sort(
+          (a, b) => parseValorBrasileiro(b.valorIndenizar) - parseValorBrasileiro(a.valorIndenizar),
+        )
+        .map((linha) => [
+          linha.data || '—',
+          linha.nome || '—',
+          linha.itemPme || '—',
+          linha.pctIndenizar || '—',
+          formatCurrency(parseValorBrasileiro(linha.valorIndenizar)),
+        ]),
+    },
+  ]
 }
 
 export function formatBalancoQtd(value: number): string {

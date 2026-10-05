@@ -97,6 +97,7 @@ export default function ClinicaBalancoGeralPage() {
         balanco={resumo.balanco}
         pacientesPme={resumo.pacientesPme}
         planilhasEmCorrecao={resumo.planilhasEmCorrecao}
+        detalhes={resumo.detalhes}
       />
     </Box>
   )
