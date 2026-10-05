@@ -248,6 +248,103 @@ export function buildMedicamentoBalanco(input: MedicamentoBalancoInput): Medicam
   }
 }
 
+export interface MedicamentoPmeEvolucaoPoint {
+  ponto: string
+  consumo: number
+  indenizar: number
+  quantidade: number
+}
+
+export interface MedicamentoPmeChartData {
+  evolucao: MedicamentoPmeEvolucaoPoint[]
+  topMedicamentos: { nome: string; valor: number; qtd: number }[]
+  alertas: { nome: string; valor: number }[]
+  fluxoEstoque: { nome: string; valor: number }[]
+}
+
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+function seedEvolucao(
+  tipo: BalancoPeriodoTipo,
+  referencia: Date,
+): Map<number, MedicamentoPmeEvolucaoPoint> {
+  const buckets = new Map<number, MedicamentoPmeEvolucaoPoint>()
+  if (tipo === 'ano') {
+    const year = startOfDay(referencia).getFullYear()
+    for (let month = 0; month < 12; month += 1) {
+      const time = new Date(year, month, 1).getTime()
+      buckets.set(time, {
+        ponto: MESES_CURTOS[month],
+        consumo: 0,
+        indenizar: 0,
+        quantidade: 0,
+      })
+    }
+    return buckets
+  }
+
+  for (const day of daysInBalancoPeriodo(tipo, referencia)) {
+    const time = startOfDay(day).getTime()
+    const dd = String(day.getDate()).padStart(2, '0')
+    const mm = String(day.getMonth() + 1).padStart(2, '0')
+    buckets.set(time, {
+      ponto: `${dd}/${mm}`,
+      consumo: 0,
+      indenizar: 0,
+      quantidade: 0,
+    })
+  }
+  return buckets
+}
+
+function evolucaoKey(date: Date, tipo: BalancoPeriodoTipo): number {
+  const day = startOfDay(date)
+  if (tipo === 'ano') return new Date(day.getFullYear(), day.getMonth(), 1).getTime()
+  return day.getTime()
+}
+
+/** Séries reais da IMH PME e do estoque, no período escolhido. */
+export function buildMedicamentoPmeChartData(
+  input: MedicamentoBalancoInput,
+): MedicamentoPmeChartData {
+  const { listaMedicamentos, imhMedicamento, periodoTipo, referencia } = input
+  const imh = summarizeImh(imhMedicamento.linhas, periodoTipo, referencia)
+  const estoque = summarizeMovimentacoes(listaMedicamentos.linhas, periodoTipo, referencia)
+  const alertas = summarizeAlertas(listaMedicamentos.linhas)
+  const evolucao = seedEvolucao(periodoTipo, referencia)
+
+  for (const linha of imhMedicamento.linhas) {
+    const data = parseIsoOrBrDate(linha.data)
+    if (!data || !dateMatchesBalancoPeriodo(data, periodoTipo, referencia)) continue
+    const bucket = evolucao.get(evolucaoKey(data, periodoTipo))
+    if (!bucket) continue
+    bucket.consumo += parseValorBrasileiro(linha.total)
+    bucket.indenizar += parseValorBrasileiro(linha.valorIndenizar)
+    bucket.quantidade += parseListaMedQtdNumber(linha.qtd || '0')
+  }
+
+  return {
+    evolucao: [...evolucao.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, point]) => point),
+    topMedicamentos: imh.topMedicamentos.map((item) => ({
+      nome: item.nome.length > 22 ? `${item.nome.slice(0, 20)}…` : item.nome,
+      valor: item.valor,
+      qtd: item.qtd,
+    })),
+    alertas: [
+      { nome: 'Estoque baixo', valor: alertas.estoqueBaixo },
+      { nome: 'Zerado', valor: alertas.estoqueZerado },
+      { nome: 'Vencido', valor: alertas.validadeVencida },
+      { nome: 'Próximo', valor: alertas.validadeProxima },
+    ],
+    fluxoEstoque: [
+      { nome: 'Entradas', valor: estoque.entradas },
+      { nome: 'Saídas', valor: estoque.saidas },
+    ],
+  }
+}
+
 function formatBrDate(d: Date): string {
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
