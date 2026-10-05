@@ -113,7 +113,10 @@ export default function ClinicaBalancoGeralPage() {
     }
   }, [mostrarExemplo, planilhas, pedidos, periodoTipo, referencia])
 
-  const animationKey = `${mostrarExemplo ? 'ex' : 'real'}-${periodoTipo}-${balanco.periodoLabel}`
+  const pacientesPme = mostrarExemplo ? 24 : (planilhas?.pacientesPme?.length ?? 0)
+  const planilhasEmCorrecao = mostrarExemplo
+    ? 1
+    : pedidos.filter((pedido) => pedido.planilhaDevolvidaParaChave === 'SOLICITACAO').length
 
   if (authLoading || clinicasLoading) return <LoadingSpinner />
 
@@ -140,7 +143,7 @@ export default function ClinicaBalancoGeralPage() {
         subtitle={
           mostrarExemplo
             ? `Pré-visualização com dados de exemplo · ${balanco.periodoLabel}`
-            : `Balanço de ${nomeClinica} · ${balanco.periodoLabel}`
+            : `PME de ${nomeClinica} · ${balanco.periodoLabel}`
         }
         titleAdornment={<AccountBalanceIcon color="primary" fontSize="small" />}
         action={
@@ -292,7 +295,11 @@ export default function ClinicaBalancoGeralPage() {
         ) : null}
       </Paper>
 
-      <MedicamentoBalancoCharts balanco={balanco} animationKey={animationKey} />
+      <MedicamentoBalancoCharts
+        balanco={balanco}
+        pacientesPme={pacientesPme}
+        planilhasEmCorrecao={planilhasEmCorrecao}
+      />
     </Box>
   )
 }
