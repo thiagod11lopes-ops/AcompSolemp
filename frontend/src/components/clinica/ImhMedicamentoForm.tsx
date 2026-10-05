@@ -1290,44 +1290,10 @@ export function ImhMedicamentoForm({
               sx={compactFieldSx}
             />
             <TextField
-              label="OM"
-              value={linhaDraft.om}
-              onChange={(e) => updateDraft({ om: formatImhMedUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
               label="UNIDADE DE FORNECIMENTO"
               value={linhaDraft.unidadeFornecimento}
               onChange={(e) =>
                 updateDraft({ unidadeFornecimento: formatImhMedUppercase(e.target.value) })
-              }
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="QUANTIDADE ADQUIRIDA PELA OMH/OMFM"
-              value={linhaDraft.quantidadeAdquirida}
-              onChange={(e) => updateDraft({ quantidadeAdquirida: formatImhMedQtd(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="QTD FORNECIDA POR OSE"
-              value={linhaDraft.qtdFornecidaOse}
-              onChange={(e) => updateDraft({ qtdFornecidaOse: formatImhMedQtd(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="MANEIRA DE FORNECIMENTO"
-              value={linhaDraft.maneiraFornecimento}
-              onChange={(e) =>
-                updateDraft({ maneiraFornecimento: formatImhMedUppercase(e.target.value) })
               }
               size="small"
               fullWidth

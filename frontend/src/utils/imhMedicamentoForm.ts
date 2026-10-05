@@ -92,23 +92,7 @@ export const IMH_MEDICAMENTO_COLUNAS = [
   { key: 'vinculo', label: 'VINCULO', width: 100 },
   { key: 'pctIndenizar', label: '% A INDENIZAR', width: 100 },
   { key: 'valorIndenizar', label: 'VALOR A INDENIZAR', width: 130 },
-  { key: 'om', label: 'OM', width: 80 },
   { key: 'unidadeFornecimento', label: 'UNIDADE DE FORNECIMENTO', width: 140 },
-  {
-    key: 'quantidadeAdquirida',
-    label: 'QUANTIDADE ADQUIRIDA PELA OMH/OMFM',
-    width: 160,
-  },
-  {
-    key: 'qtdFornecidaOse',
-    label: 'QTD FORNECIDA POR OSE',
-    width: 140,
-  },
-  {
-    key: 'maneiraFornecimento',
-    label: 'MANEIRA DE FORNECIMENTO',
-    width: 160,
-  },
 ] as const
 
 export type ImhMedicamentoColunaKey = (typeof IMH_MEDICAMENTO_COLUNAS)[number]['key']
@@ -130,10 +114,6 @@ export const IMH_MEDICAMENTO_COLUNAS_ENVIO_KEYS = [
   'vinculo',
   'pctIndenizar',
   'valorIndenizar',
-  'om',
-  'quantidadeAdquirida',
-  'qtdFornecidaOse',
-  'maneiraFornecimento',
 ] as const satisfies readonly ImhMedicamentoColunaKey[]
 
 export const IMH_MEDICAMENTO_COLUNAS_ENVIO = IMH_MEDICAMENTO_COLUNAS_ENVIO_KEYS.map(
