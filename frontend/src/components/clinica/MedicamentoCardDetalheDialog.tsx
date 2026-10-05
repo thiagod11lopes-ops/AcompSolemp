@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -22,14 +23,17 @@ export function MedicamentoCardDetalheDialog({
   detalhe,
   onClose,
 }: MedicamentoCardDetalheDialogProps) {
-  const linhas = detalhe?.linhas ?? []
+  const ultimo = useRef<PmeCardDetalhe | null>(null)
+  if (detalhe) ultimo.current = detalhe
+  const atual = detalhe ?? ultimo.current
+  const linhas = atual?.linhas ?? []
 
   return (
     <Dialog open={Boolean(detalhe)} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
-        {detalhe?.titulo}
+        {atual?.titulo}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
-          {detalhe?.descricao} {linhas.length === 1 ? '1 registro.' : `${linhas.length} registros.`}
+          {atual?.descricao} {linhas.length === 1 ? '1 registro.' : `${linhas.length} registros.`}
         </Typography>
         <IconButton aria-label="Fechar" onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
           <CloseIcon />
@@ -42,7 +46,7 @@ export function MedicamentoCardDetalheDialog({
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                {detalhe?.colunas.map((coluna) => (
+                {atual?.colunas.map((coluna) => (
                   <TableCell key={coluna} sx={{ fontWeight: 800 }}>
                     {coluna}
                   </TableCell>
