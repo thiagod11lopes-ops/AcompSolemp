@@ -32,7 +32,7 @@ export function MedicamentoBalancoCharts({
   const periodo = balanco.periodoLabel
   const cards: { title: string; value: string | number; subtitle: string; icon: ReactNode; color: string }[] = [
     {
-      title: 'Pacientes PME',
+      title: 'Pacientes atendidos',
       value: pacientesPme,
       subtitle: 'Cadastro da farmácia',
       icon: <PeopleAltOutlinedIcon />,
