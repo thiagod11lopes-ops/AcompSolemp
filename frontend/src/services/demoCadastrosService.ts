@@ -1,4 +1,4 @@
-import type { AppData, Clinica, User } from '@/types'
+import type { AppData, Clinica, Pedido, User } from '@/types'
 import { CADASTRO_PERFIS, type CadastroPerfilOpcao } from '@/types/cadastroPerfis'
 import { isDemoDataSession } from '@/config/dataSource'
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/mocks/seed'
 import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
 import { createDemoMedicamentoPlanilhaExemploState, createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
+import { createDemoMedicamentoDashboardConteudo } from '@/utils/medicamentoBalanco'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
@@ -355,6 +356,140 @@ export function ensureDemoExampleEmpenhadoPlanilha(): boolean {
   return true
 }
 
+const DEMO_PEDIDO_CORRECAO_PREFIX = 'demo-ped-correcao-v2-'
+
+function ensureRefsPedidoExemplo(data: AppData): {
+  empresaId: string
+  materialId: string
+  etapaId: string
+  etapaNome: string
+} | null {
+  if (data.empresas.length === 0) {
+    data.empresas.push({
+      id: 'demo-empresa-pme',
+      razaoSocial: 'Farmácia Exemplo LTDA',
+      nomeFantasia: 'Farmácia Exemplo',
+      cnpj: '00.000.000/0001-91',
+      contato: 'Farmácia',
+      telefone: '(21) 0000-0000',
+      email: 'farmacia.exemplo@marinha.mil.br',
+    })
+  }
+  if (data.materiais.length === 0) {
+    data.materiais.push({
+      id: 'demo-material-pme',
+      descricao: 'Medicamento PME',
+      fabricante: 'Laboratório',
+      unidade: 'FA',
+    })
+  }
+  const etapa =
+    data.workflowEtapas.find((item) => item.chave === 'SOLICITACAO') ?? data.workflowEtapas[0]
+  if (!etapa) return null
+  return {
+    empresaId: data.empresas[0].id,
+    materialId: data.materiais[0].id,
+    etapaId: etapa.id,
+    etapaNome: etapa.nome,
+  }
+}
+
+/**
+ * Preenche o dashboard do Medicamento Exemplo com lançamentos, estoque e planilhas em correção.
+ * Não mexe em linhas que o usuário já incluiu.
+ */
+export function ensureDemoMedicamentoDashboardExemplo(data: AppData): boolean {
+  if (!data.clinicas.some((clinica) => clinica.id === DEMO_MEDICAMENTO_EXEMPLO_ID)) return false
+  if (!data.planilhasLivres) data.planilhasLivres = {}
+
+  const state = data.planilhasLivres[DEMO_MEDICAMENTO_EXEMPLO_ID] ?? {
+    abas: [],
+    abaAtivaId: null,
+  }
+  const linhasAtuais = state.imhMedicamento?.linhas ?? []
+  const jaTemMes = linhasAtuais.some((linha) => linha.id.startsWith('demo-pme-dash-v2-atual-'))
+  let changed = false
+
+  if (!jaTemMes) {
+    const conteudo = createDemoMedicamentoDashboardConteudo()
+    const outras = linhasAtuais.filter((linha) => !linha.id.startsWith('demo-pme-dash-'))
+    const novas = conteudo.imhMedicamento.linhas
+    state.imhMedicamento = {
+      linhas: [...outras, ...novas],
+      finalizedImhIds: [
+        ...(state.imhMedicamento?.finalizedImhIds ?? []).filter(
+          (id) => !id.startsWith('demo-pme-dash-'),
+        ),
+        ...novas.map((linha) => linha.id),
+      ],
+      devolvidosImhIds: state.imhMedicamento?.devolvidosImhIds ?? [],
+    }
+    state.listaMedicamentos = conteudo.listaMedicamentos
+    data.planilhasLivres[DEMO_MEDICAMENTO_EXEMPLO_ID] = state
+    changed = true
+  } else if (!state.listaMedicamentos?.linhas?.some((linha) => linha.id.startsWith('demo-lista-v2-'))) {
+    state.listaMedicamentos = createDemoMedicamentoDashboardConteudo().listaMedicamentos
+    data.planilhasLivres[DEMO_MEDICAMENTO_EXEMPLO_ID] = state
+    changed = true
+  }
+
+  const existentes = new Set(data.pedidos.map((pedido) => pedido.id))
+  const refs = ensureRefsPedidoExemplo(data)
+  if (refs) {
+    const agora = new Date().toISOString()
+    for (let i = 1; i <= 8; i += 1) {
+      const id = `${DEMO_PEDIDO_CORRECAO_PREFIX}${i}`
+      if (existentes.has(id)) continue
+      const pedido: Pedido = {
+        id,
+        numero: `PME-EX-CORR-${String(i).padStart(2, '0')}`,
+        clinicaId: DEMO_MEDICAMENTO_EXEMPLO_ID,
+        empresaId: refs.empresaId,
+        materialId: refs.materialId,
+        quantidade: 1,
+        valor: 0,
+        observacoes: 'Planilha PME devolvida para correção (exemplo).',
+        paciente: null,
+        dadosClinica: null,
+        dataSolicitacao: agora,
+        dataEntrega: null,
+        etapaAtualId: refs.etapaId,
+        etapasAtivasIds: [refs.etapaId],
+        responsavelAtualId: null,
+        concluido: false,
+        etapasHistorico: [
+          {
+            etapaId: refs.etapaId,
+            etapaNome: refs.etapaNome,
+            responsavelId: null,
+            responsavelNome: 'Medicamento Exemplo',
+            dataInicio: agora,
+            dataConclusao: null,
+            observacao: '',
+            arquivos: [],
+          },
+        ],
+        planilhaDevolvidaParaChave: 'SOLICITACAO',
+        planilhaDevolvidaEm: agora,
+        planilhaDevolvidaJustificativa: 'Ajuste de lote e quantidade na planilha PME.',
+      }
+      data.pedidos.push(pedido)
+      changed = true
+    }
+  }
+
+  return changed
+}
+
+/** Grava o exemplo da PME no IndexedDB da sessão demo, se ainda não existir. */
+export async function persistDemoMedicamentoDashboardExemplo(): Promise<boolean> {
+  if (!isDemoDataSession()) return false
+  const data = loadAppData()
+  if (!ensureDemoMedicamentoDashboardExemplo(data)) return false
+  await saveDemoAppDataAndWait(data)
+  return true
+}
+
 /** Inicializa AppData de demonstração no IndexedDB (isolado da nuvem). */
 export async function initDemoAppData(): Promise<void> {
   if (!isDemoDataSession()) return
@@ -366,6 +501,11 @@ export async function initDemoAppData(): Promise<void> {
       try {
         const parsed = JSON.parse(raw) as AppData
         seedDemoExampleCadastros(parsed)
+        const { polishMedicamentoDashboardFicticio } = await import(
+          '@/services/fictionalDashboardSeedService'
+        )
+        polishMedicamentoDashboardFicticio(parsed)
+        ensureDemoMedicamentoDashboardExemplo(parsed)
         await saveDemoAppDataAndWait(parsed)
         clearAppDataCache()
         reloadAppDataFromStorage()
@@ -387,9 +527,10 @@ export async function initDemoAppData(): Promise<void> {
     seedDemoExamplePlanilha(data) ||
     seedDemoExampleMedicamentoPlanilha(data) ||
     seedDemoExampleEmpenhadoPlanilha(data)
+  const dashboardSeeded = ensureDemoMedicamentoDashboardExemplo(data)
 
   const after = JSON.stringify({ clinicas: data.clinicas, usuarios: data.usuarios })
-  if (before !== after || data.clinicas.length === 0 || planilhaSeeded) {
+  if (before !== after || data.clinicas.length === 0 || planilhaSeeded || dashboardSeeded) {
     saveAppData(data)
   }
 }

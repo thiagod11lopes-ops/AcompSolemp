@@ -536,11 +536,11 @@ const ITENS_PME_FIC = [
   'DUPILUMABE 300 MG',
 ]
 
-/** Espalha lançamentos PME no ano, com mais peso no mês atual, sem alterar o valor a indenizar. */
+/** Espalha lançamentos PME no ano, com a maior parte no mês atual, sem alterar o valor a indenizar. */
 function dataPmeFicticia(index: number): string {
   const now = new Date()
-  const slot = index % 10
-  const monthsAgo = slot < 4 ? 0 : slot < 6 ? 1 : slot < 8 ? 2 : 3 + (index % 8)
+  const slot = index % 20
+  const monthsAgo = slot < 17 ? 0 : slot - 16
   const cursor = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
   const lastDay = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
   const maxDay =
@@ -559,7 +559,7 @@ function polishLinhaPmeFicticia(linha: ImhMedicamentoLinha, index: number): void
   if (indenizar <= 0) return
   const pct = [20, 30, 30, 50, 20, 100][index % 6]
   const total = pct >= 100 ? indenizar : Math.round((indenizar / (pct / 100)) * 100) / 100
-  const qtd = 1 + (index % 3)
+  const qtd = 3 + (index % 6)
   linha.itemPme = ITENS_PME_FIC[index % ITENS_PME_FIC.length]
   linha.data = dataPmeFicticia(index)
   linha.qtd = String(qtd)
@@ -632,7 +632,7 @@ function listaEstoquePmeFicticia(): ListaMedicamentosLinha[] {
 }
 
 /** Deixa o dashboard do medicamento legível no modo fictício, sem mudar o total a indenizar. */
-function polishMedicamentoDashboardFicticio(data: AppData): void {
+export function polishMedicamentoDashboardFicticio(data: AppData): void {
   const linhas: ImhMedicamentoLinha[] = []
   for (const state of Object.values(data.planilhasLivres ?? {})) {
     for (const linha of state.imhMedicamento?.linhas ?? []) {

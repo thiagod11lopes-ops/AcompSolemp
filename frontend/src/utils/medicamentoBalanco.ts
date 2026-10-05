@@ -396,13 +396,21 @@ function consumoDiaExemplo(index: number, total: number): number {
   return Math.round(base + mes + semana)
 }
 
+function linhasPorDiaExemplo(periodoTipo: BalancoPeriodoTipo): number {
+  if (periodoTipo === 'dia') return 16
+  if (periodoTipo === 'ano') return 2
+  return 8
+}
+
 /** Dados fictícios alinhados ao período selecionado, só para pré-visualização. */
 export function createMedicamentoBalancoExemploInput(
   periodoTipo: BalancoPeriodoTipo,
   referencia: Date,
+  opcoes?: { linhasPorDia?: number },
 ): MedicamentoBalancoInput {
   const ref = startOfDay(referencia)
   const periodDays = daysInBalancoPeriodo(periodoTipo, ref)
+  const linhasPorDia = Math.max(1, opcoes?.linhasPorDia ?? linhasPorDiaExemplo(periodoTipo))
   const validadeOk = formatBrDate(addDays(ref, 180))
   const validadeProxima = formatBrDate(addDays(ref, 18))
   const validadeVencida = formatBrDate(addDays(ref, -12))
@@ -474,8 +482,8 @@ export function createMedicamentoBalancoExemploInput(
         },
       ]
     }),
-    ...Array.from({ length: 14 }, (_, i) => {
-      const kind = i < 3 ? 'baixo' : i < 6 ? 'zerado' : i < 10 ? 'vencido' : 'proximo'
+    ...Array.from({ length: 22 }, (_, i) => {
+      const kind = i < 6 ? 'baixo' : i < 11 ? 'zerado' : i < 17 ? 'vencido' : 'proximo'
       return {
         id: `ex-lista-extra-${i + 1}`,
         neb: `BR26${String(2000 + i)}`,
@@ -496,11 +504,11 @@ export function createMedicamentoBalancoExemploInput(
   const imhMedicamento: ImhMedicamentoFormData = {
     linhas: periodDays.flatMap((day, dayIndex) => {
       const consumoDia = consumoDiaExemplo(dayIndex, periodDays.length)
-      return [0, 1].map((slot) => {
+      return Array.from({ length: linhasPorDia }, (_, slot) => {
         const item = EXEMPLO_ITENS_PME[(dayIndex + slot) % EXEMPLO_ITENS_PME.length]
-        const fatia = slot === 0 ? 0.58 : 0.42
+        const fatia = (slot + 1) / ((linhasPorDia * (linhasPorDia + 1)) / 2)
         const total = Math.round(consumoDia * fatia * item.peso * 10) / 10
-        const qtd = 1 + ((dayIndex + slot) % 3)
+        const qtd = 4 + ((dayIndex * 3 + slot) % 5)
         const pct = [20, 30, 50][(dayIndex + slot) % 3]
         const indenizar = Math.round(total * (pct / 100) * 100) / 100
         return {
@@ -600,6 +608,50 @@ export function createMedicamentoBalancoExemploInput(
     pedidos,
     periodoTipo,
     referencia: ref,
+  }
+}
+
+const DEMO_DASH_PREFIX = 'demo-pme-dash-v2-'
+const DEMO_LISTA_PREFIX = 'demo-lista-v2-'
+
+/** Planilha PME do Medicamento Exemplo: mês atual com mais de 200 lançamentos e alertas de estoque. */
+export function createDemoMedicamentoDashboardConteudo(now = new Date()): {
+  listaMedicamentos: ListaMedicamentosFormData
+  imhMedicamento: ImhMedicamentoFormData
+} {
+  const atual = createMedicamentoBalancoExemploInput('mes', now)
+  const linhas: ImhMedicamentoLinha[] = atual.imhMedicamento.linhas.map((linha, index) => ({
+    ...linha,
+    id: `${DEMO_DASH_PREFIX}atual-${index + 1}`,
+  }))
+
+  for (let month = 0; month < now.getMonth(); month += 1) {
+    const ref = new Date(now.getFullYear(), month, 15)
+    const mes = createMedicamentoBalancoExemploInput('mes', ref, { linhasPorDia: 1 })
+    mes.imhMedicamento.linhas
+      .filter((_, index) => index % 4 === 0)
+      .slice(0, 10)
+      .forEach((linha, index) => {
+        linhas.push({ ...linha, id: `${DEMO_DASH_PREFIX}m${month}-${index + 1}` })
+      })
+  }
+
+  return {
+    listaMedicamentos: {
+      linhas: atual.listaMedicamentos.linhas.map((linha, index) => ({
+        ...linha,
+        id: `${DEMO_LISTA_PREFIX}${index + 1}`,
+        movimentacoes: (linha.movimentacoes ?? []).map((mov, movIndex) => ({
+          ...mov,
+          id: `${DEMO_LISTA_PREFIX}${index + 1}-mov-${movIndex + 1}`,
+        })),
+      })),
+    },
+    imhMedicamento: {
+      linhas,
+      finalizedImhIds: linhas.map((linha) => linha.id),
+      devolvidosImhIds: [],
+    },
   }
 }
 
