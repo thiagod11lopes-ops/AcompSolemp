@@ -15,25 +15,39 @@ interface KpiCardProps {
   color?: string
   trend?: string
   onClick?: () => void
+  /** Menos altura, para caber vários indicadores na mesma tela. */
+  dense?: boolean
 }
 
-export function KpiCard({ title, value, subtitle, icon, color, trend, onClick }: KpiCardProps) {
+export function KpiCard({ title, value, subtitle, icon, color, trend, onClick, dense }: KpiCardProps) {
   const theme = useTheme()
   const accent = color ?? theme.palette.primary.main
 
   const content = (
-    <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+    <CardContent
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        ...(dense ? { py: 1, px: 1.25, '&:last-child': { pb: 1 } } : null),
+      }}
+    >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: dense ? 0.75 : 1.5 }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={dashboardCardTitleSx}>{title}</Typography>
+          <Typography sx={dense ? { ...dashboardCardTitleSx, fontSize: '0.72rem' } : dashboardCardTitleSx}>
+            {title}
+          </Typography>
           <Typography
-            variant="h4"
+            variant={dense ? 'h6' : 'h4'}
             sx={{
               fontWeight: 800,
               letterSpacing: '-0.03em',
-              mt: 0.75,
-              mb: 0.5,
+              mt: dense ? 0.25 : 0.75,
+              mb: dense ? 0 : 0.5,
               color: premiumTokens.primaryDark,
+              ...(dense
+                ? { fontSize: '0.95rem', lineHeight: 1.15, whiteSpace: 'nowrap' }
+                : null),
             }}
           >
             {value}
@@ -52,8 +66,8 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick }:
         {icon && (
           <Box
             sx={{
-              width: 40,
-              height: 40,
+              width: dense ? 28 : 40,
+              height: dense ? 28 : 40,
               borderRadius: `${premiumTokens.radiusSm}px`,
               display: 'flex',
               alignItems: 'center',
@@ -63,7 +77,7 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick }:
               border: `1px solid ${alpha(accent, 0.28)}`,
               flexShrink: 0,
               boxShadow: '0 2px 8px rgba(63, 107, 86, 0.12)',
-              ...dashboardCardIconOffsetSx,
+              ...(dense ? { '& svg': { fontSize: 16 } } : dashboardCardIconOffsetSx),
             }}
           >
             {icon}
@@ -74,7 +88,13 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick }:
   )
 
   return (
-    <Card sx={dashboardCardShellSx}>
+    <Card
+      sx={
+        dense
+          ? { ...dashboardCardShellSx, '&:hover': { transform: 'none', boxShadow: dashboardCardShellSx.boxShadow } }
+          : dashboardCardShellSx
+      }
+    >
       {onClick ? (
         <CardActionArea
           onClick={onClick}

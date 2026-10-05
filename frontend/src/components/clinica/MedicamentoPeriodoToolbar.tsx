@@ -42,6 +42,7 @@ interface MedicamentoPeriodoToolbarProps {
   anos: number[]
   mostrarExemplo: boolean
   idPrefix: string
+  compact?: boolean
 }
 
 export function MedicamentoPeriodoToolbar({
@@ -52,13 +53,14 @@ export function MedicamentoPeriodoToolbar({
   anos,
   mostrarExemplo,
   idPrefix,
+  compact = false,
 }: MedicamentoPeriodoToolbarProps) {
   return (
     <Paper
       variant="outlined"
       sx={{
-        p: 1.5,
-        mb: 2.5,
+        p: compact ? 1 : 1.5,
+        mb: compact ? 0 : 2.5,
         display: 'flex',
         flexWrap: 'wrap',
         gap: 1.5,

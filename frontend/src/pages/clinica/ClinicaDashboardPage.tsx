@@ -16,7 +16,7 @@ import DashboardPage from '@/pages/DashboardPage'
 /** Dashboard da clínica logada. Medicamento vê só a PME, com gráficos. */
 export default function ClinicaDashboardPage() {
   const { user, isLoading: authLoading } = useClinicaAuth()
-  const { mapPath } = usePortalPaths()
+  const { mapPath, demoBannerHeight } = usePortalPaths()
   const { data: clinicas = [], isLoading: clinicasLoading } = useClinicas()
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
   const isMedicamento = user?.perfil === 'MEDICAMENTO' || clinica?.tipo === 'medicamento'
@@ -40,7 +40,19 @@ export default function ClinicaDashboardPage() {
   }
 
   return (
-    <Box>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+        minHeight: 0,
+        height: {
+          sm: `calc(100dvh - ${demoBannerHeight + 64 + 32}px)`,
+          md: `calc(100dvh - ${demoBannerHeight + 64 + 48}px)`,
+        },
+        overflow: { sm: 'hidden' },
+      }}
+    >
       <PageHeader
         title="Dashboard"
         subtitle={
@@ -48,6 +60,7 @@ export default function ClinicaDashboardPage() {
             ? `Pré-visualização com dados de exemplo · ${resumo.balanco.periodoLabel}`
             : `PME de ${nomeClinica} · ${resumo.balanco.periodoLabel}`
         }
+        dense
         titleAdornment={<AccountBalanceIcon color="primary" fontSize="small" />}
         action={
           <Tooltip
@@ -71,7 +84,7 @@ export default function ClinicaDashboardPage() {
       />
 
       {resumo.mostrarExemplo ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ py: 0 }}>
           Exibindo dados fictícios para demonstração. Isso não altera estoque, IMH nem pedidos.
         </Alert>
       ) : null}
@@ -90,14 +103,17 @@ export default function ClinicaDashboardPage() {
         onReferencia={resumo.setReferencia}
         anos={resumo.anos}
         mostrarExemplo={resumo.mostrarExemplo}
+        compact
       />
 
       <MedicamentoBalancoCharts
+        compact
         balanco={resumo.balanco}
         pacientesPme={resumo.pacientesPme}
         planilhasEmCorrecao={resumo.planilhasEmCorrecao}
       />
       <MedicamentoDashboardCharts
+        compact
         charts={resumo.charts}
         periodoLabel={resumo.balanco.periodoLabel}
       />
