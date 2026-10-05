@@ -263,6 +263,21 @@ export function ImhMedicamentoForm({
       precoReferencia: row.precoReferencia,
     }))
   }, [listaMedicamentos, catalog])
+
+  const precoTabelaDaLinha = (linha: Pick<ImhMedicamentoLinha, 'itemPme' | 'lote' | 'listaMedicamentoId'>) => {
+    const form = listaMedicamentos?.linhas?.some((item) => item.medicamento.trim())
+      ? listaMedicamentos
+      : { linhas: medicamentoOptions }
+    const row =
+      resolveListaMedicamentoEstoque(form, linha.itemPme, linha.lote, linha.listaMedicamentoId) ??
+      findListaMedicamentoByNome(linha.itemPme, form)
+    const preco = row?.precoReferencia?.trim() ?? ''
+    return preco ? formatPrecoReferenciaMedicamento(preco) || preco : ''
+  }
+
+  const recalcLinha = (linha: ImhMedicamentoLinha) =>
+    withRecalculatedImhMedicamentoLinha(linha, precoTabelaDaLinha(linha))
+
   const [linhaDraft, setLinhaDraft] = useState<ImhMedicamentoLinha>(() =>
     createEmptyImhMedicamentoLinha(),
   )
@@ -463,7 +478,7 @@ export function ImhMedicamentoForm({
 
   const persistLinhas = (linhas: ImhMedicamentoLinha[]) => {
     const nextLinhas = linhas
-      .map(withRecalculatedImhMedicamentoLinha)
+      .map(recalcLinha)
       .filter((l) => linhaImhMedicamentoHasContent(l))
     const ids = new Set(nextLinhas.map((l) => l.id))
     onChange({
@@ -548,7 +563,7 @@ export function ImhMedicamentoForm({
   }
 
   const syncDraftToList = (nextDraft: ImhMedicamentoLinha) => {
-    const ready = withRecalculatedImhMedicamentoLinha(nextDraft)
+    const ready = recalcLinha(nextDraft)
     setLinhaDraft(ready)
     setNomeInput(ready.nome)
     if (!editingLinhaId) return
@@ -562,12 +577,10 @@ export function ImhMedicamentoForm({
       patch.vinculo !== undefined
         ? {
             ...patch,
-            pctIndenizar:
-              pctIndenizarFromVinculo(patch.vinculo) ??
-              (patch.pctIndenizar !== undefined ? patch.pctIndenizar : linhaDraft.pctIndenizar),
+            pctIndenizar: pctIndenizarFromVinculo(patch.vinculo) ?? '',
           }
         : patch
-    syncDraftToList(withRecalculatedImhMedicamentoLinha({ ...linhaDraft, ...nextPatch }))
+    syncDraftToList({ ...linhaDraft, ...nextPatch })
   }
 
   const applyPacienteSelection = (paciente: PacientePmeRow | null) => {
@@ -577,12 +590,10 @@ export function ImhMedicamentoForm({
       clearTimeout(nipAlertTimerRef.current)
       nipAlertTimerRef.current = null
     }
-    syncDraftToList(
-      withRecalculatedImhMedicamentoLinha({
-        ...linhaDraft,
-        ...pacienteUsuarioToDraftPatch(paciente),
-      }),
-    )
+    syncDraftToList({
+      ...linhaDraft,
+      ...pacienteUsuarioToDraftPatch(paciente),
+    })
   }
 
   const applyNipMatch = (match: PacientePmeNipMatch, nipDigitado: string) => {
@@ -591,12 +602,10 @@ export function ImhMedicamentoForm({
       clearTimeout(nipAlertTimerRef.current)
       nipAlertTimerRef.current = null
     }
-    syncDraftToList(
-      withRecalculatedImhMedicamentoLinha({
-        ...linhaDraft,
-        ...matchToDraftPatch(match, nipDigitado),
-      }),
-    )
+    syncDraftToList({
+      ...linhaDraft,
+      ...matchToDraftPatch(match, nipDigitado),
+    })
   }
 
   const tryFillFromNip = (nipRaw: string, { alertIfMissing }: { alertIfMissing: boolean }) => {
@@ -808,7 +817,7 @@ export function ImhMedicamentoForm({
   }
 
   const handleAdicionarLinha = () => {
-    const readyBase = withRecalculatedImhMedicamentoLinha(linhaDraft)
+    const readyBase = recalcLinha(linhaDraft)
     const ready = withListaEstoqueMeta(readyBase)
     if (!ready.data.trim()) {
       setDataError(true)

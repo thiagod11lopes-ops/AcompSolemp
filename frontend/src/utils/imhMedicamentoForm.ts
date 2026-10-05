@@ -51,16 +51,25 @@ export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
   devolvidosImhIds: [],
 }
 
-/** 20% dependente direto; 100% dependente indireto. */
+/**
+ * Mesma regra da IMH da clínica:
+ * titular e dependente direto → 20%; dependente indireto → 100%.
+ */
 export function pctIndenizarFromVinculo(vinculo: string): string | null {
   const normalized = vinculo
     .trim()
     .toUpperCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-  if (!normalized) return null
+  if (!normalized || normalized === 'OUTRO' || normalized === 'OUTROS') return null
   if (normalized.includes('INDIRETO')) return '100%'
-  if (normalized.includes('DEPENDENTE DIRETO')) return '20%'
+  if (
+    normalized === 'TITULAR' ||
+    normalized === 'DEPENDENTE' ||
+    normalized.includes('DEPENDENTE DIRETO')
+  ) {
+    return '20%'
+  }
   return null
 }
 
@@ -153,15 +162,19 @@ function parsePctIndenizar(raw: string): number {
 
 export function withRecalculatedImhMedicamentoLinha(
   linha: ImhMedicamentoLinha,
+  precoTabela?: string,
 ): ImhMedicamentoLinha {
+  const precoRef = precoTabela?.trim() || ''
+  const unitario = precoRef || linha.valorUnitario
   const qtd = parseQuantidade(linha.qtd)
-  const unit = parseValorBrasileiro(linha.valorUnitario)
+  const unit = parseValorBrasileiro(unitario)
   const total = qtd > 0 && unit > 0 ? unit * qtd : parseValorBrasileiro(linha.total)
   const totalFmt = total > 0 ? formatValorBrasileiro(total) : linha.total.trim()
   const pct = parsePctIndenizar(linha.pctIndenizar)
   const valorIndenizar = total > 0 && pct > 0 ? formatValorBrasileiro(total * pct) : ''
   return {
     ...linha,
+    valorUnitario: precoRef || linha.valorUnitario,
     total: totalFmt,
     valorIndenizar,
   }
