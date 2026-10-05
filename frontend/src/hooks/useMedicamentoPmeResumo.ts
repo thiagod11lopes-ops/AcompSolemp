@@ -60,9 +60,9 @@ export function useMedicamentoPmeResumo(clinicaId: string, enabled: boolean) {
 
   const charts = useMemo(() => buildMedicamentoPmeChartData(input), [input])
 
-  const pacientesPme = mostrarExemplo ? 24 : (planilhas?.pacientesPme?.length ?? 0)
+  const pacientesPme = mostrarExemplo ? 186 : (planilhas?.pacientesPme?.length ?? 0)
   const planilhasEmCorrecao = mostrarExemplo
-    ? 1
+    ? 6
     : pedidos.filter((pedido) => pedido.planilhaDevolvidaParaChave === 'SOLICITACAO').length
 
   return {

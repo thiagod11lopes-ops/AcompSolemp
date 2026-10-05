@@ -2,6 +2,8 @@ import type {
   AppData,
   Clinica,
   ImhMedicamentoLinha,
+  ListaMedicamentoMovimentacao,
+  ListaMedicamentosLinha,
   Pedido,
   PedidoEtapaHistorico,
   PedidoPlanilhaEnvioState,
@@ -16,7 +18,7 @@ import {
   wipeDemoAppDataStore,
 } from '@/mocks/seed'
 import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/indexedDb'
-import { formatValorBrasileiro } from '@/utils/consumoMaterialOds'
+import { formatValorBrasileiro, parseValorBrasileiro } from '@/utils/consumoMaterialOds'
 import { createLinhaVazia } from '@/utils/consumoMaterialTemplate'
 import { EMPTY_CABECALHO } from '@/utils/fictionalSeedCabecalho'
 import {
@@ -525,6 +527,146 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
   return data
 }
 
+const ITENS_PME_FIC = [
+  'ADALIMUMABE 40 MG',
+  'INFLIXIMABE 100 MG',
+  'RITUXIMABE 500 MG',
+  'ETANERCEPTE 50 MG',
+  'TOCILIZUMABE 80 MG',
+  'DUPILUMABE 300 MG',
+]
+
+/** Espalha lançamentos PME no ano, com mais peso no mês atual, sem alterar o valor a indenizar. */
+function dataPmeFicticia(index: number): string {
+  const now = new Date()
+  const slot = index % 10
+  const monthsAgo = slot < 4 ? 0 : slot < 6 ? 1 : slot < 8 ? 2 : 3 + (index % 8)
+  const cursor = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1)
+  const lastDay = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate()
+  const maxDay =
+    cursor.getFullYear() === now.getFullYear() && cursor.getMonth() === now.getMonth()
+      ? now.getDate()
+      : lastDay
+  const day = 1 + ((index * 5) % Math.max(maxDay, 1))
+  const date = new Date(cursor.getFullYear(), cursor.getMonth(), day)
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${date.getFullYear()}`
+}
+
+function polishLinhaPmeFicticia(linha: ImhMedicamentoLinha, index: number): void {
+  const indenizar = parseValorBrasileiro(linha.valorIndenizar)
+  if (indenizar <= 0) return
+  const pct = [20, 30, 30, 50, 20, 100][index % 6]
+  const total = pct >= 100 ? indenizar : Math.round((indenizar / (pct / 100)) * 100) / 100
+  const qtd = 1 + (index % 3)
+  linha.itemPme = ITENS_PME_FIC[index % ITENS_PME_FIC.length]
+  linha.data = dataPmeFicticia(index)
+  linha.qtd = String(qtd)
+  linha.valorUnitario = formatValorBrasileiro(total / qtd)
+  linha.total = formatValorBrasileiro(total)
+  linha.pctIndenizar = String(pct)
+  linha.lote = `L${1200 + (index % 36)}`
+}
+
+function listaEstoquePmeFicticia(): ListaMedicamentosLinha[] {
+  const now = new Date()
+  const br = (offset: number) => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + offset)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    return `${dd}/${mm}/${d.getFullYear()}`
+  }
+  const movimentos = (index: number): ListaMedicamentoMovimentacao[] => {
+    return [6, 14, 22].map((diaOffset, step) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), Math.max(1, now.getDate() - diaOffset))
+      const data = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+      const entrada = step % 2 === 0
+      return {
+        id: `fic-mov-${index}-${step}`,
+        tipo: entrada ? 'entrada' : 'saida',
+        qtd: entrada ? String(48 + index * 4) : String(30 + index * 3),
+        data,
+        origemDestino: entrada ? 'Compra PME' : 'Ambulatório',
+        responsavel: 'Farmácia',
+        createdAt: d.toISOString(),
+      }
+    })
+  }
+
+  return [
+    ...ITENS_PME_FIC.map((nome, index) => {
+      const status = ['baixo', 'zerado', 'vencido', 'proximo', 'ok', 'ok'][index]
+      return {
+        id: `fic-lista-pme-${index + 1}`,
+        neb: `BR26${String(3000 + index)}`,
+        medicamento: nome,
+        lote: `L${1200 + index}`,
+        validade: status === 'vencido' ? br(-20) : status === 'proximo' ? br(12) : br(200),
+        uf: 'FA',
+        qtd: status === 'zerado' ? '0' : status === 'baixo' ? '8' : String(60 + index * 10),
+        estoqueBaixo: status === 'baixo' ? '24' : '10',
+        avisoValidadeDias: '30',
+        precoReferencia: formatValorBrasileiro(980 + index * 280),
+        movimentacoes: status === 'ok' ? movimentos(index) : [],
+      }
+    }),
+    ...Array.from({ length: 14 }, (_, i) => {
+      const kind = i < 3 ? 'baixo' : i < 6 ? 'zerado' : i < 10 ? 'vencido' : 'proximo'
+      return {
+        id: `fic-lista-extra-${i + 1}`,
+        neb: `BR26${String(4000 + i)}`,
+        medicamento: `LOTE PME ${kind.toUpperCase()} ${i + 1}`,
+        lote: `LX${i + 1}`,
+        validade: kind === 'vencido' ? br(-15) : kind === 'proximo' ? br(10) : br(160),
+        uf: 'FA',
+        qtd: kind === 'zerado' ? '0' : kind === 'baixo' ? '6' : '20',
+        estoqueBaixo: kind === 'baixo' ? '18' : '5',
+        avisoValidadeDias: '30',
+        precoReferencia: formatValorBrasileiro(360 + i * 20),
+        movimentacoes: [],
+      }
+    }),
+  ]
+}
+
+/** Deixa o dashboard do medicamento legível no modo fictício, sem mudar o total a indenizar. */
+function polishMedicamentoDashboardFicticio(data: AppData): void {
+  const linhas: ImhMedicamentoLinha[] = []
+  for (const state of Object.values(data.planilhasLivres ?? {})) {
+    for (const linha of state.imhMedicamento?.linhas ?? []) {
+      if (linha.id.startsWith('fic-pme-')) linhas.push(linha)
+    }
+  }
+  linhas.forEach(polishLinhaPmeFicticia)
+
+  const pacientes = linhas.slice(0, 186).map((linha, index) => ({
+    id: `fic-paciente-pme-${index + 1}`,
+    nome: linha.nome || `Paciente PME ${index + 1}`,
+    nipUsuario: linha.nip,
+    nipTitular: linha.nipTitular || linha.nip,
+    postoGradTitular: linha.postoGrad || '1SG',
+    vinculo: linha.vinculo || 'TITULAR',
+  }))
+
+  for (const state of Object.values(data.planilhasLivres ?? {})) {
+    if (!state.imhMedicamento?.linhas?.some((linha) => linha.id.startsWith('fic-pme-'))) continue
+    state.listaMedicamentos = { linhas: listaEstoquePmeFicticia() }
+    state.pacientesPme = pacientes
+  }
+
+  let correcoes = 0
+  for (const pedido of data.pedidos) {
+    if (!pedido.id.startsWith('fic-ped-a-pme-')) continue
+    if (correcoes >= 6) break
+    pedido.planilhaDevolvidaParaChave = 'SOLICITACAO'
+    pedido.planilhaDevolvidaEm = isoDaysAgo(1 + correcoes)
+    pedido.planilhaDevolvidaJustificativa = 'Ajuste de lote e quantidade na planilha PME.'
+    correcoes += 1
+  }
+}
+
 export function isFictionalDashboardSeedActive(): boolean {
   return storageGet(STORAGE_KEYS.FICTIONAL_ACTIVE) === '1'
 }
@@ -635,6 +777,7 @@ export async function activateFictionalDashboardSeed(): Promise<void> {
   const fictional = buildFictionalDashboardAppData(base)
   seedDemoExampleCadastros(fictional)
   espelharPedidosNasEntidadesDemo(fictional)
+  polishMedicamentoDashboardFicticio(fictional)
 
   storageSet(STORAGE_KEYS.FICTIONAL_SNAPSHOT, JSON.stringify(fictional))
   storageSet(STORAGE_KEYS.FICTIONAL_ACTIVE, '1')

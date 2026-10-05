@@ -6,7 +6,7 @@ import type {
   ListaMedicamentosLinha,
   Pedido,
 } from '@/types'
-import { parseValorBrasileiro } from '@/utils/consumoMaterialOds'
+import { formatValorBrasileiro, parseValorBrasileiro } from '@/utils/consumoMaterialOds'
 import {
   getListaMedEstoqueStatus,
   getListaMedValidadeStatus,
@@ -379,56 +379,21 @@ function daysInBalancoPeriodo(tipo: BalancoPeriodoTipo, referencia: Date): Date[
   return days
 }
 
-function buildExemploMovimentacoesDiarias(
-  days: Date[],
-): ListaMedicamentoMovimentacao[][] {
-  /** Uma lista de movimentações por medicamento (3 lotes de exemplo). */
-  const porMedicamento: ListaMedicamentoMovimentacao[][] = [[], [], []]
-  const origensEntrada = ['Farmácia central', 'Compra PME', 'Devolução setor']
-  const destinosSaida = ['Ambulatório', 'Pronto atendimento', 'Enfermaria', 'UTI']
-  const responsaveis = ['Exemplo', 'Téc. Farmácia', 'Enf. Plantão']
-  let seq = 0
+const EXEMPLO_ITENS_PME = [
+  { nome: 'ADALIMUMABE 40 MG', peso: 1.45, preco: 1850 },
+  { nome: 'INFLIXIMABE 100 MG', peso: 1.2, preco: 2100 },
+  { nome: 'RITUXIMABE 500 MG', peso: 1.05, preco: 3200 },
+  { nome: 'ETANERCEPTE 50 MG', peso: 0.9, preco: 980 },
+  { nome: 'TOCILIZUMABE 80 MG', peso: 0.75, preco: 1450 },
+  { nome: 'DUPILUMABE 300 MG', peso: 0.62, preco: 2750 },
+] as const
 
-  for (let i = 0; i < days.length; i += 1) {
-    const day = days[i]
-    const data = formatBrDate(day)
-    const createdAt = new Date(
-      day.getFullYear(),
-      day.getMonth(),
-      day.getDate(),
-      9 + (i % 8),
-      (i * 7) % 60,
-      0,
-    ).toISOString()
-
-    // 2 movimentações/dia: 1 entrada + 1 saída (mês de 31 dias → 62 registros).
-    const medEntrada = i % 3
-    const medSaida = (i + 1) % 3
-    const qtdEntrada = String(8 + (i % 12))
-    const qtdSaida = String(3 + (i % 9))
-
-    porMedicamento[medEntrada].push({
-      id: `ex-mov-${++seq}`,
-      tipo: 'entrada',
-      qtd: qtdEntrada,
-      data,
-      origemDestino: origensEntrada[i % origensEntrada.length],
-      responsavel: responsaveis[i % responsaveis.length],
-      createdAt,
-    })
-
-    porMedicamento[medSaida].push({
-      id: `ex-mov-${++seq}`,
-      tipo: 'saida',
-      qtd: qtdSaida,
-      data,
-      origemDestino: destinosSaida[i % destinosSaida.length],
-      responsavel: responsaveis[(i + 1) % responsaveis.length],
-      createdAt,
-    })
-  }
-
-  return porMedicamento
+function consumoDiaExemplo(index: number, total: number): number {
+  const t = total <= 1 ? 0.55 : index / (total - 1)
+  const base = 4800
+  const mes = Math.sin(t * Math.PI * 2) * 700
+  const semana = Math.sin(t * Math.PI * 6) * 280
+  return Math.round(base + mes + semana)
 }
 
 /** Dados fictícios alinhados ao período selecionado, só para pré-visualização. */
@@ -438,91 +403,129 @@ export function createMedicamentoBalancoExemploInput(
 ): MedicamentoBalancoInput {
   const ref = startOfDay(referencia)
   const periodDays = daysInBalancoPeriodo(periodoTipo, ref)
-  const movPorMedicamento = buildExemploMovimentacoesDiarias(periodDays)
-
   const validadeOk = formatBrDate(addDays(ref, 180))
-  const validadeProxima = formatBrDate(addDays(ref, 20))
-  const validadeVencida = formatBrDate(addDays(ref, -10))
+  const validadeProxima = formatBrDate(addDays(ref, 18))
+  const validadeVencida = formatBrDate(addDays(ref, -12))
+
+  const passosMov = Math.min(10, Math.max(1, Math.round(periodDays.length / 3)))
+  const movDias = Array.from({ length: passosMov }, (_, i) => {
+    const idx = Math.min(
+      periodDays.length - 1,
+      Math.round((i * (periodDays.length - 1)) / Math.max(passosMov - 1, 1)),
+    )
+    return periodDays[idx]
+  })
 
   const listaMedicamentos: ListaMedicamentosFormData = {
-    linhas: [
-      {
-        id: 'ex-lista-1',
-        neb: 'BR1000001',
-        medicamento: 'DIPIRONA 500 MG COMP',
-        lote: 'L-EX01',
-        validade: validadeOk,
-        uf: 'SE',
-        qtd: '120',
-        estoqueBaixo: '30',
+    linhas: [...EXEMPLO_ITENS_PME.flatMap((item, index) => {
+      const status =
+        index < 2 ? 'baixo' : index === 2 ? 'zerado' : index === 3 ? 'vencido' : index === 4 ? 'proximo' : 'ok'
+      const qtd = status === 'zerado' ? '0' : status === 'baixo' ? '12' : String(40 + index * 8)
+      const estoqueBaixo = status === 'baixo' ? '30' : '8'
+      const validade =
+        status === 'vencido' ? validadeVencida : status === 'proximo' ? validadeProxima : validadeOk
+      const movimentacoes: ListaMedicamentoMovimentacao[] =
+        status === 'ok'
+          ? movDias.flatMap((day, step) => {
+              const data = formatBrDate(day)
+              const createdAt = new Date(
+                day.getFullYear(),
+                day.getMonth(),
+                day.getDate(),
+                10,
+                0,
+                0,
+              ).toISOString()
+              return [
+                {
+                  id: `ex-mov-${index}-e-${step}`,
+                  tipo: 'entrada' as const,
+                  qtd: String(36 + ((index + step) % 5) * 4),
+                  data,
+                  origemDestino: 'Compra PME',
+                  responsavel: 'Farmácia',
+                  createdAt,
+                },
+                {
+                  id: `ex-mov-${index}-s-${step}`,
+                  tipo: 'saida' as const,
+                  qtd: String(22 + ((index + step) % 4) * 3),
+                  data,
+                  origemDestino: 'Ambulatório',
+                  responsavel: 'Farmácia',
+                  createdAt,
+                },
+              ]
+            })
+          : []
+      return [
+        {
+          id: `ex-lista-${index + 1}`,
+          neb: `BR26${String(1000 + index)}`,
+          medicamento: item.nome,
+          lote: `L-PME-${index + 1}`,
+          validade,
+          uf: 'FA',
+          qtd,
+          estoqueBaixo,
+          avisoValidadeDias: '30',
+          precoReferencia: formatValorBrasileiro(item.preco),
+          movimentacoes,
+        },
+      ]
+    }),
+    ...Array.from({ length: 14 }, (_, i) => {
+      const kind = i < 3 ? 'baixo' : i < 6 ? 'zerado' : i < 10 ? 'vencido' : 'proximo'
+      return {
+        id: `ex-lista-extra-${i + 1}`,
+        neb: `BR26${String(2000 + i)}`,
+        medicamento: `LOTE PME ${kind.toUpperCase()} ${i + 1}`,
+        lote: `L-EX-${i + 1}`,
+        validade: kind === 'vencido' ? validadeVencida : kind === 'proximo' ? validadeProxima : validadeOk,
+        uf: 'FA',
+        qtd: kind === 'zerado' ? '0' : kind === 'baixo' ? '6' : '24',
+        estoqueBaixo: kind === 'baixo' ? '20' : '5',
         avisoValidadeDias: '30',
-        precoReferencia: 'R$ 2,50',
-        movimentacoes: movPorMedicamento[0],
-      },
-      {
-        id: 'ex-lista-2',
-        neb: 'BR1000002',
-        medicamento: 'AMOXICILINA 500 MG CAP',
-        lote: 'L-EX02',
-        validade: validadeProxima,
-        uf: 'SE',
-        qtd: '18',
-        estoqueBaixo: '20',
-        avisoValidadeDias: '45',
-        precoReferencia: 'R$ 4,90',
-        movimentacoes: movPorMedicamento[1],
-      },
-      {
-        id: 'ex-lista-3',
-        neb: 'BR1000003',
-        medicamento: 'LOSARTANA 50 MG COMP',
-        lote: 'L-EX03',
-        validade: validadeVencida,
-        uf: 'SE',
-        qtd: '0',
-        estoqueBaixo: '10',
-        avisoValidadeDias: '30',
-        precoReferencia: 'R$ 1,80',
-        movimentacoes: movPorMedicamento[2],
-      },
+        precoReferencia: formatValorBrasileiro(420 + i * 15),
+        movimentacoes: [],
+      }
+    }),
     ],
   }
 
-  // Lançamentos IMH espalhados pelo período (além das movimentações diárias).
-  const imhSeedDays =
-    periodoTipo === 'dia'
-      ? [ref]
-      : periodDays.filter((_, idx) => idx % Math.max(1, Math.floor(periodDays.length / 12)) === 0).slice(0, 12)
-
   const imhMedicamento: ImhMedicamentoFormData = {
-    linhas: imhSeedDays.map((day, idx) => {
-      const isAmox = idx % 2 === 1
-      const qtd = isAmox ? 14 + (idx % 5) : 6 + (idx % 8)
-      const unit = isAmox ? 4.9 : 2.5
-      const total = qtd * unit
-      const pct = idx % 3 === 0 ? 0.2 : 0
-      return {
-        id: `ex-imh-${idx + 1}`,
-        data: formatBrDate(day),
-        nip: `${10 + idx}.${1000 + idx}.${20 + idx}`,
-        nome: `PACIENTE EXEMPLO ${String.fromCharCode(65 + (idx % 26))}`,
-        itemPme: isAmox ? 'AMOXICILINA 500 MG CAP' : 'DIPIRONA 500 MG COMP',
-        lote: isAmox ? 'L-EX02' : 'L-EX01',
-        validade: isAmox ? validadeProxima : validadeOk,
-        qtd: String(qtd),
-        valorUnitario: isAmox ? 'R$ 4,90' : 'R$ 2,50',
-        total: `R$ ${total.toFixed(2).replace('.', ',')}`,
-        nipTitular: `${10 + idx}.${1000 + idx}.${20 + idx}`,
-        postoGrad: ['CB', '1T', 'MN', 'SO'][idx % 4],
-        vinculo: pct > 0 ? 'DEPENDENTE DIRETO' : 'TITULAR',
-        pctIndenizar: pct > 0 ? '20%' : '0%',
-        valorIndenizar: `R$ ${(total * pct).toFixed(2).replace('.', ',')}`,
-        om: 'HNMD',
-        unidadeFornecimento: isAmox ? 'CAP' : 'COMP',
-        quantidadeAdquirida: String(qtd),
-        qtdFornecidaOse: '',
-        maneiraFornecimento: idx % 2 === 0 ? 'PELA OMH' : 'POR OSE',
-      }
+    linhas: periodDays.flatMap((day, dayIndex) => {
+      const consumoDia = consumoDiaExemplo(dayIndex, periodDays.length)
+      return [0, 1].map((slot) => {
+        const item = EXEMPLO_ITENS_PME[(dayIndex + slot) % EXEMPLO_ITENS_PME.length]
+        const fatia = slot === 0 ? 0.58 : 0.42
+        const total = Math.round(consumoDia * fatia * item.peso * 10) / 10
+        const qtd = 1 + ((dayIndex + slot) % 3)
+        const pct = [20, 30, 50][(dayIndex + slot) % 3]
+        const indenizar = Math.round(total * (pct / 100) * 100) / 100
+        return {
+          id: `ex-imh-${dayIndex + 1}-${slot + 1}`,
+          data: formatBrDate(day),
+          nip: `${80 + (dayIndex % 90)}.${2000 + dayIndex}.${10 + slot}`,
+          nome: `PACIENTE PME ${dayIndex + 1}`,
+          itemPme: item.nome,
+          lote: `L-PME-${(dayIndex % 6) + 1}`,
+          validade: validadeOk,
+          qtd: String(qtd),
+          valorUnitario: formatValorBrasileiro(total / qtd),
+          total: formatValorBrasileiro(total),
+          nipTitular: `${80 + (dayIndex % 90)}.${2000 + dayIndex}.${10 + slot}`,
+          postoGrad: ['CB', '1T', 'MN', 'SO'][dayIndex % 4],
+          vinculo: pct >= 50 ? 'DEPENDENTE DIRETO' : 'TITULAR',
+          pctIndenizar: `${pct}%`,
+          valorIndenizar: formatValorBrasileiro(indenizar),
+          om: 'HNMD',
+          unidadeFornecimento: 'FA',
+          quantidadeAdquirida: String(qtd),
+          qtdFornecidaOse: '',
+          maneiraFornecimento: slot === 0 ? 'PELA OMH' : 'POR OSE',
+        }
+      })
     }),
   }
 
