@@ -108,7 +108,8 @@ export function MedicamentoBalancoCharts({
       <Box
         sx={{
           display: 'grid',
-          gap: 1,
+          flexShrink: 0,
+          gap: 1.25,
           gridTemplateColumns: {
             xs: 'repeat(2, minmax(0, 1fr))',
             sm: 'repeat(5, minmax(0, 1fr))',

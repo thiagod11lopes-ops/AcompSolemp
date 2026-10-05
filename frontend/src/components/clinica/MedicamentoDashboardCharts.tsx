@@ -182,7 +182,8 @@ export function MedicamentoDashboardCharts({
     return (
       <Box
         sx={{
-          flex: 1,
+          flex: '1 1 38%',
+          maxHeight: { sm: '42%' },
           minHeight: 0,
           display: 'grid',
           gap: 1,

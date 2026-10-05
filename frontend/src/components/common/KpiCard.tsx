@@ -29,24 +29,24 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick, d
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        ...(dense ? { py: 1, px: 1.25, '&:last-child': { pb: 1 } } : null),
+        ...(dense ? { py: 2.25, px: 2, '&:last-child': { pb: 2.25 } } : null),
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: dense ? 0.75 : 1.5 }}>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography sx={dense ? { ...dashboardCardTitleSx, fontSize: '0.72rem' } : dashboardCardTitleSx}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: dense ? 1.25 : 1.5 }}>
+        <Box sx={{ minWidth: 0, flex: 1, ...(dense ? { containerType: 'inline-size' } : null) }}>
+          <Typography sx={dense ? { ...dashboardCardTitleSx, fontSize: '1rem' } : dashboardCardTitleSx}>
             {title}
           </Typography>
           <Typography
-            variant={dense ? 'h6' : 'h4'}
+            variant={dense ? 'h5' : 'h4'}
             sx={{
               fontWeight: 800,
               letterSpacing: '-0.03em',
-              mt: dense ? 0.25 : 0.75,
+              mt: dense ? 0.75 : 0.75,
               mb: dense ? 0 : 0.5,
               color: premiumTokens.primaryDark,
               ...(dense
-                ? { fontSize: '0.95rem', lineHeight: 1.15, whiteSpace: 'nowrap' }
+                ? { fontSize: 'clamp(1rem, 14cqi, 1.7rem)', lineHeight: 1.1, whiteSpace: 'nowrap' }
                 : null),
             }}
           >
@@ -66,8 +66,8 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick, d
         {icon && (
           <Box
             sx={{
-              width: dense ? 28 : 40,
-              height: dense ? 28 : 40,
+              width: dense ? 48 : 40,
+              height: dense ? 48 : 40,
               borderRadius: `${premiumTokens.radiusSm}px`,
               display: 'flex',
               alignItems: 'center',
@@ -77,7 +77,7 @@ export function KpiCard({ title, value, subtitle, icon, color, trend, onClick, d
               border: `1px solid ${alpha(accent, 0.28)}`,
               flexShrink: 0,
               boxShadow: '0 2px 8px rgba(63, 107, 86, 0.12)',
-              ...(dense ? { '& svg': { fontSize: 16 } } : dashboardCardIconOffsetSx),
+              ...(dense ? { '& svg': { fontSize: 26 } } : dashboardCardIconOffsetSx),
             }}
           >
             {icon}
