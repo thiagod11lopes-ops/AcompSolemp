@@ -104,22 +104,26 @@ export function MedicamentoBalancoCharts({
   ]
 
   if (compact) {
+    const faixa = {
+      display: 'grid',
+      gap: 1.25,
+      gridTemplateColumns: {
+        xs: 'repeat(2, minmax(0, 1fr))',
+        sm: 'repeat(5, minmax(0, 1fr))',
+      },
+    } as const
     return (
-      <Box
-        sx={{
-          display: 'grid',
-          flexShrink: 0,
-          gap: 1.25,
-          gridTemplateColumns: {
-            xs: 'repeat(2, minmax(0, 1fr))',
-            sm: 'repeat(5, minmax(0, 1fr))',
-            xl: 'repeat(10, minmax(0, 1fr))',
-          },
-        }}
-      >
-        {cards.map((card) => (
-          <KpiCard key={card.title} dense title={card.title} value={card.value} icon={card.icon} color={card.color} />
-        ))}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, flexShrink: 0 }}>
+        <Box sx={faixa}>
+          {cards.slice(0, 5).map((card) => (
+            <KpiCard key={card.title} dense title={card.title} value={card.value} icon={card.icon} color={card.color} />
+          ))}
+        </Box>
+        <Box sx={faixa}>
+          {cards.slice(5).map((card) => (
+            <KpiCard key={card.title} dense title={card.title} value={card.value} icon={card.icon} color={card.color} />
+          ))}
+        </Box>
       </Box>
     )
   }

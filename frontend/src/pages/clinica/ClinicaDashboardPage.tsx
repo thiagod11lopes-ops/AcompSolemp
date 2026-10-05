@@ -50,7 +50,7 @@ export default function ClinicaDashboardPage() {
           sm: `calc(100dvh - ${demoBannerHeight + 64 + 32}px)`,
           md: `calc(100dvh - ${demoBannerHeight + 64 + 48}px)`,
         },
-        overflow: { sm: 'hidden' },
+        overflow: { sm: 'auto' },
       }}
     >
       <PageHeader

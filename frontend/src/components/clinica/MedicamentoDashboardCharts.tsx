@@ -182,13 +182,12 @@ export function MedicamentoDashboardCharts({
     return (
       <Box
         sx={{
-          flex: '1 1 38%',
-          maxHeight: { sm: '42%' },
-          minHeight: 0,
+          flex: '1 1 auto',
+          minHeight: { sm: 480 },
           display: 'grid',
           gap: 1,
           gridTemplateColumns: { xs: '1fr', sm: '1.35fr 1fr' },
-          gridTemplateRows: { xs: 'repeat(4, 200px)', sm: 'minmax(0, 1fr) minmax(0, 1fr)' },
+          gridTemplateRows: { xs: 'repeat(4, 240px)', sm: 'minmax(220px, 1fr) minmax(220px, 1fr)' },
         }}
       >
         {consumo}
