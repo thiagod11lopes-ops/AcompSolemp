@@ -66,8 +66,10 @@ export async function hydrateAppDataFromCloudSnapshot(
     'materiais',
   )
   data = await mergeSimpleArrayFromNormalized<User>('cadastros', 'usuarios', data, 'usuarios')
+  const usuariosAntes = data.usuarios.length
   // Recupera equipe liberada em email_access se o blob/tabela perdeu o cadastro.
   data = await mergeUsuariosFromEmailAccess(data)
+  const recoveredCadastros = data.usuarios.length > usuariosAntes
   data = await mergeSimpleArrayFromNormalized<WorkflowEtapa>(
     'config',
     'workflow_etapas',
@@ -81,5 +83,16 @@ export async function hydrateAppDataFromCloudSnapshot(
     data,
     'notasFiscais',
   )
+  // Se recuperamos cadastros do email_access, regrava no blob para as outras abas.
+  if (recoveredCadastros) {
+    try {
+      const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+      const { saveAppData } = await import('@/mocks/seed')
+      saveAppData(data)
+      void flushSupabaseAppDataSync()
+    } catch (error) {
+      console.warn('[AcompSolemp] Falha ao regravar cadastros recuperados:', error)
+    }
+  }
   return data
 }

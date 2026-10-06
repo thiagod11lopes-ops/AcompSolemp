@@ -1382,6 +1382,26 @@ export function applyRemoteAppData(raw: AppData): AppData {
   }
 
   const mergedRaw = mergeRemotePreservingAnexos(appDataCache, cloneData(raw))
+
+  // Proteção extra: snapshot remoto sem equipe não apaga cadastros locais ativos.
+  const localTeam = (appDataCache?.usuarios ?? []).filter(
+    (u) =>
+      u.ativo &&
+      u.perfil !== 'GESTOR' &&
+      u.perfil !== 'ADMINISTRADOR' &&
+      Boolean(u.email?.trim()),
+  )
+  const remoteTeam = (mergedRaw.usuarios ?? []).filter(
+    (u) =>
+      u.ativo &&
+      u.perfil !== 'GESTOR' &&
+      u.perfil !== 'ADMINISTRADOR' &&
+      Boolean(u.email?.trim()),
+  )
+  if (localTeam.length > 0 && remoteTeam.length === 0) {
+    mergedRaw.usuarios = mergeById(localTeam, mergedRaw.usuarios ?? [])
+  }
+
   const hadDemoConfeccao = (mergedRaw.usuarios ?? []).some(
     (user) =>
       user.id === USUARIO_CONFECCAO_SOLEMP_ID &&
@@ -1492,6 +1512,11 @@ export async function loadLatestAppData(): Promise<AppData> {
 export function replaceAppDataCache(data: AppData): void {
   appDataCache = cloneData(data)
   persistAppData(appDataCache, { silent: true })
+}
+
+/** Atualiza só a memória — não agenda flush/broadcast (seguro em listagens). */
+export function setAppDataCacheOnly(data: AppData): void {
+  appDataCache = cloneData(data)
 }
 
 /** Reaplica o snapshot fictício após boot (ex.: reload da página). */

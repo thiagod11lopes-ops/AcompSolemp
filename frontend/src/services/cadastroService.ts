@@ -10,10 +10,11 @@ import {
   type User,
   type WorkflowEtapa,
 } from '@/types'
-import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
+import { delay, loadFreshAppData, loadAppData, saveAppData, setAppDataCacheOnly } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import type { UserRole } from '@/types'
 
 function normalizePerfisFiltro(
@@ -61,6 +62,18 @@ export const cadastroService = {
 
   async listUsuarios(): Promise<User[]> {
     await delay(null)
+    if (useCloudAppDataSync()) {
+      const { mergeUsuariosFromEmailAccess } = await import(
+        '@/data/persistence/normalized/mergeUsuariosFromEmailAccess'
+      )
+      const data = loadAppData()
+      const before = data.usuarios.length
+      const merged = await mergeUsuariosFromEmailAccess(data)
+      if (merged.usuarios.length !== before) {
+        setAppDataCacheOnly(merged)
+      }
+      return loadAppData().usuarios
+    }
     return loadAppData().usuarios
   },
 
