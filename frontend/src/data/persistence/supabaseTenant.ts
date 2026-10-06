@@ -187,6 +187,8 @@ export async function upsertEmailAccess(input: {
   perfil: string
   clinicaId?: string | null
   nome?: string
+  /** Todos os setores/tipos liberados no cadastro (multi-setor). */
+  perfis?: string[] | null
 }): Promise<void> {
   const email = input.email.trim().toLowerCase()
   const tenant = await getTenantById(input.tenantId)
@@ -197,8 +199,25 @@ export async function upsertEmailAccess(input: {
     )
   }
 
+  const perfis = [
+    ...new Set(
+      (input.perfis?.length ? input.perfis : [input.perfil])
+        .map((p) => p.trim())
+        .filter(Boolean),
+    ),
+  ]
+
   const client = getSupabaseClient()
-  const args = {
+  const argsWithPerfis = {
+    p_email: email,
+    p_tenant_id: input.tenantId,
+    p_app_user_id: input.appUserId,
+    p_perfil: input.perfil,
+    p_clinica_id: input.clinicaId ?? null,
+    p_nome: input.nome ?? null,
+    p_perfis: perfis,
+  }
+  const argsLegacy = {
     p_email: email,
     p_tenant_id: input.tenantId,
     p_app_user_id: input.appUserId,
@@ -207,7 +226,15 @@ export async function upsertEmailAccess(input: {
     p_nome: input.nome ?? null,
   }
 
-  let { error } = await client.rpc('upsert_email_access_for_tenant', args)
+  let { error } = await client.rpc('upsert_email_access_for_tenant', argsWithPerfis)
+
+  // Migration ainda não aplicada: tenta assinatura antiga sem p_perfis.
+  if (
+    error &&
+    /could not find the function|does not exist|PGRST202|p_perfis/i.test(error.message)
+  ) {
+    ;({ error } = await client.rpc('upsert_email_access_for_tenant', argsLegacy))
+  }
 
   // Vínculo órfão em outra organização (ex.: exclusão antiga falhou): libera e tenta de novo.
   if (error && /vinculado a outra organização/i.test(error.message)) {
@@ -215,7 +242,13 @@ export async function upsertEmailAccess(input: {
       p_email: email,
     })
     if (!freeError) {
-      ;({ error } = await client.rpc('upsert_email_access_for_tenant', args))
+      ;({ error } = await client.rpc('upsert_email_access_for_tenant', argsWithPerfis))
+      if (
+        error &&
+        /could not find the function|does not exist|PGRST202|p_perfis/i.test(error.message)
+      ) {
+        ;({ error } = await client.rpc('upsert_email_access_for_tenant', argsLegacy))
+      }
     }
   }
 
@@ -262,12 +295,40 @@ function normalizeAccessPerfis(row: {
   perfil?: unknown
   perfis?: unknown
 }): string[] {
-  const fromArray = Array.isArray(row.perfis)
-    ? row.perfis
-        .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
-        .map((p) => p.trim())
-    : []
-  if (fromArray.length > 0) return [...new Set(fromArray)]
+  const raw = row.perfis
+  let fromList: string[] = []
+
+  if (Array.isArray(raw)) {
+    fromList = raw
+      .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+      .map((p) => p.trim())
+  } else if (typeof raw === 'string' && raw.trim()) {
+    const trimmed = raw.trim()
+    // Postgres text[] via alguns clients: {AUDITORIA,CONTABILIDADE_IMH}
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      fromList = trimmed
+        .slice(1, -1)
+        .split(',')
+        .map((p) => p.trim().replace(/^"|"$/g, ''))
+        .filter(Boolean)
+    } else {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown
+        if (Array.isArray(parsed)) {
+          fromList = parsed
+            .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+            .map((p) => p.trim())
+        }
+      } catch {
+        fromList = trimmed
+          .split(/[,;|]/)
+          .map((p) => p.trim())
+          .filter(Boolean)
+      }
+    }
+  }
+
+  if (fromList.length > 0) return [...new Set(fromList)]
   if (typeof row.perfil === 'string' && row.perfil.trim()) {
     return [row.perfil.trim()]
   }

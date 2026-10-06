@@ -274,6 +274,7 @@ export const usuarioCadastroService = {
         perfil: user.perfil,
         clinicaId: user.clinicaId,
         nome: user.nome,
+        perfis: userPerfis(user),
       })
     }
 

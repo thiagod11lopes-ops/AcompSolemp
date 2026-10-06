@@ -52,6 +52,8 @@ create table if not exists public.email_access (
   created_at timestamptz not null default now()
 );
 
+alter table public.email_access add column if not exists perfis text[];
+
 create index if not exists email_access_tenant_id_idx on public.email_access (tenant_id);
 
 -- RLS
@@ -305,6 +307,7 @@ as $$
     e.nome,
     t.owner_email as gestor_email,
     coalesce(
+      nullif(e.perfis, '{}'::text[]),
       (
         select case
           when jsonb_typeof(u->'perfis') = 'array'
@@ -405,13 +408,17 @@ $$;
 grant execute on function public.decline_team_email_invite(text) to anon, authenticated;
 
 -- Upsert/remoção de email_access pelo gestor (security definer — evita falha de RLS no ON CONFLICT)
+drop function if exists public.upsert_email_access_for_tenant(text, uuid, text, text, text, text);
+drop function if exists public.upsert_email_access_for_tenant(text, uuid, text, text, text, text, text[]);
+
 create or replace function public.upsert_email_access_for_tenant(
   p_email text,
   p_tenant_id uuid,
   p_app_user_id text,
   p_perfil text,
   p_clinica_id text default null,
-  p_nome text default null
+  p_nome text default null,
+  p_perfis text[] default null
 )
 returns void
 language plpgsql
@@ -424,6 +431,7 @@ declare
   v_jwt_email text := lower(trim(coalesce(auth.jwt() ->> 'email', '')));
   v_existing_tenant uuid;
   v_allowed boolean := false;
+  v_perfis text[];
 begin
   if v_uid is null then
     raise exception 'Não autenticado';
@@ -502,13 +510,28 @@ begin
     end if;
   end if;
 
+  select coalesce(
+    (
+      select array_agg(distinct trim(both from x))
+      from unnest(coalesce(p_perfis, array[]::text[])) as x
+      where trim(both from x) <> ''
+    ),
+    case
+      when coalesce(nullif(trim(both from p_perfil), ''), '') <> ''
+        then array[trim(both from p_perfil)]
+      else null
+    end
+  )
+  into v_perfis;
+
   insert into public.email_access (
     email,
     tenant_id,
     app_user_id,
     perfil,
     clinica_id,
-    nome
+    nome,
+    perfis
   )
   values (
     v_email,
@@ -516,7 +539,8 @@ begin
     p_app_user_id,
     p_perfil,
     nullif(trim(coalesce(p_clinica_id, '')), ''),
-    nullif(trim(coalesce(p_nome, '')), '')
+    nullif(trim(coalesce(p_nome, '')), ''),
+    v_perfis
   )
   on conflict (email) do update
   set
@@ -524,11 +548,12 @@ begin
     app_user_id = excluded.app_user_id,
     perfil = excluded.perfil,
     clinica_id = excluded.clinica_id,
-    nome = excluded.nome;
+    nome = excluded.nome,
+    perfis = excluded.perfis;
 end;
 $$;
 
-grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text)
+grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text, text[])
   to authenticated;
 
 drop function if exists public.remove_email_access_for_tenant(text);
