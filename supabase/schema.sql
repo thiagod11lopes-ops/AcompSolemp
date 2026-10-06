@@ -374,6 +374,19 @@ begin
 
   delete from public.email_access where lower(email) = v_email;
 
+  -- Soft-delete na tabela normalizada (quando existir).
+  if to_regclass('public.usuarios') is not null then
+    update public.usuarios u
+    set
+      data = (u.data - 'email') || jsonb_build_object('ativo', false),
+      updated_at = now()
+    where u.tenant_id = v_tenant
+      and (
+        (v_app_user is not null and u.id = v_app_user)
+        or lower(coalesce(u.data->>'email', '')) = v_email
+      );
+  end if;
+
   select payload into v_payload
   from public.app_state
   where tenant_id = v_tenant;

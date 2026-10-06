@@ -18,6 +18,7 @@ import { deserializeAppData } from '@/data/persistence/types'
 import { mergePedidosFromNormalized } from '@/data/persistence/normalized/pedidosSync'
 import { mergeAnexosFromNormalized } from '@/data/persistence/normalized/anexosSync'
 import { mergeSimpleArrayFromNormalized } from '@/data/persistence/normalized/simpleArraySync'
+import { mergeUsuariosFromEmailAccess } from '@/data/persistence/normalized/mergeUsuariosFromEmailAccess'
 
 /** Deserializa o blob e mescla domínios normalizados com leitura ativa. */
 export async function hydrateAppDataFromCloudSnapshot(
@@ -65,6 +66,8 @@ export async function hydrateAppDataFromCloudSnapshot(
     'materiais',
   )
   data = await mergeSimpleArrayFromNormalized<User>('cadastros', 'usuarios', data, 'usuarios')
+  // Recupera equipe liberada em email_access se o blob/tabela perdeu o cadastro.
+  data = await mergeUsuariosFromEmailAccess(data)
   data = await mergeSimpleArrayFromNormalized<WorkflowEtapa>(
     'config',
     'workflow_etapas',

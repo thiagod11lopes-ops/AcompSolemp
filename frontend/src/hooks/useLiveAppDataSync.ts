@@ -94,10 +94,10 @@ export function useLiveAppDataSync(): void {
 
     void import('@/data/persistence/supabaseSync').then(({ subscribeAppStateRealtime }) => {
       if (cancelled) return
-      unsubscribe = subscribeAppStateRealtime((remote, updatedAtMs) => {
-        lastRemoteUpdatedAt.current = new Date(updatedAtMs).toISOString()
-        applyRemoteAppData(remote)
-        invalidateLiveQueries(queryClient)
+      unsubscribe = subscribeAppStateRealtime((_remote, _updatedAtMs) => {
+        // Sempre hidrata (mescla tabelas normalizadas). Aplicar só o blob
+        // esvaziava Cadastros quando o domínio estava em strip.
+        void applyIfNewer()
       })
     })
 

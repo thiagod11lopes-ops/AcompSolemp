@@ -337,7 +337,10 @@ export const usuarioCadastroService = {
 
       if (isFictionalDashboardSeedActive()) {
         for (const user of data.usuarios) {
-          if (user.clinicaId === input.id) user.ativo = false
+          if (user.clinicaId === input.id) {
+            user.ativo = false
+            user.email = undefined
+          }
         }
         saveAppData(data)
         return
@@ -350,6 +353,7 @@ export const usuarioCadastroService = {
       for (const user of data.usuarios) {
         if (user.clinicaId === input.id) {
           user.ativo = false
+          user.email = undefined
         }
       }
       saveAppData(data)
@@ -365,6 +369,7 @@ export const usuarioCadastroService = {
 
     if (isFictionalDashboardSeedActive()) {
       user.ativo = false
+      user.email = undefined
       saveAppData(data)
       return
     }
@@ -374,6 +379,7 @@ export const usuarioCadastroService = {
     }
 
     user.ativo = false
+    user.email = undefined
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()

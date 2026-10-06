@@ -10,12 +10,14 @@ export async function dualWriteSimpleArray(
   domain: NormalizedDomain,
   table: string,
   rows: IdRow[] | undefined,
+  options?: { requireSuccess?: boolean },
 ): Promise<void> {
   const list = (rows ?? []).filter((r) => r && typeof r.id === 'string' && r.id)
   await dualWriteDomainRows(
     domain,
     table,
     list.map((r) => ({ id: r.id, data: r })),
+    options,
   )
 }
 
