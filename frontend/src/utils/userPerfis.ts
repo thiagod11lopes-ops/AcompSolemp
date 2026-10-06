@@ -15,6 +15,14 @@ export function userHasPerfil(
   return userPerfis(user).includes(perfil)
 }
 
+/** Usuários ativos autorizados no setor/perfil (considera `perfis[]`, não só o principal). */
+export function usuariosComPerfil<T extends Pick<User, 'ativo' | 'perfil' | 'perfis'>>(
+  usuarios: T[],
+  perfil: UserRole,
+): T[] {
+  return usuarios.filter((u) => u.ativo && userHasPerfil(u, perfil))
+}
+
 /** Confecção + Aguardando NE autorizados juntos pelo gestor. */
 export function userTemCadeiaSolemp(user: Pick<User, 'perfil' | 'perfis'>): boolean {
   return userHasPerfil(user, 'CONFECCAO_SOLEMP') && userHasPerfil(user, 'FINANCEIRO')

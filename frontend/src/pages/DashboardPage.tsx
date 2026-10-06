@@ -37,6 +37,7 @@ import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { premiumTokens } from '@/theme/tokens'
+import { userHasPerfil } from '@/utils/userPerfis'
 import type { DashboardEmpenhadoItem } from '@/types'
 
 type KpiKey =
@@ -110,7 +111,9 @@ export default function DashboardPage({
 }: DashboardPageProps = {}) {
   const { user: ordenadorUser } = useOrdenadorAuth()
   /** Dashboard IMH: sem empenho e sem cards de atraso/prazo/tempo médio. */
-  const isDashboardImh = ordenadorUser?.perfil === 'CONTABILIDADE_IMH'
+  const isDashboardImh = Boolean(
+    ordenadorUser && userHasPerfil(ordenadorUser, 'CONTABILIDADE_IMH'),
+  )
   const ocultarCardsEmpenho = isDashboardImh
   const { data: metrics, isPending, isError, error, refetch } = useDashboardMetrics(
     clinicaId,

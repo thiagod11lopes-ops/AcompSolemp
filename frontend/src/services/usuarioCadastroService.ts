@@ -193,14 +193,16 @@ export const usuarioCadastroService = {
     )
 
     if (isEntidade && clinicaId) {
-      const existingIdx = data.usuarios.findIndex(
-        (u) => u.clinicaId === clinicaId && userHasPerfil(u, perfil),
+      // Atualiza só o mesmo e-mail na entidade. Outros e-mails podem
+      // compartilhar a mesma clínica/medicamento (vários responsáveis).
+      const existingByEmailIdx = data.usuarios.findIndex(
+        (u) =>
+          u.clinicaId === clinicaId &&
+          u.email?.trim().toLowerCase() === email &&
+          userHasPerfil(u, perfil),
       )
-      if (existingIdx >= 0) {
-        const existing = data.usuarios[existingIdx]
-        if (useCloudAppDataSync() && existing.email && existing.email !== email) {
-          await removeEmailAccess(existing.email, tenantId)
-        }
+      if (existingByEmailIdx >= 0) {
+        const existing = data.usuarios[existingByEmailIdx]
         existing.nome = nome
         existing.email = email
         existing.ativo = true

@@ -14,6 +14,34 @@ import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
+import type { UserRole } from '@/types'
+
+function normalizePerfisFiltro(
+  perfil?: Notification['perfilDestino'] | UserRole[] | null,
+): UserRole[] | null {
+  if (perfil == null) return null
+  if (Array.isArray(perfil)) {
+    const unique = [...new Set(perfil.filter(Boolean))]
+    return unique.length > 0 ? unique : null
+  }
+  return [perfil]
+}
+
+function notificacaoVisivelParaPerfis(
+  n: Notification,
+  perfis: UserRole[],
+): boolean {
+  if (perfis.some((p) => p === 'GESTOR' || p === 'ADMINISTRADOR')) return true
+  if (n.perfilDestino && perfis.includes(n.perfilDestino)) return true
+  if (
+    n.perfilDestino == null &&
+    n.tipo === 'RESPOSTA_GESTOR' &&
+    perfis.some((p) => p === 'CLINICA' || p === 'EMPENHADO')
+  ) {
+    return true
+  }
+  return false
+}
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -195,7 +223,13 @@ export const historicoService = {
 }
 
 export const notificationService = {
-  async list(perfil?: Notification['perfilDestino']): Promise<Notification[]> {
+  /**
+   * Lista notificações. Aceita um perfil ou a lista completa de setores do usuário
+   * (`perfis[]`) para multi-setor enxergar avisos de todos os vínculos.
+   */
+  async list(
+    perfil?: Notification['perfilDestino'] | UserRole[] | null,
+  ): Promise<Notification[]> {
     await delay(null, 300)
     const data = loadAppData()
     const before = data.notificacoes.length
@@ -207,17 +241,10 @@ export const notificationService = {
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
     )
 
-    if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
-      return all
-    }
+    const perfis = normalizePerfisFiltro(perfil)
+    if (!perfis) return all
 
-    return all.filter(
-      (n) =>
-        n.perfilDestino === perfil ||
-        (n.perfilDestino == null &&
-          (perfil === 'CLINICA' || perfil === 'EMPENHADO') &&
-          n.tipo === 'RESPOSTA_GESTOR'),
-    )
+    return all.filter((n) => notificacaoVisivelParaPerfis(n, perfis))
   },
 
   async markAsRead(id: string): Promise<void> {
@@ -229,23 +256,15 @@ export const notificationService = {
   },
 
   async markAllAsRead(
-    perfil?: Notification['perfilDestino'],
+    perfil?: Notification['perfilDestino'] | UserRole[] | null,
     options?: { tipos?: NotificationType[]; excludeTipos?: NotificationType[] },
   ): Promise<void> {
     await delay(null, 200)
     const data = loadAppData()
+    const perfis = normalizePerfisFiltro(perfil)
     data.notificacoes.forEach((n) => {
       if (!notificacaoPertenceAosTipos(n, options?.tipos, options?.excludeTipos)) return
-      if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
-        n.lida = true
-        return
-      }
-      if (
-        n.perfilDestino === perfil ||
-        (n.perfilDestino == null &&
-          (perfil === 'CLINICA' || perfil === 'EMPENHADO') &&
-          n.tipo === 'RESPOSTA_GESTOR')
-      ) {
+      if (!perfis || notificacaoVisivelParaPerfis(n, perfis)) {
         n.lida = true
       }
     })

@@ -18,6 +18,7 @@ import {
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
+import { usuariosComPerfil } from '@/utils/userPerfis'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -195,9 +196,7 @@ export function notifySetoresEtapasAtivas(data: AppData, pedidoId: string): void
       return
     }
 
-    const temUsuarios = data.usuarios.some(
-      (u) => u.ativo && u.perfil === etapa.perfilResponsavel,
-    )
+    const temUsuarios = usuariosComPerfil(data.usuarios, etapa.perfilResponsavel).length > 0
     if (!temUsuarios) return
 
     if (
@@ -263,9 +262,7 @@ export function notifyPlanilhaCorrigidaReenviada(
       return
     }
 
-    const temUsuarios = data.usuarios.some(
-      (u) => u.ativo && u.perfil === etapa.perfilResponsavel,
-    )
+    const temUsuarios = usuariosComPerfil(data.usuarios, etapa.perfilResponsavel).length > 0
     if (!temUsuarios) return
 
     // Evita duplicar sino genérico + corrigida para a mesma etapa.

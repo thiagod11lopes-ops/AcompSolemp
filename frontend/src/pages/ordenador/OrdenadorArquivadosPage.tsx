@@ -9,13 +9,15 @@ import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
 import { useOrdenadorAuth } from '@/contexts/AuthContext'
 import { PERFIL_PARA_CHAVE_ETAPA, chavesEtapaParaPerfil } from '@/utils/perfilEtapa'
 import { getRoleLabel } from '@/mocks/seed'
-import { userTemCadeiaSolemp } from '@/utils/userPerfis'
+import { userHasPerfil, userTemCadeiaSolemp } from '@/utils/userPerfis'
 
 export default function OrdenadorArquivadosPage() {
   const { navigatePortal } = usePortalPaths()
   const { user } = useOrdenadorAuth()
   const etapaChave = user
-    ? userTemCadeiaSolemp(user) || user.perfil === 'CONFECCAO_SOLEMP' || user.perfil === 'FINANCEIRO'
+    ? userTemCadeiaSolemp(user) ||
+      userHasPerfil(user, 'CONFECCAO_SOLEMP') ||
+      userHasPerfil(user, 'FINANCEIRO')
       ? chavesEtapaParaPerfil(user.perfil, user)
       : (PERFIL_PARA_CHAVE_ETAPA[user.perfil] ?? null)
     : null
