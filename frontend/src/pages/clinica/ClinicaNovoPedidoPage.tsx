@@ -1258,6 +1258,8 @@ export default function ClinicaNovoPedidoPage() {
       ? abaAtivaId
       : (tabsSource[0]?.id ?? null)
   const tabValue = abaVisivelId ?? false
+  // Enviar (medicamento): IMH deixa de ser aba e vira título de seção.
+  const mostrarTituloImh = isMedicamento && !isPlanilhasRoute
 
   const renderContent = () => {
     if (isMedicamento) {
@@ -1346,132 +1348,174 @@ export default function ClinicaNovoPedidoPage() {
           zIndex: theme.zIndex.appBar - 1,
         })}
       >
-        <Box
-          sx={(theme) => ({
-            borderBottom: 1,
-            borderColor: 'divider',
-            bgcolor: theme.palette.background.paper,
-            backgroundImage: `linear-gradient(
-              180deg,
-              ${alpha(theme.palette.primary.main, 0.06)} 0%,
-              ${alpha(theme.palette.primary.main, 0.03)} 100%
-            )`,
-            borderRadius: '8px 8px 0 0',
-            px: 0.5,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            flexWrap: 'wrap',
-            boxShadow: `0 1px 0 ${theme.palette.divider}`,
-          })}
-        >
-          {!isMedicamento && !modoCorrigir ? (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
-              onClick={handleImportClick}
-              disabled={importing || isEnviando}
-              sx={{
-                ml: 0.5,
-                my: 0.5,
-                flexShrink: 0,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {importing ? 'Importando…' : 'Importar Planilha'}
-            </Button>
-          ) : null}
-          <Tabs
-            value={tabValue}
-            onChange={(_, value: string) => handleChangeAba(value)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              flex: 1,
-              minHeight: 42,
-              minWidth: 0,
-              '& .MuiTab-root': {
-                minHeight: 42,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                px: 1.5,
-              },
-            }}
+        {mostrarTituloImh ? (
+          <Box
+            sx={(theme) => ({
+              px: { xs: 1.5, sm: 2 },
+              py: { xs: 1.5, sm: 1.75 },
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.14)}`,
+              bgcolor: theme.palette.background.paper,
+              backgroundImage: `
+                linear-gradient(
+                  120deg,
+                  ${alpha(theme.palette.primary.main, 0.1)} 0%,
+                  ${alpha(theme.palette.primary.main, 0.03)} 42%,
+                  ${alpha(theme.palette.background.paper, 0.95)} 100%
+                )
+              `,
+              boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, 0.04)}`,
+            })}
           >
-            {tabsSource.map((aba) => (
-              <Tab key={aba.id} value={aba.id} label={aba.nome} />
-            ))}
-          </Tabs>
-          {!isMedicamento ? (
-            <Box
+            <Typography
+              component="h2"
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                flexShrink: 0,
-                mr: 1,
-                my: 0.5,
+                m: 0,
+                fontWeight: 800,
+                fontSize: { xs: '1.15rem', sm: '1.35rem' },
+                letterSpacing: '-0.03em',
+                lineHeight: 1.2,
+                color: 'text.primary',
               }}
             >
-              {abaAtivaId === DIV_MATERIAL_ABA_ID ? (
-                <TextField
-                  size="small"
-                  placeholder="Buscar na planilha…"
-                  value={buscaDivMaterial}
-                  onChange={(e) => setBuscaDivMaterial(e.target.value)}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                      sx: {
-                        bgcolor: '#fff',
-                        fontSize: '0.8rem',
-                        height: 32,
-                      },
-                    },
-                  }}
-                  sx={{
-                    minWidth: { xs: 160, sm: 220 },
-                    maxWidth: 280,
-                    flex: 1,
-                  }}
-                />
-              ) : null}
+              Dados Destinados ao IMH
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.4, fontSize: '0.82rem', letterSpacing: '-0.01em' }}
+            >
+              Preencha e envie os lançamentos da planilha IMH.
+            </Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={(theme) => ({
+              borderBottom: 1,
+              borderColor: 'divider',
+              bgcolor: theme.palette.background.paper,
+              backgroundImage: `linear-gradient(
+                180deg,
+                ${alpha(theme.palette.primary.main, 0.06)} 0%,
+                ${alpha(theme.palette.primary.main, 0.03)} 100%
+              )`,
+              borderRadius: '8px 8px 0 0',
+              px: 0.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              boxShadow: `0 1px 0 ${theme.palette.divider}`,
+            })}
+          >
+            {!isMedicamento && !modoCorrigir ? (
               <Button
                 size="small"
-                variant="contained"
-                startIcon={<SendIcon sx={{ fontSize: 16 }} />}
-                onClick={handleAbrirEnvio}
-                disabled={isEnviando}
+                variant="outlined"
+                startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
+                onClick={handleImportClick}
+                disabled={importing || isEnviando}
                 sx={{
+                  ml: 0.5,
+                  my: 0.5,
                   flexShrink: 0,
                   textTransform: 'none',
                   fontWeight: 700,
                   fontSize: '0.8rem',
                   whiteSpace: 'nowrap',
-                  borderRadius: '11px',
-                  px: 1.5,
-                  boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
-                  background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
-                    boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
-                  },
                 }}
               >
-                {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}
+                {importing ? 'Importando…' : 'Importar Planilha'}
               </Button>
-            </Box>
-          ) : null}
-        </Box>
+            ) : null}
+            <Tabs
+              value={tabValue}
+              onChange={(_, value: string) => handleChangeAba(value)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                flex: 1,
+                minHeight: 42,
+                minWidth: 0,
+                '& .MuiTab-root': {
+                  minHeight: 42,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  px: 1.5,
+                },
+              }}
+            >
+              {tabsSource.map((aba) => (
+                <Tab key={aba.id} value={aba.id} label={aba.nome} />
+              ))}
+            </Tabs>
+            {!isMedicamento ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  flexShrink: 0,
+                  mr: 1,
+                  my: 0.5,
+                }}
+              >
+                {abaAtivaId === DIV_MATERIAL_ABA_ID ? (
+                  <TextField
+                    size="small"
+                    placeholder="Buscar na planilha…"
+                    value={buscaDivMaterial}
+                    onChange={(e) => setBuscaDivMaterial(e.target.value)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                        sx: {
+                          bgcolor: '#fff',
+                          fontSize: '0.8rem',
+                          height: 32,
+                        },
+                      },
+                    }}
+                    sx={{
+                      minWidth: { xs: 160, sm: 220 },
+                      maxWidth: 280,
+                      flex: 1,
+                    }}
+                  />
+                ) : null}
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<SendIcon sx={{ fontSize: 16 }} />}
+                  onClick={handleAbrirEnvio}
+                  disabled={isEnviando}
+                  sx={{
+                    flexShrink: 0,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    whiteSpace: 'nowrap',
+                    borderRadius: '11px',
+                    px: 1.5,
+                    boxShadow: '0 6px 14px rgba(63, 107, 86, 0.22)',
+                    background: 'linear-gradient(135deg, #558b71 0%, #3f6b56 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #61987d 0%, #4a7a63 100%)',
+                      boxShadow: '0 8px 18px rgba(63, 107, 86, 0.3)',
+                    },
+                  }}
+                >
+                  {modoCorrigir ? 'Reenviar planilha' : 'Enviar planilha'}
+                </Button>
+              </Box>
+            ) : null}
+          </Box>
+        )}
       </Box>
 
       {modoCorrigir && idsCorrigir ? (
