@@ -12,12 +12,10 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Snackbar,
   TextField,
   Typography,
-  alpha,
 } from '@mui/material'
 import type {
   ImhMedicamentoFormData,
@@ -290,6 +288,7 @@ export function ImhMedicamentoForm({
   const [nomeInput, setNomeInput] = useState('')
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
   const [sheetExpanded, setSheetExpanded] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
   const linhaSnapshotRef = useRef<ImhMedicamentoLinha | null>(null)
   const linhaFormRef = useRef<HTMLDivElement | null>(null)
   const importInputRef = useRef<HTMLInputElement | null>(null)
@@ -369,8 +368,8 @@ export function ImhMedicamentoForm({
   }, [filtroDia, filtroMes, filtroAno, corrigirLinhaIds])
   const emptyHint =
     value.linhas.length > 0 && linhasFiltradas.length === 0
-      ? `Nenhum lançamento em ${mesReferenciaLabel}. Altere o dia/mês/ano ou adicione um lançamento com data neste período.`
-      : undefined
+      ? `Nenhum lançamento em ${mesReferenciaLabel}. Altere o dia/mês/ano ou use Adicionar lançamento / Importar.`
+      : 'Use Adicionar lançamento, Importar planilha ou expanda a planilha e clique em Editar.'
 
   useEffect(() => {
     if (!corrigirLinhaIds || corrigirLinhaIds.size === 0) return
@@ -711,6 +710,7 @@ export function ImhMedicamentoForm({
     setLoteSemDefinir(false)
     setLoteAviso(null)
     linhaSnapshotRef.current = null
+    setIsAdding(false)
   }
 
   const syncPacienteFromLancamento = (linha: ImhMedicamentoLinha) => {
@@ -900,6 +900,7 @@ export function ImhMedicamentoForm({
   const handleEditLinha = (id: string) => {
     const found = value.linhas.find((l) => l.id === id)
     if (!found) return
+    setIsAdding(false)
     linhaSnapshotRef.current = cloneLinha(found)
     setEditingLinhaId(id)
     setLinhaDraft(cloneLinha(found))
@@ -934,6 +935,14 @@ export function ImhMedicamentoForm({
     resetLinhaForm()
   }
 
+  const handleNovoLancamento = () => {
+    resetLinhaForm()
+    setLinhaDraft(createEmptyImhMedicamentoLinha())
+    setItemPmeInput('')
+    setNomeInput('')
+    setIsAdding(true)
+  }
+
   const selectedMedicamento =
     findListaMedicamentoByNomeELote(linhaDraft.itemPme, linhaDraft.lote, {
       linhas: medicamentoOptions,
@@ -943,529 +952,144 @@ export function ImhMedicamentoForm({
       : findListaMedicamentoByNome(linhaDraft.itemPme, { linhas: medicamentoOptions }))
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 2,
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(340px, 420px) minmax(0, 1fr)' },
-        alignItems: 'start',
-      }}
-    >
-      <Paper
-        elevation={0}
-        sx={(theme) => ({
-          p: { xs: 1.25, md: 1.5 },
-          borderRadius: 2,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-          bgcolor: alpha(theme.palette.primary.main, 0.02),
-          display: 'grid',
-          gap: 1.25,
-          position: { xl: 'sticky' },
-          top: { xl: 12 },
-          maxHeight: { xl: 'calc(100vh - 120px)' },
-          overflow: { xl: 'auto' },
-        })}
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          flexWrap: 'wrap',
+        }}
       >
-        <Box>
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleNovoLancamento}
+            disabled={isEnviando || Boolean(editingLinhaId) || isAdding}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
           >
-            Entrada — Modelo IHM — PME
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Digite NIP ou nome para preencher automaticamente com a aba Pacientes. A planilha à
-            direita atualiza ao vivo.
-          </Typography>
+            Adicionar lançamento
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
+            onClick={() => setExplicacaoOpen(true)}
+            sx={{ textTransform: 'none', fontWeight: 800, fontSize: 12, borderRadius: 2 }}
+          >
+            Explicação Detalhada
+          </Button>
         </Box>
-
-        {!editingLinhaId ? (
-          <Box ref={linhaFormRef}>
-            <Typography
-              variant="overline"
-              sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2  }}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ minWidth: 88 }}>
+            <InputLabel id="imh-med-filtro-dia-label">Dia</InputLabel>
+            <Select
+              labelId="imh-med-filtro-dia-label"
+              label="Dia"
+              value={filtroDia}
+              onChange={(e) => setFiltroDia(Number(e.target.value))}
             >
-              Novo lançamento
-            </Typography>
-
-          <Box
-            sx={{
-              mt: 0.5,
-              display: 'grid',
-              gap: 0.85,
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            }}
-          >
-            <TextField
-              label="DATA"
-              value={linhaDraft.data}
-              onChange={(e) => {
-                const data = formatImhMedData(e.target.value)
-                if (data.trim()) setDataError(false)
-                updateDraft({ data })
-              }}
-              placeholder="dd/mm/aa"
-              size="small"
-              required
-              error={dataError}
-              helperText={dataError ? 'Campo obrigatório' : undefined}
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="NIP"
-              value={linhaDraft.nip}
-              onChange={(e) => {
-                const nip = formatImhMedNip(e.target.value)
-                updateDraft({ nip })
-                if (normalizePacienteNipKey(nip).length >= 8) {
-                  tryFillFromNip(nip, { alertIfMissing: true })
-                }
-              }}
-              onBlur={(e) =>
-                tryFillFromNip(formatImhMedNip(e.target.value), { alertIfMissing: true })
-              }
-              placeholder="00.0000.00"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <Autocomplete
-              options={pacientes}
-              value={selectedPacienteNome}
-              inputValue={nomeInput}
-              onInputChange={(_, next, reason) => {
-                setNomeInput(next)
-                if (reason === 'input' || reason === 'clear') {
-                  updateDraft({ nome: formatImhMedUppercase(next) })
-                }
-              }}
-              onChange={(_, option) => {
-                if (typeof option === 'string') {
-                  const nome = formatImhMedUppercase(option)
-                  updateDraft({ nome })
-                  setNomeInput(nome)
-                  tryFillFromNome(nome)
-                  return
-                }
-                if (option) applyPacienteSelection(option)
-              }}
-              getOptionLabel={(option) =>
-                typeof option === 'string' ? option : option.nome
-              }
-              isOptionEqualToValue={(a, b) => {
-                if (typeof a === 'string' || typeof b === 'string') {
-                  return (
-                    formatPacientePmeUpper(typeof a === 'string' ? a : a.nome) ===
-                    formatPacientePmeUpper(typeof b === 'string' ? b : b.nome)
-                  )
-                }
-                return a.id === b.id
-              }}
-              filterOptions={(options, state) =>
-                searchPacientesPmeByNome(state.inputValue, options, 40)
-              }
-              freeSolo
-              onBlur={() => tryFillFromNome(nomeInput || linhaDraft.nome)}
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box sx={{ py: 0.25 }}>
-                    <Typography variant="body2">{option.nome}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      NIP {option.nipUsuario}
-                      {option.postoGradTitular ? ` · ${option.postoGradTitular}` : ''}
-                      {option.vinculo ? ` · ${option.vinculo}` : ''}
-                    </Typography>
-                  </Box>
-                </li>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="NOME"
-                  size="small"
-                  fullWidth
-                  placeholder="Busque o paciente pelo nome"
-                  sx={compactFieldSx}
-                />
-              )}
-              noOptionsText="Nenhum paciente na planilha Pacientes"
-              sx={{ gridColumn: { sm: '1 / -1' } }}
-            />
-            <Autocomplete
-              options={medicamentoOptions}
-              value={selectedMedicamento}
-              inputValue={itemPmeInput}
-              onInputChange={(_, next) => {
-                setItemPmeInput(next)
-                if (!next.trim()) {
-                  updateDraft({ itemPme: '', lote: '', validade: '' })
-                  setLoteSemDefinir(false)
-                  setLoteAviso(null)
-                }
-              }}
-              onChange={(_, option) => {
-                if (typeof option === 'string') {
-                  const nome = formatImhMedUppercase(option)
-                  const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
-                  updateDraft({ itemPme: nome, lote, validade })
-                  setItemPmeInput(option)
-                  setLoteSemDefinir(Boolean(aviso))
-                  setLoteAviso(aviso)
-                  return
-                }
-                applyMedicamentoSelection(option)
-              }}
-              getOptionLabel={(option) =>
-                typeof option === 'string'
-                  ? option
-                  : formatListaMedEstoqueOptionLabel(option)
-              }
-              isOptionEqualToValue={(a, b) => {
-                if (typeof a === 'string' || typeof b === 'string') {
-                  return (
-                    (typeof a === 'string' ? a : a.medicamento).toLowerCase() ===
-                    (typeof b === 'string' ? b : b.medicamento).toLowerCase()
-                  )
-                }
-                return a.id === b.id
-              }}
-              filterOptions={(options, state) => {
-                const q = state.inputValue.trim().toLowerCase()
-                if (!q) return options.slice(0, 40)
-                return options
-                  .filter(
-                    (opt) =>
-                      opt.medicamento.toLowerCase().includes(q) ||
-                      opt.neb.toLowerCase().includes(q) ||
-                      opt.lote.toLowerCase().includes(q) ||
-                      opt.validade.toLowerCase().includes(q),
-                  )
-                  .slice(0, 40)
-              }}
-              freeSolo
-              onBlur={() => {
-                if (!itemPmeInput.trim()) return
-                if (selectedMedicamento) return
-                const nome = formatImhMedUppercase(itemPmeInput)
-                const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
-                updateDraft({ itemPme: nome, lote, validade })
-                setLoteSemDefinir(Boolean(aviso))
-                setLoteAviso(aviso)
-              }}
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box sx={{ py: 0.25 }}>
-                    <Typography variant="body2">{option.medicamento}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {[
-                        option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
-                        option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
-                        option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
-                        option.neb.trim() || null,
-                        option.uf.trim() || null,
-                        option.precoReferencia.trim()
-                          ? formatPrecoReferenciaMedicamento(option.precoReferencia)
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </Typography>
-                  </Box>
-                </li>
-              )}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO"
-                  size="small"
-                  fullWidth
-                  placeholder="Busque e escolha o lote (nome · lote · validade)"
-                  sx={multilineFieldSx}
-                />
-              )}
-              noOptionsText="Nenhum medicamento na Lista de Medicamentos"
-              sx={{ gridColumn: '1 / -1' }}
-            />
-            <TextField
-              label="LOTE"
-              value={linhaDraft.lote}
-              onChange={(e) => {
-                const lote = formatImhMedUppercase(e.target.value)
-                updateDraft({ lote })
-                if (lote.trim()) {
-                  setLoteSemDefinir(false)
-                  setLoteAviso(null)
-                }
-              }}
-              size="small"
-              fullWidth
-              error={loteSemDefinir}
-              sx={{
-                ...compactFieldSx,
-                ...(loteSemDefinir
-                  ? {
-                      '@keyframes loteCampoBlink': {
-                        '0%, 100%': { backgroundColor: '#fff' },
-                        '50%': { backgroundColor: '#ffcdd2' },
-                      },
-                      '& .MuiInputBase-root': {
-                        fontSize: '0.78rem',
-                        animation: 'loteCampoBlink 0.85s ease-in-out infinite',
-                      },
-                    }
-                  : null),
-              }}
-            />
-            <TextField
-              label="VALIDADE"
-              value={linhaDraft.validade}
-              onChange={(e) => updateDraft({ validade: formatImhMedData(e.target.value) })}
-              placeholder="dd/mm/aaaa"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="QTD"
-              value={linhaDraft.qtd}
-              onChange={(e) => updateDraft({ qtd: formatImhMedQtd(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="VALOR UNITÁRIO"
-              value={linhaDraft.valorUnitario}
-              onChange={(e) => updateDraft({ valorUnitario: formatImhMedMoeda(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="TOTAL"
-              value={linhaDraft.total}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="NIP TITULAR"
-              value={linhaDraft.nipTitular}
-              onChange={(e) => updateDraft({ nipTitular: formatImhMedNip(e.target.value) })}
-              placeholder="00.0000.00"
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="POSTO/GRAD"
-              value={linhaDraft.postoGrad}
-              onChange={(e) => updateDraft({ postoGrad: formatImhMedUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              select
-              label="VINCULO"
-              value={linhaDraft.vinculo || ''}
-              onChange={(e) => updateDraft({ vinculo: formatImhMedUppercase(e.target.value) })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            >
-              <MenuItem value="">—</MenuItem>
-              {vinculoOptions.map((item) => (
-                <MenuItem key={item} value={item}>
-                  {item}
+              <MenuItem value={0}>Todos</MenuItem>
+              {diasOptions.map((dia) => (
+                <MenuItem key={dia} value={dia}>
+                  {String(dia).padStart(2, '0')}
                 </MenuItem>
               ))}
-            </TextField>
-            <TextField
-              label="% A INDENIZAR"
-              value={linhaDraft.pctIndenizar}
-              onChange={(e) => updateDraft({ pctIndenizar: e.target.value })}
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="VALOR A INDENIZAR"
-              value={linhaDraft.valorIndenizar}
-              size="small"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-              sx={compactFieldSx}
-            />
-            <TextField
-              label="UNIDADE DE FORNECIMENTO"
-              value={linhaDraft.unidadeFornecimento}
-              onChange={(e) =>
-                updateDraft({ unidadeFornecimento: formatImhMedUppercase(e.target.value) })
-              }
-              size="small"
-              fullWidth
-              sx={compactFieldSx}
-            />
-          </Box>
-            <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAdicionarLinha}
-                sx={{ textTransform: 'none', fontWeight: 700 }}
-              >
-                Adicionar lançamento
-              </Button>
-            </Box>
-          </Box>
-        ) : (
-          <Alert severity="info" sx={{ fontWeight: 600 }}>
-            Editando lançamento na planilha expandida. Salve ou cancele no modal para continuar.
-          </Alert>
-        )}
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
-          onClick={() => setExplicacaoOpen(true)}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 800,
-            fontSize: 12,
-            borderRadius: 2,
-            justifySelf: 'stretch',
-          }}
-        >
-          Explicação Detalhada
-        </Button>
-        {loteSemDefinir && loteAviso ? (
-          <Alert
-            severity="warning"
-            variant="filled"
-            sx={{ fontWeight: 800, letterSpacing: 0.3 }}
-            onClose={() => {
-              setLoteSemDefinir(false)
-              setLoteAviso(null)
-            }}
-          >
-            {loteAviso}
-          </Alert>
-        ) : null}
-        {nipNaoCadastrado ? (
-          <Alert
-            severity="warning"
-            variant="filled"
-            sx={{ fontWeight: 800, letterSpacing: 0.3 }}
-            onClose={() => setNipNaoCadastrado(false)}
-          >
-            {NIP_NAO_ENCONTRADO}
-          </Alert>
-        ) : null}
-      </Paper>
-
-      <Box sx={{ minWidth: 0 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 1,
-            flexWrap: 'wrap',
-            mb: 0.75,
-          }}
-        >
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.75rem' }}
-          >
-            Planilha (ao vivo)
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 88 }}>
-              <InputLabel id="imh-med-filtro-dia-label">Dia</InputLabel>
-              <Select
-                labelId="imh-med-filtro-dia-label"
-                label="Dia"
-                value={filtroDia}
-                onChange={(e) => setFiltroDia(Number(e.target.value))}
-              >
-                <MenuItem value={0}>Todos</MenuItem>
-                {diasOptions.map((dia) => (
-                  <MenuItem key={dia} value={dia}>
-                    {String(dia).padStart(2, '0')}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
-              <InputLabel id="imh-med-filtro-mes-label">Mês</InputLabel>
-              <Select
-                labelId="imh-med-filtro-mes-label"
-                label="Mês"
-                value={filtroMes}
-                onChange={(e) => handleFiltroMesChange(Number(e.target.value))}
-              >
-                {MESES_OPCOES.map((mes) => (
-                  <MenuItem key={mes.value} value={mes.value}>
-                    {mes.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 96 }}>
-              <InputLabel id="imh-med-filtro-ano-label">Ano</InputLabel>
-              <Select
-                labelId="imh-med-filtro-ano-label"
-                label="Ano"
-                value={filtroAno}
-                onChange={(e) => handleFiltroAnoChange(Number(e.target.value))}
-              >
-                {anosOptions.map((ano) => (
-                  <MenuItem key={ano} value={ano}>
-                    {ano}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel id="imh-med-filtro-mes-label">Mês</InputLabel>
+            <Select
+              labelId="imh-med-filtro-mes-label"
+              label="Mês"
+              value={filtroMes}
+              onChange={(e) => handleFiltroMesChange(Number(e.target.value))}
+            >
+              {MESES_OPCOES.map((mes) => (
+                <MenuItem key={mes.value} value={mes.value}>
+                  {mes.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 96 }}>
+            <InputLabel id="imh-med-filtro-ano-label">Ano</InputLabel>
+            <Select
+              labelId="imh-med-filtro-ano-label"
+              label="Ano"
+              value={filtroAno}
+              onChange={(e) => handleFiltroAnoChange(Number(e.target.value))}
+            >
+              {anosOptions.map((ano) => (
+                <MenuItem key={ano} value={ano}>
+                  {ano}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Box>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
-          hidden
-          onChange={handleImportFileChange}
-        />
-        <ImhMedicamentoPlanilhaPreview
-          value={valueFiltrado}
-          editingLinhaId={editingLinhaId}
-          importing={importing}
-          isEnviando={isEnviando}
-          mesReferencia={mesReferenciaLabel}
-          emptyHint={emptyHint}
-          selectedImhIds={selectedImhIds}
-          onSelectedImhIdsChange={setSelectedImhIds}
-          onImportClick={handleImportClick}
-          onEnviarImh={handleEnviarImh}
-          onEditLinha={handleEditLinha}
-          onDeleteLinha={handleDeleteLinha}
-          listaMedicamentos={listaMedicamentos}
-          todasLinhasImh={value.linhas}
-          filtroMes={filtroMes}
-          filtroAno={filtroAno}
-          onExpandedChange={setSheetExpanded}
-        />
-        <PlanilhaLinhaEditDialog
-          open={Boolean(editingLinhaId)}
-          title="Editar IMH medicamento"
+      </Box>
+
+      {loteSemDefinir && loteAviso ? (
+        <Alert
+          severity="warning"
+          variant="filled"
+          sx={{ fontWeight: 800, letterSpacing: 0.3 }}
+          onClose={() => {
+            setLoteSemDefinir(false)
+            setLoteAviso(null)
+          }}
+        >
+          {loteAviso}
+        </Alert>
+      ) : null}
+      {nipNaoCadastrado ? (
+        <Alert
+          severity="warning"
+          variant="filled"
+          sx={{ fontWeight: 800, letterSpacing: 0.3 }}
+          onClose={() => setNipNaoCadastrado(false)}
+        >
+          {NIP_NAO_ENCONTRADO}
+        </Alert>
+      ) : null}
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+        hidden
+        onChange={handleImportFileChange}
+      />
+      <ImhMedicamentoPlanilhaPreview
+        value={valueFiltrado}
+        editingLinhaId={editingLinhaId}
+        importing={importing}
+        isEnviando={isEnviando}
+        mesReferencia={mesReferenciaLabel}
+        emptyHint={emptyHint}
+        selectedImhIds={selectedImhIds}
+        onSelectedImhIdsChange={setSelectedImhIds}
+        onImportClick={handleImportClick}
+        onEnviarImh={handleEnviarImh}
+        onEditLinha={handleEditLinha}
+        onDeleteLinha={handleDeleteLinha}
+        listaMedicamentos={listaMedicamentos}
+        todasLinhasImh={value.linhas}
+        filtroMes={filtroMes}
+        filtroAno={filtroAno}
+        onExpandedChange={setSheetExpanded}
+      />
+      <PlanilhaLinhaEditDialog
+          open={Boolean(editingLinhaId) || isAdding}
+          title={isAdding ? 'Novo lançamento IMH' : 'Editar IMH medicamento'}
           badge="PME"
           onClose={handleCancelLinha}
           onSave={handleAdicionarLinha}
-          saveLabel="Salvar lançamento"
+          saveLabel={isAdding ? 'Adicionar lançamento' : 'Salvar lançamento'}
           anchorLinhaId={editingLinhaId}
         >
           <Box ref={linhaFormRef} sx={{ display: 'grid', gap: 1.25 }}>
@@ -1796,6 +1420,7 @@ export function ImhMedicamentoForm({
             </PlanilhaEditSection>
           </Box>
         </PlanilhaLinhaEditDialog>
+
         <ConmedEscolherAbaModal
           open={sheetPicker.open}
           sheetNames={sheetPicker.sheets.map((s) => s.nome)}
@@ -1843,7 +1468,7 @@ export function ImhMedicamentoForm({
             {importFeedback.message}
           </Alert>
         </Snackbar>
-      </Box>
+
     </Box>
   )
 }

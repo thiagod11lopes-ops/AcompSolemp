@@ -401,7 +401,7 @@ export function ImhMedicamentoPlanilhaPreview({
           <Box sx={{ px: 2, py: 3 }}>
             <Typography variant="body2" color="text.secondary">
               {emptyHint ??
-                'Adicione lançamentos no formulário para ver a planilha ao vivo.'}
+                'Use Adicionar lançamento ou Importar planilha para ver a grade ao vivo.'}
             </Typography>
           </Box>
         ) : (
