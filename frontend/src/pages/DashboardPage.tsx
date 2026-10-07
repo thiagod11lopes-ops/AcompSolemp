@@ -234,7 +234,7 @@ export default function DashboardPage({
 
   const modalConfig: Record<KpiKey, KpiModalConfig> = {
     total: {
-      title: 'Total de processos',
+      title: 'Total de Processos',
       subtitle: 'Todos os processos registrados no sistema',
       accent: premiumTokens.primary,
       icon: <AssignmentIcon />,
@@ -559,7 +559,7 @@ export default function DashboardPage({
               >
                 <Box sx={{ '& > *': { height: '100%' } }}>
                   <KpiCard
-                    title="Total de processos"
+                    title="Total de Processos"
                     value={metrics.totalProcessos}
                     subtitle="Clique para detalhes"
                     icon={<AssignmentIcon />}
@@ -661,7 +661,7 @@ export default function DashboardPage({
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <KpiCard
-                title="Total"
+                title="Total de Processos"
                 value={metrics.totalProcessos}
                 subtitle="Clique para detalhes"
                 icon={<AssignmentIcon />}
