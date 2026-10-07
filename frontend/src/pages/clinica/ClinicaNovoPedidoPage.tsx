@@ -21,7 +21,8 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
+import { stripDemoRouteBase } from '@/utils/portalPaths'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePageTitle } from '@/contexts/PageTitleContext'
@@ -172,6 +173,7 @@ function preferModeloSheetIndex(sheets: SpreadsheetSheetImport[]): number {
 
 export default function ClinicaNovoPedidoPage() {
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   const { user } = useClinicaAuth()
   const { navigatePortal } = usePortalPaths()
   const clinicaId = user?.clinicaId ?? ''
@@ -183,11 +185,18 @@ export default function ClinicaNovoPedidoPage() {
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const isMedicamento =
     user?.perfil === 'MEDICAMENTO' || clinicaLogada?.tipo === 'medicamento'
+  const isPlanilhasRoute = stripDemoRouteBase(location.pathname).startsWith(
+    '/clinica/planilhas',
+  )
   usePageTitle(
-    'Enviar',
+    isPlanilhasRoute ? 'Planilhas' : 'Enviar',
     clinicaLogada?.nome
-      ? `${clinicaLogada.nome} — edite e envie as planilhas da clínica`
-      : 'Edite e envie as planilhas da clínica',
+      ? isPlanilhasRoute
+        ? `${clinicaLogada.nome} — planilhas da clínica`
+        : `${clinicaLogada.nome} — edite e envie as planilhas da clínica`
+      : isPlanilhasRoute
+        ? 'Planilhas da clínica'
+        : 'Edite e envie as planilhas da clínica',
   )
   const planilhasModo: PlanilhasModo = isMedicamento ? 'medicamento' : 'clinica'
   const fixedPlanilhas = useMemo(() => getFixedPlanilhas(planilhasModo), [planilhasModo])

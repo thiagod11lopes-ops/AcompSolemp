@@ -177,6 +177,7 @@ export function AppRoutes() {
               }
             >
             <Route path="/gestor/demo/clinica/dashboard" element={<LazyPage><ClinicaDashboardPage /></LazyPage>} />
+            <Route path="/gestor/demo/clinica/planilhas" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
             <Route path="/gestor/demo/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
@@ -244,6 +245,7 @@ export function AppRoutes() {
         >
           <Route path="/clinica" element={<Navigate to="/clinica/dashboard" replace />} />
           <Route path="/clinica/dashboard" element={<LazyPage><ClinicaDashboardPage /></LazyPage>} />
+          <Route path="/clinica/planilhas" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />
           <Route path="/clinica/timelines" element={<LazyPage><ClinicaTimelinePage /></LazyPage>} />
           <Route path="/clinica/pedidos" element={<LazyPage><ClinicaPedidosPage /></LazyPage>} />
           <Route path="/clinica/pedidos/novo" element={<LazyPage><ClinicaNovoPedidoPage /></LazyPage>} />

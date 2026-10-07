@@ -14,6 +14,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
+import TableChartIcon from '@mui/icons-material/TableChart'
 import TimelineIcon from '@mui/icons-material/Timeline'
 import MedicationIcon from '@mui/icons-material/Medication'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
@@ -30,6 +31,7 @@ const DRAWER_WIDTH = 260
 
 const MENU_ITEMS = [
   { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
+  { path: '/clinica/planilhas', label: 'Planilhas', icon: <TableChartIcon />, end: true },
   { path: '/clinica/pedidos/novo', label: 'Enviar', icon: <AddIcon />, end: false },
   { path: '/clinica/pedidos', label: 'Enviados', icon: <ListAltIcon />, end: true },
   { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon />, end: true },
@@ -52,6 +54,9 @@ function isMenuPathActive(pathname: string, itemPath: string): boolean {
   const path = stripDemoRouteBase(pathname)
   if (itemPath === '/clinica/dashboard') {
     return path === '/clinica/dashboard' || path.startsWith('/clinica/dashboard/')
+  }
+  if (itemPath === '/clinica/planilhas') {
+    return path === '/clinica/planilhas' || path.startsWith('/clinica/planilhas/')
   }
   if (itemPath === '/clinica/pedidos/novo') {
     return path.startsWith('/clinica/pedidos/novo')
