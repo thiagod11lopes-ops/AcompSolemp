@@ -166,7 +166,6 @@ export default function TimelineEntryPage() {
           label="E-mail institucional"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="seuemail@marinha.mil.br"
           helperText={MARINHA_EMAIL_HINT}
           sx={{ mb: 2 }}
         />

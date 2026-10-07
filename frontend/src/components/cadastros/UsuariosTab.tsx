@@ -407,7 +407,6 @@ export function UsuariosTab() {
                 label="E-mail institucional"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@marinha.mil.br"
                 helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
                 disabled={opcoesSelecionadas.length === 0}
               />

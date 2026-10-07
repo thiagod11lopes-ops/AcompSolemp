@@ -104,7 +104,6 @@ export function ForgotPasswordButton({
                 label="E-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@marinha.mil.br"
                 helperText={MARINHA_EMAIL_HINT}
                 autoFocus
               />

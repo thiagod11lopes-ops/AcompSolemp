@@ -223,7 +223,6 @@ export default function LoginGestorPage() {
           label={isSupabase ? 'E-mail institucional' : 'E-mail ou login'}
           type={isSupabase ? 'email' : 'text'}
           margin="normal"
-          placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
           helperText={errors.login?.message}
           {...registerField('login')}
           error={Boolean(errors.login)}

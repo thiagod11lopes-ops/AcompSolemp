@@ -105,7 +105,6 @@ export function SignUpButton({
               label="E-mail institucional"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seuemail@marinha.mil.br"
               helperText={MARINHA_EMAIL_HINT}
               margin="dense"
               autoFocus
