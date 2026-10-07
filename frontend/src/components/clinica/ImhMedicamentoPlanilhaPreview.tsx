@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   DescriptionOutlined as GerarDocIcon,
@@ -22,6 +22,15 @@ import {
 } from '@mui/material'
 import type { ImhMedicamentoFormData, ImhMedicamentoLinha, ListaMedicamentosFormData } from '@/types'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
+import {
+  PlanilhaExpandButton,
+  PlanilhaFullscreenDialog,
+  usePlanilhaExpand,
+} from '@/components/clinica/PlanilhaExpandControls'
+import {
+  PlanilhaActionsButtons,
+  planilhaActionsCellSx,
+} from '@/components/clinica/planilhaColunaHover'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import {
   calcImhMedicamentoTotalGeral,
@@ -60,6 +69,7 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   todasLinhasImh?: ImhMedicamentoLinha[]
   filtroMes?: number
   filtroAno?: number
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 function dash(value: string): string {
@@ -121,10 +131,17 @@ export function ImhMedicamentoPlanilhaPreview({
   todasLinhasImh,
   filtroMes,
   filtroAno,
+  onExpandedChange,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const { expanded, setExpanded } = usePlanilhaExpand()
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const visible = imhMedicamentoHasPreviewContent(value)
   const total = calcImhMedicamentoTotalGeral(value)
+
+  useEffect(() => {
+    onExpandedChange?.(expanded)
+  }, [expanded, onExpandedChange])
   const finalizedIds = useMemo(
     () => new Set(value.finalizedImhIds ?? []),
     [value.finalizedImhIds],
@@ -154,6 +171,41 @@ export function ImhMedicamentoPlanilhaPreview({
     return map
   }, [value.linhas, listaMedicamentos, linhasEstoqueBase, mesEstoque, anoEstoque])
   const colCount = colunas.length + (readOnly ? 0 : 2)
+  /** Editar só na planilha expandida; excluir permanece nos dois modos. */
+  const editEnabled = Boolean(!readOnly && expanded && onEditLinha)
+  const deleteEnabled = Boolean(!readOnly && onDeleteLinha)
+  const actionsEnabled = editEnabled || deleteEnabled
+  const isEditingMode = Boolean(editingLinhaId)
+  const dimmedSx = {
+    opacity: 0.22,
+    filter: 'saturate(0.35)',
+    pointerEvents: 'none' as const,
+    transition: 'opacity 160ms ease, filter 160ms ease',
+  }
+
+  /** Em edição: linha ativa sobe para o topo (ordem só visual). */
+  const linhasExibidas = useMemo(() => {
+    if (!editingLinhaId) return value.linhas
+    const ativa = value.linhas.find((l) => l.id === editingLinhaId)
+    if (!ativa) return value.linhas
+    return [ativa, ...value.linhas.filter((l) => l.id !== editingLinhaId)]
+  }, [value.linhas, editingLinhaId])
+
+  useEffect(() => {
+    if (!expanded || !editingLinhaId) return
+    const scrollRoot = scrollContainerRef.current
+    if (!scrollRoot) return
+    const run = () => {
+      scrollRoot.scrollTo({ top: 0, behavior: 'smooth' })
+      const row = scrollRoot.querySelector(
+        `[data-planilha-linha-id="${editingLinhaId}"]`,
+      ) as HTMLElement | null
+      row?.scrollIntoView({ block: 'start', behavior: 'smooth', inline: 'nearest' })
+    }
+    requestAnimationFrame(() => requestAnimationFrame(run))
+    const t = window.setTimeout(run, 80)
+    return () => window.clearTimeout(t)
+  }, [expanded, editingLinhaId, linhasExibidas])
 
   const selecionaveis = useMemo(
     () =>
@@ -191,25 +243,22 @@ export function ImhMedicamentoPlanilhaPreview({
     onSelectedImhIdsChange(next)
   }
 
-  return (
-    <Box
-      sx={{
-        opacity: visible ? 1 : 0.92,
-        transform: visible ? 'translateY(0)' : 'translateY(4px)',
-        transition: 'opacity 280ms ease, transform 280ms ease',
-      }}
-    >
+  const sheet = (
       <Paper
         elevation={0}
         className="excel-sheet"
         sx={{
-          borderRadius: 2,
+          borderRadius: expanded ? 0 : 2,
           overflow: 'hidden',
           border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-          boxShadow: visible
-            ? '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)'
-            : 'none',
+          boxShadow:
+            expanded || !visible
+              ? 'none'
+              : '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)',
           bgcolor: EXCEL_SHEET.sheetBg,
+          height: expanded ? '100%' : undefined,
+          display: expanded ? 'flex' : undefined,
+          flexDirection: expanded ? 'column' : undefined,
         }}
       >
         <Box
@@ -222,6 +271,7 @@ export function ImhMedicamentoPlanilhaPreview({
             px: 1.5,
             py: 1,
             background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
+            ...(isEditingMode ? dimmedSx : { transition: 'opacity 160ms ease' }),
           }}
         >
           <Typography
@@ -327,6 +377,24 @@ export function ImhMedicamentoPlanilhaPreview({
           >
             Gerar Documento
           </Button>
+          {!readOnly ? (
+            <Box
+              sx={{
+                ml: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.25,
+                flexShrink: 0,
+              }}
+            >
+              <PlanilhaExpandButton
+                expanded={expanded}
+                onToggle={() => setExpanded((v) => !v)}
+                labelExpand="Expandir planilha IMH medicamento"
+                labelCollapse="Recolher planilha IMH medicamento"
+              />
+            </Box>
+          ) : null}
         </Box>
 
         {!visible ? (
@@ -337,10 +405,19 @@ export function ImhMedicamentoPlanilhaPreview({
             </Typography>
           </Box>
         ) : (
-          <Box sx={{ overflow: 'auto', maxHeight: readOnly ? 'none' : 'min(70vh, 720px)' }}>
+          <Box
+            ref={scrollContainerRef}
+            sx={{
+              overflow: 'auto',
+              maxHeight: expanded ? 'none' : readOnly ? 'none' : 'min(70vh, 720px)',
+              flex: expanded ? 1 : undefined,
+              minHeight: 0,
+              pb: expanded && editingLinhaId ? '70vh' : undefined,
+            }}
+          >
             <Box className="excel-sheet-scroll">
               <Table size="small" stickyHeader sx={{ minWidth: 1400 }}>
-                <TableHead>
+                <TableHead sx={isEditingMode ? dimmedSx : undefined}>
                   <TableRow>
                     {!readOnly ? (
                       <TableCell
@@ -393,15 +470,15 @@ export function ImhMedicamentoPlanilhaPreview({
                         {col.label}
                       </TableCell>
                     ))}
-                    {!readOnly ? (
-                      <TableCell sx={{ ...headerSx, width: 72, textAlign: 'center' }}>
+                    {actionsEnabled ? (
+                      <TableCell sx={{ ...headerSx, width: 88, textAlign: 'center' }}>
                         Ações
                       </TableCell>
                     ) : null}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {value.linhas.map((linha, index) => {
+                  {linhasExibidas.map((linha, index) => {
                     const editing = editingLinhaId === linha.id
                     const finalizado = finalizedIds.has(linha.id)
                     const devolvido = !finalizado && devolvidosIds.has(linha.id)
@@ -409,20 +486,43 @@ export function ImhMedicamentoPlanilhaPreview({
                     return (
                       <TableRow
                         key={linha.id}
+                        data-planilha-linha-id={linha.id}
                         sx={{
                           bgcolor: editing
-                            ? EXCEL_SHEET.selectedBg
+                            ? EXCEL_SHEET.editingBg
                             : selection.has(linha.id)
                               ? EXCEL_SHEET.selectedBg
                               : undefined,
-                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
+                          position: editing ? 'relative' : undefined,
+                          zIndex: editing ? 5 : undefined,
+                          isolation: editing ? 'isolate' : undefined,
+                          outline: editing ? `2px solid ${EXCEL_SHEET.selectedCheck}` : undefined,
+                          outlineOffset: editing ? -2 : undefined,
+                          boxShadow: editing
+                            ? `0 0 0 1px ${EXCEL_SHEET.selectedCheck}, 0 4px 16px rgba(15,23,42,0.18)`
+                            : undefined,
+                          opacity: editing ? 1 : isEditingMode ? 0.22 : 1,
+                          filter: editing ? 'none' : isEditingMode ? 'saturate(0.35)' : undefined,
+                          transition: 'opacity 160ms ease, filter 160ms ease',
+                          pointerEvents: isEditingMode && !editing ? 'none' : undefined,
+                          '& > .MuiTableCell-root': editing
+                            ? {
+                                bgcolor: `${EXCEL_SHEET.editingBg} !important`,
+                                opacity: '1 !important',
+                              }
+                            : undefined,
+                          '&:hover > .MuiTableCell-root': {
+                            bgcolor: editing ? EXCEL_SHEET.editingBg : EXCEL_SHEET.hoverBg,
+                          },
                         }}
                       >
                         {!readOnly ? (
                           <TableCell
                             sx={{
                               ...cellSx,
-                              bgcolor: EXCEL_SHEET.selectHeaderBg,
+                              bgcolor: editing
+                                ? EXCEL_SHEET.editingBg
+                                : EXCEL_SHEET.selectHeaderBg,
                               textAlign: 'center',
                               px: 0.5,
                             }}
@@ -476,33 +576,46 @@ export function ImhMedicamentoPlanilhaPreview({
                             )}
                           </TableCell>
                         ))}
-                        {!readOnly ? (
-                          <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
-                            <IconButton
-                              size="small"
-                              aria-label={`Editar linha PME ${index + 1}`}
-                              onClick={() => onEditLinha?.(linha.id)}
-                              disabled={isEnviando}
-                              sx={{ p: 0.35 }}
-                            >
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              aria-label={`Excluir linha PME ${index + 1}`}
-                              onClick={() => onDeleteLinha?.(linha.id)}
-                              disabled={isEnviando}
-                              sx={{ p: 0.35 }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
+                        {actionsEnabled ? (
+                          <TableCell
+                            className="excel-planilha-actions-col"
+                            sx={{
+                              ...cellSx,
+                              ...planilhaActionsCellSx,
+                              textAlign: 'center',
+                            }}
+                          >
+                            <PlanilhaActionsButtons>
+                              {editEnabled ? (
+                                <IconButton
+                                  size="small"
+                                  aria-label={`Editar linha PME ${index + 1}`}
+                                  onClick={() => onEditLinha?.(linha.id)}
+                                  disabled={isEnviando}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <EditIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              ) : null}
+                              {deleteEnabled ? (
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  aria-label={`Excluir linha PME ${index + 1}`}
+                                  onClick={() => onDeleteLinha?.(linha.id)}
+                                  disabled={isEnviando}
+                                  sx={{ p: 0.25 }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              ) : null}
+                            </PlanilhaActionsButtons>
                           </TableCell>
                         ) : null}
                       </TableRow>
                     )
                   })}
-                  {value.linhas.length === 0 ? (
+                  {linhasExibidas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
                         Nenhum lançamento
@@ -515,6 +628,23 @@ export function ImhMedicamentoPlanilhaPreview({
           </Box>
         )}
       </Paper>
+  )
+
+  return (
+    <Box
+      sx={{
+        opacity: visible ? 1 : 0.92,
+        transform: expanded ? 'none' : visible ? 'translateY(0)' : 'translateY(4px)',
+        transition: expanded ? undefined : 'opacity 280ms ease, transform 280ms ease',
+      }}
+    >
+      {expanded ? (
+        <PlanilhaFullscreenDialog open onClose={() => setExpanded(false)}>
+          {sheet}
+        </PlanilhaFullscreenDialog>
+      ) : (
+        sheet
+      )}
 
       <GerarDocumentoModal
         open={gerarOpen}
