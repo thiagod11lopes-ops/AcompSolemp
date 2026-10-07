@@ -28,6 +28,11 @@ import {
   usePlanilhaExpand,
 } from '@/components/clinica/PlanilhaExpandControls'
 import {
+  PlanilhaBoldToggle,
+  usePlanilhaBoldPreference,
+} from '@/components/clinica/PlanilhaBoldToggle'
+import { PlanilhaFitWidth } from '@/components/clinica/PlanilhaFitWidth'
+import {
   PlanilhaActionsButtons,
   planilhaActionsCellSx,
 } from '@/components/clinica/planilhaColunaHover'
@@ -134,10 +139,15 @@ export function ImhMedicamentoPlanilhaPreview({
   onExpandedChange,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const visible = imhMedicamentoHasPreviewContent(value)
   const total = calcImhMedicamentoTotalGeral(value)
+  /** Mesma tipografia da IMH clínica: 10px expandida para caber todas as colunas no zoom ~90%. */
+  const cellFontSize = expanded ? '10px' : EXCEL_SHEET.fontSize
+  const cellFontWeight =
+    expanded && boldEnabled ? EXCEL_SHEET.fontWeightBold : EXCEL_SHEET.fontWeight
 
   useEffect(() => {
     onExpandedChange?.(expanded)
@@ -246,7 +256,7 @@ export function ImhMedicamentoPlanilhaPreview({
   const sheet = (
       <Paper
         elevation={0}
-        className="excel-sheet"
+        className={expanded ? 'excel-sheet excel-sheet-expanded' : 'excel-sheet'}
         sx={{
           borderRadius: expanded ? 0 : 2,
           overflow: 'hidden',
@@ -256,9 +266,19 @@ export function ImhMedicamentoPlanilhaPreview({
               ? 'none'
               : '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)',
           bgcolor: EXCEL_SHEET.sheetBg,
-          height: expanded ? '100%' : undefined,
-          display: expanded ? 'flex' : undefined,
-          flexDirection: expanded ? 'column' : undefined,
+          ...(expanded
+            ? {
+                flex: 1,
+                height: '100%',
+                width: '100%',
+                maxWidth: '100%',
+                minHeight: 0,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box',
+              }
+            : null),
         }}
       >
         <Box
@@ -377,6 +397,9 @@ export function ImhMedicamentoPlanilhaPreview({
           >
             Gerar Documento
           </Button>
+          {expanded ? (
+            <PlanilhaBoldToggle enabled={boldEnabled} onToggle={toggleBold} />
+          ) : null}
           {!readOnly ? (
             <Box
               sx={{
@@ -398,7 +421,7 @@ export function ImhMedicamentoPlanilhaPreview({
         </Box>
 
         {!visible ? (
-          <Box sx={{ px: 2, py: 3 }}>
+          <Box sx={{ px: 2, py: 3, flex: expanded ? 1 : undefined }}>
             <Typography variant="body2" color="text.secondary">
               {emptyHint ??
                 'Use Adicionar lançamento ou Importar planilha para ver a grade ao vivo.'}
@@ -406,17 +429,71 @@ export function ImhMedicamentoPlanilhaPreview({
           </Box>
         ) : (
           <Box
-            ref={scrollContainerRef}
+            className="excel-sheet-grid"
             sx={{
-              overflow: 'auto',
+              p: expanded ? 0 : 1.5,
+              borderTop: EXCEL_SHEET.border,
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
               maxHeight: expanded ? 'none' : readOnly ? 'none' : 'min(70vh, 720px)',
               flex: expanded ? 1 : undefined,
               minHeight: 0,
-              pb: expanded && editingLinhaId ? '70vh' : undefined,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box',
             }}
           >
-            <Box className="excel-sheet-scroll">
-              <Table size="small" stickyHeader sx={{ minWidth: 1400 }}>
+            <PlanilhaFitWidth
+              enabled
+              fillHeight
+              cellFontSize={cellFontSize}
+              cellFontWeight={cellFontWeight}
+              nowrapBody
+              scrollRef={scrollContainerRef}
+              bottomPad={expanded && editingLinhaId ? '70vh' : undefined}
+              remountKey={`${colunas.length}-${linhasExibidas.length}-${actionsEnabled ? 1 : 0}-${expanded ? 1 : 0}`}
+            >
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                border: EXCEL_SHEET.border,
+                borderRadius: expanded ? 0 : 1,
+                bgcolor: EXCEL_SHEET.sheetBg,
+                boxSizing: 'border-box',
+              }}
+            >
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  tableLayout: 'fixed',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                  '& .MuiTableCell-root': {
+                    boxSizing: 'border-box',
+                    minWidth: '0 !important',
+                    px: 0.5,
+                    py: 0.5,
+                    fontSize: cellFontSize,
+                    fontWeight: cellFontWeight,
+                  },
+                  '& thead .MuiTableCell-root': {
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 4,
+                  },
+                }}
+              >
                 <TableHead sx={isEditingMode ? dimmedSx : undefined}>
                   <TableRow>
                     {!readOnly ? (
@@ -424,10 +501,12 @@ export function ImhMedicamentoPlanilhaPreview({
                         sx={{
                           ...headerSx,
                           bgcolor: EXCEL_SHEET.selectHeaderBg,
-                          width: 52,
-                          minWidth: 52,
+                          width: 44,
+                          minWidth: 0,
                           textAlign: 'center',
                           px: 0.5,
+                          fontSize: cellFontSize,
+                          fontWeight: cellFontWeight,
                         }}
                       >
                         <Box
@@ -465,13 +544,34 @@ export function ImhMedicamentoPlanilhaPreview({
                     {colunas.map((col) => (
                       <TableCell
                         key={col.key}
-                        sx={{ ...headerSx, minWidth: col.width, width: col.width }}
+                        data-col-key={col.key}
+                        className={
+                          col.key === 'nome' || col.key === 'itemPme'
+                            ? 'excel-planilha-wrap-col'
+                            : undefined
+                        }
+                        sx={{
+                          ...headerSx,
+                          minWidth: 0,
+                          fontSize: cellFontSize,
+                          fontWeight: cellFontWeight,
+                        }}
                       >
                         {col.label}
                       </TableCell>
                     ))}
                     {actionsEnabled ? (
-                      <TableCell sx={{ ...headerSx, width: 88, textAlign: 'center' }}>
+                      <TableCell
+                        className="excel-planilha-actions-col"
+                        sx={{
+                          ...headerSx,
+                          ...planilhaActionsCellSx,
+                          width: 76,
+                          textAlign: 'center',
+                          fontSize: cellFontSize,
+                          fontWeight: cellFontWeight,
+                        }}
+                      >
                         Ações
                       </TableCell>
                     ) : null}
@@ -525,6 +625,10 @@ export function ImhMedicamentoPlanilhaPreview({
                                 : EXCEL_SHEET.selectHeaderBg,
                               textAlign: 'center',
                               px: 0.5,
+                              width: 44,
+                              minWidth: 0,
+                              fontSize: cellFontSize,
+                              fontWeight: cellFontWeight,
                             }}
                           >
                             <Checkbox
@@ -553,16 +657,24 @@ export function ImhMedicamentoPlanilhaPreview({
                             />
                           </TableCell>
                         ) : null}
-                        {colunas.map((col) => (
+                        {colunas.map((col) => {
+                          const allowWrap = col.key === 'nome' || col.key === 'itemPme'
+                          return (
                           <TableCell
                             key={col.key}
+                            data-col-key={col.key}
+                            className={allowWrap ? 'excel-planilha-wrap-col' : undefined}
                             sx={{
                               ...cellSx,
-                              ...(col.key === 'nome' || col.key === 'itemPme'
+                              minWidth: 0,
+                              fontSize: cellFontSize,
+                              fontWeight: cellFontWeight,
+                              ...(allowWrap
                                 ? {
-                                    whiteSpace: 'pre-wrap',
-                                    maxWidth: col.width + 40,
-                                    minWidth: 120,
+                                    whiteSpace: 'pre-line',
+                                    wordBreak: 'normal',
+                                    overflowWrap: 'normal',
+                                    textOverflow: 'clip',
                                   }
                                 : null),
                             }}
@@ -575,7 +687,8 @@ export function ImhMedicamentoPlanilhaPreview({
                               ),
                             )}
                           </TableCell>
-                        ))}
+                          )
+                        })}
                         {actionsEnabled ? (
                           <TableCell
                             className="excel-planilha-actions-col"
@@ -583,6 +696,8 @@ export function ImhMedicamentoPlanilhaPreview({
                               ...cellSx,
                               ...planilhaActionsCellSx,
                               textAlign: 'center',
+                              fontSize: cellFontSize,
+                              fontWeight: cellFontWeight,
                             }}
                           >
                             <PlanilhaActionsButtons>
@@ -617,7 +732,15 @@ export function ImhMedicamentoPlanilhaPreview({
                   })}
                   {linhasExibidas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
+                      <TableCell
+                        colSpan={colCount}
+                        sx={{
+                          ...cellSx,
+                          color: EXCEL_SHEET.mutedText,
+                          fontSize: cellFontSize,
+                          fontWeight: cellFontWeight,
+                        }}
+                      >
                         Nenhum lançamento
                       </TableCell>
                     </TableRow>
@@ -625,6 +748,7 @@ export function ImhMedicamentoPlanilhaPreview({
                 </TableBody>
               </Table>
             </Box>
+            </PlanilhaFitWidth>
           </Box>
         )}
       </Paper>
