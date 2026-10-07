@@ -1073,6 +1073,13 @@ export function ImhMedicamentoForm({
         emptyHint={emptyHint}
         selectedImhIds={selectedImhIds}
         onSelectedImhIdsChange={setSelectedImhIds}
+        onRevertFinalizadoIds={(ids) => {
+          const remove = new Set(ids)
+          onChange({
+            ...value,
+            finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
+          })
+        }}
         onImportClick={handleImportClick}
         onEnviarImh={handleEnviarImh}
         onEditLinha={handleEditLinha}

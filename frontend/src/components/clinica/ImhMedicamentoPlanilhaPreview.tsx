@@ -37,6 +37,7 @@ import {
   planilhaActionsCellSx,
 } from '@/components/clinica/planilhaColunaHover'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
+import { PlanilhaDesmarcarEnviadoModal } from '@/components/clinica/PlanilhaDesmarcarEnviadoModal'
 import {
   calcImhMedicamentoTotalGeral,
   imhMedicamentoHasPreviewContent,
@@ -63,6 +64,8 @@ interface ImhMedicamentoPlanilhaPreviewProps {
   emptyHint?: string
   selectedImhIds?: Set<string>
   onSelectedImhIdsChange?: (next: Set<string>) => void
+  /** Remove IDs da lista de já enviados (após confirmação no modal). */
+  onRevertFinalizadoIds?: (ids: string[]) => void
   onImportClick?: () => void
   onEnviarImh?: () => void
   onEditLinha?: (linhaId: string) => void
@@ -127,6 +130,7 @@ export function ImhMedicamentoPlanilhaPreview({
   emptyHint,
   selectedImhIds,
   onSelectedImhIdsChange,
+  onRevertFinalizadoIds,
   onImportClick,
   onEnviarImh,
   onEditLinha,
@@ -139,6 +143,7 @@ export function ImhMedicamentoPlanilhaPreview({
   onExpandedChange,
 }: ImhMedicamentoPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [pendingRevertIds, setPendingRevertIds] = useState<string[] | null>(null)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -234,8 +239,28 @@ export function ImhMedicamentoPlanilhaPreview({
     selecionaveis.length > 0 && selecionaveis.every((linha) => selection.has(linha.id))
   const someSelected = selecionaveis.some((linha) => selection.has(linha.id))
 
+  const confirmRevertFinalizado = () => {
+    if (!pendingRevertIds?.length) {
+      setPendingRevertIds(null)
+      return
+    }
+    onRevertFinalizadoIds?.(pendingRevertIds)
+    if (onSelectedImhIdsChange) {
+      const next = new Set(selection)
+      for (const id of pendingRevertIds) next.delete(id)
+      onSelectedImhIdsChange(next)
+    }
+    setPendingRevertIds(null)
+  }
+
   const toggleRow = (linha: ImhMedicamentoLinha, checked: boolean) => {
-    if (!onSelectedImhIdsChange || finalizedIds.has(linha.id)) return
+    if (!onSelectedImhIdsChange) return
+    if (finalizedIds.has(linha.id)) {
+      if (checked) return
+      if (!onRevertFinalizadoIds) return
+      setPendingRevertIds([linha.id])
+      return
+    }
     const next = new Set(selection)
     if (checked) next.add(linha.id)
     else next.delete(linha.id)
@@ -641,11 +666,8 @@ export function ImhMedicamentoPlanilhaPreview({
                                     : undefined
                               }
                               checked={checked}
-                              disabled={finalizado || isEnviando}
-                              onChange={(_, nextChecked) => {
-                                if (finalizado) return
-                                toggleRow(linha, nextChecked)
-                              }}
+                              disabled={isEnviando || (finalizado && !onRevertFinalizadoIds)}
+                              onChange={(_, nextChecked) => toggleRow(linha, nextChecked)}
                               sx={{
                                 p: 0,
                                 ...(finalizado
@@ -796,6 +818,12 @@ export function ImhMedicamentoPlanilhaPreview({
             formato,
           )
         }}
+      />
+
+      <PlanilhaDesmarcarEnviadoModal
+        open={Boolean(pendingRevertIds?.length)}
+        onClose={() => setPendingRevertIds(null)}
+        onConfirm={confirmRevertFinalizado}
       />
     </Box>
   )

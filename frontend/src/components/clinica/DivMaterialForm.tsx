@@ -24,6 +24,7 @@ interface DivMaterialFormProps {
   selectedIds?: Set<string>
   onSelectedIdsChange?: (next: Set<string>) => void
   finalizedIds?: Set<string>
+  onRevertFinalizadoIds?: (ids: string[]) => void
   devolvidosIds?: Set<string>
   onRequestClear?: () => void
   dataFiltro: import('@/utils/planilhaDataFiltro').PlanilhaDataFiltro
@@ -61,6 +62,7 @@ export function DivMaterialForm({
   selectedIds,
   onSelectedIdsChange,
   finalizedIds,
+  onRevertFinalizadoIds,
   devolvidosIds,
   onRequestClear,
   dataFiltro,
@@ -163,6 +165,7 @@ export function DivMaterialForm({
         selectedIds={selectedIds}
         onSelectedIdsChange={onSelectedIdsChange}
         finalizedIds={finalizedIds}
+        onRevertFinalizadoIds={onRevertFinalizadoIds}
         devolvidosIds={devolvidosIds}
         onEditLinha={handleEditLinha}
         onDeleteLinha={handleDeleteLinha}

@@ -347,6 +347,13 @@ export function ImhAbaForm({
         importing={importing}
         selectedImhIds={selectedImhIds}
         onSelectedImhIdsChange={onSelectedImhIdsChange}
+        onRevertFinalizadoIds={(ids) => {
+          const remove = new Set(ids)
+          onChange({
+            ...value,
+            finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
+          })
+        }}
         onImportClick={hideImport ? undefined : handleImportClick}
         onEditLinha={handleEditLinha}
         onDeleteLinha={handleDeleteLinha}

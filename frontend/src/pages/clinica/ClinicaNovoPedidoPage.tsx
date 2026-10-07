@@ -1321,6 +1321,14 @@ export default function ClinicaNovoPedidoPage() {
           selectedIds={selectedDivMaterialIds}
           onSelectedIdsChange={handleSelectedDivMaterialIdsChange}
           finalizedIds={finalizedDivMaterialIds}
+          onRevertFinalizadoIds={(ids) => {
+            const remove = new Set(ids)
+            const next = new Set(
+              [...finalizedDivMaterialIds].filter((id) => !remove.has(id)),
+            )
+            setFinalizedDivMaterialIds(next)
+            persist({ finalizedDivMaterialIds: [...next] })
+          }}
           devolvidosIds={devolvidosDivMaterialIds}
           onRequestClear={
             modoCorrigir ? undefined : () => handleRequestClear('Div. Material')

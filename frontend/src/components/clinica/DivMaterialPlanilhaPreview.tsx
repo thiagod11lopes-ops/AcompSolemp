@@ -33,6 +33,7 @@ import {
 } from 'react'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
+import { PlanilhaDesmarcarEnviadoModal } from '@/components/clinica/PlanilhaDesmarcarEnviadoModal'
 import {
   PlanilhaExpandButton,
   PlanilhaFullscreenDialog,
@@ -81,6 +82,8 @@ interface DivMaterialPlanilhaPreviewProps {
   selectedIds?: Set<string>
   onSelectedIdsChange?: (next: Set<string>) => void
   finalizedIds?: Set<string>
+  /** Remove IDs da lista de já enviados (após confirmação no modal). */
+  onRevertFinalizadoIds?: (ids: string[]) => void
   /** Linhas devolvidas (checkbox laranja) liberadas para reenvio. */
   devolvidosIds?: Set<string>
   onEditLinha?: (linhaId: string) => void
@@ -205,6 +208,7 @@ export function DivMaterialPlanilhaPreview({
   selectedIds,
   onSelectedIdsChange,
   finalizedIds,
+  onRevertFinalizadoIds,
   devolvidosIds,
   onEditLinha,
   onDeleteLinha,
@@ -215,6 +219,7 @@ export function DivMaterialPlanilhaPreview({
   onExpandedChange,
 }: DivMaterialPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [pendingRevertIds, setPendingRevertIds] = useState<string[] | null>(null)
   const [filtroFornecedor, setFiltroFornecedor] = useState(FORNECEDOR_TODOS)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
@@ -338,8 +343,28 @@ export function DivMaterialPlanilhaPreview({
     onSelectedIdsChange(next)
   }
 
+  const confirmRevertFinalizado = () => {
+    if (!pendingRevertIds?.length) {
+      setPendingRevertIds(null)
+      return
+    }
+    onRevertFinalizadoIds?.(pendingRevertIds)
+    if (onSelectedIdsChange) {
+      const next = new Set(selection)
+      for (const id of pendingRevertIds) next.delete(id)
+      onSelectedIdsChange(next)
+    }
+    setPendingRevertIds(null)
+  }
+
   const toggleOne = (linhaId: string, checked: boolean) => {
-    if (!onSelectedIdsChange || finalized.has(linhaId)) return
+    if (!onSelectedIdsChange) return
+    if (finalized.has(linhaId)) {
+      if (checked) return
+      if (!onRevertFinalizadoIds) return
+      setPendingRevertIds([linhaId])
+      return
+    }
     const next = new Set(selection)
     if (checked) next.add(linhaId)
     else next.delete(linhaId)
@@ -731,7 +756,7 @@ export function DivMaterialPlanilhaPreview({
                                       : undefined
                                 }
                                 checked={checked}
-                                disabled={finalizado}
+                                disabled={finalizado && !onRevertFinalizadoIds}
                                 onClick={(e) => e.stopPropagation()}
                                 onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
                                 sx={{
@@ -880,6 +905,12 @@ export function DivMaterialPlanilhaPreview({
             formato,
           )
         }}
+      />
+
+      <PlanilhaDesmarcarEnviadoModal
+        open={Boolean(pendingRevertIds?.length)}
+        onClose={() => setPendingRevertIds(null)}
+        onConfirm={confirmRevertFinalizado}
       />
     </Box>
   )

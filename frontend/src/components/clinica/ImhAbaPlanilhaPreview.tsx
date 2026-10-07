@@ -27,6 +27,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ImhAbaFormData } from '@/types'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
 import { PlanilhaDataFiltros } from '@/components/clinica/PlanilhaDataFiltros'
+import { PlanilhaDesmarcarEnviadoModal } from '@/components/clinica/PlanilhaDesmarcarEnviadoModal'
 import {
   PlanilhaExpandButton,
   PlanilhaFullscreenDialog,
@@ -64,6 +65,8 @@ interface ImhAbaPlanilhaPreviewProps {
   importing?: boolean
   selectedImhIds?: Set<string>
   onSelectedImhIdsChange?: (next: Set<string>) => void
+  /** Remove IDs da lista de já enviados (após confirmação no modal). */
+  onRevertFinalizadoIds?: (ids: string[]) => void
   onImportClick?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
@@ -145,6 +148,7 @@ export function ImhAbaPlanilhaPreview({
   importing = false,
   selectedImhIds,
   onSelectedImhIdsChange,
+  onRevertFinalizadoIds,
   onImportClick,
   onEditLinha,
   onDeleteLinha,
@@ -154,6 +158,7 @@ export function ImhAbaPlanilhaPreview({
   onExpandedChange,
 }: ImhAbaPlanilhaPreviewProps) {
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [pendingRevertIds, setPendingRevertIds] = useState<string[] | null>(null)
   const { boldEnabled, toggleBold } = usePlanilhaBoldPreference()
   const { expanded, setExpanded } = usePlanilhaExpand()
   const tableRef = useRef<HTMLTableElement | null>(null)
@@ -296,8 +301,49 @@ export function ImhAbaPlanilhaPreview({
     onSelectedImhIdsChange(next)
   }
 
+  const applySelectionForGrupo = (
+    linhasGrupo: { id: string }[],
+    checked: boolean,
+  ) => {
+    if (!onSelectedImhIdsChange) return
+    const next = new Set(selection)
+    for (const linha of linhasGrupo) {
+      if (checked) next.add(linha.id)
+      else next.delete(linha.id)
+    }
+    onSelectedImhIdsChange(next)
+  }
+
+  const confirmRevertFinalizado = () => {
+    if (!pendingRevertIds?.length) {
+      setPendingRevertIds(null)
+      return
+    }
+    onRevertFinalizadoIds?.(pendingRevertIds)
+    if (onSelectedImhIdsChange) {
+      const next = new Set(selection)
+      for (const id of pendingRevertIds) next.delete(id)
+      onSelectedImhIdsChange(next)
+    }
+    setPendingRevertIds(null)
+  }
+
   const toggleOne = (linhaId: string, checked: boolean) => {
-    if (!onSelectedImhIdsChange || finalizedIds.has(linhaId)) return
+    if (!onSelectedImhIdsChange) return
+    if (finalizedIds.has(linhaId)) {
+      if (checked) return
+      if (!onRevertFinalizadoIds) return
+      const clicked = linhasFiltradas.find((l) => l.id === linhaId)
+      if (!clicked) return
+      const nipKey = normalizeImhNipKey(clicked.nip)
+      const ids = nipKey
+        ? linhasFiltradas
+            .filter((l) => finalizedIds.has(l.id) && normalizeImhNipKey(l.nip) === nipKey)
+            .map((l) => l.id)
+        : [linhaId]
+      setPendingRevertIds(ids)
+      return
+    }
     const clicked = selecionaveis.find((l) => l.id === linhaId)
     if (!clicked) return
     const nipKey = normalizeImhNipKey(clicked.nip)
@@ -305,12 +351,7 @@ export function ImhAbaPlanilhaPreview({
     const grupo = nipKey
       ? selecionaveis.filter((l) => normalizeImhNipKey(l.nip) === nipKey)
       : [clicked]
-    const next = new Set(selection)
-    for (const linha of grupo) {
-      if (checked) next.add(linha.id)
-      else next.delete(linha.id)
-    }
-    onSelectedImhIdsChange(next)
+    applySelectionForGrupo(grupo, checked)
   }
 
   const sheet = (
@@ -772,7 +813,7 @@ export function ImhAbaPlanilhaPreview({
                                     : undefined
                               }
                               checked={checked}
-                              disabled={finalizado}
+                              disabled={finalizado && !onRevertFinalizadoIds}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(_, nextChecked) => toggleOne(linha.id, nextChecked)}
                               sx={{
@@ -966,6 +1007,12 @@ export function ImhAbaPlanilhaPreview({
             formato,
           )
         }}
+      />
+
+      <PlanilhaDesmarcarEnviadoModal
+        open={Boolean(pendingRevertIds?.length)}
+        onClose={() => setPendingRevertIds(null)}
+        onConfirm={confirmRevertFinalizado}
       />
     </Box>
   )
