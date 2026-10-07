@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { isMarinhaEmail, normalizeEmailKey } from '@/utils/email'
+import { isInstitutionalEmail, normalizeEmailKey } from '@/utils/email'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import {
   clearTeamInviteAccepted,
@@ -104,7 +104,7 @@ export function useTeamEmailInvite(
     if (!isSupabase) return
 
     const raw = emailHint?.trim() ?? ''
-    if (!isMarinhaEmail(raw)) {
+    if (!isInstitutionalEmail(raw)) {
       setPendingTeamInvite(false)
       setUnregisteredModalOpen(false)
       return
@@ -172,7 +172,7 @@ export function useTeamEmailInvite(
   const ensureTeamInviteAccepted = useCallback(
     async (email: string): Promise<boolean> => {
       if (!isSupabase) return true
-      if (!isMarinhaEmail(email)) return true
+      if (!isInstitutionalEmail(email)) return true
       const normalized = normalizeEmailKey(email)
       if (isTeamInviteAccepted(normalized)) {
         setPendingTeamInvite(false)
@@ -193,7 +193,7 @@ export function useTeamEmailInvite(
   const ensureRegisteredOrSignup = useCallback(
     async (email: string): Promise<boolean> => {
       if (!isSupabase) return true
-      if (!isMarinhaEmail(email)) return true
+      if (!isInstitutionalEmail(email)) return true
       if (!unregisteredModalEnabled) return true
       const normalized = normalizeEmailKey(email)
       const status = await authService.getLoginEmailStatus(normalized)

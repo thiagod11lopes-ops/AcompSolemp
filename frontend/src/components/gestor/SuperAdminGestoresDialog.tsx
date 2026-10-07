@@ -32,7 +32,7 @@ import {
   type ActiveGestorRow,
   type GestorTeamEmailRow,
 } from '@/data/persistence/supabaseAdmin'
-import { SUPER_ADMIN_EMAIL } from '@/utils/email'
+import { superAdminEmail } from '@/utils/email'
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
 
@@ -154,7 +154,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
   }
 
   const handleTogglePause = async (email: string, paused: boolean) => {
-    if (email === SUPER_ADMIN_EMAIL) return
+    if (email === superAdminEmail()) return
     setBusyEmail(email)
     setError('')
     setTeamError('')
@@ -178,7 +178,7 @@ export function SuperAdminGestoresDialog({ open, onClose }: SuperAdminGestoresDi
 
   const handleConfirmDelete = async () => {
     if (!confirm) return
-    if (confirm.email === SUPER_ADMIN_EMAIL) {
+    if (confirm.email === superAdminEmail()) {
       setConfirm(null)
       return
     }
@@ -487,7 +487,7 @@ function TeamEmailRow({
   enterLabel: string
   deleteLabel: string
 }) {
-  const isSelf = row.email === SUPER_ADMIN_EMAIL
+  const isSelf = row.email === superAdminEmail()
   const entering = enteringEmail === row.email
   const busy = busyEmail === row.email
 

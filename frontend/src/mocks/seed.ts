@@ -42,7 +42,7 @@ import {
 } from '@/utils/pedidoCleanup'
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
-import { isMarinhaEmail } from '@/utils/email'
+import { isInstitutionalEmail } from '@/utils/email'
 import { scheduleSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 
 const SEED_VERSION = 'v16'
@@ -453,7 +453,7 @@ function stripDemoConfeccaoFromCloudTenant(data: AppData): boolean {
 function ensureBootstrapGoogleEmails(data: AppData): boolean {
   if (data.tenantMeta) return false
   const email = env.gestorGoogleEmail
-  if (!email || !isMarinhaEmail(email)) return false
+  if (!email || !isInstitutionalEmail(email)) return false
 
   let changed = false
   for (const user of data.usuarios) {

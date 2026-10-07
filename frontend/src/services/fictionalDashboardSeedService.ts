@@ -21,6 +21,7 @@ import { STORAGE_KEYS, storageGet, storageRemove, storageSet } from '@/storage/i
 import { formatValorBrasileiro, parseValorBrasileiro } from '@/utils/consumoMaterialOds'
 import { createLinhaVazia } from '@/utils/consumoMaterialTemplate'
 import { EMPTY_CABECALHO } from '@/utils/fictionalSeedCabecalho'
+import { demoInstitutionalEmail } from '@/utils/email'
 import {
   DEMO_CLINICA_EXEMPLO_ID,
   DEMO_EMPENHADO_EXEMPLO_ID,
@@ -256,7 +257,7 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
       graduacao: 'CF',
       login: 'gestor-ficticio',
       perfil: 'GESTOR' as const,
-      email: 'ficticio@marinha.mil.br',
+      email: demoInstitutionalEmail('ficticio'),
       clinicaId: null,
       ativo: true,
     }

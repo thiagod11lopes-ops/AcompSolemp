@@ -3,6 +3,7 @@ import { generateOrgCode } from '@/services/tenantService'
 import type { AppData } from '@/types'
 import { saveAppDataToSupabase } from '@/data/persistence/supabaseAppDataPersistence'
 import { APP_DATA_SEED_VERSION } from '@/data/persistence/types'
+import { ownGestorEmailBlockedMessage } from '@/utils/email'
 
 export interface TenantRecord {
   id: string
@@ -195,7 +196,7 @@ export async function upsertEmailAccess(input: {
   const ownerEmail = tenant?.owner_email?.trim().toLowerCase()
   if (ownerEmail && ownerEmail === email) {
     throw new Error(
-      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+      ownGestorEmailBlockedMessage(),
     )
   }
 

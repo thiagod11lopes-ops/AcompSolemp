@@ -1,5 +1,5 @@
 import type { User, UserRole } from '@/types'
-import { assertMarinhaEmail } from '@/utils/email'
+import { assertInstitutionalEmail, ownGestorEmailBlockedMessage } from '@/utils/email'
 import { useSupabaseDataSource, useCloudAppDataSync } from '@/config/dataSource'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
@@ -20,7 +20,7 @@ import {
 import { buildUserPerfis, userHasPerfil, userPerfis } from '@/utils/userPerfis'
 
 function validateEmail(email: string): string {
-  return assertMarinhaEmail(email)
+  return assertInstitutionalEmail(email)
 }
 
 export interface CreatePortalUserInput {
@@ -97,7 +97,7 @@ function assertNotGestorOwnEmail(email: string): void {
   const ownerEmail = data.tenantMeta?.ownerEmail?.trim().toLowerCase()
   if (ownerEmail && ownerEmail === email) {
     throw new Error(
-      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+      ownGestorEmailBlockedMessage(),
     )
   }
 
@@ -109,7 +109,7 @@ function assertNotGestorOwnEmail(email: string): void {
   )
   if (gestorComMesmoEmail) {
     throw new Error(
-      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+      ownGestorEmailBlockedMessage(),
     )
   }
 }

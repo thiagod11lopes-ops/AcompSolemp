@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/supabase/client'
-import { assertMarinhaEmail, normalizeEmailKey, SUPER_ADMIN_EMAIL } from '@/utils/email'
+import { assertInstitutionalEmail, normalizeEmailKey, superAdminEmail } from '@/utils/email'
 import type { AppData } from '@/types'
 
 export interface ActiveGestorRow {
@@ -51,12 +51,12 @@ export async function listActiveGestores(): Promise<ActiveGestorRow[]> {
       paused: Boolean(row.result_paused ?? row.paused),
       team_count: Number(row.result_team_count ?? row.team_count ?? 0),
     }))
-    .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
+    .filter((row) => row.email && row.email !== superAdminEmail())
 }
 
 export async function listGestorTeamEmails(gestorEmail: string): Promise<GestorTeamEmailRow[]> {
   const { data, error } = await getSupabaseClient().rpc('list_gestor_team_emails', {
-    p_gestor_email: assertMarinhaEmail(gestorEmail),
+    p_gestor_email: assertInstitutionalEmail(gestorEmail),
   })
   if (error) throw new Error(error.message)
   const rows = Array.isArray(data) ? data : []
@@ -68,12 +68,12 @@ export async function listGestorTeamEmails(gestorEmail: string): Promise<GestorT
       paused: Boolean(row.result_paused ?? row.paused),
       is_gestor: Boolean(row.result_is_gestor ?? row.is_gestor),
     }))
-    .filter((row) => row.email && row.email !== SUPER_ADMIN_EMAIL)
+    .filter((row) => row.email && row.email !== superAdminEmail())
 }
 
 export async function setAccountPaused(email: string, paused: boolean): Promise<boolean> {
   const { data, error } = await getSupabaseClient().rpc('set_account_paused', {
-    p_email: assertMarinhaEmail(email),
+    p_email: assertInstitutionalEmail(email),
     p_paused: paused,
   })
   if (error) throw new Error(error.message)
@@ -84,7 +84,7 @@ export async function setAccountPaused(email: string, paused: boolean): Promise<
 /** Super-admin: remove e-mail da equipe de um gestor (bloqueia login até novo cadastro). */
 export async function adminDeleteTeamEmail(email: string): Promise<void> {
   const { error } = await getSupabaseClient().rpc('admin_delete_team_email', {
-    p_email: assertMarinhaEmail(email),
+    p_email: assertInstitutionalEmail(email),
   })
   if (error) throw new Error(error.message)
 }
@@ -95,7 +95,7 @@ export async function adminDeleteTeamEmail(email: string): Promise<void> {
  */
 export async function adminDeleteGestorTenant(gestorEmail: string): Promise<void> {
   const { error } = await getSupabaseClient().rpc('admin_delete_gestor_tenant', {
-    p_gestor_email: assertMarinhaEmail(gestorEmail),
+    p_gestor_email: assertInstitutionalEmail(gestorEmail),
   })
   if (error) throw new Error(error.message)
 }
@@ -111,7 +111,7 @@ export async function assertAccountNotPaused(email: string): Promise<void> {
 
 export async function resolveImpersonation(email: string): Promise<ImpersonationResolveResult> {
   const { data, error } = await getSupabaseClient().rpc('admin_resolve_impersonation', {
-    p_email: assertMarinhaEmail(email),
+    p_email: assertInstitutionalEmail(email),
   })
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data

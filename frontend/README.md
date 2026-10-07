@@ -1,6 +1,6 @@
 # AcompSOLEMP — Frontend
 
-Sistema de gestão de **Materiais Consignados e SOLEMP** para Organização Militar Hospitalar da Marinha do Brasil.
+Sistema de gestão de **Materiais Consignados e SOLEMP** para organização hospitalar.
 
 > **Escopo atual:** apenas frontend, com autenticação simulada e dados mockados (Faker + localStorage). O backend será integrado futuramente.
 

@@ -41,6 +41,10 @@ import type { Clinica, User } from '@/types'
 import { userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { CLINICAS_HOSPITAL } from '@/utils/clinicasHospital'
+import {
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 
 interface RegistroCadastro {
   id: string
@@ -268,7 +272,7 @@ export function UsuariosTab() {
       })
       const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
       setSucesso(
-        `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
+        `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail institucional, escolhendo um dos tipos autorizados.`,
       )
       setErro('')
       setModalAberto(false)
@@ -410,8 +414,8 @@ export function UsuariosTab() {
                 label="E-mail institucional"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@marinha.mil.br"
-                helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
+                placeholder={institutionalEmailPlaceholder()}
+                helperText={`${institutionalEmailHint()} — usado em /clinica/timeline`}
                 disabled={opcoesSelecionadas.length === 0}
               />
             </Grid>

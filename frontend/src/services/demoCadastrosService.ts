@@ -12,6 +12,7 @@ import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
 import { createDemoMedicamentoPlanilhaExemploState, createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
 import { createDemoMedicamentoDashboardConteudo } from '@/utils/medicamentoBalanco'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
+import { demoInstitutionalEmail } from '@/utils/email'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
 export const DEMO_CLINICA_EXEMPLO_ID = 'demo-clinica-exemplo'
@@ -372,7 +373,7 @@ function ensureRefsPedidoExemplo(data: AppData): {
       cnpj: '00.000.000/0001-91',
       contato: 'Farmácia',
       telefone: '(21) 0000-0000',
-      email: 'farmacia.exemplo@marinha.mil.br',
+      email: demoInstitutionalEmail('farmacia.exemplo'),
     })
   }
   if (data.materiais.length === 0) {

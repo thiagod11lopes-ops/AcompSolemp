@@ -1,3 +1,4 @@
+import { env } from '@/config/env'
 import type { ListaMateriaisFormData, ListaMateriaisLinha } from '@/types'
 import {
   formatConmedMoeda,
@@ -42,8 +43,8 @@ export const LISTA_MATERIAIS_COLUNAS = [
 
 export type ListaMateriaisColunaKey = (typeof LISTA_MATERIAIS_COLUNAS)[number]['key']
 
-export const LISTA_MATERIAIS_INSTITUICAO = 'MARINHA DO BRASIL'
-export const LISTA_MATERIAIS_ORGAO = 'CENTRO DE OBTENÇÃO DA MARINHA NO RIO DE JANEIRO'
+export const LISTA_MATERIAIS_INSTITUICAO = env.instituicaoNome || 'INSTITUIÇÃO'
+export const LISTA_MATERIAIS_ORGAO = env.orgaoNome || 'ÓRGÃO DE OBTENÇÃO'
 export const LISTA_MATERIAIS_RELACAO = 'RELAÇÃO DE ITENS'
 
 export function linhaListaHasContent(linha: ListaMateriaisLinha): boolean {

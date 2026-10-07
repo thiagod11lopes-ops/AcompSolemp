@@ -1,7 +1,7 @@
 import type { AuthUser, LoginCredentials, CredencialUsuario, User, UserRole } from '@/types'
 import type { Portal } from '@/utils/portal'
 import {
-  assertMarinhaEmail,
+  assertInstitutionalEmail,
   isSuperAdminEmail,
   normalizeEmailKey,
   passwordResetRedirectUrl,
@@ -325,14 +325,14 @@ export const authService = {
   },
 
   async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
-    const marinhaEmail = assertMarinhaEmail(credentials.login)
+    const institutionalEmail = assertInstitutionalEmail(credentials.login)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    await assertAccountNotPaused(marinhaEmail)
+    await assertAccountNotPaused(institutionalEmail)
 
-    const teamAccess = await getEmailAccess(marinhaEmail)
+    const teamAccess = await getEmailAccess(institutionalEmail)
     if (teamAccess) {
       throw new Error(
         'Este e-mail foi cadastrado por um gestor na equipe. Use Entrar após aceitar o cadastro (não cria Portal do Gestor).',
@@ -341,10 +341,10 @@ export const authService = {
 
     try {
       const authSession = await supabaseAuthAdapter.signInWithPassword(
-        marinhaEmail,
+        institutionalEmail,
         credentials.senha,
       )
-      return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+      return await this.completeGestorSupabaseSession(authSession, institutionalEmail)
     } catch (error) {
       // E-mail livre sem conta Auth: Entrar cria a conta e o banco do Gestor.
       const message = error instanceof Error ? error.message.toLowerCase() : ''
@@ -356,10 +356,10 @@ export const authService = {
 
       try {
         const authSession = await supabaseAuthAdapter.signUpWithPassword(
-          marinhaEmail,
+          institutionalEmail,
           credentials.senha,
         )
-        return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+        return await this.completeGestorSupabaseSession(authSession, institutionalEmail)
       } catch (signUpError) {
         const already =
           signUpError instanceof Error &&
@@ -374,14 +374,14 @@ export const authService = {
 
   async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
     setOpenAccessSession(false)
-    const marinhaEmail = assertMarinhaEmail(credentials.login)
+    const institutionalEmail = assertInstitutionalEmail(credentials.login)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    await assertAccountNotPaused(marinhaEmail)
+    await assertAccountNotPaused(institutionalEmail)
 
-    const teamAccess = await getEmailAccess(marinhaEmail)
+    const teamAccess = await getEmailAccess(institutionalEmail)
     if (teamAccess) {
       throw new Error(
         'Este e-mail foi cadastrado por um gestor. Aceite o cadastro e use Cadastrar-se para criar a senha — não cria Portal do Gestor.',
@@ -390,10 +390,10 @@ export const authService = {
 
     try {
       const authSession = await supabaseAuthAdapter.signUpWithPassword(
-        marinhaEmail,
+        institutionalEmail,
         credentials.senha,
       )
-      return await this.completeGestorSupabaseSession(authSession, marinhaEmail)
+      return await this.completeGestorSupabaseSession(authSession, institutionalEmail)
     } catch (error) {
       throw mapSupabaseAuthError(error)
     }
@@ -401,10 +401,10 @@ export const authService = {
 
   async completeGestorSupabaseSession(
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
-    marinhaEmail: string,
+    institutionalEmail: string,
   ): Promise<AuthUser> {
     // Trava de segurança: e-mail liberado em Cadastros nunca provisiona tenant de gestor.
-    const teamAccess = await getEmailAccess(marinhaEmail)
+    const teamAccess = await getEmailAccess(institutionalEmail)
     if (teamAccess) {
       throw new Error(
         'Este e-mail pertence à equipe do gestor (Timeline). Não é possível usá-lo no Portal do Gestor.',
@@ -422,7 +422,7 @@ export const authService = {
     if (!profile) {
       const { tenant, profile: created, owner } = await provisionGestorTenant({
         authUserId: authSession.user.id,
-        email: marinhaEmail,
+        email: institutionalEmail,
         displayName: authSession.user.user_metadata?.full_name,
         initialAppData: generateEmptyTenantData(),
       })
@@ -434,7 +434,7 @@ export const authService = {
         usuarios: [owner],
         tenantMeta: {
           orgCode: tenant.org_code,
-          ownerEmail: marinhaEmail,
+          ownerEmail: institutionalEmail,
           ownerUid: tenant.id,
           createdAt: tenant.created_at,
         },
@@ -462,7 +462,7 @@ export const authService = {
         (u) =>
           u.perfil === 'GESTOR' &&
           u.ativo &&
-          normalizeEmailKey(u.email ?? '') === normalizeEmailKey(marinhaEmail),
+          normalizeEmailKey(u.email ?? '') === normalizeEmailKey(institutionalEmail),
       ) ??
       data.usuarios.find((u) => u.perfil === 'GESTOR' && u.ativo)
 
@@ -474,12 +474,12 @@ export const authService = {
         id: profile.app_user_id || `user-owner-${profile.tenant_id}`,
         nome:
           authSession.user.user_metadata?.full_name?.trim() ||
-          marinhaEmail.split('@')[0] ||
+          institutionalEmail.split('@')[0] ||
           'Gestor',
         posto: '',
         graduacao: 'Gestor Geral',
         login: 'gestor',
-        email: marinhaEmail,
+        email: institutionalEmail,
         perfil: 'GESTOR',
         clinicaId: null,
         ativo: true,
@@ -492,7 +492,7 @@ export const authService = {
         ],
         tenantMeta: data.tenantMeta ?? {
           orgCode: orgCode || profile.tenant_id.slice(0, 8).toUpperCase(),
-          ownerEmail: marinhaEmail,
+          ownerEmail: institutionalEmail,
           ownerUid: profile.tenant_id,
           createdAt: new Date().toISOString(),
         },
@@ -505,13 +505,13 @@ export const authService = {
   /** Se o e-mail foi liberado em Cadastros pelo gestor, retorna o acesso da Timeline. */
   async getTeamEmailAccess(email: string) {
     if (!useSupabaseDataSource()) return null
-    return getEmailAccess(assertMarinhaEmail(email))
+    return getEmailAccess(assertInstitutionalEmail(email))
   },
 
   /** Status do e-mail no login (equipe / gestor / não cadastrado). */
   async getLoginEmailStatus(email: string) {
     if (!useSupabaseDataSource()) return { status: 'gestor' as const, gestorEmail: null }
-    return fetchLoginEmailStatus(assertMarinhaEmail(email))
+    return fetchLoginEmailStatus(assertInstitutionalEmail(email))
   },
 
   /** Recusa o convite: remove o e-mail do Cadastros do gestor. */
@@ -519,8 +519,8 @@ export const authService = {
     if (!useSupabaseDataSource()) {
       throw new Error('Disponível apenas com autenticação em nuvem (Supabase).')
     }
-    const marinhaEmail = assertMarinhaEmail(email)
-    return declineTeamEmailInvite(marinhaEmail)
+    const institutionalEmail = assertInstitutionalEmail(email)
+    return declineTeamEmailInvite(institutionalEmail)
   },
 
   async loginWithEmailTimeline(
@@ -528,16 +528,16 @@ export const authService = {
     password?: string,
     expectedPerfil?: UserRole,
   ): Promise<TimelineLoginResult> {
-    const marinhaEmail = assertMarinhaEmail(email)
+    const institutionalEmail = assertInstitutionalEmail(email)
 
     if (useSupabaseDataSource()) {
       if (!password || password.length < 6) {
         throw new Error('Informe a senha (mínimo 6 caracteres)')
       }
 
-      await assertAccountNotPaused(marinhaEmail)
+      await assertAccountNotPaused(institutionalEmail)
 
-      const access = await getEmailAccess(marinhaEmail)
+      const access = await getEmailAccess(institutionalEmail)
       if (!access) {
         throw new Error(
           'E-mail não cadastrado pelo gestor. Peça para liberá-lo na aba Cadastros.',
@@ -548,11 +548,11 @@ export const authService = {
         // Validação definitiva ocorre após hidratar o usuário (perfis[]).
       }
 
-      const authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
-      return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, expectedPerfil)
+      const authSession = await supabaseAuthAdapter.signInWithPassword(institutionalEmail, password)
+      return this.completeTimelineSupabaseSession(authSession, access, institutionalEmail, expectedPerfil)
     }
 
-    const user = findLocalUserByEmail(marinhaEmail)
+    const user = findLocalUserByEmail(institutionalEmail)
     if (!user) {
       throw new Error('E-mail não cadastrado pelo gestor')
     }
@@ -579,7 +579,7 @@ export const authService = {
     password: string,
     expectedPerfil?: UserRole,
   ): Promise<TimelineLoginResult> {
-    const marinhaEmail = assertMarinhaEmail(email)
+    const institutionalEmail = assertInstitutionalEmail(email)
     if (!useSupabaseDataSource()) {
       throw new Error('O cadastro com senha está disponível apenas com autenticação em nuvem.')
     }
@@ -587,9 +587,9 @@ export const authService = {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
 
-    await assertAccountNotPaused(marinhaEmail)
+    await assertAccountNotPaused(institutionalEmail)
 
-    const access = await getEmailAccess(marinhaEmail)
+    const access = await getEmailAccess(institutionalEmail)
     if (!access) {
       throw new Error(
         'E-mail não liberado. Peça ao gestor para cadastrá-lo em Cadastros antes de criar a senha.',
@@ -603,7 +603,7 @@ export const authService = {
     // Conta Auth já existia (ex.: exclusão incompleta): entra com a senha informada.
     let authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signUpWithPassword>>
     try {
-      authSession = await supabaseAuthAdapter.signUpWithPassword(marinhaEmail, password)
+      authSession = await supabaseAuthAdapter.signUpWithPassword(institutionalEmail, password)
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : ''
       const already =
@@ -611,15 +611,15 @@ export const authService = {
         message.includes('already registered') ||
         message.includes('already been registered')
       if (!already) throw error
-      authSession = await supabaseAuthAdapter.signInWithPassword(marinhaEmail, password)
+      authSession = await supabaseAuthAdapter.signInWithPassword(institutionalEmail, password)
     }
-    return this.completeTimelineSupabaseSession(authSession, access, marinhaEmail, expectedPerfil)
+    return this.completeTimelineSupabaseSession(authSession, access, institutionalEmail, expectedPerfil)
   },
 
   async completeTimelineSupabaseSession(
     authSession: Awaited<ReturnType<typeof supabaseAuthAdapter.signInWithPassword>>,
     access: NonNullable<Awaited<ReturnType<typeof getEmailAccess>>>,
-    marinhaEmail: string,
+    institutionalEmail: string,
     expectedPerfil?: UserRole,
   ): Promise<TimelineLoginResult> {
     const existingProfile = await getProfileForCurrentUser()
@@ -628,7 +628,7 @@ export const authService = {
         id: authSession.user.id,
         tenant_id: access.tenant_id,
         app_user_id: access.app_user_id,
-        email: marinhaEmail,
+        email: institutionalEmail,
         perfil: access.perfil,
       })
       // Perfil já existe (mesmo auth user): segue o login.
@@ -643,7 +643,7 @@ export const authService = {
     })
 
     const data = loadAppData()
-    const emailKey = marinhaEmail.trim().toLowerCase()
+    const emailKey = institutionalEmail.trim().toLowerCase()
     let user =
       data.usuarios.find((item) => item.id === access.app_user_id && item.ativo) ??
       data.usuarios.find(
@@ -685,11 +685,11 @@ export const authService = {
       const { perfil, perfis } = buildUserPerfis(selected, access.perfil as UserRole | undefined)
       user = {
         id: access.app_user_id,
-        nome: access.nome?.trim() || marinhaEmail.split('@')[0] || 'Usuário',
+        nome: access.nome?.trim() || institutionalEmail.split('@')[0] || 'Usuário',
         posto: '',
         graduacao: '',
-        login: marinhaEmail.split('@')[0] || 'user',
-        email: marinhaEmail,
+        login: institutionalEmail.split('@')[0] || 'user',
+        email: institutionalEmail,
         perfil,
         perfis,
         clinicaId: access.clinica_id,
@@ -1024,7 +1024,7 @@ export const authService = {
   },
 
   async requestPasswordReset(email: string): Promise<void> {
-    const marinhaEmail = assertMarinhaEmail(email)
+    const institutionalEmail = assertInstitutionalEmail(email)
     if (!useSupabaseDataSource()) {
       throw new Error(
         'A recuperação de senha está disponível apenas com autenticação em nuvem (Supabase).',
@@ -1032,7 +1032,7 @@ export const authService = {
     }
     try {
       await supabaseAuthAdapter.resetPasswordForEmail(
-        marinhaEmail,
+        institutionalEmail,
         passwordResetRedirectUrl(),
       )
     } catch (error) {

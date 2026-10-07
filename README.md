@@ -1,6 +1,6 @@
 # AcompSOLEMP
 
-Sistema de gestão de **Materiais Consignados e SOLEMP** para Organização Militar Hospitalar da Marinha do Brasil.
+Sistema de gestão de **Materiais Consignados e SOLEMP** para organização hospitalar.
 
 ## Status do projeto
 
