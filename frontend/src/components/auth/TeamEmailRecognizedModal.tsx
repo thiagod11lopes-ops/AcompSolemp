@@ -181,7 +181,7 @@ export function TeamEmailRecognizedModal({
         sx={{ display: 'block', mb: error ? 1.5 : 0, lineHeight: 1.45 }}
       >
         <strong>Sim</strong> — você cria a senha e entra no sistema do gestor
-        no setor cadastrado.
+        {labels.length > 1 ? ' nos setores cadastrados' : ' no setor cadastrado'}.
         {' '}
         <strong>Não</strong> — remove o convite e abre o cadastro de senha para
         criar seu próprio login e banco de dados como Gestor.

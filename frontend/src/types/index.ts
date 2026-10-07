@@ -56,7 +56,7 @@ export interface User {
   posto: string
   graduacao: string
   login: string
-  /** E-mail institucional @marinha.mil.br autorizado para login */
+  /** E-mail institucional autorizado para login */
   email?: string | null
   /** Perfil ativo da sessão / principal do cadastro */
   perfil: UserRole

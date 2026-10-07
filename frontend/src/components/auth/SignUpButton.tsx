@@ -10,7 +10,10 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import {
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 
 export interface SignUpFormValues {
   email: string
@@ -31,7 +34,7 @@ export function SignUpButton({
   emailHint = '',
   fullWidth = true,
   disabled = false,
-  helperText = 'Use o e-mail institucional @marinha.mil.br. O link de recuperação de senha será enviado para este mesmo e-mail.',
+  helperText = `${institutionalEmailHint()}. O link de recuperação de senha será enviado para este mesmo e-mail.`,
   openSignal = 0,
   onSubmit,
 }: SignUpButtonProps) {
@@ -105,8 +108,8 @@ export function SignUpButton({
               label="E-mail institucional"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seuemail@marinha.mil.br"
-              helperText={MARINHA_EMAIL_HINT}
+              placeholder={institutionalEmailPlaceholder()}
+              helperText={institutionalEmailHint()}
               margin="dense"
               autoFocus
             />

@@ -12,7 +12,10 @@ import {
 } from '@mui/material'
 import { authService } from '@/services/authService'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import {
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 import { getAuthErrorMessage } from '@/supabase/authErrors'
 
 interface ForgotPasswordButtonProps {
@@ -89,13 +92,13 @@ export function ForgotPasswordButton({
         <DialogContent>
           {sent ? (
             <Alert severity="success" sx={{ mt: 1 }}>
-              Se a conta existir, enviamos o link de redefinição para o e-mail @marinha.mil.br
+              Se a conta existir, enviamos o link de redefinição para o e-mail institucional
               informado. Abra o link no e-mail (ele leva ao AcompSOLEMP para definir a nova senha).
             </Alert>
           ) : (
             <Box sx={{ pt: 1 }}>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Informe o e-mail @marinha.mil.br da conta. O link de redefinição será enviado para
+                Informe o e-mail institucional da conta. O link de redefinição será enviado para
                 este mesmo e-mail.
               </Typography>
               <TextField
@@ -104,8 +107,8 @@ export function ForgotPasswordButton({
                 label="E-mail"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@marinha.mil.br"
-                helperText={MARINHA_EMAIL_HINT}
+                placeholder={institutionalEmailPlaceholder()}
+                helperText={institutionalEmailHint()}
                 autoFocus
               />
               {error && (

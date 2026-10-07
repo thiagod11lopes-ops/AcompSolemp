@@ -41,6 +41,10 @@ import type { Clinica, User } from '@/types'
 import { userPerfis } from '@/utils/userPerfis'
 import { loginPerfilLabel } from '@/utils/loginPerfis'
 import { CLINICAS_HOSPITAL } from '@/utils/clinicasHospital'
+import {
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 
 interface RegistroCadastro {
   id: string
@@ -93,19 +97,22 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
     const usersDaClinica = usuariosAtivos.filter((u) => u.clinicaId === clinica.id)
     if (usersDaClinica.length === 0) continue
 
-    const user =
-      usersDaClinica.find((u) => u.email?.trim()) ?? usersDaClinica[0]!
     const tipo = clinica.tipo ?? 'clinica'
     const tipoLabel = labelTipoEntidade(tipo)
     clinicasJaListadas.add(clinica.id)
-    resultado.push({
-      id: clinica.id,
-      setor: tipo === 'clinica' ? clinica.nome : tipoLabel,
-      responsavel: user.nome?.trim() || clinica.responsavel?.trim() || '—',
-      email: user.email?.trim() || '—',
-      ativo: true,
-      isEntidadeClinica: true,
-    })
+
+    // Um registro por usuário: vários responsáveis podem compartilhar o mesmo setor.
+    for (const user of usersDaClinica) {
+      resultado.push({
+        id: user.id,
+        setor: tipo === 'clinica' ? clinica.nome : tipoLabel,
+        responsavel: user.nome?.trim() || clinica.responsavel?.trim() || '—',
+        email: user.email?.trim() || '—',
+        ativo: true,
+        // Exclusão remove o usuário; a entidade só some se não restar ninguém.
+        isEntidadeClinica: false,
+      })
+    }
   }
 
   for (const u of usuariosAtivos) {
@@ -115,12 +122,12 @@ function buildTodosRegistros(clinicas: Clinica[], usuarios: User[]): RegistroCad
       const tiposDoUsuario = userPerfis(u).map((p) => loginPerfilLabel(p))
       clinicasJaListadas.add(u.clinicaId)
       resultado.push({
-        id: u.clinicaId,
+        id: u.id,
         setor: tiposDoUsuario.join(', ') || '—',
         responsavel: u.nome?.trim() || '—',
         email: u.email?.trim() || '—',
         ativo: true,
-        isEntidadeClinica: true,
+        isEntidadeClinica: false,
       })
       continue
     }
@@ -265,7 +272,7 @@ export function UsuariosTab() {
       })
       const labels = opcoesSelecionadas.map((o) => o.label).join(', ')
       setSucesso(
-        `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail @marinha.mil.br, escolhendo um dos tipos autorizados.`,
+        `Cadastro criado (${labels})! O usuário acessa a Timeline com este e-mail institucional, escolhendo um dos tipos autorizados.`,
       )
       setErro('')
       setModalAberto(false)
@@ -407,8 +414,8 @@ export function UsuariosTab() {
                 label="E-mail institucional"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seuemail@marinha.mil.br"
-                helperText="Somente @marinha.mil.br — usado em /clinica/timeline"
+                placeholder={institutionalEmailPlaceholder()}
+                helperText={`${institutionalEmailHint()} — usado em /clinica/timeline`}
                 disabled={opcoesSelecionadas.length === 0}
               />
             </Grid>

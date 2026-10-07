@@ -162,7 +162,7 @@ export function mapSupabaseAuthError(error: unknown): Error {
       'Falha no envio de e-mail pelo Supabase (SMTP). ' +
         'No cadastro isso não deveria ocorrer com “Confirm email” desligado. ' +
         'Se estiver em “Esqueci a senha”, confira Authentication → Emails → SMTP ' +
-        'e se o destino @marinha.mil.br recebe mensagens. Erro original: ' +
+        'e se o destino institucional recebe mensagens. Erro original: ' +
         message,
     )
   }

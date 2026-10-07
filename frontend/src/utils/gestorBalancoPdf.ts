@@ -1,3 +1,4 @@
+import { env } from '@/config/env'
 import type { GestorBalancoResult } from '@/utils/gestorBalanco'
 import { formatCurrency } from '@/utils/format'
 
@@ -156,7 +157,7 @@ function buildBalancoPdfMarkup(balanco: GestorBalancoResult, geradoEm: string): 
     }
   </style>
   <div class="hero">
-    <div class="hero-brand">AcompSOLEMP · Marinha do Brasil</div>
+    <div class="hero-brand">${escapeHtml(env.instituicaoNome ? `AcompSOLEMP · ${env.instituicaoNome}` : 'AcompSOLEMP')}</div>
     <h1>Balanço Geral do Sistema</h1>
     <div class="hero-periodo">${escapeHtml(balanco.periodoLabel)}</div>
     <div class="hero-meta">

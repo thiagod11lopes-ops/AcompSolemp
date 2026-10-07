@@ -22,6 +22,7 @@ import {
 } from '@/utils/workflowAdvance'
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
+import { userHasPerfil } from '@/utils/userPerfis'
 
 export interface CreatePedidoInput {
   id?: string
@@ -179,16 +180,17 @@ export const clinicaPedidoService = {
       const clinicaUsuario = data.usuarios.find(
         (item) =>
           item.clinicaId === clinicaId &&
-          (item.perfil === 'CLINICA' ||
-            item.perfil === 'MEDICAMENTO' ||
-            item.perfil === 'EMPENHADO'),
+          (userHasPerfil(item, 'CLINICA') ||
+            userHasPerfil(item, 'MEDICAMENTO') ||
+            userHasPerfil(item, 'EMPENHADO')),
       )
-      const tipoEntidade =
-        clinicaUsuario?.perfil === 'MEDICAMENTO'
+      const tipoEntidade = clinicaUsuario
+        ? userHasPerfil(clinicaUsuario, 'MEDICAMENTO')
           ? 'medicamento'
-          : clinicaUsuario?.perfil === 'EMPENHADO'
+          : userHasPerfil(clinicaUsuario, 'EMPENHADO')
             ? 'empenhado'
             : 'clinica'
+        : 'clinica'
       data.clinicas.push({
         id: clinicaId,
         nome:
@@ -596,9 +598,9 @@ export const clinicaPedidoService = {
     )
     if (!usuario || !pedido) throw new Error('Pedido não encontrado')
     if (
-      usuario.perfil === 'CLINICA' ||
-      usuario.perfil === 'MEDICAMENTO' ||
-      usuario.perfil === 'EMPENHADO'
+      userHasPerfil(usuario, 'CLINICA') ||
+      userHasPerfil(usuario, 'MEDICAMENTO') ||
+      userHasPerfil(usuario, 'EMPENHADO')
     ) {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',
@@ -677,9 +679,9 @@ export const clinicaPedidoService = {
     const clinica = data.clinicas.find((c) => c.id === clinicaId)
     if (!usuario || !pedido || !clinica) throw new Error('Pedido não encontrado')
     if (
-      usuario.perfil === 'CLINICA' ||
-      usuario.perfil === 'MEDICAMENTO' ||
-      usuario.perfil === 'EMPENHADO'
+      userHasPerfil(usuario, 'CLINICA') ||
+      userHasPerfil(usuario, 'MEDICAMENTO') ||
+      userHasPerfil(usuario, 'EMPENHADO')
     ) {
       throw new Error(
         'Após o envio para a Div. de Material, a clínica possui apenas visualização da timeline.',

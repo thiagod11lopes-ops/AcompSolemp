@@ -10,6 +10,74 @@ import { getSupabaseClient } from '@/supabase/client'
 import { getTenantId, setTenantId } from '@/services/tenantService'
 import { isImpersonationSession } from '@/config/dataSource'
 import { adminLoadAppState, adminSaveAppState } from '@/data/persistence/supabaseAdmin'
+import { mergeUsuariosFromEmailAccess } from '@/data/persistence/normalized/mergeUsuariosFromEmailAccess'
+
+function countActiveTeamUsers(data: AppData): number {
+  return (data.usuarios ?? []).filter(
+    (u) =>
+      u.ativo &&
+      u.perfil !== 'GESTOR' &&
+      u.perfil !== 'ADMINISTRADOR' &&
+      Boolean(u.email?.trim()),
+  ).length
+}
+
+function mergeUsuariosById(
+  primary: AppData['usuarios'],
+  secondary: AppData['usuarios'],
+): AppData['usuarios'] {
+  const byId = new Map<string, (typeof primary)[number]>()
+  for (const user of primary ?? []) byId.set(user.id, user)
+  for (const user of secondary ?? []) {
+    if (!byId.has(user.id)) byId.set(user.id, user)
+  }
+  return [...byId.values()]
+}
+
+/**
+ * Impede gravar Cadastros vazios por cima de um estado que ainda tem equipe
+ * (ex.: 2ª aba hidratou blob antigo sem usuarios e tentou flush).
+ */
+async function protectCadastrosBeforeSave(
+  outgoing: AppData,
+  tenantId: string,
+): Promise<AppData> {
+  let next: AppData = {
+    ...outgoing,
+    usuarios: [...(outgoing.usuarios ?? [])],
+    clinicas: [...(outgoing.clinicas ?? [])],
+  }
+
+  // 1) Completa a partir de email_access (fonte do Cadastros liberado).
+  next = await mergeUsuariosFromEmailAccess(next)
+
+  // 2) Se ainda ficou sem equipe, recupera usuarios/clinicas do snapshot atual na nuvem.
+  if (countActiveTeamUsers(next) === 0) {
+    try {
+      const snapshot = await loadAppDataFromSupabase(tenantId)
+      if (snapshot) {
+        const remote = deserializeAppData(snapshot)
+        if (countActiveTeamUsers(remote) > 0) {
+          next = {
+            ...next,
+            usuarios: mergeUsuariosById(next.usuarios, remote.usuarios),
+          }
+        }
+        if ((next.clinicas?.length ?? 0) === 0 && (remote.clinicas?.length ?? 0) > 0) {
+          const clinById = new Map(next.clinicas.map((c) => [c.id, c]))
+          for (const c of remote.clinicas ?? []) {
+            if (!clinById.has(c.id)) clinById.set(c.id, c)
+          }
+          next = { ...next, clinicas: [...clinById.values()] }
+        }
+      }
+    } catch {
+      // Mantém outgoing.
+    }
+  }
+
+  return next
+}
 
 /** Resolve tenant do profile Auth sem importar supabaseTenant (evita ciclo). */
 async function resolveAuthProfileTenantId(): Promise<string | null> {
@@ -89,7 +157,10 @@ export async function saveAppDataToSupabase(
     '@/data/persistence/appDataAnexoSanitize'
   )
   // Fase 9: dual-write primeiro precisa do AppData completo; o blob salva versão enxuta.
-  const appDataLeve = stripAnexoBase64FromAppData(appData)
+  let appDataLeve = stripAnexoBase64FromAppData(appData)
+  // Protege Cadastros contra flush vazio vindo de outra aba / blob antigo.
+  appDataLeve = await protectCadastrosBeforeSave(appDataLeve, id)
+
   const { stripNormalizedDomainsFromAppData } = await import(
     '@/data/persistence/normalized/stripFromBlob'
   )

@@ -58,7 +58,8 @@ const DEFAULT_STRIP_FROM_BLOB: DomainFlags = {
   reversoes: true,
   notificacoes: true,
   arquivados: true,
-  cadastros: true,
+  // Cadastros ficam no blob: dual-write silencioso + strip esvaziava a lista no refresh.
+  cadastros: false,
   config: true,
   auxiliares: true,
 }

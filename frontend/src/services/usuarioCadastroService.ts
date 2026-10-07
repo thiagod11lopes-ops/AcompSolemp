@@ -1,5 +1,5 @@
 import type { User, UserRole } from '@/types'
-import { assertMarinhaEmail } from '@/utils/email'
+import { assertInstitutionalEmail, ownGestorEmailBlockedMessage } from '@/utils/email'
 import { useSupabaseDataSource, useCloudAppDataSync } from '@/config/dataSource'
 import { delay, loadAppData, saveAppData } from '@/mocks/seed'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
@@ -20,7 +20,7 @@ import {
 import { buildUserPerfis, userHasPerfil, userPerfis } from '@/utils/userPerfis'
 
 function validateEmail(email: string): string {
-  return assertMarinhaEmail(email)
+  return assertInstitutionalEmail(email)
 }
 
 export interface CreatePortalUserInput {
@@ -97,7 +97,7 @@ function assertNotGestorOwnEmail(email: string): void {
   const ownerEmail = data.tenantMeta?.ownerEmail?.trim().toLowerCase()
   if (ownerEmail && ownerEmail === email) {
     throw new Error(
-      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+      ownGestorEmailBlockedMessage(),
     )
   }
 
@@ -109,7 +109,7 @@ function assertNotGestorOwnEmail(email: string): void {
   )
   if (gestorComMesmoEmail) {
     throw new Error(
-      'Não é permitido cadastrar o próprio e-mail do gestor. Use outro @marinha.mil.br para a equipe.',
+      ownGestorEmailBlockedMessage(),
     )
   }
 }
@@ -193,14 +193,16 @@ export const usuarioCadastroService = {
     )
 
     if (isEntidade && clinicaId) {
-      const existingIdx = data.usuarios.findIndex(
-        (u) => u.clinicaId === clinicaId && userHasPerfil(u, perfil),
+      // Atualiza só o mesmo e-mail na entidade. Outros e-mails podem
+      // compartilhar a mesma clínica/medicamento (vários responsáveis).
+      const existingByEmailIdx = data.usuarios.findIndex(
+        (u) =>
+          u.clinicaId === clinicaId &&
+          u.email?.trim().toLowerCase() === email &&
+          userHasPerfil(u, perfil),
       )
-      if (existingIdx >= 0) {
-        const existing = data.usuarios[existingIdx]
-        if (useCloudAppDataSync() && existing.email && existing.email !== email) {
-          await removeEmailAccess(existing.email, tenantId)
-        }
+      if (existingByEmailIdx >= 0) {
+        const existing = data.usuarios[existingByEmailIdx]
         existing.nome = nome
         existing.email = email
         existing.ativo = true
@@ -272,6 +274,7 @@ export const usuarioCadastroService = {
         perfil: user.perfil,
         clinicaId: user.clinicaId,
         nome: user.nome,
+        perfis: userPerfis(user),
       })
     }
 
@@ -334,7 +337,10 @@ export const usuarioCadastroService = {
 
       if (isFictionalDashboardSeedActive()) {
         for (const user of data.usuarios) {
-          if (user.clinicaId === input.id) user.ativo = false
+          if (user.clinicaId === input.id) {
+            user.ativo = false
+            user.email = undefined
+          }
         }
         saveAppData(data)
         return
@@ -347,6 +353,7 @@ export const usuarioCadastroService = {
       for (const user of data.usuarios) {
         if (user.clinicaId === input.id) {
           user.ativo = false
+          user.email = undefined
         }
       }
       saveAppData(data)
@@ -362,6 +369,7 @@ export const usuarioCadastroService = {
 
     if (isFictionalDashboardSeedActive()) {
       user.ativo = false
+      user.email = undefined
       saveAppData(data)
       return
     }
@@ -371,6 +379,7 @@ export const usuarioCadastroService = {
     }
 
     user.ativo = false
+    user.email = undefined
     saveAppData(data)
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()

@@ -21,5 +21,5 @@ grant execute on function public.lookup_email_access(text) to anon, authenticate
 grant execute on function public.clear_orphan_team_profile_for_gestor() to authenticated, service_role;
 grant execute on function public.can_write_app_state(uuid) to anon, authenticated, service_role;
 grant execute on function public.save_app_state_for_tenant(uuid, text, jsonb) to authenticated, service_role;
-grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text) to authenticated, service_role;
+grant execute on function public.upsert_email_access_for_tenant(text, uuid, text, text, text, text, text[]) to authenticated, service_role;
 grant execute on function public.remove_email_access_for_tenant(text, uuid) to authenticated, service_role;

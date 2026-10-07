@@ -14,7 +14,11 @@ import { authService } from '@/services/authService'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { premiumTokens } from '@/theme/tokens'
-import { MARINHA_EMAIL_HINT } from '@/utils/email'
+import {
+  institutionalEmailDomain,
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
@@ -150,8 +154,8 @@ export default function TimelineEntryPage() {
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {isSupabase
-            ? 'E-mail @marinha.mil.br liberado pelo gestor. Use Entrar ou Cadastrar-se no primeiro acesso.'
-            : 'Informe o e-mail @marinha.mil.br cadastrado pelo gestor.'}
+            ? `E-mail ${institutionalEmailDomain() ? `@${institutionalEmailDomain()}` : 'institucional'} liberado pelo gestor. Use Entrar ou Cadastrar-se no primeiro acesso.`
+            : `Informe o e-mail ${institutionalEmailDomain() ? `@${institutionalEmailDomain()}` : 'institucional'} cadastrado pelo gestor.`}
         </Typography>
 
         {info && (
@@ -166,8 +170,8 @@ export default function TimelineEntryPage() {
           label="E-mail institucional"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="seuemail@marinha.mil.br"
-          helperText={MARINHA_EMAIL_HINT}
+          placeholder={institutionalEmailPlaceholder()}
+          helperText={institutionalEmailHint()}
           sx={{ mb: 2 }}
         />
         {isSupabase && (
@@ -210,7 +214,7 @@ export default function TimelineEntryPage() {
               helperText={
                 blockUntilInviteAccepted
                   ? 'Responda ao convite do gestor (Sim ou Não) para liberar Entrar e Cadastrar-se.'
-                  : 'O gestor libera o e-mail @marinha.mil.br. Ao aceitar (Sim), defina a senha para entrar no setor cadastrado.'
+                  : `O gestor libera o e-mail ${institutionalEmailDomain() ? `@${institutionalEmailDomain()}` : 'institucional'}. Ao aceitar (Sim), defina a senha para entrar no setor cadastrado.`
               }
               onSubmit={handleSignUp}
             />

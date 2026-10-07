@@ -133,8 +133,14 @@ export function useDemoHistorico(pedidoId?: string) {
 }
 
 export function useNotifications(perfil?: Parameters<typeof notificationService.list>[0]) {
+  const key =
+    perfil == null
+      ? 'all'
+      : Array.isArray(perfil)
+        ? [...perfil].sort().join('|')
+        : perfil
   return useQuery({
-    queryKey: ['notifications', perfil ?? 'all'],
+    queryKey: ['notifications', key],
     queryFn: () => notificationService.list(perfil),
     staleTime: 0,
     refetchInterval: 8_000,

@@ -38,6 +38,7 @@ import {
   isFictionalDashboardSeedActive,
   toggleFictionalDashboardSeed,
 } from '@/services/fictionalDashboardSeedService'
+import { userPerfis } from '@/utils/userPerfis'
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -56,7 +57,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [fictionalActive, setFictionalActive] = useState(() => isFictionalDashboardSeedActive())
   const [fictionalBusy, setFictionalBusy] = useState(false)
   const perfilNotif =
-    isDemo && demoMode ? demoMode.authUser.perfil : (user?.perfil ?? null)
+    isDemo && demoMode ? userPerfis(demoMode.authUser) : user ? userPerfis(user) : null
   const { data: notifications = [] } = useNotifications(perfilNotif)
   const reversoesNaoLidas = notifications.filter(
     (n) =>

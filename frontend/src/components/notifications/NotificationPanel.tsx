@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { getHomeRouteForPerfil } from '@/utils/perfilEtapa'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
+import { userPerfis } from '@/utils/userPerfis'
 import type { Notification, NotificationType, UserRole } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
@@ -97,7 +98,8 @@ export function NotificationPanel({
     isDemo && demoMode
       ? demoMode.authUser
       : gestorUser ?? ordenadorUser ?? financeiroUser ?? clinicaUser
-  const { data: notifications = [] } = useNotifications(user?.perfil ?? null)
+  const perfisNotif = user ? userPerfis(user) : null
+  const { data: notifications = [] } = useNotifications(perfisNotif)
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 
@@ -117,7 +119,7 @@ export function NotificationPanel({
   const badgeValue = badgeContent ?? unread
 
   const handleMarkAll = async () => {
-    await notificationService.markAllAsRead(user?.perfil ?? null, { tipos, excludeTipos })
+    await notificationService.markAllAsRead(perfisNotif, { tipos, excludeTipos })
     queryClient.invalidateQueries({ queryKey: ['notifications'] })
   }
 

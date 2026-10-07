@@ -1,9 +1,26 @@
-export const MARINHA_EMAIL_DOMAIN = 'marinha.mil.br'
+import { env } from '@/config/env'
 
-/** Super administrador: pode listar gestores e pausar contas. */
-export const SUPER_ADMIN_EMAIL = 'lopes.thiago.oliveira@marinha.mil.br'
+/** Domínio institucional (VITE_EMAIL_DOMAIN). */
+export function institutionalEmailDomain(): string {
+  return env.emailDomain
+}
 
-export const MARINHA_EMAIL_HINT = `Use um e-mail institucional @${MARINHA_EMAIL_DOMAIN}`
+/** Super administrador (VITE_SUPER_ADMIN_EMAIL). */
+export function superAdminEmail(): string {
+  return env.superAdminEmail
+}
+
+export function institutionalEmailHint(): string {
+  const domain = institutionalEmailDomain()
+  return domain
+    ? `Use um e-mail institucional @${domain}`
+    : 'Use um e-mail institucional válido'
+}
+
+export function institutionalEmailPlaceholder(): string {
+  const domain = institutionalEmailDomain()
+  return domain ? `seuemail@${domain}` : 'seuemail@institucional'
+}
 
 export function normalizeEmailKey(email: string): string {
   return email.trim().toLowerCase()
@@ -11,7 +28,9 @@ export function normalizeEmailKey(email: string): string {
 
 export function isSuperAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
-  return normalizeEmailKey(email) === SUPER_ADMIN_EMAIL
+  const configured = superAdminEmail()
+  if (!configured) return false
+  return normalizeEmailKey(email) === configured
 }
 
 function domainOf(email: string): string | null {
@@ -24,20 +43,38 @@ function domainOf(email: string): string | null {
   return domain
 }
 
-/** Aceita somente o domínio exato @marinha.mil.br (sem subdomínios). */
-export function isMarinhaEmail(email: string): boolean {
-  return domainOf(email) === MARINHA_EMAIL_DOMAIN
+/** Aceita somente o domínio institucional configurado (sem subdomínios). */
+export function isInstitutionalEmail(email: string): boolean {
+  const required = institutionalEmailDomain()
+  if (!required) {
+    return Boolean(domainOf(email))
+  }
+  return domainOf(email) === required
 }
 
-export function assertMarinhaEmail(email: string): string {
+export function assertInstitutionalEmail(email: string): string {
   const normalized = normalizeEmailKey(email)
   if (!normalized || !normalized.includes('@')) {
     throw new Error('Informe um e-mail válido')
   }
-  if (!isMarinhaEmail(normalized)) {
-    throw new Error(MARINHA_EMAIL_HINT)
+  if (!isInstitutionalEmail(normalized)) {
+    throw new Error(institutionalEmailHint())
   }
   return normalized
+}
+
+/** Mensagem ao tentar cadastrar o próprio e-mail do gestor na equipe. */
+export function ownGestorEmailBlockedMessage(): string {
+  const domain = institutionalEmailDomain()
+  return domain
+    ? `Não é permitido cadastrar o próprio e-mail do gestor. Use outro @${domain} para a equipe.`
+    : 'Não é permitido cadastrar o próprio e-mail do gestor. Use outro e-mail institucional para a equipe.'
+}
+
+/** E-mail de demonstração no domínio institucional (ou @exemplo.local). */
+export function demoInstitutionalEmail(localPart: string): string {
+  const domain = institutionalEmailDomain() || 'exemplo.local'
+  return `${localPart}@${domain}`
 }
 
 /**
@@ -75,6 +112,5 @@ export function looksLikePasswordRecoveryUrl(
   ) {
     return true
   }
-  // PKCE: o redirect aponta para /redefinir-senha com ?code=
   return s.includes('code=') && path.includes('redefinir-senha')
 }

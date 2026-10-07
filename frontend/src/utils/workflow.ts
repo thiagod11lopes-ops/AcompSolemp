@@ -12,6 +12,7 @@ import {
   type Solemp,
   type NotaFiscal,
 } from '@/types'
+import { userHasPerfil, usuariosComPerfil } from '@/utils/userPerfis'
 
 export function resolveEtapaFromRef(
   etapaId: string | undefined,
@@ -226,20 +227,23 @@ export function getResponsavelParaEtapa(
   usuarios: User[],
   clinicaId: string,
 ): User | null {
-  const candidatos = usuarios.filter(
-    (u) => u.ativo && u.perfil === etapa.perfilResponsavel,
-  )
+  // Considera todos os setores autorizados em `perfis[]` (não só o perfil principal).
+  const candidatos = usuariosComPerfil(usuarios, etapa.perfilResponsavel)
 
   if (etapa.perfilResponsavel === 'CLINICA') {
     const daClinica = usuarios.filter(
       (u) =>
         u.ativo &&
         u.clinicaId === clinicaId &&
-        (u.perfil === 'CLINICA' || u.perfil === 'MEDICAMENTO' || u.perfil === 'EMPENHADO'),
+        (userHasPerfil(u, 'CLINICA') ||
+          userHasPerfil(u, 'MEDICAMENTO') ||
+          userHasPerfil(u, 'EMPENHADO')),
     )
     return daClinica[0] ?? candidatos[0] ?? null
   }
 
+  // Vários usuários podem responder pelo mesmo setor; o primeiro ativo fica como
+  // responsável atual do card, e todos recebem notificação/pendência pelo perfil.
   return candidatos[0] ?? null
 }
 

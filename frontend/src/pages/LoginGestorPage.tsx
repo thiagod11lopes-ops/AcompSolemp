@@ -19,7 +19,11 @@ import { useAuth, useGestorAuth } from '@/contexts/AuthContext'
 import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
-import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
+import {
+  isInstitutionalEmail,
+  institutionalEmailHint,
+  institutionalEmailPlaceholder,
+} from '@/utils/email'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
@@ -35,7 +39,7 @@ const supabaseLoginSchema = z.object({
   login: z
     .string()
     .min(1, 'Informe o e-mail')
-    .refine(isMarinhaEmail, MARINHA_EMAIL_HINT),
+    .refine(isInstitutionalEmail, institutionalEmailHint()),
   senha: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 })
 
@@ -152,7 +156,7 @@ export default function LoginGestorPage() {
     try {
       setError('')
       setOpenAccessLoading(true)
-      if (isSupabase && emailHint?.trim() && isMarinhaEmail(emailHint)) {
+      if (isSupabase && emailHint?.trim() && isInstitutionalEmail(emailHint)) {
         const allowed = await ensureRegisteredOrSignup(emailHint)
         if (!allowed) return
         const teamAccess = await authService.getTeamEmailAccess(emailHint)
@@ -223,7 +227,7 @@ export default function LoginGestorPage() {
           label={isSupabase ? 'E-mail institucional' : 'E-mail ou login'}
           type={isSupabase ? 'email' : 'text'}
           margin="normal"
-          placeholder={isSupabase ? 'seuemail@marinha.mil.br' : undefined}
+          placeholder={isSupabase ? institutionalEmailPlaceholder() : undefined}
           helperText={errors.login?.message}
           {...registerField('login')}
           error={Boolean(errors.login)}

@@ -70,7 +70,7 @@ export default function OrdenadorTimelinesPage() {
   const isVistaImh =
     isImh &&
     (etapaChaveValida === 'DIV_MAT_CONTABILIDADE_IMH' ||
-      (!etapaChaveValida && user?.perfil === 'CONTABILIDADE_IMH'))
+      (!etapaChaveValida && userHasPerfil(user!, 'CONTABILIDADE_IMH')))
   const tituloEtapa = etapaChaveValida
     ? etapaChaveValida === 'DIV_MAT_CONTABILIDADE_IMH'
       ? 'Timelines'

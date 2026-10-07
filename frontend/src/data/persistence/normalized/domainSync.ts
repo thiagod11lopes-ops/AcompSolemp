@@ -10,12 +10,14 @@ type JsonRow = { id: string; data: unknown; pedido_id?: string }
 
 /**
  * Dual-write genérico via RPC `sync_domain_rows_from_appdata`.
- * Falhas são só warn — o monolito continua sendo a fonte de verdade até o cutover.
+ * Por padrão falhas são warn (monolito no blob). Domínios críticos (ex.: cadastros)
+ * podem exigir sucesso com `options.requireSuccess`.
  */
 export async function dualWriteDomainRows(
   domain: NormalizedDomain,
   table: string,
   rows: JsonRow[],
+  options?: { requireSuccess?: boolean },
 ): Promise<void> {
   if (!isNormalizedDualWriteEnabled(domain)) return
   const tenantId = getTenantId()
@@ -30,9 +32,17 @@ export async function dualWriteDomainRows(
     })
     if (error) {
       console.warn(`[AcompSolemp] dual-write ${domain}:`, error.message)
+      if (options?.requireSuccess) {
+        throw new Error(`Falha ao gravar ${domain} na nuvem: ${error.message}`)
+      }
     }
   } catch (error) {
     console.warn(`[AcompSolemp] dual-write ${domain} indisponível:`, error)
+    if (options?.requireSuccess) {
+      throw error instanceof Error
+        ? error
+        : new Error(`Falha ao gravar ${domain} na nuvem`)
+    }
   }
 }
 

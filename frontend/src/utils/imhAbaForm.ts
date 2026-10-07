@@ -1,3 +1,4 @@
+import { env } from '@/config/env'
 import type { ConmedComrjFormData, ImhAbaFormData, ImhAbaLinha } from '@/types'
 import type { CreatePedidoInput } from '@/services/clinicaPedidoService'
 import {
@@ -55,7 +56,7 @@ export const IMH_ABA_COLUNAS = [
 
 export type ImhAbaColunaKey = (typeof IMH_ABA_COLUNAS)[number]['key']
 
-export const IMH_ABA_INSTITUICAO = 'MARINHA DO BRASIL'
+export const IMH_ABA_INSTITUICAO = env.instituicaoNome || 'INSTITUIÇÃO'
 export const IMH_ABA_HOSPITAL = 'HOSPITAL NAVAL MARCÍLIO DIAS'
 
 export function isVinculoTitular(vinculo: string): boolean {

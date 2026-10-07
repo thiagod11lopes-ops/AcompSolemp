@@ -6,6 +6,7 @@ import type {
 } from '@/types'
 import type { TimelineNodeData } from '@/components/timeline/types'
 import { chavesEtapaParaPerfil } from '@/utils/perfilEtapa'
+import { userHasPerfil } from '@/utils/userPerfis'
 
 const SETORES_ORDENADOR = new Set([
   'DIV_MAT_AUDITORIA',
@@ -107,7 +108,7 @@ export function usuarioPodeCorrigirDevolucao(
   if (!destino || destino !== node.etapa.chave) return false
 
   if (destino === 'SOLICITACAO') {
-    return user.perfil === 'CLINICA' || user.perfil === 'MEDICAMENTO'
+    return userHasPerfil(user, 'CLINICA') || userHasPerfil(user, 'MEDICAMENTO')
   }
 
   if (SETORES_ORDENADOR.has(destino)) {
