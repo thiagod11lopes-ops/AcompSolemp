@@ -11,7 +11,7 @@ export interface PlanilhaDraft {
 
 function draftKey(type: PlanilhaDraftType, rowIds: string[]): string {
   const ids = [...rowIds].sort().join(',')
-  return `acompsolemp:planilha-draft:${type}:${ids}`
+  return `acompopms:planilha-draft:${type}:${ids}`
 }
 
 function sameRowIds(a: string[], b: string[]): boolean {

@@ -7,7 +7,7 @@ interface BrandLogoProps {
   compact?: boolean
 }
 
-/** Logotipo AcompSOLEMP — marca com ícone de organização; wordmark limpo. */
+/** Logotipo AcompOPMS — marca com ícone de organização; wordmark limpo. */
 export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
   const markSize = compact ? 28 : 32
 
@@ -54,7 +54,7 @@ export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
             userSelect: 'none',
           }}
         >
-          AcompSOLEMP
+          AcompOPMS
         </Typography>
         {subtitle ? (
           <Typography

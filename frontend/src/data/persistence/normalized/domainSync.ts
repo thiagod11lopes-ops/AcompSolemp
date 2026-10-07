@@ -29,10 +29,10 @@ export async function dualWriteDomainRows(
       p_rows: rows,
     })
     if (error) {
-      console.warn(`[AcompSolemp] dual-write ${domain}:`, error.message)
+      console.warn(`[AcompOPMS] dual-write ${domain}:`, error.message)
     }
   } catch (error) {
-    console.warn(`[AcompSolemp] dual-write ${domain} indisponível:`, error)
+    console.warn(`[AcompOPMS] dual-write ${domain} indisponível:`, error)
   }
 }
 
@@ -52,14 +52,14 @@ export async function readDomainRows<T>(
       .select('id, data')
       .eq('tenant_id', tenantId)
     if (error) {
-      console.warn(`[AcompSolemp] read ${domain}:`, error.message)
+      console.warn(`[AcompOPMS] read ${domain}:`, error.message)
       return null
     }
     return (data ?? [])
       .map((row) => row.data as T)
       .filter((row) => row != null)
   } catch (error) {
-    console.warn(`[AcompSolemp] read ${domain} indisponível:`, error)
+    console.warn(`[AcompOPMS] read ${domain} indisponível:`, error)
     return null
   }
 }

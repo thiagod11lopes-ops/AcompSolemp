@@ -24,7 +24,7 @@ export async function initDataLayer(): Promise<void> {
     initAppData()
     tryRestoreFictionalSnapshotIntoCache()
     if (import.meta.env.DEV) {
-      console.info(`[AcompSolemp] Fonte de dados: ${getActiveDataSourceLabel()}`)
+      console.info(`[AcompOPMS] Fonte de dados: ${getActiveDataSourceLabel()}`)
     }
     return
   }
@@ -42,14 +42,14 @@ export async function initDataLayer(): Promise<void> {
       })
     }
   } catch (error) {
-    console.warn('[AcompSolemp] Hidratação Supabase adiada:', error)
+    console.warn('[AcompOPMS] Hidratação Supabase adiada:', error)
   }
 
   // Depois da nuvem: se o seed fictício estava ativo, reaplicamos o snapshot local.
   tryRestoreFictionalSnapshotIntoCache()
 
   if (import.meta.env.DEV) {
-    console.info(`[AcompSolemp] Fonte de dados: ${getActiveDataSourceLabel()}`)
+    console.info(`[AcompOPMS] Fonte de dados: ${getActiveDataSourceLabel()}`)
   }
 }
 

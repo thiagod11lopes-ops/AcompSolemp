@@ -1,4 +1,4 @@
--- AcompSOLEMP — super-admin: listar gestores / equipes e pausar contas
+-- AcompOPMS — super-admin: listar gestores / equipes e pausar contas
 -- E-mail autorizado: lopes.thiago.oliveira@marinha.mil.br
 
 create table if not exists public.account_pauses (

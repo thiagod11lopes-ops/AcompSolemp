@@ -156,7 +156,7 @@ function buildBalancoPdfMarkup(balanco: GestorBalancoResult, geradoEm: string): 
     }
   </style>
   <div class="hero">
-    <div class="hero-brand">AcompSOLEMP · Marinha do Brasil</div>
+    <div class="hero-brand">AcompOPMS · Marinha do Brasil</div>
     <h1>Balanço Geral do Sistema</h1>
     <div class="hero-periodo">${escapeHtml(balanco.periodoLabel)}</div>
     <div class="hero-meta">
@@ -187,7 +187,7 @@ function buildBalancoPdfMarkup(balanco: GestorBalancoResult, geradoEm: string): 
       </div>
     </div>
     <div class="footer">
-      <span>AcompSOLEMP — Balanço consolidado</span>
+      <span>AcompOPMS — Balanço consolidado</span>
       <span>Confidencial · uso interno</span>
     </div>
   </div>

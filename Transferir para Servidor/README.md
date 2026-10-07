@@ -1,4 +1,4 @@
-# Transferir o banco AcompSolemp para um servidor local
+# Transferir o banco AcompOPMS para um servidor local
 
 Guia passo a passo para copiar o banco **Supabase na nuvem** (projeto `lvfesspmljwqhdlkyars`) para um ambiente **local** (seu PC ou um servidor na rede).
 
@@ -6,7 +6,7 @@ Guia passo a passo para copiar o banco **Supabase na nuvem** (projeto `lvfesspml
 
 ## 1. O que precisa ser transferido
 
-O AcompSolemp (Fase 1) usa:
+O AcompOPMS (Fase 1) usa:
 
 | Parte | Onde fica na nuvem | Precisa migrar? |
 |--------|--------------------|-----------------|
@@ -43,7 +43,7 @@ Instala Postgres “puro” e importa as tabelas `public`.
 **Vantagens:** mais leve.  
 **Desvantagens:** o login atual do app depende do **Supabase Auth**; sem Auth, o frontend em modo `supabase` **não** autentica do mesmo jeito. Só faz sentido se você for adaptar o app depois.
 
-> Para o AcompSolemp como está hoje, use a **Opção A**.
+> Para o AcompOPMS como está hoje, use a **Opção A**.
 
 ---
 
@@ -66,7 +66,7 @@ Guarde da nuvem (Dashboard → **Project Settings**):
 
 ### 4.1. Iniciar Supabase no PC
 
-Na pasta do projeto (raiz do repositório `AcompSolemp`):
+Na pasta do projeto (raiz do repositório `AcompOPMS`):
 
 ```bash
 supabase init
@@ -81,7 +81,7 @@ Ao terminar, o CLI mostra algo como:
 
 **Anote esses valores.** Eles substituem a URL/chave da nuvem no `.env` local.
 
-### 4.2. Aplicar o schema do AcompSolemp no local
+### 4.2. Aplicar o schema do AcompOPMS no local
 
 Ainda na raiz do projeto:
 
@@ -113,7 +113,7 @@ pg_dump "postgresql://postgres.[REF]:[SENHA_DO_BANCO]@aws-0-[REGIAO].pooler.supa
   -t public.app_state ^
   -t public.profiles ^
   -t public.email_access ^
-  -f acompsolemp_public_data.sql
+  -f acompopms_public_data.sql
 ```
 
 **Como montar a connection string da nuvem:**
@@ -131,7 +131,7 @@ Alternativa pelo Dashboard (sem `pg_dump`):
 ### 4.4. Importar os dados no Postgres local
 
 ```bash
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f acompsolemp_public_data.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f acompopms_public_data.sql
 ```
 
 Se der erro de chave estrangeira em `profiles` / `tenants` por falta de usuários em `auth.users`, vá para a seção **5** (Auth) **antes** de importar `profiles`, ou importe na ordem:
@@ -183,13 +183,13 @@ pg_dump "postgresql://postgres.[REF]:[SENHA]@db.[REF].supabase.co:5432/postgres"
   --schema=auth ^
   --no-owner ^
   --no-acl ^
-  -f acompsolemp_auth.sql
+  -f acompopms_auth.sql
 ```
 
 Importe no local **somente se souber o que está fazendo** (versões do GoTrue/Auth precisam ser compatíveis):
 
 ```bash
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f acompsolemp_auth.sql
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f acompopms_auth.sql
 ```
 
 ### 5.2. Caminho mais simples (recomendado na prática)
@@ -217,7 +217,7 @@ Se o `app_state.payload` já tiver o gestor com `id = user-owner-<tenant_id>`, m
 ## 6. Opção B — PostgreSQL puro (resumo)
 
 1. Instale PostgreSQL 15+.  
-2. Crie um banco `acompsolemp`.  
+2. Crie um banco `acompopms`.  
 3. Rode `supabase/schema.sql` e `supabase/grants.sql` (os GRANTs para `anon`/`authenticated` só fazem sentido com roles do Supabase; em Postgres puro adapte para um usuário da aplicação).  
 4. Importe o dump `public`.  
 5. O frontend **em modo supabase** ainda precisará de Auth API — sem ela, use `VITE_DATA_SOURCE=local` (IndexedDB) ou implemente outra autenticação.

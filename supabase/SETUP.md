@@ -1,4 +1,4 @@
-# Supabase — AcompSolemp (Fase 1)
+# Supabase — AcompOPMS (Fase 1)
 
 Persistência remota do `AppData` em JSONB + Auth e-mail/senha.
 
@@ -53,7 +53,7 @@ Em **Authentication → Providers**:
 
 - Ative **Email**
 - **Desative “Confirm email”** (Authentication → Providers → Email → Confirm email).  
-  O AcompSOLEMP **não envia e-mail no cadastro**; e-mail só em **Esqueci a senha** (`resetPasswordForEmail`).
+  O AcompOPMS **não envia e-mail no cadastro**; e-mail só em **Esqueci a senha** (`resetPasswordForEmail`).
 
 Opcional (recomendado se quiser manter Confirm email ligado no painel): publique a Edge Function que cria a conta sem mailer:
 
@@ -97,4 +97,4 @@ o projeto Supabase está pausado, ou a anon key está errada. Após corrigir os 
 **Actions → Deploy GitHub Pages → Run workflow** para gerar um build novo.
 
 No painel Supabase → Authentication → URL Configuration, inclua o site Pages em Redirect URLs
-(ex.: `https://<user>.github.io/AcompSolemp/redefinir-senha`).
+(ex.: `https://<user>.github.io/AcompOPMS/redefinir-senha`).

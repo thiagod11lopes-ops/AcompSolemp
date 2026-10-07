@@ -1,4 +1,4 @@
--- AcompSOLEMP — lookup_email_access devolve todos os setores (perfis[])
+-- AcompOPMS — lookup_email_access devolve todos os setores (perfis[])
 -- do usuário no app_state, não só o perfil principal de email_access.
 
 drop function if exists public.lookup_email_access(text);

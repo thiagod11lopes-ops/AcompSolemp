@@ -61,7 +61,7 @@ function App() {
               : typeof e === 'object' && e && 'message' in e
                 ? String((e as { message: unknown }).message)
                 : 'Falha ao iniciar o armazenamento'
-          console.error('[AcompSolemp] Bootstrap falhou:', e)
+          console.error('[AcompOPMS] Bootstrap falhou:', e)
           setError(message)
         }
       }

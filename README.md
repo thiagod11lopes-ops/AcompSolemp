@@ -1,4 +1,4 @@
-# AcompSOLEMP
+# AcompOPMS
 
 Sistema de gestão de **Materiais Consignados e SOLEMP** para Organização Militar Hospitalar da Marinha do Brasil.
 
@@ -33,7 +33,7 @@ gh repo create AcompSolemp --private --source=. --remote=origin --push
 
 Após o push na branch `main`, o GitHub Actions publica o frontend em **GitHub Pages**.
 
-**URL do sistema:** https://thiagod11lopes-ops.github.io/AcompSolemp/
+**URL do sistema (repositório GitHub ainda chamado AcompSolemp):** https://thiagod11lopes-ops.github.io/AcompSolemp/
 
 ### Habilitar Pages (uma vez)
 

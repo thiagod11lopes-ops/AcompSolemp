@@ -1,4 +1,4 @@
--- AcompSOLEMP — corrige RLS de app_state no "Novo cadastro"
+-- AcompOPMS — corrige RLS de app_state no "Novo cadastro"
 -- Sintoma: new row violates row-level security policy for table "app_state"
 -- Causa: upsert direto falha quando current_tenant_id() está nulo ou o gestor
 --        não passa no WITH CHECK do INSERT.

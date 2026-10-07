@@ -1,4 +1,4 @@
-# Publica o AcompSolemp no GitHub (execute na pasta raiz do projeto)
+# Publica o AcompOPMS no GitHub (execute na pasta raiz do projeto)
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 

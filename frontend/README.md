@@ -1,4 +1,4 @@
-# AcompSOLEMP — Frontend
+# AcompOPMS — Frontend
 
 Sistema de gestão de **Materiais Consignados e SOLEMP** para Organização Militar Hospitalar da Marinha do Brasil.
 

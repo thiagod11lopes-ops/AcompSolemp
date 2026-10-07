@@ -1,5 +1,5 @@
 export const DEMO_ROUTE_BASE = '/gestor/demo'
-export const DEFAULT_APP_TITLE = 'AcompSolemp'
+export const DEFAULT_APP_TITLE = 'AcompOPMS'
 
 const PORTAL_PREFIXES = ['/clinica', '/ordenador', '/financeiro', '/gestor'] as const
 

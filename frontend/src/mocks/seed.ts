@@ -1403,7 +1403,7 @@ export function applyRemoteAppData(raw: AppData): AppData {
     persistAppData(data, { silent: true })
   }
   if (changed && import.meta.env.DEV) {
-    console.info('[AcompSolemp] AppData normalizado após hidratação Supabase')
+    console.info('[AcompOPMS] AppData normalizado após hidratação Supabase')
   }
   return cloneData(data)
 }

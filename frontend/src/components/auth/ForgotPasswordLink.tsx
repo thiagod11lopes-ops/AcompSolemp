@@ -90,7 +90,7 @@ export function ForgotPasswordButton({
           {sent ? (
             <Alert severity="success" sx={{ mt: 1 }}>
               Se a conta existir, enviamos o link de redefinição para o e-mail @marinha.mil.br
-              informado. Abra o link no e-mail (ele leva ao AcompSOLEMP para definir a nova senha).
+              informado. Abra o link no e-mail (ele leva ao AcompOPMS para definir a nova senha).
             </Alert>
           ) : (
             <Box sx={{ pt: 1 }}>

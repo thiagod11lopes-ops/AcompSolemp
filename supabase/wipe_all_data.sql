@@ -1,4 +1,4 @@
--- AcompSOLEMP — ZERA CADASTROS, mantém só o super-admin
+-- AcompOPMS — ZERA CADASTROS, mantém só o super-admin
 -- E-mail preservado: lopes.thiago.oliveira@marinha.mil.br
 -- ATENÇÃO: irreversível. Apaga gestores, equipes, organizações e demais contas Auth.
 

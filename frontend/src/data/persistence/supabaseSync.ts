@@ -239,7 +239,7 @@ export function subscribeAppStateRealtime(
           }
           onRemote(deserializeAppData(snapshot), updatedAtMs)
         } catch (error) {
-          console.warn('[AcompSolemp] Falha ao aplicar app_state remoto', error)
+          console.warn('[AcompOPMS] Falha ao aplicar app_state remoto', error)
         }
       },
     )

@@ -1,4 +1,4 @@
--- AcompSolemp — schema inicial (Fase 1: snapshot AppData em JSONB)
+-- AcompOPMS — schema inicial (Fase 1: snapshot AppData em JSONB)
 -- Execute no SQL Editor do Supabase Dashboard (idempotente: pode rodar de novo).
 
 -- Extensões

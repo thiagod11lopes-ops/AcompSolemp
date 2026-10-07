@@ -58,7 +58,7 @@ export function logAppDataPayloadMetrics(data: AppData, context: string): void {
   try {
     const m = measureAppDataPayload(data)
     console.info(
-      `[AcompSolemp][app_state] ${context}: ${m.kb} KB · pedidos=${m.pedidos} · anexosBase64=${m.anexosComBase64} · chat=${m.chatMensagens}`,
+      `[AcompOPMS][app_state] ${context}: ${m.kb} KB · pedidos=${m.pedidos} · anexosBase64=${m.anexosComBase64} · chat=${m.chatMensagens}`,
     )
   } catch {
     // métrica nunca quebra o save

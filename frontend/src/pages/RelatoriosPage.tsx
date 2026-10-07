@@ -121,8 +121,8 @@ export default function RelatoriosPage() {
           ]
           await downloadGerarDocumento(
             {
-              titulo: 'Relatórios — AcompSOLEMP',
-              fileBaseName: 'Relatorios-AcompSOLEMP',
+              titulo: 'Relatórios — AcompOPMS',
+              fileBaseName: 'Relatorios-AcompOPMS',
               headers,
               rows,
             },

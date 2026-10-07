@@ -1,4 +1,4 @@
--- AcompSOLEMP — libera e-mail órfão e permite recadastro
+-- AcompOPMS — libera e-mail órfão e permite recadastro
 -- Sintoma: lista de Cadastrados vazia, mas ao cadastrar aparece
 --   "Este e-mail já está vinculado a outra organização"
 -- Causa: exclusão soft-deleteou o usuário e falhou ao limpar email_access

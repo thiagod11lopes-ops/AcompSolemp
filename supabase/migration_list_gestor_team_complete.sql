@@ -1,4 +1,4 @@
--- AcompSOLEMP — equipe do super-admin = somente e-mails com acesso ativo (email_access)
+-- AcompOPMS — equipe do super-admin = somente e-mails com acesso ativo (email_access)
 -- E-mails excluídos pelo gestor saem da lista, mas os dados no app_state permanecem.
 
 drop function if exists public.list_gestor_team_emails(text);

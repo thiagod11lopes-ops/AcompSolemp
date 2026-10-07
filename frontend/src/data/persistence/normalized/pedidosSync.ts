@@ -20,10 +20,10 @@ export async function dualWritePedidos(data: AppData): Promise<void> {
       p_planilha_envio: data.pedidoPlanilhaEnvio ?? {},
     })
     if (error) {
-      console.warn('[AcompSolemp] dual-write pedidos:', error.message)
+      console.warn('[AcompOPMS] dual-write pedidos:', error.message)
     }
   } catch (error) {
-    console.warn('[AcompSolemp] dual-write pedidos indisponível:', error)
+    console.warn('[AcompOPMS] dual-write pedidos indisponível:', error)
   }
 }
 
@@ -41,7 +41,7 @@ export async function mergePedidosFromNormalized(data: AppData): Promise<AppData
     ])
 
     if (pedidosRes.error) {
-      console.warn('[AcompSolemp] read pedidos:', pedidosRes.error.message)
+      console.warn('[AcompOPMS] read pedidos:', pedidosRes.error.message)
       return data
     }
 
@@ -70,7 +70,7 @@ export async function mergePedidosFromNormalized(data: AppData): Promise<AppData
       pedidoPlanilhaEnvio,
     }
   } catch (error) {
-    console.warn('[AcompSolemp] read pedidos indisponível:', error)
+    console.warn('[AcompOPMS] read pedidos indisponível:', error)
     return data
   }
 }

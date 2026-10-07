@@ -1,6 +1,6 @@
 import { normalizeEmailKey } from '@/utils/email'
 
-const STORAGE_PREFIX = 'acompsolemp:team-invite-accepted:'
+const STORAGE_PREFIX = 'acompopms:team-invite-accepted:'
 
 function storageKey(email: string): string {
   return `${STORAGE_PREFIX}${normalizeEmailKey(email)}`

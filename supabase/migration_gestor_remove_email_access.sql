@@ -1,4 +1,4 @@
--- AcompSOLEMP — gestor sempre pode excluir cadastros da própria organização
+-- AcompOPMS — gestor sempre pode excluir cadastros da própria organização
 -- Problema: remove_email_access_for_tenant falhava com
 --   "Sem permissão para remover este e-mail"
 -- quando owner_user_id ≠ auth.uid() e current_tenant_id() não batia

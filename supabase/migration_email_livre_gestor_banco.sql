@@ -1,4 +1,4 @@
--- AcompSOLEMP — e-mail livre vira gestor com banco próprio
+-- AcompOPMS — e-mail livre vira gestor com banco próprio
 -- Regra: se o e-mail NÃO está em email_access (não foi cadastrado/aceito
 -- na equipe de outro gestor), o usuário autenticado pode (re)iniciar como
 -- GESTOR com tenant próprio e gravar app_state / cadastrar equipe.

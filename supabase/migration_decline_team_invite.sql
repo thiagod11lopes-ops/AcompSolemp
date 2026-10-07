@@ -1,4 +1,4 @@
--- AcompSolemp — convite de equipe: e-mail do gestor + recusa (SQL Editor)
+-- AcompOPMS — convite de equipe: e-mail do gestor + recusa (SQL Editor)
 -- DROP é necessário porque o retorno de lookup_email_access mudou (novo campo gestor_email).
 
 drop function if exists public.lookup_email_access(text);

@@ -1,30 +1,37 @@
-const DB_NAME = 'acomp_solemp_db'
+const DB_NAME = 'acomp_opms_db'
+/** Banco legado (marca AcompSolemp) — migrado uma vez para acomp_opms_db. */
+const LEGACY_DB_NAME = 'acomp_solemp_db'
 const DB_VERSION = 1
 const STORE_NAME = 'keyvalue'
 
 /** Chaves migradas do localStorage para IndexedDB */
 export const STORAGE_KEYS = {
-  APP_DATA: 'acomp_solemp_data',
-  AUTH_LEGACY: 'acomp_solemp_auth',
-  AUTH_GESTOR: 'acomp_solemp_auth_gestor',
-  AUTH_CLINICA: 'acomp_solemp_auth_clinica',
-  AUTH_ORDENADOR: 'acomp_solemp_auth_ordenador',
-  AUTH_FINANCEIRO: 'acomp_solemp_auth_financeiro',
-  AUTH_DEMO_MODE: 'acomp_solemp_auth_demo_mode',
-  AUTH_OPEN_ACCESS: 'acomp_solemp_auth_open_access',
-  AUTH_IMPERSONATION: 'acomp_solemp_auth_impersonation',
-  DEMO_APP_DATA: 'acomp_solemp_demo_data',
-  THEME: 'acomp_solemp_theme',
-  TENANT_ID: 'acomp_solemp_tenant_id',
-  ORG_CODE: 'acomp_solemp_org_code',
+  APP_DATA: 'acomp_opms_data',
+  AUTH_LEGACY: 'acomp_opms_auth',
+  AUTH_GESTOR: 'acomp_opms_auth_gestor',
+  AUTH_CLINICA: 'acomp_opms_auth_clinica',
+  AUTH_ORDENADOR: 'acomp_opms_auth_ordenador',
+  AUTH_FINANCEIRO: 'acomp_opms_auth_financeiro',
+  AUTH_DEMO_MODE: 'acomp_opms_auth_demo_mode',
+  AUTH_OPEN_ACCESS: 'acomp_opms_auth_open_access',
+  AUTH_IMPERSONATION: 'acomp_opms_auth_impersonation',
+  DEMO_APP_DATA: 'acomp_opms_demo_data',
+  THEME: 'acomp_opms_theme',
+  TENANT_ID: 'acomp_opms_tenant_id',
+  ORG_CODE: 'acomp_opms_org_code',
   /** Backup dos dados reais enquanto o seed fictício do dashboard está ativo */
-  FICTIONAL_BACKUP: 'acomp_solemp_fictional_backup',
+  FICTIONAL_BACKUP: 'acomp_opms_fictional_backup',
   /** Snapshot dos dados fictícios (sobrevive a reload) */
-  FICTIONAL_SNAPSHOT: 'acomp_solemp_fictional_snapshot',
-  FICTIONAL_ACTIVE: 'acomp_solemp_fictional_active',
+  FICTIONAL_SNAPSHOT: 'acomp_opms_fictional_snapshot',
+  FICTIONAL_ACTIVE: 'acomp_opms_fictional_active',
 } as const
 
 const ALL_KEYS = Object.values(STORAGE_KEYS)
+
+/** Mapa chave antiga (AcompSolemp) → chave atual (AcompOPMS). */
+const LEGACY_KEY_MAP: Record<string, string> = Object.fromEntries(
+  ALL_KEYS.map((key) => [key.replace(/^acomp_opms_/, 'acomp_solemp_'), key]),
+)
 
 let dbPromise: Promise<IDBDatabase> | null = null
 const memory = new Map<string, string>()
@@ -86,6 +93,56 @@ async function idbClear(): Promise<void> {
   await idbRequest(store.clear())
 }
 
+async function readLegacyDbValue(legacyKey: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const request = indexedDB.open(LEGACY_DB_NAME)
+      request.onerror = () => resolve(null)
+      request.onsuccess = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.close()
+          resolve(null)
+          return
+        }
+        const tx = db.transaction(STORE_NAME, 'readonly')
+        const store = tx.objectStore(STORE_NAME)
+        const getReq = store.get(legacyKey)
+        getReq.onsuccess = () => {
+          const value = getReq.result
+          db.close()
+          resolve(typeof value === 'string' ? value : null)
+        }
+        getReq.onerror = () => {
+          db.close()
+          resolve(null)
+        }
+      }
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+async function migrateFromLegacyBrandStorage(): Promise<void> {
+  for (const [legacyKey, nextKey] of Object.entries(LEGACY_KEY_MAP)) {
+    const existing = await idbGet(nextKey)
+    if (existing !== null) continue
+
+    const fromLegacyDb = await readLegacyDbValue(legacyKey)
+    if (fromLegacyDb !== null) {
+      await idbSet(nextKey, fromLegacyDb)
+      continue
+    }
+
+    const fromLocal = localStorage.getItem(legacyKey)
+    if (fromLocal !== null) {
+      await idbSet(nextKey, fromLocal)
+      localStorage.removeItem(legacyKey)
+    }
+  }
+}
+
 async function migrateFromLocalStorage(): Promise<void> {
   for (const key of ALL_KEYS) {
     const existing = await idbGet(key)
@@ -129,13 +186,20 @@ export async function initStorage(): Promise<void> {
   if (initialized) return
   try {
     await withTimeout(openDatabase(), INIT_TIMEOUT_MS, 'Tempo esgotado ao abrir o armazenamento local')
+    await migrateFromLegacyBrandStorage()
     await migrateFromLocalStorage()
     await hydrateMemory()
   } catch (error) {
     console.warn('IndexedDB indisponível; usando cache em memória.', error)
     memory.clear()
     for (const key of ALL_KEYS) {
-      const legacy = localStorage.getItem(key)
+      const current = localStorage.getItem(key)
+      if (current !== null) {
+        memory.set(key, current)
+        continue
+      }
+      const legacyKey = key.replace(/^acomp_opms_/, 'acomp_solemp_')
+      const legacy = localStorage.getItem(legacyKey)
       if (legacy !== null) memory.set(key, legacy)
     }
   }

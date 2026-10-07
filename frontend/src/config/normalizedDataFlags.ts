@@ -3,8 +3,8 @@
  * Fases 2–9: dual-write + leitura + strip do blob para domínios migrados.
  *
  * Override opcional (debug):
- *   localStorage.setItem('acompsolemp:normalized:pedidos:read', '1')
- *   localStorage.setItem('acompsolemp:normalized:pedidos:write', '1')
+ *   localStorage.setItem('acompopms:normalized:pedidos:read', '1')
+ *   localStorage.setItem('acompopms:normalized:pedidos:write', '1')
  */
 
 export type NormalizedDomain =
@@ -63,7 +63,7 @@ const DEFAULT_STRIP_FROM_BLOB: DomainFlags = {
   auxiliares: true,
 }
 
-const STORAGE_PREFIX = 'acompsolemp:normalized:'
+const STORAGE_PREFIX = 'acompopms:normalized:'
 
 function readOverride(key: string): boolean | null {
   if (typeof window === 'undefined') return null

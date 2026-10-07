@@ -1163,7 +1163,7 @@ export default function ClinicaNovoPedidoPage() {
         // Segundo flush: cobre o caso em que o 1º ainda competia com o flush do createPedido.
         await flushSupabaseAppDataSync()
       } catch (error) {
-        console.error('[AcompSolemp] Falha ao sincronizar planilha/anexos:', error)
+        console.error('[AcompOPMS] Falha ao sincronizar planilha/anexos:', error)
         syncAnexosFalhou = anexosParaEnviar.length > 0
       }
 

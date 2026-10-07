@@ -1,4 +1,4 @@
--- AcompSOLEMP — personificação (super-admin entra como outro e-mail)
+-- AcompOPMS — personificação (super-admin entra como outro e-mail)
 -- Corrige sombreamento de colunas OUT (perfil/tenant_id/email).
 
 drop function if exists public.admin_resolve_impersonation(text);

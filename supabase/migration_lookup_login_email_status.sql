@@ -1,4 +1,4 @@
--- AcompSOLEMP — status do e-mail na tela de login (Emails Cadastrados).
+-- AcompOPMS — status do e-mail na tela de login (Emails Cadastrados).
 -- Rode no SQL Editor do Supabase.
 -- Retorna: 'team' (liberado pelo gestor), 'gestor' (dono de tenant) ou nenhuma linha.
 

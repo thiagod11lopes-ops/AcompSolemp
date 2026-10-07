@@ -1,4 +1,4 @@
--- AcompSOLEMP — corrige RLS no cadastro de equipe (email_access)
+-- AcompOPMS — corrige RLS no cadastro de equipe (email_access)
 -- Problema: upsert direto falha com
 --   "new row violates row-level security policy (USING expression)"
 -- quando o e-mail já existe (ON CONFLICT → UPDATE) ou current_tenant_id()

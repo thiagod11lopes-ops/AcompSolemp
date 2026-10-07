@@ -109,7 +109,7 @@ function buildMetaXml(): string {
   office:version="1.3">
   <office:meta>
     <dc:title>Controle SOLEMP</dc:title>
-    <meta:generator>AcompSolemp</meta:generator>
+    <meta:generator>AcompOPMS</meta:generator>
   </office:meta>
 </office:document-meta>`
 }

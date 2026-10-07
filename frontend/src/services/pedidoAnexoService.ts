@@ -102,12 +102,12 @@ async function uploadToStorage(
       contentType: mimeType,
     })
     if (error) {
-      console.warn('[AcompSolemp] Falha ao enviar anexo ao Storage:', error.message)
+      console.warn('[AcompOPMS] Falha ao enviar anexo ao Storage:', error.message)
       return null
     }
     return path
   } catch (error) {
-    console.warn('[AcompSolemp] Storage indisponível para anexos:', error)
+    console.warn('[AcompOPMS] Storage indisponível para anexos:', error)
     return null
   }
 }
@@ -182,7 +182,7 @@ export const pedidoAnexoService = {
         try {
           conteudoBase64 = await fileToBase64(file)
         } catch (error) {
-          console.warn('[AcompSolemp] Falha ao ler anexo:', file.name, error)
+          console.warn('[AcompOPMS] Falha ao ler anexo:', file.name, error)
         }
       }
 
@@ -226,7 +226,7 @@ export const pedidoAnexoService = {
 
     if (falhasStorage.length > 0) {
       console.warn(
-        '[AcompSolemp] Storage falhou para:',
+        '[AcompOPMS] Storage falhou para:',
         falhasStorage.join(', '),
         '— esses arquivos não foram gravados no AppData (política cloud sem base64).',
       )
@@ -252,9 +252,9 @@ export const pedidoAnexoService = {
           if (data.type && data.type !== 'application/octet-stream') return data
           return new Blob([data], { type: mime })
         }
-        console.warn('[AcompSolemp] Preview Storage falhou:', error?.message)
+        console.warn('[AcompOPMS] Preview Storage falhou:', error?.message)
       } catch (error) {
-        console.warn('[AcompSolemp] Preview Storage indisponível:', error)
+        console.warn('[AcompOPMS] Preview Storage indisponível:', error)
       }
     }
 
@@ -267,7 +267,7 @@ export const pedidoAnexoService = {
       }
       return new Blob([bytes], { type: mime })
     } catch (error) {
-      console.warn('[AcompSolemp] Falha ao decodificar anexo para preview:', error)
+      console.warn('[AcompOPMS] Falha ao decodificar anexo para preview:', error)
       return null
     }
   },

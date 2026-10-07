@@ -39,7 +39,7 @@ export interface DemoCadastroItem {
 }
 
 export function formatDemoTabTitle(item: Pick<DemoCadastroItem, 'label' | 'nome'>): string {
-  return `${item.label} — ${item.nome} | AcompSolemp`
+  return `${item.label} — ${item.nome} | AcompOPMS`
 }
 
 function demoExampleUserId(opcaoId: string, entidadeId?: string): string {
