@@ -1245,17 +1245,23 @@ export default function ClinicaNovoPedidoPage() {
     }
   }
 
-  const tabsSource = abas.length
+  const tabsSourceAll = abas.length
     ? abas
     : fixedPlanilhas.map((f) => ({ id: f.id, nome: f.nome }))
-  const tabValue =
+  // Enviar (medicamento): só IMH — Lista de Medicamentos e Pacientes ficam em Planilhas.
+  const tabsSource =
+    isMedicamento && !isPlanilhasRoute
+      ? tabsSourceAll.filter((aba) => aba.id === IMH_ABA_ID)
+      : tabsSourceAll
+  const abaVisivelId =
     abaAtivaId && tabsSource.some((a) => a.id === abaAtivaId)
       ? abaAtivaId
-      : (tabsSource[0]?.id ?? false)
+      : (tabsSource[0]?.id ?? null)
+  const tabValue = abaVisivelId ?? false
 
   const renderContent = () => {
     if (isMedicamento) {
-      if (abaAtivaId === IMH_ABA_ID) {
+      if (abaVisivelId === IMH_ABA_ID) {
         return (
           <ImhMedicamentoForm
             value={imhMedicamentoFormVisivel}
@@ -1269,7 +1275,7 @@ export default function ClinicaNovoPedidoPage() {
           />
         )
       }
-      if (abaAtivaId === LISTA_MEDICAMENTOS_ABA_ID) {
+      if (abaVisivelId === LISTA_MEDICAMENTOS_ABA_ID) {
         return (
           <ListaMedicamentosForm
             value={listaMedicamentosForm}
@@ -1277,7 +1283,7 @@ export default function ClinicaNovoPedidoPage() {
           />
         )
       }
-      if (abaAtivaId === PACIENTES_ABA_ID) {
+      if (abaVisivelId === PACIENTES_ABA_ID) {
         return (
           <PacientesPmeSpreadsheet
             value={pacientesPmeRows}
@@ -1288,7 +1294,7 @@ export default function ClinicaNovoPedidoPage() {
       return abaAtiva ? <AbaVaziaPlaceholder titulo={abaAtiva.nome} /> : null
     }
 
-    if (abaAtivaId === IMH_ABA_ID) {
+    if (abaVisivelId === IMH_ABA_ID) {
       return (
         <ImhAbaForm
           value={imhFormVisivel}
@@ -1305,7 +1311,7 @@ export default function ClinicaNovoPedidoPage() {
         />
       )
     }
-    if (abaAtivaId === DIV_MATERIAL_ABA_ID) {
+    if (abaVisivelId === DIV_MATERIAL_ABA_ID) {
       return (
         <DivMaterialForm
           linhas={divMaterialLinhasVisiveis}
