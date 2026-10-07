@@ -33,6 +33,10 @@ jobs:
           GITHUB_PAGES: 'true'
           VITE_DATA_SOURCE: ${{ secrets.VITE_DATA_SOURCE }}
           VITE_GESTOR_GOOGLE_EMAIL: ${{ secrets.VITE_GESTOR_GOOGLE_EMAIL }}
+          VITE_EMAIL_DOMAIN: ${{ secrets.VITE_EMAIL_DOMAIN }}
+          VITE_SUPER_ADMIN_EMAIL: ${{ secrets.VITE_SUPER_ADMIN_EMAIL }}
+          VITE_INSTITUICAO_NOME: ${{ secrets.VITE_INSTITUICAO_NOME }}
+          VITE_ORGAO_NOME: ${{ secrets.VITE_ORGAO_NOME }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
