@@ -84,6 +84,20 @@ export const planilhaEditSelectSlotProps = {
   },
 } as const
 
+/** Lista do Autocomplete acima do modal de edição (evita opções atrás/embaçadas). */
+export const planilhaEditAutocompleteSlotProps = {
+  popper: {
+    sx: {
+      zIndex: (theme: { zIndex: { modal: number } }) => theme.zIndex.modal + 50,
+    },
+  },
+  paper: {
+    sx: {
+      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
+    },
+  },
+} as const
+
 interface PlanilhaEditSectionProps {
   title: string
   children: ReactNode

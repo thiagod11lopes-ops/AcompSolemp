@@ -28,6 +28,7 @@ import { ImhMedicamentoPlanilhaPreview } from '@/components/clinica/ImhMedicamen
 import {
   PlanilhaEditSection,
   PlanilhaLinhaEditDialog,
+  planilhaEditAutocompleteSlotProps,
   planilhaEditFieldSx,
 } from '@/components/clinica/PlanilhaLinhaEditDialog'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
@@ -1179,6 +1180,7 @@ export function ImhMedicamentoForm({
                 />
               )}
               noOptionsText="Nenhum paciente na planilha Pacientes"
+              slotProps={planilhaEditAutocompleteSlotProps}
               sx={{ gridColumn: { sm: '1 / -1' } }}
             />
             <Autocomplete
@@ -1271,6 +1273,7 @@ export function ImhMedicamentoForm({
                   ? 'Nenhum medicamento correspondente na Lista de Medicamentos'
                   : 'Digite para buscar na Lista de Medicamentos'
               }
+              slotProps={planilhaEditAutocompleteSlotProps}
               sx={{ gridColumn: '1 / -1' }}
             />
             <TextField
