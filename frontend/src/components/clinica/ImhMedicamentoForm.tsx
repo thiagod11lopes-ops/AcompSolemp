@@ -85,8 +85,6 @@ import {
   devolverEstoqueListaMedicamentos,
   findListaMedicamentoByNome,
   findListaMedicamentoByNomeELote,
-  findListaMedicamentosByNome,
-  formatListaMedEstoqueOptionLabel,
   previewBaixaEstoqueListaMedicamentos,
   resolveListaMedicamentoEstoque,
 } from '@/utils/listaMedicamentosForm'
@@ -113,8 +111,6 @@ const VINCULOS = [
 ] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 const MEDICAMENTO_SEM_LOTE = 'Medicamento sem lote definido'
-const MEDICAMENTO_ESCOLHA_LOTE =
-  'Há mais de um lote deste medicamento — selecione o lote na lista'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -249,10 +245,13 @@ export function ImhMedicamentoForm({
   const reabrirImh = useReabrirFluxoImh()
   const clinicaLogada = clinicas.find((c) => c.id === clinicaId)
   const catalog = useMemo(() => getMedicamentosPrecosCatalog(), [])
-  /** Opções do IMH: cada linha da Lista = um lote; se Lista vazia, cai no catálogo de preços. */
+  /** Select do ITEM (PME): apenas medicamentos cadastrados na aba Lista de Medicamentos. */
   const medicamentoOptions = useMemo((): ListaMedicamentosLinha[] => {
-    const fromLista = (listaMedicamentos?.linhas ?? []).filter((l) => l.medicamento.trim())
-    if (fromLista.length > 0) return fromLista
+    return (listaMedicamentos?.linhas ?? []).filter((l) => l.medicamento.trim())
+  }, [listaMedicamentos])
+  /** Fallback de preço quando a Lista ainda não tem o item. */
+  const precoFallbackOptions = useMemo((): ListaMedicamentosLinha[] => {
+    if (medicamentoOptions.length > 0) return medicamentoOptions
     return catalog.map((row) => ({
       id: row.id,
       neb: row.neb,
@@ -265,12 +264,12 @@ export function ImhMedicamentoForm({
       avisoValidadeDias: '',
       precoReferencia: row.precoReferencia,
     }))
-  }, [listaMedicamentos, catalog])
+  }, [medicamentoOptions, catalog])
 
   const precoTabelaDaLinha = (linha: Pick<ImhMedicamentoLinha, 'itemPme' | 'lote' | 'listaMedicamentoId'>) => {
     const form = listaMedicamentos?.linhas?.some((item) => item.medicamento.trim())
       ? listaMedicamentos
-      : { linhas: medicamentoOptions }
+      : { linhas: precoFallbackOptions }
     const row =
       resolveListaMedicamentoEstoque(form, linha.itemPme, linha.lote, linha.listaMedicamentoId) ??
       findListaMedicamentoByNome(linha.itemPme, form)
@@ -629,30 +628,6 @@ export function ImhMedicamentoForm({
   const tryFillFromNome = (nomeRaw: string) => {
     const found = findPacientePmeByNome(nomeRaw, pacientes)
     if (found) applyPacienteSelection(found)
-  }
-
-  const resolveLoteDoMedicamento = (
-    nome: string,
-  ): { lote: string; validade: string; aviso: string | null } => {
-    const matches = findListaMedicamentosByNome(nome, listaMedicamentos)
-    if (matches.length === 1) {
-      const found = matches[0]!
-      const lote = found.lote.trim()
-      const validade = found.validade.trim()
-      return {
-        lote: formatImhMedUppercase(lote),
-        validade: formatImhMedData(validade),
-        aviso: nome.trim() && !lote ? MEDICAMENTO_SEM_LOTE : null,
-      }
-    }
-    if (matches.length > 1) {
-      return { lote: '', validade: '', aviso: MEDICAMENTO_ESCOLHA_LOTE }
-    }
-    return {
-      lote: '',
-      validade: '',
-      aviso: nome.trim() ? MEDICAMENTO_SEM_LOTE : null,
-    }
   }
 
   const applyMedicamentoSelection = (row: ListaMedicamentosLinha | null) => {
@@ -1210,63 +1185,51 @@ export function ImhMedicamentoForm({
               options={medicamentoOptions}
               value={selectedMedicamento}
               inputValue={itemPmeInput}
-              onInputChange={(_, next) => {
-                setItemPmeInput(next)
-                if (!next.trim()) {
-                  updateDraft({ itemPme: '', lote: '', validade: '' })
-                  setLoteSemDefinir(false)
-                  setLoteAviso(null)
+              onInputChange={(_, next, reason) => {
+                if (reason === 'input' || reason === 'clear') {
+                  setItemPmeInput(next)
+                  if (!next.trim()) {
+                    updateDraft({
+                      itemPme: '',
+                      lote: '',
+                      validade: '',
+                      listaMedicamentoId: undefined,
+                    })
+                    setLoteSemDefinir(false)
+                    setLoteAviso(null)
+                  }
                 }
               }}
               onChange={(_, option) => {
-                if (typeof option === 'string') {
-                  const nome = formatImhMedUppercase(option)
-                  const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
-                  updateDraft({ itemPme: nome, lote, validade })
-                  setItemPmeInput(option)
-                  setLoteSemDefinir(Boolean(aviso))
-                  setLoteAviso(aviso)
-                  return
-                }
                 applyMedicamentoSelection(option)
               }}
               getOptionLabel={(option) =>
-                typeof option === 'string'
-                  ? option
-                  : formatListaMedEstoqueOptionLabel(option)
+                typeof option === 'string' ? option : option.medicamento
               }
-              isOptionEqualToValue={(a, b) => {
-                if (typeof a === 'string' || typeof b === 'string') {
-                  return (
-                    (typeof a === 'string' ? a : a.medicamento).toLowerCase() ===
-                    (typeof b === 'string' ? b : b.medicamento).toLowerCase()
-                  )
-                }
-                return a.id === b.id
-              }}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
               filterOptions={(options, state) => {
                 const q = state.inputValue.trim().toLowerCase()
-                if (!q) return options.slice(0, 40)
-                return options
-                  .filter(
-                    (opt) =>
-                      opt.medicamento.toLowerCase().includes(q) ||
-                      opt.neb.toLowerCase().includes(q) ||
-                      opt.lote.toLowerCase().includes(q) ||
-                      opt.validade.toLowerCase().includes(q),
+                // Select aparece a partir da primeira letra digitada.
+                if (!q) return []
+                const startsWith = options.filter((opt) =>
+                  opt.medicamento.toLowerCase().startsWith(q),
+                )
+                const includes = options.filter((opt) => {
+                  const nome = opt.medicamento.toLowerCase()
+                  if (nome.startsWith(q)) return false
+                  return (
+                    nome.includes(q) ||
+                    opt.neb.toLowerCase().includes(q) ||
+                    opt.lote.toLowerCase().includes(q)
                   )
-                  .slice(0, 40)
+                })
+                return [...startsWith, ...includes].slice(0, 40)
               }}
-              freeSolo
-              onBlur={() => {
-                if (!itemPmeInput.trim()) return
-                if (selectedMedicamento) return
-                const nome = formatImhMedUppercase(itemPmeInput)
-                const { lote, validade, aviso } = resolveLoteDoMedicamento(nome)
-                updateDraft({ itemPme: nome, lote, validade })
-                setLoteSemDefinir(Boolean(aviso))
-                setLoteAviso(aviso)
-              }}
+              autoHighlight
+              openOnFocus={false}
+              selectOnFocus
+              clearOnBlur={false}
+              handleHomeEndKeys
               renderOption={(props, option) => (
                 <li {...props} key={option.id}>
                   <Box sx={{ py: 0.25 }}>
@@ -1294,11 +1257,20 @@ export function ImhMedicamentoForm({
                   label="ITEM (PME) — DESCRIÇÃO DO MEDICAMENTO"
                   size="small"
                   fullWidth
-                  placeholder="Busque e escolha o lote (nome · lote · validade)"
+                  placeholder="Digite a 1ª letra para buscar na Lista de Medicamentos"
+                  helperText={
+                    medicamentoOptions.length === 0
+                      ? 'Cadastre medicamentos na aba Planilhas → Lista de Medicamentos'
+                      : undefined
+                  }
                   sx={multilineFieldSx}
                 />
               )}
-              noOptionsText="Nenhum medicamento na Lista de Medicamentos"
+              noOptionsText={
+                itemPmeInput.trim()
+                  ? 'Nenhum medicamento correspondente na Lista de Medicamentos'
+                  : 'Digite para buscar na Lista de Medicamentos'
+              }
               sx={{ gridColumn: '1 / -1' }}
             />
             <TextField
