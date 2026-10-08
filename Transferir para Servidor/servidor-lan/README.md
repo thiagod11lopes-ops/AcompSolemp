@@ -22,9 +22,22 @@ powershell -File "Transferir para Servidor/servidor-lan/build-producao-lan.ps1"
 powershell -File "Transferir para Servidor/servidor-lan/start-servidor-lan.ps1"
 ```
 
-Libere no **Firewall do Windows** a porta **8080** (entrada TCP).
+### Etapa 4B — Acesso LAN no Windows (firewall)
 
-O Docker costuma publicar também `54321` (API), `54322` (Postgres) e `54323` (Studio) em `0.0.0.0`. **Usuários finais devem usar só `:8080`.** No firewall, **bloqueie** 54322/54323 na rede local; considere bloquear 54321 e usar apenas o proxy Caddy.
+Se `http://127.0.0.1:8080` funciona mas `http://<IP_LAN>:8080` não (nem no próprio PC), o Caddy já escuta em `0.0.0.0` — crie a regra de entrada **somente** para esta etapa:
+
+```powershell
+# PowerShell **como Administrador**, na raiz do repositório
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/corrigir-acesso-lan-firewall.ps1"
+```
+
+O script confirma IPv4 LAN, Caddy, `LISTEN` em `0.0.0.0:8080`, cria/atualiza a regra **AcompOPMS - LAN HTTP (TCP 8080)** (TCP **8080**, perfil **Private**) e testa localhost + IP LAN.
+
+**URL no celular:** `http://<IP exibido pelo script>:8080` (mesma Wi-Fi). Se o servidor passar nos testes e o celular ainda falhar, suspeite de **AP isolation** no roteador.
+
+Nesta etapa **não** bloqueie 54321–54323; isso fica para depois.
+
+O Docker costuma publicar também `54321` (API), `54322` (Postgres) e `54323` (Studio) em `0.0.0.0`. **Usuários finais devem usar só `:8080`.** No firewall, **bloqueie** 54322/54323 na rede local; considere bloquear 54321 e usar apenas o proxy Caddy (etapa futura).
 
 ## Linux (validação / servidor)
 
