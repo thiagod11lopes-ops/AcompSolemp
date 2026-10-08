@@ -21,7 +21,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
 import { subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -175,7 +175,7 @@ export default function ClinicaNovoPedidoPage() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const { user } = useClinicaAuth()
-  const { navigatePortal } = usePortalPaths()
+  const { navigatePortal, mapPath } = usePortalPaths()
   const clinicaId = user?.clinicaId ?? ''
   const { data: clinicas = [] } = useClinicas()
   const { data: empresas = [] } = useEmpresas()
@@ -1344,6 +1344,11 @@ export default function ClinicaNovoPedidoPage() {
       )
     }
     return abaAtiva ? <AbaVaziaPlaceholder titulo={abaAtiva.nome} /> : null
+  }
+
+  // Planilhas é exclusivo do setor medicamento; demais setores seguem só com Enviar.
+  if (isPlanilhasRoute && !isMedicamento) {
+    return <Navigate to={mapPath('/clinica/pedidos/novo')} replace />
   }
 
   return (

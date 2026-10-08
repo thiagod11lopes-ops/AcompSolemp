@@ -31,7 +31,13 @@ const DRAWER_WIDTH = 260
 
 const MENU_ITEMS = [
   { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
-  { path: '/clinica/planilhas', label: 'Planilhas', icon: <TableChartIcon />, end: true },
+  {
+    path: '/clinica/planilhas',
+    label: 'Planilhas',
+    icon: <TableChartIcon />,
+    end: true,
+    medicamentoOnly: true,
+  },
   { path: '/clinica/pedidos/novo', label: 'Enviar', icon: <AddIcon />, end: false },
   { path: '/clinica/pedidos', label: 'Enviados', icon: <ListAltIcon />, end: true },
   { path: '/clinica/timelines', label: 'Timeline', icon: <TimelineIcon />, end: true },
