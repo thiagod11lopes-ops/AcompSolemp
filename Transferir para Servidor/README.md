@@ -62,6 +62,14 @@ Guarde da nuvem (Dashboard → **Project Settings**):
 
 ---
 
+## 4A. Servidor na LAN (produção, sem instalador)
+
+Build React + Caddy na porta **8080** + Supabase local via proxy (IP configurável em um único arquivo).
+
+Documentação: [`servidor-lan/README.md`](./servidor-lan/README.md)
+
+---
+
 ## 4. Opção A — Passo a passo (Supabase local)
 
 ### 4.1. Iniciar Supabase no PC

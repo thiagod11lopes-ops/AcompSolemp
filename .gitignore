@@ -34,3 +34,11 @@ Thumbs.db
 
 # Dumps locais de transferência (não versionar dados)
 Transferir para Servidor/*.sql
+
+# Servidor LAN (IP local, artefatos gerados)
+Transferir para Servidor/servidor-lan/servidor.env
+Transferir para Servidor/servidor-lan/Caddyfile.generated
+Transferir para Servidor/servidor-lan/caddy.pid
+Transferir para Servidor/servidor-lan/caddy.log
+Transferir para Servidor/servidor-lan/node_modules
+Transferir para Servidor/servidor-lan/.caddy/
