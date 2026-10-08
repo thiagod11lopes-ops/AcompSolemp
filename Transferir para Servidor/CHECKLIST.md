@@ -13,8 +13,9 @@ Use junto com o [README.md](./README.md).
 
 - [ ] `supabase init` / `supabase start` concluído
 - [ ] API URL e anon key locais anotados
-- [ ] `supabase/schema.sql` aplicado
-- [ ] `supabase/grants.sql` aplicado
+- [ ] `bash "Transferir para Servidor/aplicar-schema-local.sh"` (schema + migrations + grants + Storage + Realtime)
+- [ ] (legado) `supabase/schema.sql` + `grants.sql` se preferir aplicar à mão
+- [ ] Opcional: `node "Transferir para Servidor/teste-geral-local.mjs"` (com `node_modules` do frontend resolvível)
 
 ## Dados
 
