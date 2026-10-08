@@ -2,13 +2,14 @@
  * Cria conta Auth com senha sem enviar e-mail de confirmação.
  * Recuperação de senha continua usando auth.resetPasswordForEmail no frontend.
  *
+ * Usa fetch nativo (sem import de esm.sh) para funcionar em Supabase local
+ * mesmo sem egress de internet nos containers Docker.
+ *
  * Deploy:
  *   supabase functions deploy signup-with-password --no-verify-jwt
  *
  * Secrets automáticos no projeto: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY
  */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -59,25 +60,38 @@ Deno.serve(async (req) => {
       return json({ error: 'Service role não configurada na Edge Function.' }, 500)
     }
 
-    const admin = createClient(supabaseUrl, serviceRole, {
-      auth: { autoRefreshToken: false, persistSession: false },
+    const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${serviceRole}`,
+        apikey: serviceRole,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true, // confirma sem disparar e-mail
+      }),
     })
 
-    const { data, error } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // confirma sem disparar e-mail
-    })
-
-    if (error) {
-      const lower = (error.message || '').toLowerCase()
-      if (lower.includes('already') || lower.includes('registered') || lower.includes('exists')) {
-        return json({ error: 'already_registered', message: error.message }, 409)
-      }
-      return json({ error: error.message || 'Falha ao criar conta' }, 400)
+    const payload = (await res.json().catch(() => ({}))) as {
+      id?: string
+      msg?: string
+      message?: string
+      error?: string
+      error_description?: string
     }
 
-    return json({ ok: true, userId: data.user?.id ?? null })
+    if (!res.ok) {
+      const message = payload.msg || payload.message || payload.error_description || payload.error || 'Falha ao criar conta'
+      const lower = message.toLowerCase()
+      if (lower.includes('already') || lower.includes('registered') || lower.includes('exists')) {
+        return json({ error: 'already_registered', message }, 409)
+      }
+      return json({ error: message }, res.status >= 400 && res.status < 600 ? res.status : 400)
+    }
+
+    return json({ ok: true, userId: payload.id ?? null })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro inesperado'
     return json({ error: message }, 500)
