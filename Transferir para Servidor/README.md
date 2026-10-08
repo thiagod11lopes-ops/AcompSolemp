@@ -62,6 +62,14 @@ Guarde da nuvem (Dashboard → **Project Settings**):
 
 ---
 
+## 4A. Servidor na LAN (produção, sem instalador)
+
+Build React + Caddy na porta **8080** + Supabase local via proxy (IP configurável em um único arquivo).
+
+Documentação: [`servidor-lan/README.md`](./servidor-lan/README.md)
+
+---
+
 ## 4. Opção A — Passo a passo (Supabase local)
 
 ### 4.1. Iniciar Supabase no PC
@@ -83,7 +91,13 @@ Ao terminar, o CLI mostra algo como:
 
 ### 4.2. Aplicar o schema do AcompOPMS no local
 
-Ainda na raiz do projeto:
+Na raiz do projeto (aplica `schema.sql`, migrations das fases 0–9, Storage, RPCs, grants e Realtime em `app_state`):
+
+```bash
+bash "Transferir para Servidor/aplicar-schema-local.sh"
+```
+
+Equivalente manual mínimo (só núcleo Fase 1):
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/schema.sql
