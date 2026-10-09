@@ -29,11 +29,15 @@ if (-not (Test-Path (Join-Path $RepoDir '.git'))) {
 }
 
 Push-Location $RepoDir
-git checkout $Branch 2>$null
+$prevEa = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+git checkout $Branch 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
-  git fetch origin $Branch
-  git checkout $Branch
+  git fetch origin $Branch 2>&1 | Out-Null
+  git checkout $Branch 2>&1 | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "git checkout $Branch falhou" }
 }
+$ErrorActionPreference = $prevEa
 Write-Host "Branch: $(git branch --show-current)"
 Pop-Location
 
