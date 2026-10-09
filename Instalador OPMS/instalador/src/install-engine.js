@@ -84,16 +84,25 @@ function assertInstallPath(installPath) {
   return p
 }
 
-function rmDirSafe(dir) {
-  if (!dir) return
-  const st = safeLstat(dir)
-  if (!st) return
+function rmDirBestEffort(dir) {
+  if (!dir || !safeLstat(dir)) return
   try {
-    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 })
   } catch (err) {
-    if (err && err.code === 'EPERM') {
+    writeInstallLog(['rm-best-effort', dir, err && err.code, err && err.message])
+  }
+}
+
+/** Apaga pasta de destino antes de instalar — falha se AcompOPMS estiver aberto. */
+function rmDirRequired(dir, label = 'pasta') {
+  if (!dir || !safeLstat(dir)) return
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 })
+  } catch (err) {
+    const code = err && err.code
+    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') {
       throw new Error(
-        `Nao foi possivel apagar "${dir}". Feche o AcompOPMS e tente de novo.`,
+        `Nao foi possivel substituir a ${label} "${dir}". Feche o AcompOPMS no Gerenciador de Tarefas e execute o instalador de novo.`,
       )
     }
     throw err
@@ -102,7 +111,7 @@ function rmDirSafe(dir) {
 
 function cleanupLegacyPaths() {
   if (process.platform !== 'win32' || !process.env.LOCALAPPDATA) return
-  rmDirSafe(path.join(process.env.LOCALAPPDATA, '.AcompOPMS-opms-staging'))
+  rmDirBestEffort(path.join(process.env.LOCALAPPDATA, '.AcompOPMS-opms-staging'))
 }
 
 function newStagingPath() {
@@ -130,8 +139,10 @@ function wrapCopyError(err, context) {
       `${context} (ENOTDIR) Conflito de pasta/arquivo — apague .AcompOPMS-opms-staging em AppData\\Local se existir.${logHint} ${msg}`,
     )
   }
-  if (code === 'EPERM' || code === 'EACCES') {
-    return new Error(`${context} Sem permissao.${logHint}`)
+  if (code === 'EPERM' || code === 'EACCES' || code === 'EBUSY') {
+    return new Error(
+      `${context} Arquivo em uso — feche o AcompOPMS e o instalador antigo antes de reinstalar.${logHint}`,
+    )
   }
   return new Error(`${context}${logHint} ${msg}`)
 }
@@ -202,7 +213,7 @@ async function copyTreeWithProgress(srcRoot, destRoot, onProgress) {
   const totalBytes = files.reduce((s, f) => s + f.size, 0) || 1
   let doneBytes = 0
 
-  rmDirSafe(destRoot)
+  rmDirBestEffort(destRoot)
   fs.mkdirSync(destRoot, { recursive: true })
 
   for (const f of files) {
@@ -222,7 +233,7 @@ async function copyTreeWithProgress(srcRoot, destRoot, onProgress) {
 }
 
 async function copyPayloadToStaging(srcRoot, staging, onProgress) {
-  rmDirSafe(staging)
+  rmDirBestEffort(staging)
   onProgress({ percent: 5, message: 'Copiando arquivos…' })
 
   if (process.platform === 'win32') {
@@ -232,7 +243,7 @@ async function copyPayloadToStaging(srcRoot, staging, onProgress) {
       return
     } catch (err) {
       writeInstallLog(['robocopy', err.code, err.message])
-      rmDirSafe(staging)
+      rmDirBestEffort(staging)
     }
   }
 
@@ -241,7 +252,7 @@ async function copyPayloadToStaging(srcRoot, staging, onProgress) {
     onProgress({ percent: 85, message: 'Arquivos copiados.' })
   } catch (err) {
     writeInstallLog(['fs.cp', err.code, err.message])
-    rmDirSafe(staging)
+    rmDirBestEffort(staging)
     onProgress({ percent: 6, message: 'Copiando arquivo por arquivo…' })
     await copyTreeWithProgress(srcRoot, staging, onProgress)
   }
@@ -259,8 +270,12 @@ function assertPayloadLayout(staging) {
   throw new Error('AcompOPMS.exe nao encontrado apos copia. Payload incompleto.')
 }
 
+function targetInstallLooksValid(target) {
+  return fs.existsSync(path.join(target, 'AcompOPMS.exe'))
+}
+
 async function promoteStagingToTarget(staging, target, onProgress) {
-  rmDirSafe(target)
+  rmDirRequired(target, 'pasta de instalacao')
   try {
     fs.renameSync(staging, target)
     return
@@ -274,7 +289,10 @@ async function promoteStagingToTarget(staging, target, onProgress) {
   } else {
     await copyTreeWithProgress(staging, target, onProgress)
   }
-  rmDirSafe(staging)
+  rmDirBestEffort(staging)
+  if (!targetInstallLooksValid(target)) {
+    throw new Error('Instalacao incompleta: AcompOPMS.exe nao encontrado na pasta de destino.')
+  }
 }
 
 async function copyPayload({ resourcesPath, installPath, startUrl, onProgress }) {
@@ -291,7 +309,7 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
     await copyPayloadToStaging(srcRoot, staging, onProgress)
     assertPayloadLayout(staging)
   } catch (err) {
-    rmDirSafe(staging)
+    rmDirBestEffort(staging)
     throw err
   }
 
@@ -299,7 +317,7 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
   try {
     fs.writeFileSync(path.join(staging, CONFIG_NAME), JSON.stringify(cfg, null, 2), 'utf8')
   } catch (err) {
-    rmDirSafe(staging)
+    rmDirBestEffort(staging)
     throw wrapCopyError(err, 'Falha ao gravar configuracao.')
   }
 
@@ -307,8 +325,13 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
   try {
     await promoteStagingToTarget(staging, target, onProgress)
   } catch (err) {
-    rmDirSafe(staging)
-    throw wrapCopyError(err, 'Falha ao mover para pasta final.')
+    rmDirBestEffort(staging)
+    if (targetInstallLooksValid(target)) {
+      writeInstallLog(['promote-warning', err.message, 'target-ok'])
+      onProgress({ percent: 100, message: 'Concluido (limpeza temporaria pendente)' })
+    } else {
+      throw wrapCopyError(err, 'Falha ao mover para pasta final.')
+    }
   }
 
   onProgress({ percent: 100, message: 'Concluido' })
