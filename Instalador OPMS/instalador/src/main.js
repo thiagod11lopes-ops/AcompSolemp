@@ -8,7 +8,9 @@ let win
 
 function defaultInstallPath() {
   if (process.platform === 'win32') {
-    return path.join(process.env.ProgramFiles || 'C:\\Program Files', 'AcompOPMS')
+    // Evita EPERM: Program Files exige elevacao. Pasta gravavel sem admin.
+    const base = process.env.LOCALAPPDATA || app.getPath('appData')
+    return path.join(base, 'AcompOPMS')
   }
   return path.join(app.getPath('home'), '.local', 'share', 'acomopms')
 }

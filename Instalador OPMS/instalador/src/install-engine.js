@@ -28,7 +28,16 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
   const totalBytes = files.reduce((s, f) => s + f.size, 0) || 1
   let doneBytes = 0
 
-  fs.mkdirSync(installPath, { recursive: true })
+  try {
+    fs.mkdirSync(installPath, { recursive: true })
+  } catch (err) {
+    if (err && err.code === 'EPERM') {
+      throw new Error(
+        `Sem permissao para criar "${installPath}". Escolha outra pasta (ex.: Documentos\\AcompOPMS) ou execute o instalador como Administrador.`,
+      )
+    }
+    throw err
+  }
 
   for (const f of files) {
     const dest = path.join(installPath, f.rel)
