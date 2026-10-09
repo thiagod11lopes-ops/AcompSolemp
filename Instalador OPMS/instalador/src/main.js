@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 const { copyPayload, resolveInstallPath } = require('./install-engine')
+const { createDesktopShortcut } = require('./desktop-shortcut')
 
 let win
 
@@ -74,7 +75,7 @@ ipcMain.handle('installer:pick-path', async () => {
   return r.filePaths[0]
 })
 
-ipcMain.handle('installer:run', async (_e, { startUrl, installPath }) => {
+ipcMain.handle('installer:run', async (_e, { startUrl, installPath, createDesktopShortcut: wantShortcut }) => {
   const send = (data) => win?.webContents.send('installer:progress', data)
   const resolvedPath = normalizeInstallPath(installPath)
   if (resolvedPath !== path.normalize(String(installPath || '').trim())) {
@@ -82,12 +83,22 @@ ipcMain.handle('installer:run', async (_e, { startUrl, installPath }) => {
   }
   send({ percent: 0, message: 'Iniciando…' })
   try {
-    return await copyPayload({
+    const result = await copyPayload({
       resourcesPath: process.resourcesPath,
       installPath: resolvedPath,
       startUrl,
       onProgress: send,
     })
+    if (wantShortcut && result.launchBinary) {
+      send({ percent: 99, message: 'Criando atalho na Area de trabalho…' })
+      try {
+        result.desktopShortcutPath = createDesktopShortcut(app, result.launchBinary, 'AcompOPMS')
+      } catch (shortcutErr) {
+        result.desktopShortcutError =
+          shortcutErr && shortcutErr.message ? shortcutErr.message : String(shortcutErr)
+      }
+    }
+    return result
   } catch (err) {
     const msg = err && err.message ? err.message : String(err)
     throw new Error(msg)

@@ -105,6 +105,26 @@ h1 {
   color: var(--muted);
 }
 
+.field.check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.field.check input[type='checkbox'] {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--accent, #3dd68c);
+}
+
+.muted-line {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
 input {
   width: 100%;
   padding: 12px 14px;

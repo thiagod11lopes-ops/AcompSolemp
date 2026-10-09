@@ -41,6 +41,10 @@
             <button type="button" class="btn ghost" id="btn-browse">Escolher…</button>
           </div>
         </label>
+        <label class="field check">
+          <input type="checkbox" id="chk-desktop-shortcut" checked />
+          <span>Criar atalho na Área de trabalho com o nome <strong>AcompOPMS</strong></span>
+        </label>
         <div class="actions">
           <button type="button" class="btn ghost" data-back>Voltar</button>
           <button type="button" class="btn primary" id="btn-install">Instalar</button>
@@ -58,6 +62,7 @@
       <section id="step-done" class="step">
         <p class="ok">Instalação concluída.</p>
         <p id="done-path" class="mono"></p>
+        <p id="done-shortcut" class="muted-line"></p>
         <button type="button" class="btn primary" id="btn-launch">Abrir AcompOPMS</button>
         <button type="button" class="btn ghost" id="btn-close">Fechar</button>
       </section>

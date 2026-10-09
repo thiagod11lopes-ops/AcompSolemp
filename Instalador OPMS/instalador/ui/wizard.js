@@ -60,8 +60,19 @@ document.getElementById('btn-install').addEventListener('click', async () => {
   })
 
   try {
-    const result = await window.installer.runInstall({ startUrl, installPath })
+    const createDesktopShortcut = document.getElementById('chk-desktop-shortcut').checked
+    const result = await window.installer.runInstall({ startUrl, installPath, createDesktopShortcut })
     document.getElementById('done-path').textContent = result.installPath
+    const shortcutLine = document.getElementById('done-shortcut')
+    if (shortcutLine) {
+      if (result.desktopShortcutPath) {
+        shortcutLine.textContent = 'Atalho AcompOPMS criado na Área de trabalho.'
+      } else if (createDesktopShortcut && result.desktopShortcutError) {
+        shortcutLine.textContent = `Atalho nao criado: ${result.desktopShortcutError}`
+      } else {
+        shortcutLine.textContent = ''
+      }
+    }
     showStep(4)
     window.__lastLaunch = result.launchBinary
   } catch (e) {
