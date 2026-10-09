@@ -34,7 +34,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('input-url').value =
     'https://thiagod11lopes-ops.github.io/AcompSolemp/'
   const sub = document.querySelector('.sub')
-  if (sub) sub.textContent = `Instalador v${meta.version} — pasta padrão sem admin`
+  if (sub) sub.textContent = `Instalador v${meta.version} — destino: AppData\\Local\\AcompOPMS (sem admin)`
 })
 
 document.getElementById('btn-browse').addEventListener('click', async () => {

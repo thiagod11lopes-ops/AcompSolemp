@@ -23,7 +23,7 @@ function defaultInstallPath() {
 /** Program Files exige admin; redireciona para AppData\\Local. */
 function normalizeInstallPath(installPath) {
   if (process.platform !== 'win32') return installPath
-  const p = path.normalize(String(installPath || ''))
+  const p = path.normalize(String(installPath || '').trim())
   const lower = p.toLowerCase()
   if (lower.includes('program files') || lower.includes('program files (x86)')) {
     return localAcompPathWin()
@@ -72,16 +72,21 @@ ipcMain.handle('installer:pick-path', async () => {
 ipcMain.handle('installer:run', async (_e, { startUrl, installPath }) => {
   const send = (data) => win?.webContents.send('installer:progress', data)
   const resolvedPath = normalizeInstallPath(installPath)
-  if (resolvedPath !== path.normalize(String(installPath || ''))) {
+  if (resolvedPath !== path.normalize(String(installPath || '').trim())) {
     send({ percent: 0, message: 'Pasta Program Files requer admin; usando AppData Local…' })
   }
   send({ percent: 0, message: 'Iniciando…' })
-  return copyPayload({
-    resourcesPath: process.resourcesPath,
-    installPath: resolvedPath,
-    startUrl,
-    onProgress: send,
-  })
+  try {
+    return await copyPayload({
+      resourcesPath: process.resourcesPath,
+      installPath: resolvedPath,
+      startUrl,
+      onProgress: send,
+    })
+  } catch (err) {
+    const msg = err && err.message ? err.message : String(err)
+    throw new Error(msg)
+  }
 })
 
 ipcMain.handle('installer:launch', (_e, binary) => {
