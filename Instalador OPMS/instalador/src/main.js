@@ -6,13 +6,29 @@ const { copyPayload } = require('./install-engine')
 
 let win
 
+function localAcompPathWin() {
+  if (process.env.LOCALAPPDATA) {
+    return path.join(process.env.LOCALAPPDATA, 'AcompOPMS')
+  }
+  return path.join(app.getPath('home'), 'AppData', 'Local', 'AcompOPMS')
+}
+
 function defaultInstallPath() {
   if (process.platform === 'win32') {
-    // Evita EPERM: Program Files exige elevacao. Pasta gravavel sem admin.
-    const base = process.env.LOCALAPPDATA || app.getPath('appData')
-    return path.join(base, 'AcompOPMS')
+    return localAcompPathWin()
   }
   return path.join(app.getPath('home'), '.local', 'share', 'acomopms')
+}
+
+/** Program Files exige admin; redireciona para AppData\\Local. */
+function normalizeInstallPath(installPath) {
+  if (process.platform !== 'win32') return installPath
+  const p = path.normalize(String(installPath || ''))
+  const lower = p.toLowerCase()
+  if (lower.includes('program files') || lower.includes('program files (x86)')) {
+    return localAcompPathWin()
+  }
+  return p
 }
 
 function createWindow() {
@@ -39,6 +55,11 @@ app.whenReady().then(() => {
 
 ipcMain.handle('installer:default-path', () => defaultInstallPath())
 
+ipcMain.handle('installer:meta', () => ({
+  version: require('../package.json').version,
+  defaultPath: defaultInstallPath(),
+}))
+
 ipcMain.handle('installer:pick-path', async () => {
   const r = await dialog.showOpenDialog(win, {
     properties: ['openDirectory', 'createDirectory'],
@@ -50,10 +71,14 @@ ipcMain.handle('installer:pick-path', async () => {
 
 ipcMain.handle('installer:run', async (_e, { startUrl, installPath }) => {
   const send = (data) => win?.webContents.send('installer:progress', data)
+  const resolvedPath = normalizeInstallPath(installPath)
+  if (resolvedPath !== path.normalize(String(installPath || ''))) {
+    send({ percent: 0, message: 'Pasta Program Files requer admin; usando AppData Local…' })
+  }
   send({ percent: 0, message: 'Iniciando…' })
   return copyPayload({
     resourcesPath: process.resourcesPath,
-    installPath,
+    installPath: resolvedPath,
     startUrl,
     onProgress: send,
   })

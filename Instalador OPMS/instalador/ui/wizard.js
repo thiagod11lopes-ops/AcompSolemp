@@ -29,10 +29,12 @@ document.querySelectorAll('[data-back]').forEach((btn) => {
 })
 
 window.addEventListener('DOMContentLoaded', async () => {
-  const def = await window.installer.getDefaultInstallPath()
-  document.getElementById('input-path').value = def
+  const meta = await window.installer.getMeta()
+  document.getElementById('input-path').value = meta.defaultPath
   document.getElementById('input-url').value =
     'https://thiagod11lopes-ops.github.io/AcompSolemp/'
+  const sub = document.querySelector('.sub')
+  if (sub) sub.textContent = `Instalador v${meta.version} — pasta padrão sem admin`
 })
 
 document.getElementById('btn-browse').addEventListener('click', async () => {
