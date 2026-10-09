@@ -38,8 +38,15 @@ if ($LASTEXITCODE -ne 0) {
   if ($LASTEXITCODE -ne 0) { throw "git checkout $Branch falhou" }
 }
 $ErrorActionPreference = $prevEa
+git pull origin $Branch
 Write-Host "Branch: $(git branch --show-current)"
 Pop-Location
+
+$AcompLocal = Join-Path $env:LOCALAPPDATA 'AcompOPMS'
+if (Test-Path $AcompLocal) {
+  Write-Host "Removendo instalacao parcial: $AcompLocal" -ForegroundColor Yellow
+  Remove-Item $AcompLocal -Recurse -Force
+}
 
 $InstaladorRoot = Join-Path $RepoDir 'Instalador OPMS'
 if (-not (Test-Path $InstaladorRoot)) {

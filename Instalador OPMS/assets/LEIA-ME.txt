@@ -5,7 +5,7 @@ Pasta "Instalador OPMS" — AcompOPMS
    .\scripts\build-tudo.ps1
 
 2. Abra a pasta Para-distribuir e execute:
-   Instalar-AcompOPMS-1.0.0-Windows.exe
+   Instalar-AcompOPMS-1.0.2-Windows.exe  (ou versao mais recente em Para-distribuir)
 
 3. Para copiar para o Desktop (Projetos):
    .\scripts\preparar-pasta-windows.ps1
