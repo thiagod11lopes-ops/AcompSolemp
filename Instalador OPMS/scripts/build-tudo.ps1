@@ -23,14 +23,18 @@ if (Test-Path $Payload) { Remove-Item $Payload -Recurse -Force }
 New-Item -ItemType Directory -Path $Payload -Force | Out-Null
 Copy-Item -Path (Join-Path $WinUnpacked "*") -Destination $Payload -Recurse
 
-Write-Host "==> Instalador gráfico"
+Write-Host "==> Instalador grafico"
 Push-Location (Join-Path $Root "instalador")
 if (-not (Test-Path node_modules)) { npm install }
 npm run dist:win
+if ($LASTEXITCODE -ne 0) { throw "Falha ao gerar instalador (npm run dist:win)" }
 Pop-Location
 
+$InstExeDir = Join-Path $Root "instalador\dist"
+if (-not (Test-Path $InstExeDir)) { throw "Pasta instalador\dist nao encontrada apos build" }
+
 New-Item -ItemType Directory -Path $Out -Force | Out-Null
-Copy-Item -Path (Join-Path $Root "instalador\dist\*.exe") -Destination $Out -Force
+Copy-Item -Path (Join-Path $InstExeDir "*.exe") -Destination $Out -Force
 Copy-Item -Path (Join-Path $Root "assets\*") -Destination $Out -Force -ErrorAction SilentlyContinue
 
 Write-Host ""

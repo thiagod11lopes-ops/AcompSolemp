@@ -40,7 +40,7 @@
     },
     "portable": {
       "artifactName": "Instalar-AcompOPMS-${version}-Windows.exe",
-      "requestExecutionLevel": "asInvoker"
+      "requestExecutionLevel": "user"
     }
   }
 }
