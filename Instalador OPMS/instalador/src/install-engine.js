@@ -93,25 +93,43 @@ function rmDirBestEffort(dir) {
   }
 }
 
-/** Apaga pasta de destino antes de instalar — falha se AcompOPMS estiver aberto. */
-function rmDirRequired(dir, label = 'pasta') {
-  if (!dir || !safeLstat(dir)) return
+function tryReleaseWindowsLocks() {
+  if (process.platform !== 'win32') return
+  for (const image of ['AcompOPMS.exe']) {
+    spawnSync('taskkill', ['/IM', image, '/F', '/T'], { windowsHide: true })
+  }
+}
+
+function cleanupOldInstallBackups(parentDir, baseName) {
+  if (!isStatDirectory(safeLstat(parentDir))) return
+  for (const name of fs.readdirSync(parentDir)) {
+    if (!name.startsWith(`${baseName}.old-`)) continue
+    rmDirBestEffort(path.join(parentDir, name))
+  }
+}
+
+/** Renomeia instalacao anterior em vez de apagar (evita EBUSY no Explorer/antivirus). */
+function retireExistingInstall(target) {
+  if (!safeLstat(target)) return null
+  const parent = path.dirname(target)
+  const base = path.basename(target)
+  cleanupOldInstallBackups(parent, base)
+  const backup = path.join(parent, `${base}.old-${Date.now()}`)
   try {
-    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 })
+    fs.renameSync(target, backup)
+    writeInstallLog(['retire-ok', backup])
+    rmDirBestEffort(backup)
+    return backup
   } catch (err) {
-    const code = err && err.code
-    if (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES') {
-      throw new Error(
-        `Nao foi possivel substituir a ${label} "${dir}". Feche o AcompOPMS no Gerenciador de Tarefas e execute o instalador de novo.`,
-      )
-    }
-    throw err
+    writeInstallLog(['retire-rename-failed', err && err.code, err && err.message])
+    return null
   }
 }
 
 function cleanupLegacyPaths() {
   if (process.platform !== 'win32' || !process.env.LOCALAPPDATA) return
   rmDirBestEffort(path.join(process.env.LOCALAPPDATA, '.AcompOPMS-opms-staging'))
+  cleanupOldInstallBackups(process.env.LOCALAPPDATA, 'AcompOPMS')
 }
 
 function newStagingPath() {
@@ -275,27 +293,36 @@ function targetInstallLooksValid(target) {
 }
 
 async function promoteStagingToTarget(staging, target, onProgress) {
-  rmDirRequired(target, 'pasta de instalacao')
-  try {
-    fs.renameSync(staging, target)
-    return
-  } catch (err) {
-    writeInstallLog(['rename', err.code, err.message])
+  tryReleaseWindowsLocks()
+  retireExistingInstall(target)
+
+  if (!safeLstat(target)) {
+    try {
+      fs.renameSync(staging, target)
+      return
+    } catch (err) {
+      writeInstallLog(['rename-staging', err && err.code, err && err.message])
+    }
   }
 
-  onProgress({ percent: 94, message: 'Finalizando pasta de destino…' })
+  onProgress({ percent: 94, message: 'Atualizando arquivos na pasta de destino…' })
+  fs.mkdirSync(target, { recursive: true })
   if (process.platform === 'win32') {
     robocopyTree(staging, target)
   } else {
     await copyTreeWithProgress(staging, target, onProgress)
   }
   rmDirBestEffort(staging)
+
   if (!targetInstallLooksValid(target)) {
-    throw new Error('Instalacao incompleta: AcompOPMS.exe nao encontrado na pasta de destino.')
+    throw new Error(
+      'Instalacao incompleta: AcompOPMS.exe nao encontrado. Feche janelas do Explorador abertas em AppData\\Local\\AcompOPMS, reinicie o PC e tente de novo.',
+    )
   }
 }
 
 async function copyPayload({ resourcesPath, installPath, startUrl, onProgress }) {
+  tryReleaseWindowsLocks()
   cleanupLegacyPaths()
   const target = assertInstallPath(installPath)
   const srcRoot = payloadRoot(resourcesPath)

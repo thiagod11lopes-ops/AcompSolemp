@@ -1,6 +1,6 @@
 {
   "name": "instalar-acomopms",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Instalador gráfico AcompOPMS (Windows e Linux)",
   "main": "src/main.js",
   "private": true,
