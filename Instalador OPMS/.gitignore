@@ -1,0 +1,5 @@
+node_modules/
+dist/
+Para-distribuir/
+instalador/resources/client-payload/*
+!instalador/resources/client-payload/.gitkeep
