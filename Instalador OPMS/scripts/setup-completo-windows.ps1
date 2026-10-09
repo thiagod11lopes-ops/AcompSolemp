@@ -51,4 +51,4 @@ Write-Host ""
 Write-Host "Concluído." -ForegroundColor Green
 Write-Host "Repositório: $RepoDir"
 Write-Host "Instalador:  C:\Users\User\Desktop\Thiago\Projetos\Instalador OPMS"
-Write-Host "Abra no Cursor: File > Open Folder > $RepoDir"
+Write-Host ('Abra no Cursor: menu Arquivo, Abrir Pasta: ' + $RepoDir)
