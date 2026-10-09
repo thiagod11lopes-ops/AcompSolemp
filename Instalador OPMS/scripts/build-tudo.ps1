@@ -23,7 +23,7 @@ if (Test-Path $Payload) { Remove-Item $Payload -Recurse -Force }
 New-Item -ItemType Directory -Path $Payload -Force | Out-Null
 Copy-Item -Path (Join-Path $WinUnpacked "*") -Destination $Payload -Recurse
 
-Write-Host "==> Instalador grafico"
+Write-Host "==> Instalador grafico (portable ~130MB — 10-20 min sem texto novo e normal)" -ForegroundColor Yellow
 Push-Location (Join-Path $Root "instalador")
 if (-not (Test-Path node_modules)) { npm install }
 npm run dist:win
