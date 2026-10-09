@@ -31,6 +31,7 @@ document.querySelectorAll('[data-back]').forEach((btn) => {
 window.addEventListener('DOMContentLoaded', async () => {
   const meta = await window.installer.getMeta()
   document.getElementById('input-path').value = meta.defaultPath
+  document.getElementById('input-path').readOnly = true
   document.getElementById('input-url').value =
     'https://thiagod11lopes-ops.github.io/AcompSolemp/'
   const sub = document.querySelector('.sub')

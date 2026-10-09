@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
-const { copyPayload } = require('./install-engine')
+const { copyPayload, resolveInstallPath } = require('./install-engine')
 
 let win
 
@@ -22,8 +22,13 @@ function defaultInstallPath() {
 
 /** Program Files exige admin; redireciona para AppData\\Local. */
 function normalizeInstallPath(installPath) {
-  if (process.platform !== 'win32') return installPath
-  const p = path.normalize(String(installPath || '').trim())
+  let p
+  try {
+    p = resolveInstallPath(installPath)
+  } catch {
+    p = path.normalize(String(installPath || '').trim())
+  }
+  if (process.platform !== 'win32') return p
   const lower = p.toLowerCase()
   if (lower.includes('program files') || lower.includes('program files (x86)')) {
     return localAcompPathWin()

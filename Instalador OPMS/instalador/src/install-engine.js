@@ -1,18 +1,57 @@
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 
 const CONFIG_NAME = 'acomopms-desktop.config.json'
 
-function payloadRoot(resourcesPath) {
-  const a = path.join(resourcesPath, 'client-payload')
-  const b = path.join(resourcesPath, 'app', 'client-payload')
-  if (fs.existsSync(a)) return a
-  if (fs.existsSync(b)) return b
-  throw new Error('Pacote do cliente não encontrado. Gere o instalador com scripts/build-tudo.')
+function safeLstat(p) {
+  try {
+    return fs.lstatSync(p)
+  } catch {
+    return null
+  }
+}
+
+function isStatDirectory(st) {
+  return Boolean(st && typeof st.isDirectory === 'function' && st.isDirectory())
+}
+
+function isStatFile(st) {
+  return Boolean(st && typeof st.isFile === 'function' && st.isFile())
+}
+
+function expandWinEnv(p) {
+  if (process.platform !== 'win32') return p
+  return String(p)
+    .replace(/%LOCALAPPDATA%/gi, process.env.LOCALAPPDATA || '')
+    .replace(/%APPDATA%/gi, process.env.APPDATA || '')
+    .replace(/%USERPROFILE%/gi, process.env.USERPROFILE || '')
 }
 
 function normalizeTargetPath(installPath) {
-  return path.normalize(String(installPath || '').trim())
+  return path.normalize(expandWinEnv(String(installPath || '').trim()))
+}
+
+/** Caminho absoluto (portable roda em Temp — relativo quebra stat/cópia). */
+function resolveInstallPath(installPath) {
+  let p = normalizeTargetPath(installPath)
+  if (!p) throw new Error('Pasta de instalacao invalida.')
+  if (!path.isAbsolute(p)) {
+    if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+      p = path.resolve(process.env.LOCALAPPDATA, p)
+    } else {
+      p = path.resolve(p)
+    }
+  }
+  return path.normalize(p)
+}
+
+function payloadRoot(resourcesPath) {
+  const a = path.join(resourcesPath, 'client-payload')
+  const b = path.join(resourcesPath, 'app', 'client-payload')
+  if (isStatDirectory(safeLstat(a))) return a
+  if (isStatDirectory(safeLstat(b))) return b
+  throw new Error('Pacote do cliente não encontrado. Gere o instalador com scripts/build-tudo.')
 }
 
 /** Evita instalar em AppData\\Local inteiro (conflito com pastas como locales). */
@@ -36,22 +75,21 @@ function rejectDangerousInstallRoot(installPath) {
 }
 
 function assertInstallPath(installPath) {
-  const p = normalizeTargetPath(installPath)
-  if (!p) throw new Error('Pasta de instalacao invalida.')
+  const p = resolveInstallPath(installPath)
   rejectDangerousInstallRoot(p)
-  if (fs.existsSync(p)) {
-    const st = fs.lstatSync(p)
-    if (!st.isDirectory()) {
-      throw new Error(
-        `O caminho "${p}" e um arquivo, nao uma pasta. Escolha outra pasta (ex.: ...\\AcompOPMS).`,
-      )
-    }
+  const st = safeLstat(p)
+  if (st && !isStatDirectory(st)) {
+    throw new Error(
+      `O caminho "${p}" e um arquivo, nao uma pasta. Escolha outra pasta (ex.: ...\\AcompOPMS).`,
+    )
   }
   return p
 }
 
 function rmDirSafe(dir) {
-  if (!fs.existsSync(dir)) return
+  if (!dir) return
+  const st = safeLstat(dir)
+  if (!st) return
   try {
     fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 })
   } catch (err) {
@@ -64,34 +102,21 @@ function rmDirSafe(dir) {
   }
 }
 
-function stagingPathFor(target) {
-  const parent = path.dirname(target)
-  const leaf = path.basename(target) || 'AcompOPMS'
-  return path.join(parent, `.${leaf}-opms-staging`)
-}
-
-function ensureDirectoryForFile(filePath) {
-  const dir = path.dirname(filePath)
-  if (!dir || dir === filePath) return
-  if (fs.existsSync(dir)) {
-    const st = fs.lstatSync(dir)
-    if (!st.isDirectory()) {
-      fs.unlinkSync(dir)
-      fs.mkdirSync(dir, { recursive: true })
-      return
-    }
-    return
-  }
-  ensureDirectoryForFile(dir)
-  fs.mkdirSync(dir, { recursive: true })
+function newStagingPath() {
+  return path.join(os.tmpdir(), `acomopms-staging-${process.pid}-${Date.now()}`)
 }
 
 function wrapCopyError(err, context) {
   const code = err && err.code ? err.code : ''
   const msg = err && err.message ? err.message : String(err)
+  if (/isDirectory/i.test(msg) && /null/i.test(msg)) {
+    return new Error(
+      `${context} Caminho invalido ao copiar. Use o caminho completo ...\\AppData\\Local\\AcompOPMS (nao edite para AppData\\Local sozinho).`,
+    )
+  }
   if (code === 'ENOTDIR') {
     return new Error(
-      `${context} Caminho bloqueado (ENOTDIR). Feche o AcompOPMS, apague a pasta de destino e use ...\\AcompOPMS — nao AppData\\Local sozinho. Detalhe: ${msg}`,
+      `${context} Caminho bloqueado (ENOTDIR). Apague a pasta AcompOPMS e tente de novo. Detalhe: ${msg}`,
     )
   }
   if (code === 'EPERM' || code === 'EACCES') {
@@ -102,16 +127,14 @@ function wrapCopyError(err, context) {
 
 async function listFilesRecursive(dir, base = dir) {
   const out = []
+  if (!isStatDirectory(safeLstat(dir))) return out
   for (const name of fs.readdirSync(dir)) {
+    if (name === '.' || name === '..') continue
     const full = path.join(dir, name)
-    let st
-    try {
-      st = fs.lstatSync(full)
-    } catch {
-      continue
-    }
-    if (st.isDirectory()) out.push(...(await listFilesRecursive(full, base)))
-    else if (st.isFile()) out.push({ full, rel: path.relative(base, full), size: st.size })
+    const st = safeLstat(full)
+    if (!st) continue
+    if (isStatDirectory(st)) out.push(...(await listFilesRecursive(full, base)))
+    else if (isStatFile(st)) out.push({ full, rel: path.relative(base, full), size: st.size })
   }
   return out
 }
@@ -128,35 +151,40 @@ async function copyTreeWithProgress(srcRoot, destRoot, onProgress) {
   for (const f of files) {
     const rel = f.rel.split(/[/\\]/).join(path.sep)
     const dest = path.join(destRoot, rel)
-    ensureDirectoryForFile(dest)
+    fs.mkdirSync(path.dirname(dest), { recursive: true })
     try {
       await fs.promises.copyFile(f.full, dest)
     } catch (err) {
       throw wrapCopyError(err, `Falha ao copiar ${rel}.`)
     }
-    if (process.platform !== 'win32') {
-      try {
-        fs.chmodSync(dest, 0o755)
-      } catch {
-        /* ignore */
-      }
-    }
     doneBytes += f.size
-    const percent = Math.min(92, Math.round((doneBytes / totalBytes) * 90) + 5)
+    const percent = Math.min(88, Math.round((doneBytes / totalBytes) * 80) + 8)
     onProgress({ percent, message: `Copiando ${rel}` })
+  }
+}
+
+async function copyPayloadToStaging(srcRoot, staging, onProgress) {
+  onProgress({ percent: 5, message: 'Copiando arquivos…' })
+  try {
+    await fs.promises.cp(srcRoot, staging, { recursive: true, force: true, dereference: true })
+    onProgress({ percent: 85, message: 'Arquivos copiados.' })
+  } catch (err) {
+    onProgress({ percent: 6, message: 'Copiando arquivo por arquivo…' })
+    await copyTreeWithProgress(srcRoot, staging, onProgress)
   }
 }
 
 async function copyPayload({ resourcesPath, installPath, startUrl, onProgress }) {
   const target = assertInstallPath(installPath)
   const srcRoot = payloadRoot(resourcesPath)
-  const staging = stagingPathFor(target)
+  const staging = newStagingPath()
 
   onProgress({ percent: 1, message: 'Preparando instalacao limpa…' })
   rmDirSafe(staging)
+  fs.mkdirSync(staging, { recursive: true })
 
   try {
-    await copyTreeWithProgress(srcRoot, staging, onProgress)
+    await copyPayloadToStaging(srcRoot, staging, onProgress)
   } catch (err) {
     rmDirSafe(staging)
     throw err
@@ -173,13 +201,14 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
     throw wrapCopyError(err, 'Falha ao gravar configuracao.')
   }
 
-  onProgress({ percent: 96, message: 'Substituindo pasta de destino…' })
+  onProgress({ percent: 92, message: 'Substituindo pasta de destino…' })
   rmDirSafe(target)
   try {
     fs.renameSync(staging, target)
   } catch (err) {
     try {
-      await fs.promises.cp(staging, target, { recursive: true, force: true })
+      fs.mkdirSync(target, { recursive: true })
+      await copyTreeWithProgress(staging, target, onProgress)
       rmDirSafe(staging)
     } catch (err2) {
       rmDirSafe(staging)
@@ -194,6 +223,7 @@ async function copyPayload({ resourcesPath, installPath, startUrl, onProgress })
 }
 
 function findLaunchBinary(installPath) {
+  if (!isStatDirectory(safeLstat(installPath))) return null
   if (process.platform === 'win32') {
     const exe = path.join(installPath, 'AcompOPMS.exe')
     if (fs.existsSync(exe)) return exe
@@ -212,4 +242,4 @@ function findLaunchBinary(installPath) {
   return null
 }
 
-module.exports = { copyPayload, findLaunchBinary, assertInstallPath, rejectDangerousInstallRoot }
+module.exports = { copyPayload, findLaunchBinary, assertInstallPath, resolveInstallPath }
