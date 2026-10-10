@@ -213,8 +213,8 @@
       }
     },
     "installPlanPhaseIds": ["overlay.server"],
-    "installPlanPhaseIdsFuture": ["overlay.pairing-export"],
-    "scriptsFuture": ["export-connection-json"]
+    "installPlanPhaseIdsFuture": [],
+    "pairingExportScriptId": "export-connection-json"
   },
   "requirements": {
     "git": {
@@ -418,6 +418,13 @@
         "interpreter": "powershell",
         "requiresElevation": true,
         "purpose": "Serviço WireGuard servidor (Windows)"
+      },
+      {
+        "id": "export-connection-json",
+        "path": "Transferir para Servidor/servidor-lan/exportar-connection-json.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 6 — gera connection.json e registra peer WG"
       },
       {
         "id": "firewall-overlay-windows",

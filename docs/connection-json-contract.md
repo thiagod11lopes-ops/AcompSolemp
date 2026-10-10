@@ -30,6 +30,18 @@ Se WireGuard não estiver instalado ou faltar permissão de administrador, o app
 - **Não commitar** `connection.json` com chaves reais.
 - `privateKey` é segredo do cliente; distribuir apenas via Manager/export cifrado (Etapa 6).
 
+## Export no servidor (Etapa 6)
+
+Após [Etapa 5](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md):
+
+```bash
+node "Transferir para Servidor/servidor-lan/exportar-connection-json.mjs" --name "Nome-do-PC"
+```
+
+Saída em `servidor-lan/overlay/exports/` (gitignored). O script adiciona o peer em `acomopms-server.conf` e registra em `paired-clients.json`.
+
+Checklist: [CHECKLIST-ETAPA6-PAIRING.md](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA6-PAIRING.md).
+
 ## Relação com o servidor
 
-Parâmetros do host overlay: `ACOMOPMS_OVERLAY_*` em `servidor.env` (Etapas 5–6). Até lá, use apenas LAN sem `connection.json`.
+Parâmetros do host overlay: `ACOMOPMS_OVERLAY_*` em `servidor.env` (Etapa 5). Sem overlay, use apenas LAN sem `connection.json`.

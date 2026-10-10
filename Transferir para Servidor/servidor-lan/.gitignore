@@ -8,3 +8,5 @@ server-connection.generated.json
 overlay/wg-server.key
 overlay/overlay-state.json
 overlay/wireguard/
+overlay/paired-clients.json
+overlay/exports/

@@ -125,6 +125,16 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 
 Linux: `bash "Transferir para Servidor/servidor-lan/aplicar-overlay-servidor.sh"`
 
+### Etapa 6 — Pareamento (`connection.json`)
+
+Checklist: [CHECKLIST-ETAPA6-PAIRING.md](./CHECKLIST-ETAPA6-PAIRING.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/exportar-connection-json.ps1" -Name "PC-Cliente"
+```
+
+Entregue o JSON ao **Instalador OPMS** (importar no wizard).
+
 ## URLs
 
 | Uso | URL |
