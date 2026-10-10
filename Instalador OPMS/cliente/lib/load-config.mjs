@@ -1,16 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { normalizeStartUrl, originFromStartUrl } from './normalize-start-url.mjs'
 
-const CONFIG_FILENAME = 'acomopms-desktop.config.json'
+import { CONFIG_FILENAME, defaultInstallDir as sharedDefaultInstallDir } from './install-dir.mjs'
+
+export { CONFIG_FILENAME }
 
 function installConfigPath() {
-  if (process.platform === 'win32') {
-    const base = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local')
-    return join(base, 'AcompOPMS', CONFIG_FILENAME)
-  }
-  return join(homedir(), '.local', 'share', 'AcompOPMS', CONFIG_FILENAME)
+  return join(sharedDefaultInstallDir(), CONFIG_FILENAME)
 }
 
 function readJsonConfig(filePath) {
@@ -64,4 +61,4 @@ export function loadDesktopConfig(opts = {}) {
   )
 }
 
-export { CONFIG_FILENAME, installConfigPath }
+export { installConfigPath }

@@ -49,6 +49,35 @@ input[type='url'] {
   cursor: pointer;
   font-size: 0.9rem;
 }
+.overlay-box {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #1e293b;
+}
+.overlay-title {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+button.secondary {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.connection-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: #64748b;
+  word-break: break-all;
+}
 .install-dir {
   font-size: 0.75rem;
   color: #64748b;

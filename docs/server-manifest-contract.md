@@ -29,7 +29,7 @@ O contrato permite que um **instalador externo** clone um repositório GitHub, l
 | **`server-manifest.schema.json`** | `schemas/` | Forma genérica do JSON; **não** contém regras de negócio AcompOPMS. |
 | **`server-connection.json`** | `frontend/dist/` (HTTP `/server-connection.json`) | **Runtime** após instalação: URL de login, modo LAN/overlay, metadados para Manager e instalador desktop. |
 | **`servidor.env`** | `Transferir para Servidor/servidor-lan/` | Fonte única de IP/porta LAN e flags overlay (não commitar valores reais). |
-| **`connection.json`** | Gerado na **Etapa 6** (futuro) | Pareamento overlay exportado pelo Manager para o **Instalador OPMS**. |
+| **`connection.json`** | Pasta de instalação AcompOPMS | Pareamento overlay (export Manager **Etapa 6**); cliente **Etapa 12** — [`connection-json-contract.md`](./connection-json-contract.md). |
 
 ---
 

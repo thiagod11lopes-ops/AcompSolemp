@@ -3,7 +3,8 @@ import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { normalizeStartUrl } from '../../cliente/lib/normalize-start-url.mjs'
-import { CONFIG_FILENAME } from '../../cliente/lib/load-config.mjs'
+import { CONFIG_FILENAME } from '../../cliente/lib/install-dir.mjs'
+import { copyConnectionJsonToStaging } from './connection-import.mjs'
 import { defaultInstallDir, clientExeName } from './paths.mjs'
 import { tryReleaseWindowsLocks } from './release-locks.mjs'
 import { createDesktopShortcutIfRequested } from './desktop-shortcut.mjs'
@@ -38,6 +39,7 @@ function renameElectronBinary(stagingDir) {
  *   startUrl: string,
  *   desktopShortcut?: boolean,
  *   installDir?: string,
+ *   connectionJsonPath?: string,
  *   onProgress?: (p: { percent: number, message: string }) => void,
  * }} opts
  */
@@ -75,6 +77,11 @@ export async function runInstaller(opts) {
       `${JSON.stringify(configBody, null, 2)}\n`,
       'utf8',
     )
+
+    if (opts.connectionJsonPath) {
+      report(65, 'Importando connection.json (VPN)…')
+      copyConnectionJsonToStaging(opts.connectionJsonPath, stagingDir)
+    }
 
     report(75, 'Finalizando pasta de instalação…')
     retireInstallDir(installDir)

@@ -2,6 +2,9 @@ const startUrlEl = document.getElementById('startUrl')
 const desktopShortcutEl = document.getElementById('desktopShortcut')
 const installDirEl = document.getElementById('installDir')
 const btnInstall = document.getElementById('btnInstall')
+const btnPickConnection = document.getElementById('btnPickConnection')
+const connectionLabel = document.getElementById('connectionLabel')
+let connectionJsonPath = null
 const progressEl = document.getElementById('progress')
 const barFill = document.getElementById('barFill')
 const progressMsg = document.getElementById('progressMsg')
@@ -26,6 +29,14 @@ async function init() {
   if (info.suggestedStartUrl) startUrlEl.value = info.suggestedStartUrl
 }
 
+btnPickConnection.addEventListener('click', async () => {
+  const path = await window.installer.pickConnectionJson()
+  if (path) {
+    connectionJsonPath = path
+    connectionLabel.textContent = path
+  }
+})
+
 btnInstall.addEventListener('click', async () => {
   errorEl.classList.add('hidden')
   successEl.classList.add('hidden')
@@ -36,6 +47,7 @@ btnInstall.addEventListener('click', async () => {
     const result = await window.installer.run({
       startUrl: startUrlEl.value,
       desktopShortcut: desktopShortcutEl.checked,
+      connectionJsonPath,
     })
     showSuccess(`Instalação concluída.\n${result.installDir}`)
   } catch (e) {

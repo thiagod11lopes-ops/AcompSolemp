@@ -25,6 +25,13 @@
         Criar atalho na área de trabalho com o nome <strong>AcompOPMS</strong>
       </label>
 
+      <section class="overlay-box">
+        <p class="overlay-title">Acesso pela internet (opcional)</p>
+        <p class="hint">Importe <code>connection.json</code> exportado pelo Manager (WireGuard). Se não tiver, use só a URL LAN acima.</p>
+        <button type="button" id="btnPickConnection" class="secondary">Escolher connection.json…</button>
+        <span id="connectionLabel" class="connection-label">Nenhum arquivo</span>
+      </section>
+
       <p id="installDir" class="install-dir"></p>
 
       <div id="progress" class="progress hidden">

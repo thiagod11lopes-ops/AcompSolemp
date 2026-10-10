@@ -134,6 +134,14 @@
       "desktopShortcutDefaultChecked": true,
       "etapa": 11
     },
+    "overlayClient": {
+      "connectionJsonSchema": "acomopms-connection/1",
+      "connectionExampleRelativePath": "Instalador OPMS/connection.json.example",
+      "connectionContractDoc": "docs/connection-json-contract.md",
+      "wireguardConfRelativePath": "wireguard/acomopms.conf",
+      "bootstrapModule": "Instalador OPMS/cliente/lib/overlay/bootstrap-overlay.mjs",
+      "etapa": 12
+    },
     "wizardUrlField": "startUrl",
     "lan": {
       "accessUrlTemplate": "http://{lanHost}:{httpPort}/login",

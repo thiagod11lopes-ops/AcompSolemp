@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { defaultInstallDir } from './src/paths.mjs'
@@ -32,6 +32,16 @@ ipcMain.handle('installer:getDefaults', async () => ({
   suggestedStartUrl: '',
 }))
 
+ipcMain.handle('installer:pickConnectionJson', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    title: 'connection.json (VPN WireGuard)',
+    filters: [{ name: 'connection.json', extensions: ['json'] }],
+    properties: ['openFile'],
+  })
+  if (r.canceled || !r.filePaths?.[0]) return null
+  return r.filePaths[0]
+})
+
 ipcMain.handle('installer:run', async (_evt, opts) => {
   let startUrl = opts?.startUrl
   if (!startUrl?.trim()) throw new Error('Informe o endereço do servidor.')
@@ -42,6 +52,7 @@ ipcMain.handle('installer:run', async (_evt, opts) => {
   return runInstaller({
     startUrl,
     desktopShortcut: opts?.desktopShortcut,
+    connectionJsonPath: opts?.connectionJsonPath || undefined,
     onProgress: (p) => {
       win?.webContents.send('installer:progress', p)
     },

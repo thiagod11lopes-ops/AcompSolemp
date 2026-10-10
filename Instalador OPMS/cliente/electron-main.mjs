@@ -3,17 +3,35 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { loadDesktopConfig } from './lib/load-config.mjs'
 import { resolveStartUrlFromServer } from './lib/fetch-server-connection.mjs'
+import { bootstrapOverlayForClient } from './lib/overlay/bootstrap-overlay.mjs'
+import { stopWireGuardTunnel } from './lib/overlay/wireguard-run.mjs'
+import { resolveInstallDirFromConfig } from './lib/install-dir.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 let mainWindow = null
 
 async function resolveLaunchUrl() {
   const cfg = loadDesktopConfig({ cwd: __dirname })
-  if (!cfg.discoverConnection) {
-    return { startUrl: cfg.startUrl, cfg, discovery: null }
+  const overlay = await bootstrapOverlayForClient({ cwd: __dirname })
+  let baseUrl = cfg.startUrl
+  if (overlay.overlayStartUrl) {
+    baseUrl = overlay.overlayStartUrl
+    console.log('[acompopms-cliente] overlay URL:', baseUrl)
   }
-  const discovery = await resolveStartUrlFromServer(cfg.origin, cfg.startUrl)
-  return { startUrl: discovery.startUrl, cfg, discovery }
+  if (overlay.tunnel?.status === 'skipped' || overlay.tunnel?.status === 'failed') {
+    console.warn('[acompopms-cliente] WireGuard:', overlay.tunnel.message)
+  } else if (overlay.tunnel?.status === 'active') {
+    console.log('[acompopms-cliente] WireGuard:', overlay.tunnel.message)
+  }
+
+  if (!cfg.discoverConnection && !overlay.overlayStartUrl) {
+    return { startUrl: baseUrl, cfg, discovery: null, overlay }
+  }
+  const origin = overlay.overlayStartUrl
+    ? new URL(baseUrl).origin
+    : cfg.origin
+  const discovery = await resolveStartUrlFromServer(origin, baseUrl)
+  return { startUrl: discovery.startUrl, cfg, discovery, overlay }
 }
 
 function createWindow(startUrl, title) {
@@ -81,4 +99,8 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  stopWireGuardTunnel(resolveInstallDirFromConfig(__dirname))
 })

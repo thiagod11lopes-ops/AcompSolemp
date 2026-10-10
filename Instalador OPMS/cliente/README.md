@@ -43,6 +43,10 @@ npm run test:unit
 - Links para **outras origens** abrem no navegador padrão.
 - Descoberta opcional alinha a URL com [`server-connection.json`](../../docs/server-manifest-contract.md#8-runtime-server-connectionjson) (Etapa 7).
 
-Empacotamento/portable e wizard de instalação: **Etapa 11** (`instalador/`) e **Etapa 13** (CI).
+### Overlay / WireGuard (Etapa 12)
+
+Com `connection.json` na pasta de instalação, o app gera `wireguard/acomopms.conf` e tenta subir o túnel antes de abrir a URL (`server.loginUrl`). Requer WireGuard instalado no SO (runtime embutido: Etapa 13). Contrato: [`docs/connection-json-contract.md`](../../docs/connection-json-contract.md).
+
+Empacotamento portable: **Etapa 13** (CI). Wizard: **Etapa 11** (`instalador/`).
 
 Contrato geral: [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md).
