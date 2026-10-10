@@ -167,6 +167,7 @@
       "accessUrlTemplate": "http://{overlayHost}:{httpPort}/login",
       "overlayHostConfigKey": "ACOMOPMS_OVERLAY_HOST",
       "pairingArtifactFileName": "connection.json",
+      "pairingExportScriptId": "export-connection-json",
       "pairingEtapa": 6,
       "clientWireGuardEtapa": 12,
       "notes": "Acesso pela internet via WireGuard embutido (substitui Tailscale externo)."
@@ -821,12 +822,17 @@
     "summary": "npm run dev em frontend/; Supabase opcional com VITE_DATA_SOURCE=supabase.",
     "documentationRelativePaths": [
       "README.md",
+      "docs/README.md",
+      "docs/guia-uso-servidor-lan.md",
       "docs/server-manifest-contract.md",
+      "docs/connection-json-contract.md",
       "schemas/README.md",
       "frontend/README.md",
       "Transferir para Servidor/README.md",
-      "Transferir para Servidor/servidor-lan/README.md"
-    ]
+      "Transferir para Servidor/servidor-lan/README.md",
+      "Instalador OPMS/README.md"
+    ],
+    "userGuideRelativePath": "docs/guia-uso-servidor-lan.md"
   },
   "cloudDeploymentSeparateFromServer": {
     "note": "GitHub Pages via Actions — fluxo distinto do servidor LAN.",

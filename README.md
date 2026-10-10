@@ -23,7 +23,9 @@ Documentação completa em [frontend/README.md](./frontend/README.md).
 
 Instalação self-hosted (Supabase local + Caddy na rede): [`Transferir para Servidor/servidor-lan/README.md`](./Transferir%20para%20Servidor/servidor-lan/README.md).
 
-Contrato para o futuro **Acomp Server Manager** (manifesto, schema, URLs, overlay planejado): [`docs/server-manifest-contract.md`](./docs/server-manifest-contract.md) — manifesto [`server-manifest.json`](./server-manifest.json).
+**Guia de uso (implantação na organização):** [`docs/guia-uso-servidor-lan.md`](./docs/guia-uso-servidor-lan.md).
+
+Contrato **Acomp Server Manager:** [`docs/server-manifest-contract.md`](./docs/server-manifest-contract.md) — [`server-manifest.json`](./server-manifest.json).
 
 ## Publicar no GitHub
 
