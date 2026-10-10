@@ -1,0 +1,941 @@
+{
+  "$schema": "./schemas/server-manifest.schema.json",
+  "manifestVersion": "1.2.0",
+  "schemaVersion": "1.0.0",
+  "specPurpose": "Contrato de instalação servidor LAN para instaladores compatíveis (ex.: Acomp Server Manager). Não é um script de instalação.",
+  "manager": {
+    "minManagerVersion": "0.1.0",
+    "supportedPlatforms": ["windows", "linux"],
+    "backendProfile": "supabase-local-v1",
+    "manifestPath": "server-manifest.json"
+  },
+  "repository": {
+    "name": "AcompSolemp",
+    "cloneUrl": "https://github.com/thiagod11lopes-ops/AcompSolemp.git",
+    "defaultBranch": "main",
+    "productDisplayName": "AcompOPMS",
+    "productDescription": "Gestão de Materiais Consignados e SOLEMP (OMH Marinha do Brasil)."
+  },
+  "system": {
+    "id": "acompopms",
+    "name": "AcompOPMS",
+    "version": "0.0.0",
+    "versionSource": "frontend/package.json"
+  },
+  "frontend": {
+    "type": "spa",
+    "framework": "React",
+    "language": "TypeScript",
+    "bundler": "Vite",
+    "buildTool": "npm",
+    "build": {
+      "workingDirectory": "frontend",
+      "installCommand": "npm install",
+      "productionBuildCommand": "npm run build",
+      "outputDirectory": "frontend/dist"
+    },
+    "runtimeConfiguration": {
+      "envFileExample": "frontend/.env.example",
+      "serverInstallExpectedDataSource": "supabase",
+      "buildTimeVariables": [
+        "VITE_DATA_SOURCE",
+        "VITE_SUPABASE_URL",
+        "VITE_SUPABASE_ANON_KEY"
+      ]
+    }
+  },
+  "backend": {
+    "type": "supabase-local",
+    "description": "Supabase local via Docker: API, Auth, Storage, Realtime, Edge Functions.",
+    "configDirectory": "supabase",
+    "cliConfigFile": "supabase/config.toml",
+    "projectIdInConfig": "workspace"
+  },
+  "database": {
+    "engine": "PostgreSQL",
+    "majorVersion": 17,
+    "versionSource": "supabase/config.toml [db].major_version",
+    "localConnectionDefault": "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    "schemaApplicationScriptId": "apply-local-schema"
+  },
+  "authentication": {
+    "provider": "Supabase Auth",
+    "lanConfigurationScriptId": "configure-auth-lan",
+    "configFileModifiedRelativePath": "supabase/config.toml"
+  },
+  "storage": {
+    "enabled": true,
+    "provider": "Supabase Storage",
+    "buckets": [
+      {
+        "id": "planilha-anexos",
+        "public": false,
+        "definitionRelativePath": "supabase/migration_planilha_anexos_storage.sql"
+      }
+    ]
+  },
+  "realtime": {
+    "enabled": true,
+    "provider": "Supabase Realtime",
+    "tablesConfiguredByScriptId": "apply-local-schema"
+  },
+  "edgeFunctions": {
+    "enabled": true,
+    "functions": [
+      {
+        "name": "signup-with-password",
+        "pathRelative": "supabase/functions/signup-with-password",
+        "verifyJwt": false
+      }
+    ]
+  },
+  "reverseProxy": {
+    "product": "Caddy",
+    "generatorScriptId": "generate-caddyfile",
+    "generatedConfigRelativePath": "Transferir para Servidor/servidor-lan/Caddyfile.generated",
+    "bindAddress": "0.0.0.0",
+    "proxiedPathPrefixes": [
+      "/auth",
+      "/rest",
+      "/storage",
+      "/realtime",
+      "/functions",
+      "/mcp",
+      "/graphql"
+    ],
+    "upstreamInternalDefault": "http://127.0.0.1:54321"
+  },
+  "clientConnection": {
+    "product": "AcompOPMS",
+    "installerCatalogRelativePath": "Instalador OPMS",
+    "desktopClient": {
+      "relativePath": "Instalador OPMS/cliente",
+      "packageName": "acompopms-cliente",
+      "mainEntry": "electron-main.mjs",
+      "configFileName": "acomopms-desktop.config.json",
+      "configExampleRelativePath": "Instalador OPMS/cliente/acomopms-desktop.config.example.json",
+      "startUrlConfigKey": "startUrl",
+      "installConfigPathsByPlatform": {
+        "windows": "%LOCALAPPDATA%/AcompOPMS/acomopms-desktop.config.json",
+        "linux": "~/.local/share/AcompOPMS/acomopms-desktop.config.json"
+      },
+      "environmentOverride": "ACOMOPMS_START_URL",
+      "discoveryHttpPath": "/server-connection.json",
+      "etapa": 10
+    },
+    "desktopInstaller": {
+      "relativePath": "Instalador OPMS/instalador",
+      "packageName": "acompopms-instalador",
+      "versionSource": "Instalador OPMS/instalador/package.json",
+      "wizardUiRelativePath": "Instalador OPMS/instalador/ui",
+      "installScriptEntry": "Instalador OPMS/instalador/src/installer-run.mjs",
+      "preparePayloadScript": "Instalador OPMS/instalador/scripts/prepare-payload.mjs",
+      "defaultDesktopShortcutName": "AcompOPMS",
+      "desktopShortcutDefaultChecked": true,
+      "buildWorkflowRelativePath": ".github/workflows/build-instalador-opms.yml",
+      "buildOutputs": {
+        "windowsPortable": "Instalador OPMS/instalador/dist/AcompOPMS-Instalador-{version}-win-x64.exe",
+        "linuxAppImage": "Instalador OPMS/instalador/dist/AcompOPMS-Instalador-{version}-linux-x64.AppImage"
+      },
+      "etapa": 11
+    },
+    "overlayClient": {
+      "connectionJsonSchema": "acomopms-connection/1",
+      "connectionExampleRelativePath": "Instalador OPMS/connection.json.example",
+      "connectionContractDoc": "docs/connection-json-contract.md",
+      "wireguardConfRelativePath": "wireguard/acomopms.conf",
+      "bootstrapModule": "Instalador OPMS/cliente/lib/overlay/bootstrap-overlay.mjs",
+      "etapa": 12
+    },
+    "wizardUrlField": "startUrl",
+    "lan": {
+      "accessUrlTemplate": "http://{lanHost}:{httpPort}/login",
+      "variables": {
+        "lanHost": { "source": "config", "configKey": "ACOMOPMS_LAN_HOST", "autoDetectFallback": true },
+        "httpPort": { "source": "config", "configKey": "ACOMOPMS_HTTP_PORT", "default": 8080 }
+      },
+      "discoveryHttpPath": "/server-connection.json",
+      "sameOriginSupabaseApi": true,
+      "notes": "URL exibida pelo Acomp Server Manager e digitada no instalador desktop."
+    },
+    "overlay": {
+      "status": "planned-etapas-5-6-12",
+      "enabledWhen": {
+        "configKey": "ACOMOPMS_OVERLAY_ENABLED",
+        "value": "true"
+      },
+      "accessUrlTemplate": "http://{overlayHost}:{httpPort}/login",
+      "overlayHostConfigKey": "ACOMOPMS_OVERLAY_HOST",
+      "pairingArtifactFileName": "connection.json",
+      "pairingExportScriptId": "export-connection-json",
+      "pairingEtapa": 6,
+      "clientWireGuardEtapa": 12,
+      "notes": "Acesso pela internet via WireGuard embutido (substitui Tailscale externo)."
+    },
+    "runtimeDescriptor": {
+      "generatorScriptId": "generate-server-connection",
+      "schema": "acomopms-server-connection/1",
+      "outputRelativePaths": [
+        "frontend/dist/server-connection.json",
+        "Transferir para Servidor/servidor-lan/server-connection.generated.json"
+      ]
+    }
+  },
+  "overlay": {
+    "status": "active-etapa-5",
+    "goal": "Conectividade global sem cliente Tailscale; VPN overlay no Manager e no instalador AcompOPMS.",
+    "technology": {
+      "dataPlane": "wireguard",
+      "controlPlane": "headscale",
+      "embeddedInProducts": ["Acomp Server Manager", "Instalador OPMS"]
+    },
+    "configuration": {
+      "singleSourceRelativePath": "Transferir para Servidor/servidor-lan/servidor.env",
+      "environmentKeys": [
+        "ACOMOPMS_OVERLAY_ENABLED",
+        "ACOMOPMS_OVERLAY_HOST",
+        "ACOMOPMS_OVERLAY_HEADSCALE_URL",
+        "ACOMOPMS_OVERLAY_NAMESPACE",
+        "ACOMOPMS_OVERLAY_SERVER_NAME",
+        "ACOMOPMS_OVERLAY_WG_PORT",
+        "ACOMOPMS_OVERLAY_PUBLIC_ENDPOINT"
+      ],
+      "defaults": {
+        "ACOMOPMS_OVERLAY_ENABLED": "false",
+        "ACOMOPMS_OVERLAY_NAMESPACE": "acomopms",
+        "ACOMOPMS_OVERLAY_WG_PORT": "51820"
+      }
+    },
+    "ports": {
+      "wireguardUdp": {
+        "default": 51820,
+        "configKey": "ACOMOPMS_OVERLAY_WG_PORT",
+        "exposeOnRouterWhenEnabled": true
+      }
+    },
+    "installPlanPhaseIds": ["overlay.server"],
+    "installPlanPhaseIdsFuture": [],
+    "pairingExportScriptId": "export-connection-json"
+  },
+  "requirements": {
+    "git": {
+      "required": true,
+      "minVersion": "a definir",
+      "notes": "Clone do repositório e atualizações."
+    },
+    "node": {
+      "required": true,
+      "minMajorVersion": 20,
+      "minVersion": "a definir",
+      "justificationSource": ".github/workflows/ci.yml (node-version: 20)"
+    },
+    "npm": {
+      "required": true,
+      "minVersion": "a definir",
+      "justificationSource": "frontend/package.json scripts"
+    },
+    "docker": {
+      "required": true,
+      "minVersion": "a definir",
+      "justificationSource": "Transferir para Servidor/README.md — Supabase local (Opção A)"
+    },
+    "supabaseCli": {
+      "required": true,
+      "minVersion": "a definir",
+      "justificationSource": "scripts servidor-lan e supabase start"
+    },
+    "caddy": {
+      "required": true,
+      "minVersion": "a definir",
+      "justificationSource": "Transferir para Servidor/servidor-lan/README.md"
+    },
+    "psql": {
+      "required": true,
+      "minVersion": "a definir",
+      "notes": "Usado por aplicar-schema-local.sh; alternativa documentada via docker exec.",
+      "justificationSource": "Transferir para Servidor/aplicar-schema-local.sh"
+    },
+    "bash": {
+      "required": true,
+      "minVersion": "a definir",
+      "notes": "Linux nativo; no Windows, Git Bash ou WSL para scripts .sh.",
+      "justificationSource": "scripts .sh em Transferir para Servidor"
+    },
+    "powershell": {
+      "required": false,
+      "minVersion": "a definir",
+      "notes": "Obrigatório no Windows para scripts .ps1 e firewall.",
+      "justificationSource": "servidor-lan/*.ps1"
+    },
+    "diskSpaceGb": {
+      "minimum": "a definir",
+      "notes": "Imagens Docker Supabase + build frontend + dados; valor mínimo não pinado no repositório."
+    },
+    "memoryMb": {
+      "minimum": "a definir",
+      "notes": "Requisito de RAM não documentado numericamente no repositório."
+    }
+  },
+  "scripts": {
+    "description": "Catálogo de scripts invocáveis pelo instalador (paths relativos à raiz do clone).",
+    "items": [
+      {
+        "id": "apply-local-schema",
+        "path": "Transferir para Servidor/aplicar-schema-local.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Schema, migrations SQL, grants, Storage e Realtime"
+      },
+      {
+        "id": "test-local-supabase",
+        "path": "Transferir para Servidor/teste-geral-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Teste geral via API direta (desenvolvimento)"
+      },
+      {
+        "id": "configure-auth-lan",
+        "path": "Transferir para Servidor/servidor-lan/configure-auth.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Ajusta site_url e redirects em supabase/config.toml"
+      },
+      {
+        "id": "build-production-lan-sh",
+        "path": "Transferir para Servidor/servidor-lan/build-producao-lan.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Build frontend/dist para LAN"
+      },
+      {
+        "id": "build-production-lan-ps1",
+        "path": "Transferir para Servidor/servidor-lan/build-producao-lan.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Build frontend/dist para LAN (Windows)"
+      },
+      {
+        "id": "generate-caddyfile",
+        "path": "Transferir para Servidor/servidor-lan/generate-caddyfile.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Gera Caddyfile.generated"
+      },
+      {
+        "id": "start-server-lan-sh",
+        "path": "Transferir para Servidor/servidor-lan/start-servidor-lan.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Inicia Caddy; garante Supabase local"
+      },
+      {
+        "id": "start-server-lan-ps1",
+        "path": "Transferir para Servidor/servidor-lan/start-servidor-lan.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Inicia Caddy (Windows)"
+      },
+      {
+        "id": "stop-server-lan-sh",
+        "path": "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Para Caddy"
+      },
+      {
+        "id": "test-server-lan",
+        "path": "Transferir para Servidor/servidor-lan/teste-servidor-lan.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Teste LAN via proxy HTTP"
+      },
+      {
+        "id": "run-tests-lan-ps1",
+        "path": "Transferir para Servidor/servidor-lan/rodar-testes-lan.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Etapa 4 — prepara deps e executa teste-servidor-lan.mjs"
+      },
+      {
+        "id": "run-tests-lan-sh",
+        "path": "Transferir para Servidor/servidor-lan/rodar-testes-lan.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Etapa 4 — prepara deps e executa teste-servidor-lan.mjs"
+      },
+      {
+        "id": "prepare-server-lan-ps1",
+        "path": "Transferir para Servidor/servidor-lan/preparar-servidor-lan.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Setup completo LAN (Supabase, build, Caddy); -RunTests opcional"
+      },
+      {
+        "id": "generate-server-connection",
+        "path": "Transferir para Servidor/servidor-lan/gerar-server-connection.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Gera server-connection.json (LAN + parâmetros overlay)"
+      },
+      {
+        "id": "validate-server-manifest",
+        "path": "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Validação estrutural do server-manifest.json (Etapa 7)"
+      },
+      {
+        "id": "configure-overlay-server",
+        "path": "Transferir para Servidor/servidor-lan/configurar-overlay-servidor.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 5 — chaves/conf WireGuard servidor"
+      },
+      {
+        "id": "apply-overlay-server-sh",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-overlay-servidor.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Etapa 5 — overlay + Auth + server-connection"
+      },
+      {
+        "id": "apply-overlay-server-ps1",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-overlay-servidor.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Etapa 5 — overlay + Auth (Windows)"
+      },
+      {
+        "id": "start-overlay-server-sh",
+        "path": "Transferir para Servidor/servidor-lan/start-overlay-servidor.sh",
+        "platforms": ["linux"],
+        "interpreter": "bash",
+        "purpose": "Sobe wg-quick servidor"
+      },
+      {
+        "id": "start-overlay-server-ps1",
+        "path": "Transferir para Servidor/servidor-lan/start-overlay-servidor.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "requiresElevation": true,
+        "purpose": "Serviço WireGuard servidor (Windows)"
+      },
+      {
+        "id": "export-connection-json",
+        "path": "Transferir para Servidor/servidor-lan/exportar-connection-json.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 6 — gera connection.json e registra peer WG"
+      },
+      {
+        "id": "firewall-overlay-windows",
+        "path": "Transferir para Servidor/servidor-lan/corrigir-firewall-overlay.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "requiresElevation": true,
+        "purpose": "Firewall UDP WireGuard"
+      },
+      {
+        "id": "firewall-lan-windows",
+        "path": "Transferir para Servidor/servidor-lan/corrigir-acesso-lan-firewall.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "requiresElevation": true,
+        "purpose": "Regra firewall TCP porta HTTP perfil Private"
+      },
+      {
+        "id": "firewall-block-supabase-lan-windows",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "requiresElevation": true,
+        "purpose": "Etapa 15 — bloqueia portas Supabase na LAN (Private)"
+      },
+      {
+        "id": "firewall-block-supabase-lan-linux",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.sh",
+        "platforms": ["linux"],
+        "interpreter": "bash",
+        "requiresElevation": true,
+        "purpose": "Etapa 15 — ufw/iptables — bloqueio portas Supabase na LAN"
+      },
+      {
+        "id": "verify-lan-security",
+        "path": "Transferir para Servidor/servidor-lan/verificar-seguranca-lan.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 15 — probes TCP no IP LAN (portas internas)"
+      },
+      {
+        "id": "backup-local-database",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_dump custom (-Fc) do Postgres local"
+      },
+      {
+        "id": "backup-local-database-sh",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Wrapper backup Etapa 16"
+      },
+      {
+        "id": "backup-local-database-ps1",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Wrapper backup Etapa 16 (Windows)"
+      },
+      {
+        "id": "restore-local-database",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_restore (exige --confirm)"
+      },
+      {
+        "id": "restore-local-database-sh",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Wrapper restore Etapa 16"
+      },
+      {
+        "id": "restore-local-database-ps1",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Wrapper restore Etapa 16 (Windows)"
+      },
+      {
+        "id": "verify-local-backup",
+        "path": "Transferir para Servidor/servidor-lan/verificar-backup-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_restore --list + meta.json"
+      }
+    ]
+  },
+  "installPlan": {
+    "profile": "supabase-local-v1",
+    "workingDirectoryRelative": ".",
+    "phases": [
+      {
+        "id": "backend.ensure-started",
+        "type": "capability",
+        "capability": "supabase.ensure-started",
+        "description": "Docker disponível e supabase start na raiz do clone.",
+        "dependsOn": [],
+        "checkpoint": true
+      },
+      {
+        "id": "database.schema",
+        "type": "script",
+        "scriptId": "apply-local-schema",
+        "description": "Aplica schema e migrations no Postgres local.",
+        "dependsOn": ["backend.ensure-started"],
+        "requiresServiceRestart": [],
+        "checkpoint": true
+      },
+      {
+        "id": "backend.configure-auth",
+        "type": "script",
+        "scriptId": "configure-auth-lan",
+        "description": "Configura URLs de Auth para LAN.",
+        "dependsOn": ["database.schema"],
+        "checkpoint": true
+      },
+      {
+        "id": "backend.restart",
+        "type": "capability",
+        "capability": "supabase.restart",
+        "description": "supabase stop && supabase start após alterar config.toml.",
+        "dependsOn": ["backend.configure-auth"],
+        "requiresServiceStopBefore": ["supabase"],
+        "requiresServiceRestart": ["supabase"],
+        "checkpoint": true
+      },
+      {
+        "id": "frontend.build",
+        "type": "script",
+        "scriptIdByPlatform": {
+          "linux": "build-production-lan-sh",
+          "windows": "build-production-lan-ps1"
+        },
+        "description": "Build de produção com VITE_SUPABASE_URL na origem LAN.",
+        "dependsOn": ["backend.restart"],
+        "checkpoint": true
+      },
+      {
+        "id": "proxy.generate-config",
+        "type": "script",
+        "scriptId": "generate-caddyfile",
+        "description": "Gera Caddyfile a partir de servidor.env.",
+        "dependsOn": ["frontend.build"],
+        "checkpoint": true
+      },
+      {
+        "id": "connection.generate-runtime",
+        "type": "script",
+        "scriptId": "generate-server-connection",
+        "description": "Publica server-connection.json (URL LAN/overlay para Manager e clientes).",
+        "dependsOn": ["proxy.generate-config"],
+        "checkpoint": true
+      },
+      {
+        "id": "proxy.start",
+        "type": "script",
+        "scriptIdByPlatform": {
+          "linux": "start-server-lan-sh",
+          "windows": "start-server-lan-ps1"
+        },
+        "description": "Sobe Caddy (não registra serviço OS).",
+        "dependsOn": ["connection.generate-runtime"],
+        "requiresServiceRestart": ["caddy"],
+        "checkpoint": true
+      },
+      {
+        "id": "overlay.server",
+        "type": "script",
+        "scriptIdByPlatform": {
+          "linux": "apply-overlay-server-sh",
+          "windows": "apply-overlay-server-ps1"
+        },
+        "description": "Etapa 5 — WireGuard overlay quando ACOMOPMS_OVERLAY_ENABLED=true.",
+        "dependsOn": ["proxy.start"],
+        "optional": true,
+        "checkpoint": true
+      },
+      {
+        "id": "network.firewall",
+        "type": "script",
+        "scriptId": "firewall-lan-windows",
+        "platforms": ["windows"],
+        "description": "Abre porta HTTP na rede Private (Windows).",
+        "dependsOn": ["proxy.start"],
+        "optional": false,
+        "checkpoint": true
+      },
+      {
+        "id": "network.block-internal-ports",
+        "type": "script",
+        "scriptIdByPlatform": {
+          "linux": "firewall-block-supabase-lan-linux",
+          "windows": "firewall-block-supabase-lan-windows"
+        },
+        "description": "Etapa 15 — bloqueia portas Supabase/Postgres na LAN; só :8080 para clientes.",
+        "dependsOn": ["proxy.start"],
+        "optional": false,
+        "checkpoint": true
+      },
+      {
+        "id": "validation.post-install",
+        "type": "script",
+        "scriptId": "test-server-lan",
+        "description": "Testes HTTP LAN documentados.",
+        "dependsOn": ["proxy.start"],
+        "checkpoint": true
+      }
+    ]
+  },
+  "network": {
+    "accessModes": [
+      {
+        "id": "lan",
+        "status": "active",
+        "description": "Mesma Wi‑Fi/Ethernet; porta HTTP Caddy."
+      },
+      {
+        "id": "overlay",
+        "status": "planned",
+        "description": "Internet via WireGuard/Headscale (Etapas 5–6); URL alternativa em server-connection.json."
+      }
+    ],
+    "accessUrl": {
+      "template": "http://{lanHost}:{httpPort}",
+      "loginPath": "/login",
+      "loginUrlTemplate": "http://{lanHost}:{httpPort}/login",
+      "variables": {
+        "lanHost": {
+          "source": "config",
+          "configKey": "ACOMOPMS_LAN_HOST",
+          "autoDetectFallback": true
+        },
+        "httpPort": {
+          "source": "config",
+          "configKey": "ACOMOPMS_HTTP_PORT",
+          "default": 8080
+        }
+      },
+      "configFileRelativePath": "Transferir para Servidor/servidor-lan/servidor.env",
+      "configExampleRelativePath": "Transferir para Servidor/servidor-lan/servidor.env.example",
+      "notes": "lanHost=auto detecta IPv4 LAN conforme scripts servidor-lan; instalador deve resolver antes de exibir URL ao usuário."
+    },
+    "ports": {
+      "exposedToLan": [
+        {
+          "port": 8080,
+          "protocol": "tcp",
+          "bind": "0.0.0.0",
+          "purpose": "HTTP UI + API via Caddy",
+          "configurable": true,
+          "configKey": "ACOMOPMS_HTTP_PORT",
+          "source": "reverseProxy / servidor.env"
+        }
+      ],
+      "internalDoNotExposeToLan": [
+        {
+          "port": 54321,
+          "protocol": "tcp",
+          "purpose": "Supabase API (Kong)",
+          "source": "supabase/config.toml [api].port"
+        },
+        {
+          "port": 54322,
+          "protocol": "tcp",
+          "purpose": "PostgreSQL",
+          "source": "supabase/config.toml [db].port"
+        },
+        {
+          "port": 54323,
+          "protocol": "tcp",
+          "purpose": "Supabase Studio",
+          "source": "supabase/config.toml [studio].port"
+        },
+        {
+          "port": 54320,
+          "protocol": "tcp",
+          "purpose": "Shadow DB (CLI)",
+          "source": "supabase/config.toml [db].shadow_port"
+        },
+        {
+          "port": 54324,
+          "protocol": "tcp",
+          "purpose": "Local SMTP web (dev)",
+          "source": "supabase/config.toml [local_smtp].port"
+        },
+        {
+          "port": 54327,
+          "protocol": "tcp",
+          "purpose": "Analytics",
+          "source": "supabase/config.toml [analytics].port"
+        },
+        {
+          "port": 8083,
+          "protocol": "tcp",
+          "purpose": "Edge Functions inspector",
+          "source": "supabase/config.toml [edge_runtime].inspector_port"
+        }
+      ]
+    }
+  },
+  "configuration": {
+    "strategy": "Arquivo servidor.env (LAN) + scripts Node geram Caddyfile e ajustam Auth; build injeta VITE_*; secrets via supabase status.",
+    "singleSourceOfTruthRelativePath": "Transferir para Servidor/servidor-lan/servidor.env",
+    "environmentKeys": [
+      "ACOMOPMS_LAN_HOST",
+      "ACOMOPMS_HTTP_PORT",
+      "ACOMOPMS_SUPABASE_INTERNAL",
+      "ACOMOPMS_OVERLAY_ENABLED",
+      "ACOMOPMS_OVERLAY_HOST",
+      "ACOMOPMS_OVERLAY_HEADSCALE_URL",
+      "ACOMOPMS_OVERLAY_NAMESPACE",
+      "ACOMOPMS_OVERLAY_SERVER_NAME",
+      "ACOMOPMS_OVERLAY_WG_PORT",
+      "ACOMOPMS_OVERLAY_PUBLIC_ENDPOINT",
+      "ACOMOPMS_OVERLAY_SUBNET",
+      "ACOMOPMS_OVERLAY_SERVER_ADDRESS"
+    ],
+    "generatedArtifactsRelativePaths": [
+      "Transferir para Servidor/servidor-lan/Caddyfile.generated",
+      "Transferir para Servidor/servidor-lan/server-connection.generated.json",
+      "frontend/dist",
+      "frontend/dist/server-connection.json",
+      "frontend/dist/lan-build.json"
+    ],
+    "modifiedSourceFilesRelativePaths": [
+      "supabase/config.toml"
+    ],
+    "secrets": {
+      "storage": "a definir — responsabilidade do instalador (fora do clone)",
+      "sources": [
+        "supabase status -o env (ANON_KEY e demais chaves locais)"
+      ]
+    },
+    "userProvidedAtInstall": [
+      "repositoryUrl"
+    ],
+    "derivedAtInstall": [
+      "ACOMOPMS_LAN_HOST",
+      "ACOMOPMS_HTTP_PORT"
+    ]
+  },
+  "startup": {
+    "strategy": "Manual documentado; serviço OS e boot automático a cargo do futuro Manager.",
+    "automaticOnBoot": "a definir",
+    "currentManualFlow": [
+      "supabase start (raiz do clone)",
+      "start-server-lan (script por plataforma)"
+    ],
+    "services": [
+      {
+        "id": "supabase",
+        "startCapability": "supabase.ensure-started",
+        "dependsOn": ["docker"]
+      },
+      {
+        "id": "caddy",
+        "startScriptIdByPlatform": {
+          "linux": "start-server-lan-sh",
+          "windows": "start-server-lan-ps1"
+        },
+        "dependsOn": ["supabase"]
+      }
+    ]
+  },
+  "backup": {
+    "strategy": "Etapa 16 — scripts backup-local-database / restore-local-database (pg_dump -Fc + pg_restore). Copiar dumps para mídia externa; agendamento OS/Manager futuro.",
+    "automated": "manual via script; cron/Task Scheduler a cargo do operador ou Manager",
+    "defaultOutputDirectoryRelativePath": "Transferir para Servidor/servidor-lan/backups",
+    "backupScriptId": "backup-local-database",
+    "restoreScriptId": "restore-local-database",
+    "verifyScriptId": "verify-local-backup",
+    "dataComponents": [
+      "PostgreSQL (schemas public + auth via pg_dump)",
+      "Storage bucket planilha-anexos (export separado — fora do dump Etapa 16)",
+      "Transferir para Servidor/servidor-lan/servidor.env e runtime gerado",
+      "Commit SHA registrado em *.meta.json"
+    ],
+    "recommendedTools": [
+      "pg_dump / pg_restore (host ou docker exec supabase_db_*)",
+      "Supabase CLI storage export (anexos — a definir no Manager)"
+    ],
+    "restoreRequiresServiceStop": ["caddy"],
+    "notes": "Restore não executa supabase stop por padrão; para parar Caddy use flag implícita em restaurar-banco-local.mjs."
+  },
+  "update": {
+    "strategy": "Git pull + reexecução seletiva de fases do installPlan; detalhes de rollback a definir no Manager.",
+    "sourceControl": "git",
+    "phases": [
+      "backup-local-database (recomendado)",
+      "git fetch/checkout target revision",
+      "validar server-manifest.json",
+      "database.schema (se houver novos SQL)",
+      "backend.configure-auth + backend.restart (se necessário)",
+      "frontend.build",
+      "proxy.generate-config",
+      "connection.generate-runtime",
+      "proxy.start",
+      "validation.post-install"
+    ],
+    "rollback": "restore-local-database com dump conhecido + checkout last-good SHA + frontend.build se necessário"
+  },
+  "validation": {
+    "postInstall": {
+      "required": true,
+      "tests": [
+        {
+          "id": "test-server-lan",
+          "scriptId": "test-server-lan",
+          "context": "Produção LAN via proxy HTTP",
+          "requiredForInstall": true
+        },
+        {
+          "id": "test-local-supabase",
+          "scriptId": "test-local-supabase",
+          "context": "API direta (desenvolvimento)",
+          "requiredForInstall": false
+        },
+        {
+          "id": "verify-lan-security",
+          "scriptId": "verify-lan-security",
+          "context": "Etapa 15 — portas internas inacessíveis via IP LAN",
+          "requiredForInstall": true
+        }
+      ]
+    },
+    "checklistRelativePaths": [
+      "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA4.md",
+      "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md",
+      "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA16-BACKUP.md",
+      "Transferir para Servidor/CHECKLIST.md"
+    ],
+    "userGuideRelativePath": "docs/guia-uso-servidor-lan.md",
+    "manifestValidationScriptId": "validate-server-manifest"
+  },
+  "platforms": {
+    "windows": {
+      "dockerProduct": "Docker Desktop",
+      "requirements": {
+        "elevationForPhases": ["network.firewall", "network.block-internal-ports"],
+        "supplementaryShellForShScripts": "Git Bash ou WSL",
+        "preferredScriptIds": [
+          "build-production-lan-ps1",
+          "start-server-lan-ps1",
+          "firewall-lan-windows"
+        ]
+      },
+      "firewall": {
+        "phaseId": "network.firewall",
+        "scriptId": "firewall-lan-windows",
+        "recommendedProfile": "Private",
+        "blockInternalSupabasePortsOnLan": "firewall-block-supabase-lan-windows",
+        "verifyScriptId": "verify-lan-security"
+      },
+      "documentationRelativePaths": [
+        "Transferir para Servidor/README.md",
+        "Transferir para Servidor/servidor-lan/README.md"
+      ]
+    },
+    "linux": {
+      "dockerProduct": "Docker Engine",
+      "requirements": {
+        "preferredScriptIds": [
+          "build-production-lan-sh",
+          "start-server-lan-sh"
+        ]
+      },
+      "firewall": {
+        "automatedScriptId": "firewall-block-supabase-lan-linux",
+        "verifyScriptId": "verify-lan-security",
+        "notes": "HTTP público: liberar ACOMOPMS_HTTP_PORT; bloqueio Supabase via aplicar-seguranca-lan-firewall.sh (ufw) ou iptables equivalente."
+      },
+      "documentationRelativePaths": [
+        "Transferir para Servidor/servidor-lan/README.md"
+      ]
+    }
+  },
+  "multiInstall": {
+    "supported": "partial",
+    "isolationParameters": [
+      "ACOMOPMS_HTTP_PORT",
+      "supabase.project_id em supabase/config.toml"
+    ],
+    "knownLimitations": [
+      "Portas padrão Supabase (54321–54323) são fixas no config.toml atual; segunda instalação no mesmo host exige project_id/portas distintas não automatizadas neste repositório.",
+      "Docker Desktop/Engine compartilhado entre instalações."
+    ],
+    "managerResponsibility": "Alocar httpPort livre, registrar install-id, isolar secrets e runtime; ajuste de project_id Supabase: a definir."
+  },
+  "development": {
+    "summary": "npm run dev em frontend/; Supabase opcional com VITE_DATA_SOURCE=supabase.",
+    "documentationRelativePaths": [
+      "README.md",
+      "docs/README.md",
+      "docs/guia-uso-servidor-lan.md",
+      "docs/server-manifest-contract.md",
+      "docs/connection-json-contract.md",
+      "schemas/README.md",
+      "frontend/README.md",
+      "Transferir para Servidor/README.md",
+      "Transferir para Servidor/servidor-lan/README.md",
+      "Instalador OPMS/README.md"
+    ],
+    "userGuideRelativePath": "docs/guia-uso-servidor-lan.md"
+  },
+  "cloudDeploymentSeparateFromServer": {
+    "note": "GitHub Pages via Actions — fluxo distinto do servidor LAN.",
+    "workflowRelativePath": ".github/workflows/deploy-pages.yml"
+  }
+}

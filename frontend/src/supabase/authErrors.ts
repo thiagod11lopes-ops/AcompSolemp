@@ -27,7 +27,9 @@ export function assertSupabaseUrlConfig(): void {
   try {
     parsed = new URL(raw)
   } catch {
-    throw new Error('VITE_SUPABASE_URL inválida. Use o formato https://xxxx.supabase.co')
+    throw new Error(
+      'VITE_SUPABASE_URL inválida. Use https://xxxx.supabase.co (nuvem) ou http://IP:porta (servidor LAN via Caddy).',
+    )
   }
 
   if (typeof window === 'undefined') return
