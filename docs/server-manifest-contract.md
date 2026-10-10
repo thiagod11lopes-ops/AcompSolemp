@@ -152,6 +152,7 @@ Descreve como o **Instalador OPMS** (desktop) se conecta ao servidor.
 | `lan.sameOriginSupabaseApi` | `true`: `VITE_SUPABASE_URL` = mesma origem (Caddy faz proxy). |
 | `overlay.*` | Metadados até Etapas 5–6; `pairingArtifactFileName`: **`connection.json`**. |
 | `runtimeDescriptor.generatorScriptId` | **`generate-server-connection`** |
+| `desktopClient.relativePath` | **`Instalador OPMS/cliente`** — Electron Etapa 10 |
 
 **Regra para o Manager:** após `installPlan` concluir com sucesso, fazer `GET {publicOrigin}/server-connection.json` e exibir `client.recommendedStartUrl` (ou `lan.loginUrl`).
 

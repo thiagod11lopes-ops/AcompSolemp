@@ -26,6 +26,20 @@ jobs:
       - name: Validate server-manifest (paths and script refs)
         run: node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
 
+  acompopms-cliente-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Unit tests (cliente desktop Etapa 10)
+        working-directory: Instalador OPMS/cliente
+        run: |
+          npm run test:unit
+
   build:
     runs-on: ubuntu-latest
     steps:

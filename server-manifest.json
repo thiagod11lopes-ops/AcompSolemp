@@ -108,6 +108,21 @@
   "clientConnection": {
     "product": "AcompOPMS",
     "installerCatalogRelativePath": "Instalador OPMS",
+    "desktopClient": {
+      "relativePath": "Instalador OPMS/cliente",
+      "packageName": "acompopms-cliente",
+      "mainEntry": "electron-main.mjs",
+      "configFileName": "acomopms-desktop.config.json",
+      "configExampleRelativePath": "Instalador OPMS/cliente/acomopms-desktop.config.example.json",
+      "startUrlConfigKey": "startUrl",
+      "installConfigPathsByPlatform": {
+        "windows": "%LOCALAPPDATA%/AcompOPMS/acomopms-desktop.config.json",
+        "linux": "~/.local/share/AcompOPMS/acomopms-desktop.config.json"
+      },
+      "environmentOverride": "ACOMOPMS_START_URL",
+      "discoveryHttpPath": "/server-connection.json",
+      "etapa": 10
+    },
     "wizardUrlField": "startUrl",
     "lan": {
       "accessUrlTemplate": "http://{lanHost}:{httpPort}/login",
