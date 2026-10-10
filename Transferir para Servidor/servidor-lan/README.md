@@ -74,9 +74,27 @@ O script confirma IPv4 LAN, Caddy, `LISTEN` em `0.0.0.0:8080`, cria/atualiza a r
 
 **URL no celular:** `http://<IP exibido pelo script>:8080` (mesma Wi-Fi). Se o servidor passar nos testes e o celular ainda falhar, suspeite de **AP isolation** no roteador.
 
-Nesta etapa **não** bloqueie 54321–54323; isso fica para depois.
+O Docker costuma publicar também `54321` (API), `54322` (Postgres) e `54323` (Studio) em `0.0.0.0`. **Usuários finais devem usar só `:8080`.** O bloqueio na LAN é a **Etapa 15** (abaixo).
 
-O Docker costuma publicar também `54321` (API), `54322` (Postgres) e `54323` (Studio) em `0.0.0.0`. **Usuários finais devem usar só `:8080`.** No firewall, **bloqueie** 54322/54323 na rede local; considere bloquear 54321 e usar apenas o proxy Caddy (etapa futura).
+### Etapa 15 — Segurança LAN (bloquear Supabase/Postgres)
+
+Checklist: [CHECKLIST-ETAPA15-SEGURANCA.md](./CHECKLIST-ETAPA15-SEGURANCA.md).
+
+Windows (**Administrador**), após Etapa 4B:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1"
+node "Transferir para Servidor/servidor-lan/verificar-seguranca-lan.mjs"
+```
+
+Linux:
+
+```bash
+sudo bash "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.sh"
+node "Transferir para Servidor/servidor-lan/verificar-seguranca-lan.mjs"
+```
+
+Regras: **permitir** TCP na porta HTTP (`ACOMOPMS_HTTP_PORT`); **bloquear** portas internas Supabase (54321–54323 e demais listadas em `server-manifest.json` → `network.ports.internalDoNotExposeToLan`).
 
 ## Linux (validação / servidor)
 
@@ -166,7 +184,10 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | `verificar-build-lan.mjs` | Confere bundles apontam para origem LAN |
 | `generate-caddyfile.mjs` | Gera `Caddyfile.generated` |
 | `start-servidor-lan.*` / `stop-servidor-lan.*` | Sobe/para Caddy |
-| `corrigir-acesso-lan-firewall.ps1` | Firewall Windows (Admin) |
+| `corrigir-acesso-lan-firewall.ps1` | Firewall Windows HTTP (Admin, Etapa 4B) |
+| `aplicar-seguranca-lan-firewall.ps1` / `.sh` | Etapa 15 — bloqueia portas Supabase na LAN |
+| `verificar-seguranca-lan.mjs` | Etapa 15 — probes TCP no IP LAN |
+| `CHECKLIST-ETAPA15-SEGURANCA.md` | Checklist pós-bloqueio |
 | `rodar-testes-lan.*` | Etapa 4 — prepara deps e roda testes |
 | `teste-servidor-lan.mjs` | Testes HTTP + API + Auth + dados |
 | `CHECKLIST-ETAPA4.md` | Checklist pós-instalação |

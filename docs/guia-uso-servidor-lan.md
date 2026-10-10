@@ -41,8 +41,9 @@ Contrato técnico (desenvolvedores): [`server-manifest-contract.md`](./server-ma
 ## 2. Ordem recomendada (primeira implantação)
 
 1. **Servidor LAN** — Etapas 1–4 ([`servidor-lan/README.md`](../Transferir%20para%20Servidor/servidor-lan/README.md), [checklist Etapa 4](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA4.md)).
-2. **Clientes na rede** — Instalador portable ([`Instalador OPMS`](../Instalador%20OPMS/README.md)): URL `http://<IP-LAN>:8080/login`.
-3. **Internet (opcional)** — Overlay Etapas 5–6 no servidor + `connection.json` no instalador ([checklists overlay](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md) e [pareamento](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA6-PAIRING.md)).
+2. **Segurança LAN (Etapa 15)** — [`aplicar-seguranca-lan-firewall`](../Transferir%20para%20Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1) + [`verificar-seguranca-lan.mjs`](../Transferir%20para%20Servidor/servidor-lan/verificar-seguranca-lan.mjs) ([checklist](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md)).
+3. **Clientes na rede** — Instalador portable ([`Instalador OPMS`](../Instalador%20OPMS/README.md)): URL `http://<IP-LAN>:8080/login`.
+4. **Internet (opcional)** — Overlay Etapas 5–6 no servidor + `connection.json` no instalador ([checklists overlay](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md) e [pareamento](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA6-PAIRING.md)).
 
 Migração de dados da **nuvem Supabase** para o servidor local: [`Transferir para Servidor/README.md`](../Transferir%20para%20Servidor/README.md) (fluxo distinto, faça **antes** ou **depois** de colocar o LAN no ar).
 
@@ -62,6 +63,7 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 ```
 
 4. Se outro PC na rede não abrir o IP: firewall — [`corrigir-acesso-lan-firewall.ps1`](../Transferir%20para%20Servidor/servidor-lan/corrigir-acesso-lan-firewall.ps1) **como Administrador**.
+5. **Etapa 15:** [`aplicar-seguranca-lan-firewall.ps1`](../Transferir%20para%20Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1) (Admin) e `node verificar-seguranca-lan.mjs` — Postgres/Supabase não devem responder pelo IP LAN.
 
 **URL para repassar aos clientes:**
 
@@ -162,4 +164,5 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 | [`servidor-lan/README.md`](../Transferir%20para%20Servidor/servidor-lan/README.md) | Scripts e etapas técnicas 1–6 |
 | [`Instalador OPMS/README.md`](../Instalador%20OPMS/README.md) | Cliente + wizard + CI |
 | [`CHECKLIST-ETAPA4.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA4.md) | Validação pós-instalação servidor |
+| [`CHECKLIST-ETAPA15-SEGURANCA.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md) | Bloqueio portas Supabase na LAN |
 | [`server-manifest-contract.md`](./server-manifest-contract.md) | Contrato Acomp Server Manager |

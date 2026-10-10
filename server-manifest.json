@@ -442,6 +442,29 @@
         "interpreter": "powershell",
         "requiresElevation": true,
         "purpose": "Regra firewall TCP porta HTTP perfil Private"
+      },
+      {
+        "id": "firewall-block-supabase-lan-windows",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "requiresElevation": true,
+        "purpose": "Etapa 15 — bloqueia portas Supabase na LAN (Private)"
+      },
+      {
+        "id": "firewall-block-supabase-lan-linux",
+        "path": "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.sh",
+        "platforms": ["linux"],
+        "interpreter": "bash",
+        "requiresElevation": true,
+        "purpose": "Etapa 15 — ufw/iptables — bloqueio portas Supabase na LAN"
+      },
+      {
+        "id": "verify-lan-security",
+        "path": "Transferir para Servidor/servidor-lan/verificar-seguranca-lan.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 15 — probes TCP no IP LAN (portas internas)"
       }
     ]
   },
@@ -541,6 +564,18 @@
         "scriptId": "firewall-lan-windows",
         "platforms": ["windows"],
         "description": "Abre porta HTTP na rede Private (Windows).",
+        "dependsOn": ["proxy.start"],
+        "optional": false,
+        "checkpoint": true
+      },
+      {
+        "id": "network.block-internal-ports",
+        "type": "script",
+        "scriptIdByPlatform": {
+          "linux": "firewall-block-supabase-lan-linux",
+          "windows": "firewall-block-supabase-lan-windows"
+        },
+        "description": "Etapa 15 — bloqueia portas Supabase/Postgres na LAN; só :8080 para clientes.",
         "dependsOn": ["proxy.start"],
         "optional": false,
         "checkpoint": true
@@ -757,20 +792,28 @@
           "scriptId": "test-local-supabase",
           "context": "API direta (desenvolvimento)",
           "requiredForInstall": false
+        },
+        {
+          "id": "verify-lan-security",
+          "scriptId": "verify-lan-security",
+          "context": "Etapa 15 — portas internas inacessíveis via IP LAN",
+          "requiredForInstall": true
         }
       ]
     },
     "checklistRelativePaths": [
       "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA4.md",
+      "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md",
       "Transferir para Servidor/CHECKLIST.md"
     ],
+    "userGuideRelativePath": "docs/guia-uso-servidor-lan.md",
     "manifestValidationScriptId": "validate-server-manifest"
   },
   "platforms": {
     "windows": {
       "dockerProduct": "Docker Desktop",
       "requirements": {
-        "elevationForPhases": ["network.firewall"],
+        "elevationForPhases": ["network.firewall", "network.block-internal-ports"],
         "supplementaryShellForShScripts": "Git Bash ou WSL",
         "preferredScriptIds": [
           "build-production-lan-ps1",
@@ -782,7 +825,8 @@
         "phaseId": "network.firewall",
         "scriptId": "firewall-lan-windows",
         "recommendedProfile": "Private",
-        "blockInternalSupabasePortsOnLan": "a definir"
+        "blockInternalSupabasePortsOnLan": "firewall-block-supabase-lan-windows",
+        "verifyScriptId": "verify-lan-security"
       },
       "documentationRelativePaths": [
         "Transferir para Servidor/README.md",
@@ -798,8 +842,9 @@
         ]
       },
       "firewall": {
-        "automatedScriptId": "a definir",
-        "notes": "Sem script de firewall no repositório; Manager deve aplicar regra genérica ou script futuro."
+        "automatedScriptId": "firewall-block-supabase-lan-linux",
+        "verifyScriptId": "verify-lan-security",
+        "notes": "HTTP público: liberar ACOMOPMS_HTTP_PORT; bloqueio Supabase via aplicar-seguranca-lan-firewall.sh (ufw) ou iptables equivalente."
       },
       "documentationRelativePaths": [
         "Transferir para Servidor/servidor-lan/README.md"

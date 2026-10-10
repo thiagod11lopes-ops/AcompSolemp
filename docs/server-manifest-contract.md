@@ -138,6 +138,8 @@ CI: job **`validate-server-manifest`** em [`.github/workflows/ci.yml`](../.githu
 
 Usuários finais e **Instalador OPMS** usam **apenas** a origem `:8080`, nunca `:54321` no browser.
 
+**Etapa 15 (implementada):** scripts `firewall-block-supabase-lan-windows` / `firewall-block-supabase-lan-linux` aplicam bloqueio na LAN; `verify-lan-security` (`verificar-seguranca-lan.mjs`) confirma que o IP LAN não aceita TCP nas portas internas. Checklist: `CHECKLIST-ETAPA15-SEGURANCA.md`.
+
 ---
 
 ## 7. Bloco `clientConnection` (manifesto 1.2.0)

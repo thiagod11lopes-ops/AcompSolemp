@@ -42,4 +42,5 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 ## Segurança
 
 - [ ] Usuários usam só porta **8080** (não `:54321` / `:54322` na LAN)
+- [ ] Etapa 15: [CHECKLIST-ETAPA15-SEGURANCA.md](./CHECKLIST-ETAPA15-SEGURANCA.md) (`aplicar-seguranca-lan-firewall` + `verificar-seguranca-lan.mjs`)
 - [ ] Nenhum dump SQL com dados reais no Git
