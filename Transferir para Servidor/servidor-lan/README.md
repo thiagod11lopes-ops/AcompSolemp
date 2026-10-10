@@ -46,6 +46,21 @@ bash "Transferir para Servidor/servidor-lan/start-servidor-lan.sh"
 
 URL de login: `http://<IP-LAN>:8080/login` (use a porta de `ACOMOPMS_HTTP_PORT`).
 
+### Etapa 3 — Build frontend (VITE_* via Caddy)
+
+O build grava `frontend/.env.production.local` com:
+
+- `VITE_DATA_SOURCE=supabase`
+- `VITE_SUPABASE_URL=http://<IP-LAN>:8080` (mesma origem da UI — **não** use `:54321` no browser)
+- `VITE_SUPABASE_ANON_KEY` do `supabase status`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/build-producao-lan.ps1"
+node "Transferir para Servidor/servidor-lan/verificar-build-lan.mjs"
+```
+
+Sempre **depois** da Etapa 2 se mudou IP/porta. O arquivo `frontend/dist/lan-build.json` registra a origem usada no build.
+
 ### Etapa 4B — Acesso LAN no Windows (firewall)
 
 Se `http://127.0.0.1:8080` funciona mas `http://<IP_LAN>:8080` não (nem no próprio PC), o Caddy já escuta em `0.0.0.0` — crie a regra de entrada **somente** para esta etapa:
@@ -107,7 +122,9 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | Arquivo | Função |
 |---------|--------|
 | `servidor.env.example` → `servidor.env` | IP LAN e porta HTTP |
-| `build-producao-lan.*` | Build `frontend/dist` com URL LAN |
+| `build-producao-lan.*` | Build `frontend/dist` com VITE_* LAN |
+| `lib/write-frontend-env-lan.mjs` | Gera `.env.production.local` |
+| `verificar-build-lan.mjs` | Confere bundles apontam para origem LAN |
 | `generate-caddyfile.mjs` | Gera `Caddyfile.generated` |
 | `start-servidor-lan.*` / `stop-servidor-lan.*` | Sobe/para Caddy |
 | `corrigir-acesso-lan-firewall.ps1` | Firewall Windows (Admin) |

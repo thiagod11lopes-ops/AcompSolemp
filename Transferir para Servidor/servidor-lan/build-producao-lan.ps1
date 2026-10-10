@@ -1,36 +1,28 @@
-# Build de produção para servidor LAN (Windows PowerShell)
-$ErrorActionPreference = "Stop"
+# Etapa 3 — Build frontend/dist com VITE_* apontando para a origem LAN (Caddy).
+$ErrorActionPreference = 'Stop'
 $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Root = Resolve-Path (Join-Path $LanDir "..\..")
-$EnvFile = Join-Path $LanDir "servidor.env"
-if (-not (Test-Path $EnvFile)) {
-  Copy-Item (Join-Path $LanDir "servidor.env.example") $EnvFile
-}
+$Root = Resolve-Path (Join-Path $LanDir '..\..')
+$EnvFile = Join-Path $LanDir 'servidor.env'
 
-$vars = @{}
-Get-Content $EnvFile | ForEach-Object {
-  if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
-  $i = $_.IndexOf('=')
-  $vars[$_.Substring(0, $i).Trim()] = $_.Substring($i + 1).Trim()
+if (-not (Test-Path $EnvFile)) {
+  Copy-Item (Join-Path $LanDir 'servidor.env.example') $EnvFile
 }
-$hostLan = $vars['ACOMOPMS_LAN_HOST']
-if (-not $hostLan -or $hostLan -eq 'auto') {
-  $hostLan = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.PrefixOrigin -ne 'WellKnown' } | Select-Object -First 1).IPAddress
-  if (-not $hostLan) { $hostLan = '127.0.0.1' }
-}
-$port = if ($vars['ACOMOPMS_HTTP_PORT']) { $vars['ACOMOPMS_HTTP_PORT'] } else { '8080' }
-$publicOrigin = "http://${hostLan}:${port}"
 
 Push-Location $Root
-$status = supabase status -o env 2>$null
-$anon = ($status | Where-Object { $_ -match '^ANON_KEY=' }) -replace '^ANON_KEY="?|"',''
-if (-not $anon) { throw "Supabase local não está rodando. Execute: supabase start" }
+node (Join-Path $LanDir 'lib/write-frontend-env-lan.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar .env.production.local' }
 
-Push-Location (Join-Path $Root "frontend")
-$env:VITE_DATA_SOURCE = "supabase"
-$env:VITE_SUPABASE_URL = $publicOrigin
-$env:VITE_SUPABASE_ANON_KEY = $anon
+Push-Location (Join-Path $Root 'frontend')
 npm run build
+if ($LASTEXITCODE -ne 0) { throw 'npm run build falhou' }
+Pop-Location
+
+node (Join-Path $LanDir 'lib/record-lan-build.mjs')
+node (Join-Path $LanDir 'verificar-build-lan.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'verificar-build-lan falhou' }
+
+Push-Location $LanDir
+$origin = node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; console.log(loadServidorEnv().publicOrigin)"
 Pop-Location
 Pop-Location
-Write-Host "OK: build em frontend/dist — acesse $publicOrigin"
+Write-Host "OK: frontend/dist — acesse ${origin}/login"
