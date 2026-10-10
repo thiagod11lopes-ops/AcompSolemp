@@ -6,6 +6,63 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-server-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: schemas/package-lock.json
+
+      - name: Validate server-manifest.json (JSON Schema)
+        working-directory: schemas
+        run: |
+          npm ci
+          npm run validate
+
+      - name: Validate server-manifest (paths and script refs)
+        run: node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
+
+      - name: Unit tests servidor-lan (auth redirects Etapa 5)
+        run: node --test "Transferir para Servidor/servidor-lan/test/*.test.mjs"
+
+  acompopms-instalador-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Instalador OPMS/instalador/package-lock.json
+
+      - name: Unit tests (instalador wizard Etapa 11)
+        working-directory: Instalador OPMS/instalador
+        run: |
+          npm ci
+          npm run test:unit
+
+  acompopms-cliente-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Instalador OPMS/cliente/package-lock.json
+
+      - name: Unit tests (cliente desktop Etapa 10)
+        working-directory: Instalador OPMS/cliente
+        run: |
+          npm ci
+          npm run test:unit
+
   build:
     runs-on: ubuntu-latest
     steps:
