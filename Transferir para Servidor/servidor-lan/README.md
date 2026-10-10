@@ -26,7 +26,25 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/start-servidor-lan.ps1"
 ```
 
-> **Auth / login na LAN:** na **Etapa 2** rode `configure-auth.mjs` e reinicie o Supabase. Se o login falhar antes disso, é esperado.
+### Etapa 2 — Auth / login na LAN
+
+Sempre que mudar `servidor.env` (IP ou porta):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/aplicar-auth-lan.ps1"
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/build-producao-lan.ps1"
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/start-servidor-lan.ps1"
+```
+
+Linux:
+
+```bash
+bash "Transferir para Servidor/servidor-lan/aplicar-auth-lan.sh"
+bash "Transferir para Servidor/servidor-lan/build-producao-lan.sh"
+bash "Transferir para Servidor/servidor-lan/start-servidor-lan.sh"
+```
+
+URL de login: `http://<IP-LAN>:8080/login` (use a porta de `ACOMOPMS_HTTP_PORT`).
 
 ### Etapa 4B — Acesso LAN no Windows (firewall)
 
@@ -94,4 +112,6 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | `start-servidor-lan.*` / `stop-servidor-lan.*` | Sobe/para Caddy |
 | `corrigir-acesso-lan-firewall.ps1` | Firewall Windows (Admin) |
 | `teste-servidor-lan.mjs` | Testes HTTP + API via proxy |
-| `preparar-servidor-lan.ps1` | Orquestra setup Windows (Etapa 1) |
+| `configure-auth.mjs` | Grava `site_url` / redirects no `supabase/config.toml` |
+| `aplicar-auth-lan.*` | Auth + reinicia Supabase (Etapa 2) |
+| `preparar-servidor-lan.ps1` | Orquestra setup Windows (Etapas 1+2) |
