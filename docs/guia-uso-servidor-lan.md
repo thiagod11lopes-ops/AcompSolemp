@@ -42,8 +42,9 @@ Contrato técnico (desenvolvedores): [`server-manifest-contract.md`](./server-ma
 
 1. **Servidor LAN** — Etapas 1–4 ([`servidor-lan/README.md`](../Transferir%20para%20Servidor/servidor-lan/README.md), [checklist Etapa 4](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA4.md)).
 2. **Segurança LAN (Etapa 15)** — [`aplicar-seguranca-lan-firewall`](../Transferir%20para%20Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1) + [`verificar-seguranca-lan.mjs`](../Transferir%20para%20Servidor/servidor-lan/verificar-seguranca-lan.mjs) ([checklist](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md)).
-3. **Clientes na rede** — Instalador portable ([`Instalador OPMS`](../Instalador%20OPMS/README.md)): URL `http://<IP-LAN>:8080/login`.
-4. **Internet (opcional)** — Overlay Etapas 5–6 no servidor + `connection.json` no instalador ([checklists overlay](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md) e [pareamento](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA6-PAIRING.md)).
+3. **Backup (Etapa 16)** — [`backup-banco-local.mjs`](../Transferir%20para%20Servidor/servidor-lan/backup-banco-local.mjs) antes de `git pull` ou mudanças grandes ([checklist](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA16-BACKUP.md)).
+4. **Clientes na rede** — Instalador portable ([`Instalador OPMS`](../Instalador%20OPMS/README.md)): URL `http://<IP-LAN>:8080/login`.
+5. **Internet (opcional)** — Overlay Etapas 5–6 no servidor + `connection.json` no instalador ([checklists overlay](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md) e [pareamento](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA6-PAIRING.md)).
 
 Migração de dados da **nuvem Supabase** para o servidor local: [`Transferir para Servidor/README.md`](../Transferir%20para%20Servidor/README.md) (fluxo distinto, faça **antes** ou **depois** de colocar o LAN no ar).
 
@@ -133,7 +134,7 @@ Não é necessário instalador. Se não carregar, verifique firewall do servidor
 |------|------|
 | Mudou IP da rede | Editar `servidor.env` → `aplicar-auth-lan` → `build-producao-lan` → reiniciar Caddy; **reinstalar** ou editar `startUrl` nos clientes |
 | Atualizou código no GitHub | No servidor: `git pull`, schema se houver SQL novo, rebuild LAN, testes |
-| Backup do banco | Postgres local (Docker); ver Etapa 16 (quando documentada) |
+| Backup do banco | `backup-banco-local.mjs` — [Etapa 16](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA16-BACKUP.md) |
 | Novo PC na internet | Novo `exportar-connection-json` no servidor |
 
 ---
@@ -165,4 +166,5 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 | [`Instalador OPMS/README.md`](../Instalador%20OPMS/README.md) | Cliente + wizard + CI |
 | [`CHECKLIST-ETAPA4.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA4.md) | Validação pós-instalação servidor |
 | [`CHECKLIST-ETAPA15-SEGURANCA.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md) | Bloqueio portas Supabase na LAN |
+| [`CHECKLIST-ETAPA16-BACKUP.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA16-BACKUP.md) | Backup/restore Postgres local |
 | [`server-manifest-contract.md`](./server-manifest-contract.md) | Contrato Acomp Server Manager |

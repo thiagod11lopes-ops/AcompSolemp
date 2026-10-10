@@ -465,6 +465,55 @@
         "platforms": ["linux", "windows"],
         "interpreter": "node",
         "purpose": "Etapa 15 — probes TCP no IP LAN (portas internas)"
+      },
+      {
+        "id": "backup-local-database",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_dump custom (-Fc) do Postgres local"
+      },
+      {
+        "id": "backup-local-database-sh",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Wrapper backup Etapa 16"
+      },
+      {
+        "id": "backup-local-database-ps1",
+        "path": "Transferir para Servidor/servidor-lan/backup-banco-local.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Wrapper backup Etapa 16 (Windows)"
+      },
+      {
+        "id": "restore-local-database",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_restore (exige --confirm)"
+      },
+      {
+        "id": "restore-local-database-sh",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.sh",
+        "platforms": ["linux", "windows-with-bash"],
+        "interpreter": "bash",
+        "purpose": "Wrapper restore Etapa 16"
+      },
+      {
+        "id": "restore-local-database-ps1",
+        "path": "Transferir para Servidor/servidor-lan/restaurar-banco-local.ps1",
+        "platforms": ["windows"],
+        "interpreter": "powershell",
+        "purpose": "Wrapper restore Etapa 16 (Windows)"
+      },
+      {
+        "id": "verify-local-backup",
+        "path": "Transferir para Servidor/servidor-lan/verificar-backup-local.mjs",
+        "platforms": ["linux", "windows"],
+        "interpreter": "node",
+        "purpose": "Etapa 16 — pg_restore --list + meta.json"
       }
     ]
   },
@@ -746,25 +795,30 @@
     ]
   },
   "backup": {
-    "strategy": "Manual documentado para migração; backup local automatizado a definir pelo Manager.",
-    "automated": "a definir",
+    "strategy": "Etapa 16 — scripts backup-local-database / restore-local-database (pg_dump -Fc + pg_restore). Copiar dumps para mídia externa; agendamento OS/Manager futuro.",
+    "automated": "manual via script; cron/Task Scheduler a cargo do operador ou Manager",
+    "defaultOutputDirectoryRelativePath": "Transferir para Servidor/servidor-lan/backups",
+    "backupScriptId": "backup-local-database",
+    "restoreScriptId": "restore-local-database",
+    "verifyScriptId": "verify-local-backup",
     "dataComponents": [
-      "PostgreSQL (volumes Docker Supabase local)",
-      "Storage bucket planilha-anexos",
+      "PostgreSQL (schemas public + auth via pg_dump)",
+      "Storage bucket planilha-anexos (export separado — fora do dump Etapa 16)",
       "Transferir para Servidor/servidor-lan/servidor.env e runtime gerado",
-      "Commit SHA do clone"
+      "Commit SHA registrado em *.meta.json"
     ],
     "recommendedTools": [
-      "pg_dump / pg_restore",
-      "a definir — export Storage Supabase"
+      "pg_dump / pg_restore (host ou docker exec supabase_db_*)",
+      "Supabase CLI storage export (anexos — a definir no Manager)"
     ],
-    "restoreRequiresServiceStop": ["caddy", "supabase"]
+    "restoreRequiresServiceStop": ["caddy"],
+    "notes": "Restore não executa supabase stop por padrão; para parar Caddy use flag implícita em restaurar-banco-local.mjs."
   },
   "update": {
     "strategy": "Git pull + reexecução seletiva de fases do installPlan; detalhes de rollback a definir no Manager.",
     "sourceControl": "git",
     "phases": [
-      "backup (a definir — Manager)",
+      "backup-local-database (recomendado)",
       "git fetch/checkout target revision",
       "validar server-manifest.json",
       "database.schema (se houver novos SQL)",
@@ -775,7 +829,7 @@
       "proxy.start",
       "validation.post-install"
     ],
-    "rollback": "a definir — restore backup + checkout last-good SHA"
+    "rollback": "restore-local-database com dump conhecido + checkout last-good SHA + frontend.build se necessário"
   },
   "validation": {
     "postInstall": {
@@ -804,6 +858,7 @@
     "checklistRelativePaths": [
       "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA4.md",
       "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA15-SEGURANCA.md",
+      "Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA16-BACKUP.md",
       "Transferir para Servidor/CHECKLIST.md"
     ],
     "userGuideRelativePath": "docs/guia-uso-servidor-lan.md",

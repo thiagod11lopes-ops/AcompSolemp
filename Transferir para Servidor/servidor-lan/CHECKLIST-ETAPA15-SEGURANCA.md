@@ -30,4 +30,4 @@ Clientes na Wi‑Fi/Ethernet usam **somente** `http://<IP-LAN>:8080`. Portas **5
 - [ ] Equipe informada: nunca compartilhar URL com `:54321` / `:54322`
 - [ ] [Guia de uso](../../docs/guia-uso-servidor-lan.md) — seção segurança
 
-Próxima etapa do plano: **16** — backup/restore do banco local.
+Próxima etapa do plano: **16** — [CHECKLIST-ETAPA16-BACKUP.md](./CHECKLIST-ETAPA16-BACKUP.md).

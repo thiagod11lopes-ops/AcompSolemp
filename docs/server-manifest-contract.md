@@ -245,6 +245,10 @@ O Manager invoca scripts por **`id`**, não por path livre. IDs usados no AcompO
 | `run-tests-lan-sh` / `run-tests-lan-ps1` | Wrapper com deps |
 | `prepare-server-lan-ps1` | Orquestração Windows |
 | `firewall-lan-windows` | Regra firewall (Admin) |
+| `firewall-block-supabase-lan-windows` / `firewall-block-supabase-lan-linux` | Etapa 15 — bloqueio portas internas |
+| `verify-lan-security` | Etapa 15 — probes TCP LAN |
+| `backup-local-database` / `restore-local-database` | Etapa 16 — pg_dump / pg_restore |
+| `verify-local-backup` | Etapa 16 — integridade do `.dump` |
 | `validate-server-manifest` | Validação local manifesto |
 
 Capabilities (`supabase.ensure-started`, `supabase.restart`) são **implementação do Manager**, não scripts no repo.

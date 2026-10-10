@@ -10,3 +10,5 @@ overlay/overlay-state.json
 overlay/wireguard/
 overlay/paired-clients.json
 overlay/exports/
+backups/
+*.dump

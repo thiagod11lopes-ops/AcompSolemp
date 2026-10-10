@@ -153,6 +153,25 @@ powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/
 
 Entregue o JSON ao **Instalador OPMS** (importar no wizard).
 
+### Etapa 16 — Backup / restore Postgres local
+
+Checklist: [CHECKLIST-ETAPA16-BACKUP.md](./CHECKLIST-ETAPA16-BACKUP.md).
+
+Com `supabase start` ativo:
+
+```powershell
+node "Transferir para Servidor/servidor-lan/backup-banco-local.mjs"
+node "Transferir para Servidor/servidor-lan/verificar-backup-local.mjs"
+```
+
+Restore (**destrutivo** — exige `--confirm`):
+
+```powershell
+node "Transferir para Servidor/servidor-lan/restaurar-banco-local.mjs" --file "Transferir para Servidor/servidor-lan/backups/<arquivo>.dump" --confirm
+```
+
+Saída padrão: pasta `backups/` (gitignored). Use `pg_dump` no host ou, se ausente, via container `supabase_db_*`.
+
 ## URLs
 
 | Uso | URL |
@@ -188,6 +207,9 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | `aplicar-seguranca-lan-firewall.ps1` / `.sh` | Etapa 15 — bloqueia portas Supabase na LAN |
 | `verificar-seguranca-lan.mjs` | Etapa 15 — probes TCP no IP LAN |
 | `CHECKLIST-ETAPA15-SEGURANCA.md` | Checklist pós-bloqueio |
+| `backup-banco-local.*` / `restaurar-banco-local.*` | Etapa 16 — pg_dump / pg_restore |
+| `verificar-backup-local.mjs` | Valida `.dump` (pg_restore --list) |
+| `CHECKLIST-ETAPA16-BACKUP.md` | Rotina backup/restore |
 | `rodar-testes-lan.*` | Etapa 4 — prepara deps e roda testes |
 | `teste-servidor-lan.mjs` | Testes HTTP + API + Auth + dados |
 | `CHECKLIST-ETAPA4.md` | Checklist pós-instalação |
