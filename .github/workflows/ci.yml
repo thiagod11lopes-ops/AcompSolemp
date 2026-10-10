@@ -6,6 +6,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate-server-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: schemas/package-lock.json
+
+      - name: Validate server-manifest.json (JSON Schema)
+        working-directory: schemas
+        run: |
+          npm ci
+          npm run validate
+
+      - name: Validate server-manifest (paths and script refs)
+        run: node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
+
   build:
     runs-on: ubuntu-latest
     steps:
