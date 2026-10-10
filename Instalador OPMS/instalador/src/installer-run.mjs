@@ -47,6 +47,11 @@ export async function runInstaller(opts) {
   const startUrl = normalizeStartUrl(opts.startUrl)
   const desktopShortcut = opts.desktopShortcut !== false
   const payload = payloadRoot()
+  if (!existsSync(join(payload, 'electron')) || !existsSync(join(payload, 'app'))) {
+    throw new Error(
+      'Payload de instalação ausente. Reinstale a partir do instalador oficial ou rode npm run prepare-payload.',
+    )
+  }
 
   report(5, 'Preparando instalação…')
   tryReleaseWindowsLocks()
