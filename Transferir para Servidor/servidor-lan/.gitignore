@@ -5,3 +5,6 @@ caddy.log
 node_modules
 test-report-lan.json
 server-connection.generated.json
+overlay/wg-server.key
+overlay/overlay-state.json
+overlay/wireguard/

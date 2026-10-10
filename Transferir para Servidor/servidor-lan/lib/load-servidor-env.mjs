@@ -49,6 +49,8 @@ export function loadServidorEnv(envPath = resolve(SERVIDOR_LAN_DIR, 'servidor.en
     ACOMOPMS_OVERLAY_SERVER_NAME: '',
     ACOMOPMS_OVERLAY_WG_PORT: '51820',
     ACOMOPMS_OVERLAY_PUBLIC_ENDPOINT: '',
+    ACOMOPMS_OVERLAY_SUBNET: '100.64.0.0/24',
+    ACOMOPMS_OVERLAY_SERVER_ADDRESS: '100.64.0.1/32',
   }
   const vars = { ...defaults }
   if (existsSync(envPath)) {

@@ -26,6 +26,9 @@ jobs:
       - name: Validate server-manifest (paths and script refs)
         run: node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
 
+      - name: Unit tests servidor-lan (auth redirects Etapa 5)
+        run: node --test "Transferir para Servidor/servidor-lan/test/*.test.mjs"
+
   acompopms-instalador-unit:
     runs-on: ubuntu-latest
     steps:

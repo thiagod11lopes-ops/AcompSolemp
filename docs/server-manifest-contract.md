@@ -207,7 +207,9 @@ Objetivo: acesso **pela internet** sem instalar Tailscale; VPN **embutida** no M
 | Fases futuras | `overlay.server`, `overlay.pairing-export` |
 | Pareamento | **`connection.json`** (Etapa 6) |
 
-Enquanto `overlay.status` indicar desabilitado, o Manager opera **somente LAN**.
+Enquanto `ACOMOPMS_OVERLAY_ENABLED=false`, o Manager opera **somente LAN**.
+
+**Etapa 5 (servidor):** `aplicar-overlay-servidor.*` → `configurar-overlay-servidor.mjs`, `overlay/overlay-state.json`, Auth com redirects overlay. Checklist: [`CHECKLIST-ETAPA5-OVERLAY.md`](../Transferir%20para%20Servidor/servidor-lan/CHECKLIST-ETAPA5-OVERLAY.md).
 
 ---
 

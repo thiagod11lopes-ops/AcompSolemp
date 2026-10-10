@@ -115,6 +115,16 @@ Após build/start, o servidor publica:
 
 Documentação completa do contrato (Etapa 9): [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md). Schema: [`schemas/README.md`](../../schemas/README.md).
 
+### Etapa 5 — Overlay (internet / WireGuard)
+
+Checklist: [CHECKLIST-ETAPA5-OVERLAY.md](./CHECKLIST-ETAPA5-OVERLAY.md). Com `ACOMOPMS_OVERLAY_ENABLED=true`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/aplicar-overlay-servidor.ps1"
+```
+
+Linux: `bash "Transferir para Servidor/servidor-lan/aplicar-overlay-servidor.sh"`
+
 ## URLs
 
 | Uso | URL |
