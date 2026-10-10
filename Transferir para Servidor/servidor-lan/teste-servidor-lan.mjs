@@ -112,6 +112,19 @@ async function main() {
   }
 
   try {
+    const r = await fetch(`${publicOrigin}/server-connection.json`)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const conn = await r.json()
+    if (conn.lan?.loginUrl !== cfg.loginUrl) {
+      throw new Error(`loginUrl ${conn.lan?.loginUrl} != ${cfg.loginUrl}`)
+    }
+    if (conn.schema !== 'acomopms-server-connection/1') throw new Error('schema inesperado')
+    ok('server-connection.json', conn.lan?.loginUrl)
+  } catch (e) {
+    fail('server-connection.json', e)
+  }
+
+  try {
     const r = await fetch(`${URL}/rest/v1/`, { headers: { apikey: ANON } })
     ok('REST via proxy LAN', `HTTP ${r.status}`)
   } catch (e) {

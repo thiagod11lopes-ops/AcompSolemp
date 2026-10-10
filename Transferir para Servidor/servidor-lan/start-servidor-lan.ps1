@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0) { supabase start }
 Pop-Location
 
 node (Join-Path $LanDir 'generate-caddyfile.mjs')
+node (Join-Path $LanDir 'gerar-server-connection.mjs')
 $caddy = Get-Command caddy -ErrorAction SilentlyContinue
 if (-not $caddy) { throw 'Instale Caddy e coloque caddy.exe no PATH.' }
 

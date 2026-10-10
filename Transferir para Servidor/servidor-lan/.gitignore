@@ -4,3 +4,4 @@ caddy.pid
 caddy.log
 node_modules
 test-report-lan.json
+server-connection.generated.json

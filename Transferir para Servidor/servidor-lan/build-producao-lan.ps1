@@ -18,6 +18,7 @@ if ($LASTEXITCODE -ne 0) { throw 'npm run build falhou' }
 Pop-Location
 
 node (Join-Path $LanDir 'lib/record-lan-build.mjs')
+node (Join-Path $LanDir 'gerar-server-connection.mjs')
 node (Join-Path $LanDir 'verificar-build-lan.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'verificar-build-lan falhou' }
 

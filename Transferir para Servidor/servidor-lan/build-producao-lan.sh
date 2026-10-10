@@ -18,6 +18,7 @@ cd "$ROOT/frontend"
 npm run build
 
 node "$LAN_DIR/lib/record-lan-build.mjs"
+node "$LAN_DIR/gerar-server-connection.mjs"
 node "$LAN_DIR/verificar-build-lan.mjs"
 
 PUBLIC_ORIGIN="$(cd "$LAN_DIR" && node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; console.log(loadServidorEnv().publicOrigin)")"

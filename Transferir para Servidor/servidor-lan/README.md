@@ -103,6 +103,17 @@ bash "Transferir para Servidor/servidor-lan/rodar-testes-lan.sh"
 
 Checklist manual: [CHECKLIST-ETAPA4.md](./CHECKLIST-ETAPA4.md). Saída JSON: `test-report-lan.json` (gitignored).
 
+### Etapa 7 — `server-manifest.json` + URL para o Manager
+
+Contrato na **raiz do repo**: [`server-manifest.json`](../../server-manifest.json) (`manifestVersion` **1.2.0**) — LAN ativa + parâmetros **overlay** (WireGuard/Headscale, Etapas 5–6).
+
+Após build/start, o servidor publica:
+
+- **`http://<IP-LAN>:8080/server-connection.json`** — URL de login e metadados overlay
+- Validação: `node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"`
+
+Documentação: [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md).
+
 ## URLs
 
 | Uso | URL |

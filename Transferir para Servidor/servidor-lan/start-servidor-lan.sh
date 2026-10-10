@@ -29,6 +29,7 @@ if ! supabase status >/dev/null 2>&1; then
 fi
 
 node "$LAN_DIR/generate-caddyfile.mjs"
+node "$LAN_DIR/gerar-server-connection.mjs"
 
 if ! command -v caddy >/dev/null 2>&1; then
   echo "Caddy não encontrado. Instale (ex.: https://caddyserver.com/docs/install#debian-ubuntu-raspbian)"
