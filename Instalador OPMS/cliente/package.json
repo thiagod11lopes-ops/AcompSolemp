@@ -1,0 +1,15 @@
+{
+  "name": "acompopms-cliente",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cliente desktop AcompOPMS (Electron) — Etapa 10",
+  "main": "electron-main.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "test:unit": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "electron": "^34.5.8"
+  }
+}

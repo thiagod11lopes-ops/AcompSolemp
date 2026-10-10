@@ -19,6 +19,12 @@ npm run dev
 
 Documentação completa em [frontend/README.md](./frontend/README.md).
 
+## Servidor LAN e Acomp Server Manager
+
+Instalação self-hosted (Supabase local + Caddy na rede): [`Transferir para Servidor/servidor-lan/README.md`](./Transferir%20para%20Servidor/servidor-lan/README.md).
+
+Contrato para o futuro **Acomp Server Manager** (manifesto, schema, URLs, overlay planejado): [`docs/server-manifest-contract.md`](./docs/server-manifest-contract.md) — manifesto [`server-manifest.json`](./server-manifest.json).
+
 ## Publicar no GitHub
 
 O código está versionado com Git. Para enviar ao GitHub e habilitar atualizações automáticas:
