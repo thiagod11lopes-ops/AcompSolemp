@@ -123,6 +123,17 @@
       "discoveryHttpPath": "/server-connection.json",
       "etapa": 10
     },
+    "desktopInstaller": {
+      "relativePath": "Instalador OPMS/instalador",
+      "packageName": "acompopms-instalador",
+      "versionSource": "Instalador OPMS/instalador/package.json",
+      "wizardUiRelativePath": "Instalador OPMS/instalador/ui",
+      "installScriptEntry": "Instalador OPMS/instalador/src/installer-run.mjs",
+      "preparePayloadScript": "Instalador OPMS/instalador/scripts/prepare-payload.mjs",
+      "defaultDesktopShortcutName": "AcompOPMS",
+      "desktopShortcutDefaultChecked": true,
+      "etapa": 11
+    },
     "wizardUrlField": "startUrl",
     "lan": {
       "accessUrlTemplate": "http://{lanHost}:{httpPort}/login",
