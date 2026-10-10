@@ -89,13 +89,19 @@ bash "Transferir para Servidor/servidor-lan/build-producao-lan.sh"
 bash "Transferir para Servidor/servidor-lan/start-servidor-lan.sh"
 ```
 
-## Teste
+### Etapa 4 — Validação automática
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/rodar-testes-lan.ps1"
+```
+
+Linux:
 
 ```bash
-cd frontend && npm ci   # se necessário
-ln -sf ../frontend/node_modules "../Transferir para Servidor/servidor-lan/node_modules"
-node "Transferir para Servidor/servidor-lan/teste-servidor-lan.mjs"
+bash "Transferir para Servidor/servidor-lan/rodar-testes-lan.sh"
 ```
+
+Checklist manual: [CHECKLIST-ETAPA4.md](./CHECKLIST-ETAPA4.md). Saída JSON: `test-report-lan.json` (gitignored).
 
 ## URLs
 
@@ -128,7 +134,9 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | `generate-caddyfile.mjs` | Gera `Caddyfile.generated` |
 | `start-servidor-lan.*` / `stop-servidor-lan.*` | Sobe/para Caddy |
 | `corrigir-acesso-lan-firewall.ps1` | Firewall Windows (Admin) |
-| `teste-servidor-lan.mjs` | Testes HTTP + API via proxy |
+| `rodar-testes-lan.*` | Etapa 4 — prepara deps e roda testes |
+| `teste-servidor-lan.mjs` | Testes HTTP + API + Auth + dados |
+| `CHECKLIST-ETAPA4.md` | Checklist pós-instalação |
 | `configure-auth.mjs` | Grava `site_url` / redirects no `supabase/config.toml` |
 | `aplicar-auth-lan.*` | Auth + reinicia Supabase (Etapa 2) |
 | `preparar-servidor-lan.ps1` | Orquestra setup Windows (Etapas 1+2) |

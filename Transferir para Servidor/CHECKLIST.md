@@ -2,6 +2,8 @@
 
 Use junto com o [README.md](./README.md).
 
+**Servidor LAN (produção na rede, Etapa 4):** [servidor-lan/CHECKLIST-ETAPA4.md](./servidor-lan/CHECKLIST-ETAPA4.md)
+
 ## Antes
 
 - [ ] Docker Desktop instalado e em execução

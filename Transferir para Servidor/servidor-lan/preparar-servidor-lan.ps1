@@ -1,5 +1,7 @@
-# Prepara servidor LAN (Windows): Supabase, schema, Auth LAN, build, Caddy.
+# Prepara servidor LAN (Windows): Supabase, schema, Auth LAN, build, Caddy, testes opcionais.
 # powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/preparar-servidor-lan.ps1"
+# powershell -ExecutionPolicy Bypass -File "...\preparar-servidor-lan.ps1" -RunTests
+param([switch]$RunTests)
 $ErrorActionPreference = 'Stop'
 $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Resolve-Path (Join-Path $LanDir '..\..')
@@ -31,5 +33,11 @@ Write-Host 'URL login (mesma rede):' -ForegroundColor Green
 Push-Location $LanDir
 node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log(c.publicOrigin + '/login')"
 Pop-Location
-Write-Host 'Teste: node "Transferir para Servidor/servidor-lan/teste-servidor-lan.mjs"' -ForegroundColor Green
+if ($RunTests) {
+  Write-Host '==> Testes LAN (Etapa 4)' -ForegroundColor Cyan
+  & (Join-Path $LanDir 'rodar-testes-lan.ps1')
+} else {
+  Write-Host 'Teste: rodar-testes-lan.ps1 ou preparar-servidor-lan.ps1 -RunTests' -ForegroundColor Green
+}
+Write-Host 'Checklist: Transferir para Servidor/servidor-lan/CHECKLIST-ETAPA4.md' -ForegroundColor Green
 Write-Host 'Firewall LAN (Admin): corrigir-acesso-lan-firewall.ps1' -ForegroundColor Green
