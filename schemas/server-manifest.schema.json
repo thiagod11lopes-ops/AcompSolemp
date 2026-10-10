@@ -1,0 +1,706 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:acom-server-manager:server-manifest:schema:1.0.0",
+  "$comment": "Schema contract version 1.0.0. Intended canonical copy in repo acom-server-manager at schemas/server-manifest.schema.json. Do not use a public HTTPS $id until that repository publishes a release; see docs/server-manifest-contract.md in consuming repos.",
+  "title": "Server Manifest",
+  "description": "Contrato genérico entre um repositório de aplicação e um instalador compatível. Schema document version: 1.0.0; pareado com manifestVersion semver do manifesto (ex.: 1.2.0). Etapa 8: blocos clientConnection, overlay e accessModes.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "manifestVersion",
+    "manager",
+    "repository",
+    "system",
+    "backend",
+    "requirements",
+    "scripts",
+    "installPlan",
+    "network",
+    "configuration",
+    "startup",
+    "backup",
+    "update",
+    "validation"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "manifestVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versão do contrato deste arquivo (semver)."
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versão do JSON Schema (documento de validação) para a qual este manifesto foi escrito."
+    },
+    "specPurpose": { "type": "string" },
+    "manager": { "$ref": "#/$defs/managerBlock" },
+    "repository": { "$ref": "#/$defs/repositoryBlock" },
+    "system": { "$ref": "#/$defs/systemBlock" },
+    "frontend": { "type": "object", "additionalProperties": true },
+    "backend": { "$ref": "#/$defs/backendBlock" },
+    "database": { "type": "object", "additionalProperties": true },
+    "authentication": { "type": "object", "additionalProperties": true },
+    "storage": { "type": "object", "additionalProperties": true },
+    "realtime": { "type": "object", "additionalProperties": true },
+    "edgeFunctions": { "type": "object", "additionalProperties": true },
+    "reverseProxy": { "type": "object", "additionalProperties": true },
+    "clientConnection": { "$ref": "#/$defs/clientConnectionBlock" },
+    "overlay": { "$ref": "#/$defs/overlayBlock" },
+    "requirements": { "$ref": "#/$defs/requirementsBlock" },
+    "scripts": { "$ref": "#/$defs/scriptsBlock" },
+    "installPlan": { "$ref": "#/$defs/installPlanBlock" },
+    "network": { "$ref": "#/$defs/networkBlock" },
+    "configuration": { "$ref": "#/$defs/configurationBlock" },
+    "startup": { "$ref": "#/$defs/startupBlock" },
+    "backup": { "$ref": "#/$defs/backupBlock" },
+    "update": { "$ref": "#/$defs/updateBlock" },
+    "validation": { "$ref": "#/$defs/validationBlock" },
+    "platforms": { "$ref": "#/$defs/platformsBlock" },
+    "multiInstall": { "$ref": "#/$defs/multiInstallBlock" },
+    "development": { "type": "object", "additionalProperties": true },
+    "cloudDeploymentSeparateFromServer": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "semverOrTbd": {
+      "oneOf": [
+        { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        { "type": "string", "const": "a definir" }
+      ]
+    },
+    "platformId": {
+      "type": "string",
+      "enum": ["windows", "linux"]
+    },
+    "managerBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["minManagerVersion", "supportedPlatforms", "backendProfile"],
+      "properties": {
+        "minManagerVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "supportedPlatforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/platformId" },
+          "uniqueItems": true
+        },
+        "backendProfile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identificador do plano de instalação interpretado pelo instalador (string opaca; não validada pelo schema além do formato)."
+        },
+        "manifestPath": {
+          "type": "string",
+          "default": "server-manifest.json",
+          "description": "Caminho relativo à raiz do repositório."
+        }
+      }
+    },
+    "repositoryBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["cloneUrl", "defaultBranch"],
+      "properties": {
+        "name": { "type": "string" },
+        "cloneUrl": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^https://"
+        },
+        "defaultBranch": { "type": "string" },
+        "productDisplayName": { "type": "string" },
+        "productDescription": { "type": "string" }
+      }
+    },
+    "systemBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "name", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+        },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "versionSource": { "type": "string" }
+      }
+    },
+    "backendBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "configDirectory": { "type": "string" },
+        "cliConfigFile": { "type": "string" },
+        "projectIdInConfig": { "type": "string" }
+      }
+    },
+    "requirementsBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "minProperties": 1,
+      "description": "Requisitos de host declarados pelo sistema; chaves específicas (git, node, docker, etc.) são convenções documentadas, não obrigatórias para todos os manifestos.",
+      "properties": {
+        "git": { "$ref": "#/$defs/toolRequirement" },
+        "node": { "$ref": "#/$defs/nodeRequirement" },
+        "npm": { "$ref": "#/$defs/toolRequirement" },
+        "docker": { "$ref": "#/$defs/dockerRequirement" },
+        "supabaseCli": { "$ref": "#/$defs/toolRequirement" },
+        "caddy": { "$ref": "#/$defs/toolRequirement" },
+        "psql": { "$ref": "#/$defs/toolRequirement" },
+        "bash": { "$ref": "#/$defs/toolRequirement" },
+        "powershell": { "$ref": "#/$defs/toolRequirement" },
+        "diskSpaceGb": { "$ref": "#/$defs/resourceRequirement" },
+        "memoryMb": { "$ref": "#/$defs/resourceRequirement" }
+      }
+    },
+    "toolRequirement": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "required": { "type": "boolean" },
+        "minVersion": { "$ref": "#/$defs/semverOrTbd" },
+        "notes": { "type": "string" },
+        "justificationSource": { "type": "string" }
+      }
+    },
+    "nodeRequirement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["required"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "minMajorVersion": { "type": "integer", "minimum": 1 },
+        "minVersion": { "$ref": "#/$defs/semverOrTbd" },
+        "justificationSource": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "dockerRequirement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["required"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "minVersion": { "$ref": "#/$defs/semverOrTbd" },
+        "notes": { "type": "string" },
+        "justificationSource": { "type": "string" }
+      }
+    },
+    "resourceRequirement": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "minimum": {
+          "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "string", "const": "a definir" }]
+        },
+        "recommended": { "type": "number", "minimum": 0 },
+        "notes": { "type": "string" }
+      }
+    },
+    "scriptsBlock": {
+      "type": "object",
+      "required": ["items"],
+      "additionalProperties": true,
+      "properties": {
+        "description": { "type": "string" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scriptItem" }
+        }
+      }
+    },
+    "scriptItem": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "path", "platforms"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Caminho relativo à raiz do repositório clonado."
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["linux", "windows", "windows-with-bash"]
+          }
+        },
+        "purpose": { "type": "string" },
+        "requiresElevation": { "type": "boolean" },
+        "interpreter": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Ex.: bash, powershell, node, sh, python."
+        }
+      }
+    },
+    "installPlanBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["profile", "phases"],
+      "properties": {
+        "profile": { "type": "string", "minLength": 1 },
+        "workingDirectoryRelative": {
+          "type": "string",
+          "default": ".",
+          "description": "Diretório de trabalho para scripts/capabilities, relativo à raiz do clone."
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/installPhase" }
+        }
+      }
+    },
+    "installPhase": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,80}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["capability", "script"]
+        },
+        "description": { "type": "string" },
+        "optional": { "type": "boolean", "default": false },
+        "dependsOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "platforms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/platformId" },
+          "description": "Se omitido, aplica-se a todas as plataformas suportadas."
+        },
+        "capability": {
+          "type": "string",
+          "description": "Identificador de capability do instalador (quando type=capability)."
+        },
+        "scriptId": {
+          "type": "string",
+          "description": "Referência a scripts.items[].id (quando type=script)."
+        },
+        "scriptIdByPlatform": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "propertyNames": { "$ref": "#/$defs/platformId" }
+        },
+        "requiresServiceRestart": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "requiresServiceStopBefore": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "checkpoint": {
+          "type": "boolean",
+          "default": true,
+          "description": "Se true, o instalador pode usar esta fase como ponto de rollback."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "script" } }, "required": ["type"] },
+          "then": {
+            "anyOf": [
+              { "required": ["scriptId"] },
+              { "required": ["scriptIdByPlatform"] }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "capability" } }, "required": ["type"] },
+          "then": { "required": ["capability"] }
+        }
+      ]
+    },
+    "networkBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["accessUrl", "ports"],
+      "properties": {
+        "accessModes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/networkAccessMode" }
+        },
+        "accessUrl": { "$ref": "#/$defs/accessUrlBlock" },
+        "ports": { "$ref": "#/$defs/portsBlock" }
+      }
+    },
+    "networkAccessMode": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["lan", "overlay", "localhost", "custom"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "planned", "disabled", "deprecated"]
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "accessUrlBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["template", "variables"],
+      "properties": {
+        "template": { "type": "string", "minLength": 1 },
+        "loginPath": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Caminho SPA de login (ex.: /login)."
+        },
+        "loginUrlTemplate": { "type": "string", "minLength": 1 },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/urlVariable" }
+        },
+        "configFileRelativePath": { "type": "string" },
+        "configExampleRelativePath": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "clientConnectionBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["product", "lan"],
+      "properties": {
+        "product": { "type": "string", "minLength": 1 },
+        "installerCatalogRelativePath": { "type": "string" },
+        "wizardUrlField": { "type": "string" },
+        "lan": { "$ref": "#/$defs/clientConnectionLan" },
+        "overlay": { "$ref": "#/$defs/clientConnectionOverlay" },
+        "runtimeDescriptor": { "$ref": "#/$defs/clientRuntimeDescriptor" }
+      }
+    },
+    "clientConnectionLan": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["accessUrlTemplate", "discoveryHttpPath"],
+      "properties": {
+        "accessUrlTemplate": { "type": "string", "minLength": 1 },
+        "variables": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/urlVariable" }
+        },
+        "discoveryHttpPath": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Ex.: /server-connection.json"
+        },
+        "sameOriginSupabaseApi": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "clientConnectionOverlay": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "status": { "type": "string" },
+        "enabledWhen": {
+          "type": "object",
+          "required": ["configKey", "value"],
+          "properties": {
+            "configKey": { "type": "string" },
+            "value": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "accessUrlTemplate": { "type": "string" },
+        "overlayHostConfigKey": { "type": "string" },
+        "pairingArtifactFileName": { "type": "string" },
+        "pairingEtapa": { "type": "integer", "minimum": 1 },
+        "clientWireGuardEtapa": { "type": "integer", "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "clientRuntimeDescriptor": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["generatorScriptId", "schema", "outputRelativePaths"],
+      "properties": {
+        "generatorScriptId": { "type": "string" },
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*/\\d+$",
+          "description": "Ex.: acompopms-server-connection/1"
+        },
+        "outputRelativePaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "overlayBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "status": { "type": "string" },
+        "goal": { "type": "string" },
+        "technology": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "dataPlane": { "type": "string" },
+            "controlPlane": { "type": "string" },
+            "embeddedInProducts": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "configuration": { "$ref": "#/$defs/overlayConfiguration" },
+        "ports": { "type": "object", "additionalProperties": true },
+        "installPlanPhaseIdsFuture": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "scriptsFuture": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "overlayConfiguration": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["environmentKeys"],
+      "properties": {
+        "singleSourceRelativePath": { "type": "string" },
+        "environmentKeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" }
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "urlVariable": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "source": { "type": "string", "enum": ["config", "install-parameter", "auto-detect"] },
+        "configKey": { "type": "string" },
+        "default": {},
+        "autoDetectFallback": { "type": "boolean" }
+      }
+    },
+    "portsBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["exposedToLan", "internalDoNotExposeToLan"],
+      "properties": {
+        "exposedToLan": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/portExposure" }
+        },
+        "internalDoNotExposeToLan": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/portExposure" }
+        }
+      }
+    },
+    "portExposure": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["port", "protocol"],
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+        "bind": { "type": "string" },
+        "purpose": { "type": "string" },
+        "configurable": { "type": "boolean" },
+        "configKey": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "configurationBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "type": "string" },
+        "singleSourceOfTruthRelativePath": { "type": "string" },
+        "environmentKeys": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "generatedArtifactsRelativePaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "modifiedSourceFilesRelativePaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "storage": { "type": "string" },
+            "sources": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "userProvidedAtInstall": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "startupBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "type": "string" },
+        "currentManualFlow": { "type": "array", "items": { "type": "string" } },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "startCapability": { "type": "string" },
+              "dependsOn": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "automaticOnBoot": { "type": "string" }
+      }
+    },
+    "backupBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "type": "string" },
+        "automated": { "type": "string" },
+        "dataComponents": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommendedTools": { "type": "array", "items": { "type": "string" } },
+        "restoreRequiresServiceStop": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "updateBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "type": "string" },
+        "sourceControl": { "type": "string" },
+        "phases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rollback": { "type": "string" }
+      }
+    },
+    "validationBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["postInstall"],
+      "properties": {
+        "postInstall": {
+          "type": "object",
+          "required": ["required", "tests"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "tests": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/validationTest" }
+            }
+          },
+          "additionalProperties": true
+        },
+        "checklistRelativePath": { "type": "string" },
+        "checklistRelativePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "manifestValidationScriptId": {
+          "type": "string",
+          "description": "scripts.items[].id para validação estrutural local."
+        }
+      }
+    },
+    "validationTest": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "scriptId"],
+      "properties": {
+        "id": { "type": "string" },
+        "scriptId": { "type": "string" },
+        "context": { "type": "string" },
+        "requiredForInstall": { "type": "boolean" }
+      }
+    },
+    "platformsBlock": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "multiInstallBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "supported": {
+          "type": "string",
+          "enum": ["yes", "no", "partial", "a definir"]
+        },
+        "isolationParameters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "knownLimitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "managerResponsibility": { "type": "string" }
+      }
+    }
+  }
+}

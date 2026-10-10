@@ -1,0 +1,17 @@
+{
+  "name": "acompopms-instalador",
+  "version": "1.0.8",
+  "private": true,
+  "description": "Wizard de instalação AcompOPMS — Etapa 11",
+  "main": "electron-main.mjs",
+  "type": "module",
+  "scripts": {
+    "prepare-payload": "node scripts/prepare-payload.mjs",
+    "prestart": "node scripts/prepare-payload.mjs",
+    "start": "electron .",
+    "test:unit": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "electron": "^34.5.8"
+  }
+}
