@@ -1,0 +1,12 @@
+{
+  "schema": "acomopms-overlay-state/1",
+  "serverName": "servidor-omh-1",
+  "namespace": "acomopms",
+  "subnet": "100.64.0.0/24",
+  "serverAddress": "100.64.0.1/32",
+  "listenPort": 51820,
+  "overlayHost": "100.64.0.1",
+  "publicEndpoint": "udp://203.0.113.10:51820",
+  "serverPublicKey": "SERVER_PUBLIC_KEY_BASE64",
+  "status": "server-ready-etapa-6-pairing"
+}
