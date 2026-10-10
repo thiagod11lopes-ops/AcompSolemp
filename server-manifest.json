@@ -132,6 +132,11 @@
       "preparePayloadScript": "Instalador OPMS/instalador/scripts/prepare-payload.mjs",
       "defaultDesktopShortcutName": "AcompOPMS",
       "desktopShortcutDefaultChecked": true,
+      "buildWorkflowRelativePath": ".github/workflows/build-instalador-opms.yml",
+      "buildOutputs": {
+        "windowsPortable": "Instalador OPMS/instalador/dist/AcompOPMS-Instalador-{version}-win-x64.exe",
+        "linuxAppImage": "Instalador OPMS/instalador/dist/AcompOPMS-Instalador-{version}-linux-x64.AppImage"
+      },
       "etapa": 11
     },
     "overlayClient": {

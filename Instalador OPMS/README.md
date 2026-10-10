@@ -9,3 +9,5 @@ Componentes desktop do **AcompOPMS** (self-hosted, sem Tailscale externo).
 | WireGuard no cliente | **12** | `connection.json` + túnel ao abrir o app |
 
 O Manager LAN gera a URL; o usuário informa no wizard ou no `acomopms-desktop.config.json`.
+
+**Download do instalador:** GitHub Actions → workflow **Build Instalador AcompOPMS** → artefato `AcompOPMS-Instalador-win-x64` (`.exe` portable).

@@ -30,6 +30,18 @@ npm start
 npm run test:unit
 ```
 
-Empacotamento `.exe` portable: **Etapa 13** (CI).
+## Build portable (Etapa 13)
+
+Local (Windows):
+
+```bash
+npm ci
+npm run build:win
+# dist/AcompOPMS-Instalador-<versão>-win-x64.exe
+```
+
+Linux AppImage: `npm run build:linux`
+
+CI: workflow [`.github/workflows/build-instalador-opms.yml`](../../.github/workflows/build-instalador-opms.yml) — artefatos nos Actions.
 
 Cliente instalado: [`../cliente/`](../cliente/).
