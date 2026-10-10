@@ -48,11 +48,14 @@ Hoje o AcompSolemp usa:
    - `manager.minManagerVersion` ≤ versão do Manager.
 6. Só então executar **`installPlan`** (fora do escopo deste documento).
 
-Ferramenta de referência (desenvolvimento):
+Ferramenta de referência (desenvolvimento, **Etapa 8**):
 
 ```bash
-npx ajv-cli validate -s schemas/server-manifest.schema.json -d server-manifest.json --spec=draft2020
+cd schemas && npm ci && npm run validate
+node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
 ```
+
+CI: job `validate-server-manifest` em `.github/workflows/ci.yml`.
 
 ## Versionamento futuro
 

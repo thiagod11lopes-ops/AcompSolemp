@@ -110,16 +110,18 @@ Contrato na **raiz do repo**: [`server-manifest.json`](../../server-manifest.jso
 Após build/start, o servidor publica:
 
 - **`http://<IP-LAN>:8080/server-connection.json`** — URL de login e metadados overlay
-- Validação: `node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"`
+- Validação schema + refs: `node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"`
+- Só JSON Schema: `cd schemas && npm ci && npm run validate`
 
-Documentação: [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md).
+Documentação: [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md). Schema: [`schemas/README.md`](../../schemas/README.md) (Etapa 8).
 
 ## URLs
 
 | Uso | URL |
 |-----|-----|
 | No próprio servidor | `http://127.0.0.1:8080` ou `http://localhost:8080` |
-| Outros PCs/celulares | `http://<ACOMOPMS_LAN_HOST>:8080` |
+| Outros PCs/celulares | `http://<ACOMOPMS_LAN_HOST>:8080/login` |
+| Manager / instalador (descoberta) | `http://<IP-LAN>:8080/server-connection.json` |
 | API Supabase (cliente) | Mesma origem `:8080` (paths `/auth`, `/rest`, `/storage`, `/realtime`, `/functions`) |
 | Postgres | `127.0.0.1:54322` — **não** usar na LAN |
 | Studio | `127.0.0.1:54323` — **não** expor para usuários |
@@ -151,3 +153,5 @@ bash "Transferir para Servidor/servidor-lan/stop-servidor-lan.sh"
 | `configure-auth.mjs` | Grava `site_url` / redirects no `supabase/config.toml` |
 | `aplicar-auth-lan.*` | Auth + reinicia Supabase (Etapa 2) |
 | `preparar-servidor-lan.ps1` | Orquestra setup Windows (Etapas 1+2) |
+| `gerar-server-connection.mjs` | Etapa 7 — `server-connection.json` |
+| `validar-server-manifest.mjs` | Etapa 7 — checagem do manifesto |
