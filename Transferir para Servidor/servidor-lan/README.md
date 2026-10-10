@@ -113,7 +113,7 @@ Após build/start, o servidor publica:
 - Validação schema + refs: `node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"`
 - Só JSON Schema: `cd schemas && npm ci && npm run validate`
 
-Documentação: [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md). Schema: [`schemas/README.md`](../../schemas/README.md) (Etapa 8).
+Documentação completa do contrato (Etapa 9): [`docs/server-manifest-contract.md`](../../docs/server-manifest-contract.md). Schema: [`schemas/README.md`](../../schemas/README.md).
 
 ## URLs
 

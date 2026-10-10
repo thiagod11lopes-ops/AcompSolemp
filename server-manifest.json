@@ -716,8 +716,11 @@
     "summary": "npm run dev em frontend/; Supabase opcional com VITE_DATA_SOURCE=supabase.",
     "documentationRelativePaths": [
       "README.md",
+      "docs/server-manifest-contract.md",
+      "schemas/README.md",
       "frontend/README.md",
-      "Transferir para Servidor/README.md"
+      "Transferir para Servidor/README.md",
+      "Transferir para Servidor/servidor-lan/README.md"
     ]
   },
   "cloudDeploymentSeparateFromServer": {
