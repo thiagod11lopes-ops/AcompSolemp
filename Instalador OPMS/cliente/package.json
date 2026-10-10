@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "test:unit": "node --test test/*.test.mjs"
+    "test:unit": "node scripts/run-unit-tests.mjs"
   },
   "devDependencies": {
     "electron": "^34.5.8"

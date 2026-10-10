@@ -10,7 +10,7 @@
     "prestart": "node scripts/prepare-payload.mjs",
     "prebuild": "node scripts/prepare-payload.mjs",
     "start": "electron .",
-    "test:unit": "node --test test/*.test.mjs",
+    "test:unit": "node scripts/run-unit-tests.mjs",
     "build": "electron-builder --config electron-builder.yml",
     "build:win": "electron-builder --config electron-builder.yml --win portable",
     "build:linux": "electron-builder --config electron-builder.yml --linux AppImage"
