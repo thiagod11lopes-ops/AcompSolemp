@@ -46,5 +46,15 @@ New-NetFirewallRule `
   -Enabled True | Out-Null
 
 Write-Host "Regra criada: $RuleBlockName" -ForegroundColor Green
-Write-Host "Mantenha também: $RuleHttpName (permitir TCP HTTP na rede Private)."
+$fwScope = 'local'
+if (Test-Path (Join-Path $LanDir 'servidor.env')) {
+  foreach ($line in Get-Content (Join-Path $LanDir 'servidor.env')) {
+    if ($line -match '^\s*ACOMOPMS_FIREWALL_SCOPE\s*=\s*(\S+)') { $fwScope = $Matches[1].Trim().ToLower() }
+  }
+}
+if ($fwScope -eq 'tailnet') {
+  Write-Host 'HTTP tailnet: use corrigir-acesso-lan-firewall.ps1 (regra AcompOPMS - Tailnet HTTP, interface Tailscale).'
+} else {
+  Write-Host "Mantenha também: $RuleHttpName (permitir TCP HTTP na rede Private)."
+}
 Write-Host "`nValide: node `"Transferir para Servidor/servidor-lan/verificar-seguranca-lan.mjs`""

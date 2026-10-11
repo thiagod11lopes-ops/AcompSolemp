@@ -644,12 +644,17 @@
       {
         "id": "lan",
         "status": "active",
-        "description": "Mesma Wi‑Fi/Ethernet; porta HTTP Caddy."
+        "description": "Mesma Wi‑Fi/Ethernet; porta HTTP Caddy. Corresponde a ACOMOPMS_ACCESS_MODE=local (ou legado sem chave)."
+      },
+      {
+        "id": "internet",
+        "status": "active",
+        "description": "Acesso remoto via cliente Tailscale oficial (MagicDNS *.ts.net ou IPv4 100.64.0.0/10). Política gravada em servidor.env pelo Servidor Manager na instalação (ACOMOPMS_ACCESS_MODE=internet, ACOMOPMS_FIREWALL_SCOPE=tailnet). Distinto do overlay WireGuard abaixo."
       },
       {
         "id": "overlay",
         "status": "planned",
-        "description": "Internet via WireGuard/Headscale (Etapas 5–6); URL alternativa em server-connection.json."
+        "description": "VPN overlay opcional WireGuard/Headscale (Etapas 5–6 do repo); ACOMOPMS_OVERLAY_* — não substitui Tailscale nem é configurado pelo painel Tailscale do Manager."
       }
     ],
     "accessUrl": {
@@ -670,7 +675,7 @@
       },
       "configFileRelativePath": "Transferir para Servidor/servidor-lan/servidor.env",
       "configExampleRelativePath": "Transferir para Servidor/servidor-lan/servidor.env.example",
-      "notes": "lanHost=auto detecta IPv4 LAN conforme scripts servidor-lan; instalador deve resolver antes de exibir URL ao usuário."
+      "notes": "Modo local: lanHost=auto detecta IPv4 LAN. Modo internet (Tailscale): ACOMOPMS_LAN_HOST deve ser MagicDNS ou IPv4 tailnet — definido pelo Servidor Manager; auto/192.168.x não são válidos com ACOMOPMS_ACCESS_MODE=internet."
     },
     "ports": {
       "exposedToLan": [
@@ -736,6 +741,9 @@
     "environmentKeys": [
       "ACOMOPMS_LAN_HOST",
       "ACOMOPMS_HTTP_PORT",
+      "ACOMOPMS_ACCESS_MODE",
+      "ACOMOPMS_FIREWALL_SCOPE",
+      "ACOMOPMS_SECONDARY_LAN_REDIRECTS",
       "ACOMOPMS_SUPABASE_INTERNAL",
       "ACOMOPMS_OVERLAY_ENABLED",
       "ACOMOPMS_OVERLAY_HOST",

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { loadServidorEnv, SERVIDOR_LAN_DIR } from './load-servidor-env.mjs'
+import { loadServidorEnv, parseAccessMode, SERVIDOR_LAN_DIR } from './load-servidor-env.mjs'
 import { OVERLAY_STATE_PATH } from './overlay/overlay-paths.mjs'
 
 function readManifestVersion(root) {
@@ -13,11 +13,21 @@ function readManifestVersion(root) {
   }
 }
 
+/** @param {ReturnType<typeof loadServidorEnv>} cfg */
+export function resolvePublicAccessMode(cfg) {
+  if (cfg.overlayEnabled && cfg.overlayLoginUrl) return 'overlay'
+  const mode = cfg.accessMode ?? parseAccessMode(cfg.envVars)
+  if (mode === 'internet') return 'internet'
+  if (mode === 'local') return 'local'
+  return 'lan'
+}
+
 /** Descritor HTTP servido em /server-connection.json (Manager + clientes). */
 export function buildServerConnectionDescriptor(envPath) {
   const root = resolve(SERVIDOR_LAN_DIR, '../..')
   const cfg = loadServidorEnv(envPath)
   const origin = cfg.publicOrigin.replace(/\/+$/, '')
+  const publicAccessMode = resolvePublicAccessMode(cfg)
 
   let overlayStatus = cfg.overlayEnabled ? 'enabled-pending-config' : 'disabled'
   let serverPublicKey = null
@@ -36,13 +46,14 @@ export function buildServerConnectionDescriptor(envPath) {
     manifestVersion: readManifestVersion(root),
     generatedAt: new Date().toISOString(),
     product: 'AcompOPMS',
-    accessMode: cfg.overlayEnabled && cfg.overlayLoginUrl ? 'overlay' : 'lan',
+    accessMode: publicAccessMode === 'overlay' ? 'overlay' : publicAccessMode === 'internet' ? 'internet' : 'lan',
     lan: {
       host: cfg.lanHost,
       httpPort: cfg.httpPort,
       origin,
       loginUrl: cfg.loginUrl,
       supabaseUrl: cfg.supabasePublicUrl,
+      publicAccessMode,
     },
     overlay: {
       enabled: cfg.overlayEnabled,
@@ -59,7 +70,9 @@ export function buildServerConnectionDescriptor(envPath) {
       notes:
         cfg.overlayEnabled
           ? 'Etapa 5: servidor WG; Etapa 6: export connection.json; Etapa 12: cliente.'
-          : 'Defina ACOMOPMS_OVERLAY_ENABLED=true e rode aplicar-overlay-servidor para internet.',
+          : publicAccessMode === 'internet'
+            ? 'Acesso remoto via Tailscale (cliente oficial); overlay WireGuard desligado.'
+            : 'Modo rede local (LAN/Wi‑Fi). Overlay opcional via ACOMOPMS_OVERLAY_ENABLED.',
     },
     client: {
       recommendedStartUrl: cfg.overlayLoginUrl ?? cfg.loginUrl,

@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
  * Etapa 2 + 5 — site_url e redirects LAN (+ overlay quando habilitado).
+ * Etapa 7 — site_url canonico Tailscale e redirects via collectAuthRedirectOrigins(cfg).
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { loadServidorEnv, SERVIDOR_LAN_DIR } from './lib/load-servidor-env.mjs'
-import { collectAuthRedirectOrigins } from './lib/auth-redirects.mjs'
+import {
+  applySupabaseAuthConfigToToml,
+  buildSupabaseAuthConfigFromServidorCfg,
+} from './lib/configure-auth-lan.mjs'
 
 const root = resolve(SERVIDOR_LAN_DIR, '../..')
 const configPath = resolve(root, 'supabase/config.toml')
@@ -16,21 +20,15 @@ if (!existsSync(configPath)) {
 }
 
 const cfg = loadServidorEnv()
-const siteUrl = cfg.publicOrigin.replace(/\/+$/, '')
-const uniqueRedirects = collectAuthRedirectOrigins(cfg)
-const redirectsToml = `[${uniqueRedirects.map((u) => `"${u}"`).join(', ')}]`
+const authPatch = buildSupabaseAuthConfigFromServidorCfg(cfg)
 
 let text = readFileSync(configPath, 'utf8')
-text = text.replace(/^site_url\s*=\s*"[^"]*"\s*$/m, `site_url = "${siteUrl}"`)
-text = text.replace(
-  /^additional_redirect_urls\s*=\s*\[[\s\S]*?\]\s*$/m,
-  `additional_redirect_urls = ${redirectsToml}`,
-)
+text = applySupabaseAuthConfigToToml(text, authPatch)
 writeFileSync(configPath, text, 'utf8')
 
-console.log(`[servidor-lan] Auth: site_url=${siteUrl}`)
+console.log(`[servidor-lan] Auth: site_url=${authPatch.siteUrl}`)
 if (cfg.overlayEnabled && cfg.overlayOrigin) {
   console.log(`[servidor-lan] Auth overlay redirects: ${cfg.overlayOrigin}`)
 }
-console.log(`[servidor-lan] Redirects: ${uniqueRedirects.length} entradas`)
+console.log(`[servidor-lan] Redirects: ${authPatch.additionalRedirectUrls.length} entradas`)
 console.log('[servidor-lan] Proximo: supabase stop && supabase start')

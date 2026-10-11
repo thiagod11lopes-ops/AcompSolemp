@@ -26,6 +26,75 @@ function parseBool(v, fallback = false) {
   return fallback
 }
 
+/** @returns {'internet' | 'local' | null} */
+export function parseAccessMode(vars) {
+  const raw = vars?.ACOMOPMS_ACCESS_MODE
+  if (raw == null || String(raw).trim() === '') return null
+  const mode = String(raw).trim().toLowerCase()
+  if (mode === 'internet') return 'internet'
+  if (mode === 'local') return 'local'
+  return null
+}
+
+export function isValidTsNetHostname(hostname) {
+  const lower = String(hostname).trim().toLowerCase().replace(/\.$/, '')
+  if (!lower.endsWith('.ts.net') || lower.length > 253) return false
+  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.ts\.net$/.test(
+    lower,
+  )
+}
+
+export function isTailscaleCgcatIpv4(value) {
+  const m = /^100\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(String(value).trim())
+  if (!m) return false
+  const octets = [100, Number(m[1]), Number(m[2]), Number(m[3])]
+  if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) return false
+  return octets[1] >= 64 && octets[1] <= 127
+}
+
+/**
+ * Host público explícito para modo internet (MagicDNS ou IPv4 tailnet).
+ * @param {string} configured
+ * @returns {string | null}
+ */
+export function resolveInternetExplicitHost(configured) {
+  const trimmed = String(configured).trim().replace(/\.$/, '')
+  if (!trimmed || trimmed === 'auto') return null
+  if (isValidTsNetHostname(trimmed)) return trimmed.toLowerCase()
+  if (isTailscaleCgcatIpv4(trimmed)) return trimmed
+  return null
+}
+
+/**
+ * @param {Record<string, string>} vars
+ * @returns {{ ok: true, host: string } | { ok: true, useDetect: true } | { ok: false, message: string }}
+ */
+export function resolveConfiguredLanHost(vars) {
+  const accessMode = parseAccessMode(vars)
+  const configured = (vars.ACOMOPMS_LAN_HOST ?? '').trim()
+
+  if (accessMode === 'internet') {
+    const host = resolveInternetExplicitHost(configured)
+    if (!host) {
+      const detail =
+        !configured || configured === 'auto'
+          ? 'defina ACOMOPMS_LAN_HOST com MagicDNS (*.ts.net) ou IPv4 Tailscale (100.64.0.0/10)'
+          : `valor invalido: ${configured}`
+      return {
+        ok: false,
+        message: `Modo internet (Tailscale): ${detail}.`,
+      }
+    }
+    return { ok: true, host }
+  }
+
+  if (!configured || configured === 'auto') {
+    return { ok: true, useDetect: true }
+  }
+
+  return { ok: true, host: configured }
+}
+
 /** @returns {{
  *   lanHost: string,
  *   httpPort: number,
@@ -36,6 +105,7 @@ function parseBool(v, fallback = false) {
  *   overlayEnabled: boolean,
  *   overlayHost: string | null,
  *   overlay: Record<string, string>,
+ *   accessMode: 'internet' | 'local' | null,
  * }} */
 export function loadServidorEnv(envPath = resolve(SERVIDOR_LAN_DIR, 'servidor.env')) {
   const defaults = {
@@ -62,10 +132,20 @@ export function loadServidorEnv(envPath = resolve(SERVIDOR_LAN_DIR, 'servidor.en
       vars[t.slice(0, i).trim()] = t.slice(i + 1).trim()
     }
   }
-  let lanHost = vars.ACOMOPMS_LAN_HOST
-  if (!lanHost || lanHost === 'auto') {
-    lanHost = detectLanHost()
+
+  const accessMode = parseAccessMode(vars)
+  const resolved = resolveConfiguredLanHost(vars)
+  if (!resolved.ok) {
+    throw new Error(resolved.message)
   }
+
+  let lanHost
+  if ('useDetect' in resolved && resolved.useDetect) {
+    lanHost = detectLanHost()
+  } else {
+    lanHost = resolved.host
+  }
+
   const httpPort = Number.parseInt(vars.ACOMOPMS_HTTP_PORT, 10) || 8080
   const supabaseInternal = vars.ACOMOPMS_SUPABASE_INTERNAL.replace(/\/+$/, '')
   const publicOrigin = `http://${lanHost}:${httpPort}`
@@ -103,6 +183,7 @@ export function loadServidorEnv(envPath = resolve(SERVIDOR_LAN_DIR, 'servidor.en
     overlay,
     overlayOrigin,
     overlayLoginUrl,
+    accessMode,
     envVars: vars,
   }
 }
