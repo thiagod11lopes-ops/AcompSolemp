@@ -363,7 +363,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "enum": ["lan", "overlay", "localhost", "custom"]
+          "enum": ["lan", "internet", "overlay", "localhost", "custom"]
         },
         "status": {
           "type": "string",
