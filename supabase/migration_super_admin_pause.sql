@@ -46,6 +46,8 @@ $$;
 
 grant execute on function public.is_account_paused(text) to anon, authenticated;
 
+drop function if exists public.list_active_gestores();
+
 create or replace function public.list_active_gestores()
 returns table (
   email text,
@@ -85,6 +87,8 @@ end;
 $$;
 
 grant execute on function public.list_active_gestores() to authenticated;
+
+drop function if exists public.list_gestor_team_emails(text);
 
 create or replace function public.list_gestor_team_emails(p_gestor_email text)
 returns table (
