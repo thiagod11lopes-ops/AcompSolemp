@@ -9,6 +9,14 @@ import { ensureServidorLanNodeModules } from '../lib/ensure-test-deps.mjs'
 const here = dirname(fileURLToPath(import.meta.url))
 const scriptPath = join(here, '..', 'teste-servidor-lan.mjs')
 
+test('realtime so passa quando o evento de app_state chega', () => {
+  const source = readFileSync(scriptPath, 'utf8')
+  assert.match(source, /new Error\('sem evento realtime'\)/)
+  assert.match(source, /throw lastError/)
+  assert.match(source, /for \(let attempt = 1; attempt <= 2; attempt\+\+\)/)
+  assert.equal(source.includes('Realtime app_state indisponivel'), false)
+})
+
 test('o teste LAN importa supabase-js so depois de ligar o node_modules do frontend', () => {
   const source = readFileSync(scriptPath, 'utf8')
   assert.equal(source.includes("from '@supabase/supabase-js'"), false)

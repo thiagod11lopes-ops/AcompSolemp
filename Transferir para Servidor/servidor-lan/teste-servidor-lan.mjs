@@ -75,6 +75,55 @@ async function resolveAnonKey() {
   return anon
 }
 
+async function waitForAppStateRealtimeEvent(client, tenantId) {
+  // A primeira conexao inicializa o tenant Realtime e pode derrubar o WebSocket
+  // ou confirmar SUBSCRIBED antes de o slot de replicacao entregar mudancas.
+  // A segunda tentativa ainda precisa receber o evento; timeout continua valendo.
+  let lastError = new Error('sem evento realtime')
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    let got = false
+    const version = `lan-rt-${attempt}-${Date.now()}`
+    const ch = client.channel(`lan-rt:${tenantId}:${attempt}:${version}`).on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'app_state', filter: `tenant_id=eq.${tenantId}` },
+      () => {
+        got = true
+      },
+    )
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('subscribe timeout')), 12000)
+        ch.subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            clearTimeout(t)
+            resolve()
+          }
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            clearTimeout(t)
+            reject(new Error(err instanceof Error ? err.message : status))
+          }
+        })
+      })
+      const { error } = await client.rpc('save_app_state_for_tenant', {
+        p_tenant_id: tenantId,
+        p_version: version,
+        p_payload: { clinicas: [{ id: 'cli-1', nome: 'RT', ativa: true }], pedidos: [] },
+      })
+      if (error) throw error
+      const deadline = Date.now() + 8000
+      while (!got && Date.now() < deadline) await new Promise((r) => setTimeout(r, 200))
+      if (got) return true
+      lastError = new Error('sem evento realtime')
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+    } finally {
+      await client.removeChannel(ch)
+    }
+    if (attempt === 1) await new Promise((r) => setTimeout(r, 3000))
+  }
+  throw lastError
+}
+
 async function main() {
   ensureServidorLanNodeModules()
   const { createClient } = await import('@supabase/supabase-js')
@@ -242,38 +291,7 @@ async function main() {
     }
 
     try {
-      let got = false
-      const ch = client
-        .channel(`lan-rt:${tenantId}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'app_state', filter: `tenant_id=eq.${tenantId}` },
-          () => {
-            got = true
-          },
-        )
-      await new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error('subscribe timeout')), 12000)
-        ch.subscribe((s) => {
-          if (s === 'SUBSCRIBED') {
-            clearTimeout(t)
-            resolve()
-          }
-          if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
-            clearTimeout(t)
-            reject(new Error(s))
-          }
-        })
-      })
-      await client.rpc('save_app_state_for_tenant', {
-        p_tenant_id: tenantId,
-        p_version: 'lan-2',
-        p_payload: { clinicas: [{ id: 'cli-1', nome: 'RT', ativa: true }], pedidos: [] },
-      })
-      const deadline = Date.now() + 8000
-      while (!got && Date.now() < deadline) await new Promise((r) => setTimeout(r, 200))
-      await client.removeChannel(ch)
-      if (!got) throw new Error('sem evento realtime')
+      await waitForAppStateRealtimeEvent(client, tenantId)
       ok('Realtime app_state', 'evento OK')
     } catch (e) {
       fail('Realtime app_state', e)
