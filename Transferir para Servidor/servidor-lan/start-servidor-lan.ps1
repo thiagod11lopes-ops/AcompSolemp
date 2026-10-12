@@ -63,24 +63,31 @@ $caddy = Get-Command caddy -ErrorAction SilentlyContinue
 if (-not $caddy) { throw 'Instale Caddy e coloque caddy.exe no PATH.' }
 
 $config = Join-Path $LanDir 'Caddyfile.generated'
-# Windows PowerShell 5.1 junta -ArgumentList e divide de novo nos espacos.
-# O caminho "Transferir para Servidor" precisa ir entre aspas numa unica string.
-$caddyArguments = 'run --config "{0}" --adapter caddyfile' -f $config
-$p = Start-Process -FilePath $caddy.Source -ArgumentList $caddyArguments -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -NoNewWindow -PassThru
-Start-Sleep -Seconds 2
-$running = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
-if ($running) {
-  try { $running.Refresh() } catch { }
+# Start-Process herda os pipes do powershell. O Caddy os mantem abertos e o
+# Manager nunca recebe o fim da fase. Win32_Process.Create destaca o processo.
+$command = 'cmd.exe /c ""{0}" run --config "{1}" --adapter caddyfile > "{2}" 2> "{3}""' -f $caddy.Source, $config, $StdoutLog, $StderrLog
+$created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $command }
+if ($created.ReturnValue -ne 0 -or -not $created.ProcessId) {
+  throw "Caddy nao foi criado (codigo $($created.ReturnValue))."
 }
-$alive = $null -ne $running -and -not $running.HasExited
+Start-Sleep -Seconds 2
+$match = Get-CimInstance Win32_Process -Filter "Name = 'caddy.exe'" | Where-Object { $_.CommandLine -like ('*' + $config + '*') }
+$p = $null
+if ($match) {
+  $p = Get-Process -Id ([int]$match.ProcessId) -ErrorAction SilentlyContinue
+  if ($p) {
+    try { $p.Refresh() } catch { }
+  }
+}
+$alive = $null -ne $p -and -not $p.HasExited
 if (-not $alive) {
   $codeText = 'indisponivel'
   try {
-    $p.Refresh()
-    if ($p.HasExited) {
-      [void]$p.WaitForExit(2000)
-      if ($null -ne $p.ExitCode -and "$($p.ExitCode)".Length -gt 0) {
-        $codeText = [string]$p.ExitCode
+    $cmdProc = Get-Process -Id ([int]$created.ProcessId) -ErrorAction SilentlyContinue
+    if ($cmdProc) {
+      $cmdProc.Refresh()
+      if ($cmdProc.HasExited -and $null -ne $cmdProc.ExitCode -and "$($cmdProc.ExitCode)".Length -gt 0) {
+        $codeText = [string]$cmdProc.ExitCode
       }
     }
   } catch { }
