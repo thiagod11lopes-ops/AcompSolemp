@@ -4,7 +4,8 @@ $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Resolve-Path (Join-Path $LanDir '..\..')
 $EnvFile = Join-Path $LanDir 'servidor.env'
 $PidFile = Join-Path $LanDir 'caddy.pid'
-$LogFile = Join-Path $LanDir 'caddy.log'
+$StdoutLog = Join-Path $LanDir 'caddy.stdout.log'
+$StderrLog = Join-Path $LanDir 'caddy.stderr.log'
 
 if (-not (Test-Path $EnvFile)) {
   Copy-Item (Join-Path $LanDir 'servidor.env.example') $EnvFile
@@ -62,10 +63,26 @@ $caddy = Get-Command caddy -ErrorAction SilentlyContinue
 if (-not $caddy) { throw 'Instale Caddy e coloque caddy.exe no PATH.' }
 
 $config = Join-Path $LanDir 'Caddyfile.generated'
-$p = Start-Process -FilePath 'caddy' -ArgumentList 'run', '--config', $config, '--adapter', 'caddyfile' -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile -NoNewWindow -PassThru
-$p.Id | Set-Content $PidFile
+$p = Start-Process -FilePath $caddy.Source -ArgumentList 'run', '--config', $config, '--adapter', 'caddyfile' -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -NoNewWindow -PassThru
 Start-Sleep -Seconds 2
+$p.Refresh()
+if ($p.HasExited) {
+  $stderrTail = ''
+  $stdoutTail = ''
+  if (Test-Path $StderrLog) {
+    $stderrTail = ((Get-Content -Path $StderrLog -Tail 20 -ErrorAction SilentlyContinue) -join "`n")
+  }
+  if (Test-Path $StdoutLog) {
+    $stdoutTail = ((Get-Content -Path $StdoutLog -Tail 20 -ErrorAction SilentlyContinue) -join "`n")
+  }
+  throw "Caddy nao iniciou (codigo $($p.ExitCode)). Veja $StderrLog e $StdoutLog`n$stderrTail`n$stdoutTail"
+}
+$p.Id | Set-Content -Path $PidFile -Encoding ascii
 
 Push-Location $LanDir
-node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] UI LAN:', c.publicOrigin); console.log('[servidor-lan] Log:', '$LogFile')"
+node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] UI LAN:', c.publicOrigin)"
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao ler a origem publica do servidor.env' }
 Pop-Location
+Write-Host "[servidor-lan] Caddy em execucao. PID $($p.Id)"
+Write-Host "[servidor-lan] Log stdout: $StdoutLog"
+Write-Host "[servidor-lan] Log stderr: $StderrLog"
