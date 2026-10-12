@@ -1,4 +1,7 @@
-﻿# Etapa 15 - bloqueia portas Supabase na rede local (perfil Private); mantem HTTP :8080 (Etapa 4B).
+﻿# Etapa 15 - bloqueia portas Supabase em qualquer perfil e origem; mantem HTTP :8080.
+# LocalSubnet + so Private nao cobre a Wi-Fi em Public nem clientes Tailscale (100.64/10).
+# A permissao do Docker Desktop (Private e Public) deixa a porta publicada em 0.0.0.0 passar
+# quando a regra de bloqueio nao coincide com o perfil ou com o endereco remoto.
 # Executar como Administrador na raiz do repositorio:
 #   powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1"
 
@@ -90,7 +93,7 @@ function Get-SupabaseLanBlockPlan {
       Port         = $port
       LocalPort    = $localPort
       DisplayName  = "AcompOPMS - Bloquear Supabase na LAN (TCP $port)"
-      Command      = "New-NetFirewallRule -DisplayName 'AcompOPMS - Bloquear Supabase na LAN (TCP $port)' -Direction Inbound -Action Block -Protocol TCP -LocalPort $port -RemoteAddress LocalSubnet -Profile Private -Enabled True"
+      Command      = "New-NetFirewallRule -DisplayName 'AcompOPMS - Bloquear Supabase na LAN (TCP $port)' -Direction Inbound -Action Block -Protocol TCP -LocalPort $port -RemoteAddress Any -Profile Any -Enabled True"
     }
   }
   return @($plan | Sort-Object Port)
@@ -116,10 +119,11 @@ function Assert-SupabaseLanBlockRule {
     if ($action -ne 'Block' -or $direction -ne 'Inbound' -or $enabled -ne 'True') {
       throw "Regra '$($Item.DisplayName)' ficou Action=$action Direction=$direction Enabled=$enabled."
     }
-    $profiles = @("$($rule.Profile)" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-    $extra = @($profiles | Where-Object { $_ -ne 'Private' })
-    if ($profiles -notcontains 'Private' -or $extra.Count -gt 0) {
-      throw "Regra '$($Item.DisplayName)' precisa ficar somente no perfil Private. Perfis: $($profiles -join ', ')"
+    $profileText = "$($rule.Profile)".Trim()
+    $profiles = @($profileText -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $coversPublicLan = $profileText -eq 'Any' -or ($profiles -contains 'Public' -and $profiles -contains 'Private')
+    if (-not $coversPublicLan) {
+      throw "Regra '$($Item.DisplayName)' precisa cobrir os perfis Public (LAN) e Private (Tailscale). Perfis: $profileText"
     }
     $ports = @(Get-NetFirewallPortFilter -AssociatedNetFirewallRule $rule -ErrorAction Stop |
       ForEach-Object { @($_.LocalPort) } |
@@ -133,11 +137,9 @@ function Assert-SupabaseLanBlockRule {
     $remotes = @(Get-NetFirewallAddressFilter -AssociatedNetFirewallRule $rule -ErrorAction Stop |
       ForEach-Object { @($_.RemoteAddress) } |
       ForEach-Object { "$_" })
-    if ($remotes -contains 'Any' -or $remotes -contains '*' -or $remotes -contains '0.0.0.0/0') {
-      throw "Regra '$($Item.DisplayName)' nao pode usar remoto Any."
-    }
-    if ($remotes -notcontains 'LocalSubnet') {
-      throw "Regra '$($Item.DisplayName)' nao ficou restrita a LocalSubnet. Remotos: $($remotes -join ', ')"
+    $coversEveryRemote = @($remotes | Where-Object { $_ -eq 'Any' -or $_ -eq '*' -or $_ -eq '0.0.0.0/0' })
+    if ($coversEveryRemote.Count -eq 0) {
+      throw "Regra '$($Item.DisplayName)' precisa bloquear qualquer origem (LAN Public e Tailscale 100.64/10). Remotos: $($remotes -join ', ')"
     }
   }
 }
@@ -169,7 +171,7 @@ $plan = @(Get-SupabaseLanBlockPlan -Ports $sourcePorts -HttpPort $httpPort)
 Write-Host "`n=== Etapa 15 - Firewall: bloquear Supabase na LAN ===" -ForegroundColor Cyan
 Write-Host "Antes: confirme Etapa 4B (HTTP) com corrigir-acesso-lan-firewall.ps1 se ainda nao rodou."
 Write-Host ("Porta HTTP preservada (nao bloqueada): " + $httpPort)
-Write-Host ("Portas a bloquear (uma regra por porta, entrada TCP, origem LocalSubnet, perfil Private): " + (($plan | ForEach-Object { $_.LocalPort }) -join ', '))
+Write-Host ("Portas a bloquear (uma regra por porta, entrada TCP, qualquer origem, todos os perfis): " + (($plan | ForEach-Object { $_.LocalPort }) -join ', '))
 
 $failures = @()
 foreach ($item in $plan) {
@@ -180,13 +182,13 @@ foreach ($item in $plan) {
     if ($existing.Count -eq 0) {
       New-NetFirewallRule `
         -DisplayName $item.DisplayName `
-        -Description 'AcompOPMS: bloqueia entrada TCP desta porta Supabase/Postgres vinda da LAN (LocalSubnet, perfil Private). Nao inclui a porta HTTP do Caddy.' `
+        -Description 'AcompOPMS: bloqueia entrada TCP desta porta Supabase/Postgres em qualquer origem e perfil. Nao inclui a porta HTTP do Caddy. Loopback 127.0.0.1 permanece local.' `
         -Direction Inbound `
         -Action Block `
         -Protocol TCP `
         -LocalPort $item.LocalPort `
-        -RemoteAddress LocalSubnet `
-        -Profile Private `
+        -RemoteAddress Any `
+        -Profile Any `
         -Enabled True | Out-Null
       Write-Host ("Regra criada: " + $item.DisplayName)
     } else {
@@ -205,10 +207,11 @@ foreach ($item in $plan) {
           -Enabled True `
           -Direction Inbound `
           -Action Block `
-          -Profile Private `
+          -Profile Any `
           -Protocol TCP `
           -LocalPort $item.LocalPort `
-          -RemoteAddress LocalSubnet `
+          -RemoteAddress Any `
+          -Description 'AcompOPMS: bloqueia entrada TCP desta porta Supabase/Postgres em qualquer origem e perfil. Nao inclui a porta HTTP do Caddy. Loopback 127.0.0.1 permanece local.' `
           -ErrorAction Stop
         Write-Host ("Regra atualizada: " + $item.DisplayName)
       }

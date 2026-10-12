@@ -13,7 +13,8 @@ node "$LAN_DIR/configure-auth.mjs"
 
 echo "==> Reiniciar Supabase local"
 cd "$ROOT"
+LOOPBACK_NET="$(node "$LAN_DIR/lib/ensure-supabase-loopback-network.mjs")"
 supabase stop
-supabase start
+supabase start --network-id "$LOOPBACK_NET"
 
 echo "OK. Refaca o build LAN se mudou IP/porta: build-producao-lan.sh"

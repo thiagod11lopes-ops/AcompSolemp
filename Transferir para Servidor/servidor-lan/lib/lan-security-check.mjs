@@ -74,7 +74,7 @@ export function describeExpectedSecurityPolicy(envVars = {}) {
       excludedProfiles: httpRulePlan.excludedProfiles ?? [],
     },
     supabaseInternalPorts:
-      'Bloqueio inbound LocalSubnet/Private via aplicar-seguranca-lan-firewall (script manifesto).',
+      'Bloqueio inbound em todos os perfis e qualquer origem via aplicar-seguranca-lan-firewall (script manifesto). Cobre LAN em perfil Public e clientes Tailscale; nao inclui a porta HTTP.',
     managerAdminApi:
       'Fora do escopo AcompOPMS; Servidor Manager permanece em 127.0.0.1:47831 (nao alterado por estes scripts).',
   }

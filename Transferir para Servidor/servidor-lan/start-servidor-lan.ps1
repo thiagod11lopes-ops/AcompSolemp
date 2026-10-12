@@ -86,11 +86,14 @@ function Invoke-SupabaseCli {
   }
 }
 
+. (Join-Path $LanDir 'lib\supabase-loopback-network.ps1')
+$loopbackNet = Get-AcompSupabaseLoopbackNetwork -LanDir $LanDir
+
 Push-Location $Root
 try {
   $statusCode = Invoke-SupabaseCli status
   if ($statusCode -ne 0) {
-    $startCode = Invoke-SupabaseCli start
+    $startCode = Invoke-SupabaseCli start --network-id $loopbackNet
     if ($startCode -ne 0) {
       throw "supabase start falhou (codigo $startCode)"
     }

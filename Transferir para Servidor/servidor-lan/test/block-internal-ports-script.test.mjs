@@ -19,8 +19,10 @@ test('LocalPort nao e uma string unica separada por virgula', () => {
 test('8080 fica de fora e cada porta tem a propria regra', () => {
   assert.match(source, /if \(\$port -eq \$HttpPort -or \$port -eq 8080\)/)
   assert.match(source, /AcompOPMS - Bloquear Supabase na LAN \(TCP \$port\)/)
-  assert.match(source, /-RemoteAddress LocalSubnet/)
-  assert.match(source, /-Profile Private/)
+  assert.match(source, /-RemoteAddress Any/)
+  assert.match(source, /-Profile Any/)
+  assert.equal(source.includes('-RemoteAddress LocalSubnet'), false)
+  assert.equal(source.includes('-Profile Private'), false)
   assert.match(source, /-Action Block/)
 })
 

@@ -7,8 +7,10 @@ $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Resolve-Path (Join-Path $LanDir '..\..')
 
 Write-Host '==> Supabase local' -ForegroundColor Cyan
+. (Join-Path $LanDir 'lib\supabase-loopback-network.ps1')
+$loopbackNet = Get-AcompSupabaseLoopbackNetwork -LanDir $LanDir
 Push-Location $Root
-supabase start
+supabase start --network-id $loopbackNet
 Pop-Location
 
 Write-Host '==> Schema local (se ainda nao aplicado)' -ForegroundColor Cyan

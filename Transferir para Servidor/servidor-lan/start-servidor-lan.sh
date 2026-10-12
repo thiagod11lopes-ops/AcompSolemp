@@ -24,8 +24,9 @@ fi
 
 cd "$ROOT"
 if ! supabase status >/dev/null 2>&1; then
-  echo "Iniciando Supabase local..."
-  supabase start
+  echo "Iniciando Supabase local (portas só em 127.0.0.1)..."
+  LOOPBACK_NET="$(node "$LAN_DIR/lib/ensure-supabase-loopback-network.mjs")"
+  supabase start --network-id "$LOOPBACK_NET"
 fi
 
 node "$LAN_DIR/generate-caddyfile.mjs"
