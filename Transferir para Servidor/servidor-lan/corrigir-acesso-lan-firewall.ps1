@@ -1,9 +1,10 @@
-# Etapa 4B — Diagnóstico LAN + regra de entrada TCP 8080 (perfil Private)
+﻿# Etapa 4B — Diagnóstico LAN + regra de entrada TCP 8080 (perfil Private)
 # Executar como Administrador na raiz do repositório:
 #   powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/corrigir-acesso-lan-firewall.ps1"
-#Requires -RunAsAdministrator
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'lib\enter-admin-windows.ps1')
+Invoke-AcompSolempAdminRelaunch -ScriptPath $PSCommandPath
 $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $EnvFile = Join-Path $LanDir "servidor.env"
 $PidFile = Join-Path $LanDir "caddy.pid"

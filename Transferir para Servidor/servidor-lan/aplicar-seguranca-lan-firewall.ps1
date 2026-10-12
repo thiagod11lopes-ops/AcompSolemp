@@ -1,9 +1,10 @@
-# Etapa 15 — bloqueia portas Supabase na rede local (perfil Private); mantém HTTP :8080 (Etapa 4B).
+﻿# Etapa 15 — bloqueia portas Supabase na rede local (perfil Private); mantém HTTP :8080 (Etapa 4B).
 # Executar como Administrador na raiz do repositório:
 #   powershell -ExecutionPolicy Bypass -File "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1"
-#Requires -RunAsAdministrator
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'lib\enter-admin-windows.ps1')
+Invoke-AcompSolempAdminRelaunch -ScriptPath $PSCommandPath
 $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RuleBlockName = 'AcompOPMS - Bloquear Supabase na LAN (TCP)'
 $RuleHttpName = 'AcompOPMS - LAN HTTP (TCP 8080)'

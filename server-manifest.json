@@ -440,7 +440,7 @@
         "path": "Transferir para Servidor/servidor-lan/corrigir-acesso-lan-firewall.ps1",
         "platforms": ["windows"],
         "interpreter": "powershell",
-        "requiresElevation": true,
+        "requiresElevation": false,
         "purpose": "Regra firewall TCP porta HTTP perfil Private"
       },
       {
@@ -448,7 +448,7 @@
         "path": "Transferir para Servidor/servidor-lan/aplicar-seguranca-lan-firewall.ps1",
         "platforms": ["windows"],
         "interpreter": "powershell",
-        "requiresElevation": true,
+        "requiresElevation": false,
         "purpose": "Etapa 15 — bloqueia portas Supabase na LAN (Private)"
       },
       {

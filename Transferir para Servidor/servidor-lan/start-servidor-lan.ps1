@@ -15,17 +15,59 @@ if (-not (Test-Path (Join-Path $Root 'frontend\dist\index.html'))) {
   throw 'Rode build-producao-lan.ps1 antes.'
 }
 
-if (Test-Path $PidFile) {
-  $existing = (Get-Content $PidFile -Raw).Trim()
-  if ($existing -match '^\d+$') {
-    $proc = Get-Process -Id ([int]$existing) -ErrorAction SilentlyContinue
-    if ($proc) {
-      Push-Location $LanDir
-      node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] Caddy ja em execucao. UI:', c.publicOrigin)"
-      Pop-Location
-      exit 0
-    }
+function Get-ConfiguredHttpPort {
+  $port = 8080
+  if (-not (Test-Path $EnvFile)) { return $port }
+  foreach ($line in (Get-Content -Path $EnvFile -ErrorAction SilentlyContinue)) {
+    if ($line -match '^\s*ACOMOPMS_HTTP_PORT\s*=\s*(\d+)\s*$') { $port = [int]$Matches[1] }
   }
+  return $port
+}
+
+function Get-CaddyProcessForConfig {
+  param([Parameter(Mandatory = $true)][string]$ConfigPath)
+  foreach ($item in @(Get-CimInstance Win32_Process -Filter "Name = 'caddy.exe'" -ErrorAction SilentlyContinue)) {
+    if (-not $item.CommandLine) { continue }
+    if ($item.CommandLine -notlike ('*' + $ConfigPath + '*')) { continue }
+    $proc = Get-Process -Id ([int]$item.ProcessId) -ErrorAction SilentlyContinue
+    if (-not $proc) { continue }
+    try { $proc.Refresh() } catch { }
+    if (-not $proc.HasExited) { return $proc }
+  }
+  return $null
+}
+
+function Test-LocalHttpUp {
+  param([int]$Port)
+  try {
+    $response = Invoke-WebRequest -Uri "http://127.0.0.1:${Port}/" -UseBasicParsing -TimeoutSec 5
+    return ($response.StatusCode -ge 200 -and $response.StatusCode -lt 500)
+  } catch {
+    return $false
+  }
+}
+
+function Get-ListeningProcess {
+  param([int]$Port)
+  $conn = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) | Select-Object -First 1
+  if (-not $conn) { return $null }
+  return Get-CimInstance Win32_Process -Filter ("ProcessId = " + $conn.OwningProcess) -ErrorAction SilentlyContinue
+}
+
+$config = Join-Path $LanDir 'Caddyfile.generated'
+$httpPort = Get-ConfiguredHttpPort
+$existingCaddy = Get-CaddyProcessForConfig -ConfigPath $config
+if ($existingCaddy) {
+  if (Test-LocalHttpUp -Port $httpPort) {
+    $existingCaddy.Id | Set-Content -Path $PidFile -Encoding ascii
+    Push-Location $LanDir
+    node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] Caddy desta instalacao ja em execucao. UI:', c.publicOrigin)"
+    Pop-Location
+    Write-Host "[servidor-lan] Caddy reutilizado. PID $($existingCaddy.Id)"
+    exit 0
+  }
+  Stop-Process -Id $existingCaddy.Id -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Milliseconds 500
 }
 
 function Invoke-SupabaseCli {
@@ -63,6 +105,14 @@ $caddy = Get-Command caddy -ErrorAction SilentlyContinue
 if (-not $caddy) { throw 'Instale Caddy e coloque caddy.exe no PATH.' }
 
 $config = Join-Path $LanDir 'Caddyfile.generated'
+$listener = Get-ListeningProcess -Port $httpPort
+if ($listener -and ($listener.CommandLine -notlike ('*' + $config + '*'))) {
+  throw "A porta $httpPort ja esta em uso pelo processo $($listener.ProcessId) ($($listener.Name)). Este script nao encerra processos de outra instalacao."
+}
+$adminListener = Get-ListeningProcess -Port 2019
+if ($adminListener -and ($adminListener.CommandLine -notlike ('*' + $config + '*'))) {
+  throw "A porta administrativa 2019 ja esta em uso pelo processo $($adminListener.ProcessId) ($($adminListener.Name)). Este script nao encerra processos de outra instalacao."
+}
 # Start-Process herda os pipes do powershell. O Caddy os mantem abertos e o
 # Manager nunca recebe o fim da fase. Win32_Process.Create destaca o processo.
 $command = 'cmd.exe /c ""{0}" run --config "{1}" --adapter caddyfile > "{2}" 2> "{3}""' -f $caddy.Source, $config, $StdoutLog, $StderrLog
@@ -102,12 +152,7 @@ if (-not $alive) {
   throw "Caddy encerrou (codigo $codeText). Veja $StderrLog e $StdoutLog`n$stderrTail`n$stdoutTail"
 }
 
-$httpPort = 8080
-foreach ($line in (Get-Content -Path $EnvFile -ErrorAction SilentlyContinue)) {
-  if ($line -match '^\s*ACOMOPMS_HTTP_PORT\s*=\s*(\d+)\s*$') {
-    $httpPort = [int]$Matches[1]
-  }
-}
+$httpPort = Get-ConfiguredHttpPort
 try {
   $response = Invoke-WebRequest -Uri "http://127.0.0.1:${httpPort}/" -UseBasicParsing -TimeoutSec 5
 } catch {
