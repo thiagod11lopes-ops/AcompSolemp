@@ -26,6 +26,10 @@ jobs:
       - name: Validate server-manifest (paths and script refs)
         run: node "Transferir para Servidor/servidor-lan/validar-server-manifest.mjs"
 
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
       - name: Unit tests servidor-lan (auth redirects Etapa 5)
         run: node "Transferir para Servidor/servidor-lan/scripts/run-unit-tests.mjs"
 
