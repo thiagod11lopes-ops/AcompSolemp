@@ -183,30 +183,130 @@ function Remove-FirewallRuleIfExists {
   }
 }
 
+function Set-TailnetInterfaceAlias {
+  param(
+    [Parameter(Mandatory = $true)]$Rule,
+    [Parameter(Mandatory = $true)][string]$InterfaceAlias
+  )
+
+  # Get-NetFirewallInterfaceFilter aceita -AssociatedNetFirewallRule.
+  # Set-NetFirewallInterfaceFilter no Windows PowerShell 5.1 nao aceita esse nome:
+  # o filtro entra por -InputObject (pipeline) e o alias por -InterfaceAlias.
+  # Passar -AssociatedNetFirewallRule ao Set faz o 5.1 reportar NamedParameterNotFound
+  # na funcao chamadora (New-TailnetHttpFirewallRule), nao no cmdlet Set.
+  $filters = @(Get-NetFirewallInterfaceFilter -AssociatedNetFirewallRule $Rule -ErrorAction Stop)
+  if ($filters.Count -eq 0) {
+    throw "Filtro de interface ausente para '$($Rule.DisplayName)'."
+  }
+  $filters | Set-NetFirewallInterfaceFilter -InterfaceAlias $InterfaceAlias -ErrorAction Stop
+}
+
+function Test-IsTailnetRemoteValue {
+  param(
+    [string]$Value,
+    [string]$Expected
+  )
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  if ($Value -eq $Expected) { return $true }
+  if ($Expected -eq '100.64.0.0/255.192.0.0') {
+    return @('100.64.0.0/10', '100.64.0.0/255.192.0.0', '100.64.0.0-100.127.255.255') -contains $Value
+  }
+  return $false
+}
+
+function Assert-TailnetRemoteAddress {
+  param(
+    [Parameter(Mandatory = $true)][string]$DisplayName,
+    [Parameter(Mandatory = $true)][string]$RemoteAddress
+  )
+  $rules = @(Get-NetFirewallRule -DisplayName $DisplayName -ErrorAction Stop)
+  foreach ($ruleRef in $rules) {
+    $filters = @(Get-NetFirewallAddressFilter -AssociatedNetFirewallRule $ruleRef -ErrorAction Stop)
+    $remotes = @($filters | ForEach-Object { @($_.RemoteAddress) } | ForEach-Object { "$_" })
+    $open = @($remotes | Where-Object {
+      $_ -eq 'Any' -or $_ -eq '*' -or $_ -eq '0.0.0.0/0' -or $_ -eq '0.0.0.0-255.255.255.255'
+    })
+    $tailnet = @($remotes | Where-Object { Test-IsTailnetRemoteValue -Value $_ -Expected $RemoteAddress })
+    if ($open.Count -gt 0 -or $tailnet.Count -eq 0) {
+      throw "Regra '$DisplayName' nao ficou restrita ao tailnet ($RemoteAddress). Remotos: $($remotes -join ', ')"
+    }
+  }
+}
+
+function Assert-TailnetPrivateProfile {
+  param([Parameter(Mandatory = $true)][string]$DisplayName)
+  $rules = @(Get-NetFirewallRule -DisplayName $DisplayName -ErrorAction Stop)
+  foreach ($ruleRef in $rules) {
+    $profiles = @("$($ruleRef.Profile)" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $extra = @($profiles | Where-Object { $_ -ne 'Private' })
+    if ($profiles -notcontains 'Private' -or $extra.Count -gt 0) {
+      throw "Regra '$DisplayName' precisa ficar somente no perfil Private. Perfis: $($profiles -join ', ')"
+    }
+  }
+}
+
 function New-TailnetHttpFirewallRule {
   param(
     [Parameter(Mandatory = $true)]$Plan,
     [Parameter(Mandatory = $true)][string]$InterfaceAlias
   )
-  Remove-FirewallRuleIfExists -DisplayName $Plan.legacyLanHttpRuleName
-  Remove-FirewallRuleIfExists -DisplayName $Plan.displayName
 
-  # InterfaceAlias via Set-NetFirewallInterfaceFilter (compatível Windows 10/11; evita -InterfaceAlias em New-NetFirewallRule).
-  $rule = New-NetFirewallRule `
-    -DisplayName $Plan.displayName `
-    -Description $Plan.description `
-    -Direction Inbound `
-    -Action Allow `
-    -Protocol TCP `
-    -LocalPort $Plan.localPort `
-    -Profile Private `
-    -RemoteAddress $Plan.remoteAddress `
-    -Enabled True
+  $displayName = [string]$Plan.displayName
+  $remoteAddress = [string]$Plan.remoteAddress
+  $existing = @(Get-NetFirewallRule -DisplayName $displayName -ErrorAction SilentlyContinue)
+  $createdNow = $false
 
-  Set-NetFirewallInterfaceFilter -AssociatedNetFirewallRule $rule -InterfaceAlias $InterfaceAlias
-  Assert-TailnetFirewallInterfaceFilter -DisplayName $Plan.displayName -ExpectedInterfaceAlias $InterfaceAlias
+  if ($existing.Count -eq 0) {
+    # Nasce restrita: perfil Private, remoto 100.64.0.0/10 e interface Tailscale.
+    # A regra anterior nao e apagada antes; se a criacao falhar, a politica antiga permanece.
+    $rule = New-NetFirewallRule `
+      -DisplayName $displayName `
+      -Description $Plan.description `
+      -Direction Inbound `
+      -Action Allow `
+      -Protocol TCP `
+      -LocalPort $Plan.localPort `
+      -Profile Private `
+      -RemoteAddress $remoteAddress `
+      -InterfaceAlias $InterfaceAlias `
+      -Enabled True
+    $createdNow = $true
+  } else {
+    Set-NetFirewallRule `
+      -DisplayName $displayName `
+      -Enabled True `
+      -Profile Private `
+      -Direction Inbound `
+      -Action Allow `
+      -Protocol TCP `
+      -LocalPort $Plan.localPort `
+      -RemoteAddress $remoteAddress `
+      -InterfaceAlias $InterfaceAlias `
+      -ErrorAction Stop
+  }
 
-  Write-Host "Regra criada: $($Plan.displayName) (TCP $($Plan.localPort), interface $InterfaceAlias, remoto $($Plan.remoteAddress), perfil Private)"
+  try {
+    $rulesNow = @(Get-NetFirewallRule -DisplayName $displayName -ErrorAction Stop)
+    foreach ($ruleRef in $rulesNow) {
+      Set-TailnetInterfaceAlias -Rule $ruleRef -InterfaceAlias $InterfaceAlias
+    }
+    Assert-TailnetFirewallInterfaceFilter -DisplayName $displayName -ExpectedInterfaceAlias $InterfaceAlias
+    Assert-TailnetRemoteAddress -DisplayName $displayName -RemoteAddress $remoteAddress
+    Assert-TailnetPrivateProfile -DisplayName $displayName
+  } catch {
+    if ($createdNow) {
+      Remove-NetFirewallRule -DisplayName $displayName -ErrorAction SilentlyContinue
+      Write-Host "Regra recem-criada removida apos falha na restricao tailnet: $displayName"
+    }
+    throw
+  }
+
+  # A regra LAN legada e mais ampla. So e removida depois que a regra tailnet foi conferida.
+  if ($Plan.legacyLanHttpRuleName) {
+    Remove-FirewallRuleIfExists -DisplayName $Plan.legacyLanHttpRuleName
+  }
+
+  Write-Host "Regra tailnet pronta: $displayName (TCP $($Plan.localPort), interface $InterfaceAlias, remoto $remoteAddress, perfil Private)"
 }
 
 function New-LanPrivateHttpFirewallRule {
