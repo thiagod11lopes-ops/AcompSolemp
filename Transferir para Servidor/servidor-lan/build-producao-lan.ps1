@@ -13,6 +13,13 @@ node (Join-Path $LanDir 'lib/write-frontend-env-lan.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar .env.production.local' }
 
 Push-Location (Join-Path $Root 'frontend')
+$bin = Join-Path (Get-Location) 'node_modules\.bin'
+if (-not (Test-Path (Join-Path $bin 'tsc.cmd')) -or -not (Test-Path (Join-Path $bin 'vite.cmd'))) {
+  # typescript e vite sao devDependencies; NODE_ENV=production omitiria os dois.
+  Write-Host 'Instalando dependencias do frontend (npm ci --include=dev)...'
+  npm ci --include=dev
+  if ($LASTEXITCODE -ne 0) { throw 'npm ci do frontend falhou' }
+}
 npm run build
 if ($LASTEXITCODE -ne 0) { throw 'npm run build falhou' }
 Pop-Location

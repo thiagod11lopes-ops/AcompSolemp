@@ -15,6 +15,11 @@ cd "$ROOT"
 node "$LAN_DIR/lib/write-frontend-env-lan.mjs"
 
 cd "$ROOT/frontend"
+if [[ ! -x node_modules/.bin/tsc || ! -x node_modules/.bin/vite ]]; then
+  # typescript e vite sao devDependencies; NODE_ENV=production omitiria os dois.
+  echo "Instalando dependencias do frontend (npm ci --include=dev)..."
+  npm ci --include=dev
+fi
 npm run build
 
 node "$LAN_DIR/lib/record-lan-build.mjs"
