@@ -63,10 +63,27 @@ $caddy = Get-Command caddy -ErrorAction SilentlyContinue
 if (-not $caddy) { throw 'Instale Caddy e coloque caddy.exe no PATH.' }
 
 $config = Join-Path $LanDir 'Caddyfile.generated'
-$p = Start-Process -FilePath $caddy.Source -ArgumentList 'run', '--config', $config, '--adapter', 'caddyfile' -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -NoNewWindow -PassThru
+# Windows PowerShell 5.1 junta -ArgumentList e divide de novo nos espacos.
+# O caminho "Transferir para Servidor" precisa ir entre aspas numa unica string.
+$caddyArguments = 'run --config "{0}" --adapter caddyfile' -f $config
+$p = Start-Process -FilePath $caddy.Source -ArgumentList $caddyArguments -RedirectStandardOutput $StdoutLog -RedirectStandardError $StderrLog -NoNewWindow -PassThru
 Start-Sleep -Seconds 2
-$p.Refresh()
-if ($p.HasExited) {
+$running = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+if ($running) {
+  try { $running.Refresh() } catch { }
+}
+$alive = $null -ne $running -and -not $running.HasExited
+if (-not $alive) {
+  $codeText = 'indisponivel'
+  try {
+    $p.Refresh()
+    if ($p.HasExited) {
+      [void]$p.WaitForExit(2000)
+      if ($null -ne $p.ExitCode -and "$($p.ExitCode)".Length -gt 0) {
+        $codeText = [string]$p.ExitCode
+      }
+    }
+  } catch { }
   $stderrTail = ''
   $stdoutTail = ''
   if (Test-Path $StderrLog) {
@@ -75,7 +92,24 @@ if ($p.HasExited) {
   if (Test-Path $StdoutLog) {
     $stdoutTail = ((Get-Content -Path $StdoutLog -Tail 20 -ErrorAction SilentlyContinue) -join "`n")
   }
-  throw "Caddy nao iniciou (codigo $($p.ExitCode)). Veja $StderrLog e $StdoutLog`n$stderrTail`n$stdoutTail"
+  throw "Caddy encerrou (codigo $codeText). Veja $StderrLog e $StdoutLog`n$stderrTail`n$stdoutTail"
+}
+
+$httpPort = 8080
+foreach ($line in (Get-Content -Path $EnvFile -ErrorAction SilentlyContinue)) {
+  if ($line -match '^\s*ACOMOPMS_HTTP_PORT\s*=\s*(\d+)\s*$') {
+    $httpPort = [int]$Matches[1]
+  }
+}
+try {
+  $response = Invoke-WebRequest -Uri "http://127.0.0.1:${httpPort}/" -UseBasicParsing -TimeoutSec 5
+} catch {
+  Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+  throw "Caddy (PID $($p.Id)) nao respondeu em http://127.0.0.1:${httpPort}/. $($_.Exception.Message)"
+}
+if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 500) {
+  Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+  throw "Caddy (PID $($p.Id)) respondeu HTTP $($response.StatusCode) em http://127.0.0.1:${httpPort}/."
 }
 $p.Id | Set-Content -Path $PidFile -Encoding ascii
 
