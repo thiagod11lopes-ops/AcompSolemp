@@ -2,7 +2,6 @@
  * Etapa 4 — teste geral servidor LAN (build + Caddy + Supabase via proxy).
  * Prefira: rodar-testes-lan.ps1 / rodar-testes-lan.sh
  */
-import { createClient } from '@supabase/supabase-js'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -78,6 +77,7 @@ async function resolveAnonKey() {
 
 async function main() {
   ensureServidorLanNodeModules()
+  const { createClient } = await import('@supabase/supabase-js')
 
   console.log(`LAN host: ${lanHost}:${httpPort}`)
   console.log(`Origem publica: ${publicOrigin}`)
