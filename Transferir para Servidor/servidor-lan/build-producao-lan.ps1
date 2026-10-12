@@ -1,4 +1,4 @@
-# Etapa 3 — Build frontend/dist com VITE_* apontando para a origem LAN (Caddy).
+﻿# Etapa 3 — Build frontend/dist com VITE_* apontando para a origem LAN (Caddy).
 $ErrorActionPreference = 'Stop'
 $LanDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Resolve-Path (Join-Path $LanDir '..\..')
