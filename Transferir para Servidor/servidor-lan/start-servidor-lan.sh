@@ -29,6 +29,8 @@ if ! supabase status >/dev/null 2>&1; then
   supabase start --network-id "$LOOPBACK_NET"
 fi
 
+node "$LAN_DIR/lib/ensure-edge-runtime.mjs" "$ROOT"
+
 node "$LAN_DIR/generate-caddyfile.mjs"
 node "$LAN_DIR/gerar-server-connection.mjs"
 

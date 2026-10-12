@@ -60,6 +60,8 @@ $existingCaddy = Get-CaddyProcessForConfig -ConfigPath $config
 if ($existingCaddy) {
   if (Test-LocalHttpUp -Port $httpPort) {
     $existingCaddy.Id | Set-Content -Path $PidFile -Encoding ascii
+    node (Join-Path $LanDir 'lib\ensure-edge-runtime.mjs') $Root
+    if ($LASTEXITCODE -ne 0) { throw 'Edge runtime do Supabase nao ficou em execucao.' }
     Push-Location $LanDir
     node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] Caddy desta instalacao ja em execucao. UI:', c.publicOrigin)"
     Pop-Location
@@ -98,6 +100,8 @@ try {
       throw "supabase start falhou (codigo $startCode)"
     }
   }
+  node (Join-Path $LanDir 'lib\ensure-edge-runtime.mjs') $Root
+  if ($LASTEXITCODE -ne 0) { throw 'Edge runtime do Supabase nao ficou em execucao.' }
 } finally {
   Pop-Location
 }
