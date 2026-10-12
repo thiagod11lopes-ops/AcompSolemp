@@ -27,10 +27,34 @@ if (Test-Path $PidFile) {
   }
 }
 
+function Invoke-SupabaseCli {
+  param([Parameter(ValueFromRemainingArguments = $true)][string[]]$CliArgs)
+  # O shim npm do Supabase encaminha avisos para stderr. No Windows PowerShell 5.1,
+  # $ErrorActionPreference Stop transforma esse aviso em erro fatal mesmo com saida 0.
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  $PSNativeCommandUseErrorActionPreference = $false
+  try {
+    & supabase @CliArgs *>&1 | Out-Null
+    if ($null -eq $LASTEXITCODE) { throw 'supabase CLI nao retornou codigo de saida' }
+    return [int]$LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+}
+
 Push-Location $Root
-supabase status 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { supabase start }
-Pop-Location
+try {
+  $statusCode = Invoke-SupabaseCli status
+  if ($statusCode -ne 0) {
+    $startCode = Invoke-SupabaseCli start
+    if ($startCode -ne 0) {
+      throw "supabase start falhou (codigo $startCode)"
+    }
+  }
+} finally {
+  Pop-Location
+}
 
 node (Join-Path $LanDir 'generate-caddyfile.mjs')
 node (Join-Path $LanDir 'gerar-server-connection.mjs')
