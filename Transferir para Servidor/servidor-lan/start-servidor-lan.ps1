@@ -62,6 +62,8 @@ if ($existingCaddy) {
     $existingCaddy.Id | Set-Content -Path $PidFile -Encoding ascii
     node (Join-Path $LanDir 'lib\ensure-edge-runtime.mjs') $Root
     if ($LASTEXITCODE -ne 0) { throw 'Edge runtime do Supabase nao ficou em execucao.' }
+    node (Join-Path $LanDir 'lib\ensure-kong-loopback.mjs') $Root
+    if ($LASTEXITCODE -ne 0) { throw 'Kong nao respondeu em 127.0.0.1:54321.' }
     Push-Location $LanDir
     node --input-type=module -e "import { loadServidorEnv } from './lib/load-servidor-env.mjs'; const c = loadServidorEnv(); console.log('[servidor-lan] Caddy desta instalacao ja em execucao. UI:', c.publicOrigin)"
     Pop-Location
@@ -102,6 +104,8 @@ try {
   }
   node (Join-Path $LanDir 'lib\ensure-edge-runtime.mjs') $Root
   if ($LASTEXITCODE -ne 0) { throw 'Edge runtime do Supabase nao ficou em execucao.' }
+  node (Join-Path $LanDir 'lib\ensure-kong-loopback.mjs') $Root
+  if ($LASTEXITCODE -ne 0) { throw 'Kong nao respondeu em 127.0.0.1:54321.' }
 } finally {
   Pop-Location
 }

@@ -30,6 +30,7 @@ if ! supabase status >/dev/null 2>&1; then
 fi
 
 node "$LAN_DIR/lib/ensure-edge-runtime.mjs" "$ROOT"
+node "$LAN_DIR/lib/ensure-kong-loopback.mjs" "$ROOT"
 
 node "$LAN_DIR/generate-caddyfile.mjs"
 node "$LAN_DIR/gerar-server-connection.mjs"

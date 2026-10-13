@@ -20,6 +20,7 @@ import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
+import { mapSupabaseAuthError } from '@/supabase/authErrors'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
@@ -144,7 +145,7 @@ export default function LoginGestorPage() {
         await finishGestorLogin()
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao autenticar')
+      setError(mapSupabaseAuthError(e).message)
     }
   }
 
@@ -166,7 +167,7 @@ export default function LoginGestorPage() {
       await loginSemSenha()
       await finishGestorLogin()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao entrar sem senha')
+      setError(mapSupabaseAuthError(e).message)
     } finally {
       setOpenAccessLoading(false)
     }

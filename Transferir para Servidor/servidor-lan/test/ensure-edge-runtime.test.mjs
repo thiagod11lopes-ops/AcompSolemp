@@ -10,6 +10,14 @@ function source(name) {
   return readFileSync(join(root, name), 'utf8')
 }
 
+test('o Kong em loopback é religado sem apagar volumes', () => {
+  const helper = source('lib/ensure-kong-loopback.mjs')
+  assert.match(helper, /127\.0\.0\.1:54321\/auth\/v1\/health/)
+  assert.match(helper, /\['restart', id\]/)
+  assert.equal(helper.includes('volume rm'), false)
+  assert.equal(helper.includes('--no-backup'), false)
+})
+
 test('o edge runtime parado volta com unless-stopped e sem apagar volumes', () => {
   const helper = source('lib/ensure-edge-runtime.mjs')
   assert.match(helper, /unless-stopped/)
@@ -27,4 +35,6 @@ test('o arranque do Caddy religa a Edge Function antes de reutilizar o proxy', (
   assert.ok(helperAt > 0 && helperAt < reuseAt)
   const sh = source('start-servidor-lan.sh')
   assert.match(sh, /ensure-edge-runtime\.mjs/)
+  assert.match(ps1, /ensure-kong-loopback\.mjs/)
+  assert.match(sh, /ensure-kong-loopback\.mjs/)
 })
