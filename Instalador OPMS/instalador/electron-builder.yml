@@ -1,0 +1,36 @@
+appId: br.marinha.acompopms.instalador
+productName: AcompOPMS Instalador
+copyright: Copyright © OMH Marinha do Brasil
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - "**/*"
+  - "!dist/**"
+  - "!node_modules/.cache/**"
+
+# Payload (Electron + app cliente) gerado em CI por prepare-payload
+asarUnpack:
+  - resources/payload/**
+
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  artifactName: AcompOPMS-Instalador-${version}-win-x64.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  artifactName: AcompOPMS-Instalador-${version}-linux-x64.${ext}
+  category: Office
+
+portable:
+  artifactName: AcompOPMS-Instalador-${version}-portable.${ext}
+
+npmRebuild: false

@@ -27,7 +27,9 @@ export function assertSupabaseUrlConfig(): void {
   try {
     parsed = new URL(raw)
   } catch {
-    throw new Error('VITE_SUPABASE_URL inválida. Use o formato https://xxxx.supabase.co')
+    throw new Error(
+      'VITE_SUPABASE_URL inválida. Use https://xxxx.supabase.co (nuvem) ou http://IP:porta (servidor LAN via Caddy).',
+    )
   }
 
   if (typeof window === 'undefined') return
@@ -88,7 +90,16 @@ export function mapSupabaseAuthError(error: unknown): Error {
   const message = getAuthErrorMessage(error)
   const lower = message.toLowerCase()
 
+  const localSupabase = Boolean(
+    env.supabase.url && !/supabase\.co/i.test(env.supabase.url),
+  )
+
   if (!message || message === '{}') {
+    if (localSupabase) {
+      return new Error(
+        'O Supabase local não respondeu. O proxy (Kong) aceitou a conexão e devolveu uma resposta vazia. Tente novamente; se continuar, reinicie o serviço no Servidor Manager.',
+      )
+    }
     return new Error(
       'Não foi possível concluir a operação de autenticação. ' +
         'Verifique SMTP (Authentication → Emails → SMTP), ' +
@@ -103,6 +114,13 @@ export function mapSupabaseAuthError(error: unknown): Error {
     lower.includes('load failed') ||
     lower.includes('network request failed')
   ) {
+    if (localSupabase) {
+      return new Error(
+        'Não foi possível conectar ao Supabase local em ' +
+          env.supabase.url +
+          '. Confira se o Caddy e o Kong estão no ar.',
+      )
+    }
     return new Error(
       'Não foi possível conectar ao servidor de autenticação (Failed to fetch). ' +
         'Confira se VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY estão corretos no build, ' +

@@ -2,6 +2,8 @@
 
 Guia passo a passo para copiar o banco **Supabase na nuvem** (projeto `lvfesspmljwqhdlkyars`) para um ambiente **local** (seu PC ou um servidor na rede).
 
+**Servidor LAN (app na rede):** [`servidor-lan/README.md`](./servidor-lan/README.md) (técnico) · **Guia de uso completo:** [`../docs/guia-uso-servidor-lan.md`](../docs/guia-uso-servidor-lan.md) · **Backup local (Etapa 16):** [`servidor-lan/CHECKLIST-ETAPA16-BACKUP.md`](./servidor-lan/CHECKLIST-ETAPA16-BACKUP.md).
+
 ---
 
 ## 1. O que precisa ser transferido

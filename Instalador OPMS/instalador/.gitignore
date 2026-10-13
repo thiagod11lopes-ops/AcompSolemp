@@ -1,0 +1,6 @@
+node_modules/
+resources/payload/
+dist/
+out/
+builder-debug.yml
+builder-effective-config.yaml
