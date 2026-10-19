@@ -18,11 +18,13 @@ O outro computador só precisa do navegador: `http://IP_DO_SERVIDOR:5173`.
 ## Uso diário (máquina servidor)
 
 1. Abra o **Docker Desktop** e espere ficar Running.
-2. PowerShell:
+2. **Jeito mais fácil:** dê duplo clique em `servidor-portatil\Iniciar-Servidor.cmd`
+
+Ou no PowerShell (se aparecer erro de “execução de scripts desabilitada”, use a linha com `-ExecutionPolicy Bypass`):
 
 ```powershell
 cd C:\Users\User\Desktop\Thiago\Projetos\AcompSolemp\servidor-portatil\scripts
-.\Iniciar-Servidor.ps1
+powershell -ExecutionPolicy Bypass -File .\Iniciar-Servidor.ps1
 ```
 
 3. No outro PC (mesma rede): `http://192.168.0.17:5173`  
