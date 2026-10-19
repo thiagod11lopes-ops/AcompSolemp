@@ -18,13 +18,49 @@ Write-Host "==> Aplicando host $($cfg.SERVER_HOST)..."
 $dockerDir = $cfg.SUPABASE_DOCKER_DIR
 $frontendDir = $cfg.FRONTEND_DIR
 
+Write-Host "==> Parando stacks antigos do Supabase CLI (se existirem)..."
+docker ps -a --format "{{.Names}}" |
+  Where-Object { $_ -match 'supabase_.*_sm' -or $_ -eq 'supabase_studio_workspace' } |
+  ForEach-Object {
+    Write-Host "  stop $_"
+    docker stop $_ 2>$null | Out-Null
+  }
+
 Write-Host "==> Subindo Supabase..."
 Push-Location $dockerDir
 try {
-  docker compose up -d
-  if ($LASTEXITCODE -ne 0) { throw "docker compose up falhou" }
+  $ok = $false
+  for ($i = 1; $i -le 3; $i++) {
+    Write-Host "  tentativa $i/3..."
+    docker compose up -d
+    if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+    Start-Sleep -Seconds 8
+  }
+  if (-not $ok) {
+    # Às vezes o compose marca falha no studio/envoy, mas a API já responde.
+    $anon = Get-AnonKeyFromSupabase $dockerDir
+    $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 12 `
+      "http://127.0.0.1:$($cfg.SUPABASE_PORT)/auth/v1/health" -H "apikey: $anon"
+    if ($code -ne '200') {
+      throw "docker compose up falhou e Auth não respondeu (HTTP $code). Abra o Docker Desktop e tente de novo."
+    }
+    Write-Host "Aviso: compose reportou erro, mas Auth está OK — seguindo."
+  }
 } finally {
   Pop-Location
+}
+
+Write-Host "==> Aguardando Auth..."
+$anon = Get-AnonKeyFromSupabase $dockerDir
+$ready = $false
+for ($i = 1; $i -le 20; $i++) {
+  $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 8 `
+    "http://127.0.0.1:$($cfg.SUPABASE_PORT)/auth/v1/health" -H "apikey: $anon"
+  if ($code -eq '200') { $ready = $true; break }
+  Start-Sleep -Seconds 3
+}
+if (-not $ready) {
+  Write-Host "Aviso: Auth ainda não respondeu a tempo. O app pode falhar até o Docker terminar de subir."
 }
 
 # Firewall (melhor esforço; pode exigir admin)
