@@ -44,6 +44,32 @@ Modo mais “produção” (build + nginx):
 
 ---
 
+## IP fixo do servidor (obrigatório com vários usuários)
+
+Hoje o roteador pode mudar o IP. Para **nunca mudar**, fixe o IP neste PC.
+
+1. Duplo clique em `servidor-portatil\Fixar-IP.cmd` (aceite o aviso de Administrador)  
+   ou, no PowerShell **como Administrador**:
+
+```powershell
+cd C:\Users\User\Desktop\Thiago\Projetos\AcompSolemp\servidor-portatil\scripts
+powershell -ExecutionPolicy Bypass -File .\Fixar-IP.ps1
+```
+
+Isso fixa o IP atual da rede: **192.168.1.202**.
+
+2. Depois alinhe o AcompOPMS:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Aplicar-Host.ps1 -HostAddress 192.168.1.202
+powershell -ExecutionPolicy Bypass -File .\Parar-Servidor.ps1
+powershell -ExecutionPolicy Bypass -File .\Iniciar-Servidor.ps1
+```
+
+3. (Recomendado no roteador) Reserve o IP `192.168.1.202` para o MAC deste PC (DHCP reservation), para nenhum outro aparelho pegar o mesmo número.
+
+Os usuários passam a usar sempre: `http://192.168.1.202:5173`
+
 ## Se o IP da rede mudar
 
 ```powershell
