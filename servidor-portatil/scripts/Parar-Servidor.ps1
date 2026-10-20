@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 
 $cfg = Import-ServidorConfig
 
-Write-Host "==> Parando frontend..."
+Write-Host '==> Parando frontend...'
 $pidFile = Join-Path (Get-ServidorRoot) 'logs\vite.pid'
 if (Test-Path $pidFile) {
   $old = Get-Content $pidFile -ErrorAction SilentlyContinue
@@ -13,8 +13,8 @@ if (Test-Path $pidFile) {
 }
 
 if (-not (Test-DockerRunning)) {
-  Write-Host "Docker já está desligado — nada a parar nos containers."
-  Write-Host "Parado."
+  Write-Host 'Docker ja esta desligado - nada a parar nos containers.'
+  Write-Host 'Parado.'
   return
 }
 
@@ -27,7 +27,7 @@ if (Test-Path $compose) {
   } catch { }
 }
 
-Write-Host "==> Parando Supabase..."
+Write-Host '==> Parando Supabase...'
 try {
   Push-Location $cfg.SUPABASE_DOCKER_DIR
   docker compose down
@@ -36,4 +36,4 @@ try {
   Write-Host "Aviso: $_"
 }
 
-Write-Host "Parado."
+Write-Host 'Parado.'
