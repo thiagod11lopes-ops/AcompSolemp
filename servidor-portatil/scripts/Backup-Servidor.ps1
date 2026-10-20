@@ -6,7 +6,6 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 
 $cfg = Import-ServidorConfig
-Assert-DockerRunning
 
 $root = Get-ServidorRoot
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -15,8 +14,12 @@ $work = Join-Path $backupRoot "_work-$stamp"
 $zip = Join-Path $backupRoot "acomp-servidor-$stamp.zip"
 New-Item -ItemType Directory -Force -Path $work, $backupRoot | Out-Null
 
-Write-Host "==> Parando serviços (backup consistente)..."
-& "$PSScriptRoot\Parar-Servidor.ps1"
+if (Test-DockerRunning) {
+  Write-Host "==> Parando serviços (backup consistente)..."
+  & "$PSScriptRoot\Parar-Servidor.ps1"
+} else {
+  Write-Host "==> Docker desligado — ok para backup (banco já está parado)."
+}
 
 $dockerDir = $cfg.SUPABASE_DOCKER_DIR
 $dataSrc = Join-Path $dockerDir 'volumes\db\data'

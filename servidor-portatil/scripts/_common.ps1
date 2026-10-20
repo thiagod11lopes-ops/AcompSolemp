@@ -40,10 +40,18 @@ function Get-AnonKeyFromSupabase([string]$DockerDir) {
   return ($line -replace '^\s*ANON_KEY=', '').Trim()
 }
 
+function Test-DockerRunning {
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'SilentlyContinue'
+  docker info 1>$null 2>$null
+  $ok = ($LASTEXITCODE -eq 0)
+  $ErrorActionPreference = $prev
+  return $ok
+}
+
 function Assert-DockerRunning {
-  docker info 2>$null | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    throw "Docker Desktop não está rodando. Abra o Docker e tente de novo."
+  if (-not (Test-DockerRunning)) {
+    throw "Docker Desktop não está rodando. Abra o Docker Desktop, espere ficar pronto e tente de novo."
   }
 }
 
