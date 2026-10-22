@@ -51,10 +51,9 @@ try {
 
   Write-Host ""
   Write-Host "==> Subindo Supabase + app..."
+  # Nao confiar em $LASTEXITCODE aqui: comandos internos (netsh/curl/docker)
+  # podem deixar codigo residual mesmo com sucesso. Falhas reais sobem com throw.
   & "$PSScriptRoot\Iniciar-Servidor.ps1"
-  if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-    throw "Iniciar-Servidor terminou com codigo $LASTEXITCODE"
-  }
 
   Write-Host ""
   Write-Host "==> Abrindo navegador: $appUrl"
@@ -63,6 +62,7 @@ try {
   Write-Host ""
   Write-Host "Pronto. Pode fechar esta janela."
   Write-Host "App na rede: $appUrl"
+  exit 0
 } catch {
   Write-Host ""
   Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
@@ -71,5 +71,3 @@ try {
   [void][Console]::ReadLine()
   exit 1
 }
-
-Start-Sleep -Seconds 4

@@ -18,13 +18,17 @@ Write-Host "==> Aplicando host $($cfg.SERVER_HOST)..."
 $dockerDir = $cfg.SUPABASE_DOCKER_DIR
 $frontendDir = $cfg.FRONTEND_DIR
 
-Write-Host "==> Parando stacks antigos do Supabase CLI (se existirem)..."
-docker ps -a --format "{{.Names}}" |
-  Where-Object { $_ -match 'supabase_.*_sm' -or $_ -eq 'supabase_studio_workspace' } |
-  ForEach-Object {
+Write-Host "==> Parando stacks antigos do Supabase CLI (se estiverem rodando)..."
+$oldCli = docker ps --format "{{.Names}}" |
+  Where-Object { $_ -match 'supabase_.*_(sm|workspace)$' -or $_ -like 'supabase_*_workspace' }
+if ($oldCli) {
+  $oldCli | ForEach-Object {
     Write-Host "  stop $_"
     docker stop $_ 2>$null | Out-Null
   }
+} else {
+  Write-Host "  nenhum stack antigo em execucao."
+}
 
 Write-Host "==> Subindo Supabase..."
 Push-Location $dockerDir
