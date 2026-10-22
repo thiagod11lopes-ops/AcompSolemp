@@ -17,31 +17,29 @@ O outro computador só precisa do navegador: `http://IP_DO_SERVIDOR:5173`.
 
 ## Uso diário (máquina servidor)
 
-1. Abra o **Docker Desktop** e espere ficar Running.
-2. **Jeito mais fácil:** dê duplo clique em `servidor-portatil\Iniciar-Servidor.cmd`
+1. Abra a pasta `servidor-portatil`
+2. Dê **duplo clique** no ícone **Iniciar Servidor OMPS**  
+   (não precisa abrir PowerShell, CMD nem Docker na mão — o atalho sobe o Docker se estiver fechado, sobe o sistema e abre o navegador)
 
-Ou no PowerShell (se aparecer erro de “execução de scripts desabilitada”, use a linha com `-ExecutionPolicy Bypass`):
-
-```powershell
-cd C:\Users\User\Desktop\Thiago\Projetos\AcompSolemp\servidor-portatil\scripts
-powershell -ExecutionPolicy Bypass -File .\Iniciar-Servidor.ps1
-```
-
-3. No outro PC (mesma rede): `http://192.168.0.17:5173`  
-   (troque pelo IP atual — veja `.\Detectar-IP.ps1`)
-
-Para parar:
+Se o atalho `.lnk` sumir ou for copiado para outro PC, rode uma vez:
 
 ```powershell
-.\Parar-Servidor.ps1
+cd ...\servidor-portatil\scripts
+powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Iniciar.ps1
 ```
+
+Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito).
+
+No outro PC (mesma rede): `http://IP_DO_SERVIDOR:5173`  
+(veja o IP com `scripts\Detectar-IP.ps1` ou o texto na janela ao iniciar)
+
+Para parar: duplo clique em `Parar-Servidor.cmd`
 
 Modo mais “produção” (build + nginx):
 
 ```powershell
 .\Iniciar-Servidor.ps1 -Build
 ```
-
 ---
 
 ## IP fixo do servidor (obrigatório com vários usuários)
@@ -127,11 +125,16 @@ Os scripts tentam liberar as portas `5173` e `8000`. Se o outro PC não conectar
 
 ```
 servidor-portatil/
+  Iniciar Servidor OMPS.lnk   ← ícone de uso diário (duplo clique)
+  Iniciar Servidor OMPS.vbs   ← mesmo fluxo (portátil)
+  icons/opms.ico
   config.env              ← IP e caminhos deste PC
   config.env.example
   docker-compose.frontend.yml
   nginx/default.conf
   scripts/
+    Abrir-Tudo.ps1
+    Criar-Atalho-Iniciar.ps1
     Iniciar-Servidor.ps1
     Parar-Servidor.ps1
     Aplicar-Host.ps1
