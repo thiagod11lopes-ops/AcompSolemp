@@ -1,9 +1,10 @@
-# Um clique: sobe Docker (se preciso), Supabase + app e abre o navegador.
+# Um clique: sobe Docker (se preciso), Supabase + app e abre o Chrome na tela de login.
 # Chamado pelo atalho "Iniciar Servidor OMPS" e pelo inicio automatico do Windows.
 #
 # Uso:
 #   .\Abrir-Tudo.ps1
-#   .\Abrir-Tudo.ps1 -Silent -NoBrowser   # inicio automatico (sem janela interativa)
+#   .\Abrir-Tudo.ps1 -Silent
+#   .\Abrir-Tudo.ps1 -Silent -NoBrowser
 
 param(
   [switch]$Silent,
@@ -17,6 +18,7 @@ $cfg = Import-ServidorConfig
 $hostName = $cfg.SERVER_HOST
 $appPort = $cfg.APP_PORT
 $appUrl = "http://${hostName}:${appPort}"
+$loginUrl = "http://127.0.0.1:${appPort}/login"
 
 $logDir = Join-Path (Get-ServidorRoot) 'logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -60,6 +62,41 @@ function Start-DockerDesktopIfNeeded {
   Write-Log 'Docker pronto.'
 }
 
+function Wait-AppReady {
+  Write-Log "==> Aguardando app em http://127.0.0.1:${appPort} ..."
+  for ($i = 1; $i -le 40; $i++) {
+    $code = curl.exe -s -o NUL -w '%{http_code}' --max-time 5 "http://127.0.0.1:${appPort}/"
+    if ($code -match '^(200|301|302|304)$') {
+      Write-Log "App pronto (HTTP $code)."
+      return
+    }
+    if (-not $Silent) { Write-Host ("  ... app {0}/40 (HTTP {1})" -f $i, $code) }
+    Start-Sleep -Seconds 2
+  }
+  Write-Log 'Aviso: app ainda nao respondeu; abrindo Chrome mesmo assim.'
+}
+
+function Get-ChromePath {
+  $candidates = @(
+    (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
+  )
+  return ($candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1)
+}
+
+function Open-LoginInChrome {
+  Wait-AppReady
+  $chrome = Get-ChromePath
+  if ($chrome) {
+    Write-Log "==> Abrindo Chrome: $loginUrl"
+    Start-Process -FilePath $chrome -ArgumentList @($loginUrl) | Out-Null
+  } else {
+    Write-Log "==> Chrome nao encontrado; abrindo navegador padrao: $loginUrl"
+    Start-Process $loginUrl | Out-Null
+  }
+}
+
 try {
   Write-Log '========================================'
   Write-Log '  AcompOPMS - Iniciar Servidor'
@@ -72,13 +109,12 @@ try {
   & "$PSScriptRoot\Iniciar-Servidor.ps1"
 
   if (-not $NoBrowser) {
-    Write-Log "==> Abrindo navegador: $appUrl"
-    Start-Process $appUrl | Out-Null
+    Open-LoginInChrome
   } else {
-    Write-Log "==> Navegador nao aberto (modo automatico). App: $appUrl"
+    Write-Log "==> Navegador nao aberto (-NoBrowser). Login: $loginUrl"
   }
 
-  Write-Log "Pronto. App na rede: $appUrl"
+  Write-Log "Pronto. App na rede: $appUrl | Login local: $loginUrl"
   if (-not $Silent) {
     Write-Host ''
     Write-Host 'Pode fechar esta janela.'

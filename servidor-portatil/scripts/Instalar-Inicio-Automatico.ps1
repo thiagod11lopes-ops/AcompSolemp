@@ -13,7 +13,8 @@ $taskName = 'AcompOPMS-IniciarServidor'
 $ps1 = Join-Path $PSScriptRoot 'Abrir-Tudo.ps1'
 if (-not (Test-Path $ps1)) { throw "Nao achei: $ps1" }
 
-$arg = "-NoProfile -WindowStyle Minimized -ExecutionPolicy Bypass -File `"$ps1`" -Silent -NoBrowser"
+# -Silent: sem janela interativa; Chrome abre em http://127.0.0.1:PORT/login apos o stack.
+$arg = "-NoProfile -WindowStyle Minimized -ExecutionPolicy Bypass -File `"$ps1`" -Silent"
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg -WorkingDirectory $PSScriptRoot
 
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME

@@ -40,7 +40,8 @@ Para parar: duplo clique em `Parar-Servidor.cmd`
 1. Duplo clique em `Instalar-Inicio-Automatico.cmd` (uma vez)
 2. Reinicie o PC ou faça logoff/login  
 
-O Windows sobe o Docker + Supabase + app ~90 s após o login, sem clicar em nada.  
+O Windows sobe o Docker + Supabase + app ~90 s após o login e abre o **Chrome** em  
+`http://127.0.0.1:5173/login` quando o app estiver pronto.  
 Log: `servidor-portatil\logs\iniciar-auto.log`  
 Para desligar o automático: `Remover-Inicio-Automatico.cmd`
 
