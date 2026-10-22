@@ -11,7 +11,7 @@ Pacote para rodar o **AcompSolemp + Supabase local** nesta máquina Windows e **
 | App React | `AcompSolemp\frontend` | Sim |
 | IP da rede | `servidor-portatil\config.env` + `server-config.js` | Ajustável sem rebuild |
 
-O outro computador só precisa do navegador: `http://IP_DO_SERVIDOR:5173`.
+O outro computador só precisa do navegador: `http://192.168.1.202:5173`.
 
 ---
 
@@ -32,8 +32,11 @@ powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Iniciar.ps1
 
 Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito).
 
-No outro PC (mesma rede): `http://IP_DO_SERVIDOR:5173`  
-(veja o IP com `scripts\Detectar-IP.ps1` ou o texto na janela ao iniciar)
+No outro PC (mesma rede Wi‑Fi/cabo): digite no navegador só números:
+
+`http://192.168.1.202:5173`
+
+(Se o IP do servidor mudar, rode `Detectar-IP.ps1` + `Aplicar-Host.ps1` e use o IP novo, sempre no formato `http://192.168.x.x:5173`.)
 
 Para parar: duplo clique em `Parar-Servidor.cmd`
 
@@ -85,10 +88,12 @@ Os usuários passam a usar sempre: `http://192.168.1.202:5173`
 
 ```powershell
 .\Detectar-IP.ps1
-.\Aplicar-Host.ps1 -HostAddress NOVO_IP
+.\Aplicar-Host.ps1 -HostAddress 192.168.1.202
 .\Parar-Servidor.ps1
 .\Iniciar-Servidor.ps1
 ```
+
+(Troque `192.168.1.202` pelo IP numérico que o `Detectar-IP.ps1` mostrar.)
 
 Não precisa rebuild: o app lê `frontend\public\server-config.js` em tempo de execução.
 
@@ -110,9 +115,9 @@ Não precisa rebuild: o app lê `frontend\public\server-config.js` em tempo de e
 2. Cole as pastas nos mesmos caminhos **ou** atualize `servidor-portatil\config.env`:
    - `SUPABASE_DOCKER_DIR=...`
    - `FRONTEND_DIR=...`
-3. `.\Detectar-IP.ps1` → anote o IP novo
-4. `.\Restaurar-Servidor.ps1 -Zip ".\backups\acomp-servidor-....zip" -HostAddress IP_NOVO`
-5. No cliente da rede: abrir `http://IP_NOVO:5173`
+3. `.\Detectar-IP.ps1` → anote o IP numérico (ex.: `192.168.1.50`)
+4. `.\Restaurar-Servidor.ps1 -Zip ".\backups\acomp-servidor-....zip" -HostAddress 192.168.1.50`
+5. No cliente da rede: abrir `http://192.168.1.50:5173` (só números, sem palavras)
 
 ### Atalho sem zip (só copiar pastas)
 

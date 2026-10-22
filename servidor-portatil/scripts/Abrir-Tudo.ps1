@@ -124,6 +124,17 @@ try {
   }
 
   Write-Log "Pronto. App na rede: $appUrl | Login local: $loginUrl"
+  try {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show(
+      ("Servidor pronto.`n`n" +
+       "Neste PC:`n$loginUrl`n`n" +
+       "Em outro computador na rede (digite so numeros):`n$appUrl"),
+      'Iniciar Servidor OMPS',
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Information
+    ) | Out-Null
+  } catch { }
   if (-not $Silent) {
     Write-Host ''
     Write-Host 'Pode fechar esta janela.'
