@@ -1,18 +1,21 @@
-# Um clique: sobe Docker (se preciso), Supabase + app e abre o Chrome na tela de login.
+# Um clique: dialogos (checklist/cronometro) + Docker + Supabase + app + Chrome /login.
 # Chamado pelo atalho "Iniciar Servidor OMPS" e pelo inicio automatico do Windows.
 #
 # Uso:
 #   .\Abrir-Tudo.ps1
 #   .\Abrir-Tudo.ps1 -Silent
+#   .\Abrir-Tudo.ps1 -SkipLauncherUi
 #   .\Abrir-Tudo.ps1 -Silent -NoBrowser
 
 param(
   [switch]$Silent,
-  [switch]$NoBrowser
+  [switch]$NoBrowser,
+  [switch]$SkipLauncherUi
 )
 
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
+. "$PSScriptRoot\Launcher-UI.ps1"
 
 $cfg = Import-ServidorConfig
 $hostName = $cfg.SERVER_HOST
@@ -101,6 +104,12 @@ try {
   Write-Log '========================================'
   Write-Log '  AcompOPMS - Iniciar Servidor'
   Write-Log '========================================'
+
+  $gate = Invoke-LauncherGate -SkipUi:$SkipLauncherUi
+  if ($gate -eq 'Abort') {
+    Write-Log 'Inicio cancelado pelo usuario (checklist/cronometro).'
+    exit 0
+  }
 
   Start-DockerDesktopIfNeeded
 

@@ -19,7 +19,9 @@ O outro computador só precisa do navegador: `http://IP_DO_SERVIDOR:5173`.
 
 1. Abra a pasta `servidor-portatil`
 2. Dê **duplo clique** no ícone **Iniciar Servidor OMPS**  
-   (não precisa abrir PowerShell, CMD nem Docker na mão — o atalho sobe o Docker se estiver fechado, sobe o sistema e abre o navegador)
+   - **1ª vez** (ou após interromper o cronômetro): checklist perguntando se a próxima inicialização deve ser automática  
+   - **Próximas vezes** (se marcou automático): caixa com cronômetro de **60 s** — se não interromper, sobe sozinho; se interromper, volta o checklist na vez seguinte  
+   - Depois sobe Docker + app e abre o Chrome em `/login`
 
 Se o atalho `.lnk` sumir ou for copiado para outro PC, rode uma vez:
 

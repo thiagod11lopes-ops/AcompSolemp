@@ -13,7 +13,8 @@ If Not fso.FileExists(ps1) Then
   WScript.Quit 1
 End If
 
-cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File """ & ps1 & """"
+' -STA: necessario para as caixas de dialogo (WinForms)
+cmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File """ & ps1 & """"
 rc = sh.Run(cmd, 1, True)
 
 If rc <> 0 Then
