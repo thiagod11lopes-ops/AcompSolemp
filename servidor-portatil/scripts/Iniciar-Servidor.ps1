@@ -1,6 +1,6 @@
 # Sobe Supabase (Docker) + frontend na rede.
 # Uso: .\Iniciar-Servidor.ps1
-#      .\Iniciar-Servidor.ps1 -Build   # gera dist e serve com nginx (mais “produção”)
+#      .\Iniciar-Servidor.ps1 -Build   # gera dist e serve com nginx (modo producao)
 
 param(
   [switch]$Build
@@ -37,14 +37,14 @@ try {
     Start-Sleep -Seconds 8
   }
   if (-not $ok) {
-    # Às vezes o compose marca falha no studio/envoy, mas a API já responde.
+    # As vezes o compose marca falha no studio/envoy, mas a API ja responde.
     $anon = Get-AnonKeyFromSupabase $dockerDir
     $code = curl.exe -s -o NUL -w "%{http_code}" --max-time 12 `
       "http://127.0.0.1:$($cfg.SUPABASE_PORT)/auth/v1/health" -H "apikey: $anon"
     if ($code -ne '200') {
-      throw "docker compose up falhou e Auth não respondeu (HTTP $code). Abra o Docker Desktop e tente de novo."
+      throw "docker compose up falhou e Auth nao respondeu (HTTP $code). Abra o Docker Desktop e tente de novo."
     }
-    Write-Host "Aviso: compose reportou erro, mas Auth está OK — seguindo."
+    Write-Host "Aviso: compose reportou erro, mas Auth esta OK - seguindo."
   }
 } finally {
   Pop-Location
@@ -60,10 +60,10 @@ for ($i = 1; $i -le 20; $i++) {
   Start-Sleep -Seconds 3
 }
 if (-not $ready) {
-  Write-Host "Aviso: Auth ainda não respondeu a tempo. O app pode falhar até o Docker terminar de subir."
+  Write-Host "Aviso: Auth ainda nao respondeu a tempo. O app pode falhar ate o Docker terminar de subir."
 }
 
-# Firewall (melhor esforço; pode exigir admin)
+# Firewall (melhor esforco; pode exigir admin)
 try {
   $rules = @(
     @{ Name = "AcompOPMS App $($cfg.APP_PORT)"; Port = $cfg.APP_PORT },
@@ -76,7 +76,7 @@ try {
     }
   }
 } catch {
-  Write-Host "Aviso: não foi possível criar regra de firewall (rode PowerShell como Admin se o outro PC não conectar)."
+  Write-Host "Aviso: nao foi possivel criar regra de firewall (rode PowerShell como Admin se o outro PC nao conectar)."
 }
 
 if ($Build) {
@@ -107,7 +107,7 @@ if ($Build) {
   $errLog = Join-Path $logDir 'vite.err.log'
   $pidFile = Join-Path $logDir 'vite.pid'
 
-  # mata instância anterior
+  # mata instancia anterior
   if (Test-Path $pidFile) {
     $old = Get-Content $pidFile -ErrorAction SilentlyContinue
     if ($old) { Stop-Process -Id ([int]$old) -Force -ErrorAction SilentlyContinue }
