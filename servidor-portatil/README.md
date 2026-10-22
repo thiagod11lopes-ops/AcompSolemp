@@ -35,11 +35,21 @@ No outro PC (mesma rede): `http://IP_DO_SERVIDOR:5173`
 
 Para parar: duplo clique em `Parar-Servidor.cmd`
 
+### Início automático (ligar o PC e já servir)
+
+1. Duplo clique em `Instalar-Inicio-Automatico.cmd` (uma vez)
+2. Reinicie o PC ou faça logoff/login  
+
+O Windows sobe o Docker + Supabase + app ~90 s após o login, sem clicar em nada.  
+Log: `servidor-portatil\logs\iniciar-auto.log`  
+Para desligar o automático: `Remover-Inicio-Automatico.cmd`
+
 Modo mais “produção” (build + nginx):
 
 ```powershell
 .\Iniciar-Servidor.ps1 -Build
 ```
+
 ---
 
 ## IP fixo do servidor (obrigatório com vários usuários)

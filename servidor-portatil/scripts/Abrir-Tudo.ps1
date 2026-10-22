@@ -1,5 +1,14 @@
 # Um clique: sobe Docker (se preciso), Supabase + app e abre o navegador.
-# Chamado pelo atalho "Iniciar Servidor OMPS".
+# Chamado pelo atalho "Iniciar Servidor OMPS" e pelo inicio automatico do Windows.
+#
+# Uso:
+#   .\Abrir-Tudo.ps1
+#   .\Abrir-Tudo.ps1 -Silent -NoBrowser   # inicio automatico (sem janela interativa)
+
+param(
+  [switch]$Silent,
+  [switch]$NoBrowser
+)
 
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
@@ -9,9 +18,19 @@ $hostName = $cfg.SERVER_HOST
 $appPort = $cfg.APP_PORT
 $appUrl = "http://${hostName}:${appPort}"
 
+$logDir = Join-Path (Get-ServidorRoot) 'logs'
+New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+$logFile = Join-Path $logDir 'iniciar-auto.log'
+
+function Write-Log([string]$Message) {
+  $line = '{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Message
+  Add-Content -Path $logFile -Value $line -Encoding UTF8
+  if (-not $Silent) { Write-Host $Message }
+}
+
 function Start-DockerDesktopIfNeeded {
   if (Test-DockerRunning) {
-    Write-Host "Docker ja esta pronto."
+    Write-Log 'Docker ja esta pronto.'
     return
   }
 
@@ -22,52 +41,68 @@ function Start-DockerDesktopIfNeeded {
   )
   $exe = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
   if (-not $exe) {
-    throw "Docker Desktop nao encontrado. Instale o Docker Desktop e tente de novo."
+    throw 'Docker Desktop nao encontrado. Instale o Docker Desktop e tente de novo.'
   }
 
-  Write-Host "==> Abrindo Docker Desktop..."
+  Write-Log '==> Abrindo Docker Desktop...'
   Start-Process -FilePath $exe | Out-Null
 
-  Write-Host "==> Aguardando Docker ficar pronto (ate ~3 min)..."
+  Write-Log '==> Aguardando Docker ficar pronto (ate ~5 min)...'
   $ok = $false
-  for ($i = 1; $i -le 60; $i++) {
+  for ($i = 1; $i -le 100; $i++) {
     if (Test-DockerRunning) { $ok = $true; break }
-    Write-Host ("  ... {0}/60" -f $i)
+    if (-not $Silent) { Write-Host ("  ... {0}/100" -f $i) }
     Start-Sleep -Seconds 3
   }
   if (-not $ok) {
-    throw "Docker Desktop nao ficou pronto a tempo. Abra o Docker Desktop, espere o status Running e clique de novo no atalho."
+    throw 'Docker Desktop nao ficou pronto a tempo. Abra o Docker Desktop, espere o status Running e tente de novo.'
   }
-  Write-Host "Docker pronto."
+  Write-Log 'Docker pronto.'
 }
 
 try {
-  Write-Host "========================================"
-  Write-Host "  AcompOPMS - Iniciar Servidor"
-  Write-Host "========================================"
-  Write-Host ""
+  Write-Log '========================================'
+  Write-Log '  AcompOPMS - Iniciar Servidor'
+  Write-Log '========================================'
 
   Start-DockerDesktopIfNeeded
 
-  Write-Host ""
-  Write-Host "==> Subindo Supabase + app..."
-  # Nao confiar em $LASTEXITCODE aqui: comandos internos (netsh/curl/docker)
-  # podem deixar codigo residual mesmo com sucesso. Falhas reais sobem com throw.
+  Write-Log '==> Subindo Supabase + app...'
+  # Nao confiar em $LASTEXITCODE: netsh/curl/docker podem deixar codigo residual.
   & "$PSScriptRoot\Iniciar-Servidor.ps1"
 
-  Write-Host ""
-  Write-Host "==> Abrindo navegador: $appUrl"
-  Start-Process $appUrl | Out-Null
+  if (-not $NoBrowser) {
+    Write-Log "==> Abrindo navegador: $appUrl"
+    Start-Process $appUrl | Out-Null
+  } else {
+    Write-Log "==> Navegador nao aberto (modo automatico). App: $appUrl"
+  }
 
-  Write-Host ""
-  Write-Host "Pronto. Pode fechar esta janela."
-  Write-Host "App na rede: $appUrl"
+  Write-Log "Pronto. App na rede: $appUrl"
+  if (-not $Silent) {
+    Write-Host ''
+    Write-Host 'Pode fechar esta janela.'
+  }
   exit 0
 } catch {
-  Write-Host ""
-  Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
-  Write-Host ""
-  Write-Host "Pressione Enter para fechar..."
-  [void][Console]::ReadLine()
+  $msg = $_.Exception.Message
+  Write-Log "ERRO: $msg"
+  if ($Silent) {
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      [System.Windows.Forms.MessageBox]::Show(
+        "Falha ao iniciar o servidor AcompOPMS:`n`n$msg`n`nDetalhes: $logFile",
+        'AcompOPMS - Inicio automatico',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Error
+      ) | Out-Null
+    } catch { }
+  } else {
+    Write-Host ''
+    Write-Host "ERRO: $msg" -ForegroundColor Red
+    Write-Host ''
+    Write-Host 'Pressione Enter para fechar...'
+    [void][Console]::ReadLine()
+  }
   exit 1
 }
