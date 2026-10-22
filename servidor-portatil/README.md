@@ -127,7 +127,7 @@ Se parar o Docker antes de copiar, pode copiar `docker\volumes\db\data` junto. A
 
 ## Firewall
 
-Os scripts tentam liberar as portas `5173` e `8000`. Se o outro PC não conectar, rode o PowerShell **como Administrador** e execute de novo `Iniciar-Servidor.ps1`, ou libere TCP 5173/8000 no Firewall do Windows.
+Se o outro PC não abrir `http://192.168.1.202:5173`, dê **duplo clique** (uma vez) em `Liberar-Firewall.cmd` e aceite o aviso de Administrador. Isso libera as portas `5173` e `8000` na rede local.
 
 ---
 
