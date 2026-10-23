@@ -94,4 +94,9 @@ public class AcompDns {
 }
 '@
 
-[AcompDns]::Start($alias, $ip)
+try {
+  [AcompDns]::Start($alias, $ip)
+} catch {
+  [Console]::Error.WriteLine($_.Exception.Message)
+  exit 1
+}

@@ -16,8 +16,26 @@ netsh advfirewall firewall add rule name="AcompOPMS App 5173" dir=in action=allo
 netsh advfirewall firewall add rule name="AcompOPMS Supabase 8000" dir=in action=allow protocol=TCP localport=8000
 netsh advfirewall firewall add rule name="AcompOPMS DNS Alias 53" dir=in action=allow protocol=UDP localport=53
 
+echo.
+echo Aplicando host/alias...
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Aplicar-Host.ps1"
+if errorlevel 1 (
+  echo ERRO em Aplicar-Host.ps1
+  pause
+  exit /b 1
+)
+
+echo.
+echo Iniciando DNS do endereco amigavel...
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Dns-Alias-Servidor.ps1"
+if errorlevel 1 (
+  echo.
+  echo ERRO ao iniciar DNS. Veja a mensagem acima.
+  echo Se a porta 53 estiver ocupada pelo Compartilhamento de Internet (ICS),
+  echo o script tenta libera-la automaticamente quando rodado como Admin.
+  pause
+  exit /b 1
+)
 
 echo.
 echo Pronto.
