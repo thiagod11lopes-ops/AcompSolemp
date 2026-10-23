@@ -1,4 +1,4 @@
-# Um clique: dialogos + Docker + Supabase + app + gateway :80 + Chrome no nome cadastrado.
+# Um clique: dialogos + Docker + Supabase + app + gateway HTTPS :443 + Chrome no nome cadastrado.
 #
 # Uso:
 #   .\Abrir-Tudo.ps1
@@ -143,8 +143,8 @@ try {
   $cfg = Import-ServidorConfig
   $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
   $ip = [string]$cfg.SERVER_HOST
-  # Clientes digitam EXATAMENTE o alias; o navegador usa porta 80 (gateway).
-  $publicLogin = "http://${alias}/login"
+  # Clientes digitam EXATAMENTE o alias; o gateway usa HTTPS :443.
+  $publicLogin = "https://${alias}/login"
   $localLogin = "http://127.0.0.1:${appPort}/login"
 
   Write-Log '==> Iniciando DNS do nome cadastrado...'
@@ -160,7 +160,7 @@ try {
   Write-Log '==> Subindo Supabase + app...'
   & "$PSScriptRoot\Iniciar-Servidor.ps1"
 
-  Write-Log '==> Subindo gateway porta 80...'
+  Write-Log '==> Subindo gateway HTTPS (443)...'
   try {
     & "$PSScriptRoot\Iniciar-Gateway.ps1"
   } catch {
@@ -168,23 +168,34 @@ try {
   }
 
   if (-not $NoBrowser) {
-    Open-LoginInChrome $publicLogin
+    # Espera o Vite local; abre o HTTPS publico (cadeado apos instalar a CA).
+    Wait-AppReady $localLogin
+    $chrome = Get-ChromePath
+    if ($chrome) {
+      Write-Log "==> Abrindo Chrome: $publicLogin"
+      Start-Process -FilePath $chrome -ArgumentList @($publicLogin) | Out-Null
+    } else {
+      Write-Log "==> Abrindo navegador: $publicLogin"
+      Start-Process $publicLogin | Out-Null
+    }
   } else {
-    Write-Log "==> Navegador nao aberto. Acesso: $alias"
+    Write-Log "==> Navegador nao aberto. Acesso: https://$alias"
   }
 
-  Write-Log "Pronto. Digite nos outros PCs exatamente: $alias"
+  Write-Log "Pronto. Digite nos outros PCs exatamente: $alias (HTTPS)"
   try {
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show(
-      ("Servidor pronto.`n`n" +
-       "Nos outros computadores, digite EXATAMENTE isto no navegador:`n`n" +
+      ("Servidor pronto (HTTPS).`n`n" +
+       "Nos outros computadores:`n" +
+       "1) Uma vez: Instalar-Certificado-Confianca.cmd (Admin)`n" +
+       "   (pasta servidor-portatil\cliente)`n" +
+       "2) Digite EXATAMENTE no navegador:`n`n" +
        "    $alias`n`n" +
-       "(sem http:// e sem :5173)`n`n" +
-       "Se for a primeira vez neste PC servidor, rode uma vez:`n" +
-       "Liberar-Firewall.cmd (aceite Admin).`n" +
-       "Isso prepara a rede; os usuarios finais nao configuram nada.`n`n" +
-       "IP interno (reserva tecnica): $ip"),
+       "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
+       "Se for a primeira vez neste PC servidor, rode tambem:`n" +
+       "Liberar-Firewall.cmd (aceite Admin).`n`n" +
+       "IP interno: $ip"),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Information

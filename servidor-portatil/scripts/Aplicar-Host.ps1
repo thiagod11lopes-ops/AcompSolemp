@@ -48,9 +48,10 @@ $ip = $cfg.SERVER_HOST
 $alias = Normalize-ServerAlias ([string]$cfg.SERVER_ALIAS)
 Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
 
-# URL publica = so o nome na porta 80 (gateway). Sem :5173 / :8000.
+# URL publica = HTTPS no nome (gateway :443). Sem :5173 / :8000.
 $publicHost = $alias
-$publicUrl = "http://${publicHost}"
+$publicUrl = "https://${publicHost}"
+$httpUrl = "http://${publicHost}"
 $appPort = $cfg.APP_PORT
 $anon = Get-AnonKeyFromSupabase $dockerDir
 
@@ -64,6 +65,8 @@ Set-EnvKey $supabaseEnv 'API_EXTERNAL_URL' "$publicUrl/auth/v1"
 Set-EnvKey $supabaseEnv 'SITE_URL' $publicUrl
 Set-EnvKey $supabaseEnv 'ADDITIONAL_REDIRECT_URLS' (
   "$publicUrl,$publicUrl/redefinir-senha,$publicUrl/login," +
+  "$httpUrl,$httpUrl/redefinir-senha,$httpUrl/login," +
+  "https://${ip},https://${ip}/redefinir-senha,https://${ip}/login," +
   "http://${ip},http://${ip}/redefinir-senha,http://${ip}/login," +
   "http://${ip}:${appPort},http://${ip}:${appPort}/redefinir-senha," +
   "http://localhost:${appPort},http://127.0.0.1:${appPort},http://127.0.0.1:${appPort}/login"
@@ -101,7 +104,8 @@ New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
 @(
   "ALIAS=$alias"
   "IP=$ip"
-  "APP_PORT=80"
+  "APP_PORT=443"
+  "PUBLIC_URL=https://$alias"
 ) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
 
 # hosts local (esta maquina)
@@ -119,5 +123,5 @@ try {
 }
 
 Write-Host ''
-Write-Host 'Nos outros PCs digite EXATAMENTE:'
+Write-Host 'Nos outros PCs: Instalar-Certificado-Confianca.cmd (Admin, uma vez), depois digite EXATAMENTE:'
 Write-Host "  $alias"

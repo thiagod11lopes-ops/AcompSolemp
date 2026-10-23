@@ -7,7 +7,7 @@ $cfg = Import-ServidorConfig
 Write-Host '==> Parando DNS alias...'
 try { & "$PSScriptRoot\Dns-Alias-Servidor.ps1" -Stop } catch { }
 
-Write-Host '==> Parando gateway :80...'
+Write-Host '==> Parando gateway HTTPS...'
 try {
   $compose = Join-Path (Get-ServidorRoot) 'docker-compose.gateway.yml'
   if (Test-Path $compose) {

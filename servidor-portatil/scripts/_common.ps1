@@ -4,6 +4,17 @@ function Get-ServidorRoot {
   return (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 }
 
+function Normalize-AliasInput([string]$Raw) {
+  $a = [string]$Raw
+  $a = $a.Trim()
+  $a = $a -replace '^\s*https?://', ''
+  $a = $a.Split('/')[0]
+  $a = $a.Split(':')[0]
+  $a = $a.Trim().ToLowerInvariant().TrimEnd('.')
+  if (-not $a) { $a = 'sistema.acompomps.rede' }
+  return $a
+}
+
 function Import-ServidorConfig {
   $root = Get-ServidorRoot
   $cfgPath = Join-Path $root 'config.env'

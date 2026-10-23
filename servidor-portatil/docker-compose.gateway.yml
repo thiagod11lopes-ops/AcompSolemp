@@ -1,4 +1,4 @@
-# Gateway HTTP porta 80 — acesso so pelo nome cadastrado (sem :5173)
+# Gateway HTTPS :443 (+ redirect HTTP :80) — acesso pelo nome cadastrado
 name: acomp-gateway
 
 services:
@@ -8,7 +8,10 @@ services:
     restart: unless-stopped
     ports:
       - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/gateway.crt:/etc/nginx/certs/gateway.crt:ro
+      - ./certs/gateway.key:/etc/nginx/certs/gateway.key:ro

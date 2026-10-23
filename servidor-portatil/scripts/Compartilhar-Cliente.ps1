@@ -30,21 +30,24 @@ New-Item -ItemType Directory -Force -Path $cliente | Out-Null
 ) | Set-Content (Join-Path $cliente 'hosts-map.env') -Encoding ASCII
 
 $readme = @"
-ACESSO AO AcompOPMS NA REDE
-===========================
+ACESSO AO AcompOPMS NA REDE (HTTPS)
+==================================
 
-Nome cadastrado no modal: $alias
-Isso esta correto. Outros PCs NAO resolvem esse nome sozinhos.
+Nome cadastrado: $alias
 
-USE AGORA (sem instalar nada):
-  http://${ip}:${port}
-  http://${hostName}:${port}
+1) Em CADA PC cliente, UMA VEZ (Admin):
+   \\${ip}\AcompOPMS-Cliente\Instalar-Certificado-Confianca.cmd
+   (gera o cadeado no Chrome; sem isso aparece aviso de certificado)
 
-PARA O NOME AMIGAVEL (http://${alias}:${port}):
-  1) Neste PC servidor, Liberar-Firewall.cmd (Admin) + DNS no roteador = $ip
-  OU
-  2) Em CADA PC cliente, rode UMA VEZ como Admin:
-     \\${ip}\AcompOPMS-Cliente\Adicionar-Endereco-Hosts.cmd
+2) Se o nome nao abrir sozinho, tambem rode:
+   \\${ip}\AcompOPMS-Cliente\Adicionar-Endereco-Hosts.cmd
+   OU no roteador: DNS primario = $ip
+
+3) Abra no navegador exatamente:
+   $alias
+   (HTTPS automatico)
+
+Reserva por IP: https://${ip}
 "@
 Set-Content (Join-Path $cliente 'LEIA-ME-ACESSO.txt') -Value $readme -Encoding UTF8
 
@@ -64,5 +67,6 @@ try {
 } catch { }
 
 Write-Host "Compartilhamento OK:"
+Write-Host "  \\$ip\$shareName\Instalar-Certificado-Confianca.cmd"
 Write-Host "  \\$ip\$shareName\Adicionar-Endereco-Hosts.cmd"
-Write-Host "  \\$hostName\$shareName\Adicionar-Endereco-Hosts.cmd"
+Write-Host "  \\$hostName\$shareName\Instalar-Certificado-Confianca.cmd"

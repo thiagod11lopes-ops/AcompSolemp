@@ -17,6 +17,11 @@ try {
 } catch { L "Aplicar-Host ERRO: $($_.Exception.Message)" }
 
 try {
+  L 'Preparar-Https (CA + certificado)...'
+  & "$PSScriptRoot\Preparar-Https.ps1"
+} catch { L "HTTPS ERRO: $($_.Exception.Message)" }
+
+try {
   L 'Instalar-Dns-Autostart...'
   & "$PSScriptRoot\Instalar-Dns-Autostart.ps1"
 } catch { L "DNS ERRO: $($_.Exception.Message)" }

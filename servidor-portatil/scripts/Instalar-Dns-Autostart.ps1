@@ -11,8 +11,10 @@ if (-not $isAdmin) {
 # Firewall
 netsh advfirewall firewall delete rule name="AcompOPMS DNS Alias 53" >$null 2>&1
 netsh advfirewall firewall delete rule name="AcompOPMS Gateway 80" >$null 2>&1
+netsh advfirewall firewall delete rule name="AcompOPMS Gateway 443" >$null 2>&1
 netsh advfirewall firewall add rule name="AcompOPMS DNS Alias 53" dir=in action=allow protocol=UDP localport=53 | Out-Null
 netsh advfirewall firewall add rule name="AcompOPMS Gateway 80" dir=in action=allow protocol=TCP localport=80 | Out-Null
+netsh advfirewall firewall add rule name="AcompOPMS Gateway 443" dir=in action=allow protocol=TCP localport=443 | Out-Null
 netsh advfirewall firewall delete rule name="AcompOPMS App 5173" >$null 2>&1
 netsh advfirewall firewall delete rule name="AcompOPMS Supabase 8000" >$null 2>&1
 netsh advfirewall firewall add rule name="AcompOPMS App 5173" dir=in action=allow protocol=TCP localport=5173 | Out-Null
