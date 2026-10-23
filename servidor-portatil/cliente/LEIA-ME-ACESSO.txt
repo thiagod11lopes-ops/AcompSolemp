@@ -1,0 +1,17 @@
+﻿ACESSO AO AcompOPMS NA REDE
+===========================
+
+O que voce cadastrou no modal (sistema.acompomps.rede) esta correto.
+Porem outros PCs so abrem esse NOME depois de um destes passos:
+
+A) Mais rapido agora (funciona sem instalar nada):
+   http://192.168.0.17:5173
+   ou (em PCs Windows na mesma rede):
+   http://DESKTOP-78ME07D:5173
+
+B) Para usar o nome amigavel http://sistema.acompomps.rede:5173
+   Em CADA PC cliente, rode UMA VEZ (como Admin):
+   \\192.168.0.17\AcompOPMS-Cliente\Adicionar-Endereco-Hosts.cmd
+   ou copie a pasta servidor-portatil\cliente e execute o .cmd
+
+C) No roteador: DNS primario = 192.168.0.17 (e Liberar-Firewall no servidor)

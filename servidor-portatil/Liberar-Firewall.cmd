@@ -48,8 +48,15 @@ if errorlevel 1 (
 )
 
 echo.
+echo Criando compartilhamento para os clientes...
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Compartilhar-Cliente.ps1"
+
+echo.
 echo Pronto.
-echo   Nome: http://sistema.acompomps.rede:5173
-echo   No roteador, DNS primario = IP deste PC (recomendado).
+echo   Nos outros PCs AGORA:  http://192.168.0.17:5173
+echo   Ou nome do Windows:    http://%COMPUTERNAME%:5173
+echo   Nome amigavel:         http://sistema.acompomps.rede:5173
+echo     (precisa DNS no roteador = IP deste PC, OU rode no cliente:)
+echo     \\%COMPUTERNAME%\AcompOPMS-Cliente\Adicionar-Endereco-Hosts.cmd
 echo.
 pause

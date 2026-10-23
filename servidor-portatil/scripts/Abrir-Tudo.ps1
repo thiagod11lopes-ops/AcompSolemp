@@ -143,16 +143,19 @@ try {
     Write-Log "==> Navegador nao aberto (-NoBrowser). Login: $loginUrl"
   }
 
-  Write-Log "Pronto. Nome: $aliasUrl | IP: $appUrl | Local: $loginUrl"
+  $pcName = $env:COMPUTERNAME
+  $pcUrl = "http://${pcName}:${appPort}"
+  Write-Log "Pronto. Nome: $aliasUrl | IP: $appUrl | PC: $pcUrl | Local: $loginUrl"
   try {
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show(
       ("Servidor pronto.`n`n" +
        "Neste PC:`n$loginUrl`n`n" +
-       "Nos outros computadores (endereco amigavel):`n$aliasUrl`n`n" +
-       "IP numerico (reserva):`n$appUrl`n`n" +
-       "Se o nome nao abrir no cliente, rode Liberar-Firewall.cmd neste PC (Admin)`n" +
-       "e no roteador defina DNS = $hostName (uma vez)."),
+       "Nos OUTROS PCs use agora (sem instalar nada):`n$appUrl`n$pcUrl`n`n" +
+       "Nome amigavel ($aliasUrl):`n" +
+       "so funciona depois de Liberar-Firewall + DNS no roteador,`n" +
+       "OU rodando em cada cliente (1x Admin):`n" +
+       "servidor-portatil\cliente\Adicionar-Endereco-Hosts.cmd"),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Information
