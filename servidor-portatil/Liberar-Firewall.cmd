@@ -30,18 +30,26 @@ echo Iniciando DNS do endereco amigavel...
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Dns-Alias-Servidor.ps1"
 if errorlevel 1 (
   echo.
-  echo ERRO ao iniciar DNS. Veja a mensagem acima.
-  echo Se a porta 53 estiver ocupada pelo Compartilhamento de Internet (ICS),
-  echo o script tenta libera-la automaticamente quando rodado como Admin.
+  echo ============================================================
+  echo  DNS automatico falhou. Faca isto e rode este arquivo de novo:
+  echo  1. Win+R -^> ncpa.cpl
+  echo  2. Botao direito no Wi-Fi/Ethernet -^> Propriedades
+  echo  3. Aba Compartilhamento
+  echo  4. DESMARQUE "Permitir que outros usuarios da rede..."
+  echo ============================================================
+  echo.
+  echo Enquanto isso, nos outros PCs use o IP:
+  echo   http://192.168.0.17:5173
+  echo Ou rode no cliente (uma vez):
+  echo   servidor-portatil\cliente\Adicionar-Endereco-Hosts.cmd
+  echo.
   pause
   exit /b 1
 )
 
 echo.
 echo Pronto.
-echo   1) Nos outros PCs use o endereco amigavel, ex.:
-echo      http://sistema.acompomps.rede:5173
-echo   2) No roteador (DHCP/DNS), coloque o IP deste PC como DNS primario.
-echo      Assim Chrome/Firefox/Edge resolvem o nome sem instalar nada no cliente.
+echo   Nome: http://sistema.acompomps.rede:5173
+echo   No roteador, DNS primario = IP deste PC (recomendado).
 echo.
 pause

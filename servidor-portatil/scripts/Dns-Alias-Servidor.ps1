@@ -27,20 +27,12 @@ function Stop-DnsAlias {
   Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -and $_.CommandLine -like '*Dns-Alias-Worker.ps1*' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-
-  # Se paramos o ICS para liberar a porta 53, tenta religar ao parar o DNS
-  if (Test-Path $icsFlag) {
-    try {
-      Start-Service -Name 'SharedAccess' -ErrorAction SilentlyContinue
-    } catch { }
-    Remove-Item $icsFlag -Force -ErrorAction SilentlyContinue
-  }
 }
 
 function Get-Udp53Owner {
   try {
     $ep = Get-NetUDPEndpoint -LocalPort 53 -ErrorAction SilentlyContinue |
-      Where-Object { $_.LocalAddress -eq '0.0.0.0' -or $_.LocalAddress -eq '::' } |
+      Where-Object { $_.LocalAddress -eq '0.0.0.0' -or $_.LocalAddress -eq '::' -or $_.LocalAddress -like '192.168.*' } |
       Select-Object -First 1
     if (-not $ep) { return $null }
     $proc = Get-Process -Id $ep.OwningProcess -ErrorAction SilentlyContinue
@@ -56,28 +48,76 @@ function Get-Udp53Owner {
   } catch { return $null }
 }
 
+function Disable-IcsSharingCom {
+  # Desliga "Permitir que outros usuarios da rede se conectem" em todos os adaptadores.
+  try {
+    $netShare = New-Object -ComObject HNetCfg.HNetShare
+    foreach ($conn in @($netShare.EnumEveryConnection)) {
+      try {
+        $config = $netShare.INetSharingConfigurationForConnection.Invoke($conn)
+        if ($config -and $config.SharingEnabled) {
+          $props = $netShare.NetConnectionProps.Invoke($conn)
+          Write-Host ("  Desativando compartilhamento em: {0}" -f $props.Name)
+          $config.DisableSharing()
+        }
+      } catch { }
+    }
+    return $true
+  } catch {
+    Write-Host ("  Aviso COM ICS: {0}" -f $_.Exception.Message)
+    return $false
+  }
+}
+
 function Unlock-Port53 {
   $owner = Get-Udp53Owner
   if (-not $owner) { return $true }
 
-  Write-Host ("Porta 53 em uso por PID {0} ({1})" -f $owner.Pid, $owner.ProcessName)
-  if ($owner.ServiceName -eq 'SharedAccess' -or $owner.DisplayName -like '*Compartilhamento*') {
-    Write-Host 'Parando ICS (Compartilhamento de Conexao com a Internet) para liberar a porta 53...'
-    try {
-      Stop-Service -Name 'SharedAccess' -Force -ErrorAction Stop
-      Set-Content -Path $icsFlag -Value '1' -Encoding ASCII
-      Start-Sleep -Seconds 2
-    } catch {
-      throw "Nao foi possivel parar o ICS: $($_.Exception.Message). Desative o Compartilhamento de Internet manualmente e tente de novo."
-    }
-    $owner2 = Get-Udp53Owner
-    if ($owner2) {
-      throw "Porta 53 ainda ocupada apos parar ICS (PID $($owner2.Pid))."
-    }
+  Write-Host ("Porta 53 em uso por PID {0} ({1} / {2})" -f $owner.Pid, $owner.ProcessName, $(if ($owner.ServiceName) { $owner.ServiceName } else { '-' }))
+
+  Write-Host 'Tentando liberar a porta 53 (ICS / SharedAccess)...'
+  Disable-IcsSharingCom | Out-Null
+
+  # Desabilita e para o servico (nao mata svchost)
+  try { Set-Service -Name 'SharedAccess' -StartupType Disabled -ErrorAction SilentlyContinue } catch { }
+  & sc.exe config SharedAccess start= disabled | Out-Null
+  & sc.exe stop SharedAccess | Out-Null
+  try { Stop-Service -Name 'SharedAccess' -Force -ErrorAction SilentlyContinue } catch { }
+
+  Set-Content -Path $icsFlag -Value (Get-Date -Format 'o') -Encoding ASCII
+  Start-Sleep -Seconds 3
+
+  $owner2 = Get-Udp53Owner
+  if (-not $owner2) {
+    Write-Host 'Porta 53 liberada.'
     return $true
   }
 
-  throw ("Porta 53 ocupada por '{0}' (PID {1}). Feche esse servico ou desative o DNS/ICS que esta usando a porta." -f $(if ($owner.DisplayName) { $owner.DisplayName } else { $owner.ProcessName }), $owner.Pid)
+  # Segunda tentativa: so COM + espera
+  Write-Host 'Ainda ocupada; nova tentativa...'
+  Disable-IcsSharingCom | Out-Null
+  & sc.exe stop SharedAccess | Out-Null
+  Start-Sleep -Seconds 4
+
+  $owner3 = Get-Udp53Owner
+  if (-not $owner3) {
+    Write-Host 'Porta 53 liberada.'
+    return $true
+  }
+
+  $msg = @"
+Nao foi possivel liberar a porta 53 automaticamente.
+
+Faca manualmente (1 minuto):
+1. Pressione Win+R, digite: ncpa.cpl  e Enter
+2. Clique com o botao direito no Wi-Fi ou Ethernet -> Propriedades
+3. Aba 'Compartilhamento'
+4. DESMARQUE 'Permitir que outros usuarios da rede se conectem...'
+5. OK e rode Liberar-Firewall.cmd de novo
+
+Enquanto isso, use o IP: http://$($(Get-PreferredLanIPv4)):5173
+"@
+  throw $msg.Trim()
 }
 
 if ($Stop) {
@@ -131,6 +171,14 @@ if ($p.HasExited) {
   throw ("Worker DNS encerrou cedo (codigo {0}). {1}" -f $p.ExitCode, $detail)
 }
 Set-Content -Path $pidFile -Value $p.Id -Encoding ASCII
+
+# Confirma resolucao local
+try {
+  $lookup = Resolve-DnsName -Name $alias -Server 127.0.0.1 -Type A -DnsOnly -ErrorAction Stop
+  Write-Host ("Teste local OK: {0} -> {1}" -f $alias, ($lookup | Select-Object -First 1 -ExpandProperty IPAddress))
+} catch {
+  Write-Host "Aviso: teste Resolve-DnsName local falhou (pode ser cache). DNS worker esta rodando."
+}
 
 Write-Host "DNS alias ativo: $alias -> $ip"
 Write-Host "  App: http://${alias}:$($cfg.APP_PORT)"

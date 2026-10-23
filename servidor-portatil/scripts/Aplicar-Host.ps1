@@ -88,6 +88,15 @@ if (Test-Path (Join-Path $frontendDir 'dist')) {
   Write-Host "Atualizado: $distJs"
 }
 
+# Mapa para o script opcional do cliente (hosts)
+$clienteDir = Join-Path (Get-ServidorRoot) 'cliente'
+New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
+@(
+  "ALIAS=$alias"
+  "IP=$ip"
+  "APP_PORT=$appPort"
+) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
+
 Write-Host ''
 Write-Host 'Acesso:'
 Write-Host "  Nome:  http://${alias}:${appPort}"
