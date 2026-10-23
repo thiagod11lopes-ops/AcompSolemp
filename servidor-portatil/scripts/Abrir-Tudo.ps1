@@ -4,12 +4,17 @@
 #   .\Abrir-Tudo.ps1
 #   .\Abrir-Tudo.ps1 -Silent
 #   .\Abrir-Tudo.ps1 -SkipLauncherUi
+#   .\Abrir-Tudo.ps1 -SkipInstallPanel
 #   .\Abrir-Tudo.ps1 -Silent -NoBrowser
+#
+# Fluxo interativo: painel de instalacao/verificacao -> checklist/cronometro -> sobe servicos.
+# -Silent (inicio automatico) pula o painel de instalacao.
 
 param(
   [switch]$Silent,
   [switch]$NoBrowser,
-  [switch]$SkipLauncherUi
+  [switch]$SkipLauncherUi,
+  [switch]$SkipInstallPanel
 )
 
 $ErrorActionPreference = 'Stop'
@@ -96,10 +101,36 @@ function Open-LoginInChrome([string]$Url) {
   }
 }
 
+function Resolve-OmpsInstallPanelPath {
+  $candidates = @(
+    (Join-Path (Split-Path $PSScriptRoot -Parent) 'painel\Painel-Servidor-OMPS.ps1'),
+    (Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'painel\Painel-Servidor-OMPS.ps1')
+  )
+  foreach ($p in $candidates) {
+    if ($p -and (Test-Path -LiteralPath $p)) { return (Resolve-Path -LiteralPath $p).Path }
+  }
+  return $null
+}
+
 try {
   Write-Log '========================================'
   Write-Log '  AcompOPMS - Iniciar Servidor'
   Write-Log '========================================'
+
+  if (-not $Silent -and -not $SkipInstallPanel) {
+    $panelPath = Resolve-OmpsInstallPanelPath
+    if (-not $panelPath) {
+      throw 'Painel de instalacao nao encontrado (Painel-Servidor-OMPS.ps1).'
+    }
+    Write-Log '==> Abrindo painel de instalacao/verificacao...'
+    . $panelPath
+    $installGate = Show-ServidorOmpsInstallPanel -PreStart
+    if ($installGate -ne 'Continue') {
+      Write-Log 'Inicio cancelado no painel de instalacao.'
+      exit 0
+    }
+    Write-Log 'Painel de instalacao OK. Seguindo para checklist/cronometro...'
+  }
 
   $gate = Invoke-LauncherGate -SkipUi:$SkipLauncherUi
   if ($gate -eq 'Abort') {
