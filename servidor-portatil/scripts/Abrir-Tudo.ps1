@@ -1,5 +1,4 @@
-# Um clique: dialogos (checklist/cronometro) + Docker + Supabase + app + Chrome /login.
-# Chamado pelo atalho "Iniciar Servidor OMPS" e pelo inicio automatico do Windows.
+# Um clique: dialogos + Docker + Supabase + app + gateway :80 + Chrome no nome cadastrado.
 #
 # Uso:
 #   .\Abrir-Tudo.ps1
@@ -18,10 +17,7 @@ $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\Launcher-UI.ps1"
 
 $cfg = Import-ServidorConfig
-$hostName = $cfg.SERVER_HOST
 $appPort = $cfg.APP_PORT
-$appUrl = "http://${hostName}:${appPort}"
-$loginUrl = "http://127.0.0.1:${appPort}/login"
 
 $logDir = Join-Path (Get-ServidorRoot) 'logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -65,10 +61,10 @@ function Start-DockerDesktopIfNeeded {
   Write-Log 'Docker pronto.'
 }
 
-function Wait-AppReady {
-  Write-Log "==> Aguardando app em http://127.0.0.1:${appPort} ..."
+function Wait-AppReady([string]$Url) {
+  Write-Log "==> Aguardando app em $Url ..."
   for ($i = 1; $i -le 40; $i++) {
-    $code = curl.exe -s -o NUL -w '%{http_code}' --max-time 5 "http://127.0.0.1:${appPort}/"
+    $code = curl.exe -s -o NUL -w '%{http_code}' --max-time 5 $Url
     if ($code -match '^(200|301|302|304)$') {
       Write-Log "App pronto (HTTP $code)."
       return
@@ -88,15 +84,15 @@ function Get-ChromePath {
   return ($candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1)
 }
 
-function Open-LoginInChrome {
-  Wait-AppReady
+function Open-LoginInChrome([string]$Url) {
+  Wait-AppReady $Url
   $chrome = Get-ChromePath
   if ($chrome) {
-    Write-Log "==> Abrindo Chrome: $loginUrl"
-    Start-Process -FilePath $chrome -ArgumentList @($loginUrl) | Out-Null
+    Write-Log "==> Abrindo Chrome: $Url"
+    Start-Process -FilePath $chrome -ArgumentList @($Url) | Out-Null
   } else {
-    Write-Log "==> Chrome nao encontrado; abrindo navegador padrao: $loginUrl"
-    Start-Process $loginUrl | Out-Null
+    Write-Log "==> Chrome nao encontrado; abrindo navegador padrao: $Url"
+    Start-Process $Url | Out-Null
   }
 }
 
@@ -111,51 +107,53 @@ try {
     exit 0
   }
 
-  # Sincroniza IP da LAN + alias (URLs do app)
   Write-Log '==> Aplicando IP/alias da rede...'
   & "$PSScriptRoot\Aplicar-Host.ps1"
   $cfg = Import-ServidorConfig
-  $hostName = $cfg.SERVER_HOST
-  $appPort = $cfg.APP_PORT
-  $alias = [string]$cfg.SERVER_ALIAS
-  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
-  $appUrl = "http://${hostName}:${appPort}"
-  $aliasUrl = "http://${alias}:${appPort}"
-  $loginUrl = "http://127.0.0.1:${appPort}/login"
+  $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
+  $ip = [string]$cfg.SERVER_HOST
+  # Clientes digitam EXATAMENTE o alias; o navegador usa porta 80 (gateway).
+  $publicLogin = "http://${alias}/login"
+  $localLogin = "http://127.0.0.1:${appPort}/login"
 
-  Write-Log '==> Iniciando DNS do endereco amigavel...'
+  Write-Log '==> Iniciando DNS do nome cadastrado...'
   try {
     & "$PSScriptRoot\Dns-Alias-Servidor.ps1"
   } catch {
     Write-Log "Aviso DNS: $($_.Exception.Message)"
-    Write-Log 'Rode Liberar-Firewall.cmd (Admin) uma vez para o nome amigavel funcionar nos clientes.'
+    Write-Log 'Rode Liberar-Firewall.cmd (Admin) UMA VEZ neste PC servidor.'
   }
 
   Start-DockerDesktopIfNeeded
 
   Write-Log '==> Subindo Supabase + app...'
-  # Nao confiar em $LASTEXITCODE: netsh/curl/docker podem deixar codigo residual.
   & "$PSScriptRoot\Iniciar-Servidor.ps1"
 
-  if (-not $NoBrowser) {
-    Open-LoginInChrome
-  } else {
-    Write-Log "==> Navegador nao aberto (-NoBrowser). Login: $loginUrl"
+  Write-Log '==> Subindo gateway porta 80...'
+  try {
+    & "$PSScriptRoot\Iniciar-Gateway.ps1"
+  } catch {
+    Write-Log "Aviso gateway: $($_.Exception.Message)"
   }
 
-  $pcName = $env:COMPUTERNAME
-  $pcUrl = "http://${pcName}:${appPort}"
-  Write-Log "Pronto. Nome: $aliasUrl | IP: $appUrl | PC: $pcUrl | Local: $loginUrl"
+  if (-not $NoBrowser) {
+    Open-LoginInChrome $publicLogin
+  } else {
+    Write-Log "==> Navegador nao aberto. Acesso: $alias"
+  }
+
+  Write-Log "Pronto. Digite nos outros PCs exatamente: $alias"
   try {
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show(
       ("Servidor pronto.`n`n" +
-       "Neste PC:`n$loginUrl`n`n" +
-       "Nos OUTROS PCs use agora (sem instalar nada):`n$appUrl`n$pcUrl`n`n" +
-       "Nome amigavel ($aliasUrl):`n" +
-       "so funciona depois de Liberar-Firewall + DNS no roteador,`n" +
-       "OU rodando em cada cliente (1x Admin):`n" +
-       "servidor-portatil\cliente\Adicionar-Endereco-Hosts.cmd"),
+       "Nos outros computadores, digite EXATAMENTE isto no navegador:`n`n" +
+       "    $alias`n`n" +
+       "(sem http:// e sem :5173)`n`n" +
+       "Se for a primeira vez neste PC servidor, rode uma vez:`n" +
+       "Liberar-Firewall.cmd (aceite Admin).`n" +
+       "Isso prepara a rede; os usuarios finais nao configuram nada.`n`n" +
+       "IP interno (reserva tecnica): $ip"),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Information

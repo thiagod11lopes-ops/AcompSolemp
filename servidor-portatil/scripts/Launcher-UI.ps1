@@ -52,28 +52,32 @@ function Set-WindowsAutostart([bool]$Enabled) {
   } catch { }
 }
 
+function Normalize-AliasInput([string]$Raw) {
+  $a = [string]$Raw
+  $a = $a.Trim()
+  $a = $a -replace '^\s*https?://', ''
+  $a = $a.Split('/')[0]
+  $a = $a.Split(':')[0]
+  $a = $a.Trim().ToLowerInvariant().TrimEnd('.')
+  if (-not $a) { $a = 'sistema.acompomps.rede' }
+  return $a
+}
+
 function Get-AccessInfo {
   $cfg = Import-ServidorConfig
   $ip = Get-PreferredLanIPv4
   if (-not $ip) { $ip = [string]$cfg.SERVER_HOST }
-  $alias = [string]$cfg.SERVER_ALIAS
-  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
-  $port = [string]$cfg.APP_PORT
-  if (-not $port) { $port = '5173' }
+  $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
   return [pscustomobject]@{
-    Ip      = $ip
-    Alias   = $alias.Trim().ToLowerInvariant().TrimEnd('.')
-    AppPort = $port
-    IpUrl   = "http://${ip}:${port}"
-    AliasUrl = "http://$($alias.Trim().ToLowerInvariant().TrimEnd('.')):${port}"
+    Ip    = $ip
+    Alias = $alias
   }
 }
 
 function Save-ServerAlias([string]$Alias) {
-  $alias = $Alias.Trim().ToLowerInvariant().TrimEnd('.')
-  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
+  $alias = Normalize-AliasInput $Alias
   if ($alias -notmatch '^[a-z0-9]([a-z0-9\-]*\.)+[a-z0-9\-]+$') {
-    throw "Endereco invalido: use algo como sistema.acompomps.rede"
+    throw "Endereco invalido. Digite so o nome, ex.: sistema.acompomps.rede (sem http e sem porta)."
   }
   $cfgPath = Join-Path (Get-ServidorRoot) 'config.env'
   Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
@@ -108,27 +112,27 @@ function Show-ChecklistDialog {
 
   $lblIp = New-Object System.Windows.Forms.Label
   $lblIp.Location = New-Object System.Drawing.Point(20, 100)
-  $lblIp.Size = New-Object System.Drawing.Size(480, 40)
-  $lblIp.Text = "IP numerico atual (rede):`n$($info.IpUrl)"
+  $lblIp.Size = New-Object System.Drawing.Size(480, 36)
+  $lblIp.Text = "IP interno (so referencia): $($info.Ip)"
   $form.Controls.Add($lblIp)
 
   $lblAlias = New-Object System.Windows.Forms.Label
-  $lblAlias.Location = New-Object System.Drawing.Point(20, 150)
-  $lblAlias.Size = New-Object System.Drawing.Size(480, 22)
-  $lblAlias.Text = 'Endereco amigavel (clientes digitam no navegador):'
+  $lblAlias.Location = New-Object System.Drawing.Point(20, 140)
+  $lblAlias.Size = New-Object System.Drawing.Size(480, 40)
+  $lblAlias.Text = "Endereco que os outros PCs devem digitar no navegador`n(exatamente este texto, sem http e sem porta):"
   $form.Controls.Add($lblAlias)
 
   $txtAlias = New-Object System.Windows.Forms.TextBox
-  $txtAlias.Location = New-Object System.Drawing.Point(24, 175)
+  $txtAlias.Location = New-Object System.Drawing.Point(24, 185)
   $txtAlias.Size = New-Object System.Drawing.Size(470, 26)
   $txtAlias.Text = $info.Alias
   $form.Controls.Add($txtAlias)
 
   $lblHint = New-Object System.Windows.Forms.Label
-  $lblHint.Location = New-Object System.Drawing.Point(20, 210)
-  $lblHint.Size = New-Object System.Drawing.Size(480, 55)
+  $lblHint.Location = New-Object System.Drawing.Point(20, 220)
+  $lblHint.Size = New-Object System.Drawing.Size(480, 50)
   $lblHint.ForeColor = [System.Drawing.Color]::DimGray
-  $lblHint.Text = "Ex.: sistema.acompomps.rede`nNos outros PCs: http://SEU-ENDERECO:5173`nO nome continua valido mesmo se o IP mudar."
+  $lblHint.Text = "Exemplo valido: sistema.acompomps.rede`nNos outros PCs: digitar so isso na barra de endereco."
   $form.Controls.Add($lblHint)
 
   $btnOk = New-Object System.Windows.Forms.Button
@@ -200,27 +204,27 @@ function Show-CountdownDialog([int]$Seconds = 60) {
 
   $lblIp = New-Object System.Windows.Forms.Label
   $lblIp.Location = New-Object System.Drawing.Point(20, 130)
-  $lblIp.Size = New-Object System.Drawing.Size(480, 36)
-  $lblIp.Text = "IP numerico atual:`n$($info.IpUrl)"
+  $lblIp.Size = New-Object System.Drawing.Size(480, 28)
+  $lblIp.Text = "IP interno (referencia): $($info.Ip)"
   $script:cdForm.Controls.Add($lblIp)
 
   $lblAlias = New-Object System.Windows.Forms.Label
-  $lblAlias.Location = New-Object System.Drawing.Point(20, 175)
-  $lblAlias.Size = New-Object System.Drawing.Size(480, 22)
-  $lblAlias.Text = 'Endereco amigavel (clientes digitam no navegador):'
+  $lblAlias.Location = New-Object System.Drawing.Point(20, 165)
+  $lblAlias.Size = New-Object System.Drawing.Size(480, 36)
+  $lblAlias.Text = "Endereco exato para os outros PCs (sem http, sem porta):"
   $script:cdForm.Controls.Add($lblAlias)
 
   $script:cdTxtAlias = New-Object System.Windows.Forms.TextBox
-  $script:cdTxtAlias.Location = New-Object System.Drawing.Point(24, 200)
+  $script:cdTxtAlias.Location = New-Object System.Drawing.Point(24, 205)
   $script:cdTxtAlias.Size = New-Object System.Drawing.Size(472, 26)
   $script:cdTxtAlias.Text = $info.Alias
   $script:cdForm.Controls.Add($script:cdTxtAlias)
 
   $lblHint = New-Object System.Windows.Forms.Label
-  $lblHint.Location = New-Object System.Drawing.Point(20, 235)
-  $lblHint.Size = New-Object System.Drawing.Size(480, 40)
+  $lblHint.Location = New-Object System.Drawing.Point(20, 240)
+  $lblHint.Size = New-Object System.Drawing.Size(480, 36)
   $lblHint.ForeColor = [System.Drawing.Color]::DimGray
-  $lblHint.Text = "Nos outros PCs use: http://endereco:5173`nO nome segue valido mesmo se o IP mudar."
+  $lblHint.Text = "Nos outros PCs digite exatamente o texto do campo acima."
   $script:cdForm.Controls.Add($lblHint)
 
   $btnPause = New-Object System.Windows.Forms.Button

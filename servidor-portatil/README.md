@@ -32,15 +32,13 @@ powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Iniciar.ps1
 
 Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito).
 
-Nos outros PCs (Chrome/Firefox/Edge), use o **endereço amigável** configurado no modal, por exemplo:
+Nos outros PCs, digite **exatamente** o nome do campo do modal (sem `http://` e sem porta), por exemplo:
 
-`http://sistema.acompomps.rede:5173`
+`sistema.acompomps.rede`
 
-1. Neste PC, rode **uma vez** `Liberar-Firewall.cmd` (aceite Admin) — sobe o DNS do nome.  
-2. No **roteador**, em DHCP/DNS, defina o DNS primário = IP deste servidor (uma vez).  
-Assim o IP pode mudar e o nome continua igual; o cliente só digita o endereço no navegador.
-
-Reserva por IP: `http://192.168.0.17:5173` (o número atual aparece no modal ao iniciar).
+1. Neste PC servidor, **uma vez**: `Liberar-Firewall.cmd` (Admin).  
+2. No roteador (só na instalação): DNS primário = IP deste servidor.  
+Usuários finais não configuram nada — só digitam o nome no Chrome/Firefox/Edge.
 
 Para parar: duplo clique em `Parar-Servidor.cmd`
 

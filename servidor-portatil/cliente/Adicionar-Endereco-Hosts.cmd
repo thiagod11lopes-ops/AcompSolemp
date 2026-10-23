@@ -1,5 +1,5 @@
 @echo off
-:: OPCIONAL no PC CLIENTE (uma vez), se o DNS do servidor/roteador nao estiver disponivel.
+:: So use se Liberar-Firewall + DNS do roteador nao estiver disponivel.
 net session >nul 2>&1
 if %errorlevel% neq 0 (
   echo Solicitando permissao de Administrador...
@@ -27,7 +27,8 @@ findstr /v /c:"%MARK%" "%HOSTS%" > "%TEMP%\hosts-acomp.tmp"
 echo %IP%	%ALIAS%	%MARK%>> "%TEMP%\hosts-acomp.tmp"
 copy /Y "%TEMP%\hosts-acomp.tmp" "%HOSTS%" >nul
 echo.
-echo Pronto. Abra no navegador:
-echo   http://%ALIAS%:5173
+echo Pronto. Digite EXATAMENTE no navegador:
+echo   %ALIAS%
+echo (sem http e sem porta)
 echo.
 pause

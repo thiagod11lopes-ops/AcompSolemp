@@ -7,6 +7,16 @@ $cfg = Import-ServidorConfig
 Write-Host '==> Parando DNS alias...'
 try { & "$PSScriptRoot\Dns-Alias-Servidor.ps1" -Stop } catch { }
 
+Write-Host '==> Parando gateway :80...'
+try {
+  $compose = Join-Path (Get-ServidorRoot) 'docker-compose.gateway.yml'
+  if (Test-Path $compose) {
+    Push-Location (Get-ServidorRoot)
+    docker compose -f $compose down 2>$null
+    Pop-Location
+  }
+} catch { }
+
 Write-Host '==> Parando frontend...'
 $pidFile = Join-Path (Get-ServidorRoot) 'logs\vite.pid'
 if (Test-Path $pidFile) {

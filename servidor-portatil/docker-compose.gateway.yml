@@ -1,0 +1,14 @@
+# Gateway HTTP porta 80 — acesso so pelo nome cadastrado (sem :5173)
+name: acomp-gateway
+
+services:
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: acomp-gateway
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./nginx/gateway.conf:/etc/nginx/conf.d/default.conf:ro

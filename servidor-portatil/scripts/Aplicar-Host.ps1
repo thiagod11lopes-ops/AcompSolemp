@@ -1,4 +1,4 @@
-# Atualiza IP/hostname no Supabase + server-config.js do frontend (sem rebuild).
+# Atualiza IP/hostname no Supabase + server-config.js (sem rebuild).
 # Uso: .\Aplicar-Host.ps1
 #      .\Aplicar-Host.ps1 -HostAddress 192.168.0.50
 #      .\Aplicar-Host.ps1 -Alias sistema.acompomps.rede
@@ -10,6 +10,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
+
+function Normalize-ServerAlias([string]$Raw) {
+  $a = [string]$Raw
+  $a = $a.Trim()
+  $a = $a -replace '^\s*https?://', ''
+  $a = $a.Split('/')[0]
+  $a = $a.Split(':')[0]
+  $a = $a.Trim().ToLowerInvariant().TrimEnd('.')
+  if (-not $a) { $a = 'sistema.acompomps.rede' }
+  return $a
+}
 
 $cfgPath = Join-Path (Get-ServidorRoot) 'config.env'
 $cfg = Import-ServidorConfig
@@ -25,7 +36,7 @@ if ($HostAddress) {
 }
 
 if ($Alias) {
-  $Alias = $Alias.Trim().ToLowerInvariant().TrimEnd('.')
+  $Alias = Normalize-ServerAlias $Alias
   Set-EnvKey $cfgPath 'SERVER_ALIAS' $Alias
   $cfg.SERVER_ALIAS = $Alias
 }
@@ -34,30 +45,28 @@ $cfg = Import-ServidorConfig
 $dockerDir = $cfg.SUPABASE_DOCKER_DIR
 $frontendDir = $cfg.FRONTEND_DIR
 $ip = $cfg.SERVER_HOST
-$alias = [string]$cfg.SERVER_ALIAS
-if (-not $alias) { $alias = 'sistema.acompomps.rede' }
-$alias = $alias.Trim().ToLowerInvariant().TrimEnd('.')
+$alias = Normalize-ServerAlias ([string]$cfg.SERVER_ALIAS)
+Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
 
-# URLs publicas usam o nome amigavel; IP fica de reserva nos redirects
+# URL publica = so o nome na porta 80 (gateway). Sem :5173 / :8000.
 $publicHost = $alias
-$port = $cfg.SUPABASE_PORT
+$publicUrl = "http://${publicHost}"
 $appPort = $cfg.APP_PORT
-$publicUrl = "http://${publicHost}:${port}"
 $anon = Get-AnonKeyFromSupabase $dockerDir
 
 Write-Host "IP LAN: $ip"
-Write-Host "Alias:  $alias"
-Write-Host "Supabase URL: $publicUrl"
+Write-Host "Alias (exato): $alias"
+Write-Host "URL publica: $publicUrl"
 
 $supabaseEnv = Join-Path $dockerDir '.env'
 Set-EnvKey $supabaseEnv 'SUPABASE_PUBLIC_URL' $publicUrl
 Set-EnvKey $supabaseEnv 'API_EXTERNAL_URL' "$publicUrl/auth/v1"
-Set-EnvKey $supabaseEnv 'SITE_URL' "http://${publicHost}:${appPort}"
+Set-EnvKey $supabaseEnv 'SITE_URL' $publicUrl
 Set-EnvKey $supabaseEnv 'ADDITIONAL_REDIRECT_URLS' (
-  "http://${publicHost}:${appPort},http://${publicHost}:${appPort}/redefinir-senha," +
+  "$publicUrl,$publicUrl/redefinir-senha,$publicUrl/login," +
+  "http://${ip},http://${ip}/redefinir-senha,http://${ip}/login," +
   "http://${ip}:${appPort},http://${ip}:${appPort}/redefinir-senha," +
-  "http://localhost:${appPort},http://localhost:${appPort}/redefinir-senha," +
-  "http://127.0.0.1:${appPort},http://127.0.0.1:${appPort}/redefinir-senha"
+  "http://localhost:${appPort},http://127.0.0.1:${appPort},http://127.0.0.1:${appPort}/login"
 )
 
 $feEnv = Join-Path $frontendDir '.env'
@@ -85,20 +94,30 @@ Write-Host "Atualizado: $jsPath"
 $distJs = Join-Path $frontendDir 'dist\server-config.js'
 if (Test-Path (Join-Path $frontendDir 'dist')) {
   Set-Content -Path $distJs -Value $js -Encoding UTF8
-  Write-Host "Atualizado: $distJs"
 }
 
-# Mapa para o script opcional do cliente (hosts)
 $clienteDir = Join-Path (Get-ServidorRoot) 'cliente'
 New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
 @(
   "ALIAS=$alias"
   "IP=$ip"
-  "APP_PORT=$appPort"
+  "APP_PORT=80"
 ) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
 
+# hosts local (esta maquina)
+$hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
+try {
+  $marker = '# acompopms-alias'
+  $lines = @()
+  if (Test-Path $hostsPath) {
+    $lines = @(Get-Content $hostsPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch [regex]::Escape($marker) })
+  }
+  $lines += "$ip`t$alias`t$marker"
+  Set-Content -Path $hostsPath -Value $lines -Encoding ASCII
+} catch {
+  Write-Host "Aviso hosts local: $($_.Exception.Message)"
+}
+
 Write-Host ''
-Write-Host 'Acesso:'
-Write-Host "  Nome:  http://${alias}:${appPort}"
-Write-Host "  IP:    http://${ip}:${appPort}"
-Write-Host "  Studio nome: $publicUrl"
+Write-Host 'Nos outros PCs digite EXATAMENTE:'
+Write-Host "  $alias"
