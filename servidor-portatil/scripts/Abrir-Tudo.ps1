@@ -111,6 +111,26 @@ try {
     exit 0
   }
 
+  # Sincroniza IP da LAN + alias (URLs do app)
+  Write-Log '==> Aplicando IP/alias da rede...'
+  & "$PSScriptRoot\Aplicar-Host.ps1"
+  $cfg = Import-ServidorConfig
+  $hostName = $cfg.SERVER_HOST
+  $appPort = $cfg.APP_PORT
+  $alias = [string]$cfg.SERVER_ALIAS
+  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
+  $appUrl = "http://${hostName}:${appPort}"
+  $aliasUrl = "http://${alias}:${appPort}"
+  $loginUrl = "http://127.0.0.1:${appPort}/login"
+
+  Write-Log '==> Iniciando DNS do endereco amigavel...'
+  try {
+    & "$PSScriptRoot\Dns-Alias-Servidor.ps1"
+  } catch {
+    Write-Log "Aviso DNS: $($_.Exception.Message)"
+    Write-Log 'Rode Liberar-Firewall.cmd (Admin) uma vez para o nome amigavel funcionar nos clientes.'
+  }
+
   Start-DockerDesktopIfNeeded
 
   Write-Log '==> Subindo Supabase + app...'
@@ -123,13 +143,16 @@ try {
     Write-Log "==> Navegador nao aberto (-NoBrowser). Login: $loginUrl"
   }
 
-  Write-Log "Pronto. App na rede: $appUrl | Login local: $loginUrl"
+  Write-Log "Pronto. Nome: $aliasUrl | IP: $appUrl | Local: $loginUrl"
   try {
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.MessageBox]::Show(
       ("Servidor pronto.`n`n" +
        "Neste PC:`n$loginUrl`n`n" +
-       "Em outro computador na rede (digite so numeros):`n$appUrl"),
+       "Nos outros computadores (endereco amigavel):`n$aliasUrl`n`n" +
+       "IP numerico (reserva):`n$appUrl`n`n" +
+       "Se o nome nao abrir no cliente, rode Liberar-Firewall.cmd neste PC (Admin)`n" +
+       "e no roteador defina DNS = $hostName (uma vez)."),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
       [System.Windows.Forms.MessageBoxIcon]::Information

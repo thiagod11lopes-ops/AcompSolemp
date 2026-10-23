@@ -19,8 +19,8 @@ O outro computador só precisa do navegador: `http://192.168.1.202:5173`.
 
 1. Abra a pasta `servidor-portatil`
 2. Dê **duplo clique** no ícone **Iniciar Servidor OMPS**  
-   - **1ª vez** (ou após interromper o cronômetro): checklist perguntando se a próxima inicialização deve ser automática  
-   - **Próximas vezes** (se marcou automático): caixa com cronômetro de **60 s** — se não interromper, sobe sozinho; se interromper, volta o checklist na vez seguinte  
+   - **1ª vez** (ou após interromper): checklist + IP atual + campo do endereço amigável  
+   - **Próximas vezes** (automático): cronômetro 60 s com **Pausar** / Interromper / Iniciar agora + IP + endereço amigável  
    - Depois sobe Docker + app e abre o Chrome em `/login`
 
 Se o atalho `.lnk` sumir ou for copiado para outro PC, rode uma vez:
@@ -32,11 +32,15 @@ powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Iniciar.ps1
 
 Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito).
 
-No outro PC (mesma rede Wi‑Fi/cabo): digite no navegador só números:
+Nos outros PCs (Chrome/Firefox/Edge), use o **endereço amigável** configurado no modal, por exemplo:
 
-`http://192.168.1.202:5173`
+`http://sistema.acompomps.rede:5173`
 
-(Se o IP do servidor mudar, rode `Detectar-IP.ps1` + `Aplicar-Host.ps1` e use o IP novo, sempre no formato `http://192.168.x.x:5173`.)
+1. Neste PC, rode **uma vez** `Liberar-Firewall.cmd` (aceite Admin) — sobe o DNS do nome.  
+2. No **roteador**, em DHCP/DNS, defina o DNS primário = IP deste servidor (uma vez).  
+Assim o IP pode mudar e o nome continua igual; o cliente só digita o endereço no navegador.
+
+Reserva por IP: `http://192.168.0.17:5173` (o número atual aparece no modal ao iniciar).
 
 Para parar: duplo clique em `Parar-Servidor.cmd`
 

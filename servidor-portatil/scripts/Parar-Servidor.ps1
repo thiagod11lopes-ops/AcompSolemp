@@ -4,6 +4,9 @@ $ErrorActionPreference = 'Stop'
 
 $cfg = Import-ServidorConfig
 
+Write-Host '==> Parando DNS alias...'
+try { & "$PSScriptRoot\Dns-Alias-Servidor.ps1" -Stop } catch { }
+
 Write-Host '==> Parando frontend...'
 $pidFile = Join-Path (Get-ServidorRoot) 'logs\vite.pid'
 if (Test-Path $pidFile) {

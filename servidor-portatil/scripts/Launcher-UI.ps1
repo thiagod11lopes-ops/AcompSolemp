@@ -13,11 +13,7 @@ function Get-LauncherStatePath {
 function Get-LauncherState {
   $path = Get-LauncherStatePath
   if (-not (Test-Path $path)) {
-    return [pscustomobject]@{
-      mode      = 'ask'
-      autoPrefer = $false
-      runCount  = 0
-    }
+    return [pscustomobject]@{ mode = 'ask'; autoPrefer = $false; runCount = 0 }
   }
   try {
     $raw = Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -29,11 +25,7 @@ function Get-LauncherState {
       runCount   = [int]$raw.runCount
     }
   } catch {
-    return [pscustomobject]@{
-      mode       = 'ask'
-      autoPrefer = $false
-      runCount   = 0
-    }
+    return [pscustomobject]@{ mode = 'ask'; autoPrefer = $false; runCount = 0 }
   }
 }
 
@@ -57,12 +49,40 @@ function Set-WindowsAutostart([bool]$Enabled) {
     } else {
       if (Test-Path $remove) { & $remove | Out-Null }
     }
-  } catch {
-    # Melhor esforco: o estado do dialogo ja foi salvo mesmo se a tarefa falhar.
+  } catch { }
+}
+
+function Get-AccessInfo {
+  $cfg = Import-ServidorConfig
+  $ip = Get-PreferredLanIPv4
+  if (-not $ip) { $ip = [string]$cfg.SERVER_HOST }
+  $alias = [string]$cfg.SERVER_ALIAS
+  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
+  $port = [string]$cfg.APP_PORT
+  if (-not $port) { $port = '5173' }
+  return [pscustomobject]@{
+    Ip      = $ip
+    Alias   = $alias.Trim().ToLowerInvariant().TrimEnd('.')
+    AppPort = $port
+    IpUrl   = "http://${ip}:${port}"
+    AliasUrl = "http://$($alias.Trim().ToLowerInvariant().TrimEnd('.')):${port}"
   }
 }
 
+function Save-ServerAlias([string]$Alias) {
+  $alias = $Alias.Trim().ToLowerInvariant().TrimEnd('.')
+  if (-not $alias) { $alias = 'sistema.acompomps.rede' }
+  if ($alias -notmatch '^[a-z0-9]([a-z0-9\-]*\.)+[a-z0-9\-]+$') {
+    throw "Endereco invalido: use algo como sistema.acompomps.rede"
+  }
+  $cfgPath = Join-Path (Get-ServidorRoot) 'config.env'
+  Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
+  return $alias
+}
+
 function Show-ChecklistDialog {
+  $info = Get-AccessInfo
+
   $form = New-Object System.Windows.Forms.Form
   $form.Text = 'Iniciar Servidor OMPS'
   $form.StartPosition = 'CenterScreen'
@@ -70,25 +90,50 @@ function Show-ChecklistDialog {
   $form.MaximizeBox = $false
   $form.MinimizeBox = $false
   $form.TopMost = $true
-  $form.ClientSize = New-Object System.Drawing.Size(460, 240)
+  $form.ClientSize = New-Object System.Drawing.Size(520, 360)
   $form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
 
   $lbl = New-Object System.Windows.Forms.Label
-  $lbl.Location = New-Object System.Drawing.Point(20, 18)
-  $lbl.Size = New-Object System.Drawing.Size(420, 60)
-  $lbl.Text = "Checklist de inicializacao`n`nMarque se deseja que o Servidor OMPS abra e rode sozinho na proxima vez."
+  $lbl.Location = New-Object System.Drawing.Point(20, 14)
+  $lbl.Size = New-Object System.Drawing.Size(480, 40)
+  $lbl.Text = "Checklist de inicializacao`nMarque se a proxima vez deve subir sozinha."
   $form.Controls.Add($lbl)
 
   $chk = New-Object System.Windows.Forms.CheckBox
-  $chk.Location = New-Object System.Drawing.Point(24, 95)
-  $chk.Size = New-Object System.Drawing.Size(410, 40)
+  $chk.Location = New-Object System.Drawing.Point(24, 60)
+  $chk.Size = New-Object System.Drawing.Size(470, 28)
   $chk.Text = 'Na proxima inicializacao, abrir e rodar o Servidor OMPS automaticamente'
   $chk.Checked = $true
   $form.Controls.Add($chk)
 
+  $lblIp = New-Object System.Windows.Forms.Label
+  $lblIp.Location = New-Object System.Drawing.Point(20, 100)
+  $lblIp.Size = New-Object System.Drawing.Size(480, 40)
+  $lblIp.Text = "IP numerico atual (rede):`n$($info.IpUrl)"
+  $form.Controls.Add($lblIp)
+
+  $lblAlias = New-Object System.Windows.Forms.Label
+  $lblAlias.Location = New-Object System.Drawing.Point(20, 150)
+  $lblAlias.Size = New-Object System.Drawing.Size(480, 22)
+  $lblAlias.Text = 'Endereco amigavel (clientes digitam no navegador):'
+  $form.Controls.Add($lblAlias)
+
+  $txtAlias = New-Object System.Windows.Forms.TextBox
+  $txtAlias.Location = New-Object System.Drawing.Point(24, 175)
+  $txtAlias.Size = New-Object System.Drawing.Size(470, 26)
+  $txtAlias.Text = $info.Alias
+  $form.Controls.Add($txtAlias)
+
+  $lblHint = New-Object System.Windows.Forms.Label
+  $lblHint.Location = New-Object System.Drawing.Point(20, 210)
+  $lblHint.Size = New-Object System.Drawing.Size(480, 55)
+  $lblHint.ForeColor = [System.Drawing.Color]::DimGray
+  $lblHint.Text = "Ex.: sistema.acompomps.rede`nNos outros PCs: http://SEU-ENDERECO:5173`nO nome continua valido mesmo se o IP mudar."
+  $form.Controls.Add($lblHint)
+
   $btnOk = New-Object System.Windows.Forms.Button
   $btnOk.Text = 'Continuar'
-  $btnOk.Location = New-Object System.Drawing.Point(230, 175)
+  $btnOk.Location = New-Object System.Drawing.Point(290, 300)
   $btnOk.Size = New-Object System.Drawing.Size(100, 32)
   $btnOk.DialogResult = [System.Windows.Forms.DialogResult]::OK
   $form.Controls.Add($btnOk)
@@ -96,7 +141,7 @@ function Show-ChecklistDialog {
 
   $btnCancel = New-Object System.Windows.Forms.Button
   $btnCancel.Text = 'Cancelar'
-  $btnCancel.Location = New-Object System.Drawing.Point(340, 175)
+  $btnCancel.Location = New-Object System.Drawing.Point(400, 300)
   $btnCancel.Size = New-Object System.Drawing.Size(100, 32)
   $btnCancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
   $form.Controls.Add($btnCancel)
@@ -104,21 +149,22 @@ function Show-ChecklistDialog {
 
   $result = $form.ShowDialog()
   $auto = [bool]$chk.Checked
+  $aliasText = [string]$txtAlias.Text
   $form.Dispose()
 
   return [pscustomobject]@{
     Confirmed = ($result -eq [System.Windows.Forms.DialogResult]::OK)
     AutoNext  = $auto
+    Alias     = $aliasText
   }
 }
 
 function Show-CountdownDialog([int]$Seconds = 60) {
+  $info = Get-AccessInfo
   $script:cdLeft = $Seconds
   $script:cdInterrupted = $false
-  $script:cdForm = $null
-  $script:cdNum = $null
-  $script:cdBar = $null
-  $script:cdTimer = $null
+  $script:cdPaused = $false
+  $script:cdAliasText = $info.Alias
 
   $script:cdForm = New-Object System.Windows.Forms.Form
   $script:cdForm.Text = 'Iniciar Servidor OMPS'
@@ -127,55 +173,119 @@ function Show-CountdownDialog([int]$Seconds = 60) {
   $script:cdForm.MaximizeBox = $false
   $script:cdForm.MinimizeBox = $false
   $script:cdForm.TopMost = $true
-  $script:cdForm.ClientSize = New-Object System.Drawing.Size(420, 220)
+  $script:cdForm.ClientSize = New-Object System.Drawing.Size(520, 390)
   $script:cdForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
 
   $lbl = New-Object System.Windows.Forms.Label
-  $lbl.Location = New-Object System.Drawing.Point(20, 18)
-  $lbl.Size = New-Object System.Drawing.Size(380, 40)
+  $lbl.Location = New-Object System.Drawing.Point(20, 12)
+  $lbl.Size = New-Object System.Drawing.Size(480, 36)
   $lbl.Text = 'O Servidor OMPS iniciara automaticamente se voce nao interromper.'
   $script:cdForm.Controls.Add($lbl)
 
   $script:cdNum = New-Object System.Windows.Forms.Label
-  $script:cdNum.Location = New-Object System.Drawing.Point(20, 70)
-  $script:cdNum.Size = New-Object System.Drawing.Size(380, 60)
+  $script:cdNum.Location = New-Object System.Drawing.Point(20, 50)
+  $script:cdNum.Size = New-Object System.Drawing.Size(480, 50)
   $script:cdNum.TextAlign = 'MiddleCenter'
   $script:cdNum.Font = New-Object System.Drawing.Font('Segoe UI', 28, [System.Drawing.FontStyle]::Bold)
   $script:cdNum.Text = "$Seconds"
   $script:cdForm.Controls.Add($script:cdNum)
 
   $script:cdBar = New-Object System.Windows.Forms.ProgressBar
-  $script:cdBar.Location = New-Object System.Drawing.Point(24, 140)
-  $script:cdBar.Size = New-Object System.Drawing.Size(372, 18)
+  $script:cdBar.Location = New-Object System.Drawing.Point(24, 105)
+  $script:cdBar.Size = New-Object System.Drawing.Size(472, 16)
   $script:cdBar.Minimum = 0
   $script:cdBar.Maximum = $Seconds
   $script:cdBar.Value = $Seconds
   $script:cdForm.Controls.Add($script:cdBar)
 
-  $btn = New-Object System.Windows.Forms.Button
-  $btn.Text = 'Interromper'
-  $btn.Location = New-Object System.Drawing.Point(145, 170)
-  $btn.Size = New-Object System.Drawing.Size(130, 32)
-  $script:cdForm.Controls.Add($btn)
+  $lblIp = New-Object System.Windows.Forms.Label
+  $lblIp.Location = New-Object System.Drawing.Point(20, 130)
+  $lblIp.Size = New-Object System.Drawing.Size(480, 36)
+  $lblIp.Text = "IP numerico atual:`n$($info.IpUrl)"
+  $script:cdForm.Controls.Add($lblIp)
+
+  $lblAlias = New-Object System.Windows.Forms.Label
+  $lblAlias.Location = New-Object System.Drawing.Point(20, 175)
+  $lblAlias.Size = New-Object System.Drawing.Size(480, 22)
+  $lblAlias.Text = 'Endereco amigavel (clientes digitam no navegador):'
+  $script:cdForm.Controls.Add($lblAlias)
+
+  $script:cdTxtAlias = New-Object System.Windows.Forms.TextBox
+  $script:cdTxtAlias.Location = New-Object System.Drawing.Point(24, 200)
+  $script:cdTxtAlias.Size = New-Object System.Drawing.Size(472, 26)
+  $script:cdTxtAlias.Text = $info.Alias
+  $script:cdForm.Controls.Add($script:cdTxtAlias)
+
+  $lblHint = New-Object System.Windows.Forms.Label
+  $lblHint.Location = New-Object System.Drawing.Point(20, 235)
+  $lblHint.Size = New-Object System.Drawing.Size(480, 40)
+  $lblHint.ForeColor = [System.Drawing.Color]::DimGray
+  $lblHint.Text = "Nos outros PCs use: http://endereco:5173`nO nome segue valido mesmo se o IP mudar."
+  $script:cdForm.Controls.Add($lblHint)
+
+  $btnPause = New-Object System.Windows.Forms.Button
+  $btnPause.Text = 'Pausar'
+  $btnPause.Location = New-Object System.Drawing.Point(70, 295)
+  $btnPause.Size = New-Object System.Drawing.Size(110, 32)
+  $script:cdForm.Controls.Add($btnPause)
+
+  $btnInterrupt = New-Object System.Windows.Forms.Button
+  $btnInterrupt.Text = 'Interromper'
+  $btnInterrupt.Location = New-Object System.Drawing.Point(200, 295)
+  $btnInterrupt.Size = New-Object System.Drawing.Size(120, 32)
+  $script:cdForm.Controls.Add($btnInterrupt)
+
+  $btnNow = New-Object System.Windows.Forms.Button
+  $btnNow.Text = 'Iniciar agora'
+  $btnNow.Location = New-Object System.Drawing.Point(340, 295)
+  $btnNow.Size = New-Object System.Drawing.Size(120, 32)
+  $script:cdForm.Controls.Add($btnNow)
+
+  $script:cdStatus = New-Object System.Windows.Forms.Label
+  $script:cdStatus.Location = New-Object System.Drawing.Point(20, 340)
+  $script:cdStatus.Size = New-Object System.Drawing.Size(480, 24)
+  $script:cdStatus.Text = ''
+  $script:cdForm.Controls.Add($script:cdStatus)
 
   $script:cdTimer = New-Object System.Windows.Forms.Timer
   $script:cdTimer.Interval = 1000
   $script:cdTimer.Add_Tick({
+      if ($script:cdPaused) { return }
       $script:cdLeft = $script:cdLeft - 1
       if ($script:cdLeft -lt 0) { $script:cdLeft = 0 }
       $script:cdNum.Text = "$($script:cdLeft)"
       $script:cdBar.Value = $script:cdLeft
       if ($script:cdLeft -le 0) {
         $script:cdTimer.Stop()
+        $script:cdAliasText = [string]$script:cdTxtAlias.Text
         $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
         $script:cdForm.Close()
       }
     })
 
-  $btn.Add_Click({
+  $btnPause.Add_Click({
+      $script:cdPaused = -not $script:cdPaused
+      if ($script:cdPaused) {
+        $btnPause.Text = 'Retomar'
+        $script:cdStatus.Text = 'Contagem pausada.'
+      } else {
+        $btnPause.Text = 'Pausar'
+        $script:cdStatus.Text = ''
+      }
+    })
+
+  $btnInterrupt.Add_Click({
       $script:cdInterrupted = $true
+      $script:cdAliasText = [string]$script:cdTxtAlias.Text
       $script:cdTimer.Stop()
       $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::Abort
+      $script:cdForm.Close()
+    })
+
+  $btnNow.Add_Click({
+      $script:cdAliasText = [string]$script:cdTxtAlias.Text
+      $script:cdTimer.Stop()
+      $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
       $script:cdForm.Close()
     })
 
@@ -188,14 +298,12 @@ function Show-CountdownDialog([int]$Seconds = 60) {
   $interrupted = $script:cdInterrupted -or ($result -eq [System.Windows.Forms.DialogResult]::Abort)
   return [pscustomobject]@{
     Interrupted = [bool]$interrupted
+    Alias       = [string]$script:cdAliasText
   }
 }
 
-# Retorna 'Continue' ou 'Abort'
 function Invoke-LauncherGate {
-  param(
-    [switch]$SkipUi
-  )
+  param([switch]$SkipUi)
 
   if ($SkipUi) { return 'Continue' }
 
@@ -203,6 +311,14 @@ function Invoke-LauncherGate {
 
   if ($state.mode -eq 'countdown') {
     $cd = Show-CountdownDialog -Seconds 60
+    try { Save-ServerAlias $cd.Alias | Out-Null } catch {
+      [System.Windows.Forms.MessageBox]::Show(
+        $_.Exception.Message, 'Endereco invalido',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Warning
+      ) | Out-Null
+      return 'Abort'
+    }
     if ($cd.Interrupted) {
       $state.mode = 'ask'
       $state.autoPrefer = $false
@@ -215,9 +331,15 @@ function Invoke-LauncherGate {
     return 'Continue'
   }
 
-  # mode ask (primeira vez ou apos interrupcao)
   $dlg = Show-ChecklistDialog
-  if (-not $dlg.Confirmed) {
+  if (-not $dlg.Confirmed) { return 'Abort' }
+
+  try { Save-ServerAlias $dlg.Alias | Out-Null } catch {
+    [System.Windows.Forms.MessageBox]::Show(
+      $_.Exception.Message, 'Endereco invalido',
+      [System.Windows.Forms.MessageBoxButtons]::OK,
+      [System.Windows.Forms.MessageBoxIcon]::Warning
+    ) | Out-Null
     return 'Abort'
   }
 

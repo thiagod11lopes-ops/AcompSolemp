@@ -28,8 +28,30 @@ function Import-ServidorConfig {
 
   if (-not $map['SUPABASE_PORT']) { $map['SUPABASE_PORT'] = '8000' }
   if (-not $map['APP_PORT']) { $map['APP_PORT'] = '5173' }
+  if (-not $map['SERVER_ALIAS']) { $map['SERVER_ALIAS'] = 'sistema.acompomps.rede' }
 
   return [pscustomobject]$map
+}
+
+function Get-PreferredLanIPv4 {
+  try {
+    $candidates = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.IPAddress -notlike '127.*' -and
+        $_.IPAddress -notlike '169.*' -and
+        $_.InterfaceAlias -notlike 'vEthernet*' -and
+        $_.InterfaceAlias -notlike '*Docker*' -and
+        $_.InterfaceAlias -notlike '*WSL*' -and
+        $_.InterfaceAlias -notlike '*Loopback*'
+      })
+    $lan = $candidates |
+      Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } |
+      Sort-Object -Property InterfaceMetric |
+      Select-Object -First 1
+    if ($lan) { return [string]$lan.IPAddress }
+    if ($candidates.Count -gt 0) { return [string]$candidates[0].IPAddress }
+  } catch { }
+  return $null
 }
 
 function Get-AnonKeyFromSupabase([string]$DockerDir) {
