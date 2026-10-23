@@ -15,4 +15,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    host: '0.0.0.0',
+    // Permite acesso pelo nome amigavel da LAN (ex.: sistema.acompomps.rede)
+    allowedHosts: true,
+  },
 })
