@@ -25,6 +25,23 @@ function fmtTime(iso) {
   }
 }
 
+/** Reduz a fonte do endereço ate caber em uma linha no card. */
+function fitAddressFont(el) {
+  if (!el) return
+  const parent = el.parentElement
+  if (!parent) return
+  let size = 1.45
+  el.style.fontSize = `${size}rem`
+  el.style.whiteSpace = 'nowrap'
+  const min = 0.65
+  let guard = 0
+  while (el.scrollWidth > parent.clientWidth - 8 && size > min && guard < 40) {
+    size -= 0.05
+    el.style.fontSize = `${size}rem`
+    guard += 1
+  }
+}
+
 function escapeHtml(s) {
   return String(s)
     .replaceAll('&', '&amp;')
@@ -347,6 +364,7 @@ function applyMetrics(m) {
 
   $('updated-at').textContent = fmtTime(m.generatedAt)
   $('stat-alias').textContent = m.host?.alias || '—'
+  fitAddressFont($('stat-alias'))
   $('stat-ip').textContent = m.host?.ip ? `IP ${m.host.ip}` : '—'
   $('stat-cpu').textContent = `${Number(m.cpu?.loadPct || 0).toFixed(0)}%`
   $('stat-mem').textContent = `${Number(m.memory?.usedPct || 0).toFixed(1)}%`
@@ -404,6 +422,7 @@ async function loadMetrics() {
 
 function boot() {
   $('btn-refresh').addEventListener('click', () => void loadMetrics())
+  window.addEventListener('resize', () => fitAddressFont($('stat-alias')))
   void loadMetrics()
   refreshTimer = setInterval(() => void loadMetrics(), 20000)
 }

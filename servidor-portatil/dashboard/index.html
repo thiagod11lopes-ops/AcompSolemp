@@ -43,8 +43,8 @@
     <main class="layout">
       <section class="hero-strip">
         <article class="stat">
-          <span class="stat-label">Alias</span>
-          <strong class="stat-value" id="stat-alias">—</strong>
+          <span class="stat-label">Endereço na rede</span>
+          <strong class="stat-value stat-value-address" id="stat-alias">—</strong>
           <span class="stat-sub" id="stat-ip">—</span>
         </article>
         <article class="stat">
@@ -64,22 +64,22 @@
         </article>
       </section>
 
-      <section class="panel panel-wide">
-        <div class="panel-head">
-          <h2>Uso do AcompOPMS por horário</h2>
-          <p class="panel-desc">Requisições nos últimos dias (gateway / logs locais)</p>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="chart-usage" height="110"></canvas>
-        </div>
-        <p class="chart-note" id="usage-note"></p>
-      </section>
+      <section class="split split-usage-disk">
+        <article class="panel panel-usage">
+          <div class="panel-head">
+            <h2>Uso do AcompOPMS por horário</h2>
+            <p class="panel-desc">Requisições nos últimos dias (gateway / logs locais)</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-usage" height="110"></canvas>
+          </div>
+          <p class="chart-note" id="usage-note"></p>
+        </article>
 
-      <section class="split">
         <article class="panel panel-disk">
           <div class="panel-head">
             <h2>Disco</h2>
-            <p class="panel-desc">Espaço ocupado · pizza 3D</p>
+            <p class="panel-desc">Espaço ocupado por volume</p>
           </div>
           <div id="disk-tabs" class="disk-tabs" hidden></div>
           <div class="pie3d-stage">
@@ -88,14 +88,14 @@
           </div>
           <div id="disk-legend" class="disk-legend"></div>
         </article>
+      </section>
 
-        <article class="panel">
-          <div class="panel-head">
-            <h2>Pastas do pacote</h2>
-            <p class="panel-desc">Tamanho aproximado no disco</p>
-          </div>
-          <div id="packs" class="stack"></div>
-        </article>
+      <section class="panel panel-wide">
+        <div class="panel-head">
+          <h2>Pastas do pacote</h2>
+          <p class="panel-desc">Tamanho aproximado no disco</p>
+        </div>
+        <div id="packs" class="stack"></div>
       </section>
 
       <section class="split">
