@@ -449,7 +449,9 @@ async function loadMetrics() {
 function setGestorStatus(text, kind) {
   const el = $('gestor-status')
   if (!el) return
-  el.textContent = text
+  const msg = (text || '').trim()
+  el.hidden = !msg
+  el.textContent = msg
   el.className = 'gestor-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
 }
 
@@ -579,17 +581,8 @@ async function loadGestorConfig() {
     const data = await res.json()
     const email = data.gestorEmail || ''
     const input = $('input-gestor-email')
-    if (!input.value) input.value = email
-    else if (email && !input.value.trim()) input.value = email
-    if (email) {
-      const hint =
-        data.source === 'database'
-          ? `Detectado no banco: ${email}. Clique em Salvar para fixar como único gestor.`
-          : `Gestor autorizado: ${email}`
-      setGestorStatus(hint, data.source === 'database' ? null : 'ok')
-    } else {
-      setGestorStatus('Nenhum gestor definido. Salve o e-mail com que você entra no Portal do Gestor.', null)
-    }
+    if (input && !input.value.trim() && email) input.value = email
+    setGestorStatus('', null)
   } catch (err) {
     setGestorStatus('Não foi possível carregar a configuração do gestor.', 'bad')
     console.error(err)
@@ -611,7 +604,7 @@ async function saveGestorConfig(event) {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     $('input-gestor-email').value = data.gestorEmail || email
-    setGestorStatus(`Salvo. Único gestor autorizado: ${data.gestorEmail || email}`, 'ok')
+    setGestorStatus('Salvo.', 'ok')
     void loadUserUsage()
   } catch (err) {
     setGestorStatus(err instanceof Error ? err.message : 'Falha ao salvar', 'bad')

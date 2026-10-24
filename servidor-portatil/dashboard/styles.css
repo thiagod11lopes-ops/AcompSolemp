@@ -430,7 +430,7 @@ body.shell.is-loading .board {
   grid-template-columns: minmax(280px, 1.05fr) minmax(0, 1.2fr);
   gap: var(--gap);
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
 }
 
 .collapse-rail {
@@ -438,7 +438,13 @@ body.shell.is-loading .board {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--gap);
   min-height: 0;
-  align-items: start;
+  align-items: stretch;
+  align-self: stretch;
+}
+
+.panel-gestor,
+.collapse-rail > .panel-collapse {
+  height: 100%;
 }
 
 .panel {
@@ -605,15 +611,9 @@ body.shell.is-loading .board {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  flex: 1 1 auto;
   min-height: 0;
-}
-
-.gestor-label {
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 650;
+  justify-content: center;
 }
 
 .gestor-row {
@@ -635,6 +635,15 @@ body.shell.is-loading .board {
   padding: 0.45rem 0.65rem;
   border-radius: 10px;
   outline: none;
+}
+
+.gestor-input::placeholder {
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font);
+  font-weight: 650;
+  font-size: 0.72rem;
 }
 
 .gestor-input:focus {
@@ -661,6 +670,7 @@ body.shell.is-loading .board {
 
 .panel-collapse.is-collapsed {
   padding-bottom: 0.55rem;
+  justify-content: center;
 }
 
 .panel-head-toggle {
@@ -681,6 +691,7 @@ body.shell.is-loading .board {
 
 .panel-collapse.is-collapsed .panel-head-toggle {
   margin-bottom: 0;
+  flex: 1 1 auto;
 }
 
 .panel-collapse:not(.is-collapsed) .panel-head-toggle {

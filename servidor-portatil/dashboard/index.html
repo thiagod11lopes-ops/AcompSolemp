@@ -117,22 +117,21 @@
         <article class="panel panel-gestor">
           <div class="panel-head compact">
             <h2>Gestor do sistema</h2>
-            <p class="panel-desc">Único e-mail do Portal do Gestor</p>
           </div>
           <form id="form-gestor" class="gestor-form" autocomplete="off">
-            <label class="gestor-label" for="input-gestor-email">E-mail (@marinha.mil.br)</label>
             <div class="gestor-row">
               <input
                 id="input-gestor-email"
                 class="gestor-input"
                 type="email"
-                placeholder="nome.sobrenome@marinha.mil.br"
+                placeholder="E-MAIL"
+                aria-label="E-mail"
                 required
               />
               <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
               <button type="button" class="btn-ghost" id="btn-open-emails">E-mails</button>
             </div>
-            <p class="gestor-hint" id="gestor-status">Carregando…</p>
+            <p class="gestor-hint" id="gestor-status" hidden></p>
           </form>
         </article>
 
