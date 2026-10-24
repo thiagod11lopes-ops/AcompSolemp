@@ -247,3 +247,126 @@ ORDER BY lower(trim(ea.email));
     error       = ''
   }
 }
+
+function Format-DurationLabel([long]$Seconds) {
+  if ($Seconds -le 0) { return '0 min' }
+  $d = [int][math]::Floor($Seconds / 86400)
+  $h = [int][math]::Floor(($Seconds % 86400) / 3600)
+  $m = [int][math]::Floor(($Seconds % 3600) / 60)
+  if ($d -gt 0) { return ('{0}d {1}h' -f $d, $h) }
+  if ($h -gt 0) { return ('{0}h {1}min' -f $h, $m) }
+  return ('{0} min' -f [math]::Max(1, $m))
+}
+
+function Get-GestorUsageByUser {
+  $cfg = Get-GestorConfig
+  $gestor = [string]$cfg.gestorEmail
+  if (-not $gestor) {
+    return @{
+      gestorEmail = ''
+      users       = @()
+      error       = 'Salve o e-mail do gestor para ver o tempo de uso.'
+    }
+  }
+
+  $gestorSql = $gestor.Replace("'", "''")
+  $tenantLines = Invoke-SupabaseSql @"
+SELECT t.id::text
+FROM public.tenants t
+WHERE lower(t.owner_email) = lower('$gestorSql')
+LIMIT 1;
+"@
+  $tenantId = ($tenantLines | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+  if (-not $tenantId) {
+    $fallback = Invoke-SupabaseSql @"
+SELECT t.id::text || '|' || lower(t.owner_email)
+FROM public.tenants t
+WHERE nullif(trim(t.owner_email), '') IS NOT NULL
+ORDER BY t.created_at NULLS LAST
+LIMIT 2;
+"@
+    $fb = @($fallback | Where-Object { $_ -and $_.Trim() })
+    if ($fb.Count -eq 1 -and $fb[0] -match '^([^|]+)\|(.+)$') {
+      $tenantId = $Matches[1]
+      $gestor = $Matches[2]
+      $gestorSql = $gestor.Replace("'", "''")
+    }
+  }
+  if (-not $tenantId) {
+    return @{
+      gestorEmail = $gestor
+      users       = @()
+      error       = 'Organizacao do gestor nao encontrada.'
+    }
+  }
+
+  $tenantSql = $tenantId.Replace("'", "''")
+  # Tempo estimado = soma da duracao das sessoes (updated_at/not_after - created_at).
+  $rows = Invoke-SupabaseSql @"
+WITH team AS (
+  SELECT lower('$gestorSql') AS email, 'Gestor'::text AS nome, 'GESTOR'::text AS perfil, 0 AS rk
+  UNION ALL
+  SELECT
+    lower(trim(ea.email)),
+    coalesce(nullif(trim(ea.nome), ''), split_part(lower(trim(ea.email)), '@', 1)),
+    coalesce(nullif(trim(ea.perfil), ''), 'USUARIO'),
+    1
+  FROM public.email_access ea
+  WHERE ea.tenant_id = '$tenantSql'::uuid
+    AND nullif(trim(ea.email), '') IS NOT NULL
+    AND lower(trim(ea.email)) <> lower('$gestorSql')
+),
+sess AS (
+  SELECT
+    lower(u.email) AS email,
+    COALESCE(SUM(
+      GREATEST(
+        0,
+        EXTRACT(EPOCH FROM (
+          COALESCE(s.not_after, s.updated_at, s.refreshed_at::timestamptz, s.created_at)
+          - s.created_at
+        ))
+      )
+    ), 0)::bigint AS seconds_used,
+    COUNT(s.id)::int AS session_count
+  FROM auth.users u
+  LEFT JOIN auth.sessions s ON s.user_id = u.id
+  GROUP BY lower(u.email)
+)
+SELECT
+  t.email,
+  t.nome,
+  t.perfil,
+  COALESCE(s.seconds_used, 0)::text,
+  COALESCE(s.session_count, 0)::text
+FROM team t
+LEFT JOIN sess s ON s.email = t.email
+ORDER BY COALESCE(s.seconds_used, 0) DESC, t.rk, t.email;
+"@
+
+  $users = @()
+  foreach ($line in @($rows)) {
+    if (-not $line -or -not "$line".Trim()) { continue }
+    $p = "$line" -split '\|', 5
+    if ($p.Count -lt 4) { continue }
+    $sec = 0L
+    [void][long]::TryParse($p[3], [ref]$sec)
+    $sessions = 0
+    if ($p.Count -gt 4) { [void][int]::TryParse($p[4], [ref]$sessions) }
+    $users += [pscustomobject]@{
+      email         = $p[0]
+      nome          = $p[1]
+      perfil        = $p[2]
+      seconds       = $sec
+      hours         = [math]::Round($sec / 3600.0, 2)
+      label         = Format-DurationLabel $sec
+      sessionCount  = $sessions
+    }
+  }
+
+  return @{
+    gestorEmail = $gestor
+    users       = @($users)
+    error       = ''
+  }
+}

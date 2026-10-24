@@ -145,6 +145,20 @@ try {
         continue
       }
 
+      if ($path -eq '/api/gestor-usage' -and $req.HttpMethod -eq 'GET') {
+        try {
+          $usage = Get-GestorUsageByUser
+          Send-Text $res ($usage | ConvertTo-Json -Depth 6 -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{
+              gestorEmail = (Get-GestorConfig).gestorEmail
+              users       = @()
+              error       = $_.Exception.Message
+            } | ConvertTo-Json -Depth 4 -Compress) 'application/json; charset=utf-8' 200
+        }
+        continue
+      }
+
       $safe = $path.TrimStart('/').Replace('/', [IO.Path]::DirectorySeparatorChar)
       if ($safe.Contains('..')) {
         Send-Text $res 'Forbidden' 'text/plain; charset=utf-8' 403

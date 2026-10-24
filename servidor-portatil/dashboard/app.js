@@ -4,6 +4,7 @@ const $ = (id) => document.getElementById(id)
 
 let usageChart = null
 let diskChart = null
+let userUsageChart = null
 let refreshTimer = null
 let diskList = []
 let selectedDiskIndex = 0
@@ -451,6 +452,126 @@ function setGestorStatus(text, kind) {
   el.className = 'gestor-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
 }
 
+function shortUserLabel(user) {
+  const nome = (user.nome || '').trim()
+  if (nome && !nome.includes('@')) {
+    return nome.length > 22 ? `${nome.slice(0, 20)}…` : nome
+  }
+  const email = user.email || ''
+  const local = email.split('@')[0] || email
+  return local.length > 22 ? `${local.slice(0, 20)}…` : local
+}
+
+function updateUserUsageChart(payload) {
+  const note = $('user-usage-note')
+  const users = Array.isArray(payload?.users) ? payload.users : []
+  if (payload?.error) {
+    note.textContent = payload.error
+  } else if (!users.length) {
+    note.textContent = 'Nenhum usuário cadastrado para exibir.'
+  } else {
+    note.textContent = `${users.length} usuário(s) · tempo estimado pelas sessões no Supabase.`
+  }
+
+  const ctx = $('chart-user-usage')
+  if (!ctx || typeof Chart === 'undefined') return
+
+  const labels = users.map(shortUserLabel)
+  const valuesHours = users.map((u) => Number(u.hours || 0))
+  const durationLabels = users.map((u) => u.label || '0 min')
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        label: 'Horas',
+        data: valuesHours,
+        borderRadius: 10,
+        borderSkipped: false,
+        backgroundColor: (ctx) => {
+          const i = ctx.dataIndex || 0
+          const palette = ['#7AA892', '#558B71', '#3F6B56', '#A8C4B4', '#E0A84A']
+          return palette[i % palette.length]
+        },
+        maxBarThickness: 28,
+      },
+    ],
+  }
+
+  if (userUsageChart) {
+    userUsageChart.data = data
+    userUsageChart.options.plugins.tooltip.callbacks = {
+      label(ctx) {
+        const i = ctx.dataIndex
+        return durationLabels[i] || `${ctx.parsed.x} h`
+      },
+    }
+    userUsageChart.update('none')
+    return
+  }
+
+  userUsageChart = new Chart(ctx, {
+    type: 'bar',
+    data,
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#10201A',
+          titleColor: '#E8F2EC',
+          bodyColor: '#8FA89B',
+          borderColor: 'rgba(122,168,146,0.3)',
+          borderWidth: 1,
+          callbacks: {
+            label(ctx) {
+              const i = ctx.dataIndex
+              return durationLabels[i] || `${ctx.parsed.x} h`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Horas',
+            color: '#8FA89B',
+            font: { family: 'Outfit', size: 11 },
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#8FA89B',
+            font: { family: 'JetBrains Mono', size: 10 },
+          },
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            color: '#E8F2EC',
+            font: { family: 'Outfit', size: 11, weight: '600' },
+          },
+        },
+      },
+      animation: { duration: 650 },
+    },
+  })
+}
+
+async function loadUserUsage() {
+  try {
+    const res = await fetch('/api/gestor-usage', { cache: 'no-store' })
+    const data = await res.json()
+    updateUserUsageChart(data)
+  } catch (err) {
+    updateUserUsageChart({ users: [], error: 'Falha ao carregar tempo de uso.' })
+    console.error(err)
+  }
+}
+
 async function loadGestorConfig() {
   try {
     const res = await fetch('/api/gestor-config', { cache: 'no-store' })
@@ -490,6 +611,7 @@ async function saveGestorConfig(event) {
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     $('input-gestor-email').value = data.gestorEmail || email
     setGestorStatus(`Salvo. Único gestor autorizado: ${data.gestorEmail || email}`, 'ok')
+    void loadUserUsage()
   } catch (err) {
     setGestorStatus(err instanceof Error ? err.message : 'Falha ao salvar', 'bad')
   } finally {
@@ -567,7 +689,11 @@ function boot() {
   })
   void loadMetrics()
   void loadGestorConfig()
-  refreshTimer = setInterval(() => void loadMetrics(), 20000)
+  void loadUserUsage()
+  refreshTimer = setInterval(() => {
+    void loadMetrics()
+    void loadUserUsage()
+  }, 20000)
 }
 
 document.addEventListener('DOMContentLoaded', boot)

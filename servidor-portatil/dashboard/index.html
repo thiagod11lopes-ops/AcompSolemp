@@ -90,28 +90,41 @@
         </article>
       </section>
 
-      <section class="panel panel-wide panel-gestor">
-        <div class="panel-head">
-          <h2>Gestor do sistema</h2>
-          <p class="panel-desc">
-            Único e-mail autorizado a criar e acessar o Portal do Gestor no AcompOPMS
-          </p>
-        </div>
-        <form id="form-gestor" class="gestor-form" autocomplete="off">
-          <label class="gestor-label" for="input-gestor-email">E-mail do gestor (@marinha.mil.br)</label>
-          <div class="gestor-row">
-            <input
-              id="input-gestor-email"
-              class="gestor-input"
-              type="email"
-              placeholder="nome.sobrenome@marinha.mil.br"
-              required
-            />
-            <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
-            <button type="button" class="btn-ghost" id="btn-open-emails">E-mails cadastrados</button>
+      <section class="split split-usage-gestor">
+        <article class="panel panel-user-usage">
+          <div class="panel-head">
+            <h2>Tempo de uso por usuário</h2>
+            <p class="panel-desc">Estimativa com base nas sessões ativas no sistema</p>
           </div>
-          <p class="gestor-hint" id="gestor-status">Carregando configuração…</p>
-        </form>
+          <div class="chart-wrap chart-wrap-usage-users">
+            <canvas id="chart-user-usage" height="160"></canvas>
+          </div>
+          <p class="chart-note" id="user-usage-note"></p>
+        </article>
+
+        <article class="panel panel-gestor">
+          <div class="panel-head">
+            <h2>Gestor do sistema</h2>
+            <p class="panel-desc">
+              Único e-mail autorizado a criar e acessar o Portal do Gestor no AcompOPMS
+            </p>
+          </div>
+          <form id="form-gestor" class="gestor-form" autocomplete="off">
+            <label class="gestor-label" for="input-gestor-email">E-mail do gestor (@marinha.mil.br)</label>
+            <div class="gestor-row">
+              <input
+                id="input-gestor-email"
+                class="gestor-input"
+                type="email"
+                placeholder="nome.sobrenome@marinha.mil.br"
+                required
+              />
+              <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
+              <button type="button" class="btn-ghost" id="btn-open-emails">E-mails cadastrados</button>
+            </div>
+            <p class="gestor-hint" id="gestor-status">Carregando configuração…</p>
+          </form>
+        </article>
       </section>
 
       <section class="panel panel-wide">
