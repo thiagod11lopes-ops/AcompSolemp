@@ -241,12 +241,58 @@ $chrome = @(
   (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
 ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
+function Maximize-DashboardWindow([System.Diagnostics.Process]$Proc) {
+  if (-not $Proc) { return }
+  try {
+    Add-Type -ErrorAction SilentlyContinue -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class DashboardWin {
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
+"@
+  } catch { }
+  $deadline = (Get-Date).AddSeconds(8)
+  do {
+    try { $Proc.Refresh() } catch { }
+    $hwnd = [IntPtr]::Zero
+    try { $hwnd = $Proc.MainWindowHandle } catch { }
+    if ($hwnd -ne [IntPtr]::Zero) {
+      [void][DashboardWin]::ShowWindowAsync($hwnd, 3) # SW_MAXIMIZE
+      [void][DashboardWin]::SetForegroundWindow($hwnd)
+      return
+    }
+    Start-Sleep -Milliseconds 250
+  } while ((Get-Date) -lt $deadline)
+}
+
 $url = "${prefix}"
 if (-not $NoBrowser) {
   if ($chrome) {
-    Start-Process -FilePath $chrome -ArgumentList @("--app=$url", '--new-window') | Out-Null
+    $screenW = 1920
+    $screenH = 1080
+    $screenX = 0
+    $screenY = 0
+    try {
+      Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+      $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+      $screenW = [Math]::Max(800, $bounds.Width)
+      $screenH = [Math]::Max(600, $bounds.Height)
+      $screenX = $bounds.X
+      $screenY = $bounds.Y
+    } catch { }
+    $chromeProc = Start-Process -FilePath $chrome -ArgumentList @(
+      "--app=$url",
+      '--new-window',
+      '--start-maximized',
+      "--window-position=$screenX,$screenY",
+      "--window-size=$screenW,$screenH"
+    ) -PassThru
+    Maximize-DashboardWindow $chromeProc
   } else {
-    Start-Process $url | Out-Null
+    $browserProc = Start-Process $url -PassThru
+    Maximize-DashboardWindow $browserProc
   }
 }
 
