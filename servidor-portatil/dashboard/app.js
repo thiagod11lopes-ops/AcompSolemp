@@ -651,12 +651,10 @@ function closeDetailModal() {
 
 function syncDetailModalBody() {
   if (!activeDetailTarget) return
-  const modal = $('modal-detail')
-  if (!modal || modal.hidden) return
   const source = $(activeDetailTarget)
   const body = $('modal-detail-body')
   if (!source || !body) return
-  body.innerHTML = source.innerHTML
+  body.innerHTML = source.innerHTML || '<p class="panel-desc">Sem dados para exibir.</p>'
   if (activeDetailTarget === 'containers') {
     const sub = $('modal-detail-sub')
     const summary = $('docker-summary')
@@ -672,10 +670,11 @@ function openDetailModal(btn) {
     sub = ($('docker-summary') && $('docker-summary').textContent) || sub
   }
   activeDetailTarget = target
+  const modal = $('modal-detail')
   $('modal-detail-title').textContent = title
   $('modal-detail-sub').textContent = sub
   syncDetailModalBody()
-  $('modal-detail').hidden = false
+  if (modal) modal.hidden = false
 }
 
 async function openEmailsModal() {
