@@ -16,7 +16,7 @@
     <script src="https://code.highcharts.com/highcharts-3d.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
-  <body>
+  <body class="shell">
     <div class="bg-glow" aria-hidden="true"></div>
     <div class="bg-grid" aria-hidden="true"></div>
 
@@ -40,7 +40,7 @@
       </div>
     </header>
 
-    <main class="layout">
+    <main class="board">
       <section class="hero-strip">
         <article class="stat">
           <span class="stat-label">Endereço na rede</span>
@@ -64,22 +64,21 @@
         </article>
       </section>
 
-      <section class="split split-usage-disk">
+      <section class="mid-grid">
         <article class="panel panel-usage">
-          <div class="panel-head">
-            <h2>Uso do AcompOPMS por horário</h2>
-            <p class="panel-desc">Requisições nos últimos dias (gateway / logs locais)</p>
+          <div class="panel-head compact">
+            <h2>Uso por horário</h2>
+            <p class="panel-desc" id="usage-note">Requisições recentes</p>
           </div>
           <div class="chart-wrap">
-            <canvas id="chart-usage" height="110"></canvas>
+            <canvas id="chart-usage"></canvas>
           </div>
-          <p class="chart-note" id="usage-note"></p>
         </article>
 
         <article class="panel panel-disk">
-          <div class="panel-head">
+          <div class="panel-head compact">
             <h2>Disco</h2>
-            <p class="panel-desc">Espaço ocupado por volume</p>
+            <p class="panel-desc">Espaço ocupado</p>
           </div>
           <div id="disk-tabs" class="disk-tabs" hidden></div>
           <div class="pie3d-stage">
@@ -88,29 +87,26 @@
           </div>
           <div id="disk-legend" class="disk-legend"></div>
         </article>
-      </section>
 
-      <section class="split split-usage-gestor">
         <article class="panel panel-user-usage">
-          <div class="panel-head">
-            <h2>Tempo de uso por usuário</h2>
-            <p class="panel-desc">Estimativa com base nas sessões ativas no sistema</p>
+          <div class="panel-head compact">
+            <h2>Tempo por usuário</h2>
+            <p class="panel-desc" id="user-usage-note">Sessões no sistema</p>
           </div>
           <div class="chart-wrap chart-wrap-usage-users">
-            <canvas id="chart-user-usage" height="160"></canvas>
+            <canvas id="chart-user-usage"></canvas>
           </div>
-          <p class="chart-note" id="user-usage-note"></p>
         </article>
+      </section>
 
+      <section class="bottom-grid">
         <article class="panel panel-gestor">
-          <div class="panel-head">
+          <div class="panel-head compact">
             <h2>Gestor do sistema</h2>
-            <p class="panel-desc">
-              Único e-mail autorizado a criar e acessar o Portal do Gestor no AcompOPMS
-            </p>
+            <p class="panel-desc">Único e-mail do Portal do Gestor</p>
           </div>
           <form id="form-gestor" class="gestor-form" autocomplete="off">
-            <label class="gestor-label" for="input-gestor-email">E-mail do gestor (@marinha.mil.br)</label>
+            <label class="gestor-label" for="input-gestor-email">E-mail (@marinha.mil.br)</label>
             <div class="gestor-row">
               <input
                 id="input-gestor-email"
@@ -120,78 +116,73 @@
                 required
               />
               <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
-              <button type="button" class="btn-ghost" id="btn-open-emails">E-mails cadastrados</button>
+              <button type="button" class="btn-ghost" id="btn-open-emails">E-mails</button>
             </div>
-            <p class="gestor-hint" id="gestor-status">Carregando configuração…</p>
+            <p class="gestor-hint" id="gestor-status">Carregando…</p>
           </form>
         </article>
-      </section>
 
-      <section class="panel panel-wide panel-collapse is-collapsed" data-collapse>
-        <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
-          <div>
-            <h2>Pastas do pacote</h2>
-            <p class="panel-desc">Tamanho aproximado no disco</p>
-          </div>
-          <span class="collapse-arrow" aria-hidden="true"></span>
-        </button>
-        <div id="packs" class="panel-collapse-body stack"></div>
-      </section>
+        <div class="collapse-rail">
+          <article class="panel panel-collapse is-collapsed" data-collapse>
+            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+              <div>
+                <h2>Pastas do pacote</h2>
+                <p class="panel-desc">Tamanho no disco</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="packs" class="panel-collapse-body stack"></div>
+          </article>
 
-      <div id="modal-emails" class="modal" hidden>
-        <div class="modal-backdrop" data-close-modal></div>
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-emails-title">
-          <header class="modal-head">
-            <div>
-              <h2 id="modal-emails-title">E-mails da equipe</h2>
-              <p class="panel-desc" id="modal-emails-sub">Cadastrados pelo gestor</p>
-            </div>
-            <button type="button" class="modal-close" data-close-modal aria-label="Fechar">×</button>
-          </header>
-          <div class="modal-body">
-            <p class="modal-error" id="modal-emails-error" hidden></p>
-            <div class="email-columns">
-              <section class="email-col">
-                <h3>Já fizeram login</h3>
-                <ul id="list-logged-in" class="email-list"></ul>
-              </section>
-              <section class="email-col">
-                <h3>Cadastrados · ainda sem login</h3>
-                <ul id="list-pending" class="email-list"></ul>
-              </section>
-            </div>
-          </div>
+          <article class="panel panel-collapse is-collapsed" data-collapse>
+            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+              <div>
+                <h2>Serviços</h2>
+                <p class="panel-desc">Saúde HTTP</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="services" class="panel-collapse-body stack"></div>
+          </article>
+
+          <article class="panel panel-collapse is-collapsed" data-collapse>
+            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+              <div>
+                <h2>Containers Docker</h2>
+                <p class="panel-desc" id="docker-summary">—</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="containers" class="panel-collapse-body stack stack-scroll"></div>
+          </article>
         </div>
-      </div>
-
-      <section class="split">
-        <article class="panel panel-collapse is-collapsed" data-collapse>
-          <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
-            <div>
-              <h2>Serviços</h2>
-              <p class="panel-desc">Saúde HTTP do stack</p>
-            </div>
-            <span class="collapse-arrow" aria-hidden="true"></span>
-          </button>
-          <div id="services" class="panel-collapse-body stack"></div>
-        </article>
-
-        <article class="panel panel-collapse is-collapsed" data-collapse>
-          <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
-            <div>
-              <h2>Containers Docker</h2>
-              <p class="panel-desc" id="docker-summary">—</p>
-            </div>
-            <span class="collapse-arrow" aria-hidden="true"></span>
-          </button>
-          <div id="containers" class="panel-collapse-body stack stack-scroll"></div>
-        </article>
       </section>
     </main>
 
-    <footer class="foot">
-      <span>AcompOPMS · Monitoramento local</span>
-      <span id="foot-url">http://127.0.0.1:9787</span>
-    </footer>
+    <div id="modal-emails" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-emails-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-emails-title">E-mails da equipe</h2>
+            <p class="panel-desc" id="modal-emails-sub">Cadastrados pelo gestor</p>
+          </div>
+          <button type="button" class="modal-close" data-close-modal aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-error" id="modal-emails-error" hidden></p>
+          <div class="email-columns">
+            <section class="email-col">
+              <h3>Já fizeram login</h3>
+              <ul id="list-logged-in" class="email-list"></ul>
+            </section>
+            <section class="email-col">
+              <h3>Cadastrados · ainda sem login</h3>
+              <ul id="list-pending" class="email-list"></ul>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
