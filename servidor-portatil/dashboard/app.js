@@ -3,7 +3,18 @@
 const $ = (id) => document.getElementById(id)
 
 let usageChart = null
+let diskChart = null
 let refreshTimer = null
+let diskList = []
+let selectedDiskIndex = 0
+let diskInitialized = false
+
+const DISK_COLORS = {
+  used: '#558B71',
+  usedBright: '#7AA892',
+  free: '#2A3F36',
+  freeBright: '#4A6B5C',
+}
 
 function fmtTime(iso) {
   try {
@@ -14,33 +25,198 @@ function fmtTime(iso) {
   }
 }
 
-function meterClass(pct) {
-  if (pct >= 90) return 'is-bad'
-  if (pct >= 75) return 'is-warn'
-  return ''
-}
-
-function renderMeter(container, item) {
-  const pct = Number(item.usedPct || 0)
-  const el = document.createElement('div')
-  el.className = 'meter'
-  el.innerHTML = `
-    <div class="meter-top">
-      <span class="meter-name">${escapeHtml(item.name || item.label || '')}</span>
-      <span class="meter-pct">${pct.toFixed(1)}%</span>
-    </div>
-    <div class="meter-bar"><div class="meter-fill ${meterClass(pct)}" style="width:${Math.min(pct, 100)}%"></div></div>
-    <div class="meter-meta">${escapeHtml(item.usedLabel || '')} / ${escapeHtml(item.totalLabel || '')} · livre ${escapeHtml(item.freeLabel || '')}</div>
-  `
-  container.appendChild(el)
-}
-
 function escapeHtml(s) {
   return String(s)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
+}
+
+function renderDiskLegend(disk) {
+  const legend = $('disk-legend')
+  if (!legend || !disk) {
+    if (legend) legend.innerHTML = ''
+    return
+  }
+  const pct = Number(disk.usedPct || 0)
+  legend.innerHTML = `
+    <div class="disk-legend-item">
+      <span class="disk-swatch" style="background:${DISK_COLORS.usedBright};color:${DISK_COLORS.usedBright}"></span>
+      <div class="disk-legend-text">
+        <div class="disk-legend-title">Em uso · ${pct.toFixed(1)}%</div>
+        <div class="disk-legend-meta">${escapeHtml(disk.usedLabel || '')} de ${escapeHtml(disk.totalLabel || '')}</div>
+      </div>
+    </div>
+    <div class="disk-legend-item">
+      <span class="disk-swatch" style="background:${DISK_COLORS.freeBright};color:${DISK_COLORS.freeBright}"></span>
+      <div class="disk-legend-text">
+        <div class="disk-legend-title">Livre · ${(100 - pct).toFixed(1)}%</div>
+        <div class="disk-legend-meta">${escapeHtml(disk.freeLabel || '')} disponíveis</div>
+      </div>
+    </div>
+  `
+}
+
+function renderDiskTabs() {
+  const tabs = $('disk-tabs')
+  if (!tabs) return
+  if (diskList.length <= 1) {
+    tabs.hidden = true
+    tabs.innerHTML = ''
+    return
+  }
+  tabs.hidden = false
+  tabs.innerHTML = ''
+  diskList.forEach((disk, idx) => {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'disk-tab' + (idx === selectedDiskIndex ? ' is-active' : '')
+    btn.textContent = disk.name || disk.label || `Disco ${idx + 1}`
+    btn.addEventListener('click', () => {
+      selectedDiskIndex = idx
+      renderDiskTabs()
+      updateDiskPie(diskList[selectedDiskIndex])
+    })
+    tabs.appendChild(btn)
+  })
+}
+
+function updateDiskPie(disk) {
+  const el = $('chart-disk')
+  if (!el) return
+  if (!disk) {
+    el.innerHTML = '<p class="panel-desc" style="padding:2rem;text-align:center">Nenhum disco encontrado.</p>'
+    renderDiskLegend(null)
+    return
+  }
+  if (typeof Highcharts === 'undefined') {
+    el.innerHTML = '<p class="panel-desc" style="padding:2rem;text-align:center">Carregando gráfico 3D…</p>'
+    return
+  }
+
+  const used = Math.max(0, Number(disk.usedBytes || 0))
+  const free = Math.max(0, Number(disk.freeBytes || 0))
+  const title = `${disk.name || ''}${disk.label && disk.label !== disk.name ? ' · ' + disk.label : ''}`
+
+  renderDiskLegend(disk)
+
+  const options = {
+    chart: {
+      type: 'pie',
+      backgroundColor: 'transparent',
+      options3d: {
+        enabled: true,
+        alpha: 48,
+        beta: 12,
+        depth: 52,
+        viewDistance: 28,
+      },
+      animation: { duration: 700 },
+      spacing: [8, 8, 8, 8],
+    },
+    title: {
+      text: title,
+      align: 'center',
+      verticalAlign: 'middle',
+      y: 18,
+      style: {
+        color: '#E8F2EC',
+        fontFamily: 'Outfit, sans-serif',
+        fontSize: '0.95rem',
+        fontWeight: '700',
+      },
+    },
+    subtitle: {
+      text: `${Number(disk.usedPct || 0).toFixed(1)}% usado`,
+      align: 'center',
+      verticalAlign: 'middle',
+      y: 38,
+      style: {
+        color: '#8FA89B',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '0.75rem',
+      },
+    },
+    tooltip: {
+      backgroundColor: '#10201A',
+      borderColor: 'rgba(122,168,146,0.35)',
+      style: { color: '#E8F2EC', fontFamily: 'Outfit, sans-serif' },
+      pointFormat: '<b>{point.percentage:.1f}%</b><br/>{point.gb}',
+    },
+    plotOptions: {
+      pie: {
+        allowPointSelect: true,
+        cursor: 'pointer',
+        depth: 52,
+        innerSize: '52%',
+        size: '88%',
+        borderWidth: 0,
+        dataLabels: { enabled: false },
+        showInLegend: false,
+        states: {
+          hover: { brightness: 0.08 },
+        },
+      },
+    },
+    credits: { enabled: false },
+    legend: { enabled: false },
+    series: [
+      {
+        name: 'Disco',
+        type: 'pie',
+        data: [
+          {
+            name: 'Em uso',
+            y: used || 0.001,
+            gb: disk.usedLabel || '',
+            color: {
+              linearGradient: { x1: 0, y1: 0, x2: 1, y2: 1 },
+              stops: [
+                [0, DISK_COLORS.usedBright],
+                [1, DISK_COLORS.used],
+              ],
+            },
+          },
+          {
+            name: 'Livre',
+            y: free || 0.001,
+            gb: disk.freeLabel || '',
+            color: {
+              linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+              stops: [
+                [0, DISK_COLORS.freeBright],
+                [1, DISK_COLORS.free],
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  }
+
+  if (diskChart) {
+    diskChart.destroy()
+    diskChart = null
+  }
+  diskChart = Highcharts.chart('chart-disk', options)
+}
+
+function renderDiskSection(disks) {
+  diskList = Array.isArray(disks) ? disks : []
+  if (selectedDiskIndex >= diskList.length) selectedDiskIndex = 0
+  if (!diskList.length) {
+    renderDiskTabs()
+    updateDiskPie(null)
+    return
+  }
+  if (!diskInitialized && diskList.length) {
+    const cIdx = diskList.findIndex((d) => String(d.name || '').toUpperCase().startsWith('C'))
+    if (cIdx >= 0) selectedDiskIndex = cIdx
+    diskInitialized = true
+  }
+  renderDiskTabs()
+  updateDiskPie(diskList[selectedDiskIndex])
 }
 
 function renderPack(container, item) {
@@ -178,10 +354,7 @@ function applyMetrics(m) {
   $('stat-uptime').textContent = m.uptime?.label || '—'
   $('stat-host').textContent = m.host?.computer || '—'
 
-  const disks = $('disks')
-  disks.innerHTML = ''
-  ;(m.disks || []).forEach((d) => renderMeter(disks, d))
-  if (!(m.disks || []).length) disks.innerHTML = '<p class="panel-desc">Nenhum disco encontrado.</p>'
+  renderDiskSection(m.disks || [])
 
   const packs = $('packs')
   packs.innerHTML = ''

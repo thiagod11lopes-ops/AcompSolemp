@@ -12,6 +12,8 @@
     />
     <link rel="stylesheet" href="/styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="https://code.highcharts.com/highcharts.js" defer></script>
+    <script src="https://code.highcharts.com/highcharts-3d.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>
@@ -74,12 +76,17 @@
       </section>
 
       <section class="split">
-        <article class="panel">
+        <article class="panel panel-disk">
           <div class="panel-head">
             <h2>Disco</h2>
-            <p class="panel-desc">Espaço ocupado por volume</p>
+            <p class="panel-desc">Espaço ocupado · pizza 3D</p>
           </div>
-          <div id="disks" class="stack"></div>
+          <div id="disk-tabs" class="disk-tabs" hidden></div>
+          <div class="pie3d-stage">
+            <div id="chart-disk" class="pie3d-chart"></div>
+            <div class="pie3d-glow" aria-hidden="true"></div>
+          </div>
+          <div id="disk-legend" class="disk-legend"></div>
         </article>
 
         <article class="panel">
