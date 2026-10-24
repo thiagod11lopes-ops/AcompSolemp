@@ -122,11 +122,41 @@ function Invoke-SupabaseSql([string]$Sql) {
   $name = 'supabase-db'
   docker inspect $name 1>$null 2>$null
   if ($LASTEXITCODE -ne 0) { throw 'Container supabase-db nao esta em execucao. Inicie o servidor OMPS.' }
-  $out = $Sql | docker exec -i $name psql -U postgres -d postgres -v ON_ERROR_STOP=1 -t -A -F '|' 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    throw ("Falha ao consultar o banco: {0}" -f ($out | Out-String))
+
+  # UTF-8 via arquivo no container: evita mojibake (ex.: "D├¡ogenes") no console Windows.
+  $id = [guid]::NewGuid().ToString('N')
+  $tmpSql = Join-Path $env:TEMP "acomp-sql-$id.sql"
+  $tmpOut = Join-Path $env:TEMP "acomp-sql-$id.out"
+  $tmpErr = Join-Path $env:TEMP "acomp-sql-$id.err"
+  $remoteSql = "/tmp/acomp-sql-$id.sql"
+  $utf8 = New-Object System.Text.UTF8Encoding $false
+  try {
+    [System.IO.File]::WriteAllText($tmpSql, $Sql.Trim() + "`n", $utf8)
+    docker cp $tmpSql "${name}:$remoteSql" 1>$null
+    if ($LASTEXITCODE -ne 0) { throw 'Falha ao copiar SQL para o container supabase-db.' }
+
+    $p = Start-Process -FilePath 'docker' -ArgumentList @(
+      'exec', '-e', 'PGCLIENTENCODING=UTF8', $name,
+      'psql', '-U', 'postgres', '-d', 'postgres',
+      '-v', 'ON_ERROR_STOP=1', '-t', '-A', '-F', '|',
+      '-f', $remoteSql
+    ) -RedirectStandardOutput $tmpOut -RedirectStandardError $tmpErr `
+      -Wait -PassThru -NoNewWindow
+
+    docker exec $name rm -f $remoteSql 1>$null 2>$null
+
+    if ($p.ExitCode -ne 0) {
+      $errTxt = ''
+      if (Test-Path $tmpErr) { $errTxt = [System.IO.File]::ReadAllText($tmpErr, $utf8) }
+      throw ("Falha ao consultar o banco: {0}" -f $errTxt.Trim())
+    }
+
+    if (-not (Test-Path $tmpOut)) { return @() }
+    $text = [System.IO.File]::ReadAllText($tmpOut, $utf8)
+    return @($text -split '\r?\n' | ForEach-Object { $_.TrimEnd() } | Where-Object { $_ -ne '' })
+  } finally {
+    Remove-Item $tmpSql, $tmpOut, $tmpErr -Force -ErrorAction SilentlyContinue
   }
-  return @($out)
 }
 
 function Get-GestorTeamEmailLists {
