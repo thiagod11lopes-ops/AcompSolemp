@@ -25,21 +25,42 @@ function fmtTime(iso) {
   }
 }
 
-/** Reduz a fonte do endereço ate caber em uma linha no card. */
+/** Reduz a fonte do endereço ate caber inteiro em uma linha no card. */
 function fitAddressFont(el) {
   if (!el) return
-  const parent = el.parentElement
-  if (!parent) return
-  let size = 1.45
-  el.style.fontSize = `${size}rem`
+  const card = el.closest('.stat') || el.parentElement
+  if (!card) return
+
+  const cs = getComputedStyle(card)
+  const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+  const available = Math.max(40, card.clientWidth - padX)
+
   el.style.whiteSpace = 'nowrap'
-  const min = 0.65
-  let guard = 0
-  while (el.scrollWidth > parent.clientWidth - 8 && size > min && guard < 40) {
-    size -= 0.05
-    el.style.fontSize = `${size}rem`
-    guard += 1
+  el.style.overflow = 'visible'
+  el.style.display = 'inline-block'
+  el.style.width = 'auto'
+  el.style.maxWidth = 'none'
+  el.style.transform = 'none'
+
+  let lo = 9
+  let hi = 26
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2
+    el.style.fontSize = `${mid}px`
+    if (el.scrollWidth <= available) lo = mid
+    else hi = mid
   }
+
+  // Folga minima para nao encostar na borda
+  let size = lo
+  el.style.fontSize = `${size}px`
+  while (el.scrollWidth > available && size > 8) {
+    size -= 0.25
+    el.style.fontSize = `${size}px`
+  }
+
+  el.style.display = 'block'
+  el.style.width = '100%'
 }
 
 function escapeHtml(s) {
@@ -364,7 +385,10 @@ function applyMetrics(m) {
 
   $('updated-at').textContent = fmtTime(m.generatedAt)
   $('stat-alias').textContent = m.host?.alias || '—'
-  fitAddressFont($('stat-alias'))
+  requestAnimationFrame(() => {
+    fitAddressFont($('stat-alias'))
+    requestAnimationFrame(() => fitAddressFont($('stat-alias')))
+  })
   $('stat-ip').textContent = m.host?.ip ? `IP ${m.host.ip}` : '—'
   $('stat-cpu').textContent = `${Number(m.cpu?.loadPct || 0).toFixed(0)}%`
   $('stat-mem').textContent = `${Number(m.memory?.usedPct || 0).toFixed(1)}%`

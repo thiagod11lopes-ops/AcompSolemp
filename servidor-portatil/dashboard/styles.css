@@ -237,12 +237,14 @@ body {
 }
 
 .stat-value-address {
+  display: block;
+  width: 100%;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
+  overflow: visible;
   word-break: normal;
-  max-width: 100%;
-  font-size: clamp(0.7rem, 2.1vw, 1.45rem);
+  overflow-wrap: normal;
+  line-height: 1.2;
+  font-size: 1.45rem;
 }
 
 .stat-sub {
