@@ -144,8 +144,14 @@ function Save-State([string]`$Status, [string]`$Message, `$PidValue = `$null) {
 }
 try {
   if (`$action -eq 'start') {
-    & `$target -Silent -SkipInstallPanel -SkipLauncherUi
-    Save-State 'done' 'Servidor iniciado.' `$null
+    # Mesmo fluxo do icone Iniciar Servidor OMPS: painel de programas + contagem regressiva.
+    & `$target
+    `$code = `$LASTEXITCODE
+    if (`$null -ne `$code -and `$code -ne 0) {
+      Save-State 'error' ("Falha ao iniciar (codigo {0})." -f `$code) `$null
+      exit `$code
+    }
+    Save-State 'done' 'Fluxo de inicio concluido.' `$null
   } else {
     & `$target
     Save-State 'done' 'Servidor parado.' `$null
@@ -169,11 +175,15 @@ try {
 
   $tmp = Join-Path $env:TEMP ("acomp-omps-{0}-{1}.ps1" -f $Action, [guid]::NewGuid().ToString('N'))
   Set-Content -LiteralPath $tmp -Value $runner -Encoding UTF8
-  $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $tmp
-  ) -WindowStyle Minimized -PassThru
+
+  # Start precisa de janela STA/normal para WinForms (painel + countdown), como o atalho.
+  $argList = if ($Action -eq 'start') {
+    @('-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', $tmp)
+  } else {
+    @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmp)
+  }
+  $windowStyle = if ($Action -eq 'start') { 'Normal' } else { 'Minimized' }
+  $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argList -WindowStyle $windowStyle -PassThru
 
   Set-ServerActionState $Action 'running' $label $proc.Id | Out-Null
   return (Get-ServerControlSnapshot)
