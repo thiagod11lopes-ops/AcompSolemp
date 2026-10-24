@@ -688,6 +688,37 @@ function wireCollapsePanels() {
   })
 }
 
+function setBootLoaderText(text) {
+  const el = $('boot-loader-text')
+  if (el) el.textContent = text
+}
+
+function hideBootLoader() {
+  const loader = $('boot-loader')
+  document.body.classList.remove('is-loading')
+  if (!loader) return
+  loader.classList.add('is-done')
+  loader.setAttribute('aria-busy', 'false')
+  window.setTimeout(() => {
+    loader.hidden = true
+  }, 420)
+}
+
+async function bootLoad() {
+  setBootLoaderText('Coletando métricas do servidor…')
+  const tasks = [
+    loadMetrics().then(() => setBootLoaderText('Lendo configuração do gestor…')),
+    loadGestorConfig(),
+    loadUserUsage().then(() => setBootLoaderText('Montando gráficos…')),
+  ]
+  await Promise.allSettled(tasks)
+  setBootLoaderText('Quase pronto…')
+  requestAnimationFrame(() => {
+    fitAddressFont($('stat-alias'))
+    hideBootLoader()
+  })
+}
+
 function boot() {
   $('btn-refresh').addEventListener('click', () => void loadMetrics())
   window.addEventListener('resize', () => fitAddressFont($('stat-alias')))
@@ -700,9 +731,7 @@ function boot() {
     if (ev.key === 'Escape') closeEmailsModal()
   })
   wireCollapsePanels()
-  void loadMetrics()
-  void loadGestorConfig()
-  void loadUserUsage()
+  void bootLoad()
   refreshTimer = setInterval(() => {
     void loadMetrics()
     void loadUserUsage()

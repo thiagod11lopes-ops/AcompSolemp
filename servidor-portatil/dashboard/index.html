@@ -16,9 +16,23 @@
     <script src="https://code.highcharts.com/highcharts-3d.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
-  <body class="shell">
+  <body class="shell is-loading">
     <div class="bg-glow" aria-hidden="true"></div>
     <div class="bg-grid" aria-hidden="true"></div>
+
+    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite" aria-busy="true">
+      <div class="boot-loader-card">
+        <div class="boot-orbit" aria-hidden="true">
+          <span class="boot-core"></span>
+          <span class="boot-ring"></span>
+          <span class="boot-ring boot-ring-2"></span>
+        </div>
+        <p class="boot-kicker">AcompOPMS</p>
+        <h2 class="boot-title">Carregando Dashboard</h2>
+        <p class="boot-sub" id="boot-loader-text">Coletando métricas do servidor…</p>
+        <div class="boot-bar" aria-hidden="true"><span class="boot-bar-fill"></span></div>
+      </div>
+    </div>
 
     <header class="top">
       <div class="brand">
