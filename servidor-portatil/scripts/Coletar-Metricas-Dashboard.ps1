@@ -171,7 +171,10 @@ function Get-DashboardMetrics {
     }
   )
   foreach ($s in $services) {
-    $s.ok = ($s.code -ge 200 -and $s.code -lt 400)
+    # Health do Auth/Kong pode responder 401 e mesmo assim estar no ar.
+    $s.ok = ($s.code -ge 200 -and $s.code -lt 400) -or (
+      $s.code -eq 401 -and ($s.id -eq 'supabase' -or $s.id -eq 'authGw')
+    )
     $s.label = if ($s.ok) { 'Online' } elseif ($s.code -eq 0) { 'Offline' } else { "HTTP $($s.code)" }
   }
 

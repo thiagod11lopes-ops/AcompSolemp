@@ -388,6 +388,27 @@ function setPowerHint(text, kind) {
   el.className = 'power-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
 }
 
+function serviceResponding(service) {
+  if (!service) return false
+  if (service.ok) return true
+  const code = Number(service.code || 0)
+  return code >= 200 && code < 500
+}
+
+function computeStackRunning(m) {
+  if (!m) return false
+  const services = m.services || []
+  const byId = Object.fromEntries(services.map((s) => [s.id, s]))
+  const dockerOk = !!m.docker?.running
+  const viteUp = serviceResponding(byId.vite)
+  const gatewayUp = serviceResponding(byId.gateway)
+  const supabaseUp = serviceResponding(byId.supabase)
+  // No ar: Docker + (frontend ou gateway) e preferencialmente API.
+  if (dockerOk && (viteUp || gatewayUp)) return true
+  if (viteUp && supabaseUp) return true
+  return false
+}
+
 function renderServerPowerButton() {
   const btn = $('btn-server-power')
   if (!btn) return
@@ -409,30 +430,33 @@ function renderServerPowerButton() {
     if (kicker) kicker.textContent = 'Em execução'
     btn.title = 'Parar Servidor OMPS'
     if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
-    else if (serverControl.message && serverControl.status === 'done') setPowerHint(serverControl.message, 'ok')
     else setPowerHint('', null)
   } else {
     if (label) label.textContent = 'Iniciar servidor'
-    if (kicker) kicker.textContent = 'Servidor OMPS'
+    if (kicker) kicker.textContent = 'Servidor parado'
     btn.title = 'Iniciar Servidor OMPS'
     if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
-    else if (serverControl.message && serverControl.status === 'done') setPowerHint(serverControl.message, 'ok')
     else setPowerHint('', null)
   }
 }
 
 function applyServerControl(data) {
   if (!data || typeof data !== 'object') return
-  serverControl = {
-    running: !!data.running,
-    busy: !!data.busy || data.status === 'running',
-    action: data.action || 'idle',
-    status: data.status || 'idle',
-    message: data.message || '',
+  const busy = !!data.busy || data.status === 'running'
+  serverControl.busy = busy
+  serverControl.action = data.action || 'idle'
+  serverControl.status = data.status || 'idle'
+  serverControl.message = data.message || ''
+  if (typeof data.running === 'boolean') {
+    serverControl.running = !!data.running
   }
   renderServerPowerButton()
-  if (serverControl.busy) startServerPoll()
-  else stopServerPoll()
+  if (busy) startServerPoll()
+  else {
+    stopServerPoll()
+    // Apos iniciar/parar, reconciliar com metricas reais.
+    void loadMetrics()
+  }
 }
 
 async function loadServerControl() {
@@ -450,7 +474,7 @@ function startServerPoll() {
   serverPollTimer = setInterval(() => {
     void loadServerControl()
     void loadMetrics()
-  }, 2500)
+  }, 2000)
 }
 
 function stopServerPoll() {
@@ -470,7 +494,6 @@ async function toggleServerPower() {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
     applyServerControl(data)
-    void loadMetrics()
   } catch (err) {
     setPowerHint(err instanceof Error ? err.message : 'Falha ao acionar o servidor.', 'bad')
     btn.disabled = false
@@ -485,8 +508,7 @@ function applyMetrics(m) {
   const allOk = dockerOk && servicesOk === servicesTotal && servicesTotal > 0
 
   if (!serverControl.busy) {
-    // Parado = botão "Iniciar servidor"; só "Parar" com stack saudável.
-    serverControl.running = allOk
+    serverControl.running = computeStackRunning(m)
     renderServerPowerButton()
   }
 

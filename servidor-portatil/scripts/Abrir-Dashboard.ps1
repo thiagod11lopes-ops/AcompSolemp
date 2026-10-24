@@ -76,16 +76,14 @@ function Set-ServerActionState(
 }
 
 function Test-OmpsStackRunning {
-  # Checagem leve: app + auth respondendo (sem docker info / docker ps).
+  # Checagem leve e rapida: frontend local e/ou auth respondendo.
+  # Auth health pode ser 401 e ainda assim indicar stack no ar.
   try {
-    $cfg = $null
-    try { $cfg = Import-ServidorConfig } catch { }
-    $appPort = if ($cfg -and $cfg.APP_PORT) { [string]$cfg.APP_PORT } else { '5173' }
-    $appCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 "http://127.0.0.1:${appPort}/" 2>$null
-    $authCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 'http://127.0.0.1:8000/auth/v1/health' 2>$null
-    $appOk = ("$appCode" -match '^(200|301|302|304)$')
-    $authOk = ("$authCode" -match '^(200|301|302|304)$')
-    return ($appOk -and $authOk)
+    $appCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 1 'http://127.0.0.1:5173/login' 2>$null
+    if ("$appCode" -match '^(200|301|302|304)$') { return $true }
+    $authCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 1 'http://127.0.0.1:8000/auth/v1/health' 2>$null
+    if ("$authCode" -match '^(200|301|302|304|401)$') { return $true }
+    return $false
   } catch {
     return $false
   }
