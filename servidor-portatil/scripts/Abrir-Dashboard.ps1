@@ -77,10 +77,23 @@ function Set-ServerActionState(
 
 function Test-OmpsStackRunning {
   try {
-    $m = Get-DashboardMetrics
-    $dockerOk = [bool]$m.docker.running
-    $servicesOk = @($m.services | Where-Object { $_.ok }).Count
-    return ($dockerOk -and $servicesOk -gt 0)
+    if (-not (Test-DockerRunning)) { return $false }
+    $cfg = $null
+    try { $cfg = Import-ServidorConfig } catch { }
+    $appPort = if ($cfg -and $cfg.APP_PORT) { [string]$cfg.APP_PORT } else { '5173' }
+    $urls = @(
+      "http://127.0.0.1:${appPort}/",
+      'http://127.0.0.1:8000/auth/v1/health'
+    )
+    foreach ($url in $urls) {
+      try {
+        $code = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 $url 2>$null
+        if ("$code" -match '^(200|301|302|304)$') { return $true }
+      } catch { }
+    }
+    # Fallback: pelo menos um container acomp-* em execucao
+    $names = @(docker ps --format '{{.Names}}' 2>$null)
+    return (@($names | Where-Object { $_ -match '^acomp-|^supabase-' }).Count -gt 0)
   } catch {
     return $false
   }
