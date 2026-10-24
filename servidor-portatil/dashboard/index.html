@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard — AcompOPMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-kicker">Servidor OMPS</p>
+          <h1>Dashboard</h1>
+        </div>
+      </div>
+      <div class="top-meta">
+        <div class="pill" id="pill-status">Carregando…</div>
+        <div class="meta-block">
+          <span class="meta-label">Atualizado</span>
+          <span class="meta-value" id="updated-at">—</span>
+        </div>
+        <button type="button" class="btn-refresh" id="btn-refresh" title="Atualizar agora">
+          Atualizar
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="hero-strip">
+        <article class="stat">
+          <span class="stat-label">Alias</span>
+          <strong class="stat-value" id="stat-alias">—</strong>
+          <span class="stat-sub" id="stat-ip">—</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">CPU</span>
+          <strong class="stat-value" id="stat-cpu">—</strong>
+          <span class="stat-sub">carga atual</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">Memória</span>
+          <strong class="stat-value" id="stat-mem">—</strong>
+          <span class="stat-sub" id="stat-mem-detail">—</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">Uptime</span>
+          <strong class="stat-value" id="stat-uptime">—</strong>
+          <span class="stat-sub" id="stat-host">—</span>
+        </article>
+      </section>
+
+      <section class="panel panel-wide">
+        <div class="panel-head">
+          <h2>Uso do AcompOPMS por horário</h2>
+          <p class="panel-desc">Requisições nos últimos dias (gateway / logs locais)</p>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-usage" height="110"></canvas>
+        </div>
+        <p class="chart-note" id="usage-note"></p>
+      </section>
+
+      <section class="split">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Disco</h2>
+            <p class="panel-desc">Espaço ocupado por volume</p>
+          </div>
+          <div id="disks" class="stack"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Pastas do pacote</h2>
+            <p class="panel-desc">Tamanho aproximado no disco</p>
+          </div>
+          <div id="packs" class="stack"></div>
+        </article>
+      </section>
+
+      <section class="split">
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Serviços</h2>
+            <p class="panel-desc">Saúde HTTP do stack</p>
+          </div>
+          <div id="services" class="stack"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>Containers Docker</h2>
+            <p class="panel-desc" id="docker-summary">—</p>
+          </div>
+          <div id="containers" class="stack stack-scroll"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>AcompOPMS · Monitoramento local</span>
+      <span id="foot-url">http://127.0.0.1:9787</span>
+    </footer>
+  </body>
+</html>
