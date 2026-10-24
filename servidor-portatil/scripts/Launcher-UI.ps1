@@ -88,39 +88,41 @@ function Save-ServerAlias([string]$Alias) {
 function Show-ChecklistDialog {
   $info = Get-AccessInfo
   $theme = Get-DashTheme
+  $formW = 640
+  $formH = 480
 
   $form = New-Object System.Windows.Forms.Form
-  Set-DashForm $form 'Iniciar Servidor OMPS' 540 400
-  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 24 16))
-  $form.Controls.Add((New-DashTitle 'Checklist de inicializacao' 24 36))
-  $form.Controls.Add((New-DashSub 'Marque se a proxima vez deve subir sozinha.' 24 72 490 28))
+  Set-DashForm $form 'Iniciar Servidor OMPS' $formW $formH
+  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20))
+  $form.Controls.Add((New-DashTitle 'Checklist de inicializacao' 28 42))
+  $form.Controls.Add((New-DashSub 'Defina o endereco da rede e se a proxima vez sobe sozinha.' 28 82 580 28))
 
-  $chk = New-Object System.Windows.Forms.CheckBox
-  $chk.Location = New-Object System.Drawing.Point(28, 110)
-  $chk.Size = New-Object System.Drawing.Size(480, 28)
-  $chk.Text = 'Na proxima inicializacao, abrir e rodar automaticamente'
+  $card = New-DashPanel 24 120 ($formW - 48) 230
+  $form.Controls.Add($card)
+
+  $chk = New-DashCheckBox 'Na proxima inicializacao, abrir e rodar automaticamente' 20 18 560 28
   $chk.Checked = $true
-  $chk.ForeColor = $theme.Text
-  $chk.BackColor = $theme.Bg
-  $chk.Font = Get-DashFont 9.5
-  $form.Controls.Add($chk)
+  $card.Controls.Add($chk)
 
-  $form.Controls.Add((New-DashLabel ("IP interno (referencia): $($info.Ip)") 24 150 490 24))
-  $form.Controls.Add((New-DashSub 'Endereco que os outros PCs devem digitar (sem http e sem porta):' 24 180 490 32))
+  $card.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 20 60 560 24 $theme.Muted $theme.Panel 9))
+  $card.Controls.Add((New-DashLabel 'Endereco para os outros PCs (sem http e sem porta)' 20 96 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
 
-  $txtAlias = New-DashTextBox $info.Alias 28 218 480
-  $form.Controls.Add($txtAlias)
-  $form.Controls.Add((New-DashMutedLabel 'Exemplo: sistema.acompomps.rede' 24 256 480 28))
+  $txtAlias = New-DashTextBox $info.Alias 20 128 560 34
+  $card.Controls.Add($txtAlias)
+  $card.Controls.Add((New-DashLabel 'Exemplo: sistema.acompomps.rede' 20 172 560 24 $theme.Muted $theme.Panel 8.5))
 
-  $btnOk = New-DashButton 'Continuar' 280 330 110 36 'primary'
-  $btnOk.DialogResult = [System.Windows.Forms.DialogResult]::OK
-  $form.Controls.Add($btnOk)
-  $form.AcceptButton = $btnOk
+  $footer = New-DashFooter 400 $formW 80
+  $form.Controls.Add($footer)
 
-  $btnCancel = New-DashButton 'Cancelar' 400 330 110 36 'ghost'
+  $btnCancel = New-DashButton 'Cancelar' ($formW - 280) 20 110 40 'ghost'
   $btnCancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-  $form.Controls.Add($btnCancel)
+  $footer.Controls.Add($btnCancel)
   $form.CancelButton = $btnCancel
+
+  $btnOk = New-DashButton 'Continuar' ($formW - 156) 20 128 40 'primary'
+  $btnOk.DialogResult = [System.Windows.Forms.DialogResult]::OK
+  $footer.Controls.Add($btnOk)
+  $form.AcceptButton = $btnOk
 
   $result = $form.ShowDialog()
   $auto = [bool]$chk.Checked
@@ -141,53 +143,52 @@ function Show-CountdownDialog([int]$Seconds = 60) {
   $script:cdInterrupted = $false
   $script:cdPaused = $false
   $script:cdAliasText = $info.Alias
+  $formW = 640
+  $formH = 560
 
   $script:cdForm = New-Object System.Windows.Forms.Form
-  Set-DashForm $script:cdForm 'Iniciar Servidor OMPS' 540 460
-  $script:cdForm.Controls.Add((New-DashKicker 'Servidor OMPS' 24 16))
-  $script:cdForm.Controls.Add((New-DashTitle 'Contagem regressiva' 24 36))
-  $script:cdForm.Controls.Add((New-DashSub 'O servidor inicia automaticamente se voce nao interromper.' 24 72 490 28))
+  Set-DashForm $script:cdForm 'Iniciar Servidor OMPS' $formW $formH
+  $script:cdForm.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20))
+  $script:cdForm.Controls.Add((New-DashTitle 'Contagem regressiva' 28 42))
+  $script:cdForm.Controls.Add((New-DashSub 'O servidor inicia automaticamente se voce nao interromper.' 28 82 580 28))
 
-  $numPanel = New-DashPanel 24 110 490 100
+  $numPanel = New-DashPanel 24 118 ($formW - 48) 130
   $script:cdForm.Controls.Add($numPanel)
 
-  $script:cdNum = New-Object System.Windows.Forms.Label
-  $script:cdNum.Location = New-Object System.Drawing.Point(0, 8)
-  $script:cdNum.Size = New-Object System.Drawing.Size(490, 56)
-  $script:cdNum.TextAlign = 'MiddleCenter'
-  $script:cdNum.Font = Get-DashFont 32 ([System.Drawing.FontStyle]::Bold)
-  $script:cdNum.ForeColor = $theme.AccentBright
-  $script:cdNum.BackColor = $theme.Panel
-  $script:cdNum.Text = "$Seconds"
+  $script:cdNum = New-DashLabel "$Seconds" 0 10 ($formW - 48) 70 $theme.AccentBright $theme.Panel 36 ([System.Drawing.FontStyle]::Bold) 'MiddleCenter'
   $numPanel.Controls.Add($script:cdNum)
 
   $script:cdBar = New-Object System.Windows.Forms.ProgressBar
-  $script:cdBar.Location = New-Object System.Drawing.Point(24, 72)
-  $script:cdBar.Size = New-Object System.Drawing.Size(442, 14)
+  $script:cdBar.Location = New-Object System.Drawing.Point(28, 90)
+  $script:cdBar.Size = New-Object System.Drawing.Size(($formW - 104), 18)
   $script:cdBar.Minimum = 0
   $script:cdBar.Maximum = $Seconds
   $script:cdBar.Value = $Seconds
   $script:cdBar.Style = 'Continuous'
   $numPanel.Controls.Add($script:cdBar)
 
-  $script:cdForm.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 24 226 490 22))
-  $script:cdForm.Controls.Add((New-DashSub 'Endereco exato para os outros PCs (sem http, sem porta):' 24 252 490 28))
+  $infoCard = New-DashPanel 24 266 ($formW - 48) 150
+  $script:cdForm.Controls.Add($infoCard)
+  $infoCard.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 20 16 560 22 $theme.Muted $theme.Panel 9))
+  $infoCard.Controls.Add((New-DashLabel 'Endereco exato para os outros PCs' 20 48 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
+  $script:cdTxtAlias = New-DashTextBox $info.Alias 20 78 560 34
+  $infoCard.Controls.Add($script:cdTxtAlias)
+  $infoCard.Controls.Add((New-DashLabel 'Digite exatamente este texto na barra de endereco dos outros PCs.' 20 118 560 22 $theme.Muted $theme.Panel 8.5))
 
-  $script:cdTxtAlias = New-DashTextBox $info.Alias 28 286 482
-  $script:cdForm.Controls.Add($script:cdTxtAlias)
-  $script:cdForm.Controls.Add((New-DashMutedLabel 'Nos outros PCs digite exatamente o texto do campo acima.' 24 322 490 28))
+  $footer = New-DashFooter 440 $formW 120
+  $script:cdForm.Controls.Add($footer)
 
-  $btnPause = New-DashButton 'Pausar' 24 370 120 36 'ghost'
-  $script:cdForm.Controls.Add($btnPause)
+  $script:cdStatus = New-DashLabel '' 28 12 ($formW - 56) 22 $theme.Muted $theme.Footer 9
+  $footer.Controls.Add($script:cdStatus)
 
-  $btnInterrupt = New-DashButton 'Interromper' 156 370 140 36 'danger'
-  $script:cdForm.Controls.Add($btnInterrupt)
+  $btnPause = New-DashButton 'Pausar' 28 48 120 40 'ghost'
+  $footer.Controls.Add($btnPause)
 
-  $btnNow = New-DashButton 'Iniciar agora' 310 370 200 36 'primary'
-  $script:cdForm.Controls.Add($btnNow)
+  $btnInterrupt = New-DashButton 'Interromper' 160 48 140 40 'danger'
+  $footer.Controls.Add($btnInterrupt)
 
-  $script:cdStatus = New-DashMutedLabel '' 24 416 490 24
-  $script:cdForm.Controls.Add($script:cdStatus)
+  $btnNow = New-DashButton 'Iniciar agora' ($formW - 220) 48 192 40 'primary'
+  $footer.Controls.Add($btnNow)
 
   $script:cdTimer = New-Object System.Windows.Forms.Timer
   $script:cdTimer.Interval = 1000
@@ -207,13 +208,15 @@ function Show-CountdownDialog([int]$Seconds = 60) {
 
   $btnPause.Add_Click({
       $script:cdPaused = -not $script:cdPaused
+      $t = Get-DashTheme
       if ($script:cdPaused) {
         $btnPause.Text = 'Retomar'
         $script:cdStatus.Text = 'Contagem pausada.'
-        $script:cdStatus.ForeColor = (Get-DashTheme).Warn
+        $script:cdStatus.ForeColor = $t.Warn
       } else {
         $btnPause.Text = 'Pausar'
         $script:cdStatus.Text = ''
+        $script:cdStatus.ForeColor = $t.Muted
       }
     })
 
