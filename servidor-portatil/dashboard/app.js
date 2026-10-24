@@ -456,11 +456,17 @@ async function loadGestorConfig() {
     const res = await fetch('/api/gestor-config', { cache: 'no-store' })
     const data = await res.json()
     const email = data.gestorEmail || ''
-    $('input-gestor-email').value = email
+    const input = $('input-gestor-email')
+    if (!input.value) input.value = email
+    else if (email && !input.value.trim()) input.value = email
     if (email) {
-      setGestorStatus(`Gestor autorizado: ${email}`, 'ok')
+      const hint =
+        data.source === 'database'
+          ? `Detectado no banco: ${email}. Clique em Salvar para fixar como único gestor.`
+          : `Gestor autorizado: ${email}`
+      setGestorStatus(hint, data.source === 'database' ? null : 'ok')
     } else {
-      setGestorStatus('Nenhum gestor definido. Salve um e-mail @marinha.mil.br.', null)
+      setGestorStatus('Nenhum gestor definido. Salve o e-mail com que você entra no Portal do Gestor.', null)
     }
   } catch (err) {
     setGestorStatus('Não foi possível carregar a configuração do gestor.', 'bad')
@@ -534,6 +540,9 @@ async function openEmailsModal() {
     if (data.error) {
       err.hidden = false
       err.textContent = data.error
+    } else {
+      err.hidden = true
+      err.textContent = ''
     }
     renderEmailList($('list-logged-in'), data.loggedIn, 'Nenhum e-mail com login ainda.')
     renderEmailList($('list-pending'), data.pending, 'Nenhum cadastro pendente de primeiro login.')

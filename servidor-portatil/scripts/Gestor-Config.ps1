@@ -8,18 +8,44 @@ function Get-GestorConfigPath {
   return (Join-Path $dir 'gestor-config.json')
 }
 
+function Get-GestorOwnerFromDatabase {
+  try {
+    $lines = Invoke-SupabaseSql @"
+SELECT lower(owner_email)
+FROM public.tenants
+WHERE nullif(trim(owner_email), '') IS NOT NULL
+ORDER BY created_at NULLS LAST, lower(owner_email)
+LIMIT 2;
+"@
+    $owners = @($lines | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim().ToLowerInvariant() })
+    if ($owners.Count -eq 1) { return $owners[0] }
+  } catch { }
+  return ''
+}
+
 function Get-GestorConfig {
   $path = Get-GestorConfigPath
-  if (-not (Test-Path $path)) {
-    return @{ gestorEmail = '' }
+  $email = ''
+  $source = 'none'
+  if (Test-Path $path) {
+    try {
+      $raw = Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json
+      if ($raw.gestorEmail) {
+        $email = ([string]$raw.gestorEmail).Trim().ToLowerInvariant()
+        if ($email) { $source = 'config' }
+      }
+    } catch { }
   }
-  try {
-    $raw = Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json
-    $email = ''
-    if ($raw.gestorEmail) { $email = [string]$raw.gestorEmail }
-    return @{ gestorEmail = $email.Trim().ToLowerInvariant() }
-  } catch {
-    return @{ gestorEmail = '' }
+  if (-not $email) {
+    $detected = Get-GestorOwnerFromDatabase
+    if ($detected) {
+      $email = $detected
+      $source = 'database'
+    }
+  }
+  return @{
+    gestorEmail = $email
+    source      = $source
   }
 }
 
@@ -111,7 +137,7 @@ function Get-GestorTeamEmailLists {
       gestorEmail = ''
       loggedIn    = @()
       pending     = @()
-      error       = 'Configure o e-mail do gestor primeiro.'
+      error       = 'Salve o e-mail do gestor no card acima (o mesmo com que voce entra no Portal do Gestor).'
     }
   }
 
@@ -123,12 +149,30 @@ WHERE lower(t.owner_email) = lower('$gestorSql')
 LIMIT 1;
 "@
   $tenantId = ($tenantLines | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+
+  # Fallback: se o e-mail salvo nao bate com owner_email, usa o unico tenant existente
+  if (-not $tenantId) {
+    $fallback = Invoke-SupabaseSql @"
+SELECT t.id::text || '|' || lower(t.owner_email)
+FROM public.tenants t
+WHERE nullif(trim(t.owner_email), '') IS NOT NULL
+ORDER BY t.created_at NULLS LAST
+LIMIT 2;
+"@
+    $fb = @($fallback | Where-Object { $_ -and $_.Trim() })
+    if ($fb.Count -eq 1 -and $fb[0] -match '^([^|]+)\|(.+)$') {
+      $tenantId = $Matches[1]
+      $gestor = $Matches[2]
+      $gestorSql = $gestor.Replace("'", "''")
+    }
+  }
+
   if (-not $tenantId) {
     return @{
       gestorEmail = $gestor
       loggedIn    = @()
       pending     = @()
-      error       = 'Ainda nao ha organizacao (tenant) para este gestor. Ele precisa cadastrar/entrar uma vez no AcompOPMS.'
+      error       = "Nao achei organizacao para o gestor '$gestor'. Confira se o e-mail salvo e o mesmo do Portal do Gestor."
     }
   }
 
@@ -151,25 +195,25 @@ WHERE ea.tenant_id = '$tenantSql'::uuid
 ORDER BY lower(trim(ea.email));
 "@
 
-  $loggedIn = New-Object System.Collections.Generic.List[object]
-  $pending = New-Object System.Collections.Generic.List[object]
-  foreach ($line in $rows) {
-    if (-not $line -or -not $line.Trim()) { continue }
-    $p = $line -split '\|', 5
+  $loggedIn = @()
+  $pending = @()
+  foreach ($line in @($rows)) {
+    if (-not $line -or -not "$line".Trim()) { continue }
+    $p = "$line" -split '\|', 5
     if ($p.Count -lt 4) { continue }
-    $item = @{
-      email         = $p[0]
-      perfil        = $p[1]
-      nome          = $p[2]
-      lastSignInAt  = if ($p.Count -gt 4) { $p[4] } else { '' }
+    $item = [pscustomobject]@{
+      email        = $p[0]
+      perfil       = $p[1]
+      nome         = $p[2]
+      lastSignInAt = if ($p.Count -gt 4) { $p[4] } else { '' }
     }
-    if ($p[3] -eq '1') { $loggedIn.Add($item) } else { $pending.Add($item) }
+    if ($p[3] -eq '1') { $loggedIn += $item } else { $pending += $item }
   }
 
   return @{
     gestorEmail = $gestor
     loggedIn    = @($loggedIn)
     pending     = @($pending)
-    error       = $null
+    error       = ''
   }
 }
