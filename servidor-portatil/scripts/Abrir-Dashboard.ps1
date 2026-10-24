@@ -189,15 +189,20 @@ try {
   return (Get-ServerControlSnapshot)
 }
 
-# Encerra instancia anterior na mesma porta
+# Encerra instancia anterior na mesma porta (nunca tenta matar PID de sistema)
 try {
   $owners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
     Select-Object -ExpandProperty OwningProcess -Unique
   foreach ($pidOwn in @($owners)) {
-    if ($pidOwn -and $pidOwn -ne $PID) {
-      Stop-Process -Id $pidOwn -Force -ErrorAction SilentlyContinue
+    if ($pidOwn -and $pidOwn -ne $PID -and $pidOwn -gt 8) {
+      $procName = $null
+      try { $procName = (Get-Process -Id $pidOwn -ErrorAction SilentlyContinue).ProcessName } catch { }
+      if ($procName -match '^(powershell|pwsh)$') {
+        Stop-Process -Id $pidOwn -Force -ErrorAction SilentlyContinue
+      }
     }
   }
+  Start-Sleep -Milliseconds 400
 } catch { }
 
 $listener = [System.Net.HttpListener]::new()
@@ -245,65 +250,89 @@ function Read-RequestBody([System.Net.HttpListenerRequest]$Req) {
   try { return $reader.ReadToEnd() } finally { $reader.Close() }
 }
 
-$chrome = @(
-  (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
-  (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
-  (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
-) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+function Start-DashboardBrowserAsync([string]$DashboardUrl) {
+  # Abre o Chrome em processo separado DEPOIS do /api/health responder,
+  # sem bloquear o loop HttpListener (evita "nao foi possivel acessar este site").
+  $chromeCandidates = @(
+    (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
+  )
+  $chromePath = $chromeCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+  $chromeLit = if ($chromePath) { $chromePath.Replace("'", "''") } else { '' }
+  $urlLit = $DashboardUrl.Replace("'", "''")
 
-function Maximize-DashboardWindow([System.Diagnostics.Process]$Proc) {
-  if (-not $Proc) { return }
+  $opener = @"
+`$ErrorActionPreference = 'Continue'
+`$url = '$urlLit'
+`$chrome = '$chromeLit'
+`$ready = `$false
+for (`$i = 0; `$i -lt 50; `$i++) {
   try {
-    Add-Type -ErrorAction SilentlyContinue -TypeDefinition @"
+    `$code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 1 `$url 2>`$null
+    if ("`$code" -match '^(200|301|302|304)$') { `$ready = `$true; break }
+  } catch { }
+  Start-Sleep -Milliseconds 200
+}
+if (-not `$ready) { exit 1 }
+`$screenW = 1920; `$screenH = 1080; `$screenX = 0; `$screenY = 0
+try {
+  Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+  `$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  `$screenW = [Math]::Max(800, `$b.Width)
+  `$screenH = [Math]::Max(600, `$b.Height)
+  `$screenX = `$b.X
+  `$screenY = `$b.Y
+} catch { }
+if (`$chrome) {
+  `$p = Start-Process -FilePath `$chrome -ArgumentList @(
+    "--app=`$url",
+    '--new-window',
+    '--start-maximized',
+    "--window-position=`$screenX,`$screenY",
+    "--window-size=`$screenW,`$screenH"
+  ) -PassThru
+} else {
+  `$p = Start-Process `$url -PassThru
+}
+try {
+  Add-Type -ErrorAction SilentlyContinue -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-public static class DashboardWin {
+public static class DashboardWinOpen {
   [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
 }
+'@
+} catch { }
+`$deadline = (Get-Date).AddSeconds(6)
+do {
+  try { if (`$p) { `$p.Refresh() } } catch { }
+  `$hwnd = [IntPtr]::Zero
+  try { if (`$p) { `$hwnd = `$p.MainWindowHandle } } catch { }
+  if (`$hwnd -ne [IntPtr]::Zero) {
+    try {
+      [void][DashboardWinOpen]::ShowWindowAsync(`$hwnd, 3)
+      [void][DashboardWinOpen]::SetForegroundWindow(`$hwnd)
+    } catch { }
+    break
+  }
+  Start-Sleep -Milliseconds 200
+} while ((Get-Date) -lt `$deadline)
 "@
-  } catch { }
-  $deadline = (Get-Date).AddSeconds(8)
-  do {
-    try { $Proc.Refresh() } catch { }
-    $hwnd = [IntPtr]::Zero
-    try { $hwnd = $Proc.MainWindowHandle } catch { }
-    if ($hwnd -ne [IntPtr]::Zero) {
-      [void][DashboardWin]::ShowWindowAsync($hwnd, 3) # SW_MAXIMIZE
-      [void][DashboardWin]::SetForegroundWindow($hwnd)
-      return
-    }
-    Start-Sleep -Milliseconds 250
-  } while ((Get-Date) -lt $deadline)
+
+  $tmpOpen = Join-Path $env:TEMP ("acomp-dash-open-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
+  Set-Content -LiteralPath $tmpOpen -Value $opener -Encoding UTF8
+  Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', $tmpOpen
+  ) -WindowStyle Hidden | Out-Null
 }
 
 $url = "${prefix}"
 if (-not $NoBrowser) {
-  if ($chrome) {
-    $screenW = 1920
-    $screenH = 1080
-    $screenX = 0
-    $screenY = 0
-    try {
-      Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-      $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-      $screenW = [Math]::Max(800, $bounds.Width)
-      $screenH = [Math]::Max(600, $bounds.Height)
-      $screenX = $bounds.X
-      $screenY = $bounds.Y
-    } catch { }
-    $chromeProc = Start-Process -FilePath $chrome -ArgumentList @(
-      "--app=$url",
-      '--new-window',
-      '--start-maximized',
-      "--window-position=$screenX,$screenY",
-      "--window-size=$screenW,$screenH"
-    ) -PassThru
-    Maximize-DashboardWindow $chromeProc
-  } else {
-    $browserProc = Start-Process $url -PassThru
-    Maximize-DashboardWindow $browserProc
-  }
+  Start-DashboardBrowserAsync $url
 }
 
 try {
