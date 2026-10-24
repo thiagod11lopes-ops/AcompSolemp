@@ -17,6 +17,163 @@ if (-not (Test-Path (Join-Path $webRoot 'index.html'))) {
   throw "Pasta dashboard nao encontrada: $webRoot"
 }
 
+$script:ServerActionStatePath = Join-Path $root 'state\server-action.json'
+$script:ScriptsDir = $PSScriptRoot
+
+function Get-ServerActionState {
+  $fallback = [ordered]@{
+    action    = 'idle'
+    status    = 'idle'
+    message   = ''
+    updatedAt = (Get-Date).ToString('o')
+    pid       = $null
+  }
+  if (-not (Test-Path -LiteralPath $script:ServerActionStatePath)) {
+    return [pscustomobject]$fallback
+  }
+  try {
+    $raw = Get-Content -LiteralPath $script:ServerActionStatePath -Raw -Encoding UTF8
+    $obj = $raw | ConvertFrom-Json
+    if (-not $obj) { return [pscustomobject]$fallback }
+    $pidVal = $null
+    try { $pidVal = [int]$obj.pid } catch { $pidVal = $null }
+    if ($pidVal -and ($obj.status -eq 'running')) {
+      $proc = Get-Process -Id $pidVal -ErrorAction SilentlyContinue
+      if (-not $proc) {
+        $obj.status = 'idle'
+        $obj.action = 'idle'
+        if (-not $obj.message) { $obj.message = 'Processo finalizado.' }
+        $obj.pid = $null
+        $obj.updatedAt = (Get-Date).ToString('o')
+        Set-ServerActionState $obj.action $obj.status $obj.message $null
+      }
+    }
+    return $obj
+  } catch {
+    return [pscustomobject]$fallback
+  }
+}
+
+function Set-ServerActionState(
+  [string]$Action,
+  [string]$Status,
+  [string]$Message = '',
+  $ProcessId = $null
+) {
+  $dir = Split-Path -Parent $script:ServerActionStatePath
+  if (-not (Test-Path -LiteralPath $dir)) {
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  }
+  $payload = [ordered]@{
+    action    = $Action
+    status    = $Status
+    message   = $Message
+    updatedAt = (Get-Date).ToString('o')
+    pid       = $ProcessId
+  }
+  ($payload | ConvertTo-Json -Compress) | Set-Content -LiteralPath $script:ServerActionStatePath -Encoding UTF8
+  return [pscustomobject]$payload
+}
+
+function Test-OmpsStackRunning {
+  try {
+    $m = Get-DashboardMetrics
+    $dockerOk = [bool]$m.docker.running
+    $servicesOk = @($m.services | Where-Object { $_.ok }).Count
+    return ($dockerOk -and $servicesOk -gt 0)
+  } catch {
+    return $false
+  }
+}
+
+function Get-ServerControlSnapshot {
+  $state = Get-ServerActionState
+  $running = Test-OmpsStackRunning
+  return [ordered]@{
+    running   = $running
+    action    = [string]$state.action
+    status    = [string]$state.status
+    message   = [string]$state.message
+    updatedAt = [string]$state.updatedAt
+    busy      = ([string]$state.status -eq 'running')
+    canStart  = (-not $running) -and ([string]$state.status -ne 'running')
+    canStop   = $running -and ([string]$state.status -ne 'running')
+  }
+}
+
+function Start-OmpsServerJob([ValidateSet('start', 'stop')][string]$Action) {
+  $state = Get-ServerActionState
+  if ([string]$state.status -eq 'running') {
+    throw "Ja existe uma operacao em andamento ($($state.action))."
+  }
+
+  $target = if ($Action -eq 'start') {
+    Join-Path $script:ScriptsDir 'Abrir-Tudo.ps1'
+  } else {
+    Join-Path $script:ScriptsDir 'Parar-Servidor.ps1'
+  }
+  if (-not (Test-Path -LiteralPath $target)) {
+    throw "Script nao encontrado: $target"
+  }
+
+  $statePath = $script:ServerActionStatePath
+  $label = if ($Action -eq 'start') { 'Iniciando Servidor OMPS…' } else { 'Parando Servidor OMPS…' }
+  Set-ServerActionState $Action 'running' $label $null | Out-Null
+
+  $runner = @"
+`$ErrorActionPreference = 'Stop'
+`$statePath = '$($statePath.Replace("'", "''"))'
+`$action = '$Action'
+`$target = '$($target.Replace("'", "''"))'
+function Save-State([string]`$Status, [string]`$Message, `$PidValue = `$null) {
+  `$dir = Split-Path -Parent `$statePath
+  if (-not (Test-Path -LiteralPath `$dir)) { New-Item -ItemType Directory -Force -Path `$dir | Out-Null }
+  `$payload = [ordered]@{
+    action    = `$action
+    status    = `$Status
+    message   = `$Message
+    updatedAt = (Get-Date).ToString('o')
+    pid       = `$PidValue
+  }
+  (`$payload | ConvertTo-Json -Compress) | Set-Content -LiteralPath `$statePath -Encoding UTF8
+}
+try {
+  if (`$action -eq 'start') {
+    & `$target -Silent -SkipInstallPanel -SkipLauncherUi
+    Save-State 'done' 'Servidor iniciado.' `$null
+  } else {
+    & `$target
+    Save-State 'done' 'Servidor parado.' `$null
+  }
+} catch {
+  Save-State 'error' `$_.Exception.Message `$null
+  exit 1
+} finally {
+  Start-Sleep -Milliseconds 400
+  try {
+    `$cur = Get-Content -LiteralPath `$statePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (`$cur -and `$cur.status -ne 'running') {
+      `$cur.action = 'idle'
+      `$cur.pid = `$null
+      `$cur.updatedAt = (Get-Date).ToString('o')
+      (`$cur | ConvertTo-Json -Compress) | Set-Content -LiteralPath `$statePath -Encoding UTF8
+    }
+  } catch { }
+}
+"@
+
+  $tmp = Join-Path $env:TEMP ("acomp-omps-{0}-{1}.ps1" -f $Action, [guid]::NewGuid().ToString('N'))
+  Set-Content -LiteralPath $tmp -Value $runner -Encoding UTF8
+  $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', $tmp
+  ) -WindowStyle Minimized -PassThru
+
+  Set-ServerActionState $Action 'running' $label $proc.Id | Out-Null
+  return (Get-ServerControlSnapshot)
+}
+
 # Encerra instancia anterior na mesma porta
 try {
   $owners = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
@@ -106,6 +263,35 @@ try {
 
       if ($path -eq '/api/health') {
         Send-Text $res '{"ok":true}' 'application/json; charset=utf-8'
+        continue
+      }
+
+      if ($path -eq '/api/server') {
+        if ($req.HttpMethod -eq 'GET') {
+          Send-Text $res ((Get-ServerControlSnapshot) | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+          continue
+        }
+        Send-Text $res '{"error":"Method not allowed"}' 'application/json; charset=utf-8' 405
+        continue
+      }
+
+      if ($path -eq '/api/server/start' -and $req.HttpMethod -eq 'POST') {
+        try {
+          $snap = Start-OmpsServerJob -Action start
+          Send-Text $res ($snap | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 409
+        }
+        continue
+      }
+
+      if ($path -eq '/api/server/stop' -and $req.HttpMethod -eq 'POST') {
+        try {
+          $snap = Start-OmpsServerJob -Action stop
+          Send-Text $res ($snap | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 409
+        }
         continue
       }
 

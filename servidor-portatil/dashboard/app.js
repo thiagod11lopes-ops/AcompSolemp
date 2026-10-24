@@ -6,9 +6,17 @@ let usageChart = null
 let diskChart = null
 let userUsageChart = null
 let refreshTimer = null
+let serverPollTimer = null
 let diskList = []
 let selectedDiskIndex = 0
 let diskInitialized = false
+let serverControl = {
+  running: false,
+  busy: false,
+  action: 'idle',
+  status: 'idle',
+  message: '',
+}
 
 const DISK_COLORS = {
   used: '#558B71',
@@ -371,11 +379,115 @@ function updateUsageChart(usage) {
   })
 }
 
+function setPowerHint(text, kind) {
+  const el = $('power-hint')
+  if (!el) return
+  const msg = (text || '').trim()
+  el.hidden = !msg
+  el.textContent = msg
+  el.className = 'power-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
+}
+
+function renderServerPowerButton() {
+  const btn = $('btn-server-power')
+  if (!btn) return
+  const busy = !!serverControl.busy
+  const running = !!serverControl.running
+  const mode = busy ? 'busy' : running ? 'stop' : 'start'
+  btn.className = `power-btn is-${mode}`
+  btn.disabled = busy
+  const label = $('power-label')
+  const kicker = $('power-kicker')
+  if (busy) {
+    const starting = serverControl.action === 'start'
+    if (label) label.textContent = starting ? 'Iniciando…' : 'Parando…'
+    if (kicker) kicker.textContent = 'Servidor OMPS'
+    btn.title = starting ? 'Iniciando Servidor OMPS…' : 'Parando Servidor OMPS…'
+    setPowerHint(serverControl.message || (starting ? 'Subindo serviços…' : 'Encerrando serviços…'), null)
+  } else if (running) {
+    if (label) label.textContent = 'Parar'
+    if (kicker) kicker.textContent = 'Em execução'
+    btn.title = 'Parar Servidor OMPS'
+    if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
+    else if (serverControl.message && serverControl.status === 'done') setPowerHint(serverControl.message, 'ok')
+    else setPowerHint('', null)
+  } else {
+    if (label) label.textContent = 'Iniciar'
+    if (kicker) kicker.textContent = 'Servidor OMPS'
+    btn.title = 'Iniciar Servidor OMPS'
+    if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
+    else if (serverControl.message && serverControl.status === 'done') setPowerHint(serverControl.message, 'ok')
+    else setPowerHint('', null)
+  }
+}
+
+function applyServerControl(data) {
+  if (!data || typeof data !== 'object') return
+  serverControl = {
+    running: !!data.running,
+    busy: !!data.busy || data.status === 'running',
+    action: data.action || 'idle',
+    status: data.status || 'idle',
+    message: data.message || '',
+  }
+  renderServerPowerButton()
+  if (serverControl.busy) startServerPoll()
+  else stopServerPoll()
+}
+
+async function loadServerControl() {
+  try {
+    const res = await fetch('/api/server', { cache: 'no-store' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    applyServerControl(await res.json())
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+function startServerPoll() {
+  if (serverPollTimer) return
+  serverPollTimer = setInterval(() => {
+    void loadServerControl()
+    void loadMetrics()
+  }, 2500)
+}
+
+function stopServerPoll() {
+  if (!serverPollTimer) return
+  clearInterval(serverPollTimer)
+  serverPollTimer = null
+}
+
+async function toggleServerPower() {
+  const btn = $('btn-server-power')
+  if (!btn || btn.disabled) return
+  const action = serverControl.running ? 'stop' : 'start'
+  btn.disabled = true
+  setPowerHint(action === 'start' ? 'Solicitando início…' : 'Solicitando parada…', null)
+  try {
+    const res = await fetch(`/api/server/${action}`, { method: 'POST', cache: 'no-store' })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    applyServerControl(data)
+    void loadMetrics()
+  } catch (err) {
+    setPowerHint(err instanceof Error ? err.message : 'Falha ao acionar o servidor.', 'bad')
+    btn.disabled = false
+    void loadServerControl()
+  }
+}
+
 function applyMetrics(m) {
   const servicesOk = (m.services || []).filter((s) => s.ok).length
   const servicesTotal = (m.services || []).length
   const dockerOk = !!m.docker?.running
   const allOk = dockerOk && servicesOk === servicesTotal && servicesTotal > 0
+
+  if (!serverControl.busy) {
+    serverControl.running = dockerOk && servicesOk > 0
+    renderServerPowerButton()
+  }
 
   const pill = $('pill-status')
   pill.textContent = allOk
@@ -744,6 +856,7 @@ async function bootLoad() {
     loadMetrics().then(() => setBootLoaderText('Lendo configuração do gestor…')),
     loadGestorConfig(),
     loadUserUsage().then(() => setBootLoaderText('Montando gráficos…')),
+    loadServerControl(),
   ]
   await Promise.allSettled(tasks)
   setBootLoaderText('Quase pronto…')
@@ -755,6 +868,8 @@ async function bootLoad() {
 
 function boot() {
   $('btn-refresh').addEventListener('click', () => void loadMetrics())
+  const powerBtn = $('btn-server-power')
+  if (powerBtn) powerBtn.addEventListener('click', () => void toggleServerPower())
   window.addEventListener('resize', () => fitAddressFont($('stat-alias')))
   $('form-gestor').addEventListener('submit', (ev) => void saveGestorConfig(ev))
   $('btn-open-emails').addEventListener('click', () => void openEmailsModal())
@@ -769,10 +884,12 @@ function boot() {
   refreshTimer = setInterval(() => {
     void loadMetrics()
     void loadUserUsage()
+    void loadServerControl()
   }, 20000)
 }
 
 document.addEventListener('DOMContentLoaded', boot)
 window.addEventListener('beforeunload', () => {
   if (refreshTimer) clearInterval(refreshTimer)
+  stopServerPoll()
 })

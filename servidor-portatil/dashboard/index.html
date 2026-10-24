@@ -42,6 +42,27 @@
           <h1>Dashboard</h1>
         </div>
       </div>
+
+      <div class="top-power">
+        <button
+          type="button"
+          class="power-btn is-start"
+          id="btn-server-power"
+          aria-live="polite"
+          title="Iniciar Servidor OMPS"
+        >
+          <span class="power-orb" aria-hidden="true">
+            <span class="power-ring"></span>
+            <span class="power-core"></span>
+          </span>
+          <span class="power-copy">
+            <span class="power-kicker" id="power-kicker">Servidor OMPS</span>
+            <span class="power-label" id="power-label">Iniciar</span>
+          </span>
+        </button>
+        <p class="power-hint" id="power-hint" hidden></p>
+      </div>
+
       <div class="top-meta">
         <div class="pill" id="pill-status">Carregando…</div>
         <div class="meta-block">
