@@ -1,0 +1,23 @@
+{
+  "name": "acomopms-cliente",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "pack": "electron-builder --dir",
+    "pack:win": "electron-builder --win --dir",
+    "pack:linux": "electron-builder --linux --dir"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "br.marinha.acompopms.desktop",
+    "productName": "AcompOPMS",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*"],
+    "win": { "target": ["dir"], "signAndEditExecutable": false },
+    "linux": { "target": ["dir"] }
+  }
+}

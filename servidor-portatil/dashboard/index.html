@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard — AcompOPMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="https://code.highcharts.com/highcharts.js" defer></script>
+    <script src="https://code.highcharts.com/highcharts-3d.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body class="shell is-loading">
+    <div class="bg-glow" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <div id="boot-loader" class="boot-loader" role="status" aria-live="polite" aria-busy="true">
+      <div class="boot-loader-card">
+        <div class="boot-orbit" aria-hidden="true">
+          <span class="boot-core"></span>
+          <span class="boot-ring"></span>
+          <span class="boot-ring boot-ring-2"></span>
+        </div>
+        <p class="boot-kicker">AcompOPMS</p>
+        <h2 class="boot-title">Carregando Dashboard</h2>
+        <p class="boot-sub" id="boot-loader-text">Coletando métricas do servidor…</p>
+        <div class="boot-bar" aria-hidden="true"><span class="boot-bar-fill"></span></div>
+      </div>
+    </div>
+
+    <header class="top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <p class="brand-kicker">Servidor OMPS</p>
+          <h1>Dashboard</h1>
+        </div>
+      </div>
+
+      <div class="top-power">
+        <button
+          type="button"
+          class="power-btn is-start"
+          id="btn-server-power"
+          aria-live="polite"
+          title="Iniciar Servidor OMPS"
+        >
+          <span class="power-orb" aria-hidden="true">
+            <span class="power-ring"></span>
+            <span class="power-core"></span>
+          </span>
+          <span class="power-copy">
+            <span class="power-kicker" id="power-kicker">Servidor OMPS</span>
+            <span class="power-label" id="power-label">Iniciar servidor</span>
+          </span>
+        </button>
+        <p class="power-hint" id="power-hint" hidden></p>
+      </div>
+
+      <div class="top-meta">
+        <div class="pill" id="pill-status">Carregando…</div>
+        <div class="meta-block">
+          <span class="meta-label">Atualizado</span>
+          <span class="meta-value" id="updated-at">—</span>
+        </div>
+        <button type="button" class="btn-refresh" id="btn-refresh" title="Atualizar agora">
+          Atualizar
+        </button>
+      </div>
+    </header>
+
+    <main class="board">
+      <section class="hero-strip">
+        <article class="stat">
+          <span class="stat-label">Endereço na rede</span>
+          <strong class="stat-value stat-value-address" id="stat-alias">—</strong>
+          <span class="stat-sub" id="stat-ip">—</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">CPU</span>
+          <strong class="stat-value" id="stat-cpu">—</strong>
+          <span class="stat-sub">carga atual</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">Memória</span>
+          <strong class="stat-value" id="stat-mem">—</strong>
+          <span class="stat-sub" id="stat-mem-detail">—</span>
+        </article>
+        <article class="stat">
+          <span class="stat-label">Uptime</span>
+          <strong class="stat-value" id="stat-uptime">—</strong>
+          <span class="stat-sub" id="stat-host">—</span>
+        </article>
+      </section>
+
+      <section class="mid-grid">
+        <article class="panel panel-usage">
+          <div class="panel-head compact">
+            <h2>Uso por horário</h2>
+            <p class="panel-desc" id="usage-note">Requisições recentes</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-usage"></canvas>
+          </div>
+        </article>
+
+        <article class="panel panel-disk">
+          <div class="panel-head compact">
+            <h2>Disco</h2>
+            <p class="panel-desc">Espaço ocupado</p>
+          </div>
+          <div id="disk-tabs" class="disk-tabs" hidden></div>
+          <div class="pie3d-stage">
+            <div id="chart-disk" class="pie3d-chart"></div>
+            <div class="pie3d-glow" aria-hidden="true"></div>
+          </div>
+          <div id="disk-legend" class="disk-legend"></div>
+        </article>
+
+        <article class="panel panel-user-usage">
+          <div class="panel-head compact">
+            <h2>Tempo por usuário</h2>
+            <p class="panel-desc" id="user-usage-note">Sessões no sistema</p>
+          </div>
+          <div class="chart-wrap chart-wrap-usage-users">
+            <canvas id="chart-user-usage"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel panel-gestor">
+          <div class="panel-head compact">
+            <h2>Gestor do sistema</h2>
+          </div>
+          <form id="form-gestor" class="gestor-form" autocomplete="off">
+            <div class="gestor-row">
+              <input
+                id="input-gestor-email"
+                class="gestor-input"
+                type="email"
+                placeholder="E-MAIL"
+                aria-label="E-mail"
+                required
+              />
+              <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
+              <button type="button" class="btn-ghost" id="btn-open-emails">E-mails</button>
+            </div>
+            <p class="gestor-hint" id="gestor-status" hidden></p>
+          </form>
+        </article>
+
+        <div class="collapse-rail">
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="packs"
+              data-detail-title="Pastas do pacote"
+              data-detail-sub="Tamanho no disco"
+              aria-haspopup="dialog"
+            >
+              <div>
+                <h2>Pastas do pacote</h2>
+                <p class="panel-desc">Tamanho no disco</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="packs" class="detail-store stack" hidden></div>
+          </article>
+
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="services"
+              data-detail-title="Serviços"
+              data-detail-sub="Saúde HTTP"
+              aria-haspopup="dialog"
+            >
+              <div>
+                <h2>Serviços</h2>
+                <p class="panel-desc">Saúde HTTP</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="services" class="detail-store stack" hidden></div>
+          </article>
+
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="containers"
+              data-detail-title="Containers Docker"
+              data-detail-sub=""
+              aria-haspopup="dialog"
+            >
+              <div>
+                <h2>Containers Docker</h2>
+                <p class="panel-desc" id="docker-summary">—</p>
+              </div>
+              <span class="collapse-arrow" aria-hidden="true"></span>
+            </button>
+            <div id="containers" class="detail-store stack" hidden></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="modal-detail" class="modal" hidden>
+      <div class="modal-backdrop" data-close-detail></div>
+      <div class="modal-card modal-card-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-detail-title">Detalhes</h2>
+            <p class="panel-desc" id="modal-detail-sub"></p>
+          </div>
+          <button type="button" class="modal-close" data-close-detail aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <div id="modal-detail-body" class="stack detail-modal-stack"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-emails" class="modal" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-emails-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-emails-title">E-mails da equipe</h2>
+            <p class="panel-desc" id="modal-emails-sub">Cadastrados pelo gestor</p>
+          </div>
+          <button type="button" class="modal-close" data-close-modal aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <p class="modal-error" id="modal-emails-error" hidden></p>
+          <div class="email-columns">
+            <section class="email-col">
+              <h3>Já fizeram login</h3>
+              <ul id="list-logged-in" class="email-list"></ul>
+            </section>
+            <section class="email-col">
+              <h3>Cadastrados · ainda sem login</h3>
+              <ul id="list-pending" class="email-list"></ul>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
