@@ -323,7 +323,13 @@ sess AS (
       GREATEST(
         0,
         EXTRACT(EPOCH FROM (
-          COALESCE(s.not_after, s.updated_at, s.refreshed_at::timestamptz, s.created_at)
+          CASE
+            WHEN s.not_after IS NOT NULL AND s.not_after < now() THEN s.not_after
+            WHEN s.refreshed_at IS NOT NULL AND s.refreshed_at::timestamptz > s.updated_at
+              THEN s.refreshed_at::timestamptz
+            WHEN s.updated_at > s.created_at + interval '30 seconds' THEN s.updated_at
+            ELSE now()
+          END
           - s.created_at
         ))
       )
