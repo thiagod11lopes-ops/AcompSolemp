@@ -76,14 +76,13 @@ function Set-ServerActionState(
 }
 
 function Test-OmpsStackRunning {
-  # Checagem leve e rapida: frontend local e/ou auth respondendo.
-  # Auth health pode ser 401 e ainda assim indicar stack no ar.
+  # Stack "iniciado" = frontend + API auth respondendo (auth pode ser 401).
   try {
     $appCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 1 'http://127.0.0.1:5173/login' 2>$null
-    if ("$appCode" -match '^(200|301|302|304)$') { return $true }
     $authCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 1 'http://127.0.0.1:8000/auth/v1/health' 2>$null
-    if ("$authCode" -match '^(200|301|302|304|401)$') { return $true }
-    return $false
+    $appOk = ("$appCode" -match '^(200|301|302|304)$')
+    $authOk = ("$authCode" -match '^(200|301|302|304|401)$')
+    return ($appOk -and $authOk)
   } catch {
     return $false
   }

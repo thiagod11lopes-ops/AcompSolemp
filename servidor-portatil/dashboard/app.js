@@ -16,6 +16,7 @@ let serverControl = {
   action: 'idle',
   status: 'idle',
   message: '',
+  _metricsSeen: false,
 }
 
 const DISK_COLORS = {
@@ -399,14 +400,14 @@ function computeStackRunning(m) {
   if (!m) return false
   const services = m.services || []
   const byId = Object.fromEntries(services.map((s) => [s.id, s]))
-  const dockerOk = !!m.docker?.running
   const viteUp = serviceResponding(byId.vite)
   const gatewayUp = serviceResponding(byId.gateway)
   const supabaseUp = serviceResponding(byId.supabase)
-  // No ar: Docker + (frontend ou gateway) e preferencialmente API.
-  if (dockerOk && (viteUp || gatewayUp)) return true
-  if (viteUp && supabaseUp) return true
-  return false
+  const authUp = serviceResponding(byId.authGw)
+  // "Iniciado" = frontend + pelo menos uma API/gateway no ar.
+  // Só Vite/Docker abertos (resto offline) conta como PARADO → botão Iniciar.
+  const apiUp = supabaseUp || authUp || gatewayUp
+  return viteUp && apiUp
 }
 
 function renderServerPowerButton() {
@@ -447,16 +448,13 @@ function applyServerControl(data) {
   serverControl.action = data.action || 'idle'
   serverControl.status = data.status || 'idle'
   serverControl.message = data.message || ''
-  if (typeof data.running === 'boolean') {
+  // running vem das metricas (mais confiavel); API so sugere se ainda nao houver leitura.
+  if (typeof data.running === 'boolean' && serverControl._metricsSeen !== true) {
     serverControl.running = !!data.running
   }
   renderServerPowerButton()
   if (busy) startServerPoll()
-  else {
-    stopServerPoll()
-    // Apos iniciar/parar, reconciliar com metricas reais.
-    void loadMetrics()
-  }
+  else stopServerPoll()
 }
 
 async function loadServerControl() {
@@ -507,10 +505,19 @@ function applyMetrics(m) {
   const dockerOk = !!m.docker?.running
   const allOk = dockerOk && servicesOk === servicesTotal && servicesTotal > 0
 
-  if (!serverControl.busy) {
-    serverControl.running = computeStackRunning(m)
-    renderServerPowerButton()
+  const stackUp = computeStackRunning(m)
+  serverControl._metricsSeen = true
+  serverControl.running = stackUp
+  // Se o stack ja refletiu o resultado, libera o botao (evita ficar preso em Iniciando/Parando).
+  if (serverControl.busy) {
+    const starting = serverControl.action === 'start'
+    const stopping = serverControl.action === 'stop'
+    if ((starting && stackUp) || (stopping && !stackUp) || serverControl.status !== 'running') {
+      serverControl.busy = false
+      stopServerPoll()
+    }
   }
+  renderServerPowerButton()
 
   const pill = $('pill-status')
   pill.textContent = allOk

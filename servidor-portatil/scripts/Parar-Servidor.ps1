@@ -24,6 +24,18 @@ if (Test-Path $pidFile) {
   if ($old) { Stop-Process -Id ([int]$old) -Force -ErrorAction SilentlyContinue }
   Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
 }
+# Garante liberar a porta do app mesmo se o pidfile estiver ausente/desatualizado.
+try {
+  $appPort = 5173
+  try { if ($cfg.APP_PORT) { $appPort = [int]$cfg.APP_PORT } } catch { }
+  $owners = Get-NetTCPConnection -LocalPort $appPort -State Listen -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty OwningProcess -Unique
+  foreach ($pidOwn in @($owners)) {
+    if ($pidOwn -and $pidOwn -gt 8) {
+      Stop-Process -Id $pidOwn -Force -ErrorAction SilentlyContinue
+    }
+  }
+} catch { }
 
 if (-not (Test-DockerRunning)) {
   Write-Host 'Docker ja esta desligado - nada a parar nos containers.'

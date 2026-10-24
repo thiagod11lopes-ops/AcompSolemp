@@ -184,7 +184,14 @@ function Get-DashboardMetrics {
     $uptimeSec = [int]((Get-Date) - [datetime]$boot).TotalSeconds
   } catch { }
 
-  $usage = Get-UsageByHour
+  # Cache do grafico de uso: docker logs e lento e bloqueava o Dashboard inteiro.
+  if (-not $script:DashboardUsageCacheAt -or
+      -not $script:DashboardUsageCache -or
+      ((Get-Date) - [datetime]$script:DashboardUsageCacheAt).TotalSeconds -gt 60) {
+    $script:DashboardUsageCache = Get-UsageByHour
+    $script:DashboardUsageCacheAt = Get-Date
+  }
+  $usage = $script:DashboardUsageCache
 
   return @{
     generatedAt = (Get-Date).ToString('o')
