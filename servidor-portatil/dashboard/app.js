@@ -444,10 +444,120 @@ async function loadMetrics() {
   }
 }
 
+function setGestorStatus(text, kind) {
+  const el = $('gestor-status')
+  if (!el) return
+  el.textContent = text
+  el.className = 'gestor-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
+}
+
+async function loadGestorConfig() {
+  try {
+    const res = await fetch('/api/gestor-config', { cache: 'no-store' })
+    const data = await res.json()
+    const email = data.gestorEmail || ''
+    $('input-gestor-email').value = email
+    if (email) {
+      setGestorStatus(`Gestor autorizado: ${email}`, 'ok')
+    } else {
+      setGestorStatus('Nenhum gestor definido. Salve um e-mail @marinha.mil.br.', null)
+    }
+  } catch (err) {
+    setGestorStatus('Não foi possível carregar a configuração do gestor.', 'bad')
+    console.error(err)
+  }
+}
+
+async function saveGestorConfig(event) {
+  event.preventDefault()
+  const btn = $('btn-save-gestor')
+  const email = ($('input-gestor-email').value || '').trim().toLowerCase()
+  btn.disabled = true
+  setGestorStatus('Salvando…', null)
+  try {
+    const res = await fetch('/api/gestor-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gestorEmail: email }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    $('input-gestor-email').value = data.gestorEmail || email
+    setGestorStatus(`Salvo. Único gestor autorizado: ${data.gestorEmail || email}`, 'ok')
+  } catch (err) {
+    setGestorStatus(err instanceof Error ? err.message : 'Falha ao salvar', 'bad')
+  } finally {
+    btn.disabled = false
+  }
+}
+
+function renderEmailList(ul, items, emptyText) {
+  ul.innerHTML = ''
+  if (!items || !items.length) {
+    const li = document.createElement('li')
+    li.className = 'email-empty'
+    li.textContent = emptyText
+    ul.appendChild(li)
+    return
+  }
+  items.forEach((item) => {
+    const li = document.createElement('li')
+    const nome = item.nome ? ` · ${item.nome}` : ''
+    const login = item.lastSignInAt ? ` · último login ${item.lastSignInAt}` : ''
+    li.innerHTML = `
+      <div class="em">${escapeHtml(item.email || '')}</div>
+      <div class="meta">${escapeHtml((item.perfil || 'USUARIO') + nome + login)}</div>
+    `
+    ul.appendChild(li)
+  })
+}
+
+function closeEmailsModal() {
+  const modal = $('modal-emails')
+  if (modal) modal.hidden = true
+}
+
+async function openEmailsModal() {
+  const modal = $('modal-emails')
+  const err = $('modal-emails-error')
+  modal.hidden = false
+  err.hidden = true
+  err.textContent = ''
+  $('list-logged-in').innerHTML = '<li class="email-empty">Carregando…</li>'
+  $('list-pending').innerHTML = '<li class="email-empty">Carregando…</li>'
+  try {
+    const res = await fetch('/api/gestor-emails', { cache: 'no-store' })
+    const data = await res.json()
+    $('modal-emails-sub').textContent = data.gestorEmail
+      ? `Equipe do gestor ${data.gestorEmail}`
+      : 'Cadastrados pelo gestor'
+    if (data.error) {
+      err.hidden = false
+      err.textContent = data.error
+    }
+    renderEmailList($('list-logged-in'), data.loggedIn, 'Nenhum e-mail com login ainda.')
+    renderEmailList($('list-pending'), data.pending, 'Nenhum cadastro pendente de primeiro login.')
+  } catch (e) {
+    err.hidden = false
+    err.textContent = e instanceof Error ? e.message : 'Falha ao carregar e-mails'
+    renderEmailList($('list-logged-in'), [], '—')
+    renderEmailList($('list-pending'), [], '—')
+  }
+}
+
 function boot() {
   $('btn-refresh').addEventListener('click', () => void loadMetrics())
   window.addEventListener('resize', () => fitAddressFont($('stat-alias')))
+  $('form-gestor').addEventListener('submit', (ev) => void saveGestorConfig(ev))
+  $('btn-open-emails').addEventListener('click', () => void openEmailsModal())
+  document.querySelectorAll('[data-close-modal]').forEach((el) => {
+    el.addEventListener('click', closeEmailsModal)
+  })
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') closeEmailsModal()
+  })
   void loadMetrics()
+  void loadGestorConfig()
   refreshTimer = setInterval(() => void loadMetrics(), 20000)
 }
 

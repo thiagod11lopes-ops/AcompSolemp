@@ -79,6 +79,12 @@ if (Test-Path $feEnv) {
   Set-EnvKey $feEnv 'VITE_SUPABASE_ANON_KEY' $anon
 }
 
+$gestorEmailCfg = ''
+try {
+  . "$PSScriptRoot\Gestor-Config.ps1"
+  $gestorEmailCfg = [string](Get-GestorConfig).gestorEmail
+} catch { }
+
 $js = @(
   '/* Gerado por Aplicar-Host.ps1 - nao editar a mao */'
   'window.__ACOMP_SERVER__ = {'
@@ -87,6 +93,7 @@ $js = @(
   "  supabaseAnonKey: '$anon',"
   "  serverAlias: '$alias',"
   "  serverIp: '$ip',"
+  "  gestorEmail: '$gestorEmailCfg',"
   '};'
 ) -join [Environment]::NewLine
 

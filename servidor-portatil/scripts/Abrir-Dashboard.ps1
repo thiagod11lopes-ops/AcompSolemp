@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 . "$PSScriptRoot\Coletar-Metricas-Dashboard.ps1"
+. "$PSScriptRoot\Gestor-Config.ps1"
 
 $root = Get-ServidorRoot
 $webRoot = Join-Path $root 'dashboard'
@@ -66,6 +67,12 @@ function Send-Text([System.Net.HttpListenerResponse]$Res, [string]$Text, [string
   Send-Bytes $Res $bytes $ContentType $Status
 }
 
+function Read-RequestBody([System.Net.HttpListenerRequest]$Req) {
+  if (-not $Req.HasEntityBody) { return '' }
+  $reader = New-Object System.IO.StreamReader($Req.InputStream, $Req.ContentEncoding)
+  try { return $reader.ReadToEnd() } finally { $reader.Close() }
+}
+
 $chrome = @(
   (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
   (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
@@ -99,6 +106,42 @@ try {
 
       if ($path -eq '/api/health') {
         Send-Text $res '{"ok":true}' 'application/json; charset=utf-8'
+        continue
+      }
+
+      if ($path -eq '/api/gestor-config') {
+        if ($req.HttpMethod -eq 'GET') {
+          $cfg = Get-GestorConfig
+          Send-Text $res ($cfg | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+          continue
+        }
+        if ($req.HttpMethod -eq 'POST') {
+          try {
+            $body = Read-RequestBody $req | ConvertFrom-Json
+            $email = [string]$body.gestorEmail
+            $saved = Set-GestorConfig $email
+            Send-Text $res ($saved | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+          } catch {
+            Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 400
+          }
+          continue
+        }
+        Send-Text $res '{"error":"Method not allowed"}' 'application/json; charset=utf-8' 405
+        continue
+      }
+
+      if ($path -eq '/api/gestor-emails' -and $req.HttpMethod -eq 'GET') {
+        try {
+          $lists = Get-GestorTeamEmailLists
+          Send-Text $res ($lists | ConvertTo-Json -Depth 6 -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{
+              gestorEmail = (Get-GestorConfig).gestorEmail
+              loggedIn    = @()
+              pending     = @()
+              error       = $_.Exception.Message
+            } | ConvertTo-Json -Depth 4 -Compress) 'application/json; charset=utf-8' 200
+        }
         continue
       }
 

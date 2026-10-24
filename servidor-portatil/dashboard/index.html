@@ -90,6 +90,30 @@
         </article>
       </section>
 
+      <section class="panel panel-wide panel-gestor">
+        <div class="panel-head">
+          <h2>Gestor do sistema</h2>
+          <p class="panel-desc">
+            Único e-mail autorizado a criar e acessar o Portal do Gestor no AcompOPMS
+          </p>
+        </div>
+        <form id="form-gestor" class="gestor-form" autocomplete="off">
+          <label class="gestor-label" for="input-gestor-email">E-mail do gestor (@marinha.mil.br)</label>
+          <div class="gestor-row">
+            <input
+              id="input-gestor-email"
+              class="gestor-input"
+              type="email"
+              placeholder="nome.sobrenome@marinha.mil.br"
+              required
+            />
+            <button type="submit" class="btn-refresh" id="btn-save-gestor">Salvar</button>
+            <button type="button" class="btn-ghost" id="btn-open-emails">E-mails cadastrados</button>
+          </div>
+          <p class="gestor-hint" id="gestor-status">Carregando configuração…</p>
+        </form>
+      </section>
+
       <section class="panel panel-wide">
         <div class="panel-head">
           <h2>Pastas do pacote</h2>
@@ -97,6 +121,32 @@
         </div>
         <div id="packs" class="stack"></div>
       </section>
+
+      <div id="modal-emails" class="modal" hidden>
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-emails-title">
+          <header class="modal-head">
+            <div>
+              <h2 id="modal-emails-title">E-mails da equipe</h2>
+              <p class="panel-desc" id="modal-emails-sub">Cadastrados pelo gestor</p>
+            </div>
+            <button type="button" class="modal-close" data-close-modal aria-label="Fechar">×</button>
+          </header>
+          <div class="modal-body">
+            <p class="modal-error" id="modal-emails-error" hidden></p>
+            <div class="email-columns">
+              <section class="email-col">
+                <h3>Já fizeram login</h3>
+                <ul id="list-logged-in" class="email-list"></ul>
+              </section>
+              <section class="email-col">
+                <h3>Cadastrados · ainda sem login</h3>
+                <ul id="list-pending" class="email-list"></ul>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <section class="split">
         <article class="panel">

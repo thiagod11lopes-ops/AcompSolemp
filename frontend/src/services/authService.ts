@@ -7,6 +7,7 @@ import {
   passwordResetRedirectUrl,
 } from '@/utils/email'
 import { setOpenAccessSession, useSupabaseDataSource } from '@/config/dataSource'
+import { assertAllowedGestorEmail } from '@/config/env'
 import {
   applyRemoteAppData,
   clearAppDataCache,
@@ -326,6 +327,7 @@ export const authService = {
 
   async loginGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
     const marinhaEmail = assertMarinhaEmail(credentials.login)
+    assertAllowedGestorEmail(marinhaEmail)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
@@ -375,6 +377,7 @@ export const authService = {
   async registerGestorSupabase(credentials: LoginCredentials): Promise<AuthUser> {
     setOpenAccessSession(false)
     const marinhaEmail = assertMarinhaEmail(credentials.login)
+    assertAllowedGestorEmail(marinhaEmail)
     if (credentials.senha.length < 6) {
       throw new Error('A senha deve ter pelo menos 6 caracteres')
     }
