@@ -3,6 +3,7 @@
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+. "$PSScriptRoot\Ui-Theme-Dashboard.ps1"
 
 function Get-LauncherStatePath {
   $dir = Join-Path (Get-ServidorRoot) 'state'
@@ -86,67 +87,37 @@ function Save-ServerAlias([string]$Alias) {
 
 function Show-ChecklistDialog {
   $info = Get-AccessInfo
+  $theme = Get-DashTheme
 
   $form = New-Object System.Windows.Forms.Form
-  $form.Text = 'Iniciar Servidor OMPS'
-  $form.StartPosition = 'CenterScreen'
-  $form.FormBorderStyle = 'FixedDialog'
-  $form.MaximizeBox = $false
-  $form.MinimizeBox = $false
-  $form.TopMost = $true
-  $form.ClientSize = New-Object System.Drawing.Size(520, 360)
-  $form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
-
-  $lbl = New-Object System.Windows.Forms.Label
-  $lbl.Location = New-Object System.Drawing.Point(20, 14)
-  $lbl.Size = New-Object System.Drawing.Size(480, 40)
-  $lbl.Text = "Checklist de inicializacao`nMarque se a proxima vez deve subir sozinha."
-  $form.Controls.Add($lbl)
+  Set-DashForm $form 'Iniciar Servidor OMPS' 540 400
+  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 24 16))
+  $form.Controls.Add((New-DashTitle 'Checklist de inicializacao' 24 36))
+  $form.Controls.Add((New-DashSub 'Marque se a proxima vez deve subir sozinha.' 24 72 490 28))
 
   $chk = New-Object System.Windows.Forms.CheckBox
-  $chk.Location = New-Object System.Drawing.Point(24, 60)
-  $chk.Size = New-Object System.Drawing.Size(470, 28)
-  $chk.Text = 'Na proxima inicializacao, abrir e rodar o Servidor OMPS automaticamente'
+  $chk.Location = New-Object System.Drawing.Point(28, 110)
+  $chk.Size = New-Object System.Drawing.Size(480, 28)
+  $chk.Text = 'Na proxima inicializacao, abrir e rodar automaticamente'
   $chk.Checked = $true
+  $chk.ForeColor = $theme.Text
+  $chk.BackColor = $theme.Bg
+  $chk.Font = Get-DashFont 9.5
   $form.Controls.Add($chk)
 
-  $lblIp = New-Object System.Windows.Forms.Label
-  $lblIp.Location = New-Object System.Drawing.Point(20, 100)
-  $lblIp.Size = New-Object System.Drawing.Size(480, 36)
-  $lblIp.Text = "IP interno (so referencia): $($info.Ip)"
-  $form.Controls.Add($lblIp)
+  $form.Controls.Add((New-DashLabel ("IP interno (referencia): $($info.Ip)") 24 150 490 24))
+  $form.Controls.Add((New-DashSub 'Endereco que os outros PCs devem digitar (sem http e sem porta):' 24 180 490 32))
 
-  $lblAlias = New-Object System.Windows.Forms.Label
-  $lblAlias.Location = New-Object System.Drawing.Point(20, 140)
-  $lblAlias.Size = New-Object System.Drawing.Size(480, 40)
-  $lblAlias.Text = "Endereco que os outros PCs devem digitar no navegador`n(exatamente este texto, sem http e sem porta):"
-  $form.Controls.Add($lblAlias)
-
-  $txtAlias = New-Object System.Windows.Forms.TextBox
-  $txtAlias.Location = New-Object System.Drawing.Point(24, 185)
-  $txtAlias.Size = New-Object System.Drawing.Size(470, 26)
-  $txtAlias.Text = $info.Alias
+  $txtAlias = New-DashTextBox $info.Alias 28 218 480
   $form.Controls.Add($txtAlias)
+  $form.Controls.Add((New-DashMutedLabel 'Exemplo: sistema.acompomps.rede' 24 256 480 28))
 
-  $lblHint = New-Object System.Windows.Forms.Label
-  $lblHint.Location = New-Object System.Drawing.Point(20, 220)
-  $lblHint.Size = New-Object System.Drawing.Size(480, 50)
-  $lblHint.ForeColor = [System.Drawing.Color]::DimGray
-  $lblHint.Text = "Exemplo valido: sistema.acompomps.rede`nNos outros PCs: digitar so isso na barra de endereco."
-  $form.Controls.Add($lblHint)
-
-  $btnOk = New-Object System.Windows.Forms.Button
-  $btnOk.Text = 'Continuar'
-  $btnOk.Location = New-Object System.Drawing.Point(290, 300)
-  $btnOk.Size = New-Object System.Drawing.Size(100, 32)
+  $btnOk = New-DashButton 'Continuar' 280 330 110 36 'primary'
   $btnOk.DialogResult = [System.Windows.Forms.DialogResult]::OK
   $form.Controls.Add($btnOk)
   $form.AcceptButton = $btnOk
 
-  $btnCancel = New-Object System.Windows.Forms.Button
-  $btnCancel.Text = 'Cancelar'
-  $btnCancel.Location = New-Object System.Drawing.Point(400, 300)
-  $btnCancel.Size = New-Object System.Drawing.Size(100, 32)
+  $btnCancel = New-DashButton 'Cancelar' 400 330 110 36 'ghost'
   $btnCancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
   $form.Controls.Add($btnCancel)
   $form.CancelButton = $btnCancel
@@ -165,90 +136,57 @@ function Show-ChecklistDialog {
 
 function Show-CountdownDialog([int]$Seconds = 60) {
   $info = Get-AccessInfo
+  $theme = Get-DashTheme
   $script:cdLeft = $Seconds
   $script:cdInterrupted = $false
   $script:cdPaused = $false
   $script:cdAliasText = $info.Alias
 
   $script:cdForm = New-Object System.Windows.Forms.Form
-  $script:cdForm.Text = 'Iniciar Servidor OMPS'
-  $script:cdForm.StartPosition = 'CenterScreen'
-  $script:cdForm.FormBorderStyle = 'FixedDialog'
-  $script:cdForm.MaximizeBox = $false
-  $script:cdForm.MinimizeBox = $false
-  $script:cdForm.TopMost = $true
-  $script:cdForm.ClientSize = New-Object System.Drawing.Size(520, 390)
-  $script:cdForm.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+  Set-DashForm $script:cdForm 'Iniciar Servidor OMPS' 540 460
+  $script:cdForm.Controls.Add((New-DashKicker 'Servidor OMPS' 24 16))
+  $script:cdForm.Controls.Add((New-DashTitle 'Contagem regressiva' 24 36))
+  $script:cdForm.Controls.Add((New-DashSub 'O servidor inicia automaticamente se voce nao interromper.' 24 72 490 28))
 
-  $lbl = New-Object System.Windows.Forms.Label
-  $lbl.Location = New-Object System.Drawing.Point(20, 12)
-  $lbl.Size = New-Object System.Drawing.Size(480, 36)
-  $lbl.Text = 'O Servidor OMPS iniciara automaticamente se voce nao interromper.'
-  $script:cdForm.Controls.Add($lbl)
+  $numPanel = New-DashPanel 24 110 490 100
+  $script:cdForm.Controls.Add($numPanel)
 
   $script:cdNum = New-Object System.Windows.Forms.Label
-  $script:cdNum.Location = New-Object System.Drawing.Point(20, 50)
-  $script:cdNum.Size = New-Object System.Drawing.Size(480, 50)
+  $script:cdNum.Location = New-Object System.Drawing.Point(0, 8)
+  $script:cdNum.Size = New-Object System.Drawing.Size(490, 56)
   $script:cdNum.TextAlign = 'MiddleCenter'
-  $script:cdNum.Font = New-Object System.Drawing.Font('Segoe UI', 28, [System.Drawing.FontStyle]::Bold)
+  $script:cdNum.Font = Get-DashFont 32 ([System.Drawing.FontStyle]::Bold)
+  $script:cdNum.ForeColor = $theme.AccentBright
+  $script:cdNum.BackColor = $theme.Panel
   $script:cdNum.Text = "$Seconds"
-  $script:cdForm.Controls.Add($script:cdNum)
+  $numPanel.Controls.Add($script:cdNum)
 
   $script:cdBar = New-Object System.Windows.Forms.ProgressBar
-  $script:cdBar.Location = New-Object System.Drawing.Point(24, 105)
-  $script:cdBar.Size = New-Object System.Drawing.Size(472, 16)
+  $script:cdBar.Location = New-Object System.Drawing.Point(24, 72)
+  $script:cdBar.Size = New-Object System.Drawing.Size(442, 14)
   $script:cdBar.Minimum = 0
   $script:cdBar.Maximum = $Seconds
   $script:cdBar.Value = $Seconds
-  $script:cdForm.Controls.Add($script:cdBar)
+  $script:cdBar.Style = 'Continuous'
+  $numPanel.Controls.Add($script:cdBar)
 
-  $lblIp = New-Object System.Windows.Forms.Label
-  $lblIp.Location = New-Object System.Drawing.Point(20, 130)
-  $lblIp.Size = New-Object System.Drawing.Size(480, 28)
-  $lblIp.Text = "IP interno (referencia): $($info.Ip)"
-  $script:cdForm.Controls.Add($lblIp)
+  $script:cdForm.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 24 226 490 22))
+  $script:cdForm.Controls.Add((New-DashSub 'Endereco exato para os outros PCs (sem http, sem porta):' 24 252 490 28))
 
-  $lblAlias = New-Object System.Windows.Forms.Label
-  $lblAlias.Location = New-Object System.Drawing.Point(20, 165)
-  $lblAlias.Size = New-Object System.Drawing.Size(480, 36)
-  $lblAlias.Text = "Endereco exato para os outros PCs (sem http, sem porta):"
-  $script:cdForm.Controls.Add($lblAlias)
-
-  $script:cdTxtAlias = New-Object System.Windows.Forms.TextBox
-  $script:cdTxtAlias.Location = New-Object System.Drawing.Point(24, 205)
-  $script:cdTxtAlias.Size = New-Object System.Drawing.Size(472, 26)
-  $script:cdTxtAlias.Text = $info.Alias
+  $script:cdTxtAlias = New-DashTextBox $info.Alias 28 286 482
   $script:cdForm.Controls.Add($script:cdTxtAlias)
+  $script:cdForm.Controls.Add((New-DashMutedLabel 'Nos outros PCs digite exatamente o texto do campo acima.' 24 322 490 28))
 
-  $lblHint = New-Object System.Windows.Forms.Label
-  $lblHint.Location = New-Object System.Drawing.Point(20, 240)
-  $lblHint.Size = New-Object System.Drawing.Size(480, 36)
-  $lblHint.ForeColor = [System.Drawing.Color]::DimGray
-  $lblHint.Text = "Nos outros PCs digite exatamente o texto do campo acima."
-  $script:cdForm.Controls.Add($lblHint)
-
-  $btnPause = New-Object System.Windows.Forms.Button
-  $btnPause.Text = 'Pausar'
-  $btnPause.Location = New-Object System.Drawing.Point(70, 295)
-  $btnPause.Size = New-Object System.Drawing.Size(110, 32)
+  $btnPause = New-DashButton 'Pausar' 24 370 120 36 'ghost'
   $script:cdForm.Controls.Add($btnPause)
 
-  $btnInterrupt = New-Object System.Windows.Forms.Button
-  $btnInterrupt.Text = 'Interromper'
-  $btnInterrupt.Location = New-Object System.Drawing.Point(200, 295)
-  $btnInterrupt.Size = New-Object System.Drawing.Size(120, 32)
+  $btnInterrupt = New-DashButton 'Interromper' 156 370 140 36 'danger'
   $script:cdForm.Controls.Add($btnInterrupt)
 
-  $btnNow = New-Object System.Windows.Forms.Button
-  $btnNow.Text = 'Iniciar agora'
-  $btnNow.Location = New-Object System.Drawing.Point(340, 295)
-  $btnNow.Size = New-Object System.Drawing.Size(120, 32)
+  $btnNow = New-DashButton 'Iniciar agora' 310 370 200 36 'primary'
   $script:cdForm.Controls.Add($btnNow)
 
-  $script:cdStatus = New-Object System.Windows.Forms.Label
-  $script:cdStatus.Location = New-Object System.Drawing.Point(20, 340)
-  $script:cdStatus.Size = New-Object System.Drawing.Size(480, 24)
-  $script:cdStatus.Text = ''
+  $script:cdStatus = New-DashMutedLabel '' 24 416 490 24
   $script:cdForm.Controls.Add($script:cdStatus)
 
   $script:cdTimer = New-Object System.Windows.Forms.Timer
@@ -272,6 +210,7 @@ function Show-CountdownDialog([int]$Seconds = 60) {
       if ($script:cdPaused) {
         $btnPause.Text = 'Retomar'
         $script:cdStatus.Text = 'Contagem pausada.'
+        $script:cdStatus.ForeColor = (Get-DashTheme).Warn
       } else {
         $btnPause.Text = 'Pausar'
         $script:cdStatus.Text = ''
@@ -307,13 +246,16 @@ function Show-CountdownDialog([int]$Seconds = 60) {
 }
 
 function Invoke-LauncherGate {
-  param([switch]$SkipUi)
+  param(
+    [switch]$SkipUi,
+    [switch]$CountdownOnly
+  )
 
   if ($SkipUi) { return 'Continue' }
 
   $state = Get-LauncherState
 
-  if ($state.mode -eq 'countdown') {
+  if ($CountdownOnly -or $state.mode -eq 'countdown') {
     $cd = Show-CountdownDialog -Seconds 60
     try { Save-ServerAlias $cd.Alias | Out-Null } catch {
       [System.Windows.Forms.MessageBox]::Show(

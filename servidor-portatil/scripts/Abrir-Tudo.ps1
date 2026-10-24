@@ -117,6 +117,7 @@ try {
   Write-Log '  AcompOPMS - Iniciar Servidor'
   Write-Log '========================================'
 
+  $cameFromInstallPanel = $false
   if (-not $Silent -and -not $SkipInstallPanel) {
     $panelPath = Resolve-OmpsInstallPanelPath
     if (-not $panelPath) {
@@ -129,10 +130,16 @@ try {
       Write-Log 'Inicio cancelado no painel de instalacao.'
       exit 0
     }
-    Write-Log 'Painel de instalacao OK. Seguindo para checklist/cronometro...'
+    $cameFromInstallPanel = $true
+    Write-Log 'Painel de instalacao OK. Seguindo para contagem regressiva...'
   }
 
-  $gate = Invoke-LauncherGate -SkipUi:$SkipLauncherUi
+  # Apos Avancar no painel de status, vai direto para a contagem regressiva.
+  $gate = if ($cameFromInstallPanel -and -not $SkipLauncherUi) {
+    Invoke-LauncherGate -CountdownOnly
+  } else {
+    Invoke-LauncherGate -SkipUi:$SkipLauncherUi
+  }
   if ($gate -eq 'Abort') {
     Write-Log 'Inicio cancelado pelo usuario (checklist/cronometro).'
     exit 0

@@ -10,6 +10,26 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+function Import-DashThemeForPanel {
+  $candidates = @(
+    (Join-Path $PSScriptRoot '..\scripts\Ui-Theme-Dashboard.ps1'),
+    (Join-Path $PSScriptRoot '..\AcompSolemp\servidor-portatil\scripts\Ui-Theme-Dashboard.ps1')
+  )
+  # Pack: painel pode estar em Iniciar Servidor\painel ou em servidor-portatil\painel
+  if ($script:ScriptsDir) {
+    $candidates = @((Join-Path $script:ScriptsDir 'Ui-Theme-Dashboard.ps1')) + $candidates
+  }
+  foreach ($p in $candidates) {
+    $full = $p
+    try { if (Test-Path $p) { $full = (Resolve-Path -LiteralPath $p).Path } } catch { }
+    if ($full -and (Test-Path -LiteralPath $full)) {
+      . $full
+      return $true
+    }
+  }
+  return $false
+}
+
 function Initialize-OmpsPanelPaths {
   $here = $PSScriptRoot
   $parent = Split-Path $here -Parent
@@ -239,74 +259,80 @@ function Show-ServidorOmpsInstallPanel {
   param([switch]$PreStart)
 
   Initialize-OmpsPanelPaths
+  $null = Import-DashThemeForPanel
   $script:panelResult = 'Abort'
   $script:ompsPreStart = [bool]$PreStart
+  $script:installAllOk = $false
+  $theme = Get-DashTheme
 
   $form = New-Object Windows.Forms.Form
-  $form.Text = 'Servidor OMPS'
-  $form.StartPosition = 'CenterScreen'
-  $form.FormBorderStyle = 'FixedDialog'
-  $form.MaximizeBox = $false
-  $form.MinimizeBox = $false
-  $form.TopMost = $true
-  $form.ClientSize = New-Object Drawing.Size(560, 460)
-  $form.Font = New-Object Drawing.Font('Segoe UI', 10)
+  Set-DashForm $form 'Servidor OMPS' 580 560
   if ($script:IconPath -and (Test-Path $script:IconPath)) {
     try { $form.Icon = New-Object Drawing.Icon $script:IconPath } catch { }
   }
 
-  $title = New-Object Windows.Forms.Label
-  $title.Location = New-Object Drawing.Point(20, 14)
-  $title.Size = New-Object Drawing.Size(520, 28)
-  $title.Font = New-Object Drawing.Font('Segoe UI', 14, [Drawing.FontStyle]::Bold)
-  $title.Text = 'Servidor OMPS — instalacao e configuracao'
-  $form.Controls.Add($title)
+  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 24 16))
+  $form.Controls.Add((New-DashTitle 'Status da instalacao' 24 36))
+  $form.Controls.Add((New-DashSub 'Verifique os programas. Com tudo OK, use Avancar para a contagem regressiva.' 24 72 530 36))
 
-  $sub = New-Object Windows.Forms.Label
-  $sub.Location = New-Object Drawing.Point(20, 48)
-  $sub.Size = New-Object Drawing.Size(520, 36)
-  $sub.Text = 'Verifique os programas. Instale os que faltam e clique em Verificar instalacao.'
-  $form.Controls.Add($sub)
+  $panel = New-DashPanel 20 118 540 250
+  $form.Controls.Add($panel)
 
-  function New-StatusRow([int]$Y, [string]$Nome, [scriptblock]$OnInstall) {
-    $l = New-Object Windows.Forms.Label
-    $l.Location = New-Object Drawing.Point(24, $Y)
-    $l.Size = New-Object Drawing.Size(200, 24)
-    $l.Text = $Nome
-    $form.Controls.Add($l)
-    $s = New-Object Windows.Forms.Label
-    $s.Location = New-Object Drawing.Point(240, $Y)
-    $s.Size = New-Object Drawing.Size(140, 24)
-    $form.Controls.Add($s)
-    $b = New-Object Windows.Forms.Button
-    $b.Text = 'Instalar'
-    $b.Location = New-Object Drawing.Point(400, ($Y - 2))
-    $b.Size = New-Object Drawing.Size(120, 28)
+  function New-StatusRow([System.Windows.Forms.Control]$Parent, [int]$Y, [string]$Nome, [scriptblock]$OnInstall) {
+    $l = New-DashLabel $Nome 16 $Y 210 24
+    $Parent.Controls.Add($l)
+    $s = New-DashLabel '—' 240 $Y 140 24
+    $s.Font = Get-DashFont 9.5 ([Drawing.FontStyle]::Bold)
+    $Parent.Controls.Add($s)
+    $b = New-DashButton 'Instalar' 400 ($Y - 2) 120 28 'ghost'
     $b.Add_Click($OnInstall)
-    $form.Controls.Add($b)
+    $Parent.Controls.Add($b)
     return @{ Status = $s; Button = $b }
   }
 
+  function Update-AvancarState {
+    Set-PackConfigEnv
+    $problems = Invoke-OmpsVerification
+    $script:installAllOk = ($problems.Count -eq 0)
+    if ($script:btnAvancar) {
+      $script:btnAvancar.Enabled = $script:installAllOk
+      if ($script:installAllOk) {
+        Set-DashButtonStyle $script:btnAvancar 'primary'
+        $script:hintAvancar.Text = 'Tudo OK — pode Avancar para a contagem regressiva.'
+        $script:hintAvancar.ForeColor = $theme.Ok
+      } else {
+        Set-DashButtonStyle $script:btnAvancar 'ghost'
+        $script:hintAvancar.Text = 'Corrija os itens em vermelho e clique em Verificar.'
+        $script:hintAvancar.ForeColor = $theme.Muted
+      }
+    }
+  }
+
   function Update-StatusLabels {
+    $okColor = $theme.Ok
+    $badColor = $theme.Danger
+
     $script:statusDocker.Text = if (Test-DockerApp) { 'Instalado' } else { 'Nao instalado' }
-    $script:statusDocker.ForeColor = if (Test-DockerApp) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed }
+    $script:statusDocker.ForeColor = if (Test-DockerApp) { $okColor } else { $badColor }
     $script:btnDocker.Enabled = -not (Test-DockerApp)
 
     $script:statusNode.Text = if (Test-NodeApp) { 'Instalado' } else { 'Nao instalado' }
-    $script:statusNode.ForeColor = if (Test-NodeApp) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed }
+    $script:statusNode.ForeColor = if (Test-NodeApp) { $okColor } else { $badColor }
     $script:btnNode.Enabled = -not (Test-NodeApp)
 
     $script:statusVc.Text = if (Test-VcRedist) { 'Instalado' } else { 'Nao instalado' }
-    $script:statusVc.ForeColor = if (Test-VcRedist) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed }
+    $script:statusVc.ForeColor = if (Test-VcRedist) { $okColor } else { $badColor }
     $script:btnVc.Enabled = -not (Test-VcRedist)
 
     $script:statusWsl.Text = if (Test-Wsl) { 'Instalado' } else { 'Nao instalado' }
-    $script:statusWsl.ForeColor = if (Test-Wsl) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed }
+    $script:statusWsl.ForeColor = if (Test-Wsl) { $okColor } else { $badColor }
     $script:btnWsl.Enabled = -not (Test-Wsl)
 
     $okPastas = (Test-Path $script:AcompRoot) -and $script:SupabaseDocker -and (Test-Path $script:SupabaseDocker)
     $script:statusPastas.Text = if ($okPastas) { 'OK' } else { 'Faltando pastas' }
-    $script:statusPastas.ForeColor = if ($okPastas) { [Drawing.Color]::DarkGreen } else { [Drawing.Color]::DarkRed }
+    $script:statusPastas.ForeColor = if ($okPastas) { $okColor } else { $badColor }
+
+    Update-AvancarState
   }
 
   function Start-InstallerLocal([string]$Path, [string]$Nome) {
@@ -321,30 +347,23 @@ function Show-ServidorOmpsInstallPanel {
     Update-StatusLabels
   }
 
-  $rowDocker = New-StatusRow 100 'Docker Desktop' { Start-InstallerLocal (Get-Installer 'Docker*Installer*.exe') 'Docker Desktop' }
-  $rowNode = New-StatusRow 140 'Node.js' { Start-InstallerLocal (Get-Installer 'node-*.msi') 'Node.js' }
-  $rowVc = New-StatusRow 180 'Visual C++ Redistributable' { Start-InstallerLocal (Get-Installer 'vc_redist*.exe') 'Visual C++' }
-  $rowWsl = New-StatusRow 220 'WSL' { Start-InstallerLocal (Get-Installer 'wsl_update*.msi') 'WSL' }
+  $rowDocker = New-StatusRow $panel 16 'Docker Desktop' { Start-InstallerLocal (Get-Installer 'Docker*Installer*.exe') 'Docker Desktop' }
+  $rowNode = New-StatusRow $panel 52 'Node.js' { Start-InstallerLocal (Get-Installer 'node-*.msi') 'Node.js' }
+  $rowVc = New-StatusRow $panel 88 'Visual C++ Redistributable' { Start-InstallerLocal (Get-Installer 'vc_redist*.exe') 'Visual C++' }
+  $rowWsl = New-StatusRow $panel 124 'WSL' { Start-InstallerLocal (Get-Installer 'wsl_update*.msi') 'WSL' }
 
   $script:statusDocker = $rowDocker.Status; $script:btnDocker = $rowDocker.Button
   $script:statusNode = $rowNode.Status; $script:btnNode = $rowNode.Button
   $script:statusVc = $rowVc.Status; $script:btnVc = $rowVc.Button
   $script:statusWsl = $rowWsl.Status; $script:btnWsl = $rowWsl.Button
 
-  $lp = New-Object Windows.Forms.Label
-  $lp.Location = New-Object Drawing.Point(24, 260)
-  $lp.Size = New-Object Drawing.Size(200, 24)
-  $lp.Text = 'Pastas do sistema'
-  $form.Controls.Add($lp)
-  $script:statusPastas = New-Object Windows.Forms.Label
-  $script:statusPastas.Location = New-Object Drawing.Point(240, 260)
-  $script:statusPastas.Size = New-Object Drawing.Size(280, 24)
-  $form.Controls.Add($script:statusPastas)
+  $lp = New-DashLabel 'Pastas do sistema' 16 168 200 24
+  $panel.Controls.Add($lp)
+  $script:statusPastas = New-DashLabel '—' 240 168 280 24
+  $script:statusPastas.Font = Get-DashFont 9.5 ([Drawing.FontStyle]::Bold)
+  $panel.Controls.Add($script:statusPastas)
 
-  $btnNpm = New-Object Windows.Forms.Button
-  $btnNpm.Text = 'Instalar dependencias do frontend'
-  $btnNpm.Location = New-Object Drawing.Point(24, 300)
-  $btnNpm.Size = New-Object Drawing.Size(260, 32)
+  $btnNpm = New-DashButton 'Instalar dependencias do frontend' 24 384 270 34 'ghost'
   $btnNpm.Add_Click({
       if (-not (Test-NodeApp)) {
         [Windows.Forms.MessageBox]::Show('Instale o Node.js primeiro.', 'Servidor OMPS') | Out-Null
@@ -360,18 +379,11 @@ function Show-ServidorOmpsInstallPanel {
     })
   $form.Controls.Add($btnNpm)
 
-  $btnRefresh = New-Object Windows.Forms.Button
-  $btnRefresh.Text = 'Atualizar status'
-  $btnRefresh.Location = New-Object Drawing.Point(300, 300)
-  $btnRefresh.Size = New-Object Drawing.Size(140, 32)
+  $btnRefresh = New-DashButton 'Atualizar' 310 384 110 34 'ghost'
   $btnRefresh.Add_Click({ Update-StatusLabels })
   $form.Controls.Add($btnRefresh)
 
-  $btnVerify = New-Object Windows.Forms.Button
-  $btnVerify.Text = 'Verificar instalacao'
-  $btnVerify.Location = New-Object Drawing.Point(24, 360)
-  $btnVerify.Size = New-Object Drawing.Size(200, 40)
-  $btnVerify.Font = New-Object Drawing.Font('Segoe UI', 10, [Drawing.FontStyle]::Bold)
+  $btnVerify = New-DashButton 'Verificar' 430 384 120 34 'ghost'
   $btnVerify.Add_Click({
       Update-StatusLabels
       Set-PackConfigEnv
@@ -386,11 +398,34 @@ function Show-ServidorOmpsInstallPanel {
         return
       }
       [Windows.Forms.MessageBox]::Show(
-        'Verificacao OK. Nenhum problema encontrado.',
+        'Verificacao OK. Clique em Avancar para a contagem regressiva.',
         'Servidor OMPS',
         [Windows.Forms.MessageBoxButtons]::OK,
         [Windows.Forms.MessageBoxIcon]::Information
       ) | Out-Null
+      Update-AvancarState
+    })
+  $form.Controls.Add($btnVerify)
+
+  $script:hintAvancar = New-DashMutedLabel 'Verifique a instalacao para liberar Avancar.' 24 430 340 40
+  $form.Controls.Add($script:hintAvancar)
+
+  $script:btnAvancar = New-DashButton 'Avancar' 300 468 140 40 'primary'
+  $script:btnAvancar.Enabled = $false
+  $script:btnAvancar.Add_Click({
+      Update-StatusLabels
+      Set-PackConfigEnv
+      $problems = Invoke-OmpsVerification
+      if ($problems.Count -gt 0) {
+        [Windows.Forms.MessageBox]::Show(
+          ("Ainda ha pendencias:`n`n- " + ($problems -join "`n- ")),
+          'Servidor OMPS',
+          [Windows.Forms.MessageBoxButtons]::OK,
+          [Windows.Forms.MessageBoxIcon]::Warning
+        ) | Out-Null
+        Update-AvancarState
+        return
+      }
 
       if ($script:ompsPreStart) {
         $script:panelResult = 'Continue'
@@ -410,17 +445,13 @@ function Show-ServidorOmpsInstallPanel {
       }
       $form.Close()
     })
-  $form.Controls.Add($btnVerify)
+  $form.Controls.Add($script:btnAvancar)
 
-  $btnClose = New-Object Windows.Forms.Button
-  $btnClose.Text = 'Fechar'
-  $btnClose.Location = New-Object Drawing.Point(420, 366)
-  $btnClose.Size = New-Object Drawing.Size(100, 32)
+  $btnClose = New-DashButton 'Fechar' 450 468 100 40 'ghost'
   $btnClose.Add_Click({ $script:panelResult = 'Abort'; $form.Close() })
   $form.Controls.Add($btnClose)
 
   Update-StatusLabels
-  [Windows.Forms.Application]::EnableVisualStyles()
   [void]$form.ShowDialog()
   return $script:panelResult
 }
