@@ -76,24 +76,16 @@ function Set-ServerActionState(
 }
 
 function Test-OmpsStackRunning {
+  # Checagem leve: app + auth respondendo (sem docker info / docker ps).
   try {
-    if (-not (Test-DockerRunning)) { return $false }
     $cfg = $null
     try { $cfg = Import-ServidorConfig } catch { }
     $appPort = if ($cfg -and $cfg.APP_PORT) { [string]$cfg.APP_PORT } else { '5173' }
-    $urls = @(
-      "http://127.0.0.1:${appPort}/",
-      'http://127.0.0.1:8000/auth/v1/health'
-    )
-    foreach ($url in $urls) {
-      try {
-        $code = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 $url 2>$null
-        if ("$code" -match '^(200|301|302|304)$') { return $true }
-      } catch { }
-    }
-    # Fallback: pelo menos um container acomp-* em execucao
-    $names = @(docker ps --format '{{.Names}}' 2>$null)
-    return (@($names | Where-Object { $_ -match '^acomp-|^supabase-' }).Count -gt 0)
+    $appCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 "http://127.0.0.1:${appPort}/" 2>$null
+    $authCode = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 2 'http://127.0.0.1:8000/auth/v1/health' 2>$null
+    $appOk = ("$appCode" -match '^(200|301|302|304)$')
+    $authOk = ("$authCode" -match '^(200|301|302|304)$')
+    return ($appOk -and $authOk)
   } catch {
     return $false
   }

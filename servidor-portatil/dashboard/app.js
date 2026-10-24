@@ -400,19 +400,19 @@ function renderServerPowerButton() {
   const kicker = $('power-kicker')
   if (busy) {
     const starting = serverControl.action === 'start'
-    if (label) label.textContent = starting ? 'Iniciando…' : 'Parando…'
+    if (label) label.textContent = starting ? 'Iniciando servidor…' : 'Parando servidor…'
     if (kicker) kicker.textContent = 'Servidor OMPS'
     btn.title = starting ? 'Iniciando Servidor OMPS…' : 'Parando Servidor OMPS…'
     setPowerHint(serverControl.message || (starting ? 'Subindo serviços…' : 'Encerrando serviços…'), null)
   } else if (running) {
-    if (label) label.textContent = 'Parar'
+    if (label) label.textContent = 'Parar servidor'
     if (kicker) kicker.textContent = 'Em execução'
     btn.title = 'Parar Servidor OMPS'
     if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
     else if (serverControl.message && serverControl.status === 'done') setPowerHint(serverControl.message, 'ok')
     else setPowerHint('', null)
   } else {
-    if (label) label.textContent = 'Iniciar'
+    if (label) label.textContent = 'Iniciar servidor'
     if (kicker) kicker.textContent = 'Servidor OMPS'
     btn.title = 'Iniciar Servidor OMPS'
     if (serverControl.status === 'error') setPowerHint(serverControl.message || 'Falha na última operação.', 'bad')
@@ -485,7 +485,8 @@ function applyMetrics(m) {
   const allOk = dockerOk && servicesOk === servicesTotal && servicesTotal > 0
 
   if (!serverControl.busy) {
-    serverControl.running = dockerOk && servicesOk > 0
+    // Parado = botão "Iniciar servidor"; só "Parar" com stack saudável.
+    serverControl.running = allOk
     renderServerPowerButton()
   }
 
