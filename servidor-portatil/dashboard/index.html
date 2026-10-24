@@ -127,12 +127,15 @@
         </article>
       </section>
 
-      <section class="panel panel-wide">
-        <div class="panel-head">
-          <h2>Pastas do pacote</h2>
-          <p class="panel-desc">Tamanho aproximado no disco</p>
-        </div>
-        <div id="packs" class="stack"></div>
+      <section class="panel panel-wide panel-collapse is-collapsed" data-collapse>
+        <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+          <div>
+            <h2>Pastas do pacote</h2>
+            <p class="panel-desc">Tamanho aproximado no disco</p>
+          </div>
+          <span class="collapse-arrow" aria-hidden="true"></span>
+        </button>
+        <div id="packs" class="panel-collapse-body stack"></div>
       </section>
 
       <div id="modal-emails" class="modal" hidden>
@@ -162,20 +165,26 @@
       </div>
 
       <section class="split">
-        <article class="panel">
-          <div class="panel-head">
-            <h2>Serviços</h2>
-            <p class="panel-desc">Saúde HTTP do stack</p>
-          </div>
-          <div id="services" class="stack"></div>
+        <article class="panel panel-collapse is-collapsed" data-collapse>
+          <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+            <div>
+              <h2>Serviços</h2>
+              <p class="panel-desc">Saúde HTTP do stack</p>
+            </div>
+            <span class="collapse-arrow" aria-hidden="true"></span>
+          </button>
+          <div id="services" class="panel-collapse-body stack"></div>
         </article>
 
-        <article class="panel">
-          <div class="panel-head">
-            <h2>Containers Docker</h2>
-            <p class="panel-desc" id="docker-summary">—</p>
-          </div>
-          <div id="containers" class="stack stack-scroll"></div>
+        <article class="panel panel-collapse is-collapsed" data-collapse>
+          <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+            <div>
+              <h2>Containers Docker</h2>
+              <p class="panel-desc" id="docker-summary">—</p>
+            </div>
+            <span class="collapse-arrow" aria-hidden="true"></span>
+          </button>
+          <div id="containers" class="panel-collapse-body stack stack-scroll"></div>
         </article>
       </section>
     </main>

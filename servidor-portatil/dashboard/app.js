@@ -676,6 +676,17 @@ async function openEmailsModal() {
   }
 }
 
+function wireCollapsePanels() {
+  document.querySelectorAll('[data-collapse]').forEach((panel) => {
+    const toggle = panel.querySelector('[data-collapse-toggle]')
+    if (!toggle) return
+    toggle.addEventListener('click', () => {
+      const open = panel.classList.toggle('is-collapsed') === false
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+    })
+  })
+}
+
 function boot() {
   $('btn-refresh').addEventListener('click', () => void loadMetrics())
   window.addEventListener('resize', () => fitAddressFont($('stat-alias')))
@@ -687,6 +698,7 @@ function boot() {
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') closeEmailsModal()
   })
+  wireCollapsePanels()
   void loadMetrics()
   void loadGestorConfig()
   void loadUserUsage()

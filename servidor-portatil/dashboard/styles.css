@@ -286,6 +286,75 @@ body {
   font-size: 0.88rem;
 }
 
+.panel-collapse.is-collapsed {
+  padding-bottom: 0.85rem;
+}
+
+.panel-head-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-collapse.is-collapsed .panel-head-toggle {
+  margin-bottom: 0;
+}
+
+.panel-collapse:not(.is-collapsed) .panel-head-toggle {
+  margin-bottom: 1rem;
+}
+
+.collapse-arrow {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  transition: transform 0.2s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.collapse-arrow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--accent-bright);
+  border-bottom: 2px solid var(--accent-bright);
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+.panel-collapse:not(.is-collapsed) .collapse-arrow {
+  transform: rotate(180deg);
+  background: rgba(85, 139, 113, 0.16);
+  border-color: rgba(122, 168, 146, 0.4);
+}
+
+.panel-head-toggle:hover .collapse-arrow {
+  border-color: rgba(122, 168, 146, 0.45);
+}
+
+.panel-collapse-body {
+  display: block;
+}
+
+.panel-collapse.is-collapsed .panel-collapse-body {
+  display: none;
+}
+
 .chart-wrap {
   position: relative;
   min-height: 220px;
