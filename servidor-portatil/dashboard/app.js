@@ -427,6 +427,8 @@ function applyMetrics(m) {
     sum > 0
       ? `Fonte: ${m.usageByHour?.source || 'logs'} · ${sum} eventos agregados nas últimas janelas.`
       : 'Ainda sem histórico de acessos. Use o sistema normalmente e atualize depois.'
+
+  syncDetailModalBody()
 }
 
 async function loadMetrics() {
@@ -634,9 +636,46 @@ function renderEmailList(ul, items, emptyText) {
   })
 }
 
+let activeDetailTarget = null
+
 function closeEmailsModal() {
   const modal = $('modal-emails')
   if (modal) modal.hidden = true
+}
+
+function closeDetailModal() {
+  const modal = $('modal-detail')
+  if (modal) modal.hidden = true
+  activeDetailTarget = null
+}
+
+function syncDetailModalBody() {
+  if (!activeDetailTarget) return
+  const modal = $('modal-detail')
+  if (!modal || modal.hidden) return
+  const source = $(activeDetailTarget)
+  const body = $('modal-detail-body')
+  if (!source || !body) return
+  body.innerHTML = source.innerHTML
+  if (activeDetailTarget === 'containers') {
+    const sub = $('modal-detail-sub')
+    const summary = $('docker-summary')
+    if (sub && summary) sub.textContent = summary.textContent || ''
+  }
+}
+
+function openDetailModal(btn) {
+  const target = btn.getAttribute('data-detail-target')
+  const title = btn.getAttribute('data-detail-title') || 'Detalhes'
+  let sub = btn.getAttribute('data-detail-sub') || ''
+  if (target === 'containers') {
+    sub = ($('docker-summary') && $('docker-summary').textContent) || sub
+  }
+  activeDetailTarget = target
+  $('modal-detail-title').textContent = title
+  $('modal-detail-sub').textContent = sub
+  syncDetailModalBody()
+  $('modal-detail').hidden = false
 }
 
 async function openEmailsModal() {
@@ -670,15 +709,18 @@ async function openEmailsModal() {
   }
 }
 
-function wireCollapsePanels() {
-  document.querySelectorAll('[data-collapse]').forEach((panel) => {
-    const toggle = panel.querySelector('[data-collapse-toggle]')
-    if (!toggle) return
-    toggle.addEventListener('click', () => {
-      const open = panel.classList.toggle('is-collapsed') === false
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
-    })
+function wireDetailPanels() {
+  document.querySelectorAll('[data-detail-open]').forEach((btn) => {
+    btn.addEventListener('click', () => openDetailModal(btn))
   })
+  document.querySelectorAll('[data-close-detail]').forEach((el) => {
+    el.addEventListener('click', closeDetailModal)
+  })
+}
+
+function closeAnyModal() {
+  closeEmailsModal()
+  closeDetailModal()
 }
 
 function setBootLoaderText(text) {
@@ -721,9 +763,9 @@ function boot() {
     el.addEventListener('click', closeEmailsModal)
   })
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') closeEmailsModal()
+    if (ev.key === 'Escape') closeAnyModal()
   })
-  wireCollapsePanels()
+  wireDetailPanels()
   void bootLoad()
   refreshTimer = setInterval(() => {
     void loadMetrics()

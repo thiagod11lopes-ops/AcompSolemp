@@ -136,41 +136,81 @@
         </article>
 
         <div class="collapse-rail">
-          <article class="panel panel-collapse is-collapsed" data-collapse>
-            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="packs"
+              data-detail-title="Pastas do pacote"
+              data-detail-sub="Tamanho no disco"
+              aria-haspopup="dialog"
+            >
               <div>
                 <h2>Pastas do pacote</h2>
                 <p class="panel-desc">Tamanho no disco</p>
               </div>
               <span class="collapse-arrow" aria-hidden="true"></span>
             </button>
-            <div id="packs" class="panel-collapse-body stack"></div>
+            <div id="packs" class="detail-store stack" hidden></div>
           </article>
 
-          <article class="panel panel-collapse is-collapsed" data-collapse>
-            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="services"
+              data-detail-title="Serviços"
+              data-detail-sub="Saúde HTTP"
+              aria-haspopup="dialog"
+            >
               <div>
                 <h2>Serviços</h2>
                 <p class="panel-desc">Saúde HTTP</p>
               </div>
               <span class="collapse-arrow" aria-hidden="true"></span>
             </button>
-            <div id="services" class="panel-collapse-body stack"></div>
+            <div id="services" class="detail-store stack" hidden></div>
           </article>
 
-          <article class="panel panel-collapse is-collapsed" data-collapse>
-            <button type="button" class="panel-head panel-head-toggle" data-collapse-toggle aria-expanded="false">
+          <article class="panel panel-collapse">
+            <button
+              type="button"
+              class="panel-head panel-head-toggle"
+              data-detail-open
+              data-detail-target="containers"
+              data-detail-title="Containers Docker"
+              data-detail-sub=""
+              aria-haspopup="dialog"
+            >
               <div>
                 <h2>Containers Docker</h2>
                 <p class="panel-desc" id="docker-summary">—</p>
               </div>
               <span class="collapse-arrow" aria-hidden="true"></span>
             </button>
-            <div id="containers" class="panel-collapse-body stack stack-scroll"></div>
+            <div id="containers" class="detail-store stack" hidden></div>
           </article>
         </div>
       </section>
     </main>
+
+    <div id="modal-detail" class="modal" hidden>
+      <div class="modal-backdrop" data-close-detail></div>
+      <div class="modal-card modal-card-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-detail-title">Detalhes</h2>
+            <p class="panel-desc" id="modal-detail-sub"></p>
+          </div>
+          <button type="button" class="modal-close" data-close-detail aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <div id="modal-detail-body" class="stack detail-modal-stack"></div>
+        </div>
+      </div>
+    </div>
 
     <div id="modal-emails" class="modal" hidden>
       <div class="modal-backdrop" data-close-modal></div>

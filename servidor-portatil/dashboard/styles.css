@@ -668,7 +668,7 @@ body.shell.is-loading .board {
   color: var(--danger);
 }
 
-.panel-collapse.is-collapsed {
+.panel-collapse {
   padding-bottom: 0.55rem;
   justify-content: center;
 }
@@ -687,15 +687,13 @@ body.shell.is-loading .board {
   font: inherit;
   text-align: left;
   cursor: pointer;
-}
-
-.panel-collapse.is-collapsed .panel-head-toggle {
-  margin-bottom: 0;
   flex: 1 1 auto;
 }
 
-.panel-collapse:not(.is-collapsed) .panel-head-toggle {
-  margin-bottom: 0.4rem;
+.panel-head-toggle:hover .collapse-arrow,
+.panel-head-toggle:focus-visible .collapse-arrow {
+  background: rgba(85, 139, 113, 0.16);
+  border-color: rgba(122, 168, 146, 0.4);
 }
 
 .collapse-arrow {
@@ -706,7 +704,7 @@ body.shell.is-loading .board {
   border: 1px solid var(--panel-border);
   background: rgba(255, 255, 255, 0.04);
   position: relative;
-  transition: transform 0.2s ease, background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
 }
 
 .collapse-arrow::before {
@@ -718,24 +716,21 @@ body.shell.is-loading .board {
   height: 7px;
   border-right: 2px solid var(--accent-bright);
   border-bottom: 2px solid var(--accent-bright);
-  transform: translate(-50%, -60%) rotate(45deg);
+  transform: translate(-50%, -60%) rotate(-45deg);
 }
 
-.panel-collapse:not(.is-collapsed) .collapse-arrow {
-  transform: rotate(180deg);
-  background: rgba(85, 139, 113, 0.16);
-  border-color: rgba(122, 168, 146, 0.4);
+.detail-store[hidden] {
+  display: none !important;
 }
 
-.panel-collapse-body {
-  display: block;
-  max-height: min(28vh, 220px);
+.modal-card-detail {
+  width: min(560px, 100%);
+}
+
+.detail-modal-stack {
+  max-height: min(58vh, 480px);
   overflow: auto;
   padding-right: 0.15rem;
-}
-
-.panel-collapse.is-collapsed .panel-collapse-body {
-  display: none;
 }
 
 .stack {
