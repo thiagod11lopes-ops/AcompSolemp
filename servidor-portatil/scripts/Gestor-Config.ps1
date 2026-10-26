@@ -54,14 +54,170 @@ function Test-MarinhaEmail([string]$Email) {
   return ($e -match '^[^\s@]+@marinha\.mil\.br$')
 }
 
+function Get-GestorSinceMigrationPath {
+  $root = Get-ServidorRoot
+  foreach ($c in @(
+      (Join-Path (Split-Path $root -Parent) 'supabase\migration_gestor_since_transfer.sql'),
+      (Join-Path $root '..\..\supabase\migration_gestor_since_transfer.sql'),
+      (Join-Path $PSScriptRoot '..\..\supabase\migration_gestor_since_transfer.sql')
+    )) {
+    try {
+      if ($c -and (Test-Path -LiteralPath $c)) { return (Resolve-Path -LiteralPath $c).Path }
+    } catch { }
+  }
+  return $null
+}
+
+function Ensure-GestorSinceSchema {
+  # Aplica migration completa (coluna + RPCs) quando o arquivo existir; senao so a coluna.
+  $mig = Get-GestorSinceMigrationPath
+  if ($mig) {
+    try {
+      $sql = [System.IO.File]::ReadAllText($mig, [System.Text.UTF8Encoding]::new($false))
+      [void](Invoke-SupabaseSql $sql)
+      return
+    } catch { }
+  }
+  $sql = @'
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS gestor_since date;
+UPDATE public.tenants
+SET gestor_since = (created_at AT TIME ZONE 'America/Sao_Paulo')::date
+WHERE gestor_since IS NULL;
+'@
+  try { [void](Invoke-SupabaseSql $sql) } catch { }
+}
+
+function Transfer-GestorTenantOwnership([string]$PreviousEmail, [string]$NewEmail) {
+  Ensure-GestorSinceSchema
+  $prev = ([string]$PreviousEmail).Trim().ToLowerInvariant().Replace("'", "''")
+  $new = ([string]$NewEmail).Trim().ToLowerInvariant().Replace("'", "''")
+
+  # Tenta RPC; se nao existir, aplica SQL equivalente inline.
+  try {
+    $lines = Invoke-SupabaseSql @"
+SELECT tenant_id::text, org_code, owner_email, coalesce(gestor_since::text, '')
+FROM public.transfer_gestor_tenant_ownership('$prev', '$new');
+"@
+    $row = @($lines | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+    if ($row) {
+      $p = "$row" -split '\|', 4
+      return @{
+        tenantId    = $p[0]
+        orgCode     = $p[1]
+        ownerEmail  = $p[2]
+        gestorSince = $p[3]
+        transferred = $true
+      }
+    }
+  } catch {
+    # Fallback sem RPC (banco antigo)
+  }
+
+  $fallback = Invoke-SupabaseSql @"
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS gestor_since date;
+UPDATE public.tenants
+SET gestor_since = (created_at AT TIME ZONE 'America/Sao_Paulo')::date
+WHERE gestor_since IS NULL;
+
+DO `$`$
+DECLARE
+  v_prev text := lower(trim('$prev'));
+  v_new text := lower(trim('$new'));
+  v_tenant uuid;
+  v_new_user uuid;
+  v_since date := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
+  v_owner_app text;
+BEGIN
+  IF v_prev <> '' THEN
+    SELECT id INTO v_tenant FROM public.tenants WHERE lower(owner_email) = v_prev LIMIT 1;
+  END IF;
+  IF v_tenant IS NULL THEN
+    SELECT id INTO v_tenant FROM public.tenants
+    WHERE nullif(trim(owner_email), '') IS NOT NULL
+    ORDER BY created_at NULLS LAST
+    LIMIT 1;
+  END IF;
+  IF v_tenant IS NULL THEN
+    RAISE EXCEPTION 'Nenhuma organizacao encontrada para transferir.';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.tenants WHERE lower(owner_email) = v_new AND id <> v_tenant
+  ) THEN
+    RAISE EXCEPTION 'O novo e-mail ja e dono de outra organizacao.';
+  END IF;
+  SELECT id INTO v_new_user FROM auth.users WHERE lower(email) = v_new LIMIT 1;
+  v_owner_app := 'user-owner-' || v_tenant::text;
+  UPDATE public.tenants
+  SET owner_email = v_new,
+      owner_user_id = COALESCE(v_new_user, owner_user_id),
+      gestor_since = v_since
+  WHERE id = v_tenant;
+  IF v_new_user IS NOT NULL THEN
+    INSERT INTO public.profiles (id, tenant_id, app_user_id, email, perfil)
+    VALUES (v_new_user, v_tenant, v_owner_app, v_new, 'GESTOR')
+    ON CONFLICT (id) DO UPDATE
+      SET tenant_id = EXCLUDED.tenant_id,
+          app_user_id = EXCLUDED.app_user_id,
+          email = EXCLUDED.email,
+          perfil = 'GESTOR';
+  END IF;
+END
+`$`$;
+
+SELECT t.id::text, t.org_code, lower(t.owner_email), coalesce(t.gestor_since::text, '')
+FROM public.tenants t
+WHERE lower(t.owner_email) = lower('$new')
+LIMIT 1;
+"@
+  $row = @($fallback | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+  if (-not $row) { throw 'Transferencia do gestor nao retornou organizacao.' }
+  $p = "$row" -split '\|', 4
+  return @{
+    tenantId    = $p[0]
+    orgCode     = $p[1]
+    ownerEmail  = $p[2]
+    gestorSince = $p[3]
+    transferred = $true
+  }
+}
+
 function Set-GestorConfig([string]$Email) {
   $e = $Email.Trim().ToLowerInvariant()
   if (-not $e) { throw 'Informe o e-mail do gestor.' }
   if (-not (Test-MarinhaEmail $e)) {
     throw 'O e-mail do gestor deve ser @marinha.mil.br.'
   }
+
+  $previous = ''
+  try { $previous = [string](Get-GestorConfig).gestorEmail } catch { }
+
   $path = Get-GestorConfigPath
-  $obj = @{ gestorEmail = $e; updatedAt = (Get-Date).ToString('o') }
+  $transfer = $null
+  if ($previous -and $previous -ne $e) {
+    $transfer = Transfer-GestorTenantOwnership -PreviousEmail $previous -NewEmail $e
+  } else {
+    # Primeiro cadastro ou mesmo e-mail: garante schema e data inicial se houver tenant.
+    try {
+      Ensure-GestorSinceSchema
+      $esc = $e.Replace("'", "''")
+      [void](Invoke-SupabaseSql @"
+UPDATE public.tenants
+SET gestor_since = COALESCE(gestor_since, (created_at AT TIME ZONE 'America/Sao_Paulo')::date)
+WHERE lower(owner_email) = lower('$esc')
+   OR (
+     lower(owner_email) <> lower('$esc')
+     AND (SELECT count(*) FROM public.tenants WHERE nullif(trim(owner_email), '') IS NOT NULL) = 1
+   );
+"@)
+    } catch { }
+  }
+
+  $obj = @{
+    gestorEmail = $e
+    updatedAt   = (Get-Date).ToString('o')
+    gestorSince = if ($transfer) { $transfer.gestorSince } else { $null }
+    transferred = [bool]$transfer
+  }
   ($obj | ConvertTo-Json -Compress) | Set-Content -Path $path -Encoding UTF8
   Update-ServerConfigGestorEmail $e
   return $obj
