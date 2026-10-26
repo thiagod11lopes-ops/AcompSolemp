@@ -21,23 +21,34 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Instalar-Dns-Auto
 if errorlevel 1 goto :fail
 
 echo.
-echo [3/3] Subindo gateway HTTP (porta 80)...
+echo [3/4] Subindo gateway HTTP/HTTPS...
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Iniciar-Gateway.ps1"
 if errorlevel 1 (
   echo Aviso: gateway pode falhar se Docker ainda nao estiver no ar. Inicie o servidor depois.
 )
 
 echo.
+echo [4/4] Instalando inicio automatico no login (rede + servidor)...
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Instalar-Inicio-Automatico.ps1"
+if errorlevel 1 (
+  echo Aviso: nao foi possivel registrar o inicio automatico.
+)
+
+echo.
 echo ============================================================
 echo  PRONTO NESTE PC SERVIDOR
 echo.
-echo  Nos OUTROS PCs, digite EXATAMENTE o nome do campo, ex.:
-echo     sistema.acompomps.rede
-echo  (sem http:// e sem :5173)
+echo  A partir de agora, ao ligar/fazer login o Windows deve:
+echo    - preparar hosts/DNS/firewall sozinho
+echo    - subir Docker + AcompOPMS + gateway HTTPS
+echo  sem clicar em Liberar-Firewall de novo.
 echo.
-echo  Se o nome nao abrir nos outros PCs, abra o roteador e
-echo  coloque o DNS primario = IP deste PC (uma vez so).
-echo  Os usuarios finais nao precisam configurar nada.
+echo  Nos OUTROS PCs, digite EXATAMENTE:
+echo     sistema.acompomps.rede
+echo  (HTTPS; sem :5173)
+echo.
+echo  Se o nome nao abrir nos outros PCs, no roteador use
+echo  DNS primario = IP deste PC (uma vez so).
 echo ============================================================
 echo.
 pause

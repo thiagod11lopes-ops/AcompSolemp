@@ -1,15 +1,22 @@
-# Remove a tarefa de inicio automatico do AcompOPMS.
+# Remove as tarefas de inicio automatico do AcompOPMS.
 # Uso: .\Remover-Inicio-Automatico.ps1
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
-$taskName = 'AcompOPMS-IniciarServidor'
-$existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-if (-not $existing) {
-  Write-Host "Nenhuma tarefa '$taskName' encontrada. Nada a remover."
-  exit 0
+$names = @(
+  'AcompOPMS-IniciarServidor',
+  'AcompOPMS-PrepararRede',
+  'AcompOPMS-DnsAlias'
+)
+
+foreach ($taskName in $names) {
+  $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+  if (-not $existing) {
+    Write-Host "Nenhuma tarefa '$taskName' encontrada."
+    continue
+  }
+  Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+  Write-Host "Removido: $taskName"
 }
 
-Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
-Write-Host "Removido: $taskName"
-Write-Host 'O servidor nao vai mais subir sozinho no login.'
+Write-Host 'O servidor/rede nao vao mais subir sozinhos no login.'

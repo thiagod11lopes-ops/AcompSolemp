@@ -117,6 +117,20 @@ try {
   Write-Log '  AcompOPMS - Iniciar Servidor'
   Write-Log '========================================'
 
+  # Boot automatico: sem painel, sem cronometro e sem navegador.
+  if ($Silent) {
+    $SkipInstallPanel = $true
+    $SkipLauncherUi = $true
+    $NoBrowser = $true
+    Write-Log 'Modo automatico (Silent): sem UI e sem abrir navegador.'
+    try {
+      Write-Log '==> Preparar-Rede-Boot (best-effort)...'
+      & "$PSScriptRoot\Preparar-Rede-Boot.ps1"
+    } catch {
+      Write-Log ("Aviso Preparar-Rede-Boot: {0}" -f $_.Exception.Message)
+    }
+  }
+
   $cameFromInstallPanel = $false
   if (-not $Silent -and -not $SkipInstallPanel) {
     $panelPath = Resolve-OmpsInstallPanelPath
@@ -159,7 +173,11 @@ try {
     & "$PSScriptRoot\Dns-Alias-Servidor.ps1"
   } catch {
     Write-Log "Aviso DNS: $($_.Exception.Message)"
-    Write-Log 'Rode Liberar-Firewall.cmd (Admin) UMA VEZ neste PC servidor.'
+    if (-not $Silent) {
+      Write-Log 'Rode Liberar-Firewall.cmd (Admin) UMA VEZ neste PC servidor para instalar o inicio automatico de rede.'
+    } else {
+      Write-Log 'DNS falhou no Silent; a tarefa AcompOPMS-PrepararRede deve corrigir no proximo login (apos Liberar-Firewall.cmd Admin uma vez).'
+    }
   }
 
   Start-DockerDesktopIfNeeded
@@ -172,6 +190,19 @@ try {
     & "$PSScriptRoot\Iniciar-Gateway.ps1"
   } catch {
     Write-Log "Aviso gateway: $($_.Exception.Message)"
+  }
+
+  # Reaplica hosts/DNS apos o stack subir (IP pode ter mudado; gateway precisa do alias).
+  if ($Silent) {
+    try {
+      Write-Log '==> Reaplicando Preparar-Rede-Boot apos o stack...'
+      & "$PSScriptRoot\Preparar-Rede-Boot.ps1"
+    } catch {
+      Write-Log ("Aviso reapply rede: {0}" -f $_.Exception.Message)
+    }
+    try {
+      & "$PSScriptRoot\Iniciar-Gateway.ps1"
+    } catch { }
   }
 
   if (-not $NoBrowser) {
@@ -200,8 +231,8 @@ try {
        "2) Digite EXATAMENTE no navegador:`n`n" +
        "    $alias`n`n" +
        "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
-       "Se for a primeira vez neste PC servidor, rode tambem:`n" +
-       "Liberar-Firewall.cmd (aceite Admin).`n`n" +
+       "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
+       "Liberar-Firewall.cmd (Admin) — instala inicio automatico.`n`n" +
        "IP interno: $ip"),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
