@@ -318,6 +318,46 @@ function renderService(container, item) {
   container.appendChild(el)
 }
 
+function renderStackCheck(container, item) {
+  const ok = !!item.ok
+  const el = document.createElement('div')
+  el.className = 'row'
+  el.innerHTML = `
+    <div>
+      <div class="row-title">${escapeHtml(item.name || '')}</div>
+      <span class="row-sub">${escapeHtml(item.detail || '')}</span>
+    </div>
+    <span class="badge ${ok ? 'ok' : 'bad'}">${escapeHtml(item.label || (ok ? 'OK' : 'Falhou'))}</span>
+  `
+  container.appendChild(el)
+}
+
+function renderStackChecksStore(checks) {
+  const store = $('stack-checks')
+  if (!store) return
+  store.innerHTML = ''
+  const list = Array.isArray(checks) ? checks : []
+  if (!list.length) {
+    store.innerHTML = '<p class="panel-desc">Sem dados de status.</p>'
+    return
+  }
+  const pre = list.filter((c) => c.group === 'pre')
+  const runtime = list.filter((c) => c.group === 'runtime')
+  const appendGroup = (title, items) => {
+    if (!items.length) return
+    const h = document.createElement('p')
+    h.className = 'panel-desc stack-check-group'
+    h.textContent = title
+    store.appendChild(h)
+    items.forEach((c) => renderStackCheck(store, c))
+  }
+  appendGroup('Pré-requisitos', pre)
+  appendGroup('Serviços em execução', runtime)
+  if (!pre.length && !runtime.length) {
+    list.forEach((c) => renderStackCheck(store, c))
+  }
+}
+
 function renderContainer(container, item) {
   const ok = !!item.ok
   const el = document.createElement('div')
@@ -570,7 +610,16 @@ function applyMetrics(m) {
   const servicesOk = (m.services || []).filter((s) => s.ok).length
   const servicesTotal = (m.services || []).length
   const dockerOk = !!m.docker?.running
-  const allOk = dockerOk && servicesOk === servicesTotal && servicesTotal > 0
+  const checks = Array.isArray(m.stackChecks) ? m.stackChecks : []
+  const summary = m.stackSummary || {}
+  const stackOkCount =
+    typeof summary.ok === 'number' ? summary.ok : checks.filter((c) => c.ok).length
+  const stackTotal =
+    typeof summary.total === 'number' ? summary.total : checks.length || servicesTotal
+  const allOk =
+    typeof summary.allOk === 'boolean'
+      ? summary.allOk
+      : stackTotal > 0 && stackOkCount === stackTotal
 
   const stackUp = computeStackRunning(m)
   serverControl._metricsSeen = true
@@ -586,13 +635,45 @@ function applyMetrics(m) {
   }
   renderServerPowerButton()
 
+  renderStackChecksStore(
+    checks.length
+      ? checks
+      : [
+          {
+            id: 'docker',
+            group: 'pre',
+            name: 'Docker Desktop',
+            ok: dockerOk,
+            label: dockerOk ? 'Pronto' : 'Offline',
+            detail: dockerOk ? 'Docker Desktop em execução' : 'Docker offline',
+          },
+          ...(m.services || []).map((s) => ({
+            id: s.id,
+            group: 'runtime',
+            name: s.name,
+            ok: !!s.ok,
+            label: s.label || (s.ok ? 'Online' : 'Offline'),
+            detail: s.url || '',
+          })),
+        ],
+  )
+
   const pill = $('pill-status')
-  pill.textContent = allOk
-    ? 'Sistema operacional'
-    : dockerOk
-      ? `${servicesOk}/${servicesTotal} serviços OK`
-      : 'Docker offline'
-  pill.className = 'pill ' + (allOk ? 'is-ok' : dockerOk ? 'is-warn' : 'is-bad')
+  const pillBase = 'pill pill-click '
+  if (allOk) {
+    pill.textContent = 'Sistema operacional'
+    pill.className = pillBase + 'is-ok'
+  } else if (stackTotal > 0) {
+    pill.textContent = `${stackOkCount}/${stackTotal} itens OK`
+    pill.className = pillBase + (dockerOk || stackOkCount > 0 ? 'is-warn' : 'is-bad')
+  } else {
+    pill.textContent = dockerOk ? `${servicesOk}/${servicesTotal} serviços OK` : 'Docker offline'
+    pill.className = pillBase + (dockerOk ? 'is-warn' : 'is-bad')
+  }
+  const subAttr = allOk
+    ? 'Todos os itens OK'
+    : `${stackOkCount} de ${stackTotal} itens OK — clique para ver detalhes`
+  pill.setAttribute('data-detail-sub', subAttr)
 
   $('updated-at').textContent = fmtTime(m.generatedAt)
   $('stat-alias').textContent = m.host?.alias || '—'
@@ -650,7 +731,7 @@ async function loadMetrics() {
     applyMetrics(data)
   } catch (err) {
     $('pill-status').textContent = 'Falha ao ler métricas'
-    $('pill-status').className = 'pill is-bad'
+    $('pill-status').className = 'pill pill-click is-bad'
     console.error(err)
   } finally {
     btn.disabled = false
@@ -869,6 +950,13 @@ function syncDetailModalBody() {
     const summary = $('docker-summary')
     if (sub && summary) sub.textContent = summary.textContent || ''
   }
+  if (activeDetailTarget === 'stack-checks') {
+    const pill = $('pill-status')
+    const sub = $('modal-detail-sub')
+    if (sub && pill) {
+      sub.textContent = pill.getAttribute('data-detail-sub') || 'Itens necessários para funcionar'
+    }
+  }
 }
 
 function openDetailModal(btn) {
@@ -877,6 +965,9 @@ function openDetailModal(btn) {
   let sub = btn.getAttribute('data-detail-sub') || ''
   if (target === 'containers') {
     sub = ($('docker-summary') && $('docker-summary').textContent) || sub
+  }
+  if (target === 'stack-checks') {
+    sub = btn.getAttribute('data-detail-sub') || 'Itens necessários para funcionar'
   }
   activeDetailTarget = target
   const modal = $('modal-detail')

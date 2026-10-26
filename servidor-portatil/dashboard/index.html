@@ -64,7 +64,19 @@
       </div>
 
       <div class="top-meta">
-        <div class="pill" id="pill-status">Carregando…</div>
+        <button
+          type="button"
+          class="pill pill-click"
+          id="pill-status"
+          title="Ver status de cada item"
+          aria-haspopup="dialog"
+          data-detail-open
+          data-detail-target="stack-checks"
+          data-detail-title="Status do servidor"
+          data-detail-sub="Itens necessarios para funcionar"
+        >
+          Carregando…
+        </button>
         <div class="meta-block">
           <span class="meta-label">Atualizado</span>
           <span class="meta-value" id="updated-at">—</span>
@@ -73,6 +85,7 @@
           Atualizar
         </button>
       </div>
+      <div id="stack-checks" class="detail-store stack" hidden></div>
     </header>
 
     <main class="board">

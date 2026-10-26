@@ -19,6 +19,76 @@ function Get-BytesFriendly([long]$Bytes) {
   return ('{0:N0} KB' -f ($Bytes / 1KB))
 }
 
+function Test-VcRedistInstalled {
+  foreach ($k in @(
+      'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
+      'HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+    )) {
+    if (Test-Path $k) {
+      try {
+        if ((Get-ItemProperty $k -ErrorAction Stop).Installed -eq 1) { return $true }
+      } catch { }
+    }
+  }
+  return $false
+}
+
+function Test-WslInstalled {
+  try {
+    & wsl.exe --status 1>$null 2>$null
+    if ($LASTEXITCODE -eq 0) { return $true }
+    $o = & wsl.exe -l -v 2>&1 | Out-String
+    if ($o -match 'Ubuntu|docker-desktop|Windows Subsystem') { return $true }
+  } catch { }
+  return $false
+}
+
+function Test-NodeInstalled {
+  try {
+    $v = & node -v 2>$null
+    return ($LASTEXITCODE -eq 0 -and "$v" -match '^v\d+')
+  } catch { return $false }
+}
+
+function Test-FirewallRulesReady {
+  try {
+    $out = & netsh advfirewall firewall show rule name='AcompOPMS Gateway 443' 2>$null | Out-String
+    if ($out -match 'AcompOPMS Gateway 443') { return $true }
+    $out2 = & netsh advfirewall firewall show rule name='AcompOPMS DNS Alias 53' 2>$null | Out-String
+    return ($out2 -match 'AcompOPMS DNS Alias 53')
+  } catch { return $false }
+}
+
+function Test-HostsAliasReady([string]$Alias) {
+  try {
+    $hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
+    if (-not (Test-Path -LiteralPath $hostsPath)) { return $false }
+    $lines = @(Get-Content -LiteralPath $hostsPath -ErrorAction SilentlyContinue)
+    return [bool]($lines | Where-Object {
+        $_ -and ($_ -match 'acompopms-alias' -or ($Alias -and $_ -match [regex]::Escape($Alias)))
+      })
+  } catch { return $false }
+}
+
+function Get-FirewallRedeCheck([string]$Alias, [bool]$HttpsOk) {
+  $rules = Test-FirewallRulesReady
+  $hostsOk = Test-HostsAliasReady $Alias
+  if ($HttpsOk) {
+    return @{ ok = $true; label = 'Pronto HTTPS'; detail = "https://${Alias}/ acessivel" }
+  }
+  if ($rules -and $hostsOk) {
+    return @{ ok = $true; label = 'Firewall OK'; detail = 'Regras e hosts prontos — suba o servidor' }
+  }
+  $parts = @()
+  if (-not $rules) { $parts += 'regras' }
+  if (-not $hostsOk) { $parts += 'hosts' }
+  return @{
+    ok     = $false
+    label  = if ($rules -or $hostsOk) { 'Incompleto' } else { 'Pendente' }
+    detail = ('Falta: {0}. Use Liberar Firewall (Admin).' -f ($parts -join ', '))
+  }
+}
+
 function Get-FolderSizeBytes([string]$Path) {
   if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return 0L }
   try {
@@ -178,6 +248,76 @@ function Get-DashboardMetrics {
     $s.label = if ($s.ok) { 'Online' } elseif ($s.code -eq 0) { 'Offline' } else { "HTTP $($s.code)" }
   }
 
+  $fePath = if ($cfg -and $cfg.FRONTEND_DIR) { [string]$cfg.FRONTEND_DIR } else { $null }
+  $sbPath = if ($cfg -and $cfg.SUPABASE_DOCKER_DIR) { [string]$cfg.SUPABASE_DOCKER_DIR } else { $null }
+  $pastasOk = ($fePath -and (Test-Path -LiteralPath $fePath)) -and ($sbPath -and (Test-Path -LiteralPath $sbPath))
+  $pastasDetail = if ($pastasOk) {
+    'Frontend e Supabase encontrados'
+  } else {
+    $miss = @()
+    if (-not $fePath -or -not (Test-Path -LiteralPath $fePath)) { $miss += 'frontend' }
+    if (-not $sbPath -or -not (Test-Path -LiteralPath $sbPath)) { $miss += 'supabase' }
+    'Faltando: ' + ($miss -join ', ')
+  }
+
+  $nodeOk = Test-NodeInstalled
+  $vcOk = Test-VcRedistInstalled
+  $wslOk = Test-WslInstalled
+  $gwHttpsOk = [bool](($services | Where-Object { $_.id -eq 'gateway' } | Select-Object -First 1).ok)
+  $fw = Get-FirewallRedeCheck -Alias $alias -HttpsOk:$gwHttpsOk
+
+  # Itens que fazem o servidor funcionar (pre-reqs + saude HTTP).
+  $stackChecks = @(
+    @{
+      id = 'docker'; group = 'pre'; name = 'Docker Desktop'
+      ok = $dockerOk
+      label = if ($dockerOk) { 'Pronto' } else { 'Offline' }
+      detail = if ($dockerOk) { 'Docker Desktop em execucao' } else { 'Abra o Docker Desktop e aguarde ficar pronto' }
+    },
+    @{
+      id = 'node'; group = 'pre'; name = 'Node.js'
+      ok = $nodeOk
+      label = if ($nodeOk) { 'Instalado' } else { 'Nao instalado' }
+      detail = if ($nodeOk) { 'node no PATH' } else { 'Instale o Node.js (instaladores do pacote)' }
+    },
+    @{
+      id = 'vcredist'; group = 'pre'; name = 'Visual C++ Redistributable'
+      ok = $vcOk
+      label = if ($vcOk) { 'Instalado' } else { 'Nao instalado' }
+      detail = if ($vcOk) { 'Runtime x64 OK' } else { 'Necessario para alguns componentes nativos' }
+    },
+    @{
+      id = 'wsl'; group = 'pre'; name = 'WSL'
+      ok = $wslOk
+      label = if ($wslOk) { 'Instalado' } else { 'Nao instalado' }
+      detail = if ($wslOk) { 'Windows Subsystem for Linux OK' } else { 'Necessario para o Docker Desktop' }
+    },
+    @{
+      id = 'pastas'; group = 'pre'; name = 'Pastas do sistema'
+      ok = $pastasOk
+      label = if ($pastasOk) { 'OK' } else { 'Faltando' }
+      detail = $pastasDetail
+    },
+    @{
+      id = 'firewall'; group = 'pre'; name = 'Firewall / HTTPS'
+      ok = [bool]$fw.ok
+      label = [string]$fw.label
+      detail = [string]$fw.detail
+    }
+  )
+  foreach ($s in $services) {
+    $stackChecks += @{
+      id     = $s.id
+      group  = 'runtime'
+      name   = $s.name
+      ok     = [bool]$s.ok
+      label  = [string]$s.label
+      detail = [string]$s.url
+    }
+  }
+  $stackOk = @($stackChecks | Where-Object { $_.ok }).Count
+  $stackTotal = $stackChecks.Count
+
   $uptimeSec = 0
   try {
     $boot = $os.LastBootUpTime
@@ -225,6 +365,12 @@ function Get-DashboardMetrics {
       containers = $containers
     }
     services   = $services
+    stackChecks = $stackChecks
+    stackSummary = @{
+      ok    = $stackOk
+      total = $stackTotal
+      allOk = ($stackTotal -gt 0 -and $stackOk -eq $stackTotal)
+    }
     usageByHour = $usage
   }
 }

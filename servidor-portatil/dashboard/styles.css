@@ -486,6 +486,34 @@ body.shell.is-loading .board {
   white-space: nowrap;
 }
 
+button.pill {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: inherit;
+}
+
+.pill-click:hover,
+.pill-click:focus-visible {
+  filter: brightness(1.08);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(122, 168, 146, 0.35);
+}
+
+.stack-check-group {
+  margin: 0.35rem 0 0.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
+.stack-check-group:first-child {
+  margin-top: 0;
+}
+
 .pill.is-ok {
   color: var(--ok);
   border-color: rgba(78, 207, 138, 0.35);
