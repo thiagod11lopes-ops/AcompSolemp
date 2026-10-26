@@ -19,6 +19,29 @@ let serverControl = {
   _metricsSeen: false,
 }
 
+const START_ATTEMPTS_KEY = 'acompOmpsStartAttempts'
+
+function getStartAttemptCount() {
+  const n = Number(sessionStorage.getItem(START_ATTEMPTS_KEY) || '0')
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+function bumpStartAttemptCount() {
+  const next = getStartAttemptCount() + 1
+  sessionStorage.setItem(START_ATTEMPTS_KEY, String(next))
+  return next
+}
+
+function busyStartLabel(attempt) {
+  // 1ª tentativa: frase curta; 2ª+ : mensagem bem expressa.
+  if (attempt >= 2) return 'Aguarde, servidor sendo iniciado'
+  return 'Iniciando servidor…'
+}
+
+function busyStopLabel() {
+  return 'Servidor sendo pausado'
+}
+
 const DISK_COLORS = {
   used: '#558B71',
   usedBright: '#7AA892',
@@ -422,10 +445,23 @@ function renderServerPowerButton() {
   const kicker = $('power-kicker')
   if (busy) {
     const starting = serverControl.action === 'start'
-    if (label) label.textContent = starting ? 'Iniciando servidor…' : 'Parando servidor…'
-    if (kicker) kicker.textContent = 'Servidor OMPS'
-    btn.title = starting ? 'Iniciando Servidor OMPS…' : 'Parando Servidor OMPS…'
-    setPowerHint(serverControl.message || (starting ? 'Subindo serviços…' : 'Encerrando serviços…'), null)
+    const attempt = serverControl._startAttempt || getStartAttemptCount() || 1
+    if (starting) {
+      if (label) label.textContent = busyStartLabel(attempt)
+      if (kicker) kicker.textContent = attempt >= 2 ? 'Aguarde' : 'Servidor OMPS'
+      btn.title = busyStartLabel(attempt)
+      setPowerHint(
+        attempt >= 2
+          ? 'Aguarde, servidor sendo iniciado…'
+          : serverControl.message || 'Subindo serviços…',
+        null,
+      )
+    } else {
+      if (label) label.textContent = busyStopLabel()
+      if (kicker) kicker.textContent = 'Aguarde'
+      btn.title = busyStopLabel()
+      setPowerHint(serverControl.message || 'Servidor sendo pausado…', null)
+    }
   } else if (running) {
     if (label) label.textContent = 'Parar servidor'
     if (kicker) kicker.textContent = 'Em execução'
@@ -444,10 +480,18 @@ function renderServerPowerButton() {
 function applyServerControl(data) {
   if (!data || typeof data !== 'object') return
   const busy = !!data.busy || data.status === 'running'
+  const prevAttempt = serverControl._startAttempt
   serverControl.busy = busy
   serverControl.action = data.action || 'idle'
   serverControl.status = data.status || 'idle'
   serverControl.message = data.message || ''
+  if (typeof data._startAttempt === 'number') {
+    serverControl._startAttempt = data._startAttempt
+  } else if (busy && serverControl.action === 'start') {
+    serverControl._startAttempt = prevAttempt || getStartAttemptCount() || 1
+  } else if (!busy) {
+    serverControl._startAttempt = null
+  }
   // running vem das metricas (mais confiavel); API so sugere se ainda nao houver leitura.
   if (typeof data.running === 'boolean' && serverControl._metricsSeen !== true) {
     serverControl.running = !!data.running
@@ -486,15 +530,38 @@ async function toggleServerPower() {
   if (!btn || btn.disabled) return
   const action = serverControl.running ? 'stop' : 'start'
   btn.disabled = true
-  setPowerHint(action === 'start' ? 'Solicitando início…' : 'Solicitando parada…', null)
+
+  if (action === 'start') {
+    const attempt = bumpStartAttemptCount()
+    serverControl._startAttempt = attempt
+    serverControl.busy = true
+    serverControl.action = 'start'
+    renderServerPowerButton()
+    setPowerHint(
+      attempt >= 2 ? 'Aguarde, servidor sendo iniciado…' : 'Solicitando início…',
+      null,
+    )
+  } else {
+    serverControl.busy = true
+    serverControl.action = 'stop'
+    renderServerPowerButton()
+    setPowerHint('Servidor sendo pausado…', null)
+  }
+
   try {
     const res = await fetch(`/api/server/${action}`, { method: 'POST', cache: 'no-store' })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    applyServerControl(data)
+    applyServerControl({
+      ...data,
+      action: data.action || action,
+      _startAttempt: action === 'start' ? serverControl._startAttempt : undefined,
+    })
   } catch (err) {
+    serverControl.busy = false
     setPowerHint(err instanceof Error ? err.message : 'Falha ao acionar o servidor.', 'bad')
     btn.disabled = false
+    renderServerPowerButton()
     void loadServerControl()
   }
 }
