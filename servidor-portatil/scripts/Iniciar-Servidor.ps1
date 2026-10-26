@@ -124,6 +124,19 @@ if ($Build) {
   Set-Content $pidFile $p.Id
 }
 
+Write-Host "==> Subindo API local de export CSV (9788)..."
+try {
+  $exportApi = Join-Path $PSScriptRoot 'Local-Export-Api.ps1'
+  $exportLog = Join-Path (Get-ServidorRoot) 'logs\local-export-api.out.log'
+  Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', $exportApi
+  ) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden `
+    -RedirectStandardOutput $exportLog -RedirectStandardError $exportLog | Out-Null
+} catch {
+  Write-Host "Aviso: API de export CSV nao iniciou — $($_.Exception.Message)"
+}
+
 Write-Host ""
 Write-Host "Servidor pronto."
 Write-Host "  Neste PC:     http://localhost:$($cfg.APP_PORT)"

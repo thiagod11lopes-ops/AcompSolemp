@@ -14,6 +14,22 @@ function Get-AcompSolempRoot {
   return $parent
 }
 
+function Get-DadosOutputDirs {
+  $set = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+  [void]$set.Add((Join-Path (Get-AcompSolempRoot) 'Dados'))
+  $desk = [Environment]::GetFolderPath('Desktop')
+  foreach ($rel in @(
+      'Iniciar Servidor\AcompSolemp',
+      'Thiago\Projetos\AcompSolemp'
+    )) {
+    $candidate = Join-Path $desk $rel
+    if (Test-Path (Join-Path $candidate 'frontend')) {
+      [void]$set.Add((Join-Path $candidate 'Dados'))
+    }
+  }
+  return @($set)
+}
+
 function Get-AppStatePayloadObject {
   $name = 'supabase-db'
   docker inspect $name 1>$null 2>$null
@@ -26,7 +42,40 @@ function Get-AppStatePayloadObject {
   $tmpSql = Join-Path $env:TEMP "acomp-csv-payload-$id.sql"
   $utf8 = New-Object System.Text.UTF8Encoding $false
   try {
-    $copySql = "\copy (SELECT payload::text FROM public.app_state ORDER BY updated_at DESC NULLS LAST LIMIT 1) TO '$remote'`n"
+    # Blob app_state vem "stripped" (Fase 9); hidrata arrays das tabelas normalizadas.
+    # 1) monta linha em tabela temp  2) \copy (aceita SELECT simples)
+    $copySql = @"
+CREATE TEMP TABLE acomp_csv_hydrated AS
+WITH base AS (
+  SELECT tenant_id, payload
+  FROM public.app_state
+  ORDER BY updated_at DESC NULLS LAST
+  LIMIT 1
+),
+agg AS (
+  SELECT
+    b.payload
+      || jsonb_build_object(
+        'usuarios', COALESCE((SELECT jsonb_agg(u.data ORDER BY u.updated_at) FROM public.usuarios u WHERE u.tenant_id = b.tenant_id), '[]'::jsonb),
+        'clinicas', COALESCE((SELECT jsonb_agg(c.data ORDER BY c.updated_at) FROM public.clinicas c WHERE c.tenant_id = b.tenant_id), '[]'::jsonb),
+        'empresas', COALESCE((SELECT jsonb_agg(e.data ORDER BY e.updated_at) FROM public.empresas e WHERE e.tenant_id = b.tenant_id), '[]'::jsonb),
+        'materiais', COALESCE((SELECT jsonb_agg(m.data ORDER BY m.updated_at) FROM public.materiais m WHERE m.tenant_id = b.tenant_id), '[]'::jsonb),
+        'pedidos', COALESCE((SELECT jsonb_agg(p.data ORDER BY p.updated_at) FROM public.pedidos p WHERE p.tenant_id = b.tenant_id), '[]'::jsonb),
+        'historico', COALESCE((SELECT jsonb_agg(h.data ORDER BY h.updated_at) FROM public.pedido_historico h WHERE h.tenant_id = b.tenant_id), '[]'::jsonb),
+        'workflowEtapas', COALESCE((SELECT jsonb_agg(w.data ORDER BY w.updated_at) FROM public.workflow_etapas w WHERE w.tenant_id = b.tenant_id), '[]'::jsonb),
+        'arquivos', COALESCE((SELECT jsonb_agg(a.data ORDER BY a.updated_at) FROM public.anexos a WHERE a.tenant_id = b.tenant_id), '[]'::jsonb),
+        'chatMensagens', COALESCE((SELECT jsonb_agg(ch.data ORDER BY ch.updated_at) FROM public.chat_mensagens ch WHERE ch.tenant_id = b.tenant_id), '[]'::jsonb),
+        'reversoes', COALESCE((SELECT jsonb_agg(r.data ORDER BY r.updated_at) FROM public.reversoes r WHERE r.tenant_id = b.tenant_id), '[]'::jsonb),
+        'notificacoes', COALESCE((SELECT jsonb_agg(n.data ORDER BY n.updated_at) FROM public.notificacoes n WHERE n.tenant_id = b.tenant_id), '[]'::jsonb),
+        'processosArquivados', COALESCE((SELECT jsonb_agg(pa.data ORDER BY pa.updated_at) FROM public.processos_arquivados pa WHERE pa.tenant_id = b.tenant_id), '[]'::jsonb),
+        'solemp', COALESCE((SELECT jsonb_agg(s.data ORDER BY s.updated_at) FROM public.solemp s WHERE s.tenant_id = b.tenant_id), '[]'::jsonb),
+        'notasFiscais', COALESCE((SELECT jsonb_agg(nf.data ORDER BY nf.updated_at) FROM public.notas_fiscais nf WHERE nf.tenant_id = b.tenant_id), '[]'::jsonb)
+      ) AS hydrated
+  FROM base b
+)
+SELECT hydrated::text AS body FROM agg;
+\copy (SELECT body FROM acomp_csv_hydrated) TO '$remote'
+"@
     [IO.File]::WriteAllText($tmpSql, $copySql, $utf8)
     docker cp $tmpSql "${name}:$remoteSql" 1>$null
     $p = Start-Process -FilePath 'docker' -ArgumentList @(
@@ -34,7 +83,7 @@ function Get-AppStatePayloadObject {
       'psql', '-U', 'postgres', '-d', 'postgres',
       '-v', 'ON_ERROR_STOP=1', '-f', $remoteSql
     ) -Wait -PassThru -NoNewWindow
-    if ($p.ExitCode -ne 0) { throw 'Falha ao ler app_state.' }
+    if ($p.ExitCode -ne 0) { throw 'Falha ao ler app_state hidratado.' }
     docker cp "${name}:$remote" $local 1>$null
     $raw = [IO.File]::ReadAllText($local, $utf8).Trim()
     if (-not $raw) { throw 'app_state vazio.' }
@@ -92,7 +141,7 @@ if (-not (Test-Path $lockDir)) { New-Item -ItemType Directory -Force -Path $lock
 if (Test-Path $lockPath) {
   $age = (Get-Date) - (Get-Item $lockPath).LastWriteTime
   if ($age.TotalMinutes -lt 2) {
-    Write-Host 'Exportacao ja em andamento — ignorado.'
+    Write-Host 'Exportacao ja em andamento - ignorado.'
     exit 0
   }
 }
@@ -102,22 +151,24 @@ try {
   Write-Host '==> Lendo dados do sistema...'
   $data = Get-AppStatePayloadObject
 
-  $acompRoot = Get-AcompSolempRoot
-  $dadosDir = Join-Path $acompRoot 'Dados'
-  New-Item -ItemType Directory -Force -Path $dadosDir | Out-Null
+  $dadosDirs = @(Get-DadosOutputDirs)
+  foreach ($dadosDir in $dadosDirs) {
+    New-Item -ItemType Directory -Force -Path $dadosDir | Out-Null
+  }
 
   $stamp = Get-Date -Format 'dd-MM-yyyy HH-mm-ss'
   $fileName = "DadosOMPS ($stamp).csv"
-  $csvPath = Join-Path $dadosDir $fileName
 
-  # Remove exports antigos (mantem apenas o CSV novo = arquivo unico atualizado)
-  Get-ChildItem -LiteralPath $dadosDir -File -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Name -like 'DadosOMPS (*).csv' -or
-      $_.Name -like 'AcompOPMS-Dados*.xlsx' -or
-      $_.Name -like 'AcompOPMS-Snapshot*.json'
-    } |
-    Remove-Item -Force -ErrorAction SilentlyContinue
+  # Remove exports antigos em todas as pastas Dados (arquivo unico atualizado)
+  foreach ($dadosDir in $dadosDirs) {
+    Get-ChildItem -LiteralPath $dadosDir -File -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.Name -like 'DadosOMPS (*).csv' -or
+        $_.Name -like 'AcompOPMS-Dados*.xlsx' -or
+        $_.Name -like 'AcompOPMS-Snapshot*.json'
+      } |
+      Remove-Item -Force -ErrorAction SilentlyContinue
+  }
 
   $headerCols = @(
     'Secao',
@@ -265,8 +316,7 @@ try {
   })
 
   $utf8Bom = New-Object System.Text.UTF8Encoding $true
-  [IO.File]::WriteAllLines($csvPath, $lines.ToArray(), $utf8Bom)
-
+  $lineArr = $lines.ToArray()
   $readme = @"
 AcompOPMS — pasta Dados
 =======================
@@ -276,9 +326,15 @@ Arquivo atual (unico CSV, sempre renovado ao criar documento na Timeline):
 
 Abra no Excel (separador ;). A coluna Secao identifica o tipo de registro.
 "@
-  Set-Content -Path (Join-Path $dadosDir 'LEIA-ME-Dados.txt') -Value $readme -Encoding UTF8
+  $written = @()
+  foreach ($dadosDir in $dadosDirs) {
+    $csvPath = Join-Path $dadosDir $fileName
+    [IO.File]::WriteAllLines($csvPath, $lineArr, $utf8Bom)
+    Set-Content -Path (Join-Path $dadosDir 'LEIA-ME-Dados.txt') -Value $readme -Encoding UTF8
+    $written += $csvPath
+  }
 
-  Write-Host "CSV gerado: $csvPath"
+  foreach ($p in $written) { Write-Host "CSV gerado: $p" }
 } finally {
   Remove-Item $lockPath -Force -ErrorAction SilentlyContinue
 }

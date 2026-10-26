@@ -19,5 +19,12 @@ export default defineConfig({
     host: '0.0.0.0',
     // Permite acesso pelo nome amigavel da LAN (ex.: sistema.acompomps.rede)
     allowedHosts: true,
+    proxy: {
+      // Export CSV local (Local-Export-Api.ps1) — same-origin no Vite e no gateway.
+      '/api/export-dados': {
+        target: 'http://127.0.0.1:9788',
+        changeOrigin: true,
+      },
+    },
   },
 })
