@@ -955,12 +955,13 @@ button.pill {
 }
 
 .modal-card-detail {
-  width: min(560px, 100%);
+  width: min(720px, 100%);
+  max-height: min(94vh, 920px);
 }
 
 .detail-modal-stack {
-  max-height: min(58vh, 480px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
   padding-right: 0.15rem;
 }
 
