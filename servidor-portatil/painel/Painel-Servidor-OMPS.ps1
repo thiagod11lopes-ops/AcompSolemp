@@ -263,10 +263,13 @@ function Show-ServidorOmpsInstallPanel {
   $script:panelResult = 'Abort'
   $script:ompsPreStart = [bool]$PreStart
   $script:installAllOk = $false
+  $script:statusLeft = 30
+  $script:statusPaused = $false
+  $script:statusAdvancing = $false
   $theme = Get-DashTheme
 
   $formW = 680
-  $formH = 640
+  $formH = 700
   $form = New-Object Windows.Forms.Form
   Set-DashForm $form 'Servidor OMPS' $formW $formH
   if ($script:IconPath -and (Test-Path $script:IconPath)) {
@@ -276,7 +279,7 @@ function Show-ServidorOmpsInstallPanel {
   # Header
   $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20 ($formW - 56)))
   $form.Controls.Add((New-DashTitle 'Status da instalacao' 28 42 ($formW - 56)))
-  $form.Controls.Add((New-DashSub 'Confira cada item. Com tudo OK, Avancar abre a contagem regressiva.' 28 82 ($formW - 56) 28))
+  $form.Controls.Add((New-DashSub 'Confira cada item. Avanca automaticamente em 30s (ou clique em Avancar).' 28 82 ($formW - 56) 28))
 
   # Card de status
   $panel = New-DashPanel 24 120 ($formW - 48) 320
@@ -305,24 +308,82 @@ function Show-ServidorOmpsInstallPanel {
     return @{ Status = $s; Button = $b }
   }
 
+  function Update-StatusCountdownUi {
+    if ($script:lblStatusCountdown) {
+      $script:lblStatusCountdown.Text = "{0}s" -f $script:statusLeft
+    }
+    if ($script:barStatusCountdown) {
+      $v = [Math]::Max(0, [Math]::Min(30, $script:statusLeft))
+      $script:barStatusCountdown.Value = $v
+    }
+    if ($script:hintAvancar -and -not $script:statusAdvancing) {
+      if ($script:installAllOk) {
+        $script:hintAvancar.Text = ("Pronto — Avancar agora ou em {0}s." -f $script:statusLeft)
+        $script:hintAvancar.ForeColor = $theme.Ok
+      } else {
+        $script:hintAvancar.Text = ("Avanco automatico em {0}s. Corrija os itens em vermelho se puder." -f $script:statusLeft)
+        $script:hintAvancar.ForeColor = $theme.Muted
+      }
+      $script:hintAvancar.BackColor = $theme.Footer
+    }
+  }
+
+  function Complete-InstallPanelAdvance([bool]$Force = $false) {
+    if ($script:statusAdvancing) { return }
+    $script:statusAdvancing = $true
+    if ($script:statusTimer) { try { $script:statusTimer.Stop() } catch { } }
+
+    Update-StatusLabels
+    Set-PackConfigEnv
+    $problems = Invoke-OmpsVerification
+    if (-not $Force -and $problems.Count -gt 0) {
+      $script:statusAdvancing = $false
+      if ($script:statusTimer -and -not $script:statusPaused) {
+        try { $script:statusTimer.Start() } catch { }
+      }
+      [Windows.Forms.MessageBox]::Show(
+        ("Ainda ha pendencias:`n`n- " + ($problems -join "`n- ")),
+        'Servidor OMPS',
+        [Windows.Forms.MessageBoxButtons]::OK,
+        [Windows.Forms.MessageBoxIcon]::Warning
+      ) | Out-Null
+      Update-AvancarState
+      return
+    }
+
+    if ($script:ompsPreStart) {
+      $script:panelResult = 'Continue'
+      $form.Close()
+      return
+    }
+
+    $form.Hide()
+    $ok = Show-ShortcutChecklist
+    if ($ok) {
+      $abrir = Join-Path $script:ScriptsDir 'Abrir-Tudo.ps1'
+      if (Test-Path $abrir) {
+        Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+          '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', $abrir, '-SkipInstallPanel'
+        )
+      }
+    }
+    $form.Close()
+  }
+
   function Update-AvancarState {
     Set-PackConfigEnv
     $problems = Invoke-OmpsVerification
     $script:installAllOk = ($problems.Count -eq 0)
     if ($script:btnAvancar) {
-      $script:btnAvancar.Enabled = $script:installAllOk
+      # Manual: libera cedo se OK; o timer avanca ao fim dos 30s mesmo assim.
+      $script:btnAvancar.Enabled = $script:installAllOk -and -not $script:statusAdvancing
       if ($script:installAllOk) {
         Set-DashButtonStyle $script:btnAvancar 'primary'
-        $script:hintAvancar.Text = 'Pronto — Avancar para a contagem regressiva.'
-        $script:hintAvancar.ForeColor = $theme.Ok
-        $script:hintAvancar.BackColor = $theme.Footer
       } else {
         Set-DashButtonStyle $script:btnAvancar 'ghost'
-        $script:hintAvancar.Text = 'Resolva os itens em vermelho e clique em Verificar.'
-        $script:hintAvancar.ForeColor = $theme.Muted
-        $script:hintAvancar.BackColor = $theme.Footer
       }
     }
+    Update-StatusCountdownUi
   }
 
   function Update-StatusLabels {
@@ -360,7 +421,12 @@ function Show-ServidorOmpsInstallPanel {
       ) | Out-Null
       return
     }
-    Start-Process -FilePath $Path -Wait
+    $script:statusPaused = $true
+    try {
+      Start-Process -FilePath $Path -Wait
+    } finally {
+      $script:statusPaused = $false
+    }
     Update-StatusLabels
   }
 
@@ -380,8 +446,23 @@ function Show-ServidorOmpsInstallPanel {
   $script:statusPastas = New-DashStatusBadge '—' $false 290 $y 150 32
   $panel.Controls.Add($script:statusPastas)
 
+  # Contagem regressiva de 30s no proprio painel de status
+  $countCard = New-DashPanel 24 452 ($formW - 48) 72
+  $form.Controls.Add($countCard)
+  $countCard.Controls.Add((New-DashLabel 'Avanco automatico' 20 10 220 22 $theme.Muted $theme.Panel 8.5 ([Drawing.FontStyle]::Bold)))
+  $script:lblStatusCountdown = New-DashLabel '30s' ($formW - 48 - 100) 6 80 28 $theme.AccentBright $theme.Panel 16 ([Drawing.FontStyle]::Bold) 'MiddleRight'
+  $countCard.Controls.Add($script:lblStatusCountdown)
+  $script:barStatusCountdown = New-Object Windows.Forms.ProgressBar
+  $script:barStatusCountdown.Location = New-Object Drawing.Point(20, 40)
+  $script:barStatusCountdown.Size = New-Object Drawing.Size(($formW - 88), 16)
+  $script:barStatusCountdown.Minimum = 0
+  $script:barStatusCountdown.Maximum = 30
+  $script:barStatusCountdown.Value = 30
+  $script:barStatusCountdown.Style = 'Continuous'
+  $countCard.Controls.Add($script:barStatusCountdown)
+
   # Acoes secundarias
-  $actions = New-DashPanel 24 456 ($formW - 48) 56
+  $actions = New-DashPanel 24 536 ($formW - 48) 56
   $form.Controls.Add($actions)
   $btnNpm = New-DashButton 'Dependencias do frontend' 12 10 230 36 'ghost'
   $btnNpm.Add_Click({
@@ -394,7 +475,12 @@ function Show-ServidorOmpsInstallPanel {
         [Windows.Forms.MessageBox]::Show("Pasta frontend nao encontrada:`n$fe", 'Servidor OMPS') | Out-Null
         return
       }
-      Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm install && pause') -WorkingDirectory $fe -Wait
+      $script:statusPaused = $true
+      try {
+        Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm install && pause') -WorkingDirectory $fe -Wait
+      } finally {
+        $script:statusPaused = $false
+      }
       Update-StatusLabels
     })
   $actions.Controls.Add($btnNpm)
@@ -418,7 +504,7 @@ function Show-ServidorOmpsInstallPanel {
         return
       }
       [Windows.Forms.MessageBox]::Show(
-        'Verificacao OK. Clique em Avancar para a contagem regressiva.',
+        'Verificacao OK. Voce ja pode Avancar ou aguardar a contagem.',
         'Servidor OMPS',
         [Windows.Forms.MessageBoxButtons]::OK,
         [Windows.Forms.MessageBoxIcon]::Information
@@ -428,54 +514,48 @@ function Show-ServidorOmpsInstallPanel {
   $actions.Controls.Add($btnVerify)
 
   # Footer
-  $footer = New-DashFooter 528 $formW 112
+  $footer = New-DashFooter 608 $formW 92
   $form.Controls.Add($footer)
 
-  $script:hintAvancar = New-DashLabel 'Verifique a instalacao para liberar Avancar.' 28 16 ($formW - 56) 24 $theme.Muted $theme.Footer 9
+  $script:hintAvancar = New-DashLabel 'Avanco automatico em 30s.' 28 12 ($formW - 56) 22 $theme.Muted $theme.Footer 9
   $footer.Controls.Add($script:hintAvancar)
 
-  $btnClose = New-DashButton 'Fechar' ($formW - 280) 48 110 40 'ghost'
-  $btnClose.Add_Click({ $script:panelResult = 'Abort'; $form.Close() })
-  $footer.Controls.Add($btnClose)
-
-  $script:btnAvancar = New-DashButton 'Avancar' ($formW - 156) 48 128 40 'primary'
-  $script:btnAvancar.Enabled = $false
-  $script:btnAvancar.Add_Click({
-      Update-StatusLabels
-      Set-PackConfigEnv
-      $problems = Invoke-OmpsVerification
-      if ($problems.Count -gt 0) {
-        [Windows.Forms.MessageBox]::Show(
-          ("Ainda ha pendencias:`n`n- " + ($problems -join "`n- ")),
-          'Servidor OMPS',
-          [Windows.Forms.MessageBoxButtons]::OK,
-          [Windows.Forms.MessageBoxIcon]::Warning
-        ) | Out-Null
-        Update-AvancarState
-        return
-      }
-
-      if ($script:ompsPreStart) {
-        $script:panelResult = 'Continue'
-        $form.Close()
-        return
-      }
-
-      $form.Hide()
-      $ok = Show-ShortcutChecklist
-      if ($ok) {
-        $abrir = Join-Path $script:ScriptsDir 'Abrir-Tudo.ps1'
-        if (Test-Path $abrir) {
-          Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-            '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', $abrir, '-SkipInstallPanel'
-          )
-        }
-      }
+  $btnClose = New-DashButton 'Fechar' ($formW - 280) 40 110 40 'ghost'
+  $btnClose.Add_Click({
+      $script:panelResult = 'Abort'
+      if ($script:statusTimer) { try { $script:statusTimer.Stop() } catch { } }
       $form.Close()
     })
+  $footer.Controls.Add($btnClose)
+
+  $script:btnAvancar = New-DashButton 'Avancar' ($formW - 156) 40 128 40 'primary'
+  $script:btnAvancar.Enabled = $false
+  $script:btnAvancar.Add_Click({ Complete-InstallPanelAdvance -Force:$false })
   $footer.Controls.Add($script:btnAvancar)
 
+  $script:statusTimer = New-Object Windows.Forms.Timer
+  $script:statusTimer.Interval = 1000
+  $script:statusTimer.Add_Tick({
+      if ($script:statusPaused -or $script:statusAdvancing) { return }
+      $script:statusLeft = $script:statusLeft - 1
+      if ($script:statusLeft -lt 0) { $script:statusLeft = 0 }
+      Update-StatusCountdownUi
+      if ($script:statusLeft -le 0) {
+        $script:statusTimer.Stop()
+        # Ao fim dos 30s avanca mesmo com pendencias (PreStart segue o fluxo).
+        Complete-InstallPanelAdvance -Force:$true
+      }
+    })
+
   Update-StatusLabels
+  Update-StatusCountdownUi
+  $form.Add_Shown({ $script:statusTimer.Start() })
+  $form.Add_FormClosed({
+      if ($script:statusTimer) {
+        try { $script:statusTimer.Stop() } catch { }
+        try { $script:statusTimer.Dispose() } catch { }
+      }
+    })
   [void]$form.ShowDialog()
   return $script:panelResult
 }
