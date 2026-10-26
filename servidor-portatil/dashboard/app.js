@@ -22,6 +22,8 @@ let serverControl = {
   _busySince: 0,
   _errorShown: false,
   _seenJobRunning: false,
+  /** Acao pedida pelo usuario (start/stop); nao some quando a API zera action para idle. */
+  _busyAction: null,
   _startAttempt: null,
 }
 
@@ -554,12 +556,18 @@ function showServerErrorModal(title, body, sub) {
   modal.hidden = false
 }
 
+function getBusyAction() {
+  const a = serverControl._busyAction || serverControl.action
+  return a === 'start' || a === 'stop' ? a : null
+}
+
 function clearServerBusy() {
   serverControl.busy = false
   serverControl._jobEnded = false
   serverControl._jobEndedAt = 0
   serverControl._busySince = 0
   serverControl._seenJobRunning = false
+  serverControl._busyAction = null
   stopServerPoll()
 }
 
@@ -571,6 +579,7 @@ function finishServerBusySuccess() {
 }
 
 function finishServerBusyError(title, detail) {
+  const busyAction = getBusyAction()
   if (serverControl._errorShown) {
     clearServerBusy()
     renderServerPowerButton()
@@ -579,6 +588,7 @@ function finishServerBusyError(title, detail) {
   serverControl._errorShown = true
   clearServerBusy()
   const msg = (detail || serverControl.message || '').trim()
+  const isStop = busyAction === 'stop'
   setPowerHint(title || 'Falha na operacao.', 'bad')
   showServerErrorModal(
     title || 'Falha no servidor',
@@ -586,13 +596,17 @@ function finishServerBusyError(title, detail) {
       msg,
       '',
       'O que fazer:',
-      '1. Confira Docker Desktop e o painel de status (se abriu).',
+      isStop
+        ? '1. Clique em Tentar de novo (Parar) ou feche Docker/containers manualmente.'
+        : '1. Confira Docker Desktop e o painel de status (se abriu).',
       '2. Use Solucionar problemas no pill de status, se algum item estiver vermelho.',
-      '3. Clique em Tentar de novo ou no botao Iniciar servidor.',
+      isStop
+        ? '3. Se o botao continuar em Parar, os servicos ainda respondem — tente Parar de novo.'
+        : '3. Clique em Tentar de novo ou no botao Iniciar servidor.',
     ]
       .filter(Boolean)
       .join('\n'),
-    serverControl.action === 'stop' ? 'A parada nao foi concluida' : 'O inicio nao foi concluido',
+    isStop ? 'A parada nao foi concluida' : 'O inicio nao foi concluido',
   )
   renderServerPowerButton()
 }
@@ -601,8 +615,9 @@ function finishServerBusyError(title, detail) {
 function reconcileServerBusy(stackUp) {
   if (!serverControl.busy) return
 
-  const starting = serverControl.action === 'start'
-  const stopping = serverControl.action === 'stop'
+  const busyAction = getBusyAction()
+  const starting = busyAction === 'start'
+  const stopping = busyAction === 'stop'
   const status = serverControl.status || 'idle'
   const now = Date.now()
   const busyFor = serverControl._busySince ? now - serverControl._busySince : 0
@@ -631,7 +646,9 @@ function reconcileServerBusy(stackUp) {
     if (busyFor > SERVER_BUSY_TIMEOUT_MS) {
       finishServerBusyError(
         'Tempo esgotado',
-        'O processo ficou em andamento alem do tempo esperado e os servicos nao confirmaram o estado final.',
+        stopping
+          ? 'A parada ficou em andamento alem do tempo esperado e os servicos ainda respondem (ou nao confirmaram a queda).'
+          : 'O processo ficou em andamento alem do tempo esperado e os servicos nao confirmaram o estado final.',
       )
     }
     return
@@ -657,8 +674,18 @@ function reconcileServerBusy(stackUp) {
       finishServerBusyError(
         'Parada nao concluida',
         serverControl.message ||
-          'O processo de parada terminou, mas os servicos ainda respondem. Tente Parar de novo.',
+          'O processo de parada terminou, mas o frontend e/ou a API ainda respondem. O servidor nao chegou a parar por completo.',
       )
+      return
+    }
+    // Sem start/stop conhecido: nao declarar sucesso se o stack contradiz o pedido.
+    if (!starting && !stopping) {
+      if (busyFor > SERVER_BUSY_TIMEOUT_MS) {
+        finishServerBusyError(
+          'Tempo esgotado',
+          'Nao foi possivel confirmar o resultado da operacao.',
+        )
+      }
       return
     }
     finishServerBusySuccess()
@@ -669,7 +696,9 @@ function reconcileServerBusy(stackUp) {
   if (busyFor > SERVER_BUSY_TIMEOUT_MS) {
     finishServerBusyError(
       'Tempo esgotado',
-      'Nao foi possivel confirmar o fim do processo. Verifique se o painel de inicializacao nao ficou aberto atras do navegador.',
+      stopping
+        ? 'Nao foi possivel confirmar que o servidor parou. Os servicos podem ainda estar no ar.'
+        : 'Nao foi possivel confirmar o fim do processo. Verifique se o painel de inicializacao nao ficou aberto atras do navegador.',
     )
   }
 }
@@ -706,7 +735,7 @@ function renderServerPowerButton() {
   const label = $('power-label')
   const kicker = $('power-kicker')
   if (busy) {
-    const starting = serverControl.action === 'start'
+    const starting = getBusyAction() === 'start'
     const attempt = serverControl._startAttempt || getStartAttemptCount() || 1
     if (starting) {
       if (label) label.textContent = busyStartLabel(attempt)
@@ -748,7 +777,16 @@ function applyServerControl(data) {
   const prevStatus = serverControl.status
   const wasBusy = !!serverControl.busy
   const status = data.status || 'idle'
-  const action = data.action || serverControl.action || 'idle'
+  let action = data.action || serverControl.action || 'idle'
+
+  // Enquanto o botao esta busy, a API pode zerar action para idle no finally —
+  // preservamos start/stop em _busyAction para reconciliar certo.
+  if (wasBusy && serverControl._busyAction) {
+    if (action === 'idle' || !action) action = serverControl._busyAction
+    else if (action === 'start' || action === 'stop') serverControl._busyAction = action
+  } else if ((action === 'start' || action === 'stop') && (status === 'running' || wasBusy)) {
+    serverControl._busyAction = action
+  }
 
   serverControl.action = action
   serverControl.status = status
@@ -756,7 +794,7 @@ function applyServerControl(data) {
 
   if (typeof data._startAttempt === 'number') {
     serverControl._startAttempt = data._startAttempt
-  } else if (serverControl.busy && action === 'start') {
+  } else if (serverControl.busy && getBusyAction() === 'start') {
     serverControl._startAttempt = prevAttempt || getStartAttemptCount() || 1
   }
 
@@ -823,6 +861,7 @@ async function toggleServerPower() {
   serverControl._jobEnded = false
   serverControl._jobEndedAt = 0
   serverControl._seenJobRunning = false
+  serverControl._busyAction = action
   serverControl._busySince = Date.now()
   serverControl.busy = true
   serverControl.action = action

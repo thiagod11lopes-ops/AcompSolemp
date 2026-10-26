@@ -167,7 +167,8 @@ try {
   try {
     `$cur = Get-Content -LiteralPath `$statePath -Raw -Encoding UTF8 | ConvertFrom-Json
     if (`$cur -and `$cur.status -ne 'running') {
-      `$cur.action = 'idle'
+      # Mantem action start/stop para o Dashboard saber qual operacao terminou.
+      if (-not `$cur.action -or `$cur.action -eq 'idle') { `$cur.action = `$action }
       `$cur.pid = `$null
       `$cur.updatedAt = (Get-Date).ToString('o')
       (`$cur | ConvertTo-Json -Compress) | Set-Content -LiteralPath `$statePath -Encoding UTF8
