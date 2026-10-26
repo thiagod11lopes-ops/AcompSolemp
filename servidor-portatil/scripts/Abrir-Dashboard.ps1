@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 . "$PSScriptRoot\Coletar-Metricas-Dashboard.ps1"
+. "$PSScriptRoot\Resolver-Check-Dashboard.ps1"
 . "$PSScriptRoot\Gestor-Config.ps1"
 
 $root = Get-ServidorRoot
@@ -378,6 +379,24 @@ try {
           Send-Text $res ($snap | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
         } catch {
           Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 409
+        }
+        continue
+      }
+
+      if ($path -eq '/api/fix-check' -and $req.HttpMethod -eq 'POST') {
+        try {
+          $body = Read-RequestBody $req | ConvertFrom-Json
+          $checkId = [string]$body.id
+          $result = Invoke-DashboardFixCheck -Id $checkId
+          Send-Text $res ($result | ConvertTo-Json -Depth 4 -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{
+              id       = ''
+              started  = $false
+              message  = 'Falha ao tentar solucionar.'
+              guidance = $_.Exception.Message
+              error    = $_.Exception.Message
+            } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 500
         }
         continue
       }

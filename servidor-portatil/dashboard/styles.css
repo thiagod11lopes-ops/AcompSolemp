@@ -970,6 +970,88 @@ button.pill {
   gap: 0.4rem;
 }
 
+.row-check {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.row-check-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.row-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn-fix {
+  appearance: none;
+  border: 1px solid rgba(224, 168, 74, 0.45);
+  background: rgba(224, 168, 74, 0.12);
+  color: var(--warn);
+  font-family: var(--font);
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-fix:hover:not(:disabled) {
+  filter: brightness(1.08);
+  border-color: rgba(224, 168, 74, 0.65);
+}
+
+.btn-fix:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.fix-guidance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.fix-guidance[hidden] {
+  display: none !important;
+}
+
+.fix-guidance-label {
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fix-guidance-text {
+  width: 100%;
+  min-height: 5.5rem;
+  resize: vertical;
+  appearance: none;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  outline: none;
+}
+
 .row {
   display: flex;
   align-items: center;

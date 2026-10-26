@@ -320,16 +320,86 @@ function renderService(container, item) {
 
 function renderStackCheck(container, item) {
   const ok = !!item.ok
+  const id = item.id || ''
   const el = document.createElement('div')
-  el.className = 'row'
+  el.className = 'row row-check'
+  el.setAttribute('data-check-id', id)
+  const fixBtn = ok
+    ? ''
+    : `<button type="button" class="btn-fix" data-fix-check="${escapeHtml(id)}">Solucionar problemas</button>`
   el.innerHTML = `
-    <div>
-      <div class="row-title">${escapeHtml(item.name || '')}</div>
-      <span class="row-sub">${escapeHtml(item.detail || '')}</span>
+    <div class="row-check-main">
+      <div>
+        <div class="row-title">${escapeHtml(item.name || '')}</div>
+        <span class="row-sub">${escapeHtml(item.detail || '')}</span>
+      </div>
+      <div class="row-check-actions">
+        <span class="badge ${ok ? 'ok' : 'bad'}">${escapeHtml(item.label || (ok ? 'OK' : 'Falhou'))}</span>
+        ${fixBtn}
+      </div>
     </div>
-    <span class="badge ${ok ? 'ok' : 'bad'}">${escapeHtml(item.label || (ok ? 'OK' : 'Falhou'))}</span>
+    <div class="fix-guidance" hidden>
+      <label class="fix-guidance-label">Como resolver</label>
+      <textarea class="fix-guidance-text" readonly rows="5"></textarea>
+    </div>
   `
   container.appendChild(el)
+}
+
+async function fixStackCheck(btn) {
+  const id = btn.getAttribute('data-fix-check')
+  if (!id) return
+  const row = btn.closest('.row-check')
+  const box = row && row.querySelector('.fix-guidance')
+  const area = row && row.querySelector('.fix-guidance-text')
+  btn.disabled = true
+  const prev = btn.textContent
+  btn.textContent = 'Resolvendo…'
+  if (box) box.hidden = false
+  if (area) area.value = 'Tentando solucionar…'
+  try {
+    const res = await fetch('/api/fix-check', {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    const data = await res.json().catch(() => ({}))
+    const guidance =
+      (data && data.guidance) ||
+      (data && data.message) ||
+      (data && data.error) ||
+      'Nao foi possivel obter orientacao. Tente Atualizar ou o painel Iniciar Servidor.'
+    if (area) area.value = guidance
+    if (box) box.hidden = false
+    if (data && data.started) {
+      // Dá tempo da ação externa começar e atualiza o painel.
+      setTimeout(() => void loadMetrics(), 2500)
+    }
+  } catch (err) {
+    if (area) {
+      area.value =
+        err instanceof Error
+          ? err.message
+          : 'Falha de rede ao chamar Solucionar problemas. Confira se o Dashboard ainda esta aberto.'
+    }
+    if (box) box.hidden = false
+  } finally {
+    btn.disabled = false
+    btn.textContent = prev || 'Solucionar problemas'
+  }
+}
+
+function wireFixCheckButtons() {
+  const body = $('modal-detail-body')
+  if (!body || body._fixWired) return
+  body._fixWired = true
+  body.addEventListener('click', (ev) => {
+    const btn = ev.target && ev.target.closest ? ev.target.closest('[data-fix-check]') : null
+    if (!btn) return
+    ev.preventDefault()
+    void fixStackCheck(btn)
+  })
 }
 
 function renderStackChecksStore(checks) {
@@ -1068,6 +1138,7 @@ function boot() {
     if (ev.key === 'Escape') closeAnyModal()
   })
   wireDetailPanels()
+  wireFixCheckButtons()
   void bootLoad()
   refreshTimer = setInterval(() => {
     void loadMetrics()
