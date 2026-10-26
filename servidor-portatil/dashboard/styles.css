@@ -954,11 +954,6 @@ button.pill {
   display: none !important;
 }
 
-.modal-card-detail {
-  width: min(720px, 100%);
-  max-height: min(94vh, 920px);
-}
-
 .detail-modal-stack {
   max-height: none;
   overflow: visible;
@@ -1133,6 +1128,12 @@ button.pill {
   border: 1px solid var(--panel-border);
   background: linear-gradient(165deg, rgba(16, 32, 26, 0.96), rgba(7, 17, 14, 0.98));
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-card.modal-card-detail {
+  width: min(760px, 100%);
+  max-height: min(96vh, 980px);
+  overflow: visible;
 }
 
 .modal-head {
