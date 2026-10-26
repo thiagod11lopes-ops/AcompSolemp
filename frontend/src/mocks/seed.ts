@@ -3,7 +3,6 @@ import {
   PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
   type ArquivoAnexo,
-  type ClinicaPlanilhasLivresState,
   type Pedido,
   type PedidoPlanilhaEnvioState,
   type User,
@@ -44,6 +43,10 @@ import {
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
 import { isMarinhaEmail } from '@/utils/email'
+import {
+  pickRicherPlanilhasState,
+  readPlanilhasLivresBackup,
+} from '@/utils/planilhasLivresBackup'
 import { scheduleSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 
 const SEED_VERSION = 'v16'
@@ -1267,58 +1270,33 @@ function mergePlanilhaEnvioSnapshots(
   }
 }
 
-/** Conteúdo útil de rascunho de planilhas da clínica (import Enviar). */
-function planilhasLivresContentScore(state?: ClinicaPlanilhasLivresState | null): number {
-  if (!state) return 0
-  const conmedPac = state.conmedComrj?.pacientes?.length ?? 0
-  const conmedMats = (state.conmedComrj?.pacientes ?? []).reduce(
-    (n, p) => n + (p.materiais?.length ?? 0),
-    0,
-  )
-  const imh = state.imh?.linhas?.length ?? 0
-  const imhMed = state.imhMedicamento?.linhas?.length ?? 0
-  const consumo = state.consumoMaterialConsignado?.length ?? 0
-  const listaMed = state.listaMedicamentos?.linhas?.length ?? 0
-  const listaMat = state.listaMateriais?.linhas?.length ?? 0
-  const pacientesPme = state.pacientesPme?.length ?? 0
-  const cabecalho =
-    [state.conmedComrj?.numero, state.conmedComrj?.processo, state.conmedComrj?.fornecedor].filter(
-      (v) => typeof v === 'string' && v.trim(),
-    ).length
-  return (
-    conmedPac * 10 +
-    conmedMats * 3 +
-    imh * 3 +
-    imhMed * 3 +
-    consumo * 2 +
-    listaMed +
-    listaMat +
-    pacientesPme +
-    cabecalho
-  )
-}
-
 function mergePlanilhasLivresMaps(
-  remote?: Record<string, ClinicaPlanilhasLivresState>,
-  local?: Record<string, ClinicaPlanilhasLivresState>,
-): Record<string, ClinicaPlanilhasLivresState> {
-  const keys = new Set([...Object.keys(remote ?? {}), ...Object.keys(local ?? {})])
-  const out: Record<string, ClinicaPlanilhasLivresState> = {}
+  remote?: AppData['planilhasLivres'],
+  local?: AppData['planilhasLivres'],
+): AppData['planilhasLivres'] {
+  const keys = new Set([
+    ...Object.keys(remote ?? {}),
+    ...Object.keys(local ?? {}),
+  ])
+  // Inclui clínicas só no backup local (após F5 o AppData remoto vem vazio).
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('acompopms:planilhas-livres:')) {
+        keys.add(key.slice('acompopms:planilhas-livres:'.length))
+      }
+    }
+  } catch {
+    /* private mode */
+  }
+
+  const out: NonNullable<AppData['planilhasLivres']> = {}
   for (const clinicaId of keys) {
     const r = remote?.[clinicaId]
     const l = local?.[clinicaId]
-    if (!r && l) {
-      out[clinicaId] = l
-      continue
-    }
-    if (r && !l) {
-      out[clinicaId] = r
-      continue
-    }
-    if (!r || !l) continue
-    // Remoto vazio/atrasado não apaga import local ainda não ecoado na nuvem.
-    out[clinicaId] =
-      planilhasLivresContentScore(l) > planilhasLivresContentScore(r) ? l : r
+    const backup = readPlanilhasLivresBackup(clinicaId)
+    const richer = pickRicherPlanilhasState(pickRicherPlanilhasState(r, l), backup)
+    if (richer) out[clinicaId] = richer
   }
   return out
 }

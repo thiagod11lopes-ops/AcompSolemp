@@ -20,6 +20,13 @@ import {
   clonePacientesPmeSeed,
   normalizePacientesPmeRows,
 } from '@/utils/pacientesPme'
+import {
+  pickRicherPlanilhasState,
+  planilhasLivresContentScore,
+  readPlanilhasLivresBackup,
+  writePlanilhasLivresBackup,
+  clearPlanilhasLivresBackup,
+} from '@/utils/planilhasLivresBackup'
 
 export { resolveAbaSheet } from '@/utils/planilhasFixas'
 
@@ -72,7 +79,24 @@ export const clinicaPlanilhasLivresService = {
     modo: PlanilhasModo = 'clinica',
   ): ClinicaPlanilhasLivresState {
     const data = loadAppData()
-    return normalizeState(data.planilhasLivres?.[clinicaId], modo)
+    const fromApp = normalizeState(data.planilhasLivres?.[clinicaId], modo)
+    const fromBackupRaw = readPlanilhasLivresBackup(clinicaId)
+    const fromBackup = fromBackupRaw ? normalizeState(fromBackupRaw, modo) : undefined
+    const richer = pickRicherPlanilhasState(fromApp, fromBackup) ?? fromApp
+
+    // AppData vazio após F5 (nuvem sem planilha): restaura backup e regrava no AppData.
+    if (
+      planilhasLivresContentScore(fromBackup) > planilhasLivresContentScore(fromApp) &&
+      fromBackup
+    ) {
+      if (!data.planilhasLivres) data.planilhasLivres = {}
+      data.planilhasLivres[clinicaId] = fromBackup
+      saveAppData(data)
+      writePlanilhasLivresBackup(clinicaId, fromBackup)
+      return fromBackup
+    }
+
+    return richer
   },
 
   saveState(
@@ -88,13 +112,18 @@ export const clinicaPlanilhasLivresService = {
       data.medicamentosPrecos = listaMedicamentosToPrecosRows(next.listaMedicamentos)
     }
     saveAppData(data)
+    writePlanilhasLivresBackup(clinicaId, next)
     return next
   },
 
   clearState(clinicaId: string): void {
     const data = loadAppData()
-    if (!data.planilhasLivres?.[clinicaId]) return
+    if (!data.planilhasLivres?.[clinicaId]) {
+      clearPlanilhasLivresBackup(clinicaId)
+      return
+    }
     delete data.planilhasLivres[clinicaId]
     saveAppData(data)
+    clearPlanilhasLivresBackup(clinicaId)
   },
 }
