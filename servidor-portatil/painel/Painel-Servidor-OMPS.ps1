@@ -300,7 +300,7 @@ function Show-ServidorOmpsInstallPanel {
     $rowBg = $theme.Panel
     $l = New-DashLabel $Nome 20 $Y 250 32 $theme.Text $rowBg 10
     $Parent.Controls.Add($l)
-    $s = New-DashStatusBadge '—' $false 290 $Y 150 32
+    $s = New-DashStatusBadge '-' $false 290 $Y 150 32
     $Parent.Controls.Add($s)
     $b = New-DashButton 'Instalar' 460 ($Y + 1) 120 30 'ghost'
     $b.Add_Click($OnInstall)
@@ -318,7 +318,7 @@ function Show-ServidorOmpsInstallPanel {
     }
     if ($script:hintAvancar -and -not $script:statusAdvancing) {
       if ($script:installAllOk) {
-        $script:hintAvancar.Text = ("Pronto — Avancar agora ou em {0}s." -f $script:statusLeft)
+        $script:hintAvancar.Text = ("Pronto - Avancar agora ou em {0}s." -f $script:statusLeft)
         $script:hintAvancar.ForeColor = $theme.Ok
       } else {
         $script:hintAvancar.Text = ("Avanco automatico em {0}s. Corrija os itens em vermelho se puder." -f $script:statusLeft)
@@ -443,7 +443,7 @@ function Show-ServidorOmpsInstallPanel {
   $script:statusWsl = $rowWsl.Status; $script:btnWsl = $rowWsl.Button
 
   $panel.Controls.Add((New-DashLabel 'Pastas do sistema' 20 $y 250 32 $theme.Text $theme.Panel 10))
-  $script:statusPastas = New-DashStatusBadge '—' $false 290 $y 150 32
+  $script:statusPastas = New-DashStatusBadge '-' $false 290 $y 150 32
   $panel.Controls.Add($script:statusPastas)
 
   # Contagem regressiva de 30s no proprio painel de status
@@ -497,7 +497,7 @@ function Show-ServidorOmpsInstallPanel {
       if ($problems.Count -gt 0) {
         [Windows.Forms.MessageBox]::Show(
           ("Problemas encontrados:`n`n- " + ($problems -join "`n- ")),
-          'Servidor OMPS — verificacao',
+          'Servidor OMPS - verificacao',
           [Windows.Forms.MessageBoxButtons]::OK,
           [Windows.Forms.MessageBoxIcon]::Warning
         ) | Out-Null
