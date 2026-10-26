@@ -239,13 +239,36 @@ function Get-ContentType([string]$Path) {
   }
 }
 
+function Set-CorsHeaders([System.Net.HttpListenerResponse]$Res) {
+  $Res.Headers['Access-Control-Allow-Origin'] = '*'
+  $Res.Headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  $Res.Headers['Access-Control-Allow-Headers'] = 'Content-Type'
+}
+
 function Send-Bytes([System.Net.HttpListenerResponse]$Res, [byte[]]$Bytes, [string]$ContentType, [int]$Status = 200) {
   $Res.StatusCode = $Status
   $Res.ContentType = $ContentType
   $Res.Headers['Cache-Control'] = 'no-store'
+  Set-CorsHeaders $Res
   $Res.ContentLength64 = $Bytes.Length
   $Res.OutputStream.Write($Bytes, 0, $Bytes.Length)
   $Res.OutputStream.Close()
+}
+
+function Start-ExportDadosCsvJob {
+  $scriptPath = Join-Path $script:ScriptsDir 'Exportar-Dados-Csv.ps1'
+  if (-not (Test-Path -LiteralPath $scriptPath)) {
+    throw "Script nao encontrado: $scriptPath"
+  }
+  Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', $scriptPath
+  ) -WorkingDirectory $script:ScriptsDir -WindowStyle Hidden | Out-Null
+  return @{
+    ok      = $true
+    started = $true
+    message = 'Exportacao CSV iniciada.'
+  }
 }
 
 function Send-Text([System.Net.HttpListenerResponse]$Res, [string]$Text, [string]$ContentType, [int]$Status = 200) {
@@ -416,6 +439,24 @@ try {
     try {
       $path = [Uri]::UnescapeDataString($req.Url.AbsolutePath)
       if ($path -eq '/') { $path = '/index.html' }
+
+      if ($req.HttpMethod -eq 'OPTIONS') {
+        Set-CorsHeaders $res
+        $res.StatusCode = 204
+        $res.ContentLength64 = 0
+        $res.OutputStream.Close()
+        continue
+      }
+
+      if ($path -eq '/api/export-dados' -and $req.HttpMethod -eq 'POST') {
+        try {
+          $result = Start-ExportDadosCsvJob
+          Send-Text $res ($result | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+        } catch {
+          Send-Text $res (@{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 500
+        }
+        continue
+      }
 
       if ($path -eq '/api/metrics') {
         $metrics = Get-DashboardMetrics
