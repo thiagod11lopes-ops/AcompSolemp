@@ -232,7 +232,7 @@ try {
        "    $alias`n`n" +
        "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
        "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
-       "Liberar-Firewall.cmd (Admin) — instala inicio automatico.`n`n" +
+       "Liberar-Firewall.cmd (Admin) - instala inicio automatico.`n`n" +
        "IP interno: $ip"),
       'Iniciar Servidor OMPS',
       [System.Windows.Forms.MessageBoxButtons]::OK,
