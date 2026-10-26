@@ -304,14 +304,20 @@ export default function ClinicaNovoPedidoPage() {
     setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
     if (!isMedicamento) {
       const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
-      const syncedImh = syncImhAbaFromFontes(state.imh ?? EMPTY_IMH_ABA_FORM, {
+      const storedImh = state.imh ?? EMPTY_IMH_ABA_FORM
+      const syncedImh = syncImhAbaFromFontes(storedImh, {
         conmed,
-        consumoRows: [],
+        consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
       })
-      setImhForm(syncedImh)
+      // Mantém a grade mais completa (import salvo vs. rebuild).
+      const imhToUse =
+        (syncedImh.linhas?.length ?? 0) >= (storedImh.linhas?.length ?? 0)
+          ? syncedImh
+          : storedImh
+      setImhForm(imhToUse)
       setDivMaterialLinhas(
         buildDivMaterialLinhas({
-          consumoRows: [],
+          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
           conmed,
           empresas,
         }),
@@ -518,6 +524,22 @@ export default function ClinicaNovoPedidoPage() {
         imh: nextImh,
         ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
       })
+
+      // Garante nuvem + CSV antes de um reload sobrescrever o rascunho local.
+      void (async () => {
+        try {
+          const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+          await flushSupabaseAppDataSync()
+        } catch {
+          /* offline / sync opcional */
+        }
+        try {
+          const { requestDadosCsvExport } = await import('@/utils/exportDadosCsv')
+          requestDadosCsvExport()
+        } catch {
+          /* API local opcional */
+        }
+      })()
 
       setFeedback({
         open: true,

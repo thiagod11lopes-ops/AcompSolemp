@@ -3,6 +3,7 @@ import {
   PRAZO_CORRECAO_PADRAO_DIAS,
   type AppData,
   type ArquivoAnexo,
+  type ClinicaPlanilhasLivresState,
   type Pedido,
   type PedidoPlanilhaEnvioState,
   type User,
@@ -1266,6 +1267,96 @@ function mergePlanilhaEnvioSnapshots(
   }
 }
 
+/** Conteúdo útil de rascunho de planilhas da clínica (import Enviar). */
+function planilhasLivresContentScore(state?: ClinicaPlanilhasLivresState | null): number {
+  if (!state) return 0
+  const conmedPac = state.conmedComrj?.pacientes?.length ?? 0
+  const conmedMats = (state.conmedComrj?.pacientes ?? []).reduce(
+    (n, p) => n + (p.materiais?.length ?? 0),
+    0,
+  )
+  const imh = state.imh?.linhas?.length ?? 0
+  const imhMed = state.imhMedicamento?.linhas?.length ?? 0
+  const consumo = state.consumoMaterialConsignado?.length ?? 0
+  const listaMed = state.listaMedicamentos?.linhas?.length ?? 0
+  const listaMat = state.listaMateriais?.linhas?.length ?? 0
+  const pacientesPme = state.pacientesPme?.length ?? 0
+  const cabecalho =
+    [state.conmedComrj?.numero, state.conmedComrj?.processo, state.conmedComrj?.fornecedor].filter(
+      (v) => typeof v === 'string' && v.trim(),
+    ).length
+  return (
+    conmedPac * 10 +
+    conmedMats * 3 +
+    imh * 3 +
+    imhMed * 3 +
+    consumo * 2 +
+    listaMed +
+    listaMat +
+    pacientesPme +
+    cabecalho
+  )
+}
+
+function mergePlanilhasLivresMaps(
+  remote?: Record<string, ClinicaPlanilhasLivresState>,
+  local?: Record<string, ClinicaPlanilhasLivresState>,
+): Record<string, ClinicaPlanilhasLivresState> {
+  const keys = new Set([...Object.keys(remote ?? {}), ...Object.keys(local ?? {})])
+  const out: Record<string, ClinicaPlanilhasLivresState> = {}
+  for (const clinicaId of keys) {
+    const r = remote?.[clinicaId]
+    const l = local?.[clinicaId]
+    if (!r && l) {
+      out[clinicaId] = l
+      continue
+    }
+    if (r && !l) {
+      out[clinicaId] = r
+      continue
+    }
+    if (!r || !l) continue
+    // Remoto vazio/atrasado não apaga import local ainda não ecoado na nuvem.
+    out[clinicaId] =
+      planilhasLivresContentScore(l) > planilhasLivresContentScore(r) ? l : r
+  }
+  return out
+}
+
+function consumoPlanilhaContentScore(
+  state?: NonNullable<AppData['consumoPlanilha']>[string] | null,
+): number {
+  if (!state) return 0
+  const extras = state.extraRows?.length ?? 0
+  const abas = (state.abasExtras ?? []).reduce((n, aba) => n + (aba.extraRows?.length ?? 0), 0)
+  return extras + abas
+}
+
+function mergeConsumoPlanilhaMaps(
+  remote?: AppData['consumoPlanilha'],
+  local?: AppData['consumoPlanilha'],
+): AppData['consumoPlanilha'] {
+  const keys = new Set([...Object.keys(remote ?? {}), ...Object.keys(local ?? {})])
+  if (keys.size === 0) return remote ?? local ?? {}
+  const out: NonNullable<AppData['consumoPlanilha']> = {}
+  for (const clinicaId of keys) {
+    const r = remote?.[clinicaId]
+    const l = local?.[clinicaId]
+    if (!r && l) {
+      out[clinicaId] = l
+      continue
+    }
+    if (r && !l) {
+      out[clinicaId] = r
+      continue
+    }
+    if (!r || !l) continue
+    out[clinicaId] =
+      consumoPlanilhaContentScore(l) > consumoPlanilhaContentScore(r) ? l : r
+  }
+  return out
+}
+
 /** Preserva anexos e cadastros locais que um snapshot remoto antigo ainda não contém. */
 function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
   if (!local) return remote
@@ -1281,6 +1372,10 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
   remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
   remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
   remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
+
+  // Planilhas da aba Enviar (import CONMED/IMH) — nunca descartar rascunho local mais rico.
+  remote.planilhasLivres = mergePlanilhasLivresMaps(remote.planilhasLivres, local.planilhasLivres)
+  remote.consumoPlanilha = mergeConsumoPlanilhaMaps(remote.consumoPlanilha, local.consumoPlanilha)
 
   const excludedIds = [
     ...new Set([...(remote.pedidosExcluidosIds ?? []), ...(local.pedidosExcluidosIds ?? [])]),

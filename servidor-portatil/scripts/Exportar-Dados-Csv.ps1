@@ -69,7 +69,12 @@ agg AS (
         'notificacoes', COALESCE((SELECT jsonb_agg(n.data ORDER BY n.updated_at) FROM public.notificacoes n WHERE n.tenant_id = b.tenant_id), '[]'::jsonb),
         'processosArquivados', COALESCE((SELECT jsonb_agg(pa.data ORDER BY pa.updated_at) FROM public.processos_arquivados pa WHERE pa.tenant_id = b.tenant_id), '[]'::jsonb),
         'solemp', COALESCE((SELECT jsonb_agg(s.data ORDER BY s.updated_at) FROM public.solemp s WHERE s.tenant_id = b.tenant_id), '[]'::jsonb),
-        'notasFiscais', COALESCE((SELECT jsonb_agg(nf.data ORDER BY nf.updated_at) FROM public.notas_fiscais nf WHERE nf.tenant_id = b.tenant_id), '[]'::jsonb)
+        'notasFiscais', COALESCE((SELECT jsonb_agg(nf.data ORDER BY nf.updated_at) FROM public.notas_fiscais nf WHERE nf.tenant_id = b.tenant_id), '[]'::jsonb),
+        'pedidoPlanilhaEnvio', COALESCE((
+          SELECT jsonb_object_agg(ppe.pedido_id, ppe.data)
+          FROM public.pedido_planilha_envio ppe
+          WHERE ppe.tenant_id = b.tenant_id
+        ), '{}'::jsonb)
       ) AS hydrated
   FROM base b
 )
@@ -315,16 +320,165 @@ try {
     }
   })
 
+  # --- Planilhas (rascunho Enviar + snapshots enviados) ---
+  $planilhaRows = @()
+  $plMap = $data.planilhasLivres
+  if ($null -ne $plMap) {
+    foreach ($clinicaProp in @($plMap.PSObject.Properties)) {
+      if ($clinicaProp.MemberType -ne 'NoteProperty') { continue }
+      $clinicaId = [string]$clinicaProp.Name
+      $st = $clinicaProp.Value
+      if ($null -eq $st) { continue }
+      $conmed = $st.conmedComrj
+      if ($null -ne $conmed) {
+        $planilhaRows += [pscustomobject]@{
+          id = "conmed-$clinicaId"
+          clinicaId = $clinicaId
+          tipo = 'CONMED_CABECALHO'
+          numero = [string]$conmed.numero
+          data = [string]$conmed.data
+          nome = [string]$conmed.fornecedor
+          observacoes = ("processo={0}; pregao={1}; vigencia={2}" -f $conmed.processo, $conmed.pregaoTad, $conmed.vigencia)
+          extra = 'planilhasLivres'
+        }
+        foreach ($pac in @($conmed.pacientes)) {
+          if ($null -eq $pac) { continue }
+          foreach ($mat in @($pac.materiais)) {
+            if ($null -eq $mat) { continue }
+            $planilhaRows += [pscustomobject]@{
+              id = [string]$mat.id
+              clinicaId = $clinicaId
+              tipo = 'CONMED_MATERIAL'
+              numero = [string]$pac.nip
+              nome = [string]$pac.iniciais
+              data = [string]$pac.data
+              descricao = [string]$mat.descricao
+              quantidade = [string]$mat.qt
+              valor = [string]$mat.valorTotal
+              observacoes = [string]$pac.procedimento
+              extra = ("mapa={0}; danfe={1}; item={2}; nebPi={3}; unit={4}; valorPac={5}" -f `
+                $mat.mapaDaSala, $mat.danfe, $mat.item, $mat.nebPi, $mat.valorUnit, $pac.valorPorPaciente)
+            }
+          }
+        }
+      }
+      $imhLinhas = @()
+      if ($st.imh -and $st.imh.linhas) { $imhLinhas = @($st.imh.linhas) }
+      foreach ($linha in $imhLinhas) {
+        if ($null -eq $linha) { continue }
+        $planilhaRows += [pscustomobject]@{
+          id = [string]$linha.id
+          clinicaId = $clinicaId
+          tipo = 'IMH'
+          numero = [string]$linha.nip
+          nome = [string]$linha.nomeUsuario
+          data = [string]$linha.data
+          descricao = [string]$linha.descricao
+          quantidade = [string]$linha.quantidade
+          valor = [string]$linha.valorTotal
+          observacoes = ("vinculo={0}; unit={1}; pct={2}" -f $linha.vinculo, $linha.valorUnit, $linha.pctIndenizar)
+          extra = 'planilhasLivres.imh'
+        }
+      }
+      $imhMedLinhas = @()
+      if ($st.imhMedicamento -and $st.imhMedicamento.linhas) { $imhMedLinhas = @($st.imhMedicamento.linhas) }
+      foreach ($linha in $imhMedLinhas) {
+        if ($null -eq $linha) { continue }
+        $planilhaRows += [pscustomobject]@{
+          id = [string]$linha.id
+          clinicaId = $clinicaId
+          tipo = 'IMH_MEDICAMENTO'
+          numero = [string]$linha.nip
+          nome = [string]$linha.nome
+          data = [string]$linha.data
+          descricao = [string]$linha.itemPme
+          quantidade = [string]$linha.qtd
+          valor = [string]$linha.total
+          observacoes = ("lote={0}; validade={1}; pct={2}" -f $linha.lote, $linha.validade, $linha.pctIndenizar)
+          extra = 'planilhasLivres.imhMedicamento'
+        }
+      }
+      foreach ($row in @($st.consumoMaterialConsignado)) {
+        if ($null -eq $row) { continue }
+        $planilhaRows += [pscustomobject]@{
+          id = [string]$row.id
+          clinicaId = $clinicaId
+          tipo = 'CONSUMO_MATERIAL'
+          numero = [string]$row.nip
+          nome = [string]$row.paciente
+          data = [string]$row.data
+          descricao = [string]$row.descricao
+          quantidade = [string]$row.quantidade
+          valor = [string]$row.valorTotal
+          observacoes = [string]$row.empresa
+          extra = 'planilhasLivres.consumo'
+        }
+      }
+    }
+  }
+
+  $envioMap = $data.pedidoPlanilhaEnvio
+  if ($null -ne $envioMap) {
+    foreach ($pedProp in @($envioMap.PSObject.Properties)) {
+      if ($pedProp.MemberType -ne 'NoteProperty') { continue }
+      $pedidoId = [string]$pedProp.Name
+      $snap = $pedProp.Value
+      if ($null -eq $snap) { continue }
+      $formato = [string]$snap.formato
+      if (-not $formato) { $formato = 'imh' }
+      $linhasEnvio = @()
+      if ($snap.imhAbaLinhas) { $linhasEnvio = @($snap.imhAbaLinhas) }
+      elseif ($snap.linhas) { $linhasEnvio = @($snap.linhas) }
+      elseif ($snap.controleSolempLinhas) { $linhasEnvio = @($snap.controleSolempLinhas) }
+      elseif ($snap.imhMedicamentoLinhas) { $linhasEnvio = @($snap.imhMedicamentoLinhas) }
+      $idx = 0
+      $clinicaEnvio = ''
+      if ($snap.cabecalho) { $clinicaEnvio = [string]$snap.cabecalho.clinica }
+      foreach ($linha in $linhasEnvio) {
+        if ($null -eq $linha) { continue }
+        $idx++
+        $nomeLinha = [string]$linha.nomeUsuario
+        if (-not $nomeLinha) { $nomeLinha = [string]$linha.nome }
+        if (-not $nomeLinha) { $nomeLinha = [string]$linha.paciente }
+        $descLinha = [string]$linha.descricao
+        if (-not $descLinha) { $descLinha = [string]$linha.material }
+        $valorLinha = [string]$linha.valorTotal
+        if (-not $valorLinha) { $valorLinha = [string]$linha.valor }
+        $idLinha = [string]$linha.id
+        if (-not $idLinha) { $idLinha = "$pedidoId-$idx" }
+        $planilhaRows += [pscustomobject]@{
+          id = $idLinha
+          clinicaId = $clinicaEnvio
+          tipo = ("ENVIO_{0}" -f $formato.ToUpper())
+          numero = [string]$linha.nip
+          nome = $nomeLinha
+          data = [string]$linha.data
+          descricao = $descLinha
+          quantidade = [string]$linha.quantidade
+          valor = $valorLinha
+          observacoes = [string]$linha.procedimento
+          extra = ("pedidoId={0}" -f $pedidoId)
+        }
+      }
+    }
+  }
+
+  if ($planilhaRows.Count -gt 0) {
+    Emit 'Planilhas' $planilhaRows
+  }
+
   $utf8Bom = New-Object System.Text.UTF8Encoding $true
   $lineArr = $lines.ToArray()
   $readme = @"
 AcompOPMS — pasta Dados
 =======================
-Arquivo atual (unico CSV, sempre renovado ao criar documento na Timeline):
+Arquivo atual (unico CSV, sempre renovado ao criar documento na Timeline
+ou ao importar planilha na aba Enviar):
 
   DadosOMPS (dd-MM-yyyy HH-mm-ss).csv
 
-Abra no Excel (separador ;). A coluna Secao identifica o tipo de registro.
+Abra no Excel (separador ;). A coluna Secao identifica o tipo de registro
+(inclui Secao=Planilhas com CONMED/IMH/envios).
 "@
   $written = @()
   foreach ($dadosDir in $dadosDirs) {
