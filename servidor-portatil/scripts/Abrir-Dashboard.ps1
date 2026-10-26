@@ -331,25 +331,18 @@ function Find-DashboardBrowserExe {
 }
 
 function Start-DashboardBrowserLinked([string]$DashboardUrl) {
-  # Perfil isolado = processo proprio; ao fechar a janela do app, o processo termina
-  # e o PowerShell do Dashboard encerra junto.
-  $ready = $false
-  for ($i = 0; $i -lt 40; $i++) {
-    try {
-      $code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 1 $DashboardUrl 2>$null
-      if ("$code" -match '^(200|301|302|304)$') { $ready = $true; break }
-    } catch { }
-    Start-Sleep -Milliseconds 150
-  }
-  if (-not $ready) {
-    Write-Host 'Aviso: health do Dashboard nao respondeu a tempo; abrindo o navegador mesmo assim.'
-  }
-
+  # NAO esperar health aqui: o loop GetContext ainda nao esta rodando; waiting
+  # em curl bloqueava e o navegador demorava/nao abria.
   $browser = Find-DashboardBrowserExe
   if (-not $browser) {
-    Write-Host 'Chrome/Edge nao encontrado; abrindo URL no navegador padrao (ciclo de vida pode nao sincronizar).'
-    $p = Start-Process $DashboardUrl -PassThru
-    if ($p) { Save-DashboardBrowserPid ([int]$p.Id) }
+    Write-Host 'Chrome/Edge nao encontrado; abrindo URL no navegador padrao.'
+    try {
+      $p = Start-Process $DashboardUrl -PassThru
+      if ($p) { Save-DashboardBrowserPid ([int]$p.Id) }
+    } catch {
+      Write-Host ("Falha ao abrir navegador: {0}" -f $_.Exception.Message)
+    }
+    $script:BrowserWatchAfter = (Get-Date).AddSeconds(8)
     return
   }
 
@@ -357,24 +350,40 @@ function Start-DashboardBrowserLinked([string]$DashboardUrl) {
     New-Item -ItemType Directory -Force -Path $script:DashboardChromeProfile | Out-Null
   }
 
-  $args = @(
+  # Remove locks de sessao anterior do perfil isolado.
+  foreach ($lockName in @('SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile')) {
+    $lockPath = Join-Path $script:DashboardChromeProfile $lockName
+    try { if (Test-Path -LiteralPath $lockPath) { Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue } } catch { }
+  }
+
+  $argList = @(
     "--user-data-dir=$($script:DashboardChromeProfile)",
     "--app=$DashboardUrl",
+    '--new-window',
     '--no-first-run',
     '--no-default-browser-check',
-    '--disable-extensions',
     '--start-maximized'
   )
-  $p = Start-Process -FilePath $browser -ArgumentList $args -PassThru
-  if ($p) {
-    Save-DashboardBrowserPid ([int]$p.Id)
-    $script:BrowserWatchAfter = (Get-Date).AddSeconds(4)
-    Write-Host ("Navegador do Dashboard (PID {0}). Feche a janela do Dashboard para encerrar este PowerShell." -f $p.Id)
+  try {
+    $p = Start-Process -FilePath $browser -ArgumentList $argList -PassThru
+    if ($p) {
+      Save-DashboardBrowserPid ([int]$p.Id)
+      Write-Host ("Navegador do Dashboard (PID {0}). Feche a janela do Dashboard para encerrar este PowerShell." -f $p.Id)
+    } else {
+      Write-Host 'Start-Process nao retornou PID; tentando URL direta...'
+      Start-Process $DashboardUrl | Out-Null
+    }
+  } catch {
+    Write-Host ("Falha ao abrir Chrome/Edge em modo app: {0}" -f $_.Exception.Message)
+    try { Start-Process $DashboardUrl | Out-Null } catch { }
   }
+  # Margem para o Chrome spawnar processos filhos do perfil antes de vigiar o ciclo de vida.
+  $script:BrowserWatchAfter = (Get-Date).AddSeconds(8)
 }
 
-# Encerra navegador orfao de sessao anterior (se houver).
+# Encerra navegador orfao de sessao anterior (se houver), com pequena pausa p/ liberar perfil.
 Stop-DashboardBrowserProcess
+Start-Sleep -Milliseconds 600
 
 $url = "${prefix}"
 if (-not $NoBrowser) {
