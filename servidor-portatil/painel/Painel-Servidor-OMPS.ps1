@@ -174,6 +174,72 @@ function Set-PackConfigEnv {
   Set-Content -Path $script:ConfigEnv -Value $out -Encoding UTF8
 }
 
+function Get-OmpsServerAlias {
+  $alias = 'sistema.acompomps.rede'
+  try {
+    if ($script:ConfigEnv -and (Test-Path -LiteralPath $script:ConfigEnv)) {
+      $line = Get-Content -LiteralPath $script:ConfigEnv -Encoding UTF8 |
+        Where-Object { $_ -match '^\s*SERVER_ALIAS=' } |
+        Select-Object -First 1
+      if ($line) {
+        $a = ($line -replace '^\s*SERVER_ALIAS=', '').Trim()
+        if ($a) { $alias = $a }
+      }
+    }
+  } catch { }
+  return $alias
+}
+
+function Test-FirewallRulesReady {
+  try {
+    $out = & netsh advfirewall firewall show rule name='AcompOPMS Gateway 443' 2>$null | Out-String
+    if ($out -match 'AcompOPMS Gateway 443') { return $true }
+    $out2 = & netsh advfirewall firewall show rule name='AcompOPMS DNS Alias 53' 2>$null | Out-String
+    return ($out2 -match 'AcompOPMS DNS Alias 53')
+  } catch { return $false }
+}
+
+function Test-HostsAliasReady {
+  try {
+    $alias = Get-OmpsServerAlias
+    $hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
+    if (-not (Test-Path -LiteralPath $hostsPath)) { return $false }
+    $lines = @(Get-Content -LiteralPath $hostsPath -ErrorAction SilentlyContinue)
+    return [bool]($lines | Where-Object {
+        $_ -and ($_ -match 'acompopms-alias' -or $_ -match [regex]::Escape($alias))
+      })
+  } catch { return $false }
+}
+
+function Test-HttpsAliasReady {
+  try {
+    $alias = Get-OmpsServerAlias
+    $code = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 3 "https://${alias}/login" 2>$null
+    return ("$code" -match '^(200|301|302|304|401|403)$')
+  } catch { return $false }
+}
+
+# Ok = preparado para o endereco HTTPS; Label = texto do badge.
+function Get-FirewallRedeState {
+  $https = Test-HttpsAliasReady
+  $rules = Test-FirewallRulesReady
+  $hostsOk = Test-HostsAliasReady
+  if ($https) {
+    return [pscustomobject]@{ Ok = $true; Label = 'Pronto HTTPS' }
+  }
+  if ($rules -and $hostsOk) {
+    return [pscustomobject]@{ Ok = $true; Label = 'Firewall OK' }
+  }
+  if ($rules -or $hostsOk) {
+    return [pscustomobject]@{ Ok = $false; Label = 'Incompleto' }
+  }
+  return [pscustomobject]@{ Ok = $false; Label = 'Pendente' }
+}
+
+function Test-FirewallRedeReady {
+  return [bool]((Get-FirewallRedeState).Ok)
+}
+
 function Invoke-OmpsVerification {
   $problems = New-Object System.Collections.Generic.List[string]
   if (-not (Test-Path $script:AcompRoot)) { $problems.Add('Pasta do sistema (AcompSolemp) nao encontrada.') }
@@ -190,6 +256,10 @@ function Invoke-OmpsVerification {
   $fe = Join-Path $script:AcompRoot 'frontend'
   if ((Test-Path $fe) -and -not (Test-Path (Join-Path $fe 'node_modules'))) {
     $problems.Add('frontend\node_modules ausente. Use "Instalar dependencias do frontend".')
+  }
+  if (-not (Test-FirewallRedeReady)) {
+    $alias = Get-OmpsServerAlias
+    $problems.Add("Firewall/rede pendente para https://${alias}/. Use Liberar Firewall (Admin).")
   }
   return $problems
 }
@@ -269,7 +339,7 @@ function Show-ServidorOmpsInstallPanel {
   $theme = Get-DashTheme
 
   $formW = 680
-  $formH = 700
+  $formH = 760
   $form = New-Object Windows.Forms.Form
   Set-DashForm $form 'Servidor OMPS' $formW $formH
   if ($script:IconPath -and (Test-Path $script:IconPath)) {
@@ -279,10 +349,10 @@ function Show-ServidorOmpsInstallPanel {
   # Header
   $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20 ($formW - 56)))
   $form.Controls.Add((New-DashTitle 'Status da instalacao' 28 42 ($formW - 56)))
-  $form.Controls.Add((New-DashSub 'Confira cada item. Avanca automaticamente em 30s (ou clique em Avancar).' 28 82 ($formW - 56) 28))
+  $form.Controls.Add((New-DashSub 'Confira cada item (inclui Firewall/HTTPS). Avanca em 30s ou em Avancar.' 28 82 ($formW - 56) 28))
 
   # Card de status
-  $panel = New-DashPanel 24 120 ($formW - 48) 320
+  $panel = New-DashPanel 24 120 ($formW - 48) 370
   $form.Controls.Add($panel)
 
   function Set-StatusBadge([System.Windows.Forms.Label]$Badge, [bool]$Ok, [string]$OkText, [string]$BadText) {
@@ -410,7 +480,59 @@ function Show-ServidorOmpsInstallPanel {
     $okPastas = (Test-Path $script:AcompRoot) -and $script:SupabaseDocker -and (Test-Path $script:SupabaseDocker)
     Set-StatusBadge $script:statusPastas $okPastas 'OK' 'Faltando'
 
+    $fw = Get-FirewallRedeState
+    Set-StatusBadge $script:statusFirewall ([bool]$fw.Ok) ([string]$fw.Label) ([string]$fw.Label)
+    if ($script:btnFirewall) {
+      $script:btnFirewall.Visible = -not [bool]$fw.Ok
+      $script:btnFirewall.Enabled = -not [bool]$fw.Ok
+    }
+    if ($script:lblFirewallHint) {
+      $alias = Get-OmpsServerAlias
+      if ([bool]$fw.Ok -and $fw.Label -match 'HTTPS') {
+        $script:lblFirewallHint.Text = "https://${alias}/ ativo e pronto para usar"
+        $script:lblFirewallHint.ForeColor = $theme.Ok
+      } elseif ([bool]$fw.Ok) {
+        $script:lblFirewallHint.Text = "Firewall OK - suba o servidor para ativar https://${alias}/"
+        $script:lblFirewallHint.ForeColor = $theme.AccentBright
+      } else {
+        $script:lblFirewallHint.Text = "Pendente: Liberar Firewall (Admin) para https://${alias}/"
+        $script:lblFirewallHint.ForeColor = $theme.Muted
+      }
+    }
+
     Update-AvancarState
+  }
+
+  function Start-LiberarFirewall {
+    $cmd = $null
+    foreach ($c in @(
+        (Join-Path $script:PackRoot 'Liberar-Firewall.cmd'),
+        (Join-Path $script:ScriptsDir '..\Liberar-Firewall.cmd'),
+        (Join-Path (Split-Path $script:ScriptsDir -Parent) 'Liberar-Firewall.cmd')
+      )) {
+      try {
+        if ($c -and (Test-Path -LiteralPath $c)) { $cmd = (Resolve-Path -LiteralPath $c).Path; break }
+      } catch { }
+    }
+    if (-not $cmd) {
+      [Windows.Forms.MessageBox]::Show(
+        'Nao achei Liberar-Firewall.cmd. Rode-o manualmente na pasta servidor-portatil (Admin).',
+        'Servidor OMPS'
+      ) | Out-Null
+      return
+    }
+    $script:statusPaused = $true
+    try {
+      Start-Process -FilePath $cmd -Verb RunAs -Wait
+    } catch {
+      [Windows.Forms.MessageBox]::Show(
+        ("Falha ao abrir Liberar Firewall:`n{0}" -f $_.Exception.Message),
+        'Servidor OMPS'
+      ) | Out-Null
+    } finally {
+      $script:statusPaused = $false
+    }
+    Update-StatusLabels
   }
 
   function Start-InstallerLocal([string]$Path, [string]$Nome) {
@@ -445,9 +567,19 @@ function Show-ServidorOmpsInstallPanel {
   $panel.Controls.Add((New-DashLabel 'Pastas do sistema' 20 $y 250 32 $theme.Text $theme.Panel 10))
   $script:statusPastas = New-DashStatusBadge '-' $false 290 $y 150 32
   $panel.Controls.Add($script:statusPastas)
+  $y += $gap
+
+  $panel.Controls.Add((New-DashLabel 'Firewall / HTTPS' 20 $y 250 32 $theme.Text $theme.Panel 10))
+  $script:statusFirewall = New-DashStatusBadge 'Pendente' $false 290 $y 150 32
+  $panel.Controls.Add($script:statusFirewall)
+  $script:btnFirewall = New-DashButton 'Liberar' 460 ($y + 1) 120 30 'ghost'
+  $script:btnFirewall.Add_Click({ Start-LiberarFirewall })
+  $panel.Controls.Add($script:btnFirewall)
+  $script:lblFirewallHint = New-DashLabel '' 20 ($y + 32) 560 22 $theme.Muted $theme.Panel 8
+  $panel.Controls.Add($script:lblFirewallHint)
 
   # Contagem regressiva de 30s no proprio painel de status
-  $countCard = New-DashPanel 24 452 ($formW - 48) 72
+  $countCard = New-DashPanel 24 508 ($formW - 48) 72
   $form.Controls.Add($countCard)
   $countCard.Controls.Add((New-DashLabel 'Avanco automatico' 20 10 220 22 $theme.Muted $theme.Panel 8.5 ([Drawing.FontStyle]::Bold)))
   $script:lblStatusCountdown = New-DashLabel '30s' ($formW - 48 - 100) 6 80 28 $theme.AccentBright $theme.Panel 16 ([Drawing.FontStyle]::Bold) 'MiddleRight'
@@ -462,7 +594,7 @@ function Show-ServidorOmpsInstallPanel {
   $countCard.Controls.Add($script:barStatusCountdown)
 
   # Acoes secundarias
-  $actions = New-DashPanel 24 536 ($formW - 48) 56
+  $actions = New-DashPanel 24 592 ($formW - 48) 56
   $form.Controls.Add($actions)
   $btnNpm = New-DashButton 'Dependencias do frontend' 12 10 230 36 'ghost'
   $btnNpm.Add_Click({
@@ -514,7 +646,7 @@ function Show-ServidorOmpsInstallPanel {
   $actions.Controls.Add($btnVerify)
 
   # Footer
-  $footer = New-DashFooter 608 $formW 92
+  $footer = New-DashFooter 664 $formW 96
   $form.Controls.Add($footer)
 
   $script:hintAvancar = New-DashLabel 'Avanco automatico em 30s.' 28 12 ($formW - 56) 22 $theme.Muted $theme.Footer 9
