@@ -13,5 +13,6 @@ If Not fso.FileExists(ps1) Then
   WScript.Quit 1
 End If
 
+' 7 = janela minimizada: o usuario usa a janela do Dashboard; fechar o Dashboard encerra o PowerShell.
 cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File """ & ps1 & """"
-sh.Run cmd, 1, False
+sh.Run cmd, 7, False

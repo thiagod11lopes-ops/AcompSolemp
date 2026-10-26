@@ -19,7 +19,12 @@ if (-not (Test-Path (Join-Path $webRoot 'index.html'))) {
 }
 
 $script:ServerActionStatePath = Join-Path $root 'state\server-action.json'
+$script:DashboardBrowserPidPath = Join-Path $root 'state\dashboard-browser.pid'
+$script:DashboardChromeProfile = Join-Path $env:LOCALAPPDATA 'AcompOPMS\dashboard-chrome'
 $script:ScriptsDir = $PSScriptRoot
+$script:DashboardBrowserPid = $null
+$script:BrowserWatchAfter = $null
+$script:NoBrowser = [bool]$NoBrowser
 
 function Get-ServerActionState {
   $fallback = [ordered]@{
@@ -219,7 +224,7 @@ try {
 }
 
 Write-Host "Dashboard AcompOPMS em $prefix"
-Write-Host 'Deixe esta janela aberta enquanto usa o Dashboard.'
+Write-Host 'A janela do navegador e este PowerShell ficam vinculados: feche o Dashboard para encerrar os dois.'
 
 function Get-ContentType([string]$Path) {
   switch ([IO.Path]::GetExtension($Path).ToLowerInvariant()) {
@@ -254,94 +259,149 @@ function Read-RequestBody([System.Net.HttpListenerRequest]$Req) {
   try { return $reader.ReadToEnd() } finally { $reader.Close() }
 }
 
-function Start-DashboardBrowserAsync([string]$DashboardUrl) {
-  # Abre o Chrome em processo separado DEPOIS do /api/health responder,
-  # sem bloquear o loop HttpListener (evita "nao foi possivel acessar este site").
-  $chromeCandidates = @(
-    (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
-    (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
-    (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe')
-  )
-  $chromePath = $chromeCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
-  $chromeLit = if ($chromePath) { $chromePath.Replace("'", "''") } else { '' }
-  $urlLit = $DashboardUrl.Replace("'", "''")
-
-  $opener = @"
-`$ErrorActionPreference = 'Continue'
-`$url = '$urlLit'
-`$chrome = '$chromeLit'
-`$ready = `$false
-for (`$i = 0; `$i -lt 50; `$i++) {
+function Get-DashboardBrowserProfilePids {
+  $profile = [string]$script:DashboardChromeProfile
+  if (-not $profile) { return @() }
+  $ids = @()
   try {
-    `$code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 1 `$url 2>`$null
-    if ("`$code" -match '^(200|301|302|304)$') { `$ready = `$true; break }
+    $procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.Name -match '^(chrome|msedge)\.exe$' -and
+        $_.CommandLine -and
+        $_.CommandLine.IndexOf($profile, [StringComparison]::OrdinalIgnoreCase) -ge 0
+      }
+    foreach ($p in @($procs)) {
+      if ($p.ProcessId) { $ids += [int]$p.ProcessId }
+    }
   } catch { }
-  Start-Sleep -Milliseconds 200
+  return $ids
 }
-if (-not `$ready) { exit 1 }
-`$screenW = 1920; `$screenH = 1080; `$screenX = 0; `$screenY = 0
-try {
-  Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
-  `$b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-  `$screenW = [Math]::Max(800, `$b.Width)
-  `$screenH = [Math]::Max(600, `$b.Height)
-  `$screenX = `$b.X
-  `$screenY = `$b.Y
-} catch { }
-if (`$chrome) {
-  `$p = Start-Process -FilePath `$chrome -ArgumentList @(
-    "--app=`$url",
-    '--new-window',
-    '--start-maximized',
-    "--window-position=`$screenX,`$screenY",
-    "--window-size=`$screenW,`$screenH"
-  ) -PassThru
-} else {
-  `$p = Start-Process `$url -PassThru
-}
-try {
-  Add-Type -ErrorAction SilentlyContinue -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public static class DashboardWinOpen {
-  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-}
-'@
-} catch { }
-`$deadline = (Get-Date).AddSeconds(6)
-do {
-  try { if (`$p) { `$p.Refresh() } } catch { }
-  `$hwnd = [IntPtr]::Zero
-  try { if (`$p) { `$hwnd = `$p.MainWindowHandle } } catch { }
-  if (`$hwnd -ne [IntPtr]::Zero) {
-    try {
-      [void][DashboardWinOpen]::ShowWindowAsync(`$hwnd, 3)
-      [void][DashboardWinOpen]::SetForegroundWindow(`$hwnd)
-    } catch { }
-    break
-  }
-  Start-Sleep -Milliseconds 200
-} while ((Get-Date) -lt `$deadline)
-"@
 
-  $tmpOpen = Join-Path $env:TEMP ("acomp-dash-open-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
-  Set-Content -LiteralPath $tmpOpen -Value $opener -Encoding UTF8
-  Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $tmpOpen
-  ) -WindowStyle Hidden | Out-Null
+function Stop-DashboardBrowserProcess {
+  $pidVal = $script:DashboardBrowserPid
+  if (-not $pidVal -and (Test-Path -LiteralPath $script:DashboardBrowserPidPath)) {
+    try { $pidVal = [int](Get-Content -LiteralPath $script:DashboardBrowserPidPath -ErrorAction SilentlyContinue | Select-Object -First 1) } catch { }
+  }
+  $killIds = @()
+  if ($pidVal -and $pidVal -gt 8) { $killIds += $pidVal }
+  $killIds += @(Get-DashboardBrowserProfilePids)
+  foreach ($id in ($killIds | Select-Object -Unique)) {
+    try {
+      & taskkill.exe /PID $id /T /F 1>$null 2>$null
+    } catch {
+      try { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue } catch { }
+    }
+  }
+  $script:DashboardBrowserPid = $null
+  try { Remove-Item -LiteralPath $script:DashboardBrowserPidPath -Force -ErrorAction SilentlyContinue } catch { }
 }
+
+function Test-DashboardBrowserAlive {
+  if ($script:NoBrowser) { return $true }
+  $pidVal = $script:DashboardBrowserPid
+  if ($pidVal -and (Get-Process -Id $pidVal -ErrorAction SilentlyContinue)) { return $true }
+  $profilePids = @(Get-DashboardBrowserProfilePids)
+  if ($profilePids.Count -gt 0) {
+    if (-not $script:DashboardBrowserPid) { $script:DashboardBrowserPid = $profilePids[0] }
+    return $true
+  }
+  return $false
+}
+
+function Save-DashboardBrowserPid([int]$ProcessId) {
+  $script:DashboardBrowserPid = $ProcessId
+  $dir = Split-Path -Parent $script:DashboardBrowserPidPath
+  if (-not (Test-Path -LiteralPath $dir)) {
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  }
+  Set-Content -LiteralPath $script:DashboardBrowserPidPath -Value "$ProcessId" -Encoding ASCII
+}
+
+function Find-DashboardBrowserExe {
+  foreach ($c in @(
+      (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+      (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+      (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe'),
+      (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
+      (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe')
+    )) {
+    if ($c -and (Test-Path -LiteralPath $c)) { return $c }
+  }
+  return $null
+}
+
+function Start-DashboardBrowserLinked([string]$DashboardUrl) {
+  # Perfil isolado = processo proprio; ao fechar a janela do app, o processo termina
+  # e o PowerShell do Dashboard encerra junto.
+  $ready = $false
+  for ($i = 0; $i -lt 40; $i++) {
+    try {
+      $code = & curl.exe -s -o NUL -w '%{http_code}' --max-time 1 $DashboardUrl 2>$null
+      if ("$code" -match '^(200|301|302|304)$') { $ready = $true; break }
+    } catch { }
+    Start-Sleep -Milliseconds 150
+  }
+  if (-not $ready) {
+    Write-Host 'Aviso: health do Dashboard nao respondeu a tempo; abrindo o navegador mesmo assim.'
+  }
+
+  $browser = Find-DashboardBrowserExe
+  if (-not $browser) {
+    Write-Host 'Chrome/Edge nao encontrado; abrindo URL no navegador padrao (ciclo de vida pode nao sincronizar).'
+    $p = Start-Process $DashboardUrl -PassThru
+    if ($p) { Save-DashboardBrowserPid ([int]$p.Id) }
+    return
+  }
+
+  if (-not (Test-Path -LiteralPath $script:DashboardChromeProfile)) {
+    New-Item -ItemType Directory -Force -Path $script:DashboardChromeProfile | Out-Null
+  }
+
+  $args = @(
+    "--user-data-dir=$($script:DashboardChromeProfile)",
+    "--app=$DashboardUrl",
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+    '--start-maximized'
+  )
+  $p = Start-Process -FilePath $browser -ArgumentList $args -PassThru
+  if ($p) {
+    Save-DashboardBrowserPid ([int]$p.Id)
+    $script:BrowserWatchAfter = (Get-Date).AddSeconds(4)
+    Write-Host ("Navegador do Dashboard (PID {0}). Feche a janela do Dashboard para encerrar este PowerShell." -f $p.Id)
+  }
+}
+
+# Encerra navegador orfao de sessao anterior (se houver).
+Stop-DashboardBrowserProcess
 
 $url = "${prefix}"
 if (-not $NoBrowser) {
-  Start-DashboardBrowserAsync $url
+  Start-DashboardBrowserLinked $url
+} else {
+  Write-Host 'NoBrowser: servidor local ativo sem janela vinculada.'
 }
 
 try {
   while ($listener.IsListening) {
-    $ctx = $listener.GetContext()
+    $ar = $listener.BeginGetContext($null, $null)
+    while (-not $ar.AsyncWaitHandle.WaitOne(500)) {
+      if (-not $script:NoBrowser) {
+        if ($script:BrowserWatchAfter -and (Get-Date) -lt $script:BrowserWatchAfter) { continue }
+        if (-not (Test-DashboardBrowserAlive)) {
+          Write-Host 'Janela do Dashboard fechada - encerrando servidor local...'
+          try { $listener.Stop() } catch { }
+          break
+        }
+      }
+    }
+    if (-not $listener.IsListening) { break }
+    try {
+      $ctx = $listener.EndGetContext($ar)
+    } catch {
+      break
+    }
     $req = $ctx.Request
     $res = $ctx.Response
     try {
@@ -476,4 +536,6 @@ try {
 } finally {
   try { $listener.Stop() } catch { }
   try { $listener.Close() } catch { }
+  try { Stop-DashboardBrowserProcess } catch { }
+  Write-Host 'Dashboard encerrado.'
 }
