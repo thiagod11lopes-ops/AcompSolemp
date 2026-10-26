@@ -145,12 +145,12 @@ try {
       exit 0
     }
     $cameFromInstallPanel = $true
-    Write-Log 'Painel de instalacao OK. Seguindo para contagem regressiva...'
+    Write-Log 'Painel unificado OK (status + rede + 30s). Seguindo inicio...'
   }
 
-  # Apos Avancar no painel de status, vai direto para a contagem regressiva.
-  $gate = if ($cameFromInstallPanel -and -not $SkipLauncherUi) {
-    Invoke-LauncherGate -CountdownOnly
+  # Painel unificado ja tem rede/alias e contagem 30s — nao abre o cronometro antigo.
+  $gate = if ($cameFromInstallPanel) {
+    'Continue'
   } else {
     Invoke-LauncherGate -SkipUi:$SkipLauncherUi
   }

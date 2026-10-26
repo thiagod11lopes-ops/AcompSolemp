@@ -1,4 +1,4 @@
-# Painel de instalacao e configuracao - Servidor OMPS
+﻿# Painel de instalacao e configuracao - Servidor OMPS
 # Uso standalone: Servidor OMPS.vbs
 # Uso embutido:   . .\Painel-Servidor-OMPS.ps1; Show-ServidorOmpsInstallPanel -PreStart
 
@@ -325,11 +325,22 @@ function Show-ShortcutChecklist {
 }
 
 # Retorna 'Continue' ou 'Abort'
+# Unifica status de instalacao + endereco de rede + contagem 30s (antes eram 2 janelas).
 function Show-ServidorOmpsInstallPanel {
   param([switch]$PreStart)
 
   Initialize-OmpsPanelPaths
   $null = Import-DashThemeForPanel
+
+  $commonPs1 = Join-Path $script:ScriptsDir '_common.ps1'
+  if ((Test-Path -LiteralPath $commonPs1) -and -not (Get-Command Get-ServidorRoot -ErrorAction SilentlyContinue)) {
+    . $commonPs1
+  }
+  $launcherPs1 = Join-Path $script:ScriptsDir 'Launcher-UI.ps1'
+  if ((Test-Path -LiteralPath $launcherPs1) -and -not (Get-Command Get-AccessInfo -ErrorAction SilentlyContinue)) {
+    . $launcherPs1
+  }
+
   $script:panelResult = 'Abort'
   $script:ompsPreStart = [bool]$PreStart
   $script:installAllOk = $false
@@ -338,8 +349,22 @@ function Show-ServidorOmpsInstallPanel {
   $script:statusAdvancing = $false
   $theme = Get-DashTheme
 
-  $formW = 680
-  $formH = 760
+  $accessIp = ''
+  $accessAlias = Get-OmpsServerAlias
+  try {
+    if (Get-Command Get-AccessInfo -ErrorAction SilentlyContinue) {
+      $info = Get-AccessInfo
+      $accessIp = [string]$info.Ip
+      $accessAlias = [string]$info.Alias
+    }
+  } catch { }
+  if (-not $accessIp) {
+    try { $accessIp = Get-PreferredLanIPv4 } catch { }
+  }
+  if (-not $accessIp) { $accessIp = '-' }
+
+  $formW = 720
+  $formH = 900
   $form = New-Object Windows.Forms.Form
   Set-DashForm $form 'Servidor OMPS' $formW $formH
   if ($script:IconPath -and (Test-Path $script:IconPath)) {
@@ -347,13 +372,14 @@ function Show-ServidorOmpsInstallPanel {
   }
 
   # Header
-  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20 ($formW - 56)))
-  $form.Controls.Add((New-DashTitle 'Status da instalacao' 28 42 ($formW - 56)))
-  $form.Controls.Add((New-DashSub 'Confira cada item (inclui Firewall/HTTPS). Avanca em 30s ou em Avancar.' 28 82 ($formW - 56) 28))
+  $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 18 ($formW - 56)))
+  $form.Controls.Add((New-DashTitle 'Inicializacao do servidor' 28 40 ($formW - 56)))
+  $form.Controls.Add((New-DashSub 'Status, rede e contagem em um so lugar. Inicia em 30s ou em Iniciar agora.' 28 78 ($formW - 56) 28))
 
-  # Card de status
-  $panel = New-DashPanel 24 120 ($formW - 48) 370
+  # Card de status (pre-requisitos)
+  $panel = New-DashPanel 24 112 ($formW - 48) 292
   $form.Controls.Add($panel)
+  $panel.Controls.Add((New-DashLabel 'PRE-REQUISITOS' 20 8 280 18 $theme.Muted $theme.Panel 8 ([Drawing.FontStyle]::Bold)))
 
   function Set-StatusBadge([System.Windows.Forms.Label]$Badge, [bool]$Ok, [string]$OkText, [string]$BadText) {
     $t = Get-DashTheme
@@ -380,21 +406,57 @@ function Show-ServidorOmpsInstallPanel {
 
   function Update-StatusCountdownUi {
     if ($script:lblStatusCountdown) {
-      $script:lblStatusCountdown.Text = "{0}s" -f $script:statusLeft
+      $script:lblStatusCountdown.Text = "{0}" -f $script:statusLeft
     }
     if ($script:barStatusCountdown) {
       $v = [Math]::Max(0, [Math]::Min(30, $script:statusLeft))
       $script:barStatusCountdown.Value = $v
     }
     if ($script:hintAvancar -and -not $script:statusAdvancing) {
-      if ($script:installAllOk) {
-        $script:hintAvancar.Text = ("Pronto - Avancar agora ou em {0}s." -f $script:statusLeft)
+      if ($script:statusPaused) {
+        $script:hintAvancar.Text = 'Contagem pausada. Retome ou clique em Iniciar agora.'
+        $script:hintAvancar.ForeColor = $theme.Warn
+      } elseif ($script:installAllOk) {
+        $script:hintAvancar.Text = ("Pronto - Iniciar agora ou em {0}s." -f $script:statusLeft)
         $script:hintAvancar.ForeColor = $theme.Ok
       } else {
-        $script:hintAvancar.Text = ("Avanco automatico em {0}s. Corrija os itens em vermelho se puder." -f $script:statusLeft)
+        $script:hintAvancar.Text = ("Inicia em {0}s. Corrija itens em vermelho se puder." -f $script:statusLeft)
         $script:hintAvancar.ForeColor = $theme.Muted
       }
       $script:hintAvancar.BackColor = $theme.Footer
+    }
+  }
+
+  function Save-PanelAliasOrWarn([bool]$Force) {
+    if (-not $script:txtAlias) { return $true }
+    $raw = [string]$script:txtAlias.Text
+    try {
+      if (Get-Command Save-ServerAlias -ErrorAction SilentlyContinue) {
+        $saved = Save-ServerAlias $raw
+        $script:txtAlias.Text = $saved
+        return $true
+      }
+      # Fallback sem Launcher-UI: grava SERVER_ALIAS no config.env
+      $alias = if (Get-Command Normalize-AliasInput -ErrorAction SilentlyContinue) {
+        Normalize-AliasInput $raw
+      } else {
+        $raw.Trim().ToLowerInvariant()
+      }
+      if ($script:ConfigEnv -and (Test-Path -LiteralPath $script:ConfigEnv)) {
+        if (Get-Command Set-EnvKey -ErrorAction SilentlyContinue) {
+          Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $alias
+        }
+      }
+      return $true
+    } catch {
+      if ($Force) { return $true }
+      [Windows.Forms.MessageBox]::Show(
+        $_.Exception.Message,
+        'Endereco invalido',
+        [Windows.Forms.MessageBoxButtons]::OK,
+        [Windows.Forms.MessageBoxIcon]::Warning
+      ) | Out-Null
+      return $false
     }
   }
 
@@ -404,6 +466,13 @@ function Show-ServidorOmpsInstallPanel {
     if ($script:statusTimer) { try { $script:statusTimer.Stop() } catch { } }
 
     Update-StatusLabels
+    if (-not (Save-PanelAliasOrWarn -Force:$Force)) {
+      $script:statusAdvancing = $false
+      if ($script:statusTimer -and -not $script:statusPaused) {
+        try { $script:statusTimer.Start() } catch { }
+      }
+      return
+    }
     Set-PackConfigEnv
     $problems = Invoke-OmpsVerification
     if (-not $Force -and $problems.Count -gt 0) {
@@ -445,13 +514,9 @@ function Show-ServidorOmpsInstallPanel {
     $problems = Invoke-OmpsVerification
     $script:installAllOk = ($problems.Count -eq 0)
     if ($script:btnAvancar) {
-      # Manual: libera cedo se OK; o timer avanca ao fim dos 30s mesmo assim.
-      $script:btnAvancar.Enabled = $script:installAllOk -and -not $script:statusAdvancing
-      if ($script:installAllOk) {
-        Set-DashButtonStyle $script:btnAvancar 'primary'
-      } else {
-        Set-DashButtonStyle $script:btnAvancar 'ghost'
-      }
+      # Sempre permite Iniciar agora; o timer tambem avanca ao fim dos 30s.
+      $script:btnAvancar.Enabled = -not $script:statusAdvancing
+      Set-DashButtonStyle $script:btnAvancar 'primary'
     }
     Update-StatusCountdownUi
   }
@@ -552,8 +617,8 @@ function Show-ServidorOmpsInstallPanel {
     Update-StatusLabels
   }
 
-  $y = 18
-  $gap = 48
+  $y = 32
+  $gap = 38
   $rowDocker = New-StatusRow $panel $y 'Docker Desktop' { Start-InstallerLocal (Get-Installer 'Docker*Installer*.exe') 'Docker Desktop' }; $y += $gap
   $rowNode = New-StatusRow $panel $y 'Node.js' { Start-InstallerLocal (Get-Installer 'node-*.msi') 'Node.js' }; $y += $gap
   $rowVc = New-StatusRow $panel $y 'Visual C++ Redistributable' { Start-InstallerLocal (Get-Installer 'vc_redist*.exe') 'Visual C++' }; $y += $gap
@@ -564,29 +629,46 @@ function Show-ServidorOmpsInstallPanel {
   $script:statusVc = $rowVc.Status; $script:btnVc = $rowVc.Button
   $script:statusWsl = $rowWsl.Status; $script:btnWsl = $rowWsl.Button
 
-  $panel.Controls.Add((New-DashLabel 'Pastas do sistema' 20 $y 250 32 $theme.Text $theme.Panel 10))
-  $script:statusPastas = New-DashStatusBadge '-' $false 290 $y 150 32
+  $panel.Controls.Add((New-DashLabel 'Pastas do sistema' 20 $y 250 30 $theme.Text $theme.Panel 10))
+  $script:statusPastas = New-DashStatusBadge '-' $false 290 $y 150 30
   $panel.Controls.Add($script:statusPastas)
   $y += $gap
 
-  $panel.Controls.Add((New-DashLabel 'Firewall / HTTPS' 20 $y 250 32 $theme.Text $theme.Panel 10))
-  $script:statusFirewall = New-DashStatusBadge 'Pendente' $false 290 $y 150 32
+  $panel.Controls.Add((New-DashLabel 'Firewall / HTTPS' 20 $y 250 30 $theme.Text $theme.Panel 10))
+  $script:statusFirewall = New-DashStatusBadge 'Pendente' $false 290 $y 150 30
   $panel.Controls.Add($script:statusFirewall)
-  $script:btnFirewall = New-DashButton 'Liberar' 460 ($y + 1) 120 30 'ghost'
+  $script:btnFirewall = New-DashButton 'Liberar' 500 ($y + 1) 120 28 'ghost'
   $script:btnFirewall.Add_Click({ Start-LiberarFirewall })
   $panel.Controls.Add($script:btnFirewall)
-  $script:lblFirewallHint = New-DashLabel '' 20 ($y + 32) 560 22 $theme.Muted $theme.Panel 8
+  $script:lblFirewallHint = New-DashLabel '' 20 ($y + 28) 620 20 $theme.Muted $theme.Panel 8
   $panel.Controls.Add($script:lblFirewallHint)
 
-  # Contagem regressiva de 30s no proprio painel de status
-  $countCard = New-DashPanel 24 508 ($formW - 48) 72
+  # Ajuste posicao dos botoes Instalar (form mais largo)
+  foreach ($b in @($script:btnDocker, $script:btnNode, $script:btnVc, $script:btnWsl)) {
+    if ($b) { $b.Location = New-Object Drawing.Point(500, $b.Location.Y) }
+  }
+
+  # Card de rede (ex-cronometro 60s)
+  $netCard = New-DashPanel 24 416 ($formW - 48) 148
+  $form.Controls.Add($netCard)
+  $netCard.Controls.Add((New-DashLabel 'ACESSO NA REDE' 20 10 280 18 $theme.Muted $theme.Panel 8 ([Drawing.FontStyle]::Bold)))
+  $netCard.Controls.Add((New-DashLabel ("IP interno: $accessIp") 20 34 640 22 $theme.Muted $theme.Panel 9))
+  $netCard.Controls.Add((New-DashLabel 'Endereco para os outros PCs (sem http e sem porta)' 20 58 640 22 $theme.Text $theme.Panel 9.5 ([Drawing.FontStyle]::Bold)))
+  $script:txtAlias = New-DashTextBox $accessAlias 20 84 640 34
+  $netCard.Controls.Add($script:txtAlias)
+  $netCard.Controls.Add((New-DashLabel 'Digite exatamente este texto na barra de endereco dos outros PCs.' 20 122 640 20 $theme.Muted $theme.Panel 8.5))
+
+  # Contagem 30s
+  $countCard = New-DashPanel 24 576 ($formW - 48) 100
   $form.Controls.Add($countCard)
-  $countCard.Controls.Add((New-DashLabel 'Avanco automatico' 20 10 220 22 $theme.Muted $theme.Panel 8.5 ([Drawing.FontStyle]::Bold)))
-  $script:lblStatusCountdown = New-DashLabel '30s' ($formW - 48 - 100) 6 80 28 $theme.AccentBright $theme.Panel 16 ([Drawing.FontStyle]::Bold) 'MiddleRight'
+  $countCard.Controls.Add((New-DashLabel 'CONTAGEM' 20 10 160 18 $theme.Muted $theme.Panel 8 ([Drawing.FontStyle]::Bold)))
+  $countCard.Controls.Add((New-DashLabel 'O servidor inicia automaticamente se voce nao interromper.' 180 10 460 18 $theme.Muted $theme.Panel 8.5))
+  $script:lblStatusCountdown = New-DashLabel '30' 20 34 90 48 $theme.AccentBright $theme.Panel 28 ([Drawing.FontStyle]::Bold) 'MiddleLeft'
   $countCard.Controls.Add($script:lblStatusCountdown)
+  $countCard.Controls.Add((New-DashLabel 'segundos' 110 48 100 24 $theme.Muted $theme.Panel 9))
   $script:barStatusCountdown = New-Object Windows.Forms.ProgressBar
-  $script:barStatusCountdown.Location = New-Object Drawing.Point(20, 40)
-  $script:barStatusCountdown.Size = New-Object Drawing.Size(($formW - 88), 16)
+  $script:barStatusCountdown.Location = New-Object Drawing.Point(220, 52)
+  $script:barStatusCountdown.Size = New-Object Drawing.Size(($formW - 48 - 252), 18)
   $script:barStatusCountdown.Minimum = 0
   $script:barStatusCountdown.Maximum = 30
   $script:barStatusCountdown.Value = 30
@@ -594,9 +676,9 @@ function Show-ServidorOmpsInstallPanel {
   $countCard.Controls.Add($script:barStatusCountdown)
 
   # Acoes secundarias
-  $actions = New-DashPanel 24 592 ($formW - 48) 56
+  $actions = New-DashPanel 24 688 ($formW - 48) 52
   $form.Controls.Add($actions)
-  $btnNpm = New-DashButton 'Dependencias do frontend' 12 10 230 36 'ghost'
+  $btnNpm = New-DashButton 'Dependencias frontend' 12 8 200 34 'ghost'
   $btnNpm.Add_Click({
       if (-not (Test-NodeApp)) {
         [Windows.Forms.MessageBox]::Show('Instale o Node.js primeiro.', 'Servidor OMPS') | Out-Null
@@ -612,16 +694,17 @@ function Show-ServidorOmpsInstallPanel {
         Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm install && pause') -WorkingDirectory $fe -Wait
       } finally {
         $script:statusPaused = $false
+        Update-StatusCountdownUi
       }
       Update-StatusLabels
     })
   $actions.Controls.Add($btnNpm)
 
-  $btnRefresh = New-DashButton 'Atualizar' 254 10 130 36 'ghost'
+  $btnRefresh = New-DashButton 'Atualizar' 224 8 120 34 'ghost'
   $btnRefresh.Add_Click({ Update-StatusLabels })
   $actions.Controls.Add($btnRefresh)
 
-  $btnVerify = New-DashButton 'Verificar' 396 10 140 36 'ghost'
+  $btnVerify = New-DashButton 'Verificar' 356 8 120 34 'ghost'
   $btnVerify.Add_Click({
       Update-StatusLabels
       Set-PackConfigEnv
@@ -636,7 +719,7 @@ function Show-ServidorOmpsInstallPanel {
         return
       }
       [Windows.Forms.MessageBox]::Show(
-        'Verificacao OK. Voce ja pode Avancar ou aguardar a contagem.',
+        'Verificacao OK. Voce ja pode Iniciar agora ou aguardar a contagem.',
         'Servidor OMPS',
         [Windows.Forms.MessageBoxButtons]::OK,
         [Windows.Forms.MessageBoxIcon]::Information
@@ -645,24 +728,36 @@ function Show-ServidorOmpsInstallPanel {
     })
   $actions.Controls.Add($btnVerify)
 
-  # Footer
-  $footer = New-DashFooter 664 $formW 96
+  # Footer: Pausar | Interromper | Iniciar agora
+  $footer = New-DashFooter 756 $formW 112
   $form.Controls.Add($footer)
 
-  $script:hintAvancar = New-DashLabel 'Avanco automatico em 30s.' 28 12 ($formW - 56) 22 $theme.Muted $theme.Footer 9
+  $script:hintAvancar = New-DashLabel 'Inicia automaticamente em 30s.' 28 10 ($formW - 56) 22 $theme.Muted $theme.Footer 9
   $footer.Controls.Add($script:hintAvancar)
 
-  $btnClose = New-DashButton 'Fechar' ($formW - 280) 40 110 40 'ghost'
-  $btnClose.Add_Click({
+  $btnPause = New-DashButton 'Pausar' 28 42 110 40 'ghost'
+  $btnPause.Add_Click({
+      $script:statusPaused = -not $script:statusPaused
+      if ($script:statusPaused) {
+        $btnPause.Text = 'Retomar'
+      } else {
+        $btnPause.Text = 'Pausar'
+      }
+      Update-StatusCountdownUi
+    })
+  $footer.Controls.Add($btnPause)
+
+  $btnInterrupt = New-DashButton 'Interromper' 150 42 140 40 'danger'
+  $btnInterrupt.Add_Click({
       $script:panelResult = 'Abort'
+      $script:statusAdvancing = $true
       if ($script:statusTimer) { try { $script:statusTimer.Stop() } catch { } }
       $form.Close()
     })
-  $footer.Controls.Add($btnClose)
+  $footer.Controls.Add($btnInterrupt)
 
-  $script:btnAvancar = New-DashButton 'Avancar' ($formW - 156) 40 128 40 'primary'
-  $script:btnAvancar.Enabled = $false
-  $script:btnAvancar.Add_Click({ Complete-InstallPanelAdvance -Force:$false })
+  $script:btnAvancar = New-DashButton 'Iniciar agora' ($formW - 200) 42 172 40 'primary'
+  $script:btnAvancar.Add_Click({ Complete-InstallPanelAdvance -Force:$true })
   $footer.Controls.Add($script:btnAvancar)
 
   $script:statusTimer = New-Object Windows.Forms.Timer
@@ -674,7 +769,6 @@ function Show-ServidorOmpsInstallPanel {
       Update-StatusCountdownUi
       if ($script:statusLeft -le 0) {
         $script:statusTimer.Stop()
-        # Ao fim dos 30s avanca mesmo com pendencias (PreStart segue o fluxo).
         Complete-InstallPanelAdvance -Force:$true
       }
     })

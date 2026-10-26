@@ -1,4 +1,5 @@
-# Dialogos do atalho Iniciar Servidor OMPS (checklist / cronometro 60s).
+# Dialogos do atalho Iniciar Servidor OMPS (checklist / cronometro).
+# Nota: o fluxo normal usa o painel unificado (status+rede+30s) em Painel-Servidor-OMPS.ps1.
 # Dot-source: . "$PSScriptRoot\Launcher-UI.ps1"
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -136,7 +137,7 @@ function Show-ChecklistDialog {
   }
 }
 
-function Show-CountdownDialog([int]$Seconds = 60) {
+function Show-CountdownDialog([int]$Seconds = 30) {
   $info = Get-AccessInfo
   $theme = Get-DashTheme
   $script:cdLeft = $Seconds
@@ -259,7 +260,7 @@ function Invoke-LauncherGate {
   $state = Get-LauncherState
 
   if ($CountdownOnly -or $state.mode -eq 'countdown') {
-    $cd = Show-CountdownDialog -Seconds 60
+    $cd = Show-CountdownDialog -Seconds 30
     try { Save-ServerAlias $cd.Alias | Out-Null } catch {
       [System.Windows.Forms.MessageBox]::Show(
         $_.Exception.Message, 'Endereco invalido',
