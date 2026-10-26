@@ -1,0 +1,10 @@
+﻿AcompOPMS â€” pasta Dados
+=======================
+Arquivos gerados por Exportar-Dados-Excel.ps1:
+
+- AcompOPMS-Dados-atual.xlsx     â†’ Excel multi-abas (abrir no Excel)
+- AcompOPMS-Snapshot-atual.json  â†’ Copia completa do app_state (para recarga)
+- AcompOPMS-Dados-AAAA...xlsx    â†’ Historico datado
+- AcompOPMS-Snapshot-AAAA...json â†’ Historico datado
+
+Recarga: use Restaurar-Dados-Snapshot.ps1 apontando para um JSON desta pasta.
