@@ -17,9 +17,19 @@ let serverControl = {
   status: 'idle',
   message: '',
   _metricsSeen: false,
+  _jobEnded: false,
+  _jobEndedAt: 0,
+  _busySince: 0,
+  _errorShown: false,
+  _seenJobRunning: false,
+  _startAttempt: null,
 }
 
 const START_ATTEMPTS_KEY = 'acompOmpsStartAttempts'
+/** Tempo maximo em loading sem stack refletir o resultado. */
+const SERVER_BUSY_TIMEOUT_MS = 12 * 60 * 1000
+/** Apos o job terminar, espera metricas confirmarem antes de declarar erro. */
+const SERVER_JOB_END_GRACE_MS = 8 * 1000
 
 function getStartAttemptCount() {
   const n = Number(sessionStorage.getItem(START_ATTEMPTS_KEY) || '0')
@@ -522,6 +532,148 @@ function setPowerHint(text, kind) {
   el.className = 'power-hint' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
 }
 
+function closeServerErrorModal() {
+  const modal = $('modal-server-error')
+  if (modal) modal.hidden = true
+}
+
+function showServerErrorModal(title, body, sub) {
+  const modal = $('modal-server-error')
+  if (!modal) {
+    setPowerHint(body || title || 'Falha no servidor.', 'bad')
+    return
+  }
+  const t = $('modal-server-error-title')
+  const s = $('modal-server-error-sub')
+  const area = $('modal-server-error-body')
+  if (t) t.textContent = title || 'Falha no servidor'
+  if (s) s.textContent = sub || 'O processo nao foi concluido'
+  if (area) {
+    area.value = (body || '').trim() || 'Sem detalhes adicionais. Tente Iniciar de novo ou abra o atalho Iniciar Servidor OMPS.'
+  }
+  modal.hidden = false
+}
+
+function clearServerBusy() {
+  serverControl.busy = false
+  serverControl._jobEnded = false
+  serverControl._jobEndedAt = 0
+  serverControl._busySince = 0
+  serverControl._seenJobRunning = false
+  stopServerPoll()
+}
+
+function finishServerBusySuccess() {
+  clearServerBusy()
+  serverControl._errorShown = false
+  setPowerHint('', null)
+  renderServerPowerButton()
+}
+
+function finishServerBusyError(title, detail) {
+  if (serverControl._errorShown) {
+    clearServerBusy()
+    renderServerPowerButton()
+    return
+  }
+  serverControl._errorShown = true
+  clearServerBusy()
+  const msg = (detail || serverControl.message || '').trim()
+  setPowerHint(title || 'Falha na operacao.', 'bad')
+  showServerErrorModal(
+    title || 'Falha no servidor',
+    [
+      msg,
+      '',
+      'O que fazer:',
+      '1. Confira Docker Desktop e o painel de status (se abriu).',
+      '2. Use Solucionar problemas no pill de status, se algum item estiver vermelho.',
+      '3. Clique em Tentar de novo ou no botao Iniciar servidor.',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    serverControl.action === 'stop' ? 'A parada nao foi concluida' : 'O inicio nao foi concluido',
+  )
+  renderServerPowerButton()
+}
+
+/** Decide se o loading do botao pode encerrar (sucesso, erro ou timeout). */
+function reconcileServerBusy(stackUp) {
+  if (!serverControl.busy) return
+
+  const starting = serverControl.action === 'start'
+  const stopping = serverControl.action === 'stop'
+  const status = serverControl.status || 'idle'
+  const now = Date.now()
+  const busyFor = serverControl._busySince ? now - serverControl._busySince : 0
+
+  // Sucesso: metricas confirmam o estado desejado — so entao sai do loading.
+  if (starting && stackUp) {
+    finishServerBusySuccess()
+    return
+  }
+  if (stopping && !stackUp) {
+    finishServerBusySuccess()
+    return
+  }
+
+  // Erro explicito do job.
+  if (status === 'error') {
+    finishServerBusyError(
+      starting ? 'Falha ao iniciar o servidor' : 'Falha ao parar o servidor',
+      serverControl.message || 'O processo retornou erro.',
+    )
+    return
+  }
+
+  // Job ainda em execucao: mantem loading.
+  if (status === 'running') {
+    if (busyFor > SERVER_BUSY_TIMEOUT_MS) {
+      finishServerBusyError(
+        'Tempo esgotado',
+        'O processo ficou em andamento alem do tempo esperado e os servicos nao confirmaram o estado final.',
+      )
+    }
+    return
+  }
+
+  // Job terminou de fato (done ou flag apos running/error) — nao usar idle antigo sem _jobEnded.
+  if (serverControl._jobEnded || status === 'done') {
+    const endedAt = serverControl._jobEndedAt || serverControl._busySince || now
+    const sinceEnd = now - endedAt
+    if (sinceEnd < SERVER_JOB_END_GRACE_MS) {
+      // Aguarda metricas atualizarem (Vite/API podem responder alguns segundos depois).
+      return
+    }
+    if (starting && !stackUp) {
+      finishServerBusyError(
+        'Inicio nao concluido',
+        serverControl.message ||
+          'O fluxo de inicio terminou, mas o frontend/API nao responderam. O painel pode ter sido interrompido ou houve falha ao subir os servicos.',
+      )
+      return
+    }
+    if (stopping && stackUp) {
+      finishServerBusyError(
+        'Parada nao concluida',
+        serverControl.message ||
+          'O processo de parada terminou, mas os servicos ainda respondem. Tente Parar de novo.',
+      )
+      return
+    }
+    finishServerBusySuccess()
+    return
+  }
+
+  // Ainda busy sem confirmacao (ex.: idle stale): so encerra por timeout.
+  if (busyFor > SERVER_BUSY_TIMEOUT_MS) {
+    finishServerBusyError(
+      'Tempo esgotado',
+      'Nao foi possivel confirmar o fim do processo. Verifique se o painel de inicializacao nao ficou aberto atras do navegador.',
+    )
+  }
+}
+
 function serviceResponding(service) {
   if (!service) return false
   if (service.ok) return true
@@ -560,10 +712,13 @@ function renderServerPowerButton() {
       if (label) label.textContent = busyStartLabel(attempt)
       if (kicker) kicker.textContent = attempt >= 2 ? 'Aguarde' : 'Servidor OMPS'
       btn.title = busyStartLabel(attempt)
+      const waitingServices = serverControl._jobEnded && serverControl.status !== 'error'
       setPowerHint(
-        attempt >= 2
-          ? 'Aguarde, servidor sendo iniciado…'
-          : serverControl.message || 'Subindo serviços…',
+        waitingServices
+          ? 'Fluxo finalizado — confirmando serviços…'
+          : attempt >= 2
+            ? 'Aguarde, servidor sendo iniciado…'
+            : serverControl.message || 'Subindo serviços…',
         null,
       )
     } else {
@@ -589,26 +744,49 @@ function renderServerPowerButton() {
 
 function applyServerControl(data) {
   if (!data || typeof data !== 'object') return
-  const busy = !!data.busy || data.status === 'running'
   const prevAttempt = serverControl._startAttempt
-  serverControl.busy = busy
-  serverControl.action = data.action || 'idle'
-  serverControl.status = data.status || 'idle'
+  const prevStatus = serverControl.status
+  const wasBusy = !!serverControl.busy
+  const status = data.status || 'idle'
+  const action = data.action || serverControl.action || 'idle'
+
+  serverControl.action = action
+  serverControl.status = status
   serverControl.message = data.message || ''
+
   if (typeof data._startAttempt === 'number') {
     serverControl._startAttempt = data._startAttempt
-  } else if (busy && serverControl.action === 'start') {
+  } else if (serverControl.busy && action === 'start') {
     serverControl._startAttempt = prevAttempt || getStartAttemptCount() || 1
-  } else if (!busy) {
-    serverControl._startAttempt = null
   }
+
+  // Job ativo na API: mantem/inicia loading.
+  if (status === 'running') {
+    serverControl.busy = true
+    serverControl._seenJobRunning = true
+    serverControl._jobEnded = false
+    serverControl._jobEndedAt = 0
+    if (!serverControl._busySince) serverControl._busySince = Date.now()
+  } else if (wasBusy && (status === 'done' || status === 'idle' || status === 'error')) {
+    // Ignora idle "antigo" da API logo apos o clique (antes do POST gravar running).
+    const jobReallyEnded =
+      status === 'error' ||
+      status === 'done' ||
+      serverControl._seenJobRunning ||
+      prevStatus === 'running'
+    if (jobReallyEnded && !serverControl._jobEnded) {
+      serverControl._jobEnded = true
+      serverControl._jobEndedAt = Date.now()
+    }
+  }
+
   // running vem das metricas (mais confiavel); API so sugere se ainda nao houver leitura.
   if (typeof data.running === 'boolean' && serverControl._metricsSeen !== true) {
     serverControl.running = !!data.running
   }
   renderServerPowerButton()
-  if (busy) startServerPoll()
-  else stopServerPoll()
+  if (serverControl.busy) startServerPoll()
+  reconcileServerBusy(!!serverControl.running)
 }
 
 async function loadServerControl() {
@@ -641,22 +819,30 @@ async function toggleServerPower() {
   const action = serverControl.running ? 'stop' : 'start'
   btn.disabled = true
 
+  serverControl._errorShown = false
+  serverControl._jobEnded = false
+  serverControl._jobEndedAt = 0
+  serverControl._seenJobRunning = false
+  serverControl._busySince = Date.now()
+  serverControl.busy = true
+  serverControl.action = action
+  serverControl.status = 'running'
+  serverControl.message = action === 'start' ? 'Solicitando inicio…' : 'Solicitando parada…'
+
   if (action === 'start') {
     const attempt = bumpStartAttemptCount()
     serverControl._startAttempt = attempt
-    serverControl.busy = true
-    serverControl.action = 'start'
     renderServerPowerButton()
     setPowerHint(
       attempt >= 2 ? 'Aguarde, servidor sendo iniciado…' : 'Solicitando início…',
       null,
     )
   } else {
-    serverControl.busy = true
-    serverControl.action = 'stop'
+    serverControl._startAttempt = null
     renderServerPowerButton()
     setPowerHint('Servidor sendo pausado…', null)
   }
+  startServerPoll()
 
   try {
     const res = await fetch(`/api/server/${action}`, { method: 'POST', cache: 'no-store' })
@@ -665,13 +851,14 @@ async function toggleServerPower() {
     applyServerControl({
       ...data,
       action: data.action || action,
+      status: data.status || 'running',
       _startAttempt: action === 'start' ? serverControl._startAttempt : undefined,
     })
   } catch (err) {
-    serverControl.busy = false
-    setPowerHint(err instanceof Error ? err.message : 'Falha ao acionar o servidor.', 'bad')
-    btn.disabled = false
-    renderServerPowerButton()
+    finishServerBusyError(
+      action === 'start' ? 'Falha ao iniciar o servidor' : 'Falha ao parar o servidor',
+      err instanceof Error ? err.message : 'Falha ao acionar o servidor.',
+    )
     void loadServerControl()
   }
 }
@@ -694,15 +881,8 @@ function applyMetrics(m) {
   const stackUp = computeStackRunning(m)
   serverControl._metricsSeen = true
   serverControl.running = stackUp
-  // Se o stack ja refletiu o resultado, libera o botao (evita ficar preso em Iniciando/Parando).
-  if (serverControl.busy) {
-    const starting = serverControl.action === 'start'
-    const stopping = serverControl.action === 'stop'
-    if ((starting && stackUp) || (stopping && !stackUp) || serverControl.status !== 'running') {
-      serverControl.busy = false
-      stopServerPoll()
-    }
-  }
+  // Loading so termina com sucesso (stack ok) ou erro/timeout — nunca so porque status != running.
+  reconcileServerBusy(stackUp)
   renderServerPowerButton()
 
   renderStackChecksStore(
@@ -1090,6 +1270,20 @@ function wireDetailPanels() {
 function closeAnyModal() {
   closeEmailsModal()
   closeDetailModal()
+  closeServerErrorModal()
+}
+
+function wireServerErrorModal() {
+  document.querySelectorAll('[data-close-server-error]').forEach((el) => {
+    el.addEventListener('click', closeServerErrorModal)
+  })
+  const retry = $('btn-server-error-retry')
+  if (retry) {
+    retry.addEventListener('click', () => {
+      closeServerErrorModal()
+      if (!serverControl.busy) void toggleServerPower()
+    })
+  }
 }
 
 function setBootLoaderText(text) {
@@ -1139,6 +1333,7 @@ function boot() {
   })
   wireDetailPanels()
   wireFixCheckButtons()
+  wireServerErrorModal()
   void bootLoad()
   refreshTimer = setInterval(() => {
     void loadMetrics()

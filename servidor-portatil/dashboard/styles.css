@@ -1174,6 +1174,35 @@ button.pill {
   font-size: 0.8rem;
 }
 
+.modal-card-error {
+  width: min(520px, 100%);
+  max-height: min(78vh, 560px);
+}
+
+.server-error-text {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  appearance: none;
+  border: 1px solid rgba(224, 90, 74, 0.35);
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  outline: none;
+  margin: 0 0 0.75rem;
+}
+
+.server-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .email-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;

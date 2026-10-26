@@ -142,11 +142,16 @@ function Save-State([string]`$Status, [string]`$Message, `$PidValue = `$null) {
 }
 try {
   if (`$action -eq 'start') {
-    # Mesmo fluxo do icone Iniciar Servidor OMPS: painel de programas + contagem regressiva.
+    # Mesmo fluxo do icone Iniciar Servidor OMPS: painel unificado + sobe servicos.
     & `$target
     `$code = `$LASTEXITCODE
     if (`$null -ne `$code -and `$code -ne 0) {
-      Save-State 'error' ("Falha ao iniciar (codigo {0})." -f `$code) `$null
+      `$msg = if (`$code -eq 2) {
+        'Inicio interrompido ou cancelado antes dos servicos subirem.'
+      } else {
+        ("Falha ao iniciar (codigo {0})." -f `$code)
+      }
+      Save-State 'error' `$msg `$null
       exit `$code
     }
     Save-State 'done' 'Fluxo de inicio concluido.' `$null

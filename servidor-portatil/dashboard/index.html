@@ -246,6 +246,26 @@
       </div>
     </div>
 
+    <div id="modal-server-error" class="modal" hidden>
+      <div class="modal-backdrop" data-close-server-error></div>
+      <div class="modal-card modal-card-error" role="dialog" aria-modal="true" aria-labelledby="modal-server-error-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-server-error-title">Falha no servidor</h2>
+            <p class="panel-desc" id="modal-server-error-sub">O processo nao foi concluido</p>
+          </div>
+          <button type="button" class="modal-close" data-close-server-error aria-label="Fechar">×</button>
+        </header>
+        <div class="modal-body">
+          <textarea id="modal-server-error-body" class="server-error-text" readonly rows="8"></textarea>
+          <div class="server-error-actions">
+            <button type="button" class="btn-ghost" data-close-server-error>Fechar</button>
+            <button type="button" class="btn-refresh" id="btn-server-error-retry">Tentar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="modal-emails" class="modal" hidden>
       <div class="modal-backdrop" data-close-modal></div>
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-emails-title">

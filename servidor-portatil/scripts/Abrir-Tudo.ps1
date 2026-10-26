@@ -142,7 +142,7 @@ try {
     $installGate = Show-ServidorOmpsInstallPanel -PreStart
     if ($installGate -ne 'Continue') {
       Write-Log 'Inicio cancelado no painel de instalacao.'
-      exit 0
+      exit 2
     }
     $cameFromInstallPanel = $true
     Write-Log 'Painel unificado OK (status + rede + 30s). Seguindo inicio...'
@@ -156,7 +156,7 @@ try {
   }
   if ($gate -eq 'Abort') {
     Write-Log 'Inicio cancelado pelo usuario (checklist/cronometro).'
-    exit 0
+    exit 2
   }
 
   Write-Log '==> Aplicando IP/alias da rede...'
