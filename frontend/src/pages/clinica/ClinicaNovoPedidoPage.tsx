@@ -47,6 +47,11 @@ import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpread
 import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import {
+  clearEnvioAnexosDraft,
+  loadEnvioAnexosDraft,
+  saveEnvioAnexosDraft,
+} from '@/utils/envioAnexosDraftStorage'
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
@@ -970,6 +975,35 @@ export default function ClinicaNovoPedidoPage() {
     )
   }, [])
 
+  const persistEnvioAnexosDraft = useCallback(
+    (files: File[]) => {
+      if (!clinicaId) return
+      void saveEnvioAnexosDraft(clinicaId, files).catch((error) => {
+        console.warn('[AcompOPMS] Falha ao salvar rascunho de anexos:', error)
+      })
+    },
+    [clinicaId],
+  )
+
+  // Restaura anexos do modal Enviar após F5.
+  useEffect(() => {
+    if (!clinicaId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const files = await loadEnvioAnexosDraft(clinicaId)
+        if (cancelled || files.length === 0) return
+        envioAnexosRef.current = files
+        setEnvioAnexos(files)
+      } catch (error) {
+        console.warn('[AcompOPMS] Falha ao restaurar rascunho de anexos:', error)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clinicaId])
+
   const handleAbrirEnvio = () => {
     if (selectedImhCount === 0 && selectedDivCount === 0) {
       setFeedback({
@@ -979,8 +1013,7 @@ export default function ClinicaNovoPedidoPage() {
       })
       return
     }
-    envioAnexosRef.current = []
-    setEnvioAnexos([])
+    // Mantém anexos já escolhidos / restaurados do rascunho (não zera no abrir).
     setEnvioModalOpen(true)
   }
 
@@ -1003,6 +1036,7 @@ export default function ClinicaNovoPedidoPage() {
     const merged = mergeEnvioAnexos(envioAnexosRef.current, validos)
     envioAnexosRef.current = merged
     setEnvioAnexos(merged)
+    persistEnvioAnexosDraft(merged)
   }
 
   const handleAdicionarAnexosNoEnvio = async () => {
@@ -1055,6 +1089,7 @@ export default function ClinicaNovoPedidoPage() {
     const next = envioAnexosRef.current.filter((_, i) => i !== index)
     envioAnexosRef.current = next
     setEnvioAnexos(next)
+    persistEnvioAnexosDraft(next)
   }
 
   const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -1091,8 +1126,7 @@ export default function ClinicaNovoPedidoPage() {
     if (isEnviando) return
     if (Date.now() < envioModalIgnoreCloseUntilRef.current) return
     setEnvioModalOpen(false)
-    envioAnexosRef.current = []
-    setEnvioAnexos([])
+    // Mantém anexos no rascunho (F5 / reabrir modal).
   }
 
   const handleEnviarPlanilhas = async (comentarioEnvio = '') => {
@@ -1248,6 +1282,7 @@ export default function ClinicaNovoPedidoPage() {
       if (anexosParaEnviar.length > 0) partes.push(`${anexosParaEnviar.length} anexo(s)`)
       envioAnexosRef.current = []
       setEnvioAnexos([])
+      void clearEnvioAnexosDraft(clinicaId)
       setFeedback({
         open: true,
         severity: syncAnexosFalhou ? 'error' : 'success',
