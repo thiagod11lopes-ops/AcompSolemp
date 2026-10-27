@@ -192,6 +192,22 @@ Set-RootLnk 'Instalação do Servidor.lnk' 'Instalacao-do-Servidor.vbs' 'Assiste
 Set-RootLnk 'Iniciar Servidor OMPS.lnk' 'Iniciar-Servidor-OMPS.vbs' 'Inicia o servidor'
 Set-RootLnk 'Dashboard Servidor.lnk' 'Dashboard.vbs' 'Dashboard do servidor'
 
+# Recria atalho na Area de Trabalho deste PC (fonte do Cursor)
+Write-Step 'atalho Desktop Atualizar Transferir Servidor...'
+$updateVbs = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.vbs'
+$deskLnk = Join-Path $desk 'Atualizar Transferir Servidor.lnk'
+if (Test-Path -LiteralPath $updateVbs) {
+  $scUp = $wsh.CreateShortcut($deskLnk)
+  $scUp.TargetPath = $updateVbs
+  $scUp.WorkingDirectory = Split-Path $updateVbs
+  $scUp.WindowStyle = 1
+  $scUp.Description = 'Sincroniza Transferir Servidor a partir do projeto Cursor'
+  $icoSrc = Join-Path $proj 'servidor-portatil\icons\opms.ico'
+  if (-not (Test-Path -LiteralPath $icoSrc)) { $icoSrc = $ico }
+  if (Test-Path -LiteralPath $icoSrc) { $scUp.IconLocation = "$icoSrc,0" }
+  $scUp.Save()
+}
+
 # Checklist
 $checks = @(
   (Join-Path $geral 'instaladores\Docker Desktop Installer.exe'),
