@@ -400,6 +400,15 @@ function Start-DashboardBrowserLinked([string]$DashboardUrl) {
     Write-Host ("Falha ao abrir Chrome/Edge em modo app: {0}" -f $_.Exception.Message)
     try { Start-Process $DashboardUrl | Out-Null } catch { }
   }
+  # Maximiza o Dashboard e minimiza Docker/PowerShell auxiliares do boot.
+  try {
+    . "$PSScriptRoot\Minimizar-Janelas-Boot.ps1"
+    for ($i = 1; $i -le 8; $i++) {
+      Start-Sleep -Milliseconds 500
+      [void](Invoke-MaximizeAcompOpmsDashboard)
+      [void](Invoke-MinimizeAcompOpmsHelpers)
+    }
+  } catch { }
   # Margem para o Chrome spawnar processos filhos do perfil antes de vigiar o ciclo de vida.
   $script:BrowserWatchAfter = (Get-Date).AddSeconds(8)
 }

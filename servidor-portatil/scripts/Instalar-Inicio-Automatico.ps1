@@ -34,9 +34,9 @@ if (-not $isAdmin) {
   Write-Host 'Rode Liberar-Firewall.cmd como Administrador UMA VEZ para automacao total.'
 }
 
-# --- Tarefa: subir stack sem UI ---
-# Silent + SkipLauncherUi + NoBrowser = zero intervencao no boot.
-$argStart = "-NoProfile -STA -WindowStyle Minimized -ExecutionPolicy Bypass -File `"$ps1Start`" -Silent -SkipLauncherUi -NoBrowser"
+# --- Tarefa: subir stack + Dashboard maximizado ---
+# Silent + SkipLauncherUi: Docker/PowerShell minimizados; so o Dashboard fica maximizado.
+$argStart = "-NoProfile -STA -WindowStyle Minimized -ExecutionPolicy Bypass -File `"$ps1Start`" -Silent -SkipLauncherUi"
 $actionStart = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argStart -WorkingDirectory $PSScriptRoot
 $triggerStart = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 try {
@@ -57,7 +57,7 @@ Register-ScheduledTask `
   -Trigger $triggerStart `
   -Settings $settings `
   -Principal $principalUser `
-  -Description 'Inicia Docker + Supabase + app + gateway AcompOPMS apos o login (sem UI).' `
+  -Description 'Inicia Docker + stack AcompOPMS no login; minimiza auxiliares e abre o Dashboard maximizado.' `
   -Force | Out-Null
 
 if ($isAdmin) {

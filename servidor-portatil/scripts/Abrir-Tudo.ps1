@@ -20,6 +20,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 . "$PSScriptRoot\Launcher-UI.ps1"
+. "$PSScriptRoot\Minimizar-Janelas-Boot.ps1"
 
 $cfg = Import-ServidorConfig
 $appPort = $cfg.APP_PORT
@@ -50,19 +51,25 @@ function Start-DockerDesktopIfNeeded {
     throw 'Docker Desktop nao encontrado. Instale o Docker Desktop e tente de novo.'
   }
 
-  Write-Log '==> Abrindo Docker Desktop...'
-  Start-Process -FilePath $exe | Out-Null
+  Write-Log '==> Abrindo Docker Desktop (minimizado)...'
+  try {
+    Start-Process -FilePath $exe -WindowStyle Minimized | Out-Null
+  } catch {
+    Start-Process -FilePath $exe | Out-Null
+  }
 
   Write-Log '==> Aguardando Docker ficar pronto (ate ~5 min)...'
   $ok = $false
   for ($i = 1; $i -le 100; $i++) {
     if (Test-DockerRunning) { $ok = $true; break }
+    try { [void](Invoke-MinimizeAcompOpmsHelpers) } catch { }
     if (-not $Silent) { Write-Host ("  ... {0}/100" -f $i) }
     Start-Sleep -Seconds 3
   }
   if (-not $ok) {
     throw 'Docker Desktop nao ficou pronto a tempo. Abra o Docker Desktop, espere o status Running e tente de novo.'
   }
+  try { [void](Invoke-MinimizeAcompOpmsHelpers) } catch { }
   Write-Log 'Docker pronto.'
 }
 
@@ -205,7 +212,28 @@ try {
     } catch { }
   }
 
-  if (-not $NoBrowser) {
+  if ($Silent) {
+    # Boot automatico: Docker/PowerShell minimizados; so o Dashboard maximizado.
+    Write-Log '==> Minimizando Docker e PowerShell auxiliares...'
+    try { [void](Invoke-MinimizeAcompOpmsHelpers) } catch { }
+    try {
+      Wait-AppReady $localLogin
+    } catch {
+      Write-Log ("Aviso Wait-AppReady: {0}" -f $_.Exception.Message)
+    }
+    Write-Log '==> Abrindo Dashboard (unico maximizado)...'
+    try {
+      [void](Start-AcompOpmsDashboardMinimizedHost -ScriptsDir $PSScriptRoot)
+    } catch {
+      Write-Log ("Aviso Dashboard: {0}" -f $_.Exception.Message)
+    }
+    for ($i = 1; $i -le 12; $i++) {
+      Start-Sleep -Seconds 1
+      try { [void](Invoke-MaximizeAcompOpmsDashboard) } catch { }
+      try { [void](Invoke-MinimizeAcompOpmsHelpers) } catch { }
+    }
+    Write-Log 'Boot automatico: Dashboard maximizado; auxiliares minimizados.'
+  } elseif (-not $NoBrowser) {
     # Espera o Vite local; abre o HTTPS publico (cadeado apos instalar a CA).
     Wait-AppReady $localLogin
     $chrome = Get-ChromePath
@@ -221,25 +249,25 @@ try {
   }
 
   Write-Log "Pronto. Digite nos outros PCs exatamente: $alias (HTTPS)"
-  try {
-    Add-Type -AssemblyName System.Windows.Forms
-    [System.Windows.Forms.MessageBox]::Show(
-      ("Servidor pronto (HTTPS).`n`n" +
-       "Nos outros computadores:`n" +
-       "1) Uma vez: Instalar-Certificado-Confianca.cmd (Admin)`n" +
-       "   (pasta servidor-portatil\cliente)`n" +
-       "2) Digite EXATAMENTE no navegador:`n`n" +
-       "    $alias`n`n" +
-       "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
-       "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
-       "Liberar-Firewall.cmd (Admin) - instala inicio automatico.`n`n" +
-       "IP interno: $ip"),
-      'Iniciar Servidor OMPS',
-      [System.Windows.Forms.MessageBoxButtons]::OK,
-      [System.Windows.Forms.MessageBoxIcon]::Information
-    ) | Out-Null
-  } catch { }
   if (-not $Silent) {
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      [System.Windows.Forms.MessageBox]::Show(
+        ("Servidor pronto (HTTPS).`n`n" +
+         "Nos outros computadores:`n" +
+         "1) Uma vez: Instalar-Certificado-Confianca.cmd (Admin)`n" +
+         "   (pasta servidor-portatil\cliente)`n" +
+         "2) Digite EXATAMENTE no navegador:`n`n" +
+         "    $alias`n`n" +
+         "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
+         "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
+         "Liberar-Firewall.cmd (Admin) - instala inicio automatico.`n`n" +
+         "IP interno: $ip"),
+        'Iniciar Servidor OMPS',
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Information
+      ) | Out-Null
+    } catch { }
     Write-Host ''
     Write-Host 'Pode fechar esta janela.'
   }
