@@ -179,6 +179,80 @@ function Invoke-StepInstaller {
   return $false
 }
 
+function Test-WslFeatureEnabled {
+  try {
+    $f = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
+    if ($f -and $f.State -eq 'Enabled') { return $true }
+  } catch { }
+  try {
+    $out = & dism.exe /online /Get-FeatureInfo /FeatureName:Microsoft-Windows-Subsystem-Linux 2>$null | Out-String
+    if ($out -match 'State\s*:\s*Enabled') { return $true }
+  } catch { }
+  return $false
+}
+
+function Invoke-StepWsl {
+  if (Test-Wsl) {
+    Set-StepUi 'wsl' 'skip' 'WSL ja detectado'
+    return $true
+  }
+
+  Set-StepUi 'wsl' 'running' 'Ativando Windows Subsystem for Linux (Admin)…'
+  # wsl_update_x64.msi SO funciona se o recurso WSL ja existir.
+  # Por isso ativamos o recurso primeiro (nao abrir o MSI cedo demais).
+  $enableScript = @'
+$ErrorActionPreference = "Stop"
+try {
+  Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart -ErrorAction Stop | Out-Null
+} catch {
+  & dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+  if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { throw "Falha ao ativar WSL (dism $LASTEXITCODE)" }
+}
+try {
+  Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All -NoRestart -ErrorAction SilentlyContinue | Out-Null
+} catch {
+  & dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart | Out-Null
+}
+exit 0
+'@
+  $tmp = Join-Path $env:TEMP ("acomp-enable-wsl-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
+  Set-Content -LiteralPath $tmp -Value $enableScript -Encoding UTF8
+  try {
+    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmp
+    ) -Verb RunAs -Wait -PassThru
+    if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
+      Set-StepUi 'wsl' 'error' 'Nao foi possivel ativar o WSL. Aceite o UAC e use Windows Home/Pro com virtualizacao.'
+      return $false
+    }
+  } catch {
+    Set-StepUi 'wsl' 'error' ("Ativacao WSL: {0}" -f $_.Exception.Message)
+    return $false
+  } finally {
+    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+  }
+
+  # Agora sim o update do kernel (se o MSI existir)
+  $setup = Get-Installer 'wsl_update*.msi'
+  if ($setup -and (Test-WslFeatureEnabled -or (Test-Path 'C:\Windows\System32\wsl.exe'))) {
+    Set-StepUi 'wsl' 'running' 'Aplicando atualizacao do kernel WSL…'
+    try {
+      Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/i', "`"$setup`"", '/passive', '/norestart') -Wait
+    } catch {
+      # Nao e fatal se o update recusar; o recurso ja pode estar ok apos reboot
+      Set-StepUi 'wsl' 'running' ("Aviso update kernel: {0}" -f $_.Exception.Message)
+    }
+  }
+
+  if (Test-Wsl) {
+    Set-StepUi 'wsl' 'ok' 'WSL pronto'
+    return $true
+  }
+
+  Set-StepUi 'wsl' 'error' 'WSL foi ativado, mas precisa REINICIAR o PC. Depois abra o assistente e use Tentar de novo nesta etapa.'
+  return $false
+}
+
 function Invoke-StepNpm {
   $fe = Join-Path $script:AcompRoot 'frontend'
   $nm = Join-Path $fe 'node_modules'
@@ -417,7 +491,7 @@ function Invoke-WizardStep([int]$Index) {
   switch ($step.id) {
     'pastas' { return Invoke-StepPastas }
     'vcredist' { return Invoke-StepInstaller -Id 'vcredist' -Pattern 'vc_redist*.exe' -Nome 'Visual C++' -AlreadyOk { Test-VcRedist } }
-    'wsl' { return Invoke-StepInstaller -Id 'wsl' -Pattern 'wsl_update*.msi' -Nome 'WSL' -AlreadyOk { Test-Wsl } }
+    'wsl' { return Invoke-StepWsl }
     'docker' { return Invoke-StepInstaller -Id 'docker' -Pattern 'Docker*Installer*.exe' -Nome 'Docker Desktop' -AlreadyOk { Test-DockerApp } }
     'node' { return Invoke-StepInstaller -Id 'node' -Pattern 'node-*.msi' -Nome 'Node.js' -AlreadyOk { Test-NodeApp } }
     'npm' { return Invoke-StepNpm }
