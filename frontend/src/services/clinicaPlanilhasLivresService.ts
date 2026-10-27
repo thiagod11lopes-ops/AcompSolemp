@@ -118,20 +118,66 @@ export const clinicaPlanilhasLivresService = {
     clinicaId: string,
     state: ClinicaPlanilhasLivresState,
     modo: PlanilhasModo = 'clinica',
+    options?: { allowEmptyOverwrite?: boolean },
   ): ClinicaPlanilhasLivresState {
     const data = loadAppData()
     if (!data.planilhasLivres) data.planilhasLivres = {}
     const next = normalizeState(state, modo)
-    data.planilhasLivres[clinicaId] = next
-    if (modo === 'medicamento' && next.listaMedicamentos) {
-      data.medicamentosPrecos = listaMedicamentosToPrecosRows(next.listaMedicamentos)
+    const prev = data.planilhasLivres[clinicaId]
+    const fromBackup = readPlanilhasLivresBackup(clinicaId)
+    const baseline = pickRicherPlanilhasState(prev, fromBackup)
+    const scoreNext = planilhasLivresContentScore(next)
+    const scoreBase = planilhasLivresContentScore(baseline)
+
+    // Race pós-F5: UI ainda vazia tenta persistir e apagaria import rico.
+    // Apagar mês/linhas (score cai, mas > 0) continua permitido.
+    let toSave = next
+    if (!options?.allowEmptyOverwrite && scoreNext <= 0 && scoreBase > 0 && baseline) {
+      toSave = normalizeState(
+        {
+          ...baseline,
+          abaAtivaId: next.abaAtivaId ?? baseline.abaAtivaId,
+          abas: next.abas?.length ? next.abas : baseline.abas,
+          planilhaFiltros: next.planilhaFiltros ?? baseline.planilhaFiltros,
+          finalizedDivMaterialIds:
+            next.finalizedDivMaterialIds ?? baseline.finalizedDivMaterialIds,
+          devolvidosDivMaterialIds:
+            next.devolvidosDivMaterialIds ?? baseline.devolvidosDivMaterialIds,
+        },
+        modo,
+      )
+    }
+
+    data.planilhasLivres[clinicaId] = toSave
+    if (modo === 'medicamento' && toSave.listaMedicamentos) {
+      data.medicamentosPrecos = listaMedicamentosToPrecosRows(toSave.listaMedicamentos)
     }
     saveAppData(data)
-    writePlanilhasLivresBackup(clinicaId, next)
-    if (planilhasLivresContentScore(next) > 0) {
+
+    if (options?.allowEmptyOverwrite && planilhasLivresContentScore(toSave) <= 0) {
+      clearPlanilhasLivresBackup(clinicaId)
+      if (useCloudAppDataSync()) {
+        void (async () => {
+          try {
+            const { deletePlanilhaLivresForClinica } = await import(
+              '@/data/persistence/normalized/planilhasLivresSync'
+            )
+            await deletePlanilhaLivresForClinica(clinicaId)
+            const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+            await flushSupabaseAppDataSync()
+          } catch (error) {
+            console.warn('[AcompOPMS] Falha ao limpar planilha no servidor:', error)
+          }
+        })()
+      }
+      return toSave
+    }
+
+    writePlanilhasLivresBackup(clinicaId, toSave)
+    if (planilhasLivresContentScore(toSave) > 0) {
       syncPlanilhasToServer()
     }
-    return next
+    return toSave
   },
 
   clearState(clinicaId: string): void {
@@ -143,6 +189,56 @@ export const clinicaPlanilhasLivresService = {
     delete data.planilhasLivres[clinicaId]
     saveAppData(data)
     clearPlanilhasLivresBackup(clinicaId)
-    syncPlanilhasToServer()
+    if (useCloudAppDataSync()) {
+      void (async () => {
+        try {
+          const { deletePlanilhaLivresForClinica } = await import(
+            '@/data/persistence/normalized/planilhasLivresSync'
+          )
+          await deletePlanilhaLivresForClinica(clinicaId)
+          const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+          await flushSupabaseAppDataSync()
+        } catch (error) {
+          console.warn('[AcompOPMS] Falha ao limpar planilha no servidor:', error)
+        }
+      })()
+    } else {
+      syncPlanilhasToServer()
+    }
+  },
+
+  /**
+   * Carrega a planilha da tabela SQL do servidor (fonte da verdade após F5).
+   * Atualiza AppData + backup local se o remoto for mais completo.
+   */
+  async loadStateFromServer(
+    clinicaId: string,
+    modo: PlanilhasModo = 'clinica',
+  ): Promise<ClinicaPlanilhasLivresState> {
+    const local = this.getState(clinicaId, modo)
+    if (!useCloudAppDataSync()) return local
+
+    try {
+      const { fetchPlanilhaLivresForClinica } = await import(
+        '@/data/persistence/normalized/planilhasLivresSync'
+      )
+      const remoteRaw = await fetchPlanilhaLivresForClinica(clinicaId)
+      if (!remoteRaw) return local
+      const remote = normalizeState(remoteRaw, modo)
+      const richer = pickRicherPlanilhasState(local, remote) ?? local
+      if (planilhasLivresContentScore(richer) > planilhasLivresContentScore(local)) {
+        const data = loadAppData()
+        if (!data.planilhasLivres) data.planilhasLivres = {}
+        data.planilhasLivres[clinicaId] = richer
+        saveAppData(data)
+        writePlanilhasLivresBackup(clinicaId, richer)
+      } else if (planilhasLivresContentScore(richer) > 0) {
+        writePlanilhasLivresBackup(clinicaId, richer)
+      }
+      return richer
+    } catch (error) {
+      console.warn('[AcompOPMS] loadStateFromServer falhou:', error)
+      return local
+    }
   },
 }

@@ -1478,6 +1478,8 @@ export function applyRemoteAppData(raw: AppData): AppData {
   if (changed && import.meta.env.DEV) {
     console.info('[AcompOPMS] AppData normalizado após hidratação Supabase')
   }
+  // Notifica a UI (ex.: aba Enviar) quando a nuvem/tabela SQL traz planilhas.
+  notifyAppDataChangedLocal()
   return cloneData(data)
 }
 

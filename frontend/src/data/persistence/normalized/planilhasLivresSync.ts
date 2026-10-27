@@ -14,28 +14,12 @@ export async function dualWritePlanilhasLivres(data: AppData): Promise<void> {
 
   try {
     const client = getSupabaseClient()
-    // Nunca sobrescreve linha rica no SQL com rascunho vazio do blob.
-    const { data: existingRows } = await client
-      .from('planilhas_livres')
-      .select('clinica_id, data')
-      .eq('tenant_id', tenantId)
-    const existingScore = new Map<string, number>()
-    for (const row of existingRows ?? []) {
-      const id = String(row.clinica_id ?? '')
-      if (!id) continue
-      existingScore.set(
-        id,
-        planilhasLivresContentScore(row.data as ClinicaPlanilhasLivresState),
-      )
-    }
-
+    // Não grava rascunho vazio por cima do SQL. Conteúdo > 0 sobe mesmo se o score
+    // caiu (apagar um mês / linhas) — saveState local já bloqueia flush acidental vazio.
     const rows = Object.entries(map)
       .filter(([clinicaId, state]) => {
         if (!clinicaId || !state) return false
-        const score = planilhasLivresContentScore(state)
-        if (score <= 0) return false
-        const prev = existingScore.get(clinicaId) ?? 0
-        return score >= prev
+        return planilhasLivresContentScore(state) > 0
       })
       .map(([clinicaId, state]) => ({
         tenant_id: tenantId,
@@ -54,6 +38,25 @@ export async function dualWritePlanilhasLivres(data: AppData): Promise<void> {
     }
   } catch (error) {
     console.warn('[AcompOPMS] dual-write planilhas_livres indisponível:', error)
+  }
+}
+
+/** Remove planilha da tabela SQL (apagar tudo / clearState). */
+export async function deletePlanilhaLivresForClinica(clinicaId: string): Promise<void> {
+  const tenantId = getTenantId()
+  if (!tenantId || !clinicaId) return
+  try {
+    const client = getSupabaseClient()
+    const { error } = await client
+      .from('planilhas_livres')
+      .delete()
+      .eq('tenant_id', tenantId)
+      .eq('clinica_id', clinicaId)
+    if (error) {
+      console.warn('[AcompOPMS] delete planilhas_livres:', error.message)
+    }
+  } catch (error) {
+    console.warn('[AcompOPMS] delete planilhas_livres indisponível:', error)
   }
 }
 
@@ -90,5 +93,31 @@ export async function mergePlanilhasLivresFromNormalized(data: AppData): Promise
   } catch (error) {
     console.warn('[AcompOPMS] read planilhas_livres indisponível:', error)
     return data
+  }
+}
+
+/** Lê planilha de uma clínica direto da tabela SQL do servidor. */
+export async function fetchPlanilhaLivresForClinica(
+  clinicaId: string,
+): Promise<ClinicaPlanilhasLivresState | null> {
+  const tenantId = getTenantId()
+  if (!tenantId || !clinicaId) return null
+  try {
+    const client = getSupabaseClient()
+    const { data: row, error } = await client
+      .from('planilhas_livres')
+      .select('data')
+      .eq('tenant_id', tenantId)
+      .eq('clinica_id', clinicaId)
+      .maybeSingle()
+    if (error) {
+      console.warn('[AcompOPMS] fetch planilhas_livres:', error.message)
+      return null
+    }
+    if (!row?.data) return null
+    return row.data as ClinicaPlanilhasLivresState
+  } catch (error) {
+    console.warn('[AcompOPMS] fetch planilhas_livres indisponível:', error)
+    return null
   }
 }
