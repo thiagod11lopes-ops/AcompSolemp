@@ -657,10 +657,14 @@ button.pill {
 }
 
 .alias-edit {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 0.35rem;
   margin-top: 0.1rem;
+}
+
+.stat-address.is-editing .alias-edit {
+  display: flex;
 }
 
 .alias-input {

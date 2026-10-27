@@ -1219,15 +1219,11 @@ function getAliasCard() {
 
 function openAliasEdit() {
   const card = getAliasCard()
-  const display = $('alias-display')
-  const edit = $('alias-edit')
   const input = $('input-alias')
-  if (!card || !edit || !input) return
+  if (!card || !input) return
   const current = (lastKnownAlias || $('stat-alias')?.textContent || '').trim()
   input.value = current === '—' ? '' : current
   card.classList.add('is-editing')
-  if (display) display.hidden = true
-  edit.hidden = false
   setAliasStatus('', null)
   input.focus()
   input.select()
@@ -1235,11 +1231,7 @@ function openAliasEdit() {
 
 function closeAliasEdit() {
   const card = getAliasCard()
-  const display = $('alias-display')
-  const edit = $('alias-edit')
   if (card) card.classList.remove('is-editing')
-  if (display) display.hidden = false
-  if (edit) edit.hidden = true
   setAliasStatus('', null)
   syncAliasDisplay(lastKnownAlias)
 }
