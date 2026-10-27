@@ -142,12 +142,12 @@ try {
   ) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden `
     -RedirectStandardOutput $exportLog -RedirectStandardError $exportLog | Out-Null
 } catch {
-  Write-Host "Aviso: API de export CSV nao iniciou — $($_.Exception.Message)"
+  Write-Host ('Aviso: API de export CSV nao iniciou - ' + $_.Exception.Message)
 }
 
-Write-Host ""
-Write-Host "Servidor pronto."
-Write-Host "  Neste PC:     http://localhost:$($cfg.APP_PORT)"
-Write-Host "  Na rede:      http://$($cfg.SERVER_HOST):$($cfg.APP_PORT)"
-Write-Host "  Studio:       http://$($cfg.SERVER_HOST):$($cfg.SUPABASE_PORT)"
-Write-Host "  Studio login: $($cfg.DASHBOARD_USER) / (senha em config.env)"
+Write-Host ''
+Write-Host 'Servidor pronto.'
+Write-Host ('  Neste PC:     http://localhost:' + $cfg.APP_PORT)
+Write-Host ('  Na rede:      http://' + $cfg.SERVER_HOST + ':' + $cfg.APP_PORT)
+Write-Host ('  Studio:       http://' + $cfg.SERVER_HOST + ':' + $cfg.SUPABASE_PORT)
+Write-Host ('  Studio login: ' + $cfg.DASHBOARD_USER + ' / (senha em config.env)')
