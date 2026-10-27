@@ -640,11 +640,19 @@ export default function ClinicaNovoPedidoPage() {
 
       // Garante nuvem + CSV antes de um reload sobrescrever o rascunho local.
       void (async () => {
+        let syncOk = true
         try {
           const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
           await flushSupabaseAppDataSync()
-        } catch {
-          /* offline / sync opcional */
+        } catch (error) {
+          syncOk = false
+          console.warn('[AcompOPMS] Sync da planilha importada falhou:', error)
+          setFeedback({
+            open: true,
+            severity: 'error',
+            message:
+              'Planilha na tela, mas falhou ao gravar no servidor. Não atualize (F5) até a sincronização funcionar.',
+          })
         }
         try {
           const { requestDadosCsvExport } = await import('@/utils/exportDadosCsv')
@@ -652,12 +660,19 @@ export default function ClinicaNovoPedidoPage() {
         } catch {
           /* API local opcional */
         }
+        if (syncOk) {
+          setFeedback({
+            open: true,
+            severity: 'success',
+            message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material.`,
+          })
+        }
       })()
 
       setFeedback({
         open: true,
         severity: 'success',
-        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material.`,
+        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material. Gravando no servidor…`,
       })
     },
     [empresas, persist],

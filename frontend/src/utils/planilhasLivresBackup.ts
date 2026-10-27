@@ -40,13 +40,42 @@ export function planilhasLivresContentScore(
 export function writePlanilhasLivresBackup(
   clinicaId: string,
   state: ClinicaPlanilhasLivresState,
+  options?: { allowEmptyOverwrite?: boolean },
 ): void {
   if (!clinicaId) return
+  // Nunca apaga backup rico com rascunho vazio (race do mount / F5).
+  // Redução com conteúdo > 0 (apagar mês) continua permitida.
+  if (planilhasLivresContentScore(state) <= 0 && !options?.allowEmptyOverwrite) {
+    return
+  }
   try {
     localStorage.setItem(`${LS_PREFIX}${clinicaId}`, JSON.stringify(state))
   } catch (error) {
     console.warn('[AcompOPMS] Falha ao gravar backup local da planilha:', error)
   }
+}
+
+/** Lê todos os backups locais (prefixo acompopms:planilhas-livres:). */
+export function readAllPlanilhasLivresBackups(): Record<
+  string,
+  ClinicaPlanilhasLivresState
+> {
+  const out: Record<string, ClinicaPlanilhasLivresState> = {}
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith(LS_PREFIX)) continue
+      const clinicaId = key.slice(LS_PREFIX.length)
+      if (!clinicaId) continue
+      const state = readPlanilhasLivresBackup(clinicaId)
+      if (state && planilhasLivresContentScore(state) > 0) {
+        out[clinicaId] = state
+      }
+    }
+  } catch {
+    /* private mode */
+  }
+  return out
 }
 
 export function readPlanilhasLivresBackup(

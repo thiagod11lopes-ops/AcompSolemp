@@ -45,6 +45,7 @@ import { env } from '@/config/env'
 import { isMarinhaEmail } from '@/utils/email'
 import {
   pickRicherPlanilhasState,
+  readAllPlanilhasLivresBackups,
   readPlanilhasLivresBackup,
 } from '@/utils/planilhasLivresBackup'
 import { scheduleSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
@@ -1567,6 +1568,18 @@ export async function loadLatestAppData(): Promise<AppData> {
 export function replaceAppDataCache(data: AppData): void {
   appDataCache = cloneData(data)
   persistAppData(appDataCache, { silent: true })
+}
+
+/**
+ * Após wipe do IndexedDB no boot cloud: recoloca planilhas do localStorage no
+ * cache em memória (sem flush) para o merge remoto não partir de mapa vazio.
+ */
+export function seedPlanilhasLivresFromLocalBackupsIntoCache(): void {
+  if (!appDataCache) return
+  const backups = readAllPlanilhasLivresBackups()
+  if (Object.keys(backups).length === 0) return
+  const merged = mergePlanilhasLivresMaps(appDataCache.planilhasLivres, backups)
+  appDataCache = { ...appDataCache, planilhasLivres: merged ?? backups }
 }
 
 /** Reaplica o snapshot fictício após boot (ex.: reload da página). */

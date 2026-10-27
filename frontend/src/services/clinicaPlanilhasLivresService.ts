@@ -148,6 +148,11 @@ export const clinicaPlanilhasLivresService = {
       )
     }
 
+    // Cascas vazias no mount (autofill IMH) não devem ir para AppData/nuvem/backup.
+    if (planilhasLivresContentScore(toSave) <= 0 && !options?.allowEmptyOverwrite) {
+      return toSave
+    }
+
     data.planilhasLivres[clinicaId] = toSave
     if (modo === 'medicamento' && toSave.listaMedicamentos) {
       data.medicamentosPrecos = listaMedicamentosToPrecosRows(toSave.listaMedicamentos)
@@ -174,9 +179,7 @@ export const clinicaPlanilhasLivresService = {
     }
 
     writePlanilhasLivresBackup(clinicaId, toSave)
-    if (planilhasLivresContentScore(toSave) > 0) {
-      syncPlanilhasToServer()
-    }
+    syncPlanilhasToServer()
     return toSave
   },
 

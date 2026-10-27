@@ -68,6 +68,38 @@ function Get-GestorSinceMigrationPath {
   return $null
 }
 
+function Get-SupabaseMigrationPath([string]$FileName) {
+  $root = Get-ServidorRoot
+  foreach ($c in @(
+      (Join-Path (Split-Path $root -Parent) "supabase\$FileName"),
+      (Join-Path $root "..\..\supabase\$FileName"),
+      (Join-Path $PSScriptRoot "..\..\supabase\$FileName")
+    )) {
+    try {
+      if ($c -and (Test-Path -LiteralPath $c)) { return (Resolve-Path -LiteralPath $c).Path }
+    } catch { }
+  }
+  return $null
+}
+
+# Garante tabela planilhas_livres + RPC de leitura (IMH/Div. Material apos F5).
+function Ensure-PlanilhasLivresSchema {
+  foreach ($name in @(
+      'migration_planilhas_livres.sql',
+      'migration_planilhas_livres_rpc.sql'
+    )) {
+    $mig = Get-SupabaseMigrationPath $name
+    if (-not $mig) { continue }
+    try {
+      $sql = [System.IO.File]::ReadAllText($mig, [System.Text.UTF8Encoding]::new($false))
+      [void](Invoke-SupabaseSql $sql)
+      Write-Host "Schema planilhas: aplicado $name"
+    } catch {
+      Write-Host ("Aviso: falha ao aplicar {0}: {1}" -f $name, $_.Exception.Message)
+    }
+  }
+}
+
 function Ensure-GestorSinceSchema {
   # Aplica migration completa (coluna + RPCs) quando o arquivo existir; senao so a coluna.
   $mig = Get-GestorSinceMigrationPath

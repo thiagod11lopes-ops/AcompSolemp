@@ -109,11 +109,16 @@ export function ImhAbaForm({
     [grupoDrafts],
   )
 
-  /** Preenche Clínica com o nome da clínica logada quando ainda estiver vazio. */
+  /**
+   * Preenche Clínica com o nome da clínica logada quando ainda estiver vazio.
+   * Só persiste se já houver linhas — evita flush vazio no mount (F5) antes da
+   * hidratação da planilha importada; o campo já exibe o padrão visualmente.
+   */
   useEffect(() => {
     const padrao = clinicaNomePadrao.trim()
     if (!padrao) return
     if (value.clinica.trim()) return
+    if ((value.linhas?.length ?? 0) === 0) return
     onChange({ ...value, clinica: formatImhUppercase(padrao) })
   }, [clinicaNomePadrao, value, onChange])
   const [sheetPicker, setSheetPicker] = useState<{

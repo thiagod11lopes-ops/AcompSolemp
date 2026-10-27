@@ -67,6 +67,14 @@ if (-not $ready) {
   Write-Host "Aviso: Auth ainda nao respondeu a tempo. O app pode falhar ate o Docker terminar de subir."
 }
 
+Write-Host "==> Garantindo schema planilhas_livres (IMH/Div. Material)..."
+try {
+  . "$PSScriptRoot\Gestor-Config.ps1"
+  Ensure-PlanilhasLivresSchema
+} catch {
+  Write-Host ("Aviso: schema planilhas_livres nao aplicado: {0}" -f $_.Exception.Message)
+}
+
 # Firewall (melhor esforco; pode exigir admin)
 try {
   $rules = @(
