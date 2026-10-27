@@ -4,7 +4,7 @@ const LS_PREFIX = 'acompopms:planilhas-livres:'
 
 /** Pontuação de conteúdo útil (import CONMED/IMH etc.). */
 export function planilhasLivresContentScore(
-  state?: ClinicaPlanilhasLivresState | null,
+  state?: Partial<ClinicaPlanilhasLivresState> | null,
 ): number {
   if (!state) return 0
   const conmedPac = state.conmedComrj?.pacientes?.length ?? 0
@@ -109,6 +109,8 @@ export function pickRicherPlanilhasState(
 ): ClinicaPlanilhasLivresState | undefined {
   const scoreA = planilhasLivresContentScore(a)
   const scoreB = planilhasLivresContentScore(b)
-  if (scoreA === 0 && scoreB === 0) return a ?? b ?? undefined
-  return scoreB > scoreA ? (b ?? undefined) : (a ?? undefined)
+  if (scoreA === 0 && scoreB === 0) {
+    return (a ?? b ?? undefined) as ClinicaPlanilhasLivresState | undefined
+  }
+  return (scoreB > scoreA ? b : a) ?? undefined
 }
