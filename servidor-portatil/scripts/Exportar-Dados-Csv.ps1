@@ -74,10 +74,15 @@ agg AS (
           SELECT jsonb_object_agg(ppe.pedido_id, ppe.data)
           FROM public.pedido_planilha_envio ppe
           WHERE ppe.tenant_id = b.tenant_id
-        ), '{}'::jsonb)
+        ), '{}'::jsonb),
+        'planilhasLivres', COALESCE((
+          SELECT jsonb_object_agg(pl.clinica_id, pl.data)
+          FROM public.planilhas_livres pl
+          WHERE pl.tenant_id = b.tenant_id
+        ), COALESCE(b.payload->'planilhasLivres', '{}'::jsonb))
       ) AS hydrated
-  FROM base b
-)
+    FROM base b
+  )
 SELECT hydrated::text AS body FROM agg;
 \copy (SELECT body FROM acomp_csv_hydrated) TO '$remote'
 "@

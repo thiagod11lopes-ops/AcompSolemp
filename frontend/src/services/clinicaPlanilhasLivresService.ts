@@ -1,4 +1,5 @@
 import { loadAppData, saveAppData } from '@/mocks/seed'
+import { useCloudAppDataSync } from '@/config/dataSource'
 import type { ClinicaPlanilhasLivresState } from '@/types'
 import {
   ensureFixedPlanilhas,
@@ -73,6 +74,19 @@ function normalizeState(
   }
 }
 
+/** Garante app_state + tabela planilhas_livres no servidor. */
+function syncPlanilhasToServer(): void {
+  if (!useCloudAppDataSync()) return
+  void (async () => {
+    try {
+      const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+      await flushSupabaseAppDataSync()
+    } catch (error) {
+      console.warn('[AcompOPMS] Falha ao sincronizar planilhas com o servidor:', error)
+    }
+  })()
+}
+
 export const clinicaPlanilhasLivresService = {
   getState(
     clinicaId: string,
@@ -84,7 +98,7 @@ export const clinicaPlanilhasLivresService = {
     const fromBackup = fromBackupRaw ? normalizeState(fromBackupRaw, modo) : undefined
     const richer = pickRicherPlanilhasState(fromApp, fromBackup) ?? fromApp
 
-    // AppData vazio após F5 (nuvem sem planilha): restaura backup e regrava no AppData.
+    // AppData vazio após F5: restaura backup e empurra de volta ao servidor.
     if (
       planilhasLivresContentScore(fromBackup) > planilhasLivresContentScore(fromApp) &&
       fromBackup
@@ -93,6 +107,7 @@ export const clinicaPlanilhasLivresService = {
       data.planilhasLivres[clinicaId] = fromBackup
       saveAppData(data)
       writePlanilhasLivresBackup(clinicaId, fromBackup)
+      syncPlanilhasToServer()
       return fromBackup
     }
 
@@ -113,6 +128,9 @@ export const clinicaPlanilhasLivresService = {
     }
     saveAppData(data)
     writePlanilhasLivresBackup(clinicaId, next)
+    if (planilhasLivresContentScore(next) > 0) {
+      syncPlanilhasToServer()
+    }
     return next
   },
 
@@ -125,5 +143,6 @@ export const clinicaPlanilhasLivresService = {
     delete data.planilhasLivres[clinicaId]
     saveAppData(data)
     clearPlanilhasLivresBackup(clinicaId)
+    syncPlanilhasToServer()
   },
 }

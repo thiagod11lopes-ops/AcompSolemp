@@ -18,6 +18,7 @@ import { deserializeAppData } from '@/data/persistence/types'
 import { mergePedidosFromNormalized } from '@/data/persistence/normalized/pedidosSync'
 import { mergeAnexosFromNormalized } from '@/data/persistence/normalized/anexosSync'
 import { mergeSimpleArrayFromNormalized } from '@/data/persistence/normalized/simpleArraySync'
+import { mergePlanilhasLivresFromNormalized } from '@/data/persistence/normalized/planilhasLivresSync'
 
 /** Deserializa o blob e mescla domínios normalizados com leitura ativa. */
 export async function hydrateAppDataFromCloudSnapshot(
@@ -26,6 +27,7 @@ export async function hydrateAppDataFromCloudSnapshot(
   let data = deserializeAppData(snapshot)
   data = await mergePedidosFromNormalized(data)
   data = await mergeAnexosFromNormalized(data)
+  data = await mergePlanilhasLivresFromNormalized(data)
   data = await mergeSimpleArrayFromNormalized<HistoricoEvento>(
     'historico',
     'pedido_historico',

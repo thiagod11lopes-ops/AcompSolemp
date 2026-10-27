@@ -2,12 +2,14 @@ import type { AppData } from '@/types'
 import { dualWritePedidos } from '@/data/persistence/normalized/pedidosSync'
 import { dualWriteAnexos } from '@/data/persistence/normalized/anexosSync'
 import { dualWriteSimpleArray } from '@/data/persistence/normalized/simpleArraySync'
+import { dualWritePlanilhasLivres } from '@/data/persistence/normalized/planilhasLivresSync'
 
 /** Orquestra dual-write de todos os domínios com flag ativa. */
 export async function dualWriteNormalizedDomains(data: AppData): Promise<void> {
   await Promise.all([
     dualWritePedidos(data),
     dualWriteAnexos(data),
+    dualWritePlanilhasLivres(data),
     dualWriteSimpleArray('historico', 'pedido_historico', data.historico),
     dualWriteSimpleArray('chat', 'chat_mensagens', data.chatMensagens),
     dualWriteSimpleArray('reversoes', 'reversoes', data.reversoes),
