@@ -78,6 +78,26 @@ export function linhaPassaNoFiltroData(
   return dataPertenceAoDia(data, filtro.dia, mesModeloFromFiltro(filtro))
 }
 
+/**
+ * Se o filtro atual esconder todas as linhas, libera "Todos" (ou ajusta mês/ano
+ * para a data mais recente). Evita planilha importada "sumir" após F5.
+ */
+export function ensureFiltroMostraAlgumaLinha(
+  filtro: PlanilhaDataFiltro,
+  datas: string[],
+): PlanilhaDataFiltro {
+  const normalized = normalizePlanilhaDataFiltro(filtro)
+  const datasOk = datas.map((d) => d.trim()).filter(Boolean)
+  if (datasOk.length === 0) return normalized
+  if (datasOk.some((d) => linhaPassaNoFiltroData(d, normalized))) return normalized
+
+  // Preferência: mostrar todos os lançamentos importados.
+  return {
+    ...normalized,
+    mostrarTodos: true,
+  }
+}
+
 export function anosDisponiveisFromDatas(datas: string[]): number[] {
   const anos = new Set<number>(ANOS_PLANILHA_DISPONIVEIS)
   anos.add(new Date().getFullYear())

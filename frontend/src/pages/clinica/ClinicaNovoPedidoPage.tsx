@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
-import { subscribeDemoAppDataChanged } from '@/mocks/seed'
+import { subscribeAppDataChanged, subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePageTitle } from '@/contexts/PageTitleContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -97,6 +97,7 @@ import {
 } from '@/utils/divMaterialForm'
 import {
   createDefaultPlanilhaDataFiltro,
+  ensureFiltroMostraAlgumaLinha,
   normalizePlanilhaDataFiltro,
   normalizePlanilhaFiltrosPersistidos,
   type PlanilhaDataFiltro,
@@ -304,9 +305,6 @@ export default function ClinicaNovoPedidoPage() {
     setConsumoRows(isMedicamento ? consumo : [])
     setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
     setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds ?? []))
-    const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
-    setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
-    setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
     if (!isMedicamento) {
       const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
       const storedImh = state.imh ?? EMPTY_IMH_ABA_FORM
@@ -319,15 +317,44 @@ export default function ClinicaNovoPedidoPage() {
         (syncedImh.linhas?.length ?? 0) >= (storedImh.linhas?.length ?? 0)
           ? syncedImh
           : storedImh
-      setImhForm(imhToUse)
-      setDivMaterialLinhas(
-        buildDivMaterialLinhas({
-          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
-          conmed,
-          empresas,
-        }),
+      const nextDiv = buildDivMaterialLinhas({
+        consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+        conmed,
+        empresas,
+      })
+      const filtrosRaw = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
+      const imhFiltro = ensureFiltroMostraAlgumaLinha(
+        filtrosRaw.imh ?? createDefaultPlanilhaDataFiltro(),
+        imhToUse.linhas.map((l) => l.data),
       )
+      const divFiltro = ensureFiltroMostraAlgumaLinha(
+        filtrosRaw.divMaterial ?? createDefaultPlanilhaDataFiltro(),
+        nextDiv.map((l) => l.data),
+      )
+      setImhDataFiltro(imhFiltro)
+      setDivMaterialDataFiltro(divFiltro)
+      setImhForm(imhToUse)
+      setDivMaterialLinhas(nextDiv)
+      // Persiste filtro corrigido para o F5 não voltar a esconder a planilha.
+      if (
+        imhFiltro.mostrarTodos !== filtrosRaw.imh?.mostrarTodos ||
+        divFiltro.mostrarTodos !== filtrosRaw.divMaterial?.mostrarTodos
+      ) {
+        clinicaPlanilhasLivresService.saveState(
+          clinicaId,
+          {
+            ...state,
+            imh: imhToUse,
+            conmedComrj: conmed,
+            planilhaFiltros: { imh: imhFiltro, divMaterial: divFiltro },
+          },
+          planilhasModo,
+        )
+      }
     } else {
+      const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
+      setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
+      setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
       setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
       setDivMaterialLinhas([])
     }
@@ -337,22 +364,36 @@ export default function ClinicaNovoPedidoPage() {
 
   useEffect(() => {
     if (!clinicaId) return
-    return subscribeDemoAppDataChanged(() => {
+    const syncFlagsFromStore = () => {
       const state = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
-      const imh = state.imhMedicamento
-      if (imh) {
+      const imhMed = state.imhMedicamento
+      if (imhMed) {
         setImhMedicamentoForm((prev) => ({
           ...prev,
-          finalizedImhIds: imh.finalizedImhIds ?? prev.finalizedImhIds,
-          devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
+          finalizedImhIds: imhMed.finalizedImhIds ?? prev.finalizedImhIds,
+          devolvidosImhIds: imhMed.devolvidosImhIds ?? prev.devolvidosImhIds,
         }))
       }
       if (state.imh) {
-        setImhForm((prev) => ({
-          ...prev,
-          finalizedImhIds: state.imh?.finalizedImhIds ?? prev.finalizedImhIds,
-          devolvidosImhIds: state.imh?.devolvidosImhIds ?? prev.devolvidosImhIds,
-        }))
+        setImhForm((prev) => {
+          const stored = state.imh!
+          const storedCount = stored.linhas?.length ?? 0
+          if (storedCount > (prev.linhas?.length ?? 0)) {
+            const filtro = ensureFiltroMostraAlgumaLinha(
+              imhDataFiltroRef.current,
+              stored.linhas.map((l) => l.data),
+            )
+            if (filtro.mostrarTodos !== imhDataFiltroRef.current.mostrarTodos) {
+              setImhDataFiltro(filtro)
+            }
+            return stored
+          }
+          return {
+            ...prev,
+            finalizedImhIds: stored.finalizedImhIds ?? prev.finalizedImhIds,
+            devolvidosImhIds: stored.devolvidosImhIds ?? prev.devolvidosImhIds,
+          }
+        })
       }
       if (state.finalizedDivMaterialIds) {
         setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds))
@@ -360,8 +401,27 @@ export default function ClinicaNovoPedidoPage() {
       if (state.devolvidosDivMaterialIds) {
         setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds))
       }
-    })
-  }, [clinicaId])
+      if (!isMedicamento && state.conmedComrj) {
+        const nextDiv = buildDivMaterialLinhas({
+          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+          conmed: state.conmedComrj,
+          empresas,
+        })
+        setDivMaterialLinhas((prev) => (nextDiv.length > prev.length ? nextDiv : prev))
+        setConmedForm((prev) =>
+          (state.conmedComrj?.pacientes?.length ?? 0) > (prev.pacientes?.length ?? 0)
+            ? (state.conmedComrj ?? prev)
+            : prev,
+        )
+      }
+    }
+    const unsubDemo = subscribeDemoAppDataChanged(syncFlagsFromStore)
+    const unsubApp = subscribeAppDataChanged(syncFlagsFromStore)
+    return () => {
+      unsubDemo()
+      unsubApp()
+    }
+  }, [clinicaId, empresas, isMedicamento])
 
   const persist = useCallback(
     (patch: PersistPayload = {}) => {
@@ -519,6 +579,14 @@ export default function ClinicaNovoPedidoPage() {
       setSelectedImhIds(new Set())
       setSelectedDivMaterialIds(new Set())
 
+      // Import: mostra todos os lançamentos (não esconde por mês atual).
+      const filtroTodos: PlanilhaDataFiltro = {
+        ...createDefaultPlanilhaDataFiltro(),
+        mostrarTodos: true,
+      }
+      setImhDataFiltro(filtroTodos)
+      setDivMaterialDataFiltro(filtroTodos)
+
       const goToImh =
         abaAtivaIdRef.current !== IMH_ABA_ID && abaAtivaIdRef.current !== DIV_MATERIAL_ABA_ID
       if (goToImh) setAbaAtivaId(IMH_ABA_ID)
@@ -527,6 +595,7 @@ export default function ClinicaNovoPedidoPage() {
         conmed: nextConmed,
         consumo: nextConsumo,
         imh: nextImh,
+        planilhaFiltros: { imh: filtroTodos, divMaterial: filtroTodos },
         ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
       })
 
