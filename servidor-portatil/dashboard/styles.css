@@ -1298,6 +1298,134 @@ button.pill {
   max-height: min(78vh, 560px);
 }
 
+.modal-card-alias {
+  width: min(560px, 100%);
+  max-height: min(88vh, 640px);
+}
+
+.alias-progress-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.alias-progress-item {
+  display: grid;
+  grid-template-columns: 1.35rem 1fr;
+  gap: 0.55rem;
+  align-items: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(122, 168, 146, 0.14);
+  background: rgba(8, 18, 14, 0.55);
+}
+
+.alias-progress-item.is-running {
+  border-color: rgba(122, 168, 146, 0.45);
+  background: rgba(40, 70, 55, 0.35);
+}
+
+.alias-progress-item.is-ok {
+  border-color: rgba(78, 207, 138, 0.28);
+}
+
+.alias-progress-item.is-warn {
+  border-color: rgba(224, 168, 74, 0.35);
+}
+
+.alias-progress-item.is-error {
+  border-color: rgba(224, 90, 74, 0.4);
+}
+
+.alias-progress-mark {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.1rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #07110e;
+  background: rgba(143, 168, 155, 0.55);
+}
+
+.alias-progress-item.is-pending .alias-progress-mark {
+  background: rgba(100, 120, 110, 0.45);
+  color: transparent;
+}
+
+.alias-progress-item.is-running .alias-progress-mark {
+  background: var(--accent-bright);
+  animation: alias-pulse 1s ease-in-out infinite;
+}
+
+.alias-progress-item.is-ok .alias-progress-mark {
+  background: var(--ok);
+}
+
+.alias-progress-item.is-warn .alias-progress-mark {
+  background: var(--warn);
+}
+
+.alias-progress-item.is-error .alias-progress-mark {
+  background: var(--danger);
+  color: #fff;
+}
+
+@keyframes alias-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+}
+
+.alias-progress-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.alias-progress-detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.alias-progress-message {
+  margin: 0.75rem 0 0;
+  min-height: 1.1rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.alias-progress-message.is-ok {
+  color: #8fd6ad;
+}
+
+.alias-progress-message.is-bad {
+  color: #e8a0a0;
+}
+
+.alias-progress-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+}
+
 .server-error-text {
   width: 100%;
   min-height: 8rem;

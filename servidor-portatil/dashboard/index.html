@@ -325,5 +325,41 @@
         </div>
       </div>
     </div>
+
+    <div id="modal-alias-progress" class="modal" hidden>
+      <div class="modal-backdrop" data-close-alias-progress></div>
+      <div
+        class="modal-card modal-card-alias"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-alias-title"
+      >
+        <header class="modal-head">
+          <div>
+            <h2 id="modal-alias-title">Aplicando novo endereço</h2>
+            <p class="panel-desc" id="modal-alias-sub">Alinhando rede, HTTPS e serviços…</p>
+          </div>
+          <button
+            type="button"
+            class="modal-close"
+            id="btn-close-alias-progress-x"
+            data-close-alias-progress
+            aria-label="Fechar"
+            hidden
+          >
+            ×
+          </button>
+        </header>
+        <div class="modal-body">
+          <ol id="alias-progress-steps" class="alias-progress-list" aria-live="polite"></ol>
+          <p class="alias-progress-message" id="alias-progress-message"></p>
+          <div class="alias-progress-actions">
+            <button type="button" class="btn-refresh" id="btn-close-alias-progress" data-close-alias-progress hidden>
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

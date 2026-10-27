@@ -19,12 +19,123 @@ if (-not (Test-Path (Join-Path $webRoot 'index.html'))) {
 }
 
 $script:ServerActionStatePath = Join-Path $root 'state\server-action.json'
+$script:NetworkAliasJobPath = Join-Path $root 'state\network-alias-job.json'
 $script:DashboardBrowserPidPath = Join-Path $root 'state\dashboard-browser.pid'
 $script:DashboardChromeProfile = Join-Path $env:LOCALAPPDATA 'AcompOPMS\dashboard-chrome'
 $script:ScriptsDir = $PSScriptRoot
 $script:DashboardBrowserPid = $null
 $script:BrowserWatchAfter = $null
 $script:NoBrowser = [bool]$NoBrowser
+
+function Get-NetworkAliasJobState {
+  $fallback = [ordered]@{
+    status    = 'idle'
+    alias     = ''
+    ip        = ''
+    message   = ''
+    updatedAt = $null
+    pid       = $null
+    steps     = @()
+  }
+  if (-not (Test-Path -LiteralPath $script:NetworkAliasJobPath)) {
+    return [pscustomobject]$fallback
+  }
+  try {
+    $raw = Get-Content -LiteralPath $script:NetworkAliasJobPath -Raw -Encoding UTF8
+    $obj = $raw | ConvertFrom-Json
+    if (-not $obj) { return [pscustomobject]$fallback }
+    $pidVal = $null
+    try { $pidVal = [int]$obj.pid } catch { $pidVal = $null }
+    if ($pidVal -and ([string]$obj.status -eq 'running')) {
+      $proc = Get-Process -Id $pidVal -ErrorAction SilentlyContinue
+      if (-not $proc) {
+        $obj.status = 'error'
+        if (-not $obj.message) { $obj.message = 'Processo de aplicacao do alias encerrou sem concluir.' }
+        $obj.pid = $null
+        $obj.updatedAt = (Get-Date).ToString('o')
+        try {
+          ($obj | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath $script:NetworkAliasJobPath -Encoding UTF8
+        } catch { }
+      }
+    }
+    return $obj
+  } catch {
+    return [pscustomobject]$fallback
+  }
+}
+
+function Start-NetworkAliasJob([string]$Alias) {
+  $current = Get-NetworkAliasJobState
+  if ([string]$current.status -eq 'running') {
+    throw 'Ja existe uma alteracao de endereco em andamento.'
+  }
+
+  $scriptPath = Join-Path $script:ScriptsDir 'Aplicar-Network-Alias.ps1'
+  if (-not (Test-Path -LiteralPath $scriptPath)) {
+    throw "Script nao encontrado: $scriptPath"
+  }
+
+  $aliasSafe = $Alias.Replace("'", "''")
+  $statePath = $script:NetworkAliasJobPath.Replace("'", "''")
+  $scriptSafe = $scriptPath.Replace("'", "''")
+
+  # Estado inicial imediato para o modal abrir com os passos.
+  $initialSteps = @(
+    @{ id = 'aplicar-host'; label = 'Aplicar-Host (config, hosts local, URLs do app/Supabase)'; status = 'pending'; detail = '' },
+    @{ id = 'preparar-https'; label = 'Preparar-Https (gerar cert com o novo alias + IP)'; status = 'pending'; detail = '' },
+    @{ id = 'reiniciar-gateway'; label = 'Reiniciar o gateway (passar a usar o cert novo)'; status = 'pending'; detail = '' },
+    @{ id = 'dns-local'; label = 'Atualizar DNS local do alias (porta 53), se estiver ativo'; status = 'pending'; detail = '' },
+    @{ id = 'supabase-url'; label = 'Recriar/reiniciar servicos Supabase que dependem da URL publica'; status = 'pending'; detail = '' }
+  )
+  $dir = Split-Path -Parent $script:NetworkAliasJobPath
+  if (-not (Test-Path -LiteralPath $dir)) {
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  }
+  $seed = [ordered]@{
+    status    = 'running'
+    alias     = $Alias
+    ip        = ''
+    message   = 'Iniciando…'
+    updatedAt = (Get-Date).ToString('o')
+    pid       = $null
+    steps     = $initialSteps
+  }
+  ($seed | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath $script:NetworkAliasJobPath -Encoding UTF8
+
+  $runner = @"
+`$ErrorActionPreference = 'Stop'
+try {
+  & '$scriptSafe' -Alias '$aliasSafe'
+  exit `$LASTEXITCODE
+} catch {
+  `$statePath = '$statePath'
+  try {
+    `$obj = Get-Content -LiteralPath `$statePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not `$obj) { `$obj = [pscustomobject]@{ steps = @() } }
+    `$obj.status = 'error'
+    `$obj.message = `$_.Exception.Message
+    `$obj.pid = `$null
+    `$obj.updatedAt = (Get-Date).ToString('o')
+    (`$obj | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath `$statePath -Encoding UTF8
+  } catch { }
+  exit 1
+}
+"@
+  $tmp = Join-Path $env:TEMP ("acomp-omps-alias-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
+  Set-Content -LiteralPath $tmp -Value $runner -Encoding UTF8
+  $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmp
+  ) -WindowStyle Minimized -PassThru
+
+  try {
+    $cur = Get-Content -LiteralPath $script:NetworkAliasJobPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $cur.pid = $proc.Id
+    $cur.updatedAt = (Get-Date).ToString('o')
+    ($cur | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath $script:NetworkAliasJobPath -Encoding UTF8
+  } catch { }
+
+  return (Get-NetworkAliasJobState)
+}
 
 function Get-ServerActionState {
   $fallback = [ordered]@{
@@ -551,10 +662,12 @@ try {
         if ($req.HttpMethod -eq 'GET') {
           try {
             $cfg = Import-ServidorConfig
+            $job = Get-NetworkAliasJobState
             Send-Text $res (@{
                 alias = [string]$cfg.SERVER_ALIAS
                 ip    = [string]$cfg.SERVER_HOST
-              } | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+                job   = $job
+              } | ConvertTo-Json -Depth 8 -Compress) 'application/json; charset=utf-8'
           } catch {
             Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 500
           }
@@ -571,26 +684,16 @@ try {
             if ($alias -notmatch '^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$') {
               throw 'Use apenas letras, numeros, ponto e hifen (sem http:// ou porta).'
             }
-            $aplicar = Join-Path $script:ScriptsDir 'Aplicar-Host.ps1'
-            if (-not (Test-Path -LiteralPath $aplicar)) {
-              throw "Script nao encontrado: $aplicar"
-            }
-            & $aplicar -Alias $alias | Out-Null
-            # Atualiza DNS local em paralelo (pode exigir Admin; nao bloqueia a resposta).
-            $dnsScript = Join-Path $script:ScriptsDir 'Dns-Alias-Servidor.ps1'
-            if (Test-Path -LiteralPath $dnsScript) {
-              Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
-                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dnsScript
-              ) -ErrorAction SilentlyContinue | Out-Null
-            }
-            $cfg = Import-ServidorConfig
+            $job = Start-NetworkAliasJob -Alias $alias
             Send-Text $res (@{
-                alias   = [string]$cfg.SERVER_ALIAS
-                ip      = [string]$cfg.SERVER_HOST
-                message = 'Endereco de acesso atualizado.'
-              } | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+                started = $true
+                alias   = $alias
+                job     = $job
+                message = 'Aplicacao do endereco iniciada.'
+              } | ConvertTo-Json -Depth 8 -Compress) 'application/json; charset=utf-8'
           } catch {
-            Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 400
+            $code = if ($_.Exception.Message -match 'em andamento') { 409 } else { 400 }
+            Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' $code
           }
           continue
         }
