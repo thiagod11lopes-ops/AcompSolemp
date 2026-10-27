@@ -302,35 +302,94 @@ function Invoke-StepRede {
   return $false
 }
 
+function Test-LocalAppReady {
+  try {
+    $code = & curl.exe -sk -o NUL -w '%{http_code}' --max-time 3 'http://127.0.0.1:5173/login' 2>$null
+    return ("$code" -match '^(200|301|302|304)$')
+  } catch { return $false }
+}
+
+function Get-LastLogSnippet([string]$Path, [int]$Lines = 8) {
+  try {
+    if (-not (Test-Path -LiteralPath $Path)) { return '' }
+    $tail = Get-Content -LiteralPath $Path -Tail $Lines -ErrorAction SilentlyContinue
+    if (-not $tail) { return '' }
+    $txt = ($tail -join ' | ') -replace '\s+', ' '
+    if ($txt.Length -gt 280) { $txt = $txt.Substring($txt.Length - 280) }
+    return $txt
+  } catch { return '' }
+}
+
 function Invoke-StepServidor {
-  $ps1 = Get-AbrirTudoPs1
-  if (-not $ps1) {
-    Set-StepUi 'servidor' 'error' 'Abrir-Tudo.ps1 nao encontrado'
-    return $false
-  }
   if (-not (Test-DockerApp)) {
     Set-StepUi 'servidor' 'error' 'Docker Desktop precisa estar em execucao (Ready)'
     return $false
   }
-  Set-StepUi 'servidor' 'running' 'Subindo Docker/stack/gateway (Abrir-Tudo -Silent). Aguarde…'
+
+  # Se o app local ja responde, nao precisa subir de novo.
+  if (Test-LocalAppReady) {
+    Set-StepUi 'servidor' 'skip' 'Servidor ja responde em http://127.0.0.1:5173'
+    return $true
+  }
+
+  $iniciar = Join-Path $script:ScriptsDir 'Iniciar-Servidor.ps1'
+  $gateway = Join-Path $script:ScriptsDir 'Iniciar-Gateway.ps1'
+  if (-not (Test-Path -LiteralPath $iniciar)) {
+    Set-StepUi 'servidor' 'error' "Iniciar-Servidor.ps1 nao encontrado: $iniciar"
+    return $false
+  }
+
+  $logDir = Join-Path (Split-Path $script:ScriptsDir -Parent) 'logs'
+  New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+  $stepLog = Join-Path $logDir 'assistente-passo-servidor.log'
+  Set-Content -LiteralPath $stepLog -Value ("[{0}] inicio" -f (Get-Date -Format 'o')) -Encoding UTF8
+
+  Set-StepUi 'servidor' 'running' 'Subindo Supabase + app (Iniciar-Servidor.ps1)…'
   try {
-    # -Silent / -SkipInstallPanel: evita painel duplicado (ja estamos no assistente)
-    $arg = @(
-      '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass',
-      '-File', $ps1,
-      '-Silent', '-SkipInstallPanel'
-    )
-    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList $arg -Wait -PassThru -WindowStyle Minimized
-    if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0) {
-      Set-StepUi 'servidor' 'error' ("Abrir-Tudo encerrou com codigo {0}" -f $p.ExitCode)
+    $p1 = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+      '-NoProfile', '-ExecutionPolicy', 'Bypass',
+      '-File', $iniciar
+    ) -Wait -PassThru -WindowStyle Minimized -RedirectStandardOutput $stepLog -RedirectStandardError (Join-Path $logDir 'assistente-passo-servidor.err.log')
+    if ($null -ne $p1.ExitCode -and $p1.ExitCode -ne 0 -and -not (Test-LocalAppReady)) {
+      $snip = Get-LastLogSnippet $stepLog
+      if (-not $snip) { $snip = Get-LastLogSnippet (Join-Path $logDir 'assistente-passo-servidor.err.log') }
+      Set-StepUi 'servidor' 'error' ("Iniciar-Servidor codigo {0}. {1}" -f $p1.ExitCode, $snip)
       return $false
     }
   } catch {
     Set-StepUi 'servidor' 'error' $_.Exception.Message
     return $false
   }
-  Set-StepUi 'servidor' 'ok' 'Servidor iniciado'
-  return $true
+
+  if (Test-Path -LiteralPath $gateway) {
+    Set-StepUi 'servidor' 'running' 'Subindo gateway HTTPS…'
+    try {
+      $gwOut = Join-Path $logDir 'assistente-passo-gateway.log'
+      $p2 = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-File', $gateway
+      ) -Wait -PassThru -WindowStyle Minimized -RedirectStandardOutput $gwOut -RedirectStandardError (Join-Path $logDir 'assistente-passo-gateway.err.log')
+      if ($null -ne $p2.ExitCode -and $p2.ExitCode -ne 0) {
+        # Gateway pode falhar se ja estiver no ar; so falha se o app local tambem nao subiu.
+        if (-not (Test-LocalAppReady)) {
+          Set-StepUi 'servidor' 'error' ("Gateway codigo {0}. {1}" -f $p2.ExitCode, (Get-LastLogSnippet $gwOut))
+          return $false
+        }
+      }
+    } catch {
+      if (-not (Test-LocalAppReady)) {
+        Set-StepUi 'servidor' 'error' $_.Exception.Message
+        return $false
+      }
+    }
+  }
+
+  if (Test-LocalAppReady) {
+    Set-StepUi 'servidor' 'ok' 'Servidor no ar (Vite/app local OK)'
+    return $true
+  }
+  Set-StepUi 'servidor' 'error' ('App local nao respondeu em :5173. Veja logs em {0}' -f $logDir)
+  return $false
 }
 
 function Invoke-StepDashboard {
