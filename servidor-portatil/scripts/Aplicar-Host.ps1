@@ -1,4 +1,4 @@
-# Atualiza IP/hostname no Supabase + server-config.js (sem rebuild).
+﻿# Atualiza IP/hostname no Supabase + server-config.js (sem rebuild).
 # Uso: .\Aplicar-Host.ps1
 #      .\Aplicar-Host.ps1 -HostAddress 192.168.0.50
 #      .\Aplicar-Host.ps1 -Alias sistema.acompomps.rede
@@ -115,18 +115,16 @@ New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
   "PUBLIC_URL=https://$alias"
 ) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
 
-# hosts local (esta maquina)
-$hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
-try {
-  $marker = '# acompopms-alias'
-  $lines = @()
-  if (Test-Path $hostsPath) {
-    $lines = @(Get-Content $hostsPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch [regex]::Escape($marker) })
-  }
-  $lines += "$ip`t$alias`t$marker"
-  Set-Content -Path $hostsPath -Value $lines -Encoding ASCII
-} catch {
-  Write-Host "Aviso hosts local: $($_.Exception.Message)"
+# hosts local (esta maquina) — necessario para https://alias resolver neste PC
+$hostsResult = Set-AcompOmpsHostsAlias -Ip $ip -Alias $alias -AllowElevate:$false
+if (-not $hostsResult.ok) {
+  Write-Host "Aviso hosts local: $($hostsResult.error)"
+  Write-Host 'Sem Admin o Dashboard marca Gateway/Auth offline no nome novo. Rode Liberar-Firewall.cmd (Admin) ou aceite o UAC na alteracao de endereco.'
+  $script:AcompOmpsHostsApplyOk = $false
+  $script:AcompOmpsHostsApplyError = [string]$hostsResult.error
+} else {
+  $script:AcompOmpsHostsApplyOk = $true
+  $script:AcompOmpsHostsApplyError = ''
 }
 
 Write-Host ''

@@ -112,7 +112,17 @@ try {
   $cfg = Import-ServidorConfig
   $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
   $ip = [string]$cfg.SERVER_HOST
-  Set-Step $steps 'aplicar-host' 'ok' "Alias $alias · IP $ip"
+
+  # hosts e obrigatorio neste PC; se falhou sem Admin, pede UAC.
+  if (-not (Test-AcompOmpsHostsAlias -Alias $alias -Ip $ip)) {
+    Set-Step $steps 'aplicar-host' 'running' 'hosts exige Admin — confirme o UAC…'
+    Save-JobState 'running' 'Atualizando arquivo hosts (UAC)…' $steps $ip
+    $hostsFix = Set-AcompOmpsHostsAlias -Ip $ip -Alias $alias -AllowElevate
+    if (-not $hostsFix.ok) {
+      throw ("Nao foi possivel gravar hosts para {0}. Sem isso Gateway/Auth ficam offline no Dashboard. Erro: {1}" -f $alias, $hostsFix.error)
+    }
+  }
+  Set-Step $steps 'aplicar-host' 'ok' "Alias $alias · IP $ip · hosts OK"
   Save-JobState 'running' 'Host/alias aplicados.' $steps $ip
 
   # 2) Preparar-Https
@@ -146,21 +156,32 @@ try {
     Pop-Location
   }
   Start-Sleep -Seconds 2
-  Set-Step $steps 'reiniciar-gateway' 'ok' 'Gateway recriado com o cert novo'
+  # Confirma HTTPS no nome novo (mesmo check do Dashboard).
+  $gwCode = 0
+  try {
+    $gwCode = [int](& curl.exe -sk -o NUL -w '%{http_code}' --max-time 5 "https://${alias}/login" 2>$null)
+  } catch { $gwCode = 0 }
+  if ($gwCode -lt 200 -or $gwCode -ge 400) {
+    Set-Step $steps 'reiniciar-gateway' 'warn' ("Gateway no ar, mas https://{0}/login retornou {1}. Verifique hosts/DNS." -f $alias, $gwCode)
+  } else {
+    Set-Step $steps 'reiniciar-gateway' 'ok' "Gateway OK (HTTPS $gwCode) em https://$alias"
+  }
   Save-JobState 'running' 'Gateway reiniciado.' $steps $ip
 
-  # 4) DNS local
+  # 4) DNS local (opcional para outros PCs; este PC usa hosts)
   Set-Step $steps 'dns-local' 'running' 'Atualizando resolvedor local…'
   Save-JobState 'running' 'Atualizando DNS local…' $steps $ip
   $dnsScript = Join-Path $PSScriptRoot 'Dns-Alias-Servidor.ps1'
   if (-not (Test-Path -LiteralPath $dnsScript)) {
-    Set-Step $steps 'dns-local' 'warn' 'Script DNS nao encontrado; hosts local ja foi atualizado'
+    Set-Step $steps 'dns-local' 'warn' 'Script DNS nao encontrado; neste PC o hosts ja resolve o nome'
   } else {
     try {
       & $dnsScript
       Set-Step $steps 'dns-local' 'ok' "DNS local aponta $alias -> $ip"
     } catch {
-      Set-Step $steps 'dns-local' 'warn' ("DNS opcional: {0}. hosts local ja cobre este PC." -f $_.Exception.Message)
+      $short = ([string]$_.Exception.Message) -replace '\s+', ' '
+      if ($short.Length -gt 160) { $short = $short.Substring(0, 157) + '…' }
+      Set-Step $steps 'dns-local' 'warn' ("DNS na porta 53 indisponivel ($short). Neste PC o hosts ja resolve $alias." )
     }
   }
   Save-JobState 'running' 'DNS local tratado.' $steps $ip
