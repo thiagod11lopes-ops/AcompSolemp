@@ -329,7 +329,7 @@ export default function ClinicaNovoPedidoPage() {
       )
       const divFiltro = ensureFiltroMostraAlgumaLinha(
         filtrosRaw.divMaterial ?? createDefaultPlanilhaDataFiltro(),
-        nextDiv.map((l) => l.data),
+        nextDiv.map((l) => l.dataProcedimento),
       )
       setImhDataFiltro(imhFiltro)
       setDivMaterialDataFiltro(divFiltro)
