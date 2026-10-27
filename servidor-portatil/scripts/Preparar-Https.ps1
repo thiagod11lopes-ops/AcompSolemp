@@ -20,7 +20,11 @@ if (-not $ip) { $ip = '127.0.0.1' }
 $certFile = Join-Path $certsDir 'gateway.crt'
 $keyFile = Join-Path $certsDir 'gateway.key'
 $namesFile = Join-Path $certsDir 'cert-names.txt'
-$wantedNames = @($alias, $ip, 'localhost', '127.0.0.1') | Select-Object -Unique
+# Nao incluir DNS "localhost" no SAN: no Windows, Schannel/Chrome podem
+# validar o host via GetNameInfo (que prioriza localhost) e marcar
+# https://<alias> como "Nao seguro" (RemoteCertificateNameMismatch).
+# Acesso local continua coberto por IP 127.0.0.1 no certificado.
+$wantedNames = @($alias, $ip, '127.0.0.1') | Select-Object -Unique
 $wantedKey = ($wantedNames -join '|').ToLowerInvariant()
 
 $needRegen = $true
