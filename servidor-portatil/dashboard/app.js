@@ -965,11 +965,9 @@ function applyMetrics(m) {
   pill.setAttribute('data-detail-sub', subAttr)
 
   $('updated-at').textContent = fmtTime(m.generatedAt)
-  $('stat-alias').textContent = m.host?.alias || '—'
-  requestAnimationFrame(() => {
-    fitAddressFont($('stat-alias'))
-    requestAnimationFrame(() => fitAddressFont($('stat-alias')))
-  })
+  if (!getAliasCard()?.classList.contains('is-editing')) {
+    syncAliasDisplay(m.host?.alias || '')
+  }
   $('stat-ip').textContent = m.host?.ip ? `IP ${m.host.ip}` : '—'
   $('stat-cpu').textContent = `${Number(m.cpu?.loadPct || 0).toFixed(0)}%`
   $('stat-mem').textContent = `${Number(m.memory?.usedPct || 0).toFixed(1)}%`
@@ -1194,6 +1192,133 @@ async function saveGestorConfig(event) {
   }
 }
 
+let lastKnownAlias = ''
+
+function setAliasStatus(text, kind) {
+  const el = $('alias-status')
+  if (!el) return
+  el.textContent = text || ''
+  el.className = 'alias-status' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
+}
+
+function syncAliasDisplay(alias) {
+  const value = (alias || '').trim()
+  if (value) lastKnownAlias = value
+  const el = $('stat-alias')
+  if (!el) return
+  el.textContent = value || '—'
+  requestAnimationFrame(() => {
+    fitAddressFont(el)
+    requestAnimationFrame(() => fitAddressFont(el))
+  })
+}
+
+function getAliasCard() {
+  return document.querySelector('.stat-address')
+}
+
+function openAliasEdit() {
+  const card = getAliasCard()
+  const display = $('alias-display')
+  const edit = $('alias-edit')
+  const input = $('input-alias')
+  if (!card || !edit || !input) return
+  const current = (lastKnownAlias || $('stat-alias')?.textContent || '').trim()
+  input.value = current === '—' ? '' : current
+  card.classList.add('is-editing')
+  if (display) display.hidden = true
+  edit.hidden = false
+  setAliasStatus('', null)
+  input.focus()
+  input.select()
+}
+
+function closeAliasEdit() {
+  const card = getAliasCard()
+  const display = $('alias-display')
+  const edit = $('alias-edit')
+  if (card) card.classList.remove('is-editing')
+  if (display) display.hidden = false
+  if (edit) edit.hidden = true
+  setAliasStatus('', null)
+  syncAliasDisplay(lastKnownAlias)
+}
+
+async function confirmAliasEdit() {
+  const input = $('input-alias')
+  const btnConfirm = $('btn-confirm-alias')
+  const btnCancel = $('btn-cancel-alias')
+  const btnEdit = $('btn-edit-alias')
+  if (!input) return
+  const alias = (input.value || '').trim().toLowerCase()
+  if (alias.length < 3) {
+    setAliasStatus('Informe um endereço válido (ex.: sistema.acompomps.rede).', 'bad')
+    input.focus()
+    return
+  }
+  if (!/^[a-z0-9]([a-z0-9\-.]*[a-z0-9])?$/.test(alias)) {
+    setAliasStatus('Use apenas letras, números, ponto e hífen.', 'bad')
+    input.focus()
+    return
+  }
+  const previous = lastKnownAlias
+  if (alias === previous) {
+    closeAliasEdit()
+    return
+  }
+  const ok = window.confirm(
+    `Alterar o endereço de acesso na rede?\n\nDe: ${previous || '—'}\nPara: ${alias}\n\nOs outros PCs precisarão usar o novo nome.`
+  )
+  if (!ok) return
+
+  btnConfirm && (btnConfirm.disabled = true)
+  btnCancel && (btnCancel.disabled = true)
+  btnEdit && (btnEdit.disabled = true)
+  setAliasStatus('Aplicando endereço…', null)
+  try {
+    const res = await fetch('/api/network-alias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    const applied = (data.alias || alias).trim()
+    lastKnownAlias = applied
+    if (data.ip) $('stat-ip').textContent = `IP ${data.ip}`
+    closeAliasEdit()
+    syncAliasDisplay(applied)
+    void loadMetrics()
+  } catch (err) {
+    setAliasStatus(err instanceof Error ? err.message : 'Falha ao alterar endereço', 'bad')
+  } finally {
+    btnConfirm && (btnConfirm.disabled = false)
+    btnCancel && (btnCancel.disabled = false)
+    btnEdit && (btnEdit.disabled = false)
+  }
+}
+
+function wireAliasEdit() {
+  const btnEdit = $('btn-edit-alias')
+  const btnConfirm = $('btn-confirm-alias')
+  const btnCancel = $('btn-cancel-alias')
+  const input = $('input-alias')
+  if (btnEdit) btnEdit.addEventListener('click', openAliasEdit)
+  if (btnCancel) btnCancel.addEventListener('click', closeAliasEdit)
+  if (btnConfirm) btnConfirm.addEventListener('click', () => void confirmAliasEdit())
+  if (input) {
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault()
+        void confirmAliasEdit()
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault()
+        closeAliasEdit()
+      }
+    })
+  }
+}
+
 function renderEmailList(ul, items, emptyText) {
   ul.innerHTML = ''
   if (!items || !items.length) {
@@ -1368,8 +1493,16 @@ function boot() {
     el.addEventListener('click', closeEmailsModal)
   })
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') closeAnyModal()
+    if (ev.key === 'Escape') {
+      const card = getAliasCard()
+      if (card?.classList.contains('is-editing')) {
+        closeAliasEdit()
+        return
+      }
+      closeAnyModal()
+    }
   })
+  wireAliasEdit()
   wireDetailPanels()
   wireFixCheckButtons()
   wireServerErrorModal()

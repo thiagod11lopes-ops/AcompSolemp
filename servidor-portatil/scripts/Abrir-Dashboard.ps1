@@ -547,6 +547,57 @@ try {
         continue
       }
 
+      if ($path -eq '/api/network-alias') {
+        if ($req.HttpMethod -eq 'GET') {
+          try {
+            $cfg = Import-ServidorConfig
+            Send-Text $res (@{
+                alias = [string]$cfg.SERVER_ALIAS
+                ip    = [string]$cfg.SERVER_HOST
+              } | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+          } catch {
+            Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 500
+          }
+          continue
+        }
+        if ($req.HttpMethod -eq 'POST') {
+          try {
+            $body = Read-RequestBody $req | ConvertFrom-Json
+            $rawAlias = ([string]$body.alias).Trim()
+            if (-not $rawAlias -or $rawAlias.Length -lt 3) {
+              throw 'Informe um endereco valido (ex.: sistema.acompomps.rede).'
+            }
+            $alias = Normalize-AliasInput $rawAlias
+            if ($alias -notmatch '^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$') {
+              throw 'Use apenas letras, numeros, ponto e hifen (sem http:// ou porta).'
+            }
+            $aplicar = Join-Path $script:ScriptsDir 'Aplicar-Host.ps1'
+            if (-not (Test-Path -LiteralPath $aplicar)) {
+              throw "Script nao encontrado: $aplicar"
+            }
+            & $aplicar -Alias $alias | Out-Null
+            # Atualiza DNS local em paralelo (pode exigir Admin; nao bloqueia a resposta).
+            $dnsScript = Join-Path $script:ScriptsDir 'Dns-Alias-Servidor.ps1'
+            if (Test-Path -LiteralPath $dnsScript) {
+              Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dnsScript
+              ) -ErrorAction SilentlyContinue | Out-Null
+            }
+            $cfg = Import-ServidorConfig
+            Send-Text $res (@{
+                alias   = [string]$cfg.SERVER_ALIAS
+                ip      = [string]$cfg.SERVER_HOST
+                message = 'Endereco de acesso atualizado.'
+              } | ConvertTo-Json -Compress) 'application/json; charset=utf-8'
+          } catch {
+            Send-Text $res (@{ error = $_.Exception.Message } | ConvertTo-Json -Compress) 'application/json; charset=utf-8' 400
+          }
+          continue
+        }
+        Send-Text $res '{"error":"Method not allowed"}' 'application/json; charset=utf-8' 405
+        continue
+      }
+
       if ($path -eq '/api/gestor-emails' -and $req.HttpMethod -eq 'GET') {
         try {
           $lists = Get-GestorTeamEmailLists

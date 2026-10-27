@@ -622,6 +622,119 @@ button.pill {
   margin-bottom: 0.2rem;
 }
 
+.stat-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+
+.stat-label-row .stat-label {
+  margin-bottom: 0;
+}
+
+.btn-icon-edit {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 160, 0.35);
+  background: rgba(20, 40, 32, 0.55);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-icon-edit:hover {
+  color: #d7f0e2;
+  border-color: rgba(140, 190, 160, 0.7);
+  background: rgba(40, 70, 55, 0.7);
+}
+
+.alias-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.1rem;
+}
+
+.alias-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 160, 0.45);
+  background: rgba(8, 18, 14, 0.85);
+  color: #e8f6ee;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.alias-input:focus {
+  outline: none;
+  border-color: rgba(160, 210, 180, 0.85);
+}
+
+.alias-edit-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.btn-alias-cancel,
+.btn-alias-confirm {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.28rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 650;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-alias-cancel {
+  background: rgba(30, 40, 36, 0.9);
+  border-color: rgba(120, 140, 130, 0.4);
+  color: var(--muted);
+}
+
+.btn-alias-confirm {
+  background: rgba(60, 120, 90, 0.85);
+  border-color: rgba(120, 190, 150, 0.55);
+  color: #eefaf3;
+}
+
+.btn-alias-confirm:disabled,
+.btn-alias-cancel:disabled,
+.btn-icon-edit:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.alias-status {
+  font-size: 0.62rem;
+  color: var(--muted);
+  min-height: 0.85rem;
+}
+
+.alias-status.is-ok {
+  color: #8fd6ad;
+}
+
+.alias-status.is-bad {
+  color: #e8a0a0;
+}
+
+.stat-address.is-editing .alias-display {
+  display: none;
+}
+
 .stat-value {
   display: block;
   font-size: 1.05rem;
