@@ -508,57 +508,162 @@ function Invoke-WizardStep([int]$Index) {
 
 function Show-AssistenteInstalacaoServidor {
   $themeLoaded = Get-Command New-DashPanel -ErrorAction SilentlyContinue
-  $formW = 720
-  $formH = 640
+  $formW = 860
+  $formH = 720
+  $totalSteps = $script:WizardSteps.Count
 
   $form = New-Object Windows.Forms.Form
   $form.Text = 'Instalacao do Servidor'
   $form.StartPosition = 'CenterScreen'
-  $form.FormBorderStyle = 'FixedDialog'
-  $form.MaximizeBox = $false
+  $form.FormBorderStyle = 'Sizable'
+  $form.MaximizeBox = $true
   $form.MinimizeBox = $true
+  $form.MinimumSize = New-Object Drawing.Size(760, 620)
   $form.ClientSize = New-Object Drawing.Size($formW, $formH)
   $form.Font = New-Object Drawing.Font('Segoe UI', 9.5)
   if ($script:IconPath -and (Test-Path -LiteralPath $script:IconPath)) {
     try { $form.Icon = New-Object Drawing.Icon $script:IconPath } catch { }
   }
 
+  # --- Topo ---
+  $top = New-Object Windows.Forms.Panel
+  $top.Dock = 'Top'
+  $top.Height = 88
+  $form.Controls.Add($top)
+
   $header = New-Object Windows.Forms.Label
   $header.Text = 'Instalacao do Servidor'
   $header.Font = New-Object Drawing.Font('Segoe UI', 14, [Drawing.FontStyle]::Bold)
-  $header.Location = New-Object Drawing.Point(20, 16)
-  $header.Size = New-Object Drawing.Size(500, 28)
-  $form.Controls.Add($header)
+  $header.Location = New-Object Drawing.Point(16, 12)
+  $header.Size = New-Object Drawing.Size(520, 28)
+  $header.Anchor = 'Top,Left,Right'
+  $top.Controls.Add($header)
 
   $script:lblProgress = New-Object Windows.Forms.Label
-  $script:lblProgress.Text = 'Etapa 0 / 10'
-  $script:lblProgress.Location = New-Object Drawing.Point(520, 20)
-  $script:lblProgress.Size = New-Object Drawing.Size(180, 24)
+  $script:lblProgress.Text = ("Etapa 0 / {0}" -f $totalSteps)
+  $script:lblProgress.Location = New-Object Drawing.Point(540, 14)
+  $script:lblProgress.Size = New-Object Drawing.Size(300, 24)
   $script:lblProgress.TextAlign = 'MiddleRight'
-  $form.Controls.Add($script:lblProgress)
+  $script:lblProgress.Anchor = 'Top,Right'
+  $top.Controls.Add($script:lblProgress)
 
   $script:lblHint = New-Object Windows.Forms.Label
-  $script:lblHint.Text = 'Fluxo unico: programas, endereco na rede, firewall/HTTPS, subir servidor e Dashboard.'
-  $script:lblHint.Location = New-Object Drawing.Point(20, 48)
-  $script:lblHint.Size = New-Object Drawing.Size(680, 36)
+  $script:lblHint.Text = 'Maximize a janela para ler a coluna Detalhe. Clique numa linha para ver o texto completo abaixo. Fluxo: programas, rede, firewall/HTTPS, servidor e Dashboard.'
+  $script:lblHint.Location = New-Object Drawing.Point(16, 44)
+  $script:lblHint.Size = New-Object Drawing.Size(820, 36)
+  $script:lblHint.Anchor = 'Top,Left,Right'
   $script:lblHint.ForeColor = [Drawing.Color]::FromArgb(90, 100, 95)
-  $form.Controls.Add($script:lblHint)
+  $top.Controls.Add($script:lblHint)
 
+  # --- Rodape (detalhe completo + alias + status + % + botoes) ---
+  $bottom = New-Object Windows.Forms.Panel
+  $bottom.Dock = 'Bottom'
+  $bottom.Height = 268
+  $form.Controls.Add($bottom)
+
+  $detailCaption = New-Object Windows.Forms.Label
+  $detailCaption.Text = 'Detalhe completo (selecione a linha na tabela):'
+  $detailCaption.Location = New-Object Drawing.Point(16, 8)
+  $detailCaption.Size = New-Object Drawing.Size(500, 18)
+  $bottom.Controls.Add($detailCaption)
+
+  $script:txtDetailFull = New-Object Windows.Forms.TextBox
+  $script:txtDetailFull.Multiline = $true
+  $script:txtDetailFull.ReadOnly = $true
+  $script:txtDetailFull.ScrollBars = 'Vertical'
+  $script:txtDetailFull.WordWrap = $true
+  $script:txtDetailFull.Location = New-Object Drawing.Point(16, 28)
+  $script:txtDetailFull.Size = New-Object Drawing.Size(820, 64)
+  $script:txtDetailFull.Anchor = 'Top,Left,Right'
+  $script:txtDetailFull.BackColor = [Drawing.Color]::FromArgb(250, 250, 248)
+  $bottom.Controls.Add($script:txtDetailFull)
+
+  $aliasLbl = New-Object Windows.Forms.Label
+  $aliasLbl.Text = 'Endereco na rede (sem http:// e sem porta):'
+  $aliasLbl.Location = New-Object Drawing.Point(16, 98)
+  $aliasLbl.Size = New-Object Drawing.Size(400, 18)
+  $bottom.Controls.Add($aliasLbl)
+
+  $script:txtAliasWizard = New-Object Windows.Forms.TextBox
+  $script:txtAliasWizard.Text = $script:CurrentAlias
+  $script:txtAliasWizard.Location = New-Object Drawing.Point(16, 118)
+  $script:txtAliasWizard.Size = New-Object Drawing.Size(820, 26)
+  $script:txtAliasWizard.Anchor = 'Top,Left,Right'
+  $bottom.Controls.Add($script:txtAliasWizard)
+
+  $script:lblStatus = New-Object Windows.Forms.Label
+  $script:lblStatus.Text = 'Pronto para iniciar. Clique em Continuar.'
+  $script:lblStatus.Location = New-Object Drawing.Point(16, 150)
+  $script:lblStatus.Size = New-Object Drawing.Size(820, 36)
+  $script:lblStatus.Anchor = 'Top,Left,Right'
+  $script:lblStatus.ForeColor = [Drawing.Color]::FromArgb(60, 70, 65)
+  $bottom.Controls.Add($script:lblStatus)
+
+  $script:lblPct = New-Object Windows.Forms.Label
+  $script:lblPct.Text = '0%'
+  $script:lblPct.Location = New-Object Drawing.Point(16, 190)
+  $script:lblPct.Size = New-Object Drawing.Size(72, 22)
+  $script:lblPct.TextAlign = 'MiddleLeft'
+  $script:lblPct.Font = New-Object Drawing.Font('Segoe UI', 10, [Drawing.FontStyle]::Bold)
+  $bottom.Controls.Add($script:lblPct)
+
+  $script:barProgress = New-Object Windows.Forms.ProgressBar
+  $script:barProgress.Location = New-Object Drawing.Point(92, 190)
+  $script:barProgress.Size = New-Object Drawing.Size(744, 22)
+  $script:barProgress.Anchor = 'Top,Left,Right'
+  $script:barProgress.Minimum = 0
+  $script:barProgress.Maximum = 100
+  $script:barProgress.Value = 0
+  $script:barProgress.Style = 'Continuous'
+  $bottom.Controls.Add($script:barProgress)
+
+  $btnRetry = New-Object Windows.Forms.Button
+  $btnRetry.Text = 'Tentar de novo'
+  $btnRetry.Location = New-Object Drawing.Point(360, 224)
+  $btnRetry.Size = New-Object Drawing.Size(140, 36)
+  $btnRetry.Anchor = 'Top,Right'
+  $btnRetry.Enabled = $false
+  $bottom.Controls.Add($btnRetry)
+
+  $btnStart = New-Object Windows.Forms.Button
+  $btnStart.Text = 'Continuar'
+  $btnStart.Location = New-Object Drawing.Point(510, 224)
+  $btnStart.Size = New-Object Drawing.Size(160, 36)
+  $btnStart.Anchor = 'Top,Right'
+  $bottom.Controls.Add($btnStart)
+
+  $btnClose = New-Object Windows.Forms.Button
+  $btnClose.Text = 'Fechar'
+  $btnClose.Location = New-Object Drawing.Point(680, 224)
+  $btnClose.Size = New-Object Drawing.Size(156, 36)
+  $btnClose.Anchor = 'Top,Right'
+  $btnClose.Add_Click({ $form.Close() })
+  $bottom.Controls.Add($btnClose)
+
+  # --- Tabela (preenche o restante; maximizar amplia Detalhe) ---
   $list = New-Object Windows.Forms.ListView
   $list.View = 'Details'
   $list.FullRowSelect = $true
   $list.GridLines = $true
-  $list.Location = New-Object Drawing.Point(20, 92)
-  $list.Size = New-Object Drawing.Size(680, 320)
+  $list.HideSelection = $false
+  $list.Dock = 'Fill'
   $list.Columns.Add('Etapa', 70) | Out-Null
-  $list.Columns.Add('Descricao', 280) | Out-Null
-  $list.Columns.Add('Status', 90) | Out-Null
-  $list.Columns.Add('Detalhe', 220) | Out-Null
+  $list.Columns.Add('Descricao', 260) | Out-Null
+  $list.Columns.Add('Status', 100) | Out-Null
+  $list.Columns.Add('Detalhe', 400) | Out-Null
+  # Ordem de Dock: Fill primeiro; Top/Bottom ja adicionados ficam nas bordas
   $form.Controls.Add($list)
+  $form.Controls.SetChildIndex($list, 0)
+
+  $tip = New-Object Windows.Forms.ToolTip
+  $tip.AutoPopDelay = 20000
+  $tip.InitialDelay = 400
+  $tip.ReshowDelay = 200
+  $tip.ShowAlways = $true
 
   $i = 1
   foreach ($s in $script:WizardSteps) {
-    $item = New-Object Windows.Forms.ListViewItem ("{0}/{1}" -f $i, $script:WizardSteps.Count)
+    $item = New-Object Windows.Forms.ListViewItem ("{0}/{1}" -f $i, $totalSteps)
     [void]$item.SubItems.Add($s.title)
     [void]$item.SubItems.Add('Pendente')
     [void]$item.SubItems.Add('')
@@ -567,8 +672,61 @@ function Show-AssistenteInstalacaoServidor {
     $i++
   }
 
+  function Update-DetailPane {
+    $idx = -1
+    if ($list.SelectedIndices.Count -gt 0) {
+      $idx = [int]$list.SelectedIndices[0]
+    } elseif ($script:WizardIndex -ge 0 -and $script:WizardIndex -lt $script:WizardSteps.Count) {
+      $idx = $script:WizardIndex
+    }
+    if ($idx -lt 0) {
+      $script:txtDetailFull.Text = ''
+      return
+    }
+    $id = $script:WizardSteps[$idx].id
+    $st = $script:StepState[$id]
+    $title = $script:WizardSteps[$idx].title
+    $detail = [string]$st.detail
+    if ([string]::IsNullOrWhiteSpace($detail)) {
+      $script:txtDetailFull.Text = ("{0}`r`n(sem detalhe)" -f $title)
+    } else {
+      $script:txtDetailFull.Text = ("{0}`r`n{1}" -f $title, $detail)
+    }
+  }
+
+  function Update-PercentBar {
+    $done = 0
+    $running = $false
+    foreach ($s in $script:WizardSteps) {
+      $st = $script:StepState[$s.id].status
+      if ($st -eq 'ok' -or $st -eq 'skip' -or $st -eq 'error') { $done++ }
+      elseif ($st -eq 'running') { $running = $true }
+    }
+    $frac = [double]$done
+    if ($running) { $frac += 0.5 }
+    if ($done -ge $totalSteps) { $frac = [double]$totalSteps }
+    $pct = [int][Math]::Round(100.0 * $frac / [Math]::Max(1, $totalSteps))
+    if ($pct -lt 0) { $pct = 0 }
+    if ($pct -gt 100) { $pct = 100 }
+    $script:barProgress.Value = $pct
+    $cur = [Math]::Min($script:WizardIndex + 1, $totalSteps)
+    if ($done -ge $totalSteps) {
+      $script:lblPct.Text = '100%'
+      $script:lblProgress.Text = ("Concluido {0}/{1}" -f $totalSteps, $totalSteps)
+    } else {
+      $script:lblPct.Text = ("{0}%" -f $pct)
+      $script:lblProgress.Text = ("Etapa {0}/{1}  ·  {2}%" -f $cur, $totalSteps, $pct)
+    }
+  }
+
+  function Fit-DetailColumn {
+    $fixed = 70 + 260 + 100 + 40
+    $w = $list.ClientSize.Width - $fixed
+    if ($w -lt 180) { $w = 180 }
+    $list.Columns[3].Width = $w
+  }
+
   $script:RefreshSteps = {
-    $nOk = 0
     for ($idx = 0; $idx -lt $script:WizardSteps.Count; $idx++) {
       $id = $script:WizardSteps[$idx].id
       $st = $script:StepState[$id]
@@ -576,8 +734,8 @@ function Show-AssistenteInstalacaoServidor {
       $label = switch ($st.status) {
         'pending' { 'Pendente' }
         'running' { 'Em andamento' }
-        'ok' { 'OK'; $nOk++ }
-        'skip' { 'Ja ok'; $nOk++ }
+        'ok' { 'OK' }
+        'skip' { 'Ja ok' }
         'error' { 'Erro' }
         default { $st.status }
       }
@@ -593,47 +751,34 @@ function Show-AssistenteInstalacaoServidor {
         $item.BackColor = [Drawing.Color]::White
       }
     }
-    $script:lblProgress.Text = ("Etapa {0} / {1}" -f ([Math]::Min($script:WizardIndex + 1, $script:WizardSteps.Count)), $script:WizardSteps.Count)
+    Update-PercentBar
+    # Destaca a etapa atual e atualiza o painel de detalhe
+    if ($script:WizardIndex -ge 0 -and $script:WizardIndex -lt $list.Items.Count) {
+      if ($list.SelectedIndices.Count -eq 0 -or $list.SelectedIndices[0] -ne $script:WizardIndex) {
+        $list.Items[$script:WizardIndex].Selected = $true
+        $list.EnsureVisible($script:WizardIndex)
+      }
+    }
+    Update-DetailPane
+    [Windows.Forms.Application]::DoEvents()
   }
 
-  $aliasLbl = New-Object Windows.Forms.Label
-  $aliasLbl.Text = 'Endereco na rede (sem http:// e sem porta):'
-  $aliasLbl.Location = New-Object Drawing.Point(20, 424)
-  $aliasLbl.Size = New-Object Drawing.Size(400, 20)
-  $form.Controls.Add($aliasLbl)
-
-  $script:txtAliasWizard = New-Object Windows.Forms.TextBox
-  $script:txtAliasWizard.Text = $script:CurrentAlias
-  $script:txtAliasWizard.Location = New-Object Drawing.Point(20, 448)
-  $script:txtAliasWizard.Size = New-Object Drawing.Size(680, 28)
-  $form.Controls.Add($script:txtAliasWizard)
-
-  $script:lblStatus = New-Object Windows.Forms.Label
-  $script:lblStatus.Text = 'Pronto para iniciar. Clique em Continuar.'
-  $script:lblStatus.Location = New-Object Drawing.Point(20, 488)
-  $script:lblStatus.Size = New-Object Drawing.Size(680, 40)
-  $script:lblStatus.ForeColor = [Drawing.Color]::FromArgb(60, 70, 65)
-  $form.Controls.Add($script:lblStatus)
-
-  $btnStart = New-Object Windows.Forms.Button
-  $btnStart.Text = 'Continuar'
-  $btnStart.Location = New-Object Drawing.Point(400, 545)
-  $btnStart.Size = New-Object Drawing.Size(140, 36)
-  $form.Controls.Add($btnStart)
-
-  $btnRetry = New-Object Windows.Forms.Button
-  $btnRetry.Text = 'Tentar de novo'
-  $btnRetry.Location = New-Object Drawing.Point(250, 545)
-  $btnRetry.Size = New-Object Drawing.Size(140, 36)
-  $btnRetry.Enabled = $false
-  $form.Controls.Add($btnRetry)
-
-  $btnClose = New-Object Windows.Forms.Button
-  $btnClose.Text = 'Fechar'
-  $btnClose.Location = New-Object Drawing.Point(550, 545)
-  $btnClose.Size = New-Object Drawing.Size(150, 36)
-  $btnClose.Add_Click({ $form.Close() })
-  $form.Controls.Add($btnClose)
+  $list.Add_SelectedIndexChanged({ Update-DetailPane })
+  $list.Add_DoubleClick({
+      if ($list.SelectedIndices.Count -lt 1) { return }
+      $idx = [int]$list.SelectedIndices[0]
+      $id = $script:WizardSteps[$idx].id
+      $detail = [string]$script:StepState[$id].detail
+      if ([string]::IsNullOrWhiteSpace($detail)) { $detail = '(sem detalhe)' }
+      [Windows.Forms.MessageBox]::Show(
+        $detail,
+        ("Detalhe — {0}" -f $script:WizardSteps[$idx].title),
+        [Windows.Forms.MessageBoxButtons]::OK,
+        [Windows.Forms.MessageBoxIcon]::Information
+      ) | Out-Null
+    })
+  $form.Add_Resize({ Fit-DetailColumn })
+  $form.Add_Shown({ Fit-DetailColumn; Update-PercentBar })
 
   function Update-Buttons([string]$Mode) {
     # Mode: idle | busy | error | done
@@ -679,6 +824,8 @@ function Show-AssistenteInstalacaoServidor {
       $script:lblStatus.Text = 'Fluxo concluido. Use https://' + (Get-OmpsServerAlias) + '/ nos PCs da rede (DNS seguro do Chrome desligado).'
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
     }
+    & $script:RefreshSteps
+    Update-PercentBar
     Update-Buttons 'done'
   }
 
