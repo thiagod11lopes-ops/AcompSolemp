@@ -64,6 +64,11 @@ function normalizeState(
     pacientesPme,
     listaMateriais: normalizeListaMateriaisForm(state?.listaMateriais),
     consumoMaterialConsignado: normalizeConsumoMaterialRows(state?.consumoMaterialConsignado),
+    divMaterialLinhas: Array.isArray(state?.divMaterialLinhas)
+      ? state.divMaterialLinhas.filter(
+          (l) => l && typeof l === 'object' && typeof (l as { id?: unknown }).id === 'string',
+        )
+      : [],
     finalizedDivMaterialIds: Array.isArray(state?.finalizedDivMaterialIds)
       ? state.finalizedDivMaterialIds.filter((id) => typeof id === 'string')
       : [],

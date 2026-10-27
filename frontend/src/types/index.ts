@@ -692,6 +692,11 @@ export interface ClinicaPlanilhasLivresState {
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
+  /**
+   * Snapshot das linhas da aba Div. Material (grade DM).
+   * Complementa o rebuild a partir do CONMED — evita grade vazia após F5/troca de aba.
+   */
+  divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
   /** Linhas da Div. Material já enviadas para Confecção de Solemp. */
   finalizedDivMaterialIds?: string[]
   /** Linhas da Div. Material desmarcadas após devolução (reenvio). */

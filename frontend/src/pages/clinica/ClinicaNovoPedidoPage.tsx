@@ -144,6 +144,7 @@ type PersistPayload = {
   imhMedicamento?: ImhMedicamentoFormData
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
+  divMaterialLinhas?: DivMaterialLinha[]
   finalizedDivMaterialIds?: string[]
   devolvidosDivMaterialIds?: string[]
   planilhaFiltros?: PlanilhaFiltrosPersistidos
@@ -316,33 +317,47 @@ export default function ClinicaNovoPedidoPage() {
           conmed,
           consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
         })
+        // Prefere a grade com mais linhas (import salvo vs. rebuild do CONMED).
         const imhToUse =
-          (syncedImh.linhas?.length ?? 0) >= (storedImh.linhas?.length ?? 0)
-            ? syncedImh
-            : storedImh
-        const nextDiv = buildDivMaterialLinhas({
+          (storedImh.linhas?.length ?? 0) >= (syncedImh.linhas?.length ?? 0)
+            ? storedImh
+            : syncedImh
+        const rebuiltDiv = buildDivMaterialLinhas({
           consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
           conmed,
           empresas: empresasRef.current,
         })
+        const snapshotDiv = Array.isArray(state.divMaterialLinhas)
+          ? state.divMaterialLinhas
+          : []
+        const nextDiv =
+          snapshotDiv.length >= rebuiltDiv.length ? snapshotDiv : rebuiltDiv
         const filtrosRaw = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
         const imhFiltro = ensureFiltroMostraAlgumaLinha(
           filtrosRaw.imh ?? createDefaultPlanilhaDataFiltro(),
           imhToUse.linhas.map((l) => l.data),
+          imhToUse.linhas.length,
         )
         const divFiltro = ensureFiltroMostraAlgumaLinha(
           filtrosRaw.divMaterial ?? createDefaultPlanilhaDataFiltro(),
           nextDiv.map((l) => l.dataProcedimento),
+          nextDiv.length,
         )
         setImhDataFiltro(imhFiltro)
         setDivMaterialDataFiltro(divFiltro)
         setImhForm(imhToUse)
         setDivMaterialLinhas(nextDiv)
-        // Só persiste filtro se houver planilha real (evita flush que zera o blob).
+        // Só persiste filtro/snapshot se houver planilha real.
         if (
-          planilhasLivresContentScore({ ...state, imh: imhToUse, conmedComrj: conmed }) > 0 &&
+          planilhasLivresContentScore({
+            ...state,
+            imh: imhToUse,
+            conmedComrj: conmed,
+            divMaterialLinhas: nextDiv,
+          }) > 0 &&
           (imhFiltro.mostrarTodos !== filtrosRaw.imh?.mostrarTodos ||
-            divFiltro.mostrarTodos !== filtrosRaw.divMaterial?.mostrarTodos)
+            divFiltro.mostrarTodos !== filtrosRaw.divMaterial?.mostrarTodos ||
+            nextDiv.length > snapshotDiv.length)
         ) {
           clinicaPlanilhasLivresService.saveState(
             clinicaId,
@@ -350,6 +365,7 @@ export default function ClinicaNovoPedidoPage() {
               ...state,
               imh: imhToUse,
               conmedComrj: conmed,
+              divMaterialLinhas: nextDiv,
               planilhaFiltros: { imh: imhFiltro, divMaterial: divFiltro },
             },
             planilhasModo,
@@ -431,11 +447,13 @@ export default function ClinicaNovoPedidoPage() {
       }
       if (!isMedicamento && (state.conmedComrj || score > 0)) {
         const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
-        const nextDiv = buildDivMaterialLinhas({
+        const rebuilt = buildDivMaterialLinhas({
           consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
           conmed,
           empresas,
         })
+        const snap = state.divMaterialLinhas ?? []
+        const nextDiv = snap.length >= rebuilt.length ? snap : rebuilt
         setDivMaterialLinhas((prev) =>
           nextDiv.length >= prev.length || prev.length === 0 ? nextDiv : prev,
         )
@@ -447,9 +465,19 @@ export default function ClinicaNovoPedidoPage() {
             ensureFiltroMostraAlgumaLinha(
               prev,
               nextDiv.map((l) => l.dataProcedimento),
+              nextDiv.length,
             ),
           )
         }
+      }
+      if (state.imh && (state.imh.linhas?.length ?? 0) > 0) {
+        setImhDataFiltro((prev) =>
+          ensureFiltroMostraAlgumaLinha(
+            prev,
+            state.imh!.linhas.map((l) => l.data),
+            state.imh!.linhas.length,
+          ),
+        )
       }
     }
     syncFlagsFromStore()
@@ -485,6 +513,8 @@ export default function ClinicaNovoPedidoPage() {
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: stored.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM,
+          divMaterialLinhas:
+            patch.divMaterialLinhas ?? divMaterialLinhasRef.current,
           finalizedDivMaterialIds:
             patch.finalizedDivMaterialIds ?? [...finalizedDivMaterialIdsRef.current],
           devolvidosDivMaterialIds:
@@ -634,6 +664,7 @@ export default function ClinicaNovoPedidoPage() {
         conmed: nextConmed,
         consumo: nextConsumo,
         imh: nextImh,
+        divMaterialLinhas: nextDiv,
         planilhaFiltros: { imh: filtroTodos, divMaterial: filtroTodos },
         ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
       })
@@ -745,6 +776,7 @@ export default function ClinicaNovoPedidoPage() {
           conmed: EMPTY_CONMED_COMRJ_FORM,
           consumo: [],
           imh: nextImh,
+          divMaterialLinhas: [],
           finalizedDivMaterialIds: [],
         },
         { allowEmptyOverwrite: true },
@@ -887,6 +919,85 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtivaId(abaId)
     if (abaId !== DIV_MATERIAL_ABA_ID) setBuscaDivMaterial('')
     persist({ abaAtivaId: abaId })
+
+    // Troca de aba com grade vazia na UI: reidrata do store/SQL (F5 parcial / race).
+    if (!clinicaId || isMedicamento) return
+    const uiVazia =
+      (abaId === IMH_ABA_ID && (imhFormRef.current.linhas?.length ?? 0) === 0) ||
+      (abaId === DIV_MATERIAL_ABA_ID && divMaterialLinhasRef.current.length === 0)
+    if (!uiVazia) return
+
+    const local = clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo)
+    if ((local.imh?.linhas?.length ?? 0) > 0 || (local.divMaterialLinhas?.length ?? 0) > 0) {
+      const conmed = local.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
+      const storedImh = local.imh ?? EMPTY_IMH_ABA_FORM
+      if ((storedImh.linhas?.length ?? 0) > 0) {
+        setImhForm(storedImh)
+        setImhDataFiltro((prev) =>
+          ensureFiltroMostraAlgumaLinha(
+            prev,
+            storedImh.linhas.map((l) => l.data),
+            storedImh.linhas.length,
+          ),
+        )
+      }
+      const rebuilt = buildDivMaterialLinhas({
+        consumoRows: normalizeConsumoMaterialRows(local.consumoMaterialConsignado),
+        conmed,
+        empresas: empresasRef.current,
+      })
+      const snap = local.divMaterialLinhas ?? []
+      const nextDiv = snap.length >= rebuilt.length ? snap : rebuilt
+      if (nextDiv.length > 0) {
+        setDivMaterialLinhas(nextDiv)
+        setConmedForm(conmed)
+        setDivMaterialDataFiltro((prev) =>
+          ensureFiltroMostraAlgumaLinha(
+            prev,
+            nextDiv.map((l) => l.dataProcedimento),
+            nextDiv.length,
+          ),
+        )
+      }
+    }
+
+    void clinicaPlanilhasLivresService
+      .loadStateFromServer(clinicaId, planilhasModo)
+      .then((fromServer) => {
+        if ((fromServer.imh?.linhas?.length ?? 0) === 0 && !(fromServer.divMaterialLinhas?.length)) {
+          return
+        }
+        const conmed = fromServer.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
+        const storedImh = fromServer.imh ?? EMPTY_IMH_ABA_FORM
+        if ((storedImh.linhas?.length ?? 0) > (imhFormRef.current.linhas?.length ?? 0)) {
+          setImhForm(storedImh)
+          setImhDataFiltro((prev) =>
+            ensureFiltroMostraAlgumaLinha(
+              prev,
+              storedImh.linhas.map((l) => l.data),
+              storedImh.linhas.length,
+            ),
+          )
+        }
+        const rebuilt = buildDivMaterialLinhas({
+          consumoRows: normalizeConsumoMaterialRows(fromServer.consumoMaterialConsignado),
+          conmed,
+          empresas: empresasRef.current,
+        })
+        const snap = fromServer.divMaterialLinhas ?? []
+        const nextDiv = snap.length >= rebuilt.length ? snap : rebuilt
+        if (nextDiv.length > divMaterialLinhasRef.current.length) {
+          setDivMaterialLinhas(nextDiv)
+          setConmedForm(conmed)
+          setDivMaterialDataFiltro((prev) =>
+            ensureFiltroMostraAlgumaLinha(
+              prev,
+              nextDiv.map((l) => l.dataProcedimento),
+              nextDiv.length,
+            ),
+          )
+        }
+      })
   }
 
   // Hidrata linhas ausentes a partir do snapshot enviado e pré-seleciona para reenvio.

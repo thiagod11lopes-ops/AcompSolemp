@@ -14,6 +14,7 @@ export function planilhasLivresContentScore(
   )
   const imh = state.imh?.linhas?.length ?? 0
   const imhMed = state.imhMedicamento?.linhas?.length ?? 0
+  const divMat = state.divMaterialLinhas?.length ?? 0
   const consumo = state.consumoMaterialConsignado?.length ?? 0
   const listaMed = state.listaMedicamentos?.linhas?.length ?? 0
   const listaMat = state.listaMateriais?.linhas?.length ?? 0
@@ -28,6 +29,7 @@ export function planilhasLivresContentScore(
     conmedMats * 3 +
     imh * 3 +
     imhMed * 3 +
+    divMat * 3 +
     consumo * 2 +
     listaMed +
     listaMat +
