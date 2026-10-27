@@ -116,6 +116,20 @@ if (Test-Path -LiteralPath $acompDst) {
     @('.git', 'logs', 'state', 'node_modules', 'dist', '.vite', 'coverage', 'agent-transcripts', '.cursor') `
     @('*.pid', '*.log', 'gateway.crt', 'gateway.key', 'cert-names.txt'))
 
+# Inclui frontend\node_modules para o PC destino pular (ou acelerar) o npm install
+Write-Step 'frontend\node_modules (para o outro PC nao baixar de novo)...'
+$nmSrc = Join-Path $proj 'frontend\node_modules'
+if (-not (Test-Path -LiteralPath $nmSrc)) {
+  $altNm = Join-Path $packGereal 'AcompSolemp\frontend\node_modules'
+  if (Test-Path -LiteralPath $altNm) { $nmSrc = $altNm }
+}
+$nmDst = Join-Path $acompDst 'frontend\node_modules'
+if (Test-Path -LiteralPath $nmSrc) {
+  [void](Invoke-Rcopy $nmSrc $nmDst)
+} else {
+  Write-Host '  AVISO: node_modules ausente neste PC. No destino a etapa npm install vai baixar tudo (pode demorar).'
+}
+
 Write-Step 'supabase-master\docker...'
 if (-not (Test-Path -LiteralPath (Join-Path $sbDockerSrc 'docker-compose.yml'))) {
   $alt = Join-Path $packGereal 'supabase-master\docker'
@@ -149,6 +163,7 @@ if (Test-Path -LiteralPath $cfg) {
   Set-Content -LiteralPath $cfg -Value $c.TrimEnd() -Encoding UTF8
 }
 
+$nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
 @(
   'TRANSFERIR PARA OUTRO PC'
   '========================'
@@ -157,6 +172,7 @@ if (Test-Path -LiteralPath $cfg) {
   '3) No PC destino: Instalacao do Servidor -> Continuar.'
   '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
   ''
+  ('frontend\node_modules no pacote: {0}' -f ($(if ($nmOk) { 'SIM (npm install deve pular)' } else { 'NAO (destino fara npm install)' })))
   ('Atualizado em: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm'))
 ) | Set-Content -LiteralPath (Join-Path $geral 'LEIA-ME.txt') -Encoding UTF8
 
@@ -188,6 +204,9 @@ $bad = @($checks | Where-Object { -not (Test-Path -LiteralPath $_) })
 $acompItem = Get-Item -LiteralPath $acompDst -Force
 if ($acompItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
   $bad += 'AcompSolemp ainda e junction (deveria ser copia real)'
+}
+if (-not (Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules'))) {
+  $bad += 'frontend\node_modules ausente (PC destino tera de rodar npm install)'
 }
 
 Write-Host ''

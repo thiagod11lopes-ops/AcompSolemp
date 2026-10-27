@@ -257,7 +257,9 @@ function Invoke-StepNpm {
   $fe = Join-Path $script:AcompRoot 'frontend'
   $nm = Join-Path $fe 'node_modules'
   if (Test-Path -LiteralPath $nm) {
-    Set-StepUi 'npm' 'skip' 'node_modules ja existe'
+    $n = 0
+    try { $n = @(Get-ChildItem -LiteralPath $nm -Force -ErrorAction SilentlyContinue).Count } catch { }
+    Set-StepUi 'npm' 'skip' ("node_modules ja existe ({0} itens) — npm install pulado" -f $n)
     return $true
   }
   if (-not (Test-NodeApp)) {
@@ -268,19 +270,62 @@ function Invoke-StepNpm {
     Set-StepUi 'npm' 'error' "Frontend nao encontrado: $fe"
     return $false
   }
-  Set-StepUi 'npm' 'running' 'Executando npm install (pode demorar)…'
+
+  $logDir = Join-Path $script:AcompRoot 'servidor-portatil\logs'
+  if (-not (Test-Path -LiteralPath $logDir)) {
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+  }
+  $outLog = Join-Path $logDir 'assistente-npm.out.log'
+  $errLog = Join-Path $logDir 'assistente-npm.err.log'
+  Remove-Item -LiteralPath $outLog, $errLog -Force -ErrorAction SilentlyContinue
+
+  Set-StepUi 'npm' 'running' 'Iniciando npm install (sem audit/fund; atualiza a cada ~3s)…'
+  $sw = [Diagnostics.Stopwatch]::StartNew()
   try {
-    $p = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm install') -WorkingDirectory $fe -Wait -PassThru -WindowStyle Minimized
-    if ($p.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $nm)) {
-      Set-StepUi 'npm' 'error' ("npm install falhou (codigo {0})" -f $p.ExitCode)
+    $p = Start-Process -FilePath 'cmd.exe' `
+      -ArgumentList @('/c', 'npm install --no-audit --no-fund --loglevel=info') `
+      -WorkingDirectory $fe -PassThru -WindowStyle Minimized `
+      -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+
+    while (-not $p.HasExited) {
+      Start-Sleep -Milliseconds 2500
+      try { $p.Refresh() } catch { }
+      $elapsed = [int]$sw.Elapsed.TotalSeconds
+      $tail = ''
+      if (Test-Path -LiteralPath $outLog) {
+        $lines = @(Get-Content -LiteralPath $outLog -Tail 3 -ErrorAction SilentlyContinue)
+        if ($lines) { $tail = ($lines -join ' | ') -replace '\s+', ' ' }
+      }
+      if ($tail.Length -gt 140) { $tail = $tail.Substring($tail.Length - 140) }
+      $nmCount = 0
+      if (Test-Path -LiteralPath $nm) {
+        try { $nmCount = @(Get-ChildItem -LiteralPath $nm -Force -ErrorAction SilentlyContinue).Count } catch { }
+      }
+      $msg = ("npm install… {0}s" -f $elapsed)
+      if ($nmCount -gt 0) { $msg += (" | node_modules: {0}" -f $nmCount) }
+      if ($tail) { $msg += (" | {0}" -f $tail) }
+      Set-StepUi 'npm' 'running' $msg
+    }
+
+    $code = [int]$p.ExitCode
+    $elapsed = [int]$sw.Elapsed.TotalSeconds
+    if ($code -ne 0 -and -not (Test-Path -LiteralPath $nm)) {
+      $errTail = ''
+      if (Test-Path -LiteralPath $errLog) {
+        $errTail = ((Get-Content -LiteralPath $errLog -Tail 5 -ErrorAction SilentlyContinue) -join ' ') -replace '\s+', ' '
+      }
+      Set-StepUi 'npm' 'error' ("npm install falhou (codigo {0}, {1}s). {2}" -f $code, $elapsed, $errTail)
       return $false
     }
   } catch {
     Set-StepUi 'npm' 'error' $_.Exception.Message
     return $false
+  } finally {
+    $sw.Stop()
   }
+
   if (Test-Path -LiteralPath $nm) {
-    Set-StepUi 'npm' 'ok' 'Dependencias instaladas'
+    Set-StepUi 'npm' 'ok' ("Dependencias instaladas em {0}s" -f ([int]$sw.Elapsed.TotalSeconds))
     return $true
   }
   Set-StepUi 'npm' 'error' 'node_modules ainda ausente apos npm install'
