@@ -93,11 +93,18 @@ export async function saveAppDataToSupabase(
   const { stripNormalizedDomainsFromAppData } = await import(
     '@/data/persistence/normalized/stripFromBlob'
   )
-  const appDataBlob = stripNormalizedDomainsFromAppData(appDataLeve)
+  const {
+    dualWritePlanilhasLivres,
+    mergePlanilhasLivresFromNormalized,
+    omitEmptyPlanilhasLivres,
+  } = await import('@/data/persistence/normalized/planilhasLivresSync')
 
-  // Nunca gravar planilhasLivres vazias por cima do que já está na tabela SQL.
-  const { mergePlanilhasLivresFromNormalized } = await import(
-    '@/data/persistence/normalized/planilhasLivresSync'
+  // 1) SQL primeiro (fonte da verdade da aba Enviar) — antes do blob.
+  await dualWritePlanilhasLivres(appDataLeve)
+
+  // 2) Blob: sem cascas vazias; remescla o que já está na tabela SQL.
+  const appDataBlob = omitEmptyPlanilhasLivres(
+    stripNormalizedDomainsFromAppData(appDataLeve),
   )
   const appDataComPlanilhas = await mergePlanilhasLivresFromNormalized(appDataBlob)
 
@@ -110,7 +117,7 @@ export async function saveAppDataToSupabase(
   )
   logAppDataPayloadMetrics(payload, `save tenant=${id}`)
 
-  // Dual-write usa o AppData leve original (com anexos paths), mesclado com planilhas ricas.
+  // Dual-write dos demais domínios usa AppData leve + planilhas ricas.
   const appDataDual = await mergePlanilhasLivresFromNormalized(appDataLeve)
 
   if (isImpersonationSession()) {

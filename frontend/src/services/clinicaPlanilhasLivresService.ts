@@ -219,6 +219,15 @@ export const clinicaPlanilhasLivresService = {
     if (!useCloudAppDataSync()) return local
 
     try {
+      const { getTenantId } = await import('@/services/tenantService')
+      // Após F5 o tenant pode atrasar alguns ms — tenta de novo antes de desistir.
+      if (!getTenantId()) {
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      if (!getTenantId()) {
+        await new Promise((r) => setTimeout(r, 500))
+      }
+
       const { fetchPlanilhaLivresForClinica } = await import(
         '@/data/persistence/normalized/planilhasLivresSync'
       )
@@ -230,6 +239,7 @@ export const clinicaPlanilhasLivresService = {
         const data = loadAppData()
         if (!data.planilhasLivres) data.planilhasLivres = {}
         data.planilhasLivres[clinicaId] = richer
+        // silent: evita flush imediato com race; backup local já segura o F5.
         saveAppData(data)
         writePlanilhasLivresBackup(clinicaId, richer)
       } else if (planilhasLivresContentScore(richer) > 0) {

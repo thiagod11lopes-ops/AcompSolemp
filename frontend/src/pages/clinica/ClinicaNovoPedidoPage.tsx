@@ -364,11 +364,9 @@ export default function ClinicaNovoPedidoPage() {
       }
     }
 
-    // 1) Cache local imediato
-    if (hydratedModoRef.current !== hydrateKey) {
-      hydratedModoRef.current = hydrateKey
-      applyHydratedState(clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo))
-    }
+    // 1) Cache local imediato (sempre reaplica ao montar a clínica/modo).
+    hydratedModoRef.current = hydrateKey
+    applyHydratedState(clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo))
 
     // 2) Fonte da verdade: tabela SQL do servidor (após F5 o blob pode estar vazio).
     void (async () => {
@@ -391,6 +389,7 @@ export default function ClinicaNovoPedidoPage() {
     if (!clinicaId) return
     const syncFlagsFromStore = () => {
       const state = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
+      const score = planilhasLivresContentScore(state)
       const imhMed = state.imhMedicamento
       if (imhMed) {
         setImhMedicamentoForm((prev) => ({
@@ -413,6 +412,10 @@ export default function ClinicaNovoPedidoPage() {
             }
             return stored
           }
+          // Store rico e UI ainda vazia (hidratação SQL chegou depois do mount).
+          if (storedCount > 0 && (prev.linhas?.length ?? 0) === 0) {
+            return stored
+          }
           return {
             ...prev,
             finalizedImhIds: stored.finalizedImhIds ?? prev.finalizedImhIds,
@@ -426,18 +429,27 @@ export default function ClinicaNovoPedidoPage() {
       if (state.devolvidosDivMaterialIds) {
         setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds))
       }
-      if (!isMedicamento && state.conmedComrj) {
+      if (!isMedicamento && (state.conmedComrj || score > 0)) {
+        const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
         const nextDiv = buildDivMaterialLinhas({
           consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
-          conmed: state.conmedComrj,
+          conmed,
           empresas,
         })
-        setDivMaterialLinhas((prev) => (nextDiv.length > prev.length ? nextDiv : prev))
-        setConmedForm((prev) =>
-          (state.conmedComrj?.pacientes?.length ?? 0) > (prev.pacientes?.length ?? 0)
-            ? (state.conmedComrj ?? prev)
-            : prev,
+        setDivMaterialLinhas((prev) =>
+          nextDiv.length >= prev.length || prev.length === 0 ? nextDiv : prev,
         )
+        setConmedForm((prev) =>
+          (conmed.pacientes?.length ?? 0) > (prev.pacientes?.length ?? 0) ? conmed : prev,
+        )
+        if (nextDiv.length > 0) {
+          setDivMaterialDataFiltro((prev) =>
+            ensureFiltroMostraAlgumaLinha(
+              prev,
+              nextDiv.map((l) => l.dataProcedimento),
+            ),
+          )
+        }
       }
     }
     syncFlagsFromStore()

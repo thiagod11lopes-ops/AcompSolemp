@@ -6,6 +6,52 @@ import {
   planilhasLivresContentScore,
 } from '@/utils/planilhasLivresBackup'
 
+/** Remove clínicas com planilha vazia — evita casca oca no blob apagar o SQL no F5. */
+export function omitEmptyPlanilhasLivres(data: AppData): AppData {
+  const map = data.planilhasLivres ?? {}
+  const next: Record<string, ClinicaPlanilhasLivresState> = {}
+  for (const [clinicaId, state] of Object.entries(map)) {
+    if (!clinicaId || !state) continue
+    if (planilhasLivresContentScore(state) <= 0) continue
+    next[clinicaId] = state
+  }
+  return { ...data, planilhasLivres: next }
+}
+
+async function readPlanilhasLivresRows(
+  tenantId: string,
+): Promise<{ clinica_id: string; data: ClinicaPlanilhasLivresState }[]> {
+  const client = getSupabaseClient()
+
+  // Preferência: RPC security definer (robusto após F5).
+  const { data: rpcRows, error: rpcError } = await client.rpc(
+    'fetch_planilhas_livres_for_tenant',
+    { p_tenant_id: tenantId },
+  )
+  if (!rpcError && Array.isArray(rpcRows)) {
+    return rpcRows.map((row) => ({
+      clinica_id: String((row as { clinica_id?: string }).clinica_id ?? ''),
+      data: (row as { data?: ClinicaPlanilhasLivresState }).data as ClinicaPlanilhasLivresState,
+    }))
+  }
+  if (rpcError && !/could not find the function|does not exist|PGRST202/i.test(rpcError.message)) {
+    console.warn('[AcompOPMS] RPC planilhas_livres:', rpcError.message)
+  }
+
+  const { data: rows, error } = await client
+    .from('planilhas_livres')
+    .select('clinica_id, data')
+    .eq('tenant_id', tenantId)
+  if (error) {
+    console.warn('[AcompOPMS] read planilhas_livres:', error.message)
+    return []
+  }
+  return (rows ?? []).map((row) => ({
+    clinica_id: String(row.clinica_id ?? ''),
+    data: row.data as ClinicaPlanilhasLivresState,
+  }))
+}
+
 /** Grava planilhasLivres na tabela dedicada do servidor (além do app_state). */
 export async function dualWritePlanilhasLivres(data: AppData): Promise<void> {
   const tenantId = getTenantId()
@@ -66,24 +112,15 @@ export async function mergePlanilhasLivresFromNormalized(data: AppData): Promise
   if (!tenantId) return data
 
   try {
-    const client = getSupabaseClient()
-    const { data: rows, error } = await client
-      .from('planilhas_livres')
-      .select('clinica_id, data')
-      .eq('tenant_id', tenantId)
-
-    if (error) {
-      console.warn('[AcompOPMS] read planilhas_livres:', error.message)
-      return data
-    }
-    if (!rows?.length) return data
+    const rows = await readPlanilhasLivresRows(tenantId)
+    if (!rows.length) return omitEmptyPlanilhasLivres(data)
 
     const next: Record<string, ClinicaPlanilhasLivresState> = {
-      ...(data.planilhasLivres ?? {}),
+      ...omitEmptyPlanilhasLivres(data).planilhasLivres,
     }
     for (const row of rows) {
-      const clinicaId = String(row.clinica_id ?? '')
-      const remote = row.data as ClinicaPlanilhasLivresState | null
+      const clinicaId = row.clinica_id
+      const remote = row.data
       if (!clinicaId || !remote) continue
       const local = next[clinicaId]
       const richer = pickRicherPlanilhasState(local, remote)
@@ -103,19 +140,9 @@ export async function fetchPlanilhaLivresForClinica(
   const tenantId = getTenantId()
   if (!tenantId || !clinicaId) return null
   try {
-    const client = getSupabaseClient()
-    const { data: row, error } = await client
-      .from('planilhas_livres')
-      .select('data')
-      .eq('tenant_id', tenantId)
-      .eq('clinica_id', clinicaId)
-      .maybeSingle()
-    if (error) {
-      console.warn('[AcompOPMS] fetch planilhas_livres:', error.message)
-      return null
-    }
-    if (!row?.data) return null
-    return row.data as ClinicaPlanilhasLivresState
+    const rows = await readPlanilhasLivresRows(tenantId)
+    const row = rows.find((r) => r.clinica_id === clinicaId)
+    return row?.data ?? null
   } catch (error) {
     console.warn('[AcompOPMS] fetch planilhas_livres indisponível:', error)
     return null
