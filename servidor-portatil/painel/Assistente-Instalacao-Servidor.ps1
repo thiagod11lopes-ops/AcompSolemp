@@ -642,11 +642,18 @@ function Show-AssistenteInstalacaoServidor {
         $btnStart.Enabled = $false
         $btnRetry.Enabled = $false
         $script:txtAliasWizard.Enabled = $false
+        $btnStart.Text = 'Continuar'
       }
       'error' {
-        $btnStart.Enabled = $false
+        # Continuar fica ativo para pular a etapa com erro e seguir o maximo possivel
+        $btnStart.Enabled = $true
         $btnRetry.Enabled = $true
         $script:txtAliasWizard.Enabled = ($script:WizardSteps[$script:WizardIndex].id -eq 'alias')
+        if ($script:WizardIndex -lt ($script:WizardSteps.Count - 1)) {
+          $btnStart.Text = 'Continuar mesmo assim'
+        } else {
+          $btnStart.Text = 'Finalizar mesmo assim'
+        }
       }
       'done' {
         $btnStart.Enabled = $false
@@ -658,8 +665,21 @@ function Show-AssistenteInstalacaoServidor {
         $btnStart.Enabled = $true
         $btnRetry.Enabled = $false
         $script:txtAliasWizard.Enabled = $true
+        $btnStart.Text = 'Continuar'
       }
     }
+  }
+
+  function Complete-WizardUi {
+    $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
+    if ($nErr -gt 0) {
+      $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. O restante foi aplicado. Alias: https://{1}/" -f $nErr, (Get-OmpsServerAlias))
+      $script:lblStatus.ForeColor = [Drawing.Color]::DarkOrange
+    } else {
+      $script:lblStatus.Text = 'Fluxo concluido. Use https://' + (Get-OmpsServerAlias) + '/ nos PCs da rede (DNS seguro do Chrome desligado).'
+      $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
+    }
+    Update-Buttons 'done'
   }
 
   function Start-WizardFromCurrent {
@@ -670,26 +690,44 @@ function Show-AssistenteInstalacaoServidor {
       while ($script:WizardIndex -lt $script:WizardSteps.Count) {
         $step = $script:WizardSteps[$script:WizardIndex]
         $script:lblStatus.Text = ("Executando {0}/{1}: {2}" -f ($script:WizardIndex + 1), $script:WizardSteps.Count, $step.title)
+        $script:lblStatus.ForeColor = [Drawing.Color]::FromArgb(60, 70, 65)
         & $script:RefreshSteps
         $ok = Invoke-WizardStep -Index $script:WizardIndex
         & $script:RefreshSteps
         if (-not $ok) {
-          $script:lblStatus.Text = ("Erro na etapa {0}/{1}. Corrija e use Tentar de novo." -f ($script:WizardIndex + 1), $script:WizardSteps.Count)
+          $script:lblStatus.Text = ("Erro na etapa {0}/{1}. Use Tentar de novo ou Continuar mesmo assim para pular e seguir." -f ($script:WizardIndex + 1), $script:WizardSteps.Count)
           $script:lblStatus.ForeColor = [Drawing.Color]::DarkRed
           Update-Buttons 'error'
           return
         }
         $script:WizardIndex++
       }
-      $script:lblStatus.Text = 'Fluxo concluido. Use https://' + (Get-OmpsServerAlias) + '/ nos PCs da rede (DNS seguro do Chrome desligado).'
-      $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
-      Update-Buttons 'done'
+      Complete-WizardUi
     } finally {
       $script:WizardBusy = $false
     }
   }
 
-  $btnStart.Add_Click({ Start-WizardFromCurrent })
+  $btnStart.Add_Click({
+      if ($script:WizardBusy) { return }
+      # Apos erro: Continuar avanca sem reexecutar a etapa falha
+      if ($script:WizardIndex -lt $script:WizardSteps.Count) {
+        $curId = $script:WizardSteps[$script:WizardIndex].id
+        if ($script:StepState[$curId].status -eq 'error') {
+          $detail = [string]$script:StepState[$curId].detail
+          if ($detail -and $detail -notmatch '(?i)pulad') {
+            Set-StepUi $curId 'error' ("(pulada) {0}" -f $detail)
+          }
+          $script:WizardIndex++
+          & $script:RefreshSteps
+          if ($script:WizardIndex -ge $script:WizardSteps.Count) {
+            Complete-WizardUi
+            return
+          }
+        }
+      }
+      Start-WizardFromCurrent
+    })
   $btnRetry.Add_Click({
       if ($script:WizardBusy) { return }
       $id = $script:WizardSteps[$script:WizardIndex].id
