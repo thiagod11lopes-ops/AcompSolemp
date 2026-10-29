@@ -1,0 +1,51 @@
+{
+  "name": "acomopms-desktop",
+  "version": "1.0.0",
+  "description": "Cliente desktop AcompOPMS — janela sem barra de endereços apontando para URL configurada na instalação",
+  "main": "src/main.js",
+  "author": "AcompOPMS",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "start:url": "node scripts/dev-with-url.mjs",
+    "pack": "electron-builder --dir",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "br.marinha.acompopms.desktop",
+    "productName": "AcompOPMS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AcompOPMS",
+      "include": "installer/nsis-custom.nsh"
+    },
+    "extraMetadata": {
+      "main": "src/main.js"
+    }
+  }
+}

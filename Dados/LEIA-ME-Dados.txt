@@ -1,0 +1,9 @@
+﻿AcompOPMS â€” pasta Dados
+=======================
+Arquivo atual (unico CSV, sempre renovado ao criar documento na Timeline
+ou ao importar planilha na aba Enviar):
+
+  DadosOMPS (dd-MM-yyyy HH-mm-ss).csv
+
+Abra no Excel (separador ;). A coluna Secao identifica o tipo de registro
+(inclui Secao=Planilhas com CONMED/IMH/envios).

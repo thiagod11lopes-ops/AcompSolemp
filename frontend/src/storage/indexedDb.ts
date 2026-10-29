@@ -24,6 +24,8 @@ export const STORAGE_KEYS = {
   /** Snapshot dos dados fictícios (sobrevive a reload) */
   FICTIONAL_SNAPSHOT: 'acomp_opms_fictional_snapshot',
   FICTIONAL_ACTIVE: 'acomp_opms_fictional_active',
+  /** Rascunho de anexos do modal Enviar planilha (sobrevive a F5) */
+  ENVIO_ANEXOS_DRAFT: 'acomp_opms_envio_anexos_draft',
 } as const
 
 const ALL_KEYS = Object.values(STORAGE_KEYS)

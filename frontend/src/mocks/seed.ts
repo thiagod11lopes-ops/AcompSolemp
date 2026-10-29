@@ -43,6 +43,11 @@ import {
 import { ETAPAS_REMOVIDAS_SET } from '@/utils/timelineFlow'
 import { env } from '@/config/env'
 import { isMarinhaEmail } from '@/utils/email'
+import {
+  pickRicherPlanilhasState,
+  readAllPlanilhasLivresBackups,
+  readPlanilhasLivresBackup,
+} from '@/utils/planilhasLivresBackup'
 import { scheduleSupabaseAppDataSync } from '@/data/persistence/supabaseSync'
 
 const SEED_VERSION = 'v16'
@@ -1266,6 +1271,71 @@ function mergePlanilhaEnvioSnapshots(
   }
 }
 
+function mergePlanilhasLivresMaps(
+  remote?: AppData['planilhasLivres'],
+  local?: AppData['planilhasLivres'],
+): AppData['planilhasLivres'] {
+  const keys = new Set([
+    ...Object.keys(remote ?? {}),
+    ...Object.keys(local ?? {}),
+  ])
+  // Inclui clínicas só no backup local (após F5 o AppData remoto vem vazio).
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('acompopms:planilhas-livres:')) {
+        keys.add(key.slice('acompopms:planilhas-livres:'.length))
+      }
+    }
+  } catch {
+    /* private mode */
+  }
+
+  const out: NonNullable<AppData['planilhasLivres']> = {}
+  for (const clinicaId of keys) {
+    const r = remote?.[clinicaId]
+    const l = local?.[clinicaId]
+    const backup = readPlanilhasLivresBackup(clinicaId)
+    const richer = pickRicherPlanilhasState(pickRicherPlanilhasState(r, l), backup)
+    if (richer) out[clinicaId] = richer
+  }
+  return out
+}
+
+function consumoPlanilhaContentScore(
+  state?: NonNullable<AppData['consumoPlanilha']>[string] | null,
+): number {
+  if (!state) return 0
+  const extras = state.extraRows?.length ?? 0
+  const abas = (state.abasExtras ?? []).reduce((n, aba) => n + (aba.extraRows?.length ?? 0), 0)
+  return extras + abas
+}
+
+function mergeConsumoPlanilhaMaps(
+  remote?: AppData['consumoPlanilha'],
+  local?: AppData['consumoPlanilha'],
+): AppData['consumoPlanilha'] {
+  const keys = new Set([...Object.keys(remote ?? {}), ...Object.keys(local ?? {})])
+  if (keys.size === 0) return remote ?? local ?? {}
+  const out: NonNullable<AppData['consumoPlanilha']> = {}
+  for (const clinicaId of keys) {
+    const r = remote?.[clinicaId]
+    const l = local?.[clinicaId]
+    if (!r && l) {
+      out[clinicaId] = l
+      continue
+    }
+    if (r && !l) {
+      out[clinicaId] = r
+      continue
+    }
+    if (!r || !l) continue
+    out[clinicaId] =
+      consumoPlanilhaContentScore(l) > consumoPlanilhaContentScore(r) ? l : r
+  }
+  return out
+}
+
 /** Preserva anexos e cadastros locais que um snapshot remoto antigo ainda não contém. */
 function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): AppData {
   if (!local) return remote
@@ -1281,6 +1351,10 @@ function mergeRemotePreservingAnexos(local: AppData | null, remote: AppData): Ap
   remote.clinicas = mergeById(remote.clinicas ?? [], local.clinicas ?? [])
   remote.empresas = mergeById(remote.empresas ?? [], local.empresas ?? [])
   remote.materiais = mergeById(remote.materiais ?? [], local.materiais ?? [])
+
+  // Planilhas da aba Enviar (import CONMED/IMH) — nunca descartar rascunho local mais rico.
+  remote.planilhasLivres = mergePlanilhasLivresMaps(remote.planilhasLivres, local.planilhasLivres)
+  remote.consumoPlanilha = mergeConsumoPlanilhaMaps(remote.consumoPlanilha, local.consumoPlanilha)
 
   const excludedIds = [
     ...new Set([...(remote.pedidosExcluidosIds ?? []), ...(local.pedidosExcluidosIds ?? [])]),
@@ -1405,6 +1479,8 @@ export function applyRemoteAppData(raw: AppData): AppData {
   if (changed && import.meta.env.DEV) {
     console.info('[AcompOPMS] AppData normalizado após hidratação Supabase')
   }
+  // Notifica a UI (ex.: aba Enviar) quando a nuvem/tabela SQL traz planilhas.
+  notifyAppDataChangedLocal()
   return cloneData(data)
 }
 
@@ -1492,6 +1568,18 @@ export async function loadLatestAppData(): Promise<AppData> {
 export function replaceAppDataCache(data: AppData): void {
   appDataCache = cloneData(data)
   persistAppData(appDataCache, { silent: true })
+}
+
+/**
+ * Após wipe do IndexedDB no boot cloud: recoloca planilhas do localStorage no
+ * cache em memória (sem flush) para o merge remoto não partir de mapa vazio.
+ */
+export function seedPlanilhasLivresFromLocalBackupsIntoCache(): void {
+  if (!appDataCache) return
+  const backups = readAllPlanilhasLivresBackups()
+  if (Object.keys(backups).length === 0) return
+  const merged = mergePlanilhasLivresMaps(appDataCache.planilhasLivres, backups)
+  appDataCache = { ...appDataCache, planilhasLivres: merged ?? backups }
 }
 
 /** Reaplica o snapshot fictício após boot (ex.: reload da página). */

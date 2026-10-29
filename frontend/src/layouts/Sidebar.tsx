@@ -23,7 +23,13 @@ import { BrandLogo } from '@/components/common/BrandLogo'
 import { ChatDock } from '@/components/chat/ChatDock'
 import { useGestorAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import type { ReactNode } from 'react'
+import {
+  formatGestorDesdeLabel,
+  getProfileForCurrentUser,
+  getTenantById,
+} from '@/data/persistence/supabaseTenant'
+import { useSupabaseDataSource } from '@/config/dataSource'
+import { useEffect, useState, type ReactNode } from 'react'
 
 const DRAWER_WIDTH = 260
 
@@ -47,7 +53,37 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const { mapPath, demoBannerHeight } = usePortalPaths()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const isSupabase = useSupabaseDataSource()
+  const [gestorDesde, setGestorDesde] = useState<string | null>(null)
   const visibleMenuItems = menuItems
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadGestorDesde() {
+      if (!user || !isSupabase) {
+        if (!cancelled) setGestorDesde(null)
+        return
+      }
+      try {
+        const profile = await getProfileForCurrentUser()
+        if (!profile?.tenant_id) {
+          if (!cancelled) setGestorDesde(null)
+          return
+        }
+        const tenant = await getTenantById(profile.tenant_id)
+        const raw = tenant?.gestor_since || tenant?.created_at || null
+        const label = formatGestorDesdeLabel(raw)
+        if (!cancelled) setGestorDesde(label)
+      } catch {
+        if (!cancelled) setGestorDesde(null)
+      }
+    }
+    void loadGestorDesde()
+    return () => {
+      cancelled = true
+    }
+  }, [user, isSupabase])
+
   const drawerPaperSx = {
     width: DRAWER_WIDTH,
     boxSizing: 'border-box' as const,
@@ -70,6 +106,14 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
             Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
+          {gestorDesde && (
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', mt: 0.5, color: 'text.secondary', letterSpacing: '-0.01em' }}
+            >
+              Gestor desde:{gestorDesde}
+            </Typography>
+          )}
         </Box>
       )}
       <Divider />

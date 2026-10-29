@@ -96,8 +96,18 @@ export function useLiveAppDataSync(): void {
       if (cancelled) return
       unsubscribe = subscribeAppStateRealtime((remote, updatedAtMs) => {
         lastRemoteUpdatedAt.current = new Date(updatedAtMs).toISOString()
-        applyRemoteAppData(remote)
-        invalidateLiveQueries(queryClient)
+        // Remerge planilhas_livres (tabela SQL) — o blob app_state pode vir sem IMH.
+        void (async () => {
+          try {
+            const { mergePlanilhasLivresFromNormalized } = await import(
+              '@/data/persistence/normalized/planilhasLivresSync'
+            )
+            applyRemoteAppData(await mergePlanilhasLivresFromNormalized(remote))
+          } catch {
+            applyRemoteAppData(remote)
+          }
+          invalidateLiveQueries(queryClient)
+        })()
       })
     })
 

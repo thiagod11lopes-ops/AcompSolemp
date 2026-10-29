@@ -5,7 +5,12 @@ import {
   useSupabaseDataSource,
 } from '@/config/dataSource'
 import { getRepositories } from '@/data/repositories'
-import { applyRemoteAppData, initAppData, tryRestoreFictionalSnapshotIntoCache } from '@/mocks/seed'
+import {
+  applyRemoteAppData,
+  initAppData,
+  seedPlanilhasLivresFromLocalBackupsIntoCache,
+  tryRestoreFictionalSnapshotIntoCache,
+} from '@/mocks/seed'
 import { getProfileForCurrentUser } from '@/data/persistence/supabaseTenant'
 import { hydrateLocalCacheFromSupabase } from '@/data/persistence/supabaseSync'
 import { supabaseAuthAdapter } from '@/supabase/authAdapter'
@@ -31,6 +36,8 @@ export async function initDataLayer(): Promise<void> {
 
   storageRemove(STORAGE_KEYS.APP_DATA)
   initAppData()
+  // Antes do hydrate remoto: restaura IMH/Div do backup local (sobrevive ao wipe IDB).
+  seedPlanilhasLivresFromLocalBackupsIntoCache()
 
   try {
     await supabaseAuthAdapter.waitForAuthReady()

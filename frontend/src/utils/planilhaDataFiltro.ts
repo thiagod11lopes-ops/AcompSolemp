@@ -19,7 +19,8 @@ export function createDefaultPlanilhaDataFiltro(
   now = new Date(),
 ): PlanilhaDataFiltro {
   return {
-    mostrarTodos: false,
+    // Import CONMED costuma ser de meses anteriores — "mês atual" escondia a grade.
+    mostrarTodos: true,
     dia: 0,
     mes: now.getMonth() + 1,
     ano: now.getFullYear(),
@@ -76,6 +77,30 @@ export function linhaPassaNoFiltroData(
 ): boolean {
   if (filtro.mostrarTodos) return true
   return dataPertenceAoDia(data, filtro.dia, mesModeloFromFiltro(filtro))
+}
+
+/**
+ * Se o filtro atual esconder todas as linhas, libera "Todos".
+ * Evita planilha importada "sumir" após F5 (ex.: dados em agosto, filtro em outubro).
+ */
+export function ensureFiltroMostraAlgumaLinha(
+  filtro: PlanilhaDataFiltro,
+  datas: string[],
+  totalLinhas = datas.length,
+): PlanilhaDataFiltro {
+  const normalized = normalizePlanilhaDataFiltro(filtro)
+  const datasOk = datas.map((d) => d.trim()).filter(Boolean)
+  if (normalized.mostrarTodos) return normalized
+  if (totalLinhas > 0 && datasOk.length === 0) {
+    return { ...normalized, mostrarTodos: true }
+  }
+  if (datasOk.length === 0) return normalized
+  if (datasOk.some((d) => linhaPassaNoFiltroData(d, normalized))) return normalized
+
+  return {
+    ...normalized,
+    mostrarTodos: true,
+  }
 }
 
 export function anosDisponiveisFromDatas(datas: string[]): number[] {

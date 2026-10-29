@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
-import { subscribeDemoAppDataChanged } from '@/mocks/seed'
+import { subscribeAppDataChanged, subscribeDemoAppDataChanged } from '@/mocks/seed'
 import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePageTitle } from '@/contexts/PageTitleContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -47,6 +47,11 @@ import { PacientesPmeSpreadsheet } from '@/components/clinica/PacientesPmeSpread
 import { clinicaPlanilhasLivresService } from '@/services/clinicaPlanilhasLivresService'
 import { pedidoAnexoService } from '@/services/pedidoAnexoService'
 import { pedidoPlanilhaEnvioService } from '@/services/pedidoPlanilhaEnvioService'
+import {
+  clearEnvioAnexosDraft,
+  loadEnvioAnexosDraft,
+  saveEnvioAnexosDraft,
+} from '@/utils/envioAnexosDraftStorage'
 import type {
   ConmedComrjFormData,
   ImhAbaFormData,
@@ -92,6 +97,7 @@ import {
 } from '@/utils/divMaterialForm'
 import {
   createDefaultPlanilhaDataFiltro,
+  ensureFiltroMostraAlgumaLinha,
   normalizePlanilhaDataFiltro,
   normalizePlanilhaFiltrosPersistidos,
   type PlanilhaDataFiltro,
@@ -122,6 +128,7 @@ import {
   syncSelecaoDivFromImh,
   syncSelecaoImhFromDiv,
 } from '@/utils/syncSelecaoImhDivMat'
+import { planilhasLivresContentScore } from '@/utils/planilhasLivresBackup'
 
 const IMH_ABA_ID = 'imh'
 const DIV_MATERIAL_ABA_ID = 'div-material'
@@ -137,6 +144,7 @@ type PersistPayload = {
   imhMedicamento?: ImhMedicamentoFormData
   listaMedicamentos?: ListaMedicamentosFormData
   pacientesPme?: PacientePmeRow[]
+  divMaterialLinhas?: DivMaterialLinha[]
   finalizedDivMaterialIds?: string[]
   devolvidosDivMaterialIds?: string[]
   planilhaFiltros?: PlanilhaFiltrosPersistidos
@@ -248,12 +256,18 @@ export default function ClinicaNovoPedidoPage() {
     severity: 'success' | 'error'
     message: string
   }>({ open: false, severity: 'success', message: '' })
+  /** Só libera persistência/grades após hidratar store+SQL (evita flush vazio no F5). */
+  const [planilhasReady, setPlanilhasReady] = useState(false)
 
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const anexoInputRef = useRef<HTMLInputElement | null>(null)
   const envioModalIgnoreCloseUntilRef = useRef(0)
   const envioAnexosRef = useRef<File[]>([])
   const hydratedModoRef = useRef<string | null>(null)
+  const planilhasReadyRef = useRef(false)
+  const empresasRef = useRef(empresas)
+  empresasRef.current = empresas
+  planilhasReadyRef.current = planilhasReady
   const abasRef = useRef(abas)
   const abaAtivaIdRef = useRef(abaAtivaId)
   const conmedFormRef = useRef(conmedForm)
@@ -286,62 +300,163 @@ export default function ClinicaNovoPedidoPage() {
   useEffect(() => {
     if (!clinicaId) return
     const hydrateKey = `${clinicaId}:${planilhasModo}`
-    if (hydratedModoRef.current === hydrateKey) return
-    hydratedModoRef.current = hydrateKey
-    const state = clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo)
-    setAbas(state.abas)
-    setAbaAtivaId(state.abaAtivaId ?? fixedPlanilhas[0]?.id ?? null)
-    setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
-    setImhMedicamentoForm(state.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM)
-    setListaMedicamentosForm(state.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM)
-    setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
-    const consumo = normalizeConsumoMaterialRows(state.consumoMaterialConsignado)
-    setConsumoRows(isMedicamento ? consumo : [])
-    setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
-    setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds ?? []))
-    const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
-    setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
-    setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
-    if (!isMedicamento) {
-      const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
-      const syncedImh = syncImhAbaFromFontes(state.imh ?? EMPTY_IMH_ABA_FORM, {
-        conmed,
-        consumoRows: [],
+    let cancelled = false
+    setPlanilhasReady(false)
+
+    const uiContentScore = () =>
+      planilhasLivresContentScore({
+        imh: imhFormRef.current,
+        conmedComrj: conmedFormRef.current,
+        divMaterialLinhas: divMaterialLinhasRef.current,
+        consumoMaterialConsignado: consumoRowsRef.current,
       })
-      setImhForm(syncedImh)
-      setDivMaterialLinhas(
-        buildDivMaterialLinhas({
-          consumoRows: [],
+
+    const applyHydratedState = (
+      state: ReturnType<typeof clinicaPlanilhasLivresService.getState>,
+      opts?: { forceEmpty?: boolean },
+    ) => {
+      if (cancelled) return
+      const nextScore = planilhasLivresContentScore(state)
+      const currentScore = uiContentScore()
+      // Definitivo: nunca trocar grade rica por vazia/pobre (só exclusão manual).
+      if (!opts?.forceEmpty && currentScore > 0 && nextScore < currentScore) {
+        return
+      }
+
+      setAbas(state.abas)
+      setAbaAtivaId((prev) => state.abaAtivaId ?? prev ?? fixedPlanilhas[0]?.id ?? null)
+      setConmedForm(state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM)
+      setImhMedicamentoForm(state.imhMedicamento ?? EMPTY_IMH_MEDICAMENTO_FORM)
+      setListaMedicamentosForm(state.listaMedicamentos ?? EMPTY_LISTA_MEDICAMENTOS_FORM)
+      setPacientesPmeRows(state.pacientesPme ?? (isMedicamento ? clonePacientesPmeSeed() : []))
+      const consumo = normalizeConsumoMaterialRows(state.consumoMaterialConsignado)
+      setConsumoRows(isMedicamento ? consumo : [])
+      setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds ?? []))
+      setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds ?? []))
+      if (!isMedicamento) {
+        const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
+        const storedImh = state.imh ?? EMPTY_IMH_ABA_FORM
+        const syncedImh = syncImhAbaFromFontes(storedImh, {
           conmed,
-          empresas,
-        }),
-      )
-    } else {
-      setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
-      setDivMaterialLinhas([])
+          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+        })
+        const imhToUse =
+          (storedImh.linhas?.length ?? 0) >= (syncedImh.linhas?.length ?? 0)
+            ? storedImh
+            : syncedImh
+        const rebuiltDiv = buildDivMaterialLinhas({
+          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+          conmed,
+          empresas: empresasRef.current,
+        })
+        const snapshotDiv = Array.isArray(state.divMaterialLinhas)
+          ? state.divMaterialLinhas
+          : []
+        const nextDiv =
+          snapshotDiv.length >= rebuiltDiv.length ? snapshotDiv : rebuiltDiv
+        const filtrosRaw = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
+        const imhFiltro = ensureFiltroMostraAlgumaLinha(
+          { ...(filtrosRaw.imh ?? createDefaultPlanilhaDataFiltro()), mostrarTodos: true },
+          imhToUse.linhas.map((l) => l.data),
+          imhToUse.linhas.length,
+        )
+        const divFiltro = ensureFiltroMostraAlgumaLinha(
+          {
+            ...(filtrosRaw.divMaterial ?? createDefaultPlanilhaDataFiltro()),
+            mostrarTodos: true,
+          },
+          nextDiv.map((l) => l.dataProcedimento),
+          nextDiv.length,
+        )
+        setImhDataFiltro(imhFiltro)
+        setDivMaterialDataFiltro(divFiltro)
+        setImhForm(imhToUse)
+        setDivMaterialLinhas(nextDiv)
+        if (
+          planilhasLivresContentScore({
+            ...state,
+            imh: imhToUse,
+            conmedComrj: conmed,
+            divMaterialLinhas: nextDiv,
+          }) > 0
+        ) {
+          clinicaPlanilhasLivresService.saveState(
+            clinicaId,
+            {
+              ...state,
+              imh: imhToUse,
+              conmedComrj: conmed,
+              divMaterialLinhas: nextDiv,
+              planilhaFiltros: { imh: imhFiltro, divMaterial: divFiltro },
+            },
+            planilhasModo,
+          )
+        }
+      } else {
+        const filtros = normalizePlanilhaFiltrosPersistidos(state.planilhaFiltros)
+        setImhDataFiltro(filtros.imh ?? createDefaultPlanilhaDataFiltro())
+        setDivMaterialDataFiltro(filtros.divMaterial ?? createDefaultPlanilhaDataFiltro())
+        setImhForm(state.imh ?? EMPTY_IMH_ABA_FORM)
+        setDivMaterialLinhas([])
+      }
     }
-    // empresas: resolve CNPJ no build quando já carregado; reimporta após cadastro.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate uma vez por clínica/modo
+
+    hydratedModoRef.current = hydrateKey
+    applyHydratedState(clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo))
+
+    void (async () => {
+      const fromServer = await clinicaPlanilhasLivresService.loadStateFromServer(
+        clinicaId,
+        planilhasModo,
+      )
+      if (cancelled) return
+      applyHydratedState(fromServer)
+      setPlanilhasReady(true)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate por clínica/modo
   }, [clinicaId, planilhasModo, fixedPlanilhas, isMedicamento])
 
   useEffect(() => {
     if (!clinicaId) return
-    return subscribeDemoAppDataChanged(() => {
+    const syncFlagsFromStore = () => {
       const state = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
-      const imh = state.imhMedicamento
-      if (imh) {
+      const score = planilhasLivresContentScore(state)
+      const imhMed = state.imhMedicamento
+      if (imhMed) {
         setImhMedicamentoForm((prev) => ({
           ...prev,
-          finalizedImhIds: imh.finalizedImhIds ?? prev.finalizedImhIds,
-          devolvidosImhIds: imh.devolvidosImhIds ?? prev.devolvidosImhIds,
+          finalizedImhIds: imhMed.finalizedImhIds ?? prev.finalizedImhIds,
+          devolvidosImhIds: imhMed.devolvidosImhIds ?? prev.devolvidosImhIds,
         }))
       }
       if (state.imh) {
-        setImhForm((prev) => ({
-          ...prev,
-          finalizedImhIds: state.imh?.finalizedImhIds ?? prev.finalizedImhIds,
-          devolvidosImhIds: state.imh?.devolvidosImhIds ?? prev.devolvidosImhIds,
-        }))
+        setImhForm((prev) => {
+          const stored = state.imh!
+          const storedCount = stored.linhas?.length ?? 0
+          if (storedCount > (prev.linhas?.length ?? 0)) {
+            const filtro = ensureFiltroMostraAlgumaLinha(
+              imhDataFiltroRef.current,
+              stored.linhas.map((l) => l.data),
+            )
+            if (filtro.mostrarTodos !== imhDataFiltroRef.current.mostrarTodos) {
+              setImhDataFiltro(filtro)
+            }
+            return stored
+          }
+          // Store rico e UI ainda vazia (hidratação SQL chegou depois do mount).
+          if (storedCount > 0 && (prev.linhas?.length ?? 0) === 0) {
+            return stored
+          }
+          return {
+            ...prev,
+            finalizedImhIds: stored.finalizedImhIds ?? prev.finalizedImhIds,
+            devolvidosImhIds: stored.devolvidosImhIds ?? prev.devolvidosImhIds,
+          }
+        })
       }
       if (state.finalizedDivMaterialIds) {
         setFinalizedDivMaterialIds(new Set(state.finalizedDivMaterialIds))
@@ -349,12 +464,63 @@ export default function ClinicaNovoPedidoPage() {
       if (state.devolvidosDivMaterialIds) {
         setDevolvidosDivMaterialIds(new Set(state.devolvidosDivMaterialIds))
       }
-    })
-  }, [clinicaId])
+      if (!isMedicamento && (state.conmedComrj || score > 0)) {
+        const conmed = state.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
+        const rebuilt = buildDivMaterialLinhas({
+          consumoRows: normalizeConsumoMaterialRows(state.consumoMaterialConsignado),
+          conmed,
+          empresas,
+        })
+        const snap = state.divMaterialLinhas ?? []
+        const nextDiv = snap.length >= rebuilt.length ? snap : rebuilt
+        setDivMaterialLinhas((prev) =>
+          nextDiv.length >= prev.length || prev.length === 0 ? nextDiv : prev,
+        )
+        setConmedForm((prev) =>
+          (conmed.pacientes?.length ?? 0) > (prev.pacientes?.length ?? 0) ? conmed : prev,
+        )
+        if (nextDiv.length > 0) {
+          setDivMaterialDataFiltro((prev) =>
+            ensureFiltroMostraAlgumaLinha(
+              prev,
+              nextDiv.map((l) => l.dataProcedimento),
+              nextDiv.length,
+            ),
+          )
+        }
+      }
+      if (state.imh && (state.imh.linhas?.length ?? 0) > 0) {
+        setImhDataFiltro((prev) =>
+          ensureFiltroMostraAlgumaLinha(
+            prev,
+            state.imh!.linhas.map((l) => l.data),
+            state.imh!.linhas.length,
+          ),
+        )
+      }
+    }
+    syncFlagsFromStore()
+    const unsubDemo = subscribeDemoAppDataChanged(syncFlagsFromStore)
+    const unsubApp = subscribeAppDataChanged(syncFlagsFromStore)
+    return () => {
+      unsubDemo()
+      unsubApp()
+    }
+  }, [clinicaId, empresas, isMedicamento])
 
   const persist = useCallback(
-    (patch: PersistPayload = {}) => {
+    (patch: PersistPayload = {}, options?: { allowEmptyOverwrite?: boolean }) => {
       if (!clinicaId) return
+      // Antes da hidratação: só grava se for exclusão manual ou conteúdo real (import).
+      if (!planilhasReadyRef.current && !options?.allowEmptyOverwrite) {
+        const probe = planilhasLivresContentScore({
+          imh: patch.imh ?? imhFormRef.current,
+          conmedComrj: patch.conmed ?? conmedFormRef.current,
+          divMaterialLinhas: patch.divMaterialLinhas ?? divMaterialLinhasRef.current,
+          consumoMaterialConsignado: patch.consumo ?? consumoRowsRef.current,
+        })
+        if (probe <= 0) return
+      }
       const stored = clinicaPlanilhasLivresService.getState(clinicaId, modoRef.current)
       const storedImh = stored.imhMedicamento
       clinicaPlanilhasLivresService.saveState(
@@ -376,6 +542,8 @@ export default function ClinicaNovoPedidoPage() {
           listaMedicamentos: patch.listaMedicamentos ?? listaMedicamentosFormRef.current,
           pacientesPme: patch.pacientesPme ?? pacientesPmeRowsRef.current,
           listaMateriais: stored.listaMateriais ?? EMPTY_LISTA_MATERIAIS_FORM,
+          divMaterialLinhas:
+            patch.divMaterialLinhas ?? divMaterialLinhasRef.current,
           finalizedDivMaterialIds:
             patch.finalizedDivMaterialIds ?? [...finalizedDivMaterialIdsRef.current],
           devolvidosDivMaterialIds:
@@ -386,6 +554,7 @@ export default function ClinicaNovoPedidoPage() {
           },
         },
         modoRef.current,
+        options,
       )
     },
     [clinicaId],
@@ -508,6 +677,14 @@ export default function ClinicaNovoPedidoPage() {
       setSelectedImhIds(new Set())
       setSelectedDivMaterialIds(new Set())
 
+      // Import: mostra todos os lançamentos (não esconde por mês atual).
+      const filtroTodos: PlanilhaDataFiltro = {
+        ...createDefaultPlanilhaDataFiltro(),
+        mostrarTodos: true,
+      }
+      setImhDataFiltro(filtroTodos)
+      setDivMaterialDataFiltro(filtroTodos)
+
       const goToImh =
         abaAtivaIdRef.current !== IMH_ABA_ID && abaAtivaIdRef.current !== DIV_MATERIAL_ABA_ID
       if (goToImh) setAbaAtivaId(IMH_ABA_ID)
@@ -516,13 +693,46 @@ export default function ClinicaNovoPedidoPage() {
         conmed: nextConmed,
         consumo: nextConsumo,
         imh: nextImh,
+        divMaterialLinhas: nextDiv,
+        planilhaFiltros: { imh: filtroTodos, divMaterial: filtroTodos },
         ...(goToImh ? { abaAtivaId: IMH_ABA_ID } : {}),
       })
+
+      // Garante nuvem + CSV antes de um reload sobrescrever o rascunho local.
+      void (async () => {
+        let syncOk = true
+        try {
+          const { flushSupabaseAppDataSync } = await import('@/data/persistence/supabaseSync')
+          await flushSupabaseAppDataSync()
+        } catch (error) {
+          syncOk = false
+          console.warn('[AcompOPMS] Sync da planilha importada falhou:', error)
+          setFeedback({
+            open: true,
+            severity: 'error',
+            message:
+              'Planilha na tela, mas falhou ao gravar no servidor. Não atualize (F5) até a sincronização funcionar.',
+          })
+        }
+        try {
+          const { requestDadosCsvExport } = await import('@/utils/exportDadosCsv')
+          requestDadosCsvExport()
+        } catch {
+          /* API local opcional */
+        }
+        if (syncOk) {
+          setFeedback({
+            open: true,
+            severity: 'success',
+            message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material.`,
+          })
+        }
+      })()
 
       setFeedback({
         open: true,
         severity: 'success',
-        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material.`,
+        message: `Planilha importada${sheet.nome ? ` (aba “${sheet.nome}”)` : ''}: ${nextImh.linhas.length} linha(s) IMH e ${nextDiv.length} na Div. Material. Gravando no servidor…`,
       })
     },
     [empresas, persist],
@@ -590,12 +800,16 @@ export default function ClinicaNovoPedidoPage() {
       setSelectedDivMaterialIds(new Set())
       setFinalizedDivMaterialIds(new Set())
       setDivMaterialLinhas([])
-      persist({
-        conmed: EMPTY_CONMED_COMRJ_FORM,
-        consumo: [],
-        imh: nextImh,
-        finalizedDivMaterialIds: [],
-      })
+      persist(
+        {
+          conmed: EMPTY_CONMED_COMRJ_FORM,
+          consumo: [],
+          imh: nextImh,
+          divMaterialLinhas: [],
+          finalizedDivMaterialIds: [],
+        },
+        { allowEmptyOverwrite: true },
+      )
       setApagarOpen(false)
       setFeedback({
         open: true,
@@ -734,6 +948,40 @@ export default function ClinicaNovoPedidoPage() {
     setAbaAtivaId(abaId)
     if (abaId !== DIV_MATERIAL_ABA_ID) setBuscaDivMaterial('')
     persist({ abaAtivaId: abaId })
+
+    // Troca de aba: recoloca grades do sticky/backup (nunca some sem exclusão manual).
+    if (!clinicaId || isMedicamento) return
+    const local = clinicaPlanilhasLivresService.getState(clinicaId, planilhasModo)
+    const storedImh = local.imh ?? EMPTY_IMH_ABA_FORM
+    if ((storedImh.linhas?.length ?? 0) > (imhFormRef.current.linhas?.length ?? 0)) {
+      setImhForm(storedImh)
+      setImhDataFiltro((prev) =>
+        ensureFiltroMostraAlgumaLinha(
+          { ...prev, mostrarTodos: true },
+          storedImh.linhas.map((l) => l.data),
+          storedImh.linhas.length,
+        ),
+      )
+    }
+    const conmed = local.conmedComrj ?? EMPTY_CONMED_COMRJ_FORM
+    const rebuilt = buildDivMaterialLinhas({
+      consumoRows: normalizeConsumoMaterialRows(local.consumoMaterialConsignado),
+      conmed,
+      empresas: empresasRef.current,
+    })
+    const snap = local.divMaterialLinhas ?? []
+    const nextDiv = snap.length >= rebuilt.length ? snap : rebuilt
+    if (nextDiv.length > divMaterialLinhasRef.current.length) {
+      setDivMaterialLinhas(nextDiv)
+      setConmedForm(conmed)
+      setDivMaterialDataFiltro((prev) =>
+        ensureFiltroMostraAlgumaLinha(
+          { ...prev, mostrarTodos: true },
+          nextDiv.map((l) => l.dataProcedimento),
+          nextDiv.length,
+        ),
+      )
+    }
   }
 
   // Hidrata linhas ausentes a partir do snapshot enviado e pré-seleciona para reenvio.
@@ -948,6 +1196,35 @@ export default function ClinicaNovoPedidoPage() {
     )
   }, [])
 
+  const persistEnvioAnexosDraft = useCallback(
+    (files: File[]) => {
+      if (!clinicaId) return
+      void saveEnvioAnexosDraft(clinicaId, files).catch((error) => {
+        console.warn('[AcompOPMS] Falha ao salvar rascunho de anexos:', error)
+      })
+    },
+    [clinicaId],
+  )
+
+  // Restaura anexos do modal Enviar após F5.
+  useEffect(() => {
+    if (!clinicaId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const files = await loadEnvioAnexosDraft(clinicaId)
+        if (cancelled || files.length === 0) return
+        envioAnexosRef.current = files
+        setEnvioAnexos(files)
+      } catch (error) {
+        console.warn('[AcompOPMS] Falha ao restaurar rascunho de anexos:', error)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clinicaId])
+
   const handleAbrirEnvio = () => {
     if (selectedImhCount === 0 && selectedDivCount === 0) {
       setFeedback({
@@ -957,8 +1234,7 @@ export default function ClinicaNovoPedidoPage() {
       })
       return
     }
-    envioAnexosRef.current = []
-    setEnvioAnexos([])
+    // Mantém anexos já escolhidos / restaurados do rascunho (não zera no abrir).
     setEnvioModalOpen(true)
   }
 
@@ -981,6 +1257,7 @@ export default function ClinicaNovoPedidoPage() {
     const merged = mergeEnvioAnexos(envioAnexosRef.current, validos)
     envioAnexosRef.current = merged
     setEnvioAnexos(merged)
+    persistEnvioAnexosDraft(merged)
   }
 
   const handleAdicionarAnexosNoEnvio = async () => {
@@ -1033,6 +1310,7 @@ export default function ClinicaNovoPedidoPage() {
     const next = envioAnexosRef.current.filter((_, i) => i !== index)
     envioAnexosRef.current = next
     setEnvioAnexos(next)
+    persistEnvioAnexosDraft(next)
   }
 
   const handleAnexoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -1069,8 +1347,7 @@ export default function ClinicaNovoPedidoPage() {
     if (isEnviando) return
     if (Date.now() < envioModalIgnoreCloseUntilRef.current) return
     setEnvioModalOpen(false)
-    envioAnexosRef.current = []
-    setEnvioAnexos([])
+    // Mantém anexos no rascunho (F5 / reabrir modal).
   }
 
   const handleEnviarPlanilhas = async (comentarioEnvio = '') => {
@@ -1226,6 +1503,7 @@ export default function ClinicaNovoPedidoPage() {
       if (anexosParaEnviar.length > 0) partes.push(`${anexosParaEnviar.length} anexo(s)`)
       envioAnexosRef.current = []
       setEnvioAnexos([])
+      void clearEnvioAnexosDraft(clinicaId)
       setFeedback({
         open: true,
         severity: syncAnexosFalhou ? 'error' : 'success',

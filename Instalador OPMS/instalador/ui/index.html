@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Instalar AcompOPMS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg"></div>
+    <main class="card">
+      <header>
+        <div class="logo">OPMS</div>
+        <div>
+          <h1>Instalador AcompOPMS</h1>
+          <p class="sub">Cliente desktop — janela moderna, sem barra de endereços</p>
+        </div>
+      </header>
+
+      <section id="step-welcome" class="step active">
+        <p>Instale o AcompOPMS em qualquer PC <strong>Windows</strong> ou <strong>Linux</strong>. Se a pasta de destino ja existir, ela sera substituida (instalacao limpa).</p>
+        <button type="button" class="btn primary" data-next>Continuar</button>
+      </section>
+
+      <section id="step-url" class="step">
+        <label class="field">
+          <span>URL do sistema</span>
+          <input id="input-url" type="url" placeholder="https://thiagod11lopes-ops.github.io/AcompSolemp/" />
+        </label>
+        <div class="actions">
+          <button type="button" class="btn ghost" data-back>Voltar</button>
+          <button type="button" class="btn primary" data-next>Próximo</button>
+        </div>
+      </section>
+
+      <section id="step-path" class="step">
+        <label class="field">
+          <span>Pasta de instalação — use <strong>AcompOPMS</strong> dentro de AppData Local (nao instale em AppData\\Local sozinho)</span>
+          <div class="row">
+            <input id="input-path" type="text" readonly />
+            <button type="button" class="btn ghost" id="btn-browse">Escolher…</button>
+          </div>
+        </label>
+        <p class="hint">Reinstalando? Feche o AcompOPMS, o instalador antigo e qualquer janela do Explorador aberta em <strong>AppData\Local\AcompOPMS</strong>.</p>
+        <label class="field check">
+          <input type="checkbox" id="chk-desktop-shortcut" checked />
+          <span>Criar atalho na Área de trabalho com o nome <strong>AcompOPMS</strong></span>
+        </label>
+        <div class="actions">
+          <button type="button" class="btn ghost" data-back>Voltar</button>
+          <button type="button" class="btn primary" id="btn-install">Instalar</button>
+        </div>
+      </section>
+
+      <section id="step-progress" class="step">
+        <p id="progress-label">Preparando…</p>
+        <div class="progress-track">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <p class="pct" id="progress-pct">0%</p>
+      </section>
+
+      <section id="step-done" class="step">
+        <p class="ok">Instalação concluída.</p>
+        <p id="done-path" class="mono"></p>
+        <p id="done-shortcut" class="muted-line"></p>
+        <button type="button" class="btn primary" id="btn-launch">Abrir AcompOPMS</button>
+        <button type="button" class="btn ghost" id="btn-close">Fechar</button>
+      </section>
+    </main>
+    <script src="wizard.js"></script>
+  </body>
+</html>

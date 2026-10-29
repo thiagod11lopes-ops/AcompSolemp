@@ -22,6 +22,7 @@ import {
 } from '@/utils/workflowAdvance'
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
+import { requestDadosCsvExport } from '@/utils/exportDadosCsv'
 
 export interface CreatePedidoInput {
   id?: string
@@ -340,6 +341,7 @@ export const clinicaPedidoService = {
     if (useCloudAppDataSync()) {
       await flushSupabaseAppDataSync()
     }
+    requestDadosCsvExport()
     const enriched = enrichPedido(pedido, getContext(data))
     if (!enriched) throw new Error('Erro ao criar pedido')
     return enriched
