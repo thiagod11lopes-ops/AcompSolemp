@@ -49,8 +49,12 @@ if (-not (Test-Path -LiteralPath $instSrc)) { $instSrc = Join-Path $proj 'servid
 $iconsSrc = Join-Path $packGereal 'icons'
 if (-not (Test-Path -LiteralPath $iconsSrc)) { $iconsSrc = Join-Path $proj 'servidor-portatil\icons' }
 
-Write-Step 'instaladores...'
-[void](Invoke-Rcopy $instSrc (Join-Path $geral 'instaladores'))
+Write-Step 'instaladores (sem Cursor — nao e necessario no servidor)...'
+$instDst = Join-Path $geral 'instaladores'
+[void](Invoke-Rcopy $instSrc $instDst)
+# Remove instalador do Cursor se veio junto (economiza ~200 MB no pendrive)
+Get-ChildItem -LiteralPath $instDst -Filter 'Cursor*.exe' -ErrorAction SilentlyContinue |
+  ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue; Write-Host ("  removido: {0}" -f $_.Name) }
 
 Write-Step 'icons...'
 [void](Invoke-Rcopy $iconsSrc (Join-Path $geral 'icons'))
@@ -87,19 +91,14 @@ foreach ($name in $vbsNames) {
 Write-Step 'Lancadores portateis na raiz Transferir Servidor...'
 Get-ChildItem -LiteralPath $dstRoot -Filter '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-function Write-RootLauncher {
+function Write-RootVbsLauncher {
   param(
     [string]$BaseName,
     [string]$Title,
     [string[]]$Ps1RelPaths
   )
   $vbsPath = Join-Path $dstRoot ($BaseName + '.vbs')
-  $cmdPath = Join-Path $dstRoot ($BaseName + '.cmd')
-  $candLines = @()
-  foreach ($rel in $Ps1RelPaths) {
-    $candLines += ('  root & "\{0}", _' -f ($rel -replace '\\', '\\'))
-  }
-  # VBS: Chr(34) evita corte em "Transferir Servidor"
+  # So .vbs na raiz (3 icones) — .cmd duplicava e confundia
   $vbs = @(
     "' $Title"
     'Option Explicit'
@@ -112,7 +111,6 @@ function Write-RootLauncher {
     'candidates = Array( _'
   )
   for ($i = 0; $i -lt $Ps1RelPaths.Count; $i++) {
-    # VB string usa barra simples: \Gereal\painel\...
     $rel = [string]$Ps1RelPaths[$i]
     $comma = if ($i -lt $Ps1RelPaths.Count - 1) { ', _' } else { ' _' }
     $vbs += ('  root & "\{0}"{1}' -f $rel, $comma)
@@ -130,60 +128,29 @@ function Write-RootLauncher {
     'sh.Run "powershell.exe " & args, 1, True'
   )
   Set-Content -LiteralPath $vbsPath -Value ($vbs -join "`r`n") -Encoding ASCII
-
-  # CMD: NUNCA usar "start" com caminho com espaco
-  $cmd = @(
-    '@echo off'
-    "title $Title"
-    'cd /d "%~dp0"'
-    'setlocal EnableExtensions'
-  )
-  $first = $true
-  foreach ($rel in $Ps1RelPaths) {
-    if ($first) {
-      $cmd += ('set "PS1=%~dp0{0}"' -f $rel)
-      $first = $false
-    } else {
-      $cmd += ('if not exist "%PS1%" set "PS1=%~dp0{0}"' -f $rel)
-    }
-  }
-  $cmd += @(
-    'if not exist "%PS1%" ('
-    "  echo Nao achei script de $Title"
-    '  echo Pasta: %~dp0'
-    '  pause'
-    '  exit /b 1'
-    ')'
-    "echo Abrindo $Title..."
-    'echo %PS1%'
-    'powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
-    'set "ERR=%ERRORLEVEL%"'
-    'if not "%ERR%"=="0" ('
-    '  echo ERRO codigo %ERR%'
-    '  pause'
-    '  exit /b %ERR%'
-    ')'
-    'exit /b 0'
-  )
-  Set-Content -LiteralPath $cmdPath -Value ($cmd -join "`r`n") -Encoding ASCII
+  # Remove .cmd irmao se existir
+  $cmdTwin = Join-Path $dstRoot ($BaseName + '.cmd')
+  if (Test-Path -LiteralPath $cmdTwin) { Remove-Item -LiteralPath $cmdTwin -Force -ErrorAction SilentlyContinue }
 }
 
-Write-RootLauncher -BaseName '1-Instalacao-do-Servidor' -Title 'Instalacao do Servidor' -Ps1RelPaths @(
+Write-RootVbsLauncher -BaseName '1-Instalacao-do-Servidor' -Title 'Instalacao do Servidor' -Ps1RelPaths @(
   'Gereal\painel\Assistente-Instalacao-Servidor.ps1',
   'Gereal\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1'
 )
-Write-RootLauncher -BaseName '2-Iniciar-Servidor-OMPS' -Title 'Iniciar Servidor OMPS' -Ps1RelPaths @(
+Write-RootVbsLauncher -BaseName '2-Iniciar-Servidor-OMPS' -Title 'Iniciar Servidor OMPS' -Ps1RelPaths @(
   'Gereal\AcompSolemp\servidor-portatil\scripts\Abrir-Tudo.ps1'
 )
-Write-RootLauncher -BaseName '3-Dashboard-Servidor' -Title 'Dashboard Servidor' -Ps1RelPaths @(
+Write-RootVbsLauncher -BaseName '3-Dashboard-Servidor' -Title 'Dashboard Servidor' -Ps1RelPaths @(
   'Gereal\AcompSolemp\servidor-portatil\scripts\Abrir-Dashboard.ps1'
 )
 
-foreach ($old in @(
-    'Instalacao-do-Servidor.cmd', 'Iniciar-Servidor-OMPS.cmd', 'Dashboard-Servidor.cmd',
-    'Instalação do Servidor.lnk', 'Iniciar Servidor OMPS.lnk', 'Dashboard Servidor.lnk'
-  )) {
-  $p = Join-Path $dstRoot $old
+# Limpa .cmd/.lnk extras na raiz (ficam so os 3 .vbs + LEIA-ME)
+Get-ChildItem -LiteralPath $dstRoot -File -ErrorAction SilentlyContinue |
+  Where-Object { $_.Extension -in @('.cmd', '.lnk') } |
+  Remove-Item -Force -ErrorAction SilentlyContinue
+# VBS internos do Gereal bastam; remove VBS soltos desnecessarios na raiz do Gereal se confundirem
+foreach ($extra in @('Servidor OMPS.vbs')) {
+  $p = Join-Path $geral $extra
   if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
 }
 
@@ -217,9 +184,22 @@ if (Test-Path -LiteralPath $acompDst) {
     cmd /c "rmdir `"$acompDst`""
   }
 }
+# Exclui Instalador OPMS (~550 MB) e backups — nao entram no pacote portatil do servidor
 [void](Invoke-Rcopy $proj $acompDst `
-    @('.git', 'logs', 'state', 'node_modules', 'dist', '.vite', 'coverage', 'agent-transcripts', '.cursor') `
-    @('*.pid', '*.log', 'gateway.crt', 'gateway.key', 'cert-names.txt'))
+    @('.git', 'logs', 'state', 'node_modules', 'dist', '.vite', 'coverage', 'agent-transcripts', '.cursor', 'Instalador OPMS', 'backups', 'Transferir para Servidor') `
+    @('*.pid', '*.log', 'gateway.crt', 'gateway.key', 'cert-names.txt', 'Cursor*.exe'))
+# Garante remocao se ja existia de sync antigo
+foreach ($drop in @('Instalador OPMS', 'backups', 'Transferir para Servidor')) {
+  $p = Join-Path $acompDst $drop
+  if (Test-Path -LiteralPath $p) {
+    Write-Step ("Removendo desnecessario: {0}..." -f $drop)
+    Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+$spBackups = Join-Path $acompDst 'servidor-portatil\backups'
+if (Test-Path -LiteralPath $spBackups) {
+  Remove-Item -LiteralPath $spBackups -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # Inclui frontend\node_modules para o PC destino pular (ou acelerar) o npm install
 Write-Step 'frontend\node_modules (para o outro PC nao baixar de novo)...'
@@ -274,12 +254,12 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
   '========================'
   '1) Rode neste PC: "Atualizar Transferir Servidor" (antes de copiar).'
   '2) Copie a pasta INTEIRA "Transferir Servidor" (com a subpasta Gereal).'
-  '3) No PC destino clique nos arquivos .vbs (preferencial) ou .cmd na raiz:'
+  '3) No PC destino use SO estes 3 icones na raiz:'
   '   - 1-Instalacao-do-Servidor.vbs'
   '   - 2-Iniciar-Servidor-OMPS.vbs'
   '   - 3-Dashboard-Servidor.vbs'
-  '   (Nao use atalhos .lnk. O nome da pasta tem espaco; os .vbs tratam isso.)'
   '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
+  '5) Pacote enxuto: sem Instalador OPMS e sem instalador Cursor (so Docker/Node/VC/WSL).'
   ''
   ('frontend\node_modules no pacote: {0}' -f ($(if ($nmOk) { 'SIM (npm install deve pular)' } else { 'NAO (destino fara npm install)' })))
   ('Atualizado em: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm'))
