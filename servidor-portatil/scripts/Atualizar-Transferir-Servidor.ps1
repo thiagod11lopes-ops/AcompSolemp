@@ -92,9 +92,9 @@ function Write-PortableCmd([string]$FileName, [string]$RelVbs, [string]$Title) {
     "title $Title"
     'cd /d "%~dp0"'
     "set `"VBS=%~dp0Gereal\$RelVbs`""
-    'if not exist "%VBS%" set "VBS=%~dp0Geral\%RelVbs%"'
+    "if not exist `"%VBS%`" set `"VBS=%~dp0Geral\$RelVbs`""
     'if not exist "%VBS%" ('
-    "  echo Nao achei Gereal\\$RelVbs"
+    "  echo Nao achei Gereal\$RelVbs"
     '  echo Copie a pasta INTEIRA Transferir Servidor (com a subpasta Gereal).'
     '  pause'
     '  exit /b 1'
