@@ -410,15 +410,15 @@ Get-ChildItem -LiteralPath $updPayload -Recurse -File -ErrorAction SilentlyConti
   ("Gerado em: {0}" -f $when)
 ) | Set-Content -LiteralPath (Join-Path $updRoot 'LEIA-ME.txt') -Encoding UTF8
 
-# Atalho opcional na Area de Trabalho apontando para a pasta Atualizacao (facil achar)
-$updFolderLnk = Join-Path $desk 'Atualização (pendrive).lnk'
-try {
-  $scFolder = $wsh.CreateShortcut($updFolderLnk)
-  $scFolder.TargetPath = $updRoot
-  $scFolder.Description = 'Pasta leve para copiar no pendrive e atualizar o outro PC'
-  if (Test-Path -LiteralPath $icoSrc) { $scFolder.IconLocation = "$icoSrc,0" }
-  $scFolder.Save()
-} catch { }
+# Remove atalho confuso na Area de Trabalho (a pasta Atualização ja basta)
+foreach ($extraLnk in @(
+    (Join-Path $desk 'Atualização (pendrive).lnk'),
+    (Join-Path $desk 'Atualizacao (pendrive).lnk')
+  )) {
+  if (Test-Path -LiteralPath $extraLnk) {
+    Remove-Item -LiteralPath $extraLnk -Force -ErrorAction SilentlyContinue
+  }
+}
 
 # Checklist
 $checks = @(
