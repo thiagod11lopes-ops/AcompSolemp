@@ -276,15 +276,18 @@ function Update-ServerConfigGestorEmail([string]$Email) {
     if ($txt -match "serverIp:\s*'([^']*)'") { $ip = $Matches[1] }
   } catch { }
 
-  if (-not $url) {
+  if (-not $url -or -not $ip) {
     try {
       $c = Import-ServidorConfig
-      $alias = Normalize-AliasInput ([string]$c.SERVER_ALIAS)
-      $url = "https://$alias"
       $ip = [string]$c.SERVER_HOST
-      $anon = Get-AnonKeyFromSupabase ([string]$c.SUPABASE_DOCKER_DIR)
+      if (-not $ip) { $ip = Get-PreferredLanIPv4 }
+      $alias = $ip
+      $url = "https://$ip"
+      if (-not $anon) { $anon = Get-AnonKeyFromSupabase ([string]$c.SUPABASE_DOCKER_DIR) }
     } catch { return }
   }
+  if (-not $alias) { $alias = $ip }
+  if ($url -notmatch '^https?://') { $url = "https://$ip" }
 
   $emailEsc = $Email.Replace("'", "\'")
   $js = @(
@@ -293,8 +296,9 @@ function Update-ServerConfigGestorEmail([string]$Email) {
     "  dataSource: 'supabase',"
     "  supabaseUrl: '$url',"
     "  supabaseAnonKey: '$anon',"
-    "  serverAlias: '$alias',"
+    "  serverAlias: '$ip',"
     "  serverIp: '$ip',"
+    "  publicUrl: '$url',"
     "  gestorEmail: '$emailEsc',"
     '};'
   ) -join [Environment]::NewLine
