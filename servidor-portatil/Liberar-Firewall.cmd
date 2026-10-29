@@ -1,6 +1,6 @@
 @echo off
 :: Preparacao UNICA neste PC servidor (Admin).
-:: Depois disso, os outros PCs so digitam o nome cadastrado (ex.: sistema.acompomps.rede).
+:: Modo atual: clientes usam o IP (ex.: https://10.6.167.66/). DNS :53 e opcional.
 net session >nul 2>&1
 if %errorlevel% neq 0 (
   echo Solicitando permissao de Administrador...
@@ -16,7 +16,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Aplicar-Host.ps1"
 if errorlevel 1 goto :fail
 
 echo.
-echo [2/3] Instalando DNS + firewall (porta 53 e 80)...
+echo [2/3] Firewall (80/443) + DNS opcional...
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\Instalar-Dns-Autostart.ps1"
 if errorlevel 1 goto :fail
 
@@ -38,17 +38,11 @@ echo.
 echo ============================================================
 echo  PRONTO NESTE PC SERVIDOR
 echo.
-echo  A partir de agora, ao ligar/fazer login o Windows deve:
-echo    - preparar hosts/DNS/firewall sozinho
-echo    - subir Docker + AcompOPMS + gateway HTTPS
-echo  sem clicar em Liberar-Firewall de novo.
+echo  Clientes / outros PCs: abra no navegador o IP HTTPS, ex.:
+echo     https://10.6.167.66/
+echo  (sem :5173; use o IP fixo escolhido no assistente)
 echo.
-echo  Nos OUTROS PCs, digite EXATAMENTE:
-echo     sistema.acompomps.rede
-echo  (HTTPS; sem :5173)
-echo.
-echo  Se o nome nao abrir nos outros PCs, no roteador use
-echo  DNS primario = IP deste PC (uma vez so).
+echo  DNS na porta 53 NAO e obrigatorio no modo IP.
 echo ============================================================
 echo.
 pause
@@ -56,11 +50,9 @@ exit /b 0
 
 :fail
 echo.
-echo ERRO na preparacao. Se a porta 53 estiver bloqueada pelo
-echo Compartilhamento de Internet:
-echo   Win+R -^> ncpa.cpl -^> Wi-Fi/Ethernet -^> Propriedades
-echo   Aba Compartilhamento -^> DESMARQUE a opcao de compartilhar
-echo   Depois rode este arquivo de novo.
+echo ERRO na preparacao (firewall/Aplicar-Host).
+echo Se aparecer aviso de porta 53, pode ignorar no modo IP —
+echo use https://IP_DO_SERVIDOR/ e rode 2-Iniciar-Servidor.
 echo.
 pause
 exit /b 1

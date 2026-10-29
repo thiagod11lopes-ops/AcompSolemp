@@ -65,6 +65,32 @@ function Get-PreferredLanIPv4 {
   return $null
 }
 
+function Test-IsIPv4String([string]$Value) {
+  return [bool](([string]$Value).Trim() -match '^\d{1,3}(\.\d{1,3}){3}$')
+}
+
+# Acesso publico e pelo IP na barra (assistente IP fixo / IP da Rede) — DNS alias :53 e opcional.
+function Test-ServerUsesIpOnly {
+  param($Config)
+  if (-not $Config) { return $false }
+  $mode = ([string]$Config.IP_MODE).Trim().ToLowerInvariant()
+  if ($mode -eq 'fixed' -or $mode -eq 'network' -or $mode -eq 'lan') { return $true }
+  if (Test-IsIPv4String ([string]$Config.SERVER_HOST)) { return $true }
+  if (Test-IsIPv4String ([string]$Config.SERVER_ALIAS)) { return $true }
+  return $false
+}
+
+function Get-ConfiguredPublicIp {
+  param($Config)
+  if ($Config) {
+    $h = ([string]$Config.SERVER_HOST).Trim()
+    if (Test-IsIPv4String $h) { return $h }
+    $a = ([string]$Config.SERVER_ALIAS).Trim()
+    if (Test-IsIPv4String $a) { return $a }
+  }
+  return Get-PreferredLanIPv4
+}
+
 function Get-AnonKeyFromSupabase([string]$DockerDir) {
   $envFile = Join-Path $DockerDir '.env'
   if (-not (Test-Path $envFile)) { throw "Não achei .env em $DockerDir" }

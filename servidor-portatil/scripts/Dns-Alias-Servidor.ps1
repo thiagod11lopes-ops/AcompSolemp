@@ -1,4 +1,4 @@
-# DNS local: resolve SERVER_ALIAS -> IP atual da LAN (porta 53, exige Admin).
+﻿# DNS local: resolve SERVER_ALIAS -> IP atual da LAN (porta 53, exige Admin).
 # Uso: .\Dns-Alias-Servidor.ps1
 #      .\Dns-Alias-Servidor.ps1 -Stop
 
@@ -105,6 +105,9 @@ function Unlock-Port53 {
     return $true
   }
 
+  $pub = $script:DnsPublicIpHint
+  if (-not $pub) { $pub = Get-PreferredLanIPv4 }
+  if (-not $pub) { $pub = 'IP_DO_SERVIDOR' }
   $msg = @"
 Nao foi possivel liberar a porta 53 automaticamente.
 
@@ -115,7 +118,7 @@ Faca manualmente (1 minuto):
 4. DESMARQUE 'Permitir que outros usuarios da rede se conectem...'
 5. OK e rode Liberar-Firewall.cmd de novo
 
-Enquanto isso, use o IP: http://$($(Get-PreferredLanIPv4)):5173
+Enquanto isso, use o IP: https://${pub}/
 "@
   throw $msg.Trim()
 }
@@ -131,10 +134,20 @@ $alias = [string]$cfg.SERVER_ALIAS
 if (-not $alias) { $alias = 'sistema.acompomps.rede' }
 $alias = $alias.Trim().ToLowerInvariant().TrimEnd('.')
 
-$ip = Get-PreferredLanIPv4
+$ip = Get-ConfiguredPublicIp $cfg
+if (-not $ip) { $ip = Get-PreferredLanIPv4 }
 if (-not $ip) { throw 'Nao foi possivel detectar IP da LAN.' }
+$script:DnsPublicIpHint = $ip
 
-# hosts local (este PC)
+# Modo IP (assistente): clientes usam https://IP — DNS na porta 53 nao e obrigatorio.
+if (Test-ServerUsesIpOnly $cfg) {
+  Write-Host "Modo IP: DNS alias (porta 53) dispensado."
+  Write-Host "Clientes devem abrir: https://${ip}/"
+  Stop-DnsAlias
+  exit 0
+}
+
+# hosts local (este PC) — so faz sentido com nome amigavel
 $hostsPath = Join-Path $env:SystemRoot 'System32\drivers\etc\hosts'
 try {
   $marker = '# acompopms-alias'
@@ -149,7 +162,13 @@ try {
 }
 
 Stop-DnsAlias
-Unlock-Port53 | Out-Null
+try {
+  Unlock-Port53 | Out-Null
+} catch {
+  Write-Host ("Aviso DNS porta 53: {0}" -f $_.Exception.Message)
+  Write-Host ("Continuando sem DNS local. Use https://{0}/" -f $ip)
+  exit 0
+}
 
 @{
   alias = $alias

@@ -351,6 +351,8 @@ foreach ($rel in @(
     'Gereal\AcompSolemp\servidor-portatil\cliente',
     'Gereal\AcompSolemp\servidor-portatil\Atualizar-Transferir-Servidor.cmd',
     'Gereal\AcompSolemp\servidor-portatil\Atualizar-Transferir-Servidor.vbs',
+    'Gereal\AcompSolemp\servidor-portatil\Liberar-Firewall.cmd',
+    'Gereal\Liberar-Firewall.cmd',
     'Gereal\AcompSolemp\frontend\src',
     'Gereal\AcompSolemp\frontend\index.html',
     'Gereal\AcompSolemp\frontend\package.json',
