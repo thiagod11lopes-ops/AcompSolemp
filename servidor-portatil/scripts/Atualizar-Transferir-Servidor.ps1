@@ -176,10 +176,10 @@ $ex = Join-Path $acompDst 'servidor-portatil\config.env.example'
 if (-not (Test-Path -LiteralPath $cfg) -and (Test-Path -LiteralPath $ex)) { Copy-Item $ex $cfg }
 if (Test-Path -LiteralPath $cfg) {
   $c = Get-Content -LiteralPath $cfg -Raw -Encoding UTF8
-  if ($c -notmatch '(?m)^SERVER_HOST=') { $c += "`r`nSERVER_HOST=192.168.0.10`r`n" }
-  if ($c -notmatch '(?m)^SERVER_ALIAS=') { $c += "`r`nSERVER_ALIAS=sistema.acompomps.rede`r`n" }
-  $c = $c -replace '(?m)^SERVER_HOST=.*', 'SERVER_HOST=192.168.0.10'
-  $c = $c -replace '(?m)^SERVER_ALIAS=.*', 'SERVER_ALIAS=sistema.acompomps.rede'
+  if ($c -notmatch '(?m)^SERVER_HOST=') { $c += "`r`nSERVER_HOST=10.6.167.66`r`n" }
+  if ($c -notmatch '(?m)^SERVER_ALIAS=') { $c += "`r`nSERVER_ALIAS=10.6.167.66`r`n" }
+  $c = $c -replace '(?m)^SERVER_HOST=.*', 'SERVER_HOST=10.6.167.66'
+  $c = $c -replace '(?m)^SERVER_ALIAS=.*', 'SERVER_ALIAS=10.6.167.66'
   $c = $c -replace '(?m)^FRONTEND_DIR=.*', 'FRONTEND_DIR=PLACEHOLDER'
   $c = $c -replace '(?m)^SUPABASE_DOCKER_DIR=.*', 'SUPABASE_DOCKER_DIR=PLACEHOLDER'
   if ($c -notmatch '(?m)^FRONTEND_DIR=') { $c += "`r`nFRONTEND_DIR=PLACEHOLDER`r`n" }

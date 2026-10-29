@@ -32,11 +32,15 @@ $script:WizardSteps = @(
   @{ id = 'docker'; title = 'Docker Desktop' },
   @{ id = 'node'; title = 'Node.js' },
   @{ id = 'npm'; title = 'Dependencias do frontend (npm)' },
-  @{ id = 'alias'; title = 'Definir endereco na rede' },
+  @{ id = 'ip'; title = 'Escolher IP do servidor' },
   @{ id = 'rede'; title = 'Firewall, hosts e HTTPS (Admin)' },
   @{ id = 'servidor'; title = 'Iniciar Servidor OMPS' },
   @{ id = 'dashboard'; title = 'Abrir Dashboard' }
 )
+
+# IP fixo padrao da instalacao (opcao do assistente)
+$script:FixedServerIp = '10.6.167.66'
+$script:IpModeChoice = 'fixed' # fixed | network
 
 $script:StepState = @{}
 foreach ($s in $script:WizardSteps) {
@@ -332,67 +336,135 @@ function Invoke-StepNpm {
   return $false
 }
 
-function Invoke-StepAlias {
-  $raw = ''
-  if ($script:txtAliasWizard) { $raw = [string]$script:txtAliasWizard.Text }
-  $raw = $raw.Trim()
-  if (-not $raw -or $raw.Length -lt 3) {
-    Set-StepUi 'alias' 'error' 'Informe um endereco valido (ex.: sistema.acompomps.rede)'
+function Get-AssistenteSelectedIp {
+  if ($script:rbIpFixed -and $script:rbIpFixed.Checked) {
+    $script:IpModeChoice = 'fixed'
+    return [string]$script:FixedServerIp
+  }
+  if ($script:rbIpNetwork -and $script:rbIpNetwork.Checked) {
+    $script:IpModeChoice = 'network'
+  }
+  $detected = $null
+  if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+    $detected = Get-PreferredLanIPv4
+  }
+  if (-not $detected) {
+    try {
+      $cfg = Import-ServidorConfig
+      if ($cfg -and $cfg.SERVER_HOST) { $detected = [string]$cfg.SERVER_HOST }
+    } catch { }
+  }
+  if (-not $detected) { $detected = '127.0.0.1' }
+  return $detected
+}
+
+function Invoke-StepIp {
+  $mode = if ($script:rbIpFixed -and $script:rbIpFixed.Checked) { 'fixed' } else { 'network' }
+  $script:IpModeChoice = $mode
+  $ip = Get-AssistenteSelectedIp
+  if ($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
+    Set-StepUi 'ip' 'error' "IP invalido: $ip"
     return $false
   }
-  if (Get-Command Normalize-AliasInput -ErrorAction SilentlyContinue) {
-    $alias = Normalize-AliasInput $raw
+
+  if ($mode -eq 'fixed') {
+    Set-StepUi 'ip' 'running' ("Aplicando IP fixo {0} no sistema…" -f $ip)
   } else {
-    $alias = $raw.ToLowerInvariant().Trim().TrimEnd('.')
-    $alias = $alias -replace '^\s*https?://', ''
-    $alias = $alias.Split('/')[0].Split(':')[0]
+    Set-StepUi 'ip' 'running' ("Usando IP da rede: {0}…" -f $ip)
   }
-  if ($alias -notmatch '^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$') {
-    Set-StepUi 'alias' 'error' 'Use apenas letras, numeros, ponto e hifen (sem http://)'
+
+  Set-PackConfigEnv
+  if (-not (Test-Path -LiteralPath $script:ConfigEnv)) {
+    Set-StepUi 'ip' 'error' "config.env nao encontrado: $($script:ConfigEnv)"
     return $false
   }
-  Set-StepUi 'alias' 'running' "Aplicando alias $alias (config + hosts)…"
-  Set-PackConfigEnv
-  # Grava SERVER_ALIAS no config.env
+
   if (Get-Command Set-EnvKey -ErrorAction SilentlyContinue) {
-    Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $alias
+    Set-EnvKey $script:ConfigEnv 'SERVER_HOST' $ip
+    Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $ip
+    Set-EnvKey $script:ConfigEnv 'IP_MODE' $mode
   } else {
     $lines = @(Get-Content $script:ConfigEnv -Encoding UTF8)
-    $found = $false
-    $out = foreach ($line in $lines) {
-      if ($line -match '^\s*SERVER_ALIAS=') { $found = $true; "SERVER_ALIAS=$alias" } else { $line }
+    $keys = @{ SERVER_HOST = $ip; SERVER_ALIAS = $ip; IP_MODE = $mode }
+    foreach ($k in $keys.Keys) {
+      $found = $false
+      $lines = foreach ($line in $lines) {
+        if ($line -match ("^\s*{0}=" -f [regex]::Escape($k))) { $found = $true; "{0}={1}" -f $k, $keys[$k] } else { $line }
+      }
+      if (-not $found) { $lines += ("{0}={1}" -f $k, $keys[$k]) }
     }
-    if (-not $found) { $out += "SERVER_ALIAS=$alias" }
-    Set-Content -Path $script:ConfigEnv -Value $out -Encoding UTF8
+    Set-Content -Path $script:ConfigEnv -Value $lines -Encoding UTF8
   }
+
+  # Tenta fixar na placa de rede (Admin) quando IP fixo — nao bloqueia se falhar
+  $nicNote = ''
+  if ($mode -eq 'fixed') {
+    Set-StepUi 'ip' 'running' ("Configurando placa de rede para {0} (pode pedir Admin)…" -f $ip)
+    try {
+      $tmp = Join-Path $env:TEMP ("acomp-omps-set-ip-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
+      @"
+`$ErrorActionPreference = 'Stop'
+`$want = '$ip'
+`$adapters = @(Get-NetIPConfiguration | Where-Object {
+  `$_.IPv4Address -and
+  `$_.NetAdapter.Status -eq 'Up' -and
+  `$_.InterfaceAlias -notmatch 'Loopback|vEthernet|Docker|WSL|Virtual'
+} | Sort-Object -Property { if (`$_.IPv4DefaultGateway) { 0 } else { 1 } })
+if (-not `$adapters.Count) { throw 'Nenhuma placa Ethernet/Wi-Fi ativa encontrada.' }
+`$a = `$adapters[0]
+`$ifIndex = `$a.InterfaceIndex
+`$gw = `$null
+if (`$a.IPv4DefaultGateway) { `$gw = [string]`$a.IPv4DefaultGateway.NextHop }
+`$prefix = 24
+try {
+  `$cur = Get-NetIPAddress -InterfaceIndex `$ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Where-Object { `$_.IPAddress -notlike '169.*' } | Select-Object -First 1
+  if (`$cur -and `$cur.PrefixLength) { `$prefix = [int]`$cur.PrefixLength }
+} catch { }
+Get-NetIPAddress -InterfaceIndex `$ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+  Where-Object { `$_.IPAddress -notlike '169.*' } |
+  ForEach-Object { Remove-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$_.IPAddress -Confirm:`$false -ErrorAction SilentlyContinue }
+Set-NetIPInterface -InterfaceIndex `$ifIndex -Dhcp Disabled -ErrorAction SilentlyContinue
+if (`$gw) {
+  New-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$want -PrefixLength `$prefix -DefaultGateway `$gw -ErrorAction Stop | Out-Null
+} else {
+  New-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$want -PrefixLength `$prefix -ErrorAction Stop | Out-Null
+}
+Set-DnsClientServerAddress -InterfaceIndex `$ifIndex -ServerAddresses @('8.8.8.8','1.1.1.1') -ErrorAction SilentlyContinue
+"@ | Set-Content -LiteralPath $tmp -Encoding UTF8
+      $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmp
+      ) -Verb RunAs -Wait -PassThru -WindowStyle Minimized
+      Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+      if ($p.ExitCode -eq 0) {
+        $nicNote = 'Placa de rede ajustada. '
+        Start-Sleep -Seconds 2
+      } else {
+        $nicNote = 'Placa nao alterada (Admin/UAC). Use o IP no sistema mesmo assim. '
+      }
+    } catch {
+      $nicNote = ("Placa: {0}. " -f $_.Exception.Message)
+    }
+  }
+
   $aplicar = Get-AplicarHostPs1
   if (-not $aplicar) {
-    Set-StepUi 'alias' 'error' 'Aplicar-Host.ps1 nao encontrado'
+    Set-StepUi 'ip' 'error' 'Aplicar-Host.ps1 nao encontrado'
     return $false
   }
   try {
-    & $aplicar -Alias $alias
+    & $aplicar -HostAddress $ip
   } catch {
-    Set-StepUi 'alias' 'error' $_.Exception.Message
+    Set-StepUi 'ip' 'error' $_.Exception.Message
     return $false
   }
-  # hosts pode exigir Admin — tenta elevacao se funcao existir
-  if (Get-Command Set-AcompOmpsHostsAlias -ErrorAction SilentlyContinue) {
-    $cfg = $null
-    try { $cfg = Import-ServidorConfig } catch { }
-    $ip = if ($cfg) { [string]$cfg.SERVER_HOST } else { '' }
-    if ($ip -and -not (Test-AcompOmpsHostsAlias -Alias $alias -Ip $ip)) {
-      Set-StepUi 'alias' 'running' 'hosts exige Admin — confirme o UAC…'
-      $fix = Set-AcompOmpsHostsAlias -Ip $ip -Alias $alias -AllowElevate
-      if (-not $fix.ok) {
-        Set-StepUi 'alias' 'error' ("Alias gravado, mas hosts falhou: {0}" -f $fix.error)
-        return $false
-      }
-    }
+
+  $script:CurrentAlias = $ip
+  if ($script:lblIpPreview) {
+    $script:lblIpPreview.Text = ("URL: https://{0}/" -f $ip)
   }
-  $script:CurrentAlias = $alias
-  if ($script:txtAliasWizard) { $script:txtAliasWizard.Text = $alias }
-  Set-StepUi 'alias' 'ok' "Endereco: $alias"
+  $label = if ($mode -eq 'fixed') { 'IP fixo' } else { 'IP da Rede' }
+  Set-StepUi 'ip' 'ok' ("{0}{1}: https://{2}/" -f $nicNote, $label, $ip)
   return $true
 }
 
@@ -526,8 +598,12 @@ function Invoke-StepDashboard {
     Set-StepUi 'dashboard' 'error' $_.Exception.Message
     return $false
   }
-  $alias = Get-OmpsServerAlias
-  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/" -f $alias)
+  $ipAccess = $script:FixedServerIp
+  try {
+    $cfg = Import-ServidorConfig
+    if ($cfg -and $cfg.SERVER_HOST) { $ipAccess = [string]$cfg.SERVER_HOST }
+  } catch { }
+  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/" -f $ipAccess)
   return $true
 }
 
@@ -540,7 +616,7 @@ function Invoke-WizardStep([int]$Index) {
     'docker' { return Invoke-StepInstaller -Id 'docker' -Pattern 'Docker*Installer*.exe' -Nome 'Docker Desktop' -AlreadyOk { Test-DockerApp } }
     'node' { return Invoke-StepInstaller -Id 'node' -Pattern 'node-*.msi' -Nome 'Node.js' -AlreadyOk { Test-NodeApp } }
     'npm' { return Invoke-StepNpm }
-    'alias' { return Invoke-StepAlias }
+    'ip' { return Invoke-StepIp }
     'rede' { return Invoke-StepRede }
     'servidor' { return Invoke-StepServidor }
     'dashboard' { return Invoke-StepDashboard }
@@ -623,21 +699,57 @@ function Show-AssistenteInstalacaoServidor {
   $script:txtDetailFull.BackColor = [Drawing.Color]::FromArgb(250, 250, 248)
   $bottom.Controls.Add($script:txtDetailFull)
 
-  $aliasLbl = New-Object Windows.Forms.Label
-  $aliasLbl.Text = 'Endereco na rede (sem http:// e sem porta):'
-  $aliasLbl.Location = New-Object Drawing.Point(16, 98)
-  $aliasLbl.Size = New-Object Drawing.Size(400, 18)
-  $bottom.Controls.Add($aliasLbl)
+  $ipLbl = New-Object Windows.Forms.Label
+  $ipLbl.Text = 'IP do servidor (escolha uma opcao; usada na etapa "Escolher IP"):'
+  $ipLbl.Location = New-Object Drawing.Point(16, 96)
+  $ipLbl.Size = New-Object Drawing.Size(520, 18)
+  $bottom.Controls.Add($ipLbl)
 
-  $script:txtAliasWizard = New-Object Windows.Forms.TextBox
-  $script:txtAliasWizard.Text = $script:CurrentAlias
-  $script:txtAliasWizard.Location = New-Object Drawing.Point(16, 118)
-  $script:txtAliasWizard.Size = New-Object Drawing.Size(820, 26)
-  $script:txtAliasWizard.Anchor = 'Top,Left,Right'
-  $bottom.Controls.Add($script:txtAliasWizard)
+  $detectedLan = $null
+  if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+    $detectedLan = Get-PreferredLanIPv4
+  }
+  if (-not $detectedLan) { $detectedLan = '(detectar na etapa)' }
+
+  $script:rbIpFixed = New-Object Windows.Forms.RadioButton
+  $script:rbIpFixed.Text = ("IP fixo — {0}" -f $script:FixedServerIp)
+  $script:rbIpFixed.Location = New-Object Drawing.Point(16, 116)
+  $script:rbIpFixed.Size = New-Object Drawing.Size(280, 24)
+  $script:rbIpFixed.Checked = $true
+  $bottom.Controls.Add($script:rbIpFixed)
+
+  $script:rbIpNetwork = New-Object Windows.Forms.RadioButton
+  $script:rbIpNetwork.Text = ("IP da Rede — atual: {0}" -f $detectedLan)
+  $script:rbIpNetwork.Location = New-Object Drawing.Point(310, 116)
+  $script:rbIpNetwork.Size = New-Object Drawing.Size(360, 24)
+  $script:rbIpNetwork.Checked = $false
+  $bottom.Controls.Add($script:rbIpNetwork)
+
+  $script:lblIpPreview = New-Object Windows.Forms.Label
+  $script:lblIpPreview.Text = ("URL: https://{0}/" -f $script:FixedServerIp)
+  $script:lblIpPreview.Location = New-Object Drawing.Point(680, 118)
+  $script:lblIpPreview.Size = New-Object Drawing.Size(160, 22)
+  $script:lblIpPreview.Anchor = 'Top,Right'
+  $script:lblIpPreview.ForeColor = [Drawing.Color]::FromArgb(40, 90, 70)
+  $bottom.Controls.Add($script:lblIpPreview)
+
+  $updateIpPreview = {
+    if ($script:rbIpFixed.Checked) {
+      $script:lblIpPreview.Text = ("URL: https://{0}/" -f $script:FixedServerIp)
+    } else {
+      $d = if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) { Get-PreferredLanIPv4 } else { $null }
+      if (-not $d) { $d = '…' }
+      $script:lblIpPreview.Text = ("URL: https://{0}/" -f $d)
+    }
+  }
+  $script:rbIpFixed.Add_CheckedChanged({ & $updateIpPreview })
+  $script:rbIpNetwork.Add_CheckedChanged({ & $updateIpPreview })
+
+  # Compat: referencias antigas a txtAliasWizard nao quebram Update-Buttons
+  $script:txtAliasWizard = $null
 
   $script:lblStatus = New-Object Windows.Forms.Label
-  $script:lblStatus.Text = 'Pronto para iniciar. Clique em Continuar.'
+  $script:lblStatus.Text = 'Pronto para iniciar. Clique em Continuar. Na etapa de IP, marque IP fixo ou IP da Rede.'
   $script:lblStatus.Location = New-Object Drawing.Point(16, 150)
   $script:lblStatus.Size = New-Object Drawing.Size(820, 36)
   $script:lblStatus.Anchor = 'Top,Left,Right'
@@ -825,20 +937,25 @@ function Show-AssistenteInstalacaoServidor {
   $form.Add_Resize({ Fit-DetailColumn })
   $form.Add_Shown({ Fit-DetailColumn; Update-PercentBar })
 
+  function Set-IpChoicesEnabled([bool]$On) {
+    if ($script:rbIpFixed) { $script:rbIpFixed.Enabled = $On }
+    if ($script:rbIpNetwork) { $script:rbIpNetwork.Enabled = $On }
+  }
+
   function Update-Buttons([string]$Mode) {
     # Mode: idle | busy | error | done
     switch ($Mode) {
       'busy' {
         $btnStart.Enabled = $false
         $btnRetry.Enabled = $false
-        $script:txtAliasWizard.Enabled = $false
+        Set-IpChoicesEnabled $false
         $btnStart.Text = 'Continuar'
       }
       'error' {
         # Continuar fica ativo para pular a etapa com erro e seguir o maximo possivel
         $btnStart.Enabled = $true
         $btnRetry.Enabled = $true
-        $script:txtAliasWizard.Enabled = ($script:WizardSteps[$script:WizardIndex].id -eq 'alias')
+        Set-IpChoicesEnabled ($script:WizardSteps[$script:WizardIndex].id -eq 'ip')
         if ($script:WizardIndex -lt ($script:WizardSteps.Count - 1)) {
           $btnStart.Text = 'Continuar mesmo assim'
         } else {
@@ -848,25 +965,30 @@ function Show-AssistenteInstalacaoServidor {
       'done' {
         $btnStart.Enabled = $false
         $btnRetry.Enabled = $false
-        $script:txtAliasWizard.Enabled = $false
+        Set-IpChoicesEnabled $false
         $btnStart.Text = 'Concluido'
       }
       default {
         $btnStart.Enabled = $true
         $btnRetry.Enabled = $false
-        $script:txtAliasWizard.Enabled = $true
+        Set-IpChoicesEnabled $true
         $btnStart.Text = 'Continuar'
       }
     }
   }
 
   function Complete-WizardUi {
+    $ipDone = $script:FixedServerIp
+    try {
+      $cfg = Import-ServidorConfig
+      if ($cfg -and $cfg.SERVER_HOST) { $ipDone = [string]$cfg.SERVER_HOST }
+    } catch { }
     $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
     if ($nErr -gt 0) {
-      $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. O restante foi aplicado. Alias: https://{1}/" -f $nErr, (Get-OmpsServerAlias))
+      $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. O restante foi aplicado. Acesso: https://{1}/" -f $nErr, $ipDone)
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkOrange
     } else {
-      $script:lblStatus.Text = 'Fluxo concluido. Use https://' + (Get-OmpsServerAlias) + '/ nos PCs da rede (DNS seguro do Chrome desligado).'
+      $script:lblStatus.Text = ("Fluxo concluido. Use https://{0}/ nos PCs da rede (DNS seguro do Chrome desligado)." -f $ipDone)
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
     }
     & $script:RefreshSteps
