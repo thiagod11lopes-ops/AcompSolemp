@@ -336,14 +336,25 @@ function Invoke-StepNpm {
   return $false
 }
 
+function Test-AssistenteIpv4([string]$Ip) {
+  if ($Ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') { return $false }
+  foreach ($o in ($Ip -split '\.')) {
+    $n = 0
+    if (-not [int]::TryParse($o, [ref]$n)) { return $false }
+    if ($n -lt 0 -or $n -gt 255) { return $false }
+  }
+  return $true
+}
+
 function Get-AssistenteSelectedIp {
   if ($script:rbIpFixed -and $script:rbIpFixed.Checked) {
     $script:IpModeChoice = 'fixed'
+    $typed = ''
+    if ($script:txtIpFixed) { $typed = ([string]$script:txtIpFixed.Text).Trim() }
+    if ($typed) { return $typed }
     return [string]$script:FixedServerIp
   }
-  if ($script:rbIpNetwork -and $script:rbIpNetwork.Checked) {
-    $script:IpModeChoice = 'network'
-  }
+  $script:IpModeChoice = 'network'
   $detected = $null
   if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
     $detected = Get-PreferredLanIPv4
@@ -360,17 +371,23 @@ function Get-AssistenteSelectedIp {
 
 function Invoke-StepIp {
   $mode = if ($script:rbIpFixed -and $script:rbIpFixed.Checked) { 'fixed' } else { 'network' }
+  $persist = [bool]($mode -eq 'fixed' -and $script:chkIpPersist -and $script:chkIpPersist.Checked)
   $script:IpModeChoice = $mode
   $ip = Get-AssistenteSelectedIp
-  if ($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
-    Set-StepUi 'ip' 'error' "IP invalido: $ip"
+  if (-not (Test-AssistenteIpv4 $ip)) {
+    Set-StepUi 'ip' 'error' "IP invalido: $ip (use formato 10.6.167.66)"
     return $false
   }
 
   if ($mode -eq 'fixed') {
-    Set-StepUi 'ip' 'running' ("Aplicando IP fixo {0} no sistema…" -f $ip)
+    $script:FixedServerIp = $ip
+    if ($persist) {
+      Set-StepUi 'ip' 'running' ("IP fixo {0} — gravando no sistema e na placa (persiste no reboot)…" -f $ip)
+    } else {
+      Set-StepUi 'ip' 'running' ("IP fixo {0} — so no sistema (placa nao alterada)…" -f $ip)
+    }
   } else {
-    Set-StepUi 'ip' 'running' ("Usando IP da rede: {0}…" -f $ip)
+    Set-StepUi 'ip' 'running' ("IP da Rede (dinamico): {0}…" -f $ip)
   }
 
   Set-PackConfigEnv
@@ -379,13 +396,15 @@ function Invoke-StepIp {
     return $false
   }
 
+  $persistVal = if ($persist) { '1' } else { '0' }
   if (Get-Command Set-EnvKey -ErrorAction SilentlyContinue) {
     Set-EnvKey $script:ConfigEnv 'SERVER_HOST' $ip
     Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $ip
     Set-EnvKey $script:ConfigEnv 'IP_MODE' $mode
+    Set-EnvKey $script:ConfigEnv 'IP_PERSIST' $persistVal
   } else {
     $lines = @(Get-Content $script:ConfigEnv -Encoding UTF8)
-    $keys = @{ SERVER_HOST = $ip; SERVER_ALIAS = $ip; IP_MODE = $mode }
+    $keys = @{ SERVER_HOST = $ip; SERVER_ALIAS = $ip; IP_MODE = $mode; IP_PERSIST = $persistVal }
     foreach ($k in $keys.Keys) {
       $found = $false
       $lines = foreach ($line in $lines) {
@@ -396,10 +415,10 @@ function Invoke-StepIp {
     Set-Content -Path $script:ConfigEnv -Value $lines -Encoding UTF8
   }
 
-  # Tenta fixar na placa de rede (Admin) quando IP fixo — nao bloqueia se falhar
+  # So altera a placa quando o usuario marcou "manter ao reiniciar" (IP fixo persistente)
   $nicNote = ''
-  if ($mode -eq 'fixed') {
-    Set-StepUi 'ip' 'running' ("Configurando placa de rede para {0} (pode pedir Admin)…" -f $ip)
+  if ($persist) {
+    Set-StepUi 'ip' 'running' ("Fixando {0} na placa de rede (Admin/UAC; permanece apos reiniciar)…" -f $ip)
     try {
       $tmp = Join-Path $env:TEMP ("acomp-omps-set-ip-{0}.ps1" -f [guid]::NewGuid().ToString('N'))
       @"
@@ -415,6 +434,10 @@ if (-not `$adapters.Count) { throw 'Nenhuma placa Ethernet/Wi-Fi ativa encontrad
 `$ifIndex = `$a.InterfaceIndex
 `$gw = `$null
 if (`$a.IPv4DefaultGateway) { `$gw = [string]`$a.IPv4DefaultGateway.NextHop }
+`$dns = @()
+try {
+  `$dns = @((Get-DnsClientServerAddress -InterfaceIndex `$ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).ServerAddresses | Where-Object { `$_ })
+} catch { }
 `$prefix = 24
 try {
   `$cur = Get-NetIPAddress -InterfaceIndex `$ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
@@ -424,27 +447,34 @@ try {
 Get-NetIPAddress -InterfaceIndex `$ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
   Where-Object { `$_.IPAddress -notlike '169.*' } |
   ForEach-Object { Remove-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$_.IPAddress -Confirm:`$false -ErrorAction SilentlyContinue }
+try { Remove-NetRoute -InterfaceIndex `$ifIndex -DestinationPrefix '0.0.0.0/0' -Confirm:`$false -ErrorAction SilentlyContinue } catch { }
 Set-NetIPInterface -InterfaceIndex `$ifIndex -Dhcp Disabled -ErrorAction SilentlyContinue
 if (`$gw) {
   New-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$want -PrefixLength `$prefix -DefaultGateway `$gw -ErrorAction Stop | Out-Null
 } else {
   New-NetIPAddress -InterfaceIndex `$ifIndex -IPAddress `$want -PrefixLength `$prefix -ErrorAction Stop | Out-Null
 }
-Set-DnsClientServerAddress -InterfaceIndex `$ifIndex -ServerAddresses @('8.8.8.8','1.1.1.1') -ErrorAction SilentlyContinue
+if (`$dns.Count -gt 0) {
+  Set-DnsClientServerAddress -InterfaceIndex `$ifIndex -ServerAddresses `$dns -ErrorAction SilentlyContinue
+}
 "@ | Set-Content -LiteralPath $tmp -Encoding UTF8
       $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmp
       ) -Verb RunAs -Wait -PassThru -WindowStyle Minimized
       Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
       if ($p.ExitCode -eq 0) {
-        $nicNote = 'Placa de rede ajustada. '
+        $nicNote = 'IP persistente na placa (sobrevive ao reboot). '
         Start-Sleep -Seconds 2
       } else {
-        $nicNote = 'Placa nao alterada (Admin/UAC). Use o IP no sistema mesmo assim. '
+        $nicNote = 'Placa nao alterada (Admin/UAC). IP ficou so no sistema. '
       }
     } catch {
       $nicNote = ("Placa: {0}. " -f $_.Exception.Message)
     }
+  } elseif ($mode -eq 'fixed') {
+    $nicNote = 'IP so no sistema (nao marcado manter no reboot). '
+  } else {
+    $nicNote = 'IP dinamico da rede. '
   }
 
   $aplicar = Get-AplicarHostPs1
@@ -676,15 +706,15 @@ function Show-AssistenteInstalacaoServidor {
   $script:lblHint.ForeColor = [Drawing.Color]::FromArgb(90, 100, 95)
   $top.Controls.Add($script:lblHint)
 
-  # --- Rodape (detalhe completo + alias + status + % + botoes) ---
+  # --- Rodape (detalhe + IP + status + % + botoes) ---
   $bottom = New-Object Windows.Forms.Panel
   $bottom.Dock = 'Bottom'
-  $bottom.Height = 268
+  $bottom.Height = 318
   $form.Controls.Add($bottom)
 
   $detailCaption = New-Object Windows.Forms.Label
   $detailCaption.Text = 'Detalhe completo (selecione a linha na tabela):'
-  $detailCaption.Location = New-Object Drawing.Point(16, 8)
+  $detailCaption.Location = New-Object Drawing.Point(16, 6)
   $detailCaption.Size = New-Object Drawing.Size(500, 18)
   $bottom.Controls.Add($detailCaption)
 
@@ -693,16 +723,16 @@ function Show-AssistenteInstalacaoServidor {
   $script:txtDetailFull.ReadOnly = $true
   $script:txtDetailFull.ScrollBars = 'Vertical'
   $script:txtDetailFull.WordWrap = $true
-  $script:txtDetailFull.Location = New-Object Drawing.Point(16, 28)
-  $script:txtDetailFull.Size = New-Object Drawing.Size(820, 64)
+  $script:txtDetailFull.Location = New-Object Drawing.Point(16, 24)
+  $script:txtDetailFull.Size = New-Object Drawing.Size(820, 48)
   $script:txtDetailFull.Anchor = 'Top,Left,Right'
   $script:txtDetailFull.BackColor = [Drawing.Color]::FromArgb(250, 250, 248)
   $bottom.Controls.Add($script:txtDetailFull)
 
   $ipLbl = New-Object Windows.Forms.Label
-  $ipLbl.Text = 'IP do servidor (escolha uma opcao; usada na etapa "Escolher IP"):'
-  $ipLbl.Location = New-Object Drawing.Point(16, 96)
-  $ipLbl.Size = New-Object Drawing.Size(520, 18)
+  $ipLbl.Text = 'IP do servidor (etapa "Escolher IP"):'
+  $ipLbl.Location = New-Object Drawing.Point(16, 78)
+  $ipLbl.Size = New-Object Drawing.Size(400, 18)
   $bottom.Controls.Add($ipLbl)
 
   $detectedLan = $null
@@ -712,44 +742,66 @@ function Show-AssistenteInstalacaoServidor {
   if (-not $detectedLan) { $detectedLan = '(detectar na etapa)' }
 
   $script:rbIpFixed = New-Object Windows.Forms.RadioButton
-  $script:rbIpFixed.Text = ("IP fixo — {0}" -f $script:FixedServerIp)
-  $script:rbIpFixed.Location = New-Object Drawing.Point(16, 116)
-  $script:rbIpFixed.Size = New-Object Drawing.Size(280, 24)
+  $script:rbIpFixed.Text = 'IP fixo (digite ao lado)'
+  $script:rbIpFixed.Location = New-Object Drawing.Point(16, 98)
+  $script:rbIpFixed.Size = New-Object Drawing.Size(180, 22)
   $script:rbIpFixed.Checked = $true
   $bottom.Controls.Add($script:rbIpFixed)
 
+  $script:txtIpFixed = New-Object Windows.Forms.TextBox
+  $script:txtIpFixed.Text = [string]$script:FixedServerIp
+  $script:txtIpFixed.Location = New-Object Drawing.Point(200, 96)
+  $script:txtIpFixed.Size = New-Object Drawing.Size(150, 24)
+  $script:txtIpFixed.Font = New-Object Drawing.Font('Consolas', 10)
+  $bottom.Controls.Add($script:txtIpFixed)
+
   $script:rbIpNetwork = New-Object Windows.Forms.RadioButton
-  $script:rbIpNetwork.Text = ("IP da Rede — atual: {0}" -f $detectedLan)
-  $script:rbIpNetwork.Location = New-Object Drawing.Point(310, 116)
-  $script:rbIpNetwork.Size = New-Object Drawing.Size(360, 24)
+  $script:rbIpNetwork.Text = ("IP da Rede (aleatorio/DHCP) — atual: {0}" -f $detectedLan)
+  $script:rbIpNetwork.Location = New-Object Drawing.Point(360, 98)
+  $script:rbIpNetwork.Size = New-Object Drawing.Size(460, 22)
+  $script:rbIpNetwork.Anchor = 'Top,Left,Right'
   $script:rbIpNetwork.Checked = $false
   $bottom.Controls.Add($script:rbIpNetwork)
 
+  $script:chkIpPersist = New-Object Windows.Forms.CheckBox
+  $script:chkIpPersist.Text = 'Manter este IP ao reiniciar a maquina e o servidor (grava na placa de rede)'
+  $script:chkIpPersist.Location = New-Object Drawing.Point(16, 124)
+  $script:chkIpPersist.Size = New-Object Drawing.Size(640, 22)
+  $script:chkIpPersist.Checked = $false
+  $bottom.Controls.Add($script:chkIpPersist)
+
   $script:lblIpPreview = New-Object Windows.Forms.Label
   $script:lblIpPreview.Text = ("URL: https://{0}/" -f $script:FixedServerIp)
-  $script:lblIpPreview.Location = New-Object Drawing.Point(680, 118)
-  $script:lblIpPreview.Size = New-Object Drawing.Size(160, 22)
+  $script:lblIpPreview.Location = New-Object Drawing.Point(660, 124)
+  $script:lblIpPreview.Size = New-Object Drawing.Size(180, 22)
   $script:lblIpPreview.Anchor = 'Top,Right'
   $script:lblIpPreview.ForeColor = [Drawing.Color]::FromArgb(40, 90, 70)
   $bottom.Controls.Add($script:lblIpPreview)
 
-  $updateIpPreview = {
-    if ($script:rbIpFixed.Checked) {
-      $script:lblIpPreview.Text = ("URL: https://{0}/" -f $script:FixedServerIp)
+  $updateIpUi = {
+    $fixedOn = [bool]$script:rbIpFixed.Checked
+    $script:txtIpFixed.Enabled = $fixedOn
+    $script:chkIpPersist.Enabled = $fixedOn
+    if (-not $fixedOn) { $script:chkIpPersist.Checked = $false }
+    if ($fixedOn) {
+      $t = ([string]$script:txtIpFixed.Text).Trim()
+      if (-not $t) { $t = $script:FixedServerIp }
+      $script:lblIpPreview.Text = ("URL: https://{0}/" -f $t)
     } else {
       $d = if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) { Get-PreferredLanIPv4 } else { $null }
       if (-not $d) { $d = '…' }
       $script:lblIpPreview.Text = ("URL: https://{0}/" -f $d)
     }
   }
-  $script:rbIpFixed.Add_CheckedChanged({ & $updateIpPreview })
-  $script:rbIpNetwork.Add_CheckedChanged({ & $updateIpPreview })
+  $script:rbIpFixed.Add_CheckedChanged({ & $updateIpUi })
+  $script:rbIpNetwork.Add_CheckedChanged({ & $updateIpUi })
+  $script:txtIpFixed.Add_TextChanged({ & $updateIpUi })
+  & $updateIpUi
 
-  # Compat: referencias antigas a txtAliasWizard nao quebram Update-Buttons
   $script:txtAliasWizard = $null
 
   $script:lblStatus = New-Object Windows.Forms.Label
-  $script:lblStatus.Text = 'Pronto para iniciar. Clique em Continuar. Na etapa de IP, marque IP fixo ou IP da Rede.'
+  $script:lblStatus.Text = 'Pronto. Na etapa de IP: digite o IP fixo ou use IP da Rede; marque manter no reboot so se quiser gravar na placa.'
   $script:lblStatus.Location = New-Object Drawing.Point(16, 150)
   $script:lblStatus.Size = New-Object Drawing.Size(820, 36)
   $script:lblStatus.Anchor = 'Top,Left,Right'
@@ -940,6 +992,8 @@ function Show-AssistenteInstalacaoServidor {
   function Set-IpChoicesEnabled([bool]$On) {
     if ($script:rbIpFixed) { $script:rbIpFixed.Enabled = $On }
     if ($script:rbIpNetwork) { $script:rbIpNetwork.Enabled = $On }
+    if ($script:txtIpFixed) { $script:txtIpFixed.Enabled = ($On -and $script:rbIpFixed.Checked) }
+    if ($script:chkIpPersist) { $script:chkIpPersist.Enabled = ($On -and $script:rbIpFixed.Checked) }
   }
 
   function Update-Buttons([string]$Mode) {
