@@ -135,12 +135,13 @@ if ($Build) {
 Write-Host "==> Subindo API local de export CSV (9788)..."
 try {
   $exportApi = Join-Path $PSScriptRoot 'Local-Export-Api.ps1'
-  $exportLog = Join-Path (Get-ServidorRoot) 'logs\local-export-api.out.log'
+  $exportOut = Join-Path (Get-ServidorRoot) 'logs\local-export-api.out.log'
+  $exportErr = Join-Path (Get-ServidorRoot) 'logs\local-export-api.err.log'
   Start-Process -FilePath 'powershell.exe' -ArgumentList @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
     '-File', $exportApi
   ) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden `
-    -RedirectStandardOutput $exportLog -RedirectStandardError $exportLog | Out-Null
+    -RedirectStandardOutput $exportOut -RedirectStandardError $exportErr | Out-Null
 } catch {
   Write-Host ('Aviso: API de export CSV nao iniciou - ' + $_.Exception.Message)
 }
