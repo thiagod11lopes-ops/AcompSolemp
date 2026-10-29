@@ -1,5 +1,5 @@
 ' Abre o assistente "Instalacao do Servidor" (etapas 1/N).
-' Procura o .ps1 em varios caminhos relativos (pacote portatil / outro PC).
+' Caminhos com espaco (ex.: Transferir Servidor) exigem aspas corretas.
 Option Explicit
 
 Dim sh, fso, root, ps1, cmd, tried, cand, i
@@ -30,7 +30,6 @@ For i = 0 To UBound(candidates)
   End If
 Next
 
-' Ultimo recurso: sobe ate 3 niveis e procura Gereal\painel ou painel
 If ps1 = "" Then
   Dim walk, depth, p1, p2
   walk = root
@@ -54,6 +53,9 @@ If ps1 = "" Then
   WScript.Quit 1
 End If
 
-cmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File """ & ps1 & """"
+' cmd /c + aspas: evita corte no espaco de "Transferir Servidor"
+cmd = "cmd.exe /c powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File " & _
+      Chr(34) & ps1 & Chr(34) & _
+      " || (echo. & echo ERRO ao abrir o assistente. & pause)"
 sh.CurrentDirectory = fso.GetParentFolderName(ps1)
 sh.Run cmd, 1, True

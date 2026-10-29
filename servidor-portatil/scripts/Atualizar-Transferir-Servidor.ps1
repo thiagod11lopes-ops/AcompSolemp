@@ -83,9 +83,37 @@ foreach ($name in $vbsNames) {
   }
 }
 
-# Lancadores PORTATEIS na raiz (usam %~dp0 — funcionam apos copiar para outro PC)
+# Lancadores PORTATEIS na raiz (so .cmd — sem .lnk duplicados; aspas para pastas com espaco)
 Write-Step 'CMD portateis na raiz Transferir Servidor...'
-function Write-PortableCmd([string]$FileName, [string]$RelVbs, [string]$Title) {
+# Remove atalhos .lnk antigos (causam icones duplicados e quebram em outro PC)
+Get-ChildItem -LiteralPath $dstRoot -Filter '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
+# Instalacao: chama PowerShell direto (caminho com aspas — evita fechar na hora)
+@(
+  '@echo off'
+  'title Instalacao do Servidor'
+  'cd /d "%~dp0"'
+  'set "PS1=%~dp0Gereal\painel\Assistente-Instalacao-Servidor.ps1"'
+  'if not exist "%PS1%" set "PS1=%~dp0Geral\painel\Assistente-Instalacao-Servidor.ps1"'
+  'if not exist "%PS1%" set "PS1=%~dp0Gereal\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1"'
+  'if not exist "%PS1%" ('
+  '  echo Nao achei Assistente-Instalacao-Servidor.ps1'
+  '  echo Copie a pasta INTEIRA Transferir Servidor (com a subpasta Gereal).'
+  '  pause'
+  '  exit /b 1'
+  ')'
+  'echo Abrindo assistente...'
+  'echo %PS1%'
+  'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
+  'if errorlevel 1 ('
+  '  echo.'
+  '  echo ERRO ao abrir o assistente. Veja a mensagem acima.'
+  '  pause'
+  '  exit /b 1'
+  ')'
+) | Set-Content -LiteralPath (Join-Path $dstRoot '1-Instalacao-do-Servidor.cmd') -Encoding ASCII
+
+function Write-PortableCmdViaVbs([string]$FileName, [string]$RelVbs, [string]$Title) {
   $cmdPath = Join-Path $dstRoot $FileName
   @(
     '@echo off'
@@ -99,12 +127,21 @@ function Write-PortableCmd([string]$FileName, [string]$RelVbs, [string]$Title) {
     '  pause'
     '  exit /b 1'
     ')'
-    'wscript.exe "%VBS%"'
+    'wscript.exe //nologo "%VBS%"'
+    'if errorlevel 1 pause'
   ) | Set-Content -LiteralPath $cmdPath -Encoding ASCII
 }
-Write-PortableCmd 'Instalacao-do-Servidor.cmd' 'Instalacao-do-Servidor.vbs' 'Instalacao do Servidor'
-Write-PortableCmd 'Iniciar-Servidor-OMPS.cmd' 'Iniciar-Servidor-OMPS.vbs' 'Iniciar Servidor OMPS'
-Write-PortableCmd 'Dashboard-Servidor.cmd' 'Dashboard.vbs' 'Dashboard Servidor'
+Write-PortableCmdViaVbs '2-Iniciar-Servidor-OMPS.cmd' 'Iniciar-Servidor-OMPS.vbs' 'Iniciar Servidor OMPS'
+Write-PortableCmdViaVbs '3-Dashboard-Servidor.cmd' 'Dashboard.vbs' 'Dashboard Servidor'
+
+# Remove nomes antigos duplicados
+foreach ($old in @(
+    'Instalacao-do-Servidor.cmd', 'Iniciar-Servidor-OMPS.cmd', 'Dashboard-Servidor.cmd',
+    'Instalação do Servidor.lnk', 'Iniciar Servidor OMPS.lnk', 'Dashboard Servidor.lnk'
+  )) {
+  $p = Join-Path $dstRoot $old
+  if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+}
 
 # Certificado CMD apontando para cliente do pacote
 @(
@@ -193,11 +230,10 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
   '========================'
   '1) Rode neste PC: "Atualizar Transferir Servidor" (antes de copiar).'
   '2) Copie a pasta INTEIRA "Transferir Servidor" (com a subpasta Gereal).'
-  '3) No PC destino, prefira os arquivos .cmd na raiz:'
-  '   - Instalacao-do-Servidor.cmd'
-  '   - Iniciar-Servidor-OMPS.cmd'
-  '   - Dashboard-Servidor.cmd'
-  '   (os .lnk podem quebrar apos a copia; rode Reparar-Atalhos.cmd se quiser).'
+  '3) No PC destino use APENAS estes arquivos na raiz (sem .lnk):'
+  '   - 1-Instalacao-do-Servidor.cmd'
+  '   - 2-Iniciar-Servidor-OMPS.cmd'
+  '   - 3-Dashboard-Servidor.cmd'
   '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
   ''
   ('frontend\node_modules no pacote: {0}' -f ($(if ($nmOk) { 'SIM (npm install deve pular)' } else { 'NAO (destino fara npm install)' })))
@@ -205,59 +241,14 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
 ) | Set-Content -LiteralPath (Join-Path $geral 'LEIA-ME.txt') -Encoding UTF8
 Copy-Item -Force (Join-Path $geral 'LEIA-ME.txt') (Join-Path $dstRoot 'LEIA-ME.txt') -ErrorAction SilentlyContinue
 
-Write-Step 'atalhos da raiz...'
-$wsh = New-Object -ComObject WScript.Shell
-$ico = Join-Path $geral 'icons\opms.ico'
-# Atalhos apontam para os .cmd portateis (ainda assim o .lnk guarda caminho absoluto
-# deste PC; no outro PC use os .cmd ou rode Reparar-Atalhos.cmd).
-function Set-RootLnk([string]$Name, [string]$CmdFile, [string]$Desc) {
-  $cmdFull = Join-Path $dstRoot $CmdFile
-  $sc = $wsh.CreateShortcut((Join-Path $dstRoot $Name))
-  $sc.TargetPath = $cmdFull
-  $sc.WorkingDirectory = $dstRoot
-  $sc.WindowStyle = 1
-  $sc.Description = $Desc
-  if (Test-Path -LiteralPath $ico) { $sc.IconLocation = "$ico,0" }
-  $sc.Save()
-}
-Set-RootLnk 'Instalação do Servidor.lnk' 'Instalacao-do-Servidor.cmd' 'Assistente de instalacao'
-Set-RootLnk 'Iniciar Servidor OMPS.lnk' 'Iniciar-Servidor-OMPS.cmd' 'Inicia o servidor'
-Set-RootLnk 'Dashboard Servidor.lnk' 'Dashboard-Servidor.cmd' 'Dashboard do servidor'
-
-# No PC destino: recria atalhos com caminhos locais (apos copiar a pasta)
-$repairPs1 = Join-Path $dstRoot 'Reparar-Atalhos.ps1'
-@(
-  '$ErrorActionPreference = ''Stop'''
-  '$root = Split-Path -Parent $MyInvocation.MyCommand.Path'
-  '$wsh = New-Object -ComObject WScript.Shell'
-  '$ico = Join-Path $root ''Gereal\icons\opms.ico'''
-  '$map = @{'
-  '  ''Instalacao do Servidor.lnk'' = ''Instalacao-do-Servidor.cmd'''
-  '  ''Iniciar Servidor OMPS.lnk'' = ''Iniciar-Servidor-OMPS.cmd'''
-  '  ''Dashboard Servidor.lnk'' = ''Dashboard-Servidor.cmd'''
-  '}'
-  'foreach ($k in $map.Keys) {'
-  '  $sc = $wsh.CreateShortcut((Join-Path $root $k))'
-  '  $sc.TargetPath = Join-Path $root $map[$k]'
-  '  $sc.WorkingDirectory = $root'
-  '  $sc.WindowStyle = 1'
-  '  if (Test-Path -LiteralPath $ico) { $sc.IconLocation = \"$ico,0\" }'
-  '  $sc.Save()'
-  '  Write-Host (\"OK: \" + $k)'
-  '}'
-) | Set-Content -LiteralPath $repairPs1 -Encoding UTF8
-@(
-  '@echo off'
-  'cd /d "%~dp0"'
-  'echo Recriando atalhos locais...'
-  'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Reparar-Atalhos.ps1"'
-  'echo.'
-  'echo Pronto. Use os atalhos ou os arquivos .cmd nesta pasta.'
-  'pause'
-) | Set-Content -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.cmd') -Encoding ASCII
+# Remove Reparar-Atalhos antigo (nao usamos mais .lnk no pacote)
+Remove-Item -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.cmd') -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.ps1') -Force -ErrorAction SilentlyContinue
 
 # Recria atalho na Area de Trabalho deste PC (fonte do Cursor)
 Write-Step 'atalho Desktop Atualizar Transferir Servidor...'
+$wsh = New-Object -ComObject WScript.Shell
+$ico = Join-Path $geral 'icons\opms.ico'
 $updateVbs = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.vbs'
 $deskLnk = Join-Path $desk 'Atualizar Transferir Servidor.lnk'
 if (Test-Path -LiteralPath $updateVbs) {
