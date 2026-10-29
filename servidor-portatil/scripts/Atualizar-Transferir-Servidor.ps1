@@ -83,61 +83,102 @@ foreach ($name in $vbsNames) {
   }
 }
 
-# Lancadores PORTATEIS na raiz (so .cmd — sem .lnk duplicados; aspas para pastas com espaco)
-Write-Step 'CMD portateis na raiz Transferir Servidor...'
-# Remove atalhos .lnk antigos (causam icones duplicados e quebram em outro PC)
+# Lancadores PORTATEIS na raiz — VBS (preferido) + CMD sem "start" (espaco no nome da pasta)
+Write-Step 'Lancadores portateis na raiz Transferir Servidor...'
 Get-ChildItem -LiteralPath $dstRoot -Filter '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-# Instalacao: PowerShell com aspas + start /wait (janela nao some sem mensagem)
-@(
-  '@echo off'
-  'title Instalacao do Servidor'
-  'cd /d "%~dp0"'
-  'set "PS1=%~dp0Gereal\painel\Assistente-Instalacao-Servidor.ps1"'
-  'if not exist "%PS1%" set "PS1=%~dp0Geral\painel\Assistente-Instalacao-Servidor.ps1"'
-  'if not exist "%PS1%" set "PS1=%~dp0Gereal\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1"'
-  'if not exist "%PS1%" ('
-  '  echo Nao achei Assistente-Instalacao-Servidor.ps1'
-  '  echo Copie a pasta INTEIRA Transferir Servidor (com a subpasta Gereal).'
-  '  pause'
-  '  exit /b 1'
-  ')'
-  'echo Abrindo assistente...'
-  'echo %PS1%'
-  'echo.'
-  'start "Assistente OMPS" /wait powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
-  'set ERR=%ERRORLEVEL%'
-  'if not "%ERR%"=="0" ('
-  '  echo.'
-  '  echo ERRO ao abrir o assistente (codigo %ERR%).'
-  '  echo Se a janela fechou sozinha, rode de novo e leia a mensagem.'
-  '  pause'
-  '  exit /b %ERR%'
-  ')'
-) | Set-Content -LiteralPath (Join-Path $dstRoot '1-Instalacao-do-Servidor.cmd') -Encoding ASCII
+function Write-RootLauncher {
+  param(
+    [string]$BaseName,
+    [string]$Title,
+    [string[]]$Ps1RelPaths
+  )
+  $vbsPath = Join-Path $dstRoot ($BaseName + '.vbs')
+  $cmdPath = Join-Path $dstRoot ($BaseName + '.cmd')
+  $candLines = @()
+  foreach ($rel in $Ps1RelPaths) {
+    $candLines += ('  root & "\{0}", _' -f ($rel -replace '\\', '\\'))
+  }
+  # VBS: Chr(34) evita corte em "Transferir Servidor"
+  $vbs = @(
+    "' $Title"
+    'Option Explicit'
+    'Dim sh, fso, root, ps1, args, i'
+    'Dim candidates'
+    'Set sh = CreateObject("WScript.Shell")'
+    'Set fso = CreateObject("Scripting.FileSystemObject")'
+    'root = fso.GetParentFolderName(WScript.ScriptFullName)'
+    'ps1 = ""'
+    'candidates = Array( _'
+  )
+  for ($i = 0; $i -lt $Ps1RelPaths.Count; $i++) {
+    # VB string usa barra simples: \Gereal\painel\...
+    $rel = [string]$Ps1RelPaths[$i]
+    $comma = if ($i -lt $Ps1RelPaths.Count - 1) { ', _' } else { ' _' }
+    $vbs += ('  root & "\{0}"{1}' -f $rel, $comma)
+  }
+  $vbs += @(
+    ')'
+    'For i = 0 To UBound(candidates)'
+    '  If fso.FileExists(candidates(i)) Then ps1 = fso.GetAbsolutePathName(candidates(i)) : Exit For'
+    'Next'
+    'If ps1 = "" Then'
+    ('  MsgBox "Nao achei o script de {0}." & vbCrLf & root, vbCritical, "{0}"' -f $Title)
+    '  WScript.Quit 1'
+    'End If'
+    'args = "-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File " & Chr(34) & ps1 & Chr(34)'
+    'sh.Run "powershell.exe " & args, 1, True'
+  )
+  Set-Content -LiteralPath $vbsPath -Value ($vbs -join "`r`n") -Encoding ASCII
 
-function Write-PortableCmdViaVbs([string]$FileName, [string]$RelVbs, [string]$Title) {
-  $cmdPath = Join-Path $dstRoot $FileName
-  @(
+  # CMD: NUNCA usar "start" com caminho com espaco
+  $cmd = @(
     '@echo off'
     "title $Title"
     'cd /d "%~dp0"'
-    "set `"VBS=%~dp0Gereal\$RelVbs`""
-    "if not exist `"%VBS%`" set `"VBS=%~dp0Geral\$RelVbs`""
-    'if not exist "%VBS%" ('
-    "  echo Nao achei Gereal\$RelVbs"
-    '  echo Copie a pasta INTEIRA Transferir Servidor (com a subpasta Gereal).'
+    'setlocal EnableExtensions'
+  )
+  $first = $true
+  foreach ($rel in $Ps1RelPaths) {
+    if ($first) {
+      $cmd += ('set "PS1=%~dp0{0}"' -f $rel)
+      $first = $false
+    } else {
+      $cmd += ('if not exist "%PS1%" set "PS1=%~dp0{0}"' -f $rel)
+    }
+  }
+  $cmd += @(
+    'if not exist "%PS1%" ('
+    "  echo Nao achei script de $Title"
+    '  echo Pasta: %~dp0'
     '  pause'
     '  exit /b 1'
     ')'
-    'wscript.exe //nologo "%VBS%"'
-    'if errorlevel 1 pause'
-  ) | Set-Content -LiteralPath $cmdPath -Encoding ASCII
+    "echo Abrindo $Title..."
+    'echo %PS1%'
+    'powershell.exe -NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
+    'set "ERR=%ERRORLEVEL%"'
+    'if not "%ERR%"=="0" ('
+    '  echo ERRO codigo %ERR%'
+    '  pause'
+    '  exit /b %ERR%'
+    ')'
+    'exit /b 0'
+  )
+  Set-Content -LiteralPath $cmdPath -Value ($cmd -join "`r`n") -Encoding ASCII
 }
-Write-PortableCmdViaVbs '2-Iniciar-Servidor-OMPS.cmd' 'Iniciar-Servidor-OMPS.vbs' 'Iniciar Servidor OMPS'
-Write-PortableCmdViaVbs '3-Dashboard-Servidor.cmd' 'Dashboard.vbs' 'Dashboard Servidor'
 
-# Remove nomes antigos duplicados
+Write-RootLauncher -BaseName '1-Instalacao-do-Servidor' -Title 'Instalacao do Servidor' -Ps1RelPaths @(
+  'Gereal\painel\Assistente-Instalacao-Servidor.ps1',
+  'Gereal\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1'
+)
+Write-RootLauncher -BaseName '2-Iniciar-Servidor-OMPS' -Title 'Iniciar Servidor OMPS' -Ps1RelPaths @(
+  'Gereal\AcompSolemp\servidor-portatil\scripts\Abrir-Tudo.ps1'
+)
+Write-RootLauncher -BaseName '3-Dashboard-Servidor' -Title 'Dashboard Servidor' -Ps1RelPaths @(
+  'Gereal\AcompSolemp\servidor-portatil\scripts\Abrir-Dashboard.ps1'
+)
+
 foreach ($old in @(
     'Instalacao-do-Servidor.cmd', 'Iniciar-Servidor-OMPS.cmd', 'Dashboard-Servidor.cmd',
     'Instalação do Servidor.lnk', 'Iniciar Servidor OMPS.lnk', 'Dashboard Servidor.lnk'
@@ -233,10 +274,11 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
   '========================'
   '1) Rode neste PC: "Atualizar Transferir Servidor" (antes de copiar).'
   '2) Copie a pasta INTEIRA "Transferir Servidor" (com a subpasta Gereal).'
-  '3) No PC destino use APENAS estes arquivos na raiz (sem .lnk):'
-  '   - 1-Instalacao-do-Servidor.cmd'
-  '   - 2-Iniciar-Servidor-OMPS.cmd'
-  '   - 3-Dashboard-Servidor.cmd'
+  '3) No PC destino clique nos arquivos .vbs (preferencial) ou .cmd na raiz:'
+  '   - 1-Instalacao-do-Servidor.vbs'
+  '   - 2-Iniciar-Servidor-OMPS.vbs'
+  '   - 3-Dashboard-Servidor.vbs'
+  '   (Nao use atalhos .lnk. O nome da pasta tem espaco; os .vbs tratam isso.)'
   '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
   ''
   ('frontend\node_modules no pacote: {0}' -f ($(if ($nmOk) { 'SIM (npm install deve pular)' } else { 'NAO (destino fara npm install)' })))
