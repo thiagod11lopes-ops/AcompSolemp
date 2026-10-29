@@ -70,22 +70,18 @@ function Test-HostsAliasReady([string]$Alias) {
   } catch { return $false }
 }
 
-function Get-FirewallRedeCheck([string]$Alias, [bool]$HttpsOk) {
+function Get-FirewallRedeCheck([string]$Ip, [bool]$HttpsOk) {
   $rules = Test-FirewallRulesReady
-  $hostsOk = Test-HostsAliasReady $Alias
   if ($HttpsOk) {
-    return @{ ok = $true; label = 'Pronto HTTPS'; detail = "https://${Alias}/ acessivel" }
+    return @{ ok = $true; label = 'Pronto HTTPS'; detail = "https://${Ip}/ acessivel" }
   }
-  if ($rules -and $hostsOk) {
-    return @{ ok = $true; label = 'Firewall OK'; detail = 'Regras e hosts prontos — suba o servidor' }
+  if ($rules) {
+    return @{ ok = $true; label = 'Firewall OK'; detail = 'Regras prontas — suba o servidor' }
   }
-  $parts = @()
-  if (-not $rules) { $parts += 'regras' }
-  if (-not $hostsOk) { $parts += 'hosts' }
   return @{
     ok     = $false
-    label  = if ($rules -or $hostsOk) { 'Incompleto' } else { 'Pendente' }
-    detail = ('Falta: {0}. Use Liberar Firewall (Admin).' -f ($parts -join ', '))
+    label  = 'Pendente'
+    detail = 'Falta regra de firewall. Use Liberar Firewall (Admin).'
   }
 }
 
@@ -214,12 +210,13 @@ function Get-DashboardMetrics {
     } catch { }
   }
 
+  $httpsLogin = "https://${ip}/login"
   $services = @(
     @{
       id     = 'gateway'
       name   = 'Gateway HTTPS'
-      url    = "https://${alias}/login"
-      code   = (Get-HttpCode "https://${alias}/login")
+      url    = $httpsLogin
+      code   = (Get-HttpCode $httpsLogin)
     },
     @{
       id     = 'vite'
@@ -236,8 +233,8 @@ function Get-DashboardMetrics {
     @{
       id     = 'authGw'
       name   = 'Auth via gateway'
-      url    = "https://${alias}/auth/v1/health"
-      code   = (Get-HttpCode "https://${alias}/auth/v1/health")
+      url    = "https://${ip}/auth/v1/health"
+      code   = (Get-HttpCode "https://${ip}/auth/v1/health")
     }
   )
   foreach ($s in $services) {
@@ -264,7 +261,9 @@ function Get-DashboardMetrics {
   $vcOk = Test-VcRedistInstalled
   $wslOk = Test-WslInstalled
   $gwHttpsOk = [bool](($services | Where-Object { $_.id -eq 'gateway' } | Select-Object -First 1).ok)
-  $fw = Get-FirewallRedeCheck -Alias $alias -HttpsOk:$gwHttpsOk
+  $fw = Get-FirewallRedeCheck -Ip $ip -HttpsOk:$gwHttpsOk
+  $protocol = if ($gwHttpsOk) { 'https' } else { 'http' }
+  $publicUrl = if ($gwHttpsOk) { "https://$ip" } else { "http://$ip" }
 
   # Itens que fazem o servidor funcionar (pre-reqs + saude HTTP).
   $stackChecks = @(
@@ -337,10 +336,11 @@ function Get-DashboardMetrics {
     generatedAt = (Get-Date).ToString('o')
     product     = 'AcompOPMS'
     host        = @{
-      computer = $env:COMPUTERNAME
-      ip       = $ip
-      alias    = $alias
-      publicUrl = "https://$alias"
+      computer  = $env:COMPUTERNAME
+      ip        = $ip
+      alias     = $alias
+      protocol  = $protocol
+      publicUrl = $publicUrl
     }
     memory = @{
       totalBytes = $totalMem

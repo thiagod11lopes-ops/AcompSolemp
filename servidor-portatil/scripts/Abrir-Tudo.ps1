@@ -166,13 +166,14 @@ try {
     exit 2
   }
 
-  Write-Log '==> Aplicando IP/alias da rede...'
+  Write-Log '==> Aplicando IP da rede...'
   & "$PSScriptRoot\Aplicar-Host.ps1"
   $cfg = Import-ServidorConfig
-  $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
   $ip = [string]$cfg.SERVER_HOST
-  # Clientes digitam EXATAMENTE o alias; o gateway usa HTTPS :443.
-  $publicLogin = "https://${alias}/login"
+  if (-not $ip) { $ip = Get-PreferredLanIPv4 }
+  # Clientes usam o IP na barra; gateway HTTPS :443.
+  $publicLogin = "https://${ip}/login"
+  $publicHome = "https://${ip}/"
   $localLogin = "http://127.0.0.1:${appPort}/login"
 
   Write-Log '==> Iniciando DNS do nome cadastrado...'
@@ -245,10 +246,10 @@ try {
       Start-Process $publicLogin | Out-Null
     }
   } else {
-    Write-Log "==> Navegador nao aberto. Acesso: https://$alias"
+    Write-Log "==> Navegador nao aberto. Acesso: $publicHome"
   }
 
-  Write-Log "Pronto. Digite nos outros PCs exatamente: $alias (HTTPS)"
+  Write-Log "Pronto. Nos outros PCs use: $publicHome"
   if (-not $Silent) {
     try {
       Add-Type -AssemblyName System.Windows.Forms
@@ -257,12 +258,11 @@ try {
          "Nos outros computadores:`n" +
          "1) Uma vez: Instalar-Certificado-Confianca.cmd (Admin)`n" +
          "   (pasta servidor-portatil\cliente)`n" +
-         "2) Digite EXATAMENTE no navegador:`n`n" +
-         "    $alias`n`n" +
-         "(sem http:// e sem :5173 - usa HTTPS)`n`n" +
+         "2) Digite no navegador a URL completa:`n`n" +
+         "    $publicHome`n`n" +
+         "(use https:// e o IP — sem porta :5173)`n`n" +
          "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
-         "Liberar-Firewall.cmd (Admin) - instala inicio automatico.`n`n" +
-         "IP interno: $ip"),
+         "Liberar-Firewall.cmd (Admin) - instala inicio automatico."),
         'Iniciar Servidor OMPS',
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Information

@@ -48,16 +48,16 @@ $ip = $cfg.SERVER_HOST
 $alias = Normalize-ServerAlias ([string]$cfg.SERVER_ALIAS)
 Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
 
-# URL publica = HTTPS no nome (gateway :443). Sem :5173 / :8000.
-$publicHost = $alias
+# URL publica = HTTPS no IP (gateway :443). Sem :5173 / :8000. Navegacao pelo IP.
+$publicHost = $ip
 $publicUrl = "https://${publicHost}"
 $httpUrl = "http://${publicHost}"
 $appPort = $cfg.APP_PORT
 $anon = Get-AnonKeyFromSupabase $dockerDir
 
 Write-Host "IP LAN: $ip"
-Write-Host "Alias (exato): $alias"
-Write-Host "URL publica: $publicUrl"
+Write-Host "URL publica (IP): $publicUrl"
+if ($alias) { Write-Host "Alias legado (nao usado na barra): $alias" }
 
 $supabaseEnv = Join-Path $dockerDir '.env'
 Set-EnvKey $supabaseEnv 'SUPABASE_PUBLIC_URL' $publicUrl
@@ -91,8 +91,9 @@ $js = @(
   "  dataSource: 'supabase',"
   "  supabaseUrl: '$publicUrl',"
   "  supabaseAnonKey: '$anon',"
-  "  serverAlias: '$alias',"
+  "  serverAlias: '$ip',"
   "  serverIp: '$ip',"
+  "  publicUrl: '$publicUrl',"
   "  gestorEmail: '$gestorEmailCfg',"
   '};'
 ) -join [Environment]::NewLine
@@ -109,10 +110,10 @@ if (Test-Path (Join-Path $frontendDir 'dist')) {
 $clienteDir = Join-Path (Get-ServidorRoot) 'cliente'
 New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
 @(
-  "ALIAS=$alias"
+  "ALIAS=$ip"
   "IP=$ip"
   "APP_PORT=443"
-  "PUBLIC_URL=https://$alias"
+  "PUBLIC_URL=https://$ip"
 ) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
 
 # hosts local (esta maquina) — necessario para https://alias resolver neste PC

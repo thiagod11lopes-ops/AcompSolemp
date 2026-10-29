@@ -965,10 +965,12 @@ function applyMetrics(m) {
   pill.setAttribute('data-detail-sub', subAttr)
 
   $('updated-at').textContent = fmtTime(m.generatedAt)
-  if (!getAliasCard()?.classList.contains('is-editing') && !aliasJobBusy) {
-    syncAliasDisplay(m.host?.alias || '')
+  syncAddressDisplay(m.host?.publicUrl || '', m.host?.ip || '', m.host?.protocol || '')
+  const ipEl = $('stat-ip')
+  if (ipEl) {
+    const proto = (m.host?.protocol || (String(m.host?.publicUrl || '').startsWith('http://') ? 'http' : 'https')).toUpperCase()
+    ipEl.textContent = m.host?.ip ? `IP ${m.host.ip} · ${proto}` : 'Acesso pelo IP (URL completa)'
   }
-  $('stat-ip').textContent = m.host?.ip ? `IP ${m.host.ip}` : '—'
   $('stat-cpu').textContent = `${Number(m.cpu?.loadPct || 0).toFixed(0)}%`
   $('stat-mem').textContent = `${Number(m.memory?.usedPct || 0).toFixed(1)}%`
   $('stat-mem-detail').textContent = `${m.memory?.usedLabel || '—'} / ${m.memory?.totalLabel || '—'}`
@@ -1192,295 +1194,22 @@ async function saveGestorConfig(event) {
   }
 }
 
-let lastKnownAlias = ''
-
-function setAliasStatus(text, kind) {
-  const el = $('alias-status')
-  if (!el) return
-  el.textContent = text || ''
-  el.className = 'alias-status' + (kind === 'ok' ? ' is-ok' : kind === 'bad' ? ' is-bad' : '')
-}
-
-function syncAliasDisplay(alias) {
-  const value = (alias || '').trim()
-  if (value) lastKnownAlias = value
+/** Mostra URL completa (https://IP ou http://IP) — sem edicao de alias. */
+function syncAddressDisplay(publicUrl, ip, protocol) {
   const el = $('stat-alias')
   if (!el) return
-  el.textContent = value || '—'
+  let url = String(publicUrl || '').trim()
+  if (!url && ip) {
+    const proto = protocol === 'http' ? 'http' : 'https'
+    url = `${proto}://${ip}`
+  }
+  if (url && !/^https?:\/\//i.test(url)) {
+    url = `https://${url.replace(/^\/+/, '')}`
+  }
+  el.textContent = url || '—'
   requestAnimationFrame(() => {
     fitAddressFont(el)
     requestAnimationFrame(() => fitAddressFont(el))
-  })
-}
-
-function getAliasCard() {
-  return document.querySelector('.stat-address')
-}
-
-function openAliasEdit() {
-  const card = getAliasCard()
-  const input = $('input-alias')
-  if (!card || !input) return
-  const current = (lastKnownAlias || $('stat-alias')?.textContent || '').trim()
-  input.value = current === '—' ? '' : current
-  card.classList.add('is-editing')
-  setAliasStatus('', null)
-  input.focus()
-  input.select()
-}
-
-function closeAliasEdit() {
-  const card = getAliasCard()
-  if (card) card.classList.remove('is-editing')
-  setAliasStatus('', null)
-  syncAliasDisplay(lastKnownAlias)
-}
-
-const ALIAS_STEP_DEFAULTS = [
-  {
-    id: 'aplicar-host',
-    label: 'Aplicar-Host (config, hosts local, URLs do app/Supabase)',
-  },
-  {
-    id: 'preparar-https',
-    label: 'Preparar-Https (gerar cert com o novo alias + IP)',
-  },
-  {
-    id: 'reiniciar-gateway',
-    label: 'Reiniciar o gateway (passar a usar o cert novo)',
-  },
-  {
-    id: 'dns-local',
-    label: 'Atualizar DNS local do alias (porta 53), se estiver ativo',
-  },
-  {
-    id: 'supabase-url',
-    label: 'Recriar/reiniciar serviços Supabase que dependem da URL pública',
-  },
-]
-
-let aliasJobPollTimer = null
-let aliasJobBusy = false
-
-function stopAliasJobPoll() {
-  if (aliasJobPollTimer) {
-    clearInterval(aliasJobPollTimer)
-    aliasJobPollTimer = null
-  }
-}
-
-function markForAliasStep(status) {
-  if (status === 'ok') return '✓'
-  if (status === 'warn') return '!'
-  if (status === 'error') return '×'
-  if (status === 'running') return '…'
-  return ''
-}
-
-function renderAliasProgressSteps(steps) {
-  const list = $('alias-progress-steps')
-  if (!list) return
-  const source =
-    Array.isArray(steps) && steps.length
-      ? steps
-      : ALIAS_STEP_DEFAULTS.map((s) => ({ ...s, status: 'pending', detail: '' }))
-  list.innerHTML = source
-    .map((step) => {
-      const status = String(step.status || 'pending')
-      const label = escapeHtml(step.label || step.id || '')
-      const detail = step.detail ? `<p class="alias-progress-detail">${escapeHtml(step.detail)}</p>` : ''
-      return `
-        <li class="alias-progress-item is-${escapeHtml(status)}">
-          <span class="alias-progress-mark" aria-hidden="true">${markForAliasStep(status)}</span>
-          <div>
-            <p class="alias-progress-label">${label}</p>
-            ${detail}
-          </div>
-        </li>
-      `
-    })
-    .join('')
-}
-
-function setAliasProgressCloseable(canClose) {
-  const btn = $('btn-close-alias-progress')
-  const btnX = $('btn-close-alias-progress-x')
-  if (btn) btn.hidden = !canClose
-  if (btnX) btnX.hidden = !canClose
-  aliasJobBusy = !canClose
-}
-
-function openAliasProgressModal(alias) {
-  const modal = $('modal-alias-progress')
-  if (!modal) return
-  $('modal-alias-title').textContent = 'Aplicando novo endereço'
-  $('modal-alias-sub').textContent = alias
-    ? `Alinhando rede para ${alias}…`
-    : 'Alinhando rede, HTTPS e serviços…'
-  const msg = $('alias-progress-message')
-  if (msg) {
-    msg.textContent = 'Iniciando…'
-    msg.className = 'alias-progress-message'
-  }
-  renderAliasProgressSteps(ALIAS_STEP_DEFAULTS.map((s) => ({ ...s, status: 'pending', detail: '' })))
-  setAliasProgressCloseable(false)
-  modal.hidden = false
-}
-
-function closeAliasProgressModal() {
-  if (aliasJobBusy) return
-  stopAliasJobPoll()
-  const modal = $('modal-alias-progress')
-  if (modal) modal.hidden = true
-}
-
-function applyAliasJobSnapshot(job) {
-  if (!job) return
-  renderAliasProgressSteps(job.steps || [])
-  const status = String(job.status || 'idle')
-  const msg = $('alias-progress-message')
-  const appliedAlias = (job.alias || '').trim()
-  if (appliedAlias) {
-    lastKnownAlias = appliedAlias
-    syncAliasDisplay(appliedAlias)
-    $('modal-alias-sub').textContent = `Alinhando rede para ${appliedAlias}…`
-  }
-  if (job.ip) $('stat-ip').textContent = `IP ${job.ip}`
-
-  if (msg) {
-    msg.textContent = job.message || ''
-    if (status === 'done') msg.className = 'alias-progress-message is-ok'
-    else if (status === 'error') msg.className = 'alias-progress-message is-bad'
-    else msg.className = 'alias-progress-message'
-  }
-
-  if (status === 'done' || status === 'error') {
-    setAliasProgressCloseable(true)
-    stopAliasJobPoll()
-    if (status === 'done') {
-      $('modal-alias-title').textContent = 'Endereço aplicado'
-      $('modal-alias-sub').textContent = appliedAlias
-        ? `Novo acesso: https://${appliedAlias}`
-        : 'Rede alinhada ao novo endereço'
-      void loadMetrics()
-    } else {
-      $('modal-alias-title').textContent = 'Falha ao aplicar endereço'
-      $('modal-alias-sub').textContent = 'Veja o item com erro abaixo'
-    }
-  } else {
-    setAliasProgressCloseable(false)
-  }
-}
-
-async function pollAliasJobOnce() {
-  try {
-    const res = await fetch('/api/network-alias', { cache: 'no-store' })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    applyAliasJobSnapshot(data.job || data)
-    if (data.alias) {
-      lastKnownAlias = data.alias
-      if (!aliasJobBusy) syncAliasDisplay(data.alias)
-    }
-    if (data.ip && (data.job?.status === 'done' || !data.job)) {
-      $('stat-ip').textContent = `IP ${data.ip}`
-    }
-  } catch (err) {
-    console.error(err)
-  }
-}
-
-function startAliasJobPoll() {
-  stopAliasJobPoll()
-  void pollAliasJobOnce()
-  aliasJobPollTimer = setInterval(() => void pollAliasJobOnce(), 900)
-}
-
-async function confirmAliasEdit() {
-  const input = $('input-alias')
-  const btnConfirm = $('btn-confirm-alias')
-  const btnCancel = $('btn-cancel-alias')
-  const btnEdit = $('btn-edit-alias')
-  if (!input) return
-  const alias = (input.value || '').trim().toLowerCase()
-  if (alias.length < 3) {
-    setAliasStatus('Informe um endereço válido (ex.: sistema.acompomps.rede).', 'bad')
-    input.focus()
-    return
-  }
-  if (!/^[a-z0-9]([a-z0-9\-.]*[a-z0-9])?$/.test(alias)) {
-    setAliasStatus('Use apenas letras, números, ponto e hífen.', 'bad')
-    input.focus()
-    return
-  }
-  const previous = lastKnownAlias
-  if (alias === previous) {
-    closeAliasEdit()
-    return
-  }
-  const ok = window.confirm(
-    `Alterar o endereço de acesso na rede?\n\nDe: ${previous || '—'}\nPara: ${alias}\n\nOs outros PCs precisarão usar o novo nome.`
-  )
-  if (!ok) return
-
-  btnConfirm && (btnConfirm.disabled = true)
-  btnCancel && (btnCancel.disabled = true)
-  btnEdit && (btnEdit.disabled = true)
-  setAliasStatus('Iniciando aplicação…', null)
-  try {
-    const res = await fetch('/api/network-alias', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    closeAliasEdit()
-    openAliasProgressModal(alias)
-    applyAliasJobSnapshot(data.job || {
-      status: 'running',
-      alias,
-      message: 'Iniciando…',
-      steps: ALIAS_STEP_DEFAULTS.map((s) => ({ ...s, status: 'pending', detail: '' })),
-    })
-    startAliasJobPoll()
-  } catch (err) {
-    setAliasStatus(err instanceof Error ? err.message : 'Falha ao alterar endereço', 'bad')
-  } finally {
-    btnConfirm && (btnConfirm.disabled = false)
-    btnCancel && (btnCancel.disabled = false)
-    btnEdit && (btnEdit.disabled = false)
-  }
-}
-
-function wireAliasEdit() {
-  const btnEdit = $('btn-edit-alias')
-  const btnConfirm = $('btn-confirm-alias')
-  const btnCancel = $('btn-cancel-alias')
-  const input = $('input-alias')
-  if (btnEdit) btnEdit.addEventListener('click', openAliasEdit)
-  if (btnCancel) btnCancel.addEventListener('click', closeAliasEdit)
-  if (btnConfirm) btnConfirm.addEventListener('click', () => void confirmAliasEdit())
-  if (input) {
-    input.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') {
-        ev.preventDefault()
-        void confirmAliasEdit()
-      } else if (ev.key === 'Escape') {
-        ev.preventDefault()
-        closeAliasEdit()
-      }
-    })
-  }
-  document.querySelectorAll('[data-close-alias-progress]').forEach((el) => {
-    el.addEventListener('click', (ev) => {
-      if (aliasJobBusy) {
-        ev.preventDefault()
-        ev.stopPropagation()
-        return
-      }
-      closeAliasProgressModal()
-    })
   })
 }
 
@@ -1600,7 +1329,6 @@ function closeAnyModal() {
   closeEmailsModal()
   closeDetailModal()
   closeServerErrorModal()
-  closeAliasProgressModal()
 }
 
 function wireServerErrorModal() {
@@ -1659,21 +1387,8 @@ function boot() {
     el.addEventListener('click', closeEmailsModal)
   })
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') {
-      const aliasModal = $('modal-alias-progress')
-      if (aliasModal && !aliasModal.hidden) {
-        if (!aliasJobBusy) closeAliasProgressModal()
-        return
-      }
-      const card = getAliasCard()
-      if (card?.classList.contains('is-editing')) {
-        closeAliasEdit()
-        return
-      }
-      closeAnyModal()
-    }
+    if (ev.key === 'Escape') closeAnyModal()
   })
-  wireAliasEdit()
   wireDetailPanels()
   wireFixCheckButtons()
   wireServerErrorModal()
@@ -1688,6 +1403,5 @@ function boot() {
 document.addEventListener('DOMContentLoaded', boot)
 window.addEventListener('beforeunload', () => {
   if (refreshTimer) clearInterval(refreshTimer)
-  stopAliasJobPoll()
   stopServerPoll()
 })
