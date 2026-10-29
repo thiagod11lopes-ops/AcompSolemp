@@ -140,7 +140,13 @@ function Get-DashboardMetrics {
   try { $cfg = Import-ServidorConfig } catch { }
 
   $alias = if ($cfg) { Normalize-AliasInput ([string]$cfg.SERVER_ALIAS) } else { 'sistema.acompomps.rede' }
-  $ip = if ($cfg -and $cfg.SERVER_HOST) { [string]$cfg.SERVER_HOST } else { Get-PreferredLanIPv4 }
+  # Preferir sempre o SERVER_HOST gravado (IP fixo do assistente); so detecta se estiver vazio
+  $ip = if ($cfg -and $cfg.SERVER_HOST) { ([string]$cfg.SERVER_HOST).Trim() } else { '' }
+  $ipMode = if ($cfg -and $cfg.IP_MODE) { ([string]$cfg.IP_MODE).Trim().ToLowerInvariant() } else { '' }
+  if (-not $ip -or ($ipMode -ne 'fixed' -and $ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$')) {
+    $detected = Get-PreferredLanIPv4
+    if ($detected) { $ip = $detected }
+  }
   if (-not $ip) { $ip = '127.0.0.1' }
 
   $os = Get-CimInstance Win32_OperatingSystem
@@ -211,12 +217,30 @@ function Get-DashboardMetrics {
   }
 
   $httpsLogin = "https://${ip}/login"
+  $httpsLoginLocal = 'https://127.0.0.1/login'
+  $gwCode = Get-HttpCode $httpsLogin
+  if ($gwCode -eq 0 -or $gwCode -ge 500) {
+    $localGw = Get-HttpCode $httpsLoginLocal
+    if ($localGw -gt 0 -and $localGw -lt 500) {
+      $gwCode = $localGw
+      $httpsLogin = $httpsLoginLocal
+    }
+  }
+  $authGwUrl = "https://${ip}/auth/v1/health"
+  $authGwCode = Get-HttpCode $authGwUrl
+  if ($authGwCode -eq 0 -or ($authGwCode -ge 500 -and $authGwCode -ne 401)) {
+    $localAuth = Get-HttpCode 'https://127.0.0.1/auth/v1/health'
+    if ($localAuth -gt 0) {
+      $authGwCode = $localAuth
+      $authGwUrl = 'https://127.0.0.1/auth/v1/health'
+    }
+  }
   $services = @(
     @{
       id     = 'gateway'
       name   = 'Gateway HTTPS'
       url    = $httpsLogin
-      code   = (Get-HttpCode $httpsLogin)
+      code   = $gwCode
     },
     @{
       id     = 'vite'
@@ -233,8 +257,8 @@ function Get-DashboardMetrics {
     @{
       id     = 'authGw'
       name   = 'Auth via gateway'
-      url    = "https://${ip}/auth/v1/health"
-      code   = (Get-HttpCode "https://${ip}/auth/v1/health")
+      url    = $authGwUrl
+      code   = $authGwCode
     }
   )
   foreach ($s in $services) {

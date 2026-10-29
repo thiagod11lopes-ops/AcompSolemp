@@ -25,9 +25,22 @@ function Normalize-ServerAlias([string]$Raw) {
 $cfgPath = Join-Path (Get-ServidorRoot) 'config.env'
 $cfg = Import-ServidorConfig
 
+# IP fixo escolhido no assistente (IP_MODE=fixed) nao pode ser sobrescrito pelo IP "detectado"
 if (-not $HostAddress) {
-  $detected = Get-PreferredLanIPv4
-  if ($detected) { $HostAddress = $detected }
+  $mode = ([string]$cfg.IP_MODE).Trim().ToLowerInvariant()
+  $configured = ([string]$cfg.SERVER_HOST).Trim()
+  $persist = ([string]$cfg.IP_PERSIST).Trim()
+  if (($mode -eq 'fixed' -or $persist -eq '1') -and $configured -match '^\d{1,3}(\.\d{1,3}){3}$') {
+    $HostAddress = $configured
+    Write-Host "Mantendo IP fixo do config: $HostAddress (IP_MODE=$mode)"
+  } else {
+    $detected = Get-PreferredLanIPv4
+    if ($detected) {
+      $HostAddress = $detected
+    } elseif ($configured -match '^\d{1,3}(\.\d{1,3}){3}$') {
+      $HostAddress = $configured
+    }
+  }
 }
 
 if ($HostAddress) {

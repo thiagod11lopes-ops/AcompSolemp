@@ -12,8 +12,13 @@ $ErrorActionPreference = 'Stop'
 $cfg = Import-ServidorConfig
 Assert-DockerRunning
 
-Write-Host "==> Aplicando host $($cfg.SERVER_HOST)..."
-& "$PSScriptRoot\Aplicar-Host.ps1"
+$applyHost = ([string]$cfg.SERVER_HOST).Trim()
+Write-Host "==> Aplicando host $applyHost..."
+if ($applyHost -match '^\d{1,3}(\.\d{1,3}){3}$') {
+  & "$PSScriptRoot\Aplicar-Host.ps1" -HostAddress $applyHost
+} else {
+  & "$PSScriptRoot\Aplicar-Host.ps1"
+}
 
 $dockerDir = $cfg.SUPABASE_DOCKER_DIR
 $frontendDir = $cfg.FRONTEND_DIR

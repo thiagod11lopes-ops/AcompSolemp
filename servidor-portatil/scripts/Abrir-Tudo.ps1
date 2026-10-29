@@ -166,8 +166,16 @@ try {
     exit 2
   }
 
-  Write-Log '==> Aplicando IP da rede...'
-  & "$PSScriptRoot\Aplicar-Host.ps1"
+  Write-Log '==> Aplicando IP (respeita IP fixo do assistente)...'
+  $cfgPre = Import-ServidorConfig
+  $fixedHost = ([string]$cfgPre.SERVER_HOST).Trim()
+  $ipMode = ([string]$cfgPre.IP_MODE).Trim().ToLowerInvariant()
+  if (($ipMode -eq 'fixed' -or ([string]$cfgPre.IP_PERSIST).Trim() -eq '1') -and $fixedHost -match '^\d{1,3}(\.\d{1,3}){3}$') {
+    Write-Log "IP fixo preservado: $fixedHost"
+    & "$PSScriptRoot\Aplicar-Host.ps1" -HostAddress $fixedHost
+  } else {
+    & "$PSScriptRoot\Aplicar-Host.ps1"
+  }
   $cfg = Import-ServidorConfig
   $ip = [string]$cfg.SERVER_HOST
   if (-not $ip) { $ip = Get-PreferredLanIPv4 }
