@@ -88,7 +88,7 @@ Write-Step 'CMD portateis na raiz Transferir Servidor...'
 # Remove atalhos .lnk antigos (causam icones duplicados e quebram em outro PC)
 Get-ChildItem -LiteralPath $dstRoot -Filter '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
-# Instalacao: chama PowerShell direto (caminho com aspas — evita fechar na hora)
+# Instalacao: PowerShell com aspas + start /wait (janela nao some sem mensagem)
 @(
   '@echo off'
   'title Instalacao do Servidor'
@@ -104,12 +104,15 @@ Get-ChildItem -LiteralPath $dstRoot -Filter '*.lnk' -ErrorAction SilentlyContinu
   ')'
   'echo Abrindo assistente...'
   'echo %PS1%'
-  'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
-  'if errorlevel 1 ('
+  'echo.'
+  'start "Assistente OMPS" /wait powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%PS1%"'
+  'set ERR=%ERRORLEVEL%'
+  'if not "%ERR%"=="0" ('
   '  echo.'
-  '  echo ERRO ao abrir o assistente. Veja a mensagem acima.'
+  '  echo ERRO ao abrir o assistente (codigo %ERR%).'
+  '  echo Se a janela fechou sozinha, rode de novo e leia a mensagem.'
   '  pause'
-  '  exit /b 1'
+  '  exit /b %ERR%'
   ')'
 ) | Set-Content -LiteralPath (Join-Path $dstRoot '1-Instalacao-do-Servidor.cmd') -Encoding ASCII
 
@@ -249,12 +252,12 @@ Remove-Item -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.ps1') -Force -Erro
 Write-Step 'atalho Desktop Atualizar Transferir Servidor...'
 $wsh = New-Object -ComObject WScript.Shell
 $ico = Join-Path $geral 'icons\opms.ico'
-$updateVbs = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.vbs'
+$updateCmd = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.cmd'
 $deskLnk = Join-Path $desk 'Atualizar Transferir Servidor.lnk'
-if (Test-Path -LiteralPath $updateVbs) {
+if (Test-Path -LiteralPath $updateCmd) {
   $scUp = $wsh.CreateShortcut($deskLnk)
-  $scUp.TargetPath = $updateVbs
-  $scUp.WorkingDirectory = Split-Path $updateVbs
+  $scUp.TargetPath = $updateCmd
+  $scUp.WorkingDirectory = Split-Path $updateCmd
   $scUp.WindowStyle = 1
   $scUp.Description = 'Sincroniza Transferir Servidor a partir do projeto Cursor'
   $icoSrc = Join-Path $proj 'servidor-portatil\icons\opms.ico'

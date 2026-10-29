@@ -1107,4 +1107,20 @@ function Show-AssistenteInstalacaoServidor {
   [void]$form.ShowDialog()
 }
 
-Show-AssistenteInstalacaoServidor
+try {
+  Show-AssistenteInstalacaoServidor
+} catch {
+  $msg = $_.Exception.Message
+  try {
+    [Windows.Forms.MessageBox]::Show(
+      ("Falha ao abrir o assistente:`n`n{0}" -f $msg),
+      'Instalacao do Servidor',
+      [Windows.Forms.MessageBoxButtons]::OK,
+      [Windows.Forms.MessageBoxIcon]::Error
+    ) | Out-Null
+  } catch {
+    Write-Host ("ERRO: {0}" -f $msg)
+    Read-Host 'Pressione Enter para fechar'
+  }
+  exit 1
+}
