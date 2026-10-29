@@ -252,12 +252,20 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
 @(
   'TRANSFERIR PARA OUTRO PC'
   '========================'
-  '1) Rode neste PC: "Atualizar Transferir Servidor" (antes de copiar).'
-  '2) Copie a pasta INTEIRA "Transferir Servidor" (com a subpasta Gereal).'
+  'INSTALACAO (1a vez / pacote completo):'
+  '1) Rode neste PC: "Atualizar Transferir Servidor".'
+  '2) Copie a pasta INTEIRA "Transferir Servidor" (com Gereal).'
   '3) No PC destino use SO estes 3 icones na raiz:'
   '   - 1-Instalacao-do-Servidor.vbs'
   '   - 2-Iniciar-Servidor-OMPS.vbs'
   '   - 3-Dashboard-Servidor.vbs'
+  ''
+  'ATUALIZACAO (pendrive leve — preferivel depois da 1a vez):'
+  '1) Neste PC, "Atualizar Transferir Servidor" tambem gera Desktop\Atualizacao.'
+  '2) Copie so a pasta "Atualizacao" (ou "Atualização") para o outro PC.'
+  '3) No destino, abra a pasta e clique em "Atualizar Agora".'
+  '   Isso atualiza "%USERPROFILE%\Desktop\Transferir Servidor".'
+  ''
   '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
   '5) Pacote enxuto: sem Instalador OPMS e sem instalador Cursor (so Docker/Node/VC/WSL).'
   ''
@@ -276,17 +284,141 @@ $wsh = New-Object -ComObject WScript.Shell
 $ico = Join-Path $geral 'icons\opms.ico'
 $updateCmd = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.cmd'
 $deskLnk = Join-Path $desk 'Atualizar Transferir Servidor.lnk'
+$icoSrc = Join-Path $proj 'servidor-portatil\icons\opms.ico'
+if (-not (Test-Path -LiteralPath $icoSrc)) { $icoSrc = $ico }
 if (Test-Path -LiteralPath $updateCmd) {
   $scUp = $wsh.CreateShortcut($deskLnk)
   $scUp.TargetPath = $updateCmd
   $scUp.WorkingDirectory = Split-Path $updateCmd
   $scUp.WindowStyle = 1
-  $scUp.Description = 'Sincroniza Transferir Servidor a partir do projeto Cursor'
-  $icoSrc = Join-Path $proj 'servidor-portatil\icons\opms.ico'
-  if (-not (Test-Path -LiteralPath $icoSrc)) { $icoSrc = $ico }
+  $scUp.Description = 'Sincroniza Transferir Servidor + gera pasta Atualizacao (pendrive)'
   if (Test-Path -LiteralPath $icoSrc) { $scUp.IconLocation = "$icoSrc,0" }
   $scUp.Save()
 }
+
+# ---------------------------------------------------------------------------
+# Pasta leve Desktop\Atualização — scripts/frontend leve (pendrive)
+# ---------------------------------------------------------------------------
+Write-Step 'Gerando pasta Desktop\Atualização (patch pendrive)...'
+$updRoot = Join-Path $desk 'Atualização'
+# Remove nome antigo sem acento, se existir
+$updRootOld = Join-Path $desk 'Atualizacao'
+if ((Test-Path -LiteralPath $updRootOld) -and ($updRootOld -ne $updRoot)) {
+  Remove-Item -LiteralPath $updRootOld -Recurse -Force -ErrorAction SilentlyContinue
+}
+$updPayload = Join-Path $updRoot 'payload'
+$updScripts = Join-Path $updRoot 'scripts'
+if (Test-Path -LiteralPath $updRoot) {
+  Remove-Item -LiteralPath $updRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path $updPayload | Out-Null
+New-Item -ItemType Directory -Force -Path $updScripts | Out-Null
+
+function Copy-PatchItem([string]$RelPath) {
+  $from = Join-Path $dstRoot $RelPath
+  $to = Join-Path $updPayload $RelPath
+  if (-not (Test-Path -LiteralPath $from)) { return }
+  $item = Get-Item -LiteralPath $from -Force
+  if ($item.PSIsContainer) {
+    New-Item -ItemType Directory -Force -Path $to | Out-Null
+    [void](Invoke-Rcopy $from $to @('node_modules', 'dist', '.vite', 'logs', 'state') @('*.log', '*.pid'))
+  } else {
+    $parent = Split-Path -Parent $to
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    Copy-Item -Force $from $to
+  }
+}
+
+# Raiz Transferir Servidor (icones + LEIA-ME)
+foreach ($rel in @(
+    '1-Instalacao-do-Servidor.vbs',
+    '2-Iniciar-Servidor-OMPS.vbs',
+    '3-Dashboard-Servidor.vbs',
+    'LEIA-ME.txt'
+  )) {
+  Copy-PatchItem $rel
+}
+
+# Painel / scripts / dashboard / launchers (sem instaladores, sem node_modules, sem supabase)
+foreach ($rel in @(
+    'Gereal\painel',
+    'Gereal\icons',
+    'Gereal\LEIA-ME.txt',
+    'Gereal\Instalar-Certificado-Confianca.cmd',
+    'Gereal\AcompSolemp\servidor-portatil\scripts',
+    'Gereal\AcompSolemp\servidor-portatil\painel',
+    'Gereal\AcompSolemp\servidor-portatil\dashboard',
+    'Gereal\AcompSolemp\servidor-portatil\cliente',
+    'Gereal\AcompSolemp\servidor-portatil\Atualizar-Transferir-Servidor.cmd',
+    'Gereal\AcompSolemp\servidor-portatil\Atualizar-Transferir-Servidor.vbs',
+    'Gereal\AcompSolemp\frontend\src',
+    'Gereal\AcompSolemp\frontend\index.html',
+    'Gereal\AcompSolemp\frontend\package.json',
+    'Gereal\AcompSolemp\frontend\vite.config.js',
+    'Gereal\AcompSolemp\frontend\vite.config.ts'
+  )) {
+  Copy-PatchItem $rel
+}
+
+# Script aplicador + VBS "Atualizar Agora"
+Copy-Item -Force (Join-Path $proj 'servidor-portatil\scripts\Aplicar-Atualizacao-Transferir.ps1') $updScripts
+
+$vbsUpd = Join-Path $updRoot 'Atualizar Agora.vbs'
+@(
+  "' Aplica payload em Desktop\Transferir Servidor"
+  'Option Explicit'
+  'Dim sh, fso, root, ps1, args'
+  'Set sh = CreateObject("WScript.Shell")'
+  'Set fso = CreateObject("Scripting.FileSystemObject")'
+  'root = fso.GetParentFolderName(WScript.ScriptFullName)'
+  'ps1 = root & "\scripts\Aplicar-Atualizacao-Transferir.ps1"'
+  'If Not fso.FileExists(ps1) Then'
+  '  MsgBox "Nao achei:" & vbCrLf & ps1, vbCritical, "Atualizar Agora"'
+  '  WScript.Quit 1'
+  'End If'
+  'args = "-NoLogo -NoProfile -ExecutionPolicy Bypass -File " & Chr(34) & ps1 & Chr(34)'
+  'sh.Run "powershell.exe " & args, 1, True'
+) | Set-Content -LiteralPath $vbsUpd -Encoding ASCII
+
+$when = Get-Date -Format 'yyyy-MM-dd HH:mm'
+$manifest = New-Object System.Collections.Generic.List[string]
+Get-ChildItem -LiteralPath $updPayload -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+  $rel = $_.FullName.Substring($updPayload.Length).TrimStart('\')
+  [void]$manifest.Add($rel)
+}
+@(
+  "Pacote Atualizacao AcompOPMS"
+  "Gerado em: $when"
+  "Origem Transferir Servidor: $dstRoot"
+  "Destino no outro PC: %USERPROFILE%\Desktop\Transferir Servidor"
+  ""
+  "Arquivos no payload: $($manifest.Count)"
+  "----------------------------------------"
+) + $manifest | Set-Content -LiteralPath (Join-Path $updRoot 'versao.txt') -Encoding UTF8
+
+@(
+  'PASTA ATUALIZACAO (pendrive leve)'
+  '================================='
+  '1) Copie esta pasta INTEIRA para o outro computador (USB).'
+  '2) No outro PC, a pasta "Transferir Servidor" deve existir na Area de Trabalho.'
+  '3) Abra esta pasta e clique em "Atualizar Agora".'
+  '4) Depois, se precisar, rode 2-Iniciar-Servidor-OMPS.'
+  ''
+  'NAO substitui instalacao completa (Docker, node_modules, supabase).'
+  'Para 1a vez, copie a pasta completa "Transferir Servidor".'
+  ''
+  ("Gerado em: {0}" -f $when)
+) | Set-Content -LiteralPath (Join-Path $updRoot 'LEIA-ME.txt') -Encoding UTF8
+
+# Atalho opcional na Area de Trabalho apontando para a pasta Atualizacao (facil achar)
+$updFolderLnk = Join-Path $desk 'Atualização (pendrive).lnk'
+try {
+  $scFolder = $wsh.CreateShortcut($updFolderLnk)
+  $scFolder.TargetPath = $updRoot
+  $scFolder.Description = 'Pasta leve para copiar no pendrive e atualizar o outro PC'
+  if (Test-Path -LiteralPath $icoSrc) { $scFolder.IconLocation = "$icoSrc,0" }
+  $scFolder.Save()
+} catch { }
 
 # Checklist
 $checks = @(
@@ -294,7 +426,10 @@ $checks = @(
   (Join-Path $geral 'painel\Assistente-Instalacao-Servidor.ps1'),
   (Join-Path $geral 'AcompSolemp\servidor-portatil\scripts\Abrir-Tudo.ps1'),
   (Join-Path $geral 'AcompSolemp\frontend\package.json'),
-  (Join-Path $geral 'supabase-master\docker\docker-compose.yml')
+  (Join-Path $geral 'supabase-master\docker\docker-compose.yml'),
+  (Join-Path $updRoot 'Atualizar Agora.vbs'),
+  (Join-Path $updScripts 'Aplicar-Atualizacao-Transferir.ps1'),
+  (Join-Path $updPayload 'Gereal\AcompSolemp\servidor-portatil\scripts\Aplicar-Host.ps1')
 )
 $bad = @($checks | Where-Object { -not (Test-Path -LiteralPath $_) })
 $acompItem = Get-Item -LiteralPath $acompDst -Force
@@ -310,9 +445,11 @@ if ($bad.Count -gt 0) {
   Write-Host 'CONCLUIDO COM AVISOS:' -ForegroundColor Yellow
   $bad | ForEach-Object { Write-Host ("  - {0}" -f $_) }
 } else {
-  Write-Host 'CONCLUIDO: Transferir Servidor atualizado (copia real).' -ForegroundColor Green
+  Write-Host 'CONCLUIDO: Transferir Servidor + pasta Atualizacao prontos.' -ForegroundColor Green
 }
-Write-Host 'Pode copiar a pasta Transferir Servidor para o outro computador.'
+Write-Host ("Pacote completo : {0}" -f $dstRoot)
+Write-Host ("Patch pendrive  : {0}" -f $updRoot)
+Write-Host 'Para o outro PC (ja instalado): copie so a pasta Atualizacao e use Atualizar Agora.'
 Write-Host ''
 if ([Environment]::UserInteractive -and -not $env:ACOMP_NO_PAUSE) {
   Write-Host 'Pressione Enter para fechar...'
