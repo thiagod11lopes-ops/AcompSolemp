@@ -1,24 +1,59 @@
 ' Abre o assistente "Instalacao do Servidor" (etapas 1/N).
+' Procura o .ps1 em varios caminhos relativos (pacote portatil / outro PC).
 Option Explicit
 
-Dim sh, fso, root, ps1, cmd
+Dim sh, fso, root, ps1, cmd, tried, cand, i
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 root = fso.GetParentFolderName(WScript.ScriptFullName)
-ps1 = root & "\painel\Assistente-Instalacao-Servidor.ps1"
+tried = ""
+ps1 = ""
 
-If Not fso.FileExists(ps1) Then
-  ' Pacote "Iniciar Servidor": painel na raiz do pack
-  ps1 = root & "\..\painel\Assistente-Instalacao-Servidor.ps1"
-  If fso.FileExists(ps1) Then ps1 = fso.GetAbsolutePathName(ps1)
+Dim candidates
+candidates = Array( _
+  root & "\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\Gereal\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\Geral\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\..\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\..\Gereal\painel\Assistente-Instalacao-Servidor.ps1", _
+  root & "\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1" _
+)
+
+For i = 0 To UBound(candidates)
+  cand = candidates(i)
+  tried = tried & cand & vbCrLf
+  If fso.FileExists(cand) Then
+    ps1 = fso.GetAbsolutePathName(cand)
+    Exit For
+  End If
+Next
+
+' Ultimo recurso: sobe ate 3 niveis e procura Gereal\painel ou painel
+If ps1 = "" Then
+  Dim walk, depth, p1, p2
+  walk = root
+  For depth = 1 To 4
+    p1 = walk & "\painel\Assistente-Instalacao-Servidor.ps1"
+    p2 = walk & "\Gereal\painel\Assistente-Instalacao-Servidor.ps1"
+    tried = tried & p1 & vbCrLf & p2 & vbCrLf
+    If fso.FileExists(p1) Then ps1 = fso.GetAbsolutePathName(p1) : Exit For
+    If fso.FileExists(p2) Then ps1 = fso.GetAbsolutePathName(p2) : Exit For
+    If fso.GetParentFolderName(walk) = walk Or fso.GetParentFolderName(walk) = "" Then Exit For
+    walk = fso.GetParentFolderName(walk)
+  Next
 End If
 
-If Not fso.FileExists(ps1) Then
+If ps1 = "" Then
   MsgBox "Nao achei Assistente-Instalacao-Servidor.ps1." & vbCrLf & vbCrLf & _
-    root & "\painel\Assistente-Instalacao-Servidor.ps1", vbCritical, "Instalacao do Servidor"
+    "VBS em:" & vbCrLf & WScript.ScriptFullName & vbCrLf & vbCrLf & _
+    "Caminhos tentados:" & vbCrLf & tried & vbCrLf & _
+    "Copie a pasta INTEIRA ""Transferir Servidor"" (com a subpasta Gereal)." , _
+    vbCritical, "Instalacao do Servidor"
   WScript.Quit 1
 End If
 
 cmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File """ & ps1 & """"
+sh.CurrentDirectory = fso.GetParentFolderName(ps1)
 sh.Run cmd, 1, True
