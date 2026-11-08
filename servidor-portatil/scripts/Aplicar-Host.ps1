@@ -61,15 +61,18 @@ $ip = $cfg.SERVER_HOST
 $alias = Normalize-ServerAlias ([string]$cfg.SERVER_ALIAS)
 Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
 
-# URL publica = HTTPS no IP (gateway :443). Sem :5173 / :8000. Navegacao pelo IP.
+# URL publica = HTTP no IP (gateway :80) — rede local sem certificado.
+# HTTPS :443 continua disponivel apos instalar a CA. Sem :5173 / :8000.
 $publicHost = $ip
-$publicUrl = "https://${publicHost}"
 $httpUrl = "http://${publicHost}"
+$httpsUrl = "https://${publicHost}"
+$publicUrl = $httpUrl
 $appPort = $cfg.APP_PORT
 $anon = Get-AnonKeyFromSupabase $dockerDir
 
 Write-Host "IP LAN: $ip"
 Write-Host "URL publica (IP): $publicUrl"
+Write-Host "HTTPS (opcional): $httpsUrl"
 if ($alias) { Write-Host "Alias legado (nao usado na barra): $alias" }
 
 $supabaseEnv = Join-Path $dockerDir '.env'
@@ -77,10 +80,10 @@ Set-EnvKey $supabaseEnv 'SUPABASE_PUBLIC_URL' $publicUrl
 Set-EnvKey $supabaseEnv 'API_EXTERNAL_URL' "$publicUrl/auth/v1"
 Set-EnvKey $supabaseEnv 'SITE_URL' $publicUrl
 Set-EnvKey $supabaseEnv 'ADDITIONAL_REDIRECT_URLS' (
-  "$publicUrl,$publicUrl/redefinir-senha,$publicUrl/login," +
   "$httpUrl,$httpUrl/redefinir-senha,$httpUrl/login," +
-  "https://${ip},https://${ip}/redefinir-senha,https://${ip}/login," +
+  "$httpsUrl,$httpsUrl/redefinir-senha,$httpsUrl/login," +
   "http://${ip},http://${ip}/redefinir-senha,http://${ip}/login," +
+  "https://${ip},https://${ip}/redefinir-senha,https://${ip}/login," +
   "http://${ip}:${appPort},http://${ip}:${appPort}/redefinir-senha," +
   "http://localhost:${appPort},http://127.0.0.1:${appPort},http://127.0.0.1:${appPort}/login"
 )
@@ -125,8 +128,8 @@ New-Item -ItemType Directory -Force -Path $clienteDir | Out-Null
 @(
   "ALIAS=$ip"
   "IP=$ip"
-  "APP_PORT=443"
-  "PUBLIC_URL=https://$ip"
+  "APP_PORT=80"
+  "PUBLIC_URL=http://$ip"
 ) | Set-Content -Path (Join-Path $clienteDir 'hosts-map.env') -Encoding ASCII
 
 # hosts local (esta maquina) — necessario para https://alias resolver neste PC

@@ -1,4 +1,4 @@
-# Um clique: dialogos + Docker + Supabase + app + gateway HTTPS :443 + Chrome no nome cadastrado.
+﻿# Um clique: dialogos + Docker + Supabase + app + gateway HTTPS :443 + Chrome no nome cadastrado.
 #
 # Uso:
 #   .\Abrir-Tudo.ps1
@@ -179,9 +179,9 @@ try {
   $cfg = Import-ServidorConfig
   $ip = [string]$cfg.SERVER_HOST
   if (-not $ip) { $ip = Get-PreferredLanIPv4 }
-  # Clientes usam o IP na barra; gateway HTTPS :443.
-  $publicLogin = "https://${ip}/login"
-  $publicHome = "https://${ip}/"
+  # Clientes usam HTTP na rede local (sem certificado). HTTPS fica opcional.
+  $publicLogin = "http://${ip}/login"
+  $publicHome = "http://${ip}/"
   $localLogin = "http://127.0.0.1:${appPort}/login"
 
   Write-Log '==> Iniciando DNS do nome cadastrado...'
@@ -263,20 +263,16 @@ try {
     Write-Log "==> Navegador nao aberto. Acesso: $publicHome"
   }
 
-  $httpBootstrap = if ($ip) { "http://${ip}/" } else { $publicHome }
-  Write-Log "Pronto. Nos outros PCs use: $httpBootstrap (instala certificado e abre o sistema)."
+  Write-Log "Pronto. Nos outros PCs use: $publicHome (HTTP — sem certificado)."
   if (-not $Silent) {
     try {
       Add-Type -AssemblyName System.Windows.Forms
       [System.Windows.Forms.MessageBox]::Show(
-        ("Servidor pronto (HTTPS).`n`n" +
+        ("Servidor pronto.`n`n" +
          "Nos outros computadores, abra:`n`n" +
-         "    $httpBootstrap`n`n" +
-         "A pagina instala o certificado automaticamente`n" +
-         "(aceite o UAC) e abre o sistema sem o aviso`n" +
-         "'Sua conexao nao e particular'.`n`n" +
-         "Depois pode usar diretamente:`n" +
          "    $publicHome`n`n" +
+         "(http — sem aviso de certificado)`n`n" +
+         "HTTPS continua opcional apos instalar a CA.`n`n" +
          "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
          "Liberar-Firewall.cmd (Admin)."),
         'Iniciar Servidor OMPS',
