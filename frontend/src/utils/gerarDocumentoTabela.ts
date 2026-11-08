@@ -521,3 +521,159 @@ export async function downloadGerarDocumento(
   }
   await downloadTabelaAsPdf(table)
 }
+
+export interface GerarDocumentoAba {
+  name: string
+  headers: string[]
+  rows: string[][]
+}
+
+function sanitizeSheetName(name: string, used: Set<string>): string {
+  let base = name.replace(/[\\/*?:[\]]/g, ' ').replace(/\s+/g, ' ').trim() || 'Aba'
+  if (base.length > 31) base = base.slice(0, 31)
+  let candidate = base
+  let i = 2
+  while (used.has(candidate.toLowerCase())) {
+    const suffix = ` (${i})`
+    candidate = `${base.slice(0, Math.max(1, 31 - suffix.length))}${suffix}`
+    i += 1
+  }
+  used.add(candidate.toLowerCase())
+  return candidate
+}
+
+/** Gera .xlsx com várias abas (Office Open XML mínimo). */
+export async function downloadAbasAsXlsx(
+  fileBaseName: string,
+  abas: GerarDocumentoAba[],
+): Promise<void> {
+  if (abas.length === 0) {
+    throw new Error('Nenhuma aba para exportar.')
+  }
+
+  const shared: string[] = []
+  const indexOf = (value: string) => {
+    const i = shared.indexOf(value)
+    if (i >= 0) return i
+    shared.push(value)
+    return shared.length - 1
+  }
+
+  const usedNames = new Set<string>()
+  const sheetMetas = abas.map((aba, idx) => ({
+    name: sanitizeSheetName(aba.name, usedNames),
+    sheetId: idx + 1,
+    path: `worksheets/sheet${idx + 1}.xml`,
+    headers: aba.headers,
+    rows: aba.rows,
+  }))
+
+  const sheetXmls = sheetMetas.map((meta) => {
+    const headerCells = meta.headers
+      .map((h, c) => {
+        const ref = `${colLetters(c)}1`
+        return `<c r="${ref}" t="s"><v>${indexOf(h)}</v></c>`
+      })
+      .join('')
+    const dataRowsXml = meta.rows
+      .map((row, r) => {
+        const rowNum = r + 2
+        const cells = meta.headers
+          .map((_, c) => {
+            const ref = `${colLetters(c)}${rowNum}`
+            const text = String(row[c] ?? '')
+            return `<c r="${ref}" t="s"><v>${indexOf(text)}</v></c>`
+          })
+          .join('')
+        return `<row r="${rowNum}">${cells}</row>`
+      })
+      .join('')
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">${headerCells}</row>
+    ${dataRowsXml}
+  </sheetData>
+</worksheet>`
+  })
+
+  const sharedXml = shared.map((s) => `<si><t>${escapeXml(s)}</t></si>`).join('')
+  const sharedStringsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${shared.length}" uniqueCount="${shared.length}">
+${sharedXml}
+</sst>`
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    ${sheetMetas
+      .map(
+        (m, i) =>
+          `<sheet name="${escapeXml(m.name)}" sheetId="${m.sheetId}" r:id="rId${i + 1}"/>`,
+      )
+      .join('\n    ')}
+  </sheets>
+</workbook>`
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${sheetMetas
+    .map(
+      (m, i) =>
+        `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="${m.path}"/>`,
+    )
+    .join('\n  ')}
+  <Relationship Id="rId${sheetMetas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
+  <Relationship Id="rId${sheetMetas.length + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  ${sheetMetas
+    .map(
+      (m) =>
+        `<Override PartName="/xl/${m.path}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+    )
+    .join('\n  ')}
+  <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellStyleXfs count="1"><xf/></cellStyleXfs>
+  <cellXfs count="1"><xf/></cellXfs>
+</styleSheet>`
+
+  const enc = new TextEncoder()
+  const files: Zippable = {
+    '[Content_Types].xml': enc.encode(contentTypes),
+    '_rels/.rels': enc.encode(rootRels),
+    'xl/workbook.xml': enc.encode(workbookXml),
+    'xl/_rels/workbook.xml.rels': enc.encode(workbookRels),
+    'xl/sharedStrings.xml': enc.encode(sharedStringsXml),
+    'xl/styles.xml': enc.encode(stylesXml),
+  }
+  sheetMetas.forEach((m, i) => {
+    files[`xl/${m.path}`] = enc.encode(sheetXmls[i])
+  })
+
+  const zipped = zipSync(files, { level: 6 })
+  triggerDownload(
+    new Blob([zipped], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+    `${stampFileBase(fileBaseName)}.xlsx`,
+  )
+}
