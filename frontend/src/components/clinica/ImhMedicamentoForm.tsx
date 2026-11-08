@@ -30,6 +30,7 @@ import {
   PlanilhaLinhaEditDialog,
   planilhaEditAutocompleteSlotProps,
   planilhaEditFieldSx,
+  planilhaEditSelectSlotProps,
 } from '@/components/clinica/PlanilhaLinhaEditDialog'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -77,6 +78,7 @@ import {
   normalizePacienteNipKey,
   pacienteNipsIguais,
   PACIENTES_PME_POSTOS_GRAD,
+  PACIENTES_PME_VINCULOS,
   resolvePacientePmeFromNip,
   searchPacientesPmeByNome,
   type PacientePmeNipMatch,
@@ -104,13 +106,6 @@ interface ImhMedicamentoFormProps {
   corrigirLinhaIds?: Set<string> | null
 }
 
-const VINCULOS = [
-  'TITULAR',
-  'DEPENDENTE DIRETO',
-  'DEPENDENTE INDIRETO',
-  'DEPENDENTE',
-  'OUTRO',
-] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 const MEDICAMENTO_SEM_LOTE = 'Medicamento sem lote definido'
 
@@ -415,8 +410,9 @@ export function ImhMedicamentoForm({
   }, [linhaDraft.postoGrad])
 
   const vinculoOptions = useMemo(() => {
-    const set = new Set<string>([...VINCULOS])
-    if (linhaDraft.vinculo.trim()) set.add(linhaDraft.vinculo.trim())
+    const set = new Set<string>([...PACIENTES_PME_VINCULOS])
+    const atual = linhaDraft.vinculo.trim()
+    if (atual) set.add(atual)
     return [...set]
   }, [linhaDraft.vinculo])
 
@@ -1383,9 +1379,12 @@ export function ImhMedicamentoForm({
               onChange={(e) => updateDraft({ postoGrad: formatImhMedUppercase(e.target.value) })}
               size="small"
               fullWidth
+              slotProps={planilhaEditSelectSlotProps}
               sx={planilhaEditFieldSx}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">
+                <em>Selecione</em>
+              </MenuItem>
               {postoGradOptions.map((item) => (
                 <MenuItem key={item} value={item}>
                   {item}
@@ -1394,14 +1393,17 @@ export function ImhMedicamentoForm({
             </TextField>
             <TextField
               select
-              label="VINCULO"
+              label="VÍNCULO"
               value={linhaDraft.vinculo || ''}
               onChange={(e) => updateDraft({ vinculo: formatImhMedUppercase(e.target.value) })}
               size="small"
               fullWidth
+              slotProps={planilhaEditSelectSlotProps}
               sx={planilhaEditFieldSx}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">
+                <em>Selecione</em>
+              </MenuItem>
               {vinculoOptions.map((item) => (
                 <MenuItem key={item} value={item}>
                   {item}
