@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   IconButton,
   InputAdornment,
   Menu,
@@ -308,191 +307,137 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
       <Box
         className="excel-sheet-toolbar"
         sx={{
-          px: { xs: 1.25, sm: 1.75 },
-          py: 1.25,
-          bgcolor: EXCEL_SHEET.toolbarBg,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
+          flexWrap: 'wrap',
+          minHeight: 44,
+          px: 1.25,
+          py: 0.5,
+          bgcolor: '#fff',
           borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-          display: 'grid',
-          gap: 1.25,
         }}
       >
-        <Box
+        <Typography
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            alignItems: { xs: 'stretch', md: 'center' },
-            justifyContent: 'space-between',
-            gap: 1.25,
+            fontWeight: 750,
+            fontSize: 13,
+            letterSpacing: '-0.02em',
+            color: EXCEL_SHEET.text,
+            whiteSpace: 'nowrap',
           }}
         >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontFamily: EXCEL_SHEET.fontFamily,
-                fontWeight: 800,
-                fontSize: 14,
-                letterSpacing: '-0.02em',
-                color: EXCEL_SHEET.text,
-                lineHeight: 1.2,
-              }}
-            >
-              Pacientes PME
-            </Typography>
-            <Typography
-              sx={{
-                mt: 0.25,
-                fontSize: 11.5,
-                color: EXCEL_SHEET.mutedText,
-                lineHeight: 1.35,
-              }}
-            >
-              Cadastro de NIP, vínculo e titular para preenchimento do IMH
-            </Typography>
-            <Chip
-              size="small"
-              label={`${rows.length} paciente(s)`}
-              sx={{
-                mt: 0.75,
-                height: 22,
-                fontWeight: 700,
-                fontSize: 11,
-                bgcolor: '#fff',
-                border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-              }}
-            />
-          </Box>
+          Pacientes
+        </Typography>
+        <Typography
+          component="span"
+          sx={{ fontSize: 12, fontWeight: 600, color: EXCEL_SHEET.mutedText }}
+        >
+          {rows.length}
+        </Typography>
 
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: { xs: 'flex-start', md: 'flex-end' },
-              gap: 0.75,
-            }}
-          >
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-              onClick={() => handleAddRow()}
-              sx={{
-                height: 30,
-                textTransform: 'none',
-                fontWeight: 700,
+        <Box sx={{ width: 1, height: 16, bgcolor: EXCEL_SHEET.toolbarBorder, mx: 0.25 }} />
+
+        <TextField
+          size="small"
+          placeholder="Buscar…"
+          value={globalFilter}
+          onChange={(e) => {
+            setGlobalFilter(e.target.value)
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16, color: EXCEL_SHEET.mutedText }} />
+                </InputAdornment>
+              ),
+              sx: {
+                height: 28,
                 fontSize: 12,
-                px: 1.25,
+                bgcolor: 'rgba(15,23,42,0.03)',
                 borderRadius: 1.5,
-              }}
-            >
-              Novo paciente
-            </Button>
-            <Button
+                '& fieldset': { borderColor: 'transparent' },
+                '&:hover fieldset': { borderColor: EXCEL_SHEET.toolbarBorder },
+                '&.Mui-focused fieldset': { borderColor: EXCEL_SHEET.selectedCheck },
+              },
+            },
+          }}
+          sx={{ width: { xs: '100%', sm: 200 }, maxWidth: 240 }}
+        />
+
+        <Box sx={{ flex: 1, minWidth: 8 }} />
+
+        <Button
+          size="small"
+          variant="contained"
+          disableElevation
+          startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+          onClick={() => handleAddRow()}
+          sx={{
+            height: 28,
+            px: 1.1,
+            textTransform: 'none',
+            fontWeight: 700,
+            fontSize: 12,
+            borderRadius: 1.5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Novo
+        </Button>
+        <Tooltip title={importing ? 'Importando…' : 'Importar planilha'}>
+          <span>
+            <IconButton
               size="small"
-              variant="outlined"
-              startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
               onClick={() => importInputRef.current?.click()}
               disabled={importing}
               sx={{
-                height: 30,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: 12,
-                px: 1.25,
-                borderRadius: 1.5,
-                borderColor: EXCEL_SHEET.selectedCheck,
-                color: EXCEL_SHEET.selectedCheck,
-                bgcolor: '#fff',
-                '&:hover': {
-                  borderColor: EXCEL_SHEET.selectedCheck,
-                  bgcolor: '#e8f5e9',
-                },
+                width: 28,
+                height: 28,
+                color: EXCEL_SHEET.mutedText,
+                borderRadius: 1.25,
+                '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
               }}
             >
-              {importing ? 'Importando…' : 'Importar'}
-            </Button>
-            <Button
+              <UploadFileOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Gerar documento">
+          <span>
+            <IconButton
               size="small"
-              variant="outlined"
-              startIcon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}
               onClick={() => setGerarOpen(true)}
               disabled={rows.length === 0}
               sx={{
-                height: 30,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: 12,
-                px: 1.25,
-                borderRadius: 1.5,
-                bgcolor: '#fff',
-              }}
-            >
-              Gerar Documento
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
-              onClick={handleRestoreSeed}
-              sx={{
-                height: 30,
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: 12,
+                width: 28,
+                height: 28,
                 color: EXCEL_SHEET.mutedText,
+                borderRadius: 1.25,
+                '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
               }}
             >
-              Restaurar original
-            </Button>
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 1,
-            pt: 0.25,
-            borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-          }}
-        >
-          <Typography
+              <DescriptionOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Restaurar banco original">
+          <IconButton
+            size="small"
+            onClick={handleRestoreSeed}
             sx={{
-              fontSize: 11,
-              fontWeight: 800,
+              width: 28,
+              height: 28,
               color: EXCEL_SHEET.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
+              borderRadius: 1.25,
+              '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
             }}
           >
-            Busca
-          </Typography>
-          <TextField
-            size="small"
-            placeholder="Nome, NIP, vínculo…"
-            value={globalFilter}
-            onChange={(e) => {
-              setGlobalFilter(e.target.value)
-              setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-            }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-                sx: { bgcolor: '#fff', fontSize: 13, height: 34 },
-              },
-            }}
-            sx={{
-              flex: 1,
-              minWidth: { xs: '100%', sm: 240 },
-              maxWidth: 420,
-            }}
-          />
-        </Box>
+            <RestartAltIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <input

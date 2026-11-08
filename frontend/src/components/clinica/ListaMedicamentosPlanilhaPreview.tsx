@@ -4,6 +4,7 @@ import {
   DeleteOutlined as DeleteIcon,
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
+  HelpOutline as HelpIcon,
   HistoryOutlined as HistoricoIcon,
   SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
@@ -52,16 +53,6 @@ interface ListaMedicamentosPlanilhaPreviewProps {
   onMovimentarLinha?: (linhaId: string) => void
 }
 
-const toolbarBtnSx = {
-  height: 30,
-  textTransform: 'none' as const,
-  fontWeight: 700,
-  fontSize: 12,
-  px: 1.25,
-  borderRadius: 1.5,
-  whiteSpace: 'nowrap' as const,
-}
-
 function dash(value: string): string {
   const trimmed = value.trim()
   return trimmed || '—'
@@ -80,16 +71,19 @@ const alertCellBorderSx = (color: string) =>
     borderColor: color,
   }) as const
 
-const filtroGroupSx = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 0.75,
-  flexWrap: 'wrap' as const,
-  px: 1,
-  py: 0.5,
-  borderRadius: 1.5,
-  border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-  bgcolor: '#fff',
+const iconBtnSx = {
+  width: 28,
+  height: 28,
+  color: EXCEL_SHEET.mutedText,
+  borderRadius: 1.25,
+  '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
+} as const
+
+const filtroChipSx = {
+  height: 22,
+  fontWeight: 650,
+  fontSize: 11,
+  borderRadius: 1.25,
 } as const
 
 const cellSx = {
@@ -176,267 +170,175 @@ export function ListaMedicamentosPlanilhaPreview({
         <Box
           className="excel-sheet-toolbar"
           sx={{
-            px: { xs: 1.25, sm: 1.75 },
-            py: 1.25,
-            bgcolor: EXCEL_SHEET.toolbarBg,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            flexWrap: 'wrap',
+            minHeight: 44,
+            px: 1.25,
+            py: 0.5,
+            bgcolor: '#fff',
             borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-            display: 'grid',
-            gap: 1.25,
           }}
         >
-          <Box
+          <Typography
             sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', md: 'row' },
-              alignItems: { xs: 'stretch', md: 'center' },
-              justifyContent: 'space-between',
-              gap: 1.25,
+              fontWeight: 750,
+              fontSize: 13,
+              letterSpacing: '-0.02em',
+              color: EXCEL_SHEET.text,
+              whiteSpace: 'nowrap',
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontFamily: EXCEL_SHEET.fontFamily,
-                  fontWeight: 800,
-                  fontSize: 14,
-                  letterSpacing: '-0.02em',
-                  color: EXCEL_SHEET.text,
-                  lineHeight: 1.2,
-                }}
-              >
-                Lista de Medicamentos
-              </Typography>
-              <Typography
-                sx={{
-                  mt: 0.25,
-                  fontSize: 11.5,
-                  color: EXCEL_SHEET.mutedText,
-                  lineHeight: 1.35,
-                }}
-              >
-                Estoque por lote, alertas de validade e preço de referência
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75, flexWrap: 'wrap' }}>
-                <Chip
-                  size="small"
-                  label={`${value.linhas.length} item(ns)`}
-                  sx={{
-                    height: 22,
-                    fontWeight: 700,
-                    fontSize: 11,
-                    bgcolor: '#fff',
-                    border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-                  }}
-                />
-                {filtro.tipo !== 'todos' ? (
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label="Limpar filtros"
-                    onClick={() => setFiltro({ tipo: 'todos' })}
-                    onDelete={() => setFiltro({ tipo: 'todos' })}
-                    sx={{ height: 22, fontWeight: 600, fontSize: 11 }}
-                  />
-                ) : null}
-              </Box>
-            </Box>
+            Medicamentos
+          </Typography>
+          <Typography
+            component="span"
+            sx={{ fontSize: 12, fontWeight: 600, color: EXCEL_SHEET.mutedText, mr: 0.5 }}
+          >
+            {value.linhas.length}
+          </Typography>
 
-            <Box
+          <Box sx={{ width: 1, height: 16, bgcolor: EXCEL_SHEET.toolbarBorder, mx: 0.25 }} />
+
+          <Chip
+            size="small"
+            clickable
+            label={`${contagemEstoque.baixo} baixo`}
+            onClick={() => toggleEstoqueFiltro('baixo')}
+            sx={{
+              ...filtroChipSx,
+              bgcolor:
+                filtro.tipo === 'estoque' && filtro.value === 'baixo'
+                  ? BORDER_ALERT_ORANGE
+                  : CHIP_ORANGE_BG,
+              color:
+                filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fff' : '#e65100',
+            }}
+          />
+          <Chip
+            size="small"
+            clickable
+            label={`${contagemEstoque.zerado} zerado`}
+            onClick={() => toggleEstoqueFiltro('zerado')}
+            sx={{
+              ...filtroChipSx,
+              bgcolor:
+                filtro.tipo === 'estoque' && filtro.value === 'zerado'
+                  ? BORDER_ALERT_RED
+                  : CHIP_RED_BG,
+              color:
+                filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#fff' : '#c62828',
+            }}
+          />
+          <Chip
+            size="small"
+            clickable
+            label={`${contagemValidade.vencido} vencido`}
+            onClick={() => toggleValidadeFiltro('vencido')}
+            sx={{
+              ...filtroChipSx,
+              bgcolor:
+                filtro.tipo === 'validade' && filtro.value === 'vencido'
+                  ? '#c2185b'
+                  : CHIP_VENCIDO_BG,
+              color:
+                filtro.tipo === 'validade' && filtro.value === 'vencido' ? '#fff' : '#ad1457',
+            }}
+          />
+          <Chip
+            size="small"
+            clickable
+            label={`${contagemValidade.proximo} próximo`}
+            onClick={() => toggleValidadeFiltro('proximo')}
+            sx={{
+              ...filtroChipSx,
+              bgcolor:
+                filtro.tipo === 'validade' && filtro.value === 'proximo'
+                  ? BORDER_ALERT_ORANGE
+                  : CHIP_PROXIMO_BG,
+              color:
+                filtro.tipo === 'validade' && filtro.value === 'proximo' ? '#fff' : '#f57f17',
+            }}
+          />
+          {filtro.tipo !== 'todos' ? (
+            <Chip
+              size="small"
+              variant="outlined"
+              label="Limpar"
+              onClick={() => setFiltro({ tipo: 'todos' })}
+              onDelete={() => setFiltro({ tipo: 'todos' })}
+              sx={{ ...filtroChipSx }}
+            />
+          ) : null}
+
+          <Box sx={{ flex: 1, minWidth: 8 }} />
+
+          {onEntradaClick ? (
+            <Button
+              size="small"
+              variant="contained"
+              disableElevation
+              startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+              onClick={onEntradaClick}
               sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                gap: 0.75,
+                height: 28,
+                px: 1.1,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                borderRadius: 1.5,
+                whiteSpace: 'nowrap',
               }}
             >
-              {onEntradaClick ? (
-                <Button
+              Entrada
+            </Button>
+          ) : null}
+          {onImportClick ? (
+            <Tooltip title={importing ? 'Importando…' : 'Importar planilha'}>
+              <span>
+                <IconButton
                   size="small"
-                  variant="contained"
-                  startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                  onClick={onEntradaClick}
-                  sx={toolbarBtnSx}
-                >
-                  Entrada de Medicamento
-                </Button>
-              ) : null}
-              {onImportClick ? (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<UploadFileIcon sx={{ fontSize: 16 }} />}
                   onClick={onImportClick}
                   disabled={importing}
-                  sx={{
-                    ...toolbarBtnSx,
-                    borderColor: EXCEL_SHEET.selectedCheck,
-                    color: EXCEL_SHEET.selectedCheck,
-                    bgcolor: '#fff',
-                    '&:hover': {
-                      borderColor: EXCEL_SHEET.selectedCheck,
-                      bgcolor: '#e8f5e9',
-                    },
-                  }}
+                  sx={iconBtnSx}
                 >
-                  {importing ? 'Importando…' : 'Importar'}
-                </Button>
-              ) : null}
-              <Button
+                  <UploadFileIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          ) : null}
+          <Tooltip title="Histórico de movimentações">
+            <IconButton
+              size="small"
+              onClick={() => {
+                setHistoricoSeed(null)
+                setHistoricoOpen(true)
+              }}
+              sx={iconBtnSx}
+            >
+              <HistoricoIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Gerar documento">
+            <span>
+              <IconButton
                 size="small"
-                variant="outlined"
-                startIcon={<HistoricoIcon sx={{ fontSize: 16 }} />}
-                onClick={() => {
-                  setHistoricoSeed(null)
-                  setHistoricoOpen(true)
-                }}
-                sx={{
-                  ...toolbarBtnSx,
-                  color: '#0f5c8c',
-                  borderColor: '#0f5c8c',
-                  bgcolor: '#fff',
-                }}
-              >
-                Histórico
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<GerarDocIcon sx={{ fontSize: 16 }} />}
                 onClick={() => setGerarOpen(true)}
                 disabled={!visible || value.linhas.length === 0}
-                sx={{ ...toolbarBtnSx, bgcolor: '#fff' }}
+                sx={iconBtnSx}
               >
-                Gerar Documento
-              </Button>
-              {onExplicacaoClick ? (
-                <Button
-                  size="small"
-                  variant="text"
-                  onClick={onExplicacaoClick}
-                  sx={{ ...toolbarBtnSx, color: EXCEL_SHEET.mutedText }}
-                >
-                  Ajuda
-                </Button>
-              ) : null}
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: 1,
-              pt: 0.25,
-              borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: EXCEL_SHEET.mutedText,
-                textTransform: 'uppercase',
-                letterSpacing: 0.4,
-                mr: 0.25,
-              }}
-            >
-              Filtros
-            </Typography>
-            <Box sx={filtroGroupSx}>
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: EXCEL_SHEET.mutedText,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Estoque
-              </Typography>
-              <Chip
-                size="small"
-                clickable
-                label={`${contagemEstoque.baixo} baixo`}
-                onClick={() => toggleEstoqueFiltro('baixo')}
-                sx={{
-                  height: 22,
-                  fontWeight: 700,
-                  bgcolor:
-                    filtro.tipo === 'estoque' && filtro.value === 'baixo'
-                      ? BORDER_ALERT_ORANGE
-                      : CHIP_ORANGE_BG,
-                  color:
-                    filtro.tipo === 'estoque' && filtro.value === 'baixo' ? '#fff' : '#e65100',
-                  border: '1px solid #ffb74d',
-                }}
-              />
-              <Chip
-                size="small"
-                clickable
-                label={`${contagemEstoque.zerado} zerado`}
-                onClick={() => toggleEstoqueFiltro('zerado')}
-                sx={{
-                  height: 22,
-                  fontWeight: 700,
-                  bgcolor:
-                    filtro.tipo === 'estoque' && filtro.value === 'zerado'
-                      ? BORDER_ALERT_RED
-                      : CHIP_RED_BG,
-                  color:
-                    filtro.tipo === 'estoque' && filtro.value === 'zerado' ? '#fff' : '#c62828',
-                  border: '1px solid #ef9a9a',
-                }}
-              />
-            </Box>
-            <Box sx={filtroGroupSx}>
-              <Typography
-                sx={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: EXCEL_SHEET.mutedText,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Validade
-              </Typography>
-              <Chip
-                size="small"
-                clickable
-                label={`${contagemValidade.vencido} vencido`}
-                onClick={() => toggleValidadeFiltro('vencido')}
-                sx={{
-                  height: 22,
-                  fontWeight: 700,
-                  bgcolor:
-                    filtro.tipo === 'validade' && filtro.value === 'vencido'
-                      ? '#c2185b'
-                      : CHIP_VENCIDO_BG,
-                  color:
-                    filtro.tipo === 'validade' && filtro.value === 'vencido' ? '#fff' : '#ad1457',
-                  border: '1px solid #f48fb1',
-                }}
-              />
-              <Chip
-                size="small"
-                clickable
-                label={`${contagemValidade.proximo} próximo`}
-                onClick={() => toggleValidadeFiltro('proximo')}
-                sx={{
-                  height: 22,
-                  fontWeight: 700,
-                  bgcolor:
-                    filtro.tipo === 'validade' && filtro.value === 'proximo'
-                      ? BORDER_ALERT_ORANGE
-                      : CHIP_PROXIMO_BG,
-                  color:
-                    filtro.tipo === 'validade' && filtro.value === 'proximo' ? '#fff' : '#f57f17',
-                  border: '1px solid #ffe082',
-                }}
-              />
-            </Box>
-          </Box>
+                <GerarDocIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          {onExplicacaoClick ? (
+            <Tooltip title="Ajuda">
+              <IconButton size="small" onClick={onExplicacaoClick} sx={iconBtnSx}>
+                <HelpIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
         </Box>
 
         {!visible ? (
