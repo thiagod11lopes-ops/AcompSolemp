@@ -12,7 +12,9 @@ import {
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
+  FormControlLabel,
   IconButton,
   Paper,
   Table,
@@ -121,6 +123,7 @@ export function ListaMedicamentosPlanilhaPreview({
   onMovimentarLinha,
 }: ListaMedicamentosPlanilhaPreviewProps) {
   const [filtro, setFiltro] = useState<ListaMedToolbarFiltro>({ tipo: 'todos' })
+  const [mostrarStatus, setMostrarStatus] = useState(false)
   const [gerarOpen, setGerarOpen] = useState(false)
   const [historicoOpen, setHistoricoOpen] = useState(false)
   const [historicoSeed, setHistoricoSeed] = useState<ListaMedicamentosLinha | null>(null)
@@ -194,6 +197,27 @@ export function ListaMedicamentosPlanilhaPreview({
           >
             {value.linhas.length}
           </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={mostrarStatus}
+                onChange={(_, checked) => setMostrarStatus(checked)}
+                sx={{ p: 0.35 }}
+              />
+            }
+            label="Status"
+            sx={{
+              ml: 0.25,
+              mr: 0.5,
+              userSelect: 'none',
+              '& .MuiFormControlLabel-label': {
+                fontSize: 12,
+                fontWeight: 650,
+                color: EXCEL_SHEET.mutedText,
+              },
+            }}
+          />
 
           <Chip
             size="small"
@@ -388,15 +412,15 @@ export function ListaMedicamentosPlanilhaPreview({
                   const statusValidade = getListaMedValidadeStatus(linha)
                   const rowBg = editing ? EXCEL_SHEET.selectedBg : undefined
                   const qtdBorder =
-                    statusEstoque === 'zerado'
+                    mostrarStatus && statusEstoque === 'zerado'
                       ? alertCellBorderSx(BORDER_ALERT_RED)
-                      : statusEstoque === 'baixo'
+                      : mostrarStatus && statusEstoque === 'baixo'
                         ? alertCellBorderSx(BORDER_ALERT_ORANGE)
                         : null
                   const validadeBorder =
-                    statusValidade === 'vencido'
+                    mostrarStatus && statusValidade === 'vencido'
                       ? alertCellBorderSx(BORDER_ALERT_RED)
-                      : statusValidade === 'proximo'
+                      : mostrarStatus && statusValidade === 'proximo'
                         ? alertCellBorderSx(BORDER_ALERT_ORANGE)
                         : null
                   return (
