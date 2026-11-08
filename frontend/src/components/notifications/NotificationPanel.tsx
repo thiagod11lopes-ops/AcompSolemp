@@ -25,6 +25,14 @@ import type { Notification, NotificationType, UserRole } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
   if (
+    n.tipo === 'ESTOQUE_BAIXO' ||
+    n.tipo === 'ESTOQUE_ZERADO' ||
+    n.tipo === 'VALIDADE_PROXIMA' ||
+    n.tipo === 'VALIDADE_VENCIDA'
+  ) {
+    return '/clinica/balanco'
+  }
+  if (
     (n.tipo === 'PLANILHA_DEVOLVIDA' ||
       n.tipo === 'PRAZO_CORRECAO_VENCIDO' ||
       n.tipo === 'VENCENDO' ||
@@ -103,7 +111,11 @@ export function NotificationPanel({
     isDemo && demoMode
       ? demoMode.authUser
       : gestorUser ?? ordenadorUser ?? financeiroUser ?? clinicaUser
-  const { data: notifications = [] } = useNotifications(user?.perfil ?? null)
+  const clinicaId =
+    isDemo && demoMode
+      ? (demoMode.authUser.clinicaId ?? null)
+      : (clinicaUser?.clinicaId ?? null)
+  const { data: notifications = [] } = useNotifications(user?.perfil ?? null, clinicaId)
   const markRead = useMarkNotificationRead()
   const queryClient = useQueryClient()
 

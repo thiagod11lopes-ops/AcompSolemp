@@ -58,7 +58,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [fictionalBusy, setFictionalBusy] = useState(false)
   const perfilNotif =
     isDemo && demoMode ? demoMode.authUser.perfil : (user?.perfil ?? null)
-  const { data: notifications = [] } = useNotifications(perfilNotif)
+  const { data: notifications = [] } = useNotifications(perfilNotif, null)
   const reversoesNaoLidas = notifications.filter(
     (n) =>
       !n.lida && notificacaoPertenceAosTipos(n, TIPOS_NOTIFICACAO_REVERSAO),

@@ -12,6 +12,11 @@ export const TIPOS_NOTIFICACAO_TIMELINE_SETOR: NotificationType[] = [
   'ATRASADO',
 ]
 
+export {
+  TIPOS_NOTIFICACAO_ESTOQUE_PME,
+  filtrarNotificacoesEstoquePorClinica,
+} from '@/utils/estoqueMedicamentoAlertas'
+
 export function notificacaoPertenceAosTipos(
   n: Notification,
   tipos?: NotificationType[],
