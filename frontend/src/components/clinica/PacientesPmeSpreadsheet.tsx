@@ -308,9 +308,12 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
       <Box
         className="excel-sheet-toolbar"
         sx={{
-          px: 1.5,
-          py: 1,
-          background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
+          px: { xs: 1.25, sm: 1.75 },
+          py: 1.25,
+          bgcolor: EXCEL_SHEET.toolbarBg,
+          borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+          display: 'grid',
+          gap: 1.25,
         }}
       >
         <Box
@@ -319,78 +322,155 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
             flexDirection: { xs: 'column', md: 'row' },
             alignItems: { xs: 'stretch', md: 'center' },
             justifyContent: 'space-between',
-            gap: 1,
+            gap: 1.25,
           }}
         >
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography
               sx={{
                 fontFamily: EXCEL_SHEET.fontFamily,
                 fontWeight: 800,
-                fontSize: 13,
-                color: EXCEL_SHEET.selectedCheck,
+                fontSize: 14,
+                letterSpacing: '-0.02em',
+                color: EXCEL_SHEET.text,
+                lineHeight: 1.2,
               }}
             >
-              Banco de dados IMH — Pacientes PME
+              Pacientes PME
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
-              <Chip
-                size="small"
-                variant="outlined"
-                label={`${rows.length} paciente(s)`}
-                sx={{ height: 22, fontWeight: 600 }}
-              />
-              <Button
-                size="small"
-                variant="contained"
-                color="success"
-                startIcon={<AddIcon />}
-                onClick={() => handleAddRow()}
-                sx={{ textTransform: 'none', fontWeight: 700, height: 26 }}
-              >
-                Nova linha
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() => importInputRef.current?.click()}
-                disabled={importing}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  height: 26,
-                  borderColor: EXCEL_SHEET.selectedCheck,
-                  color: EXCEL_SHEET.selectedCheck,
-                  bgcolor: '#fff',
-                }}
-              >
-                {importing ? 'Importando…' : 'Importar planilha'}
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setGerarOpen(true)}
-                disabled={rows.length === 0}
-                sx={{ textTransform: 'none', fontWeight: 700, height: 26 }}
-              >
-                Gerar Documento
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                startIcon={<RestartAltIcon />}
-                onClick={handleRestoreSeed}
-                sx={{ textTransform: 'none', height: 26 }}
-              >
-                Restaurar banco original
-              </Button>
-            </Box>
+            <Typography
+              sx={{
+                mt: 0.25,
+                fontSize: 11.5,
+                color: EXCEL_SHEET.mutedText,
+                lineHeight: 1.35,
+              }}
+            >
+              Cadastro de NIP, vínculo e titular para preenchimento do IMH
+            </Typography>
+            <Chip
+              size="small"
+              label={`${rows.length} paciente(s)`}
+              sx={{
+                mt: 0.75,
+                height: 22,
+                fontWeight: 700,
+                fontSize: 11,
+                bgcolor: '#fff',
+                border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+              }}
+            />
           </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: { xs: 'flex-start', md: 'flex-end' },
+              gap: 0.75,
+            }}
+          >
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+              onClick={() => handleAddRow()}
+              sx={{
+                height: 30,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                px: 1.25,
+                borderRadius: 1.5,
+              }}
+            >
+              Novo paciente
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
+              onClick={() => importInputRef.current?.click()}
+              disabled={importing}
+              sx={{
+                height: 30,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                px: 1.25,
+                borderRadius: 1.5,
+                borderColor: EXCEL_SHEET.selectedCheck,
+                color: EXCEL_SHEET.selectedCheck,
+                bgcolor: '#fff',
+                '&:hover': {
+                  borderColor: EXCEL_SHEET.selectedCheck,
+                  bgcolor: '#e8f5e9',
+                },
+              }}
+            >
+              {importing ? 'Importando…' : 'Importar'}
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}
+              onClick={() => setGerarOpen(true)}
+              disabled={rows.length === 0}
+              sx={{
+                height: 30,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+                px: 1.25,
+                borderRadius: 1.5,
+                bgcolor: '#fff',
+              }}
+            >
+              Gerar Documento
+            </Button>
+            <Button
+              size="small"
+              variant="text"
+              startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
+              onClick={handleRestoreSeed}
+              sx={{
+                height: 30,
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: 12,
+                color: EXCEL_SHEET.mutedText,
+              }}
+            >
+              Restaurar original
+            </Button>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 1,
+            pt: 0.25,
+            borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 11,
+              fontWeight: 800,
+              color: EXCEL_SHEET.mutedText,
+              textTransform: 'uppercase',
+              letterSpacing: 0.4,
+            }}
+          >
+            Busca
+          </Typography>
           <TextField
             size="small"
-            placeholder="Buscar nome, NIP, vínculo…"
+            placeholder="Nome, NIP, vínculo…"
             value={globalFilter}
             onChange={(e) => {
               setGlobalFilter(e.target.value)
@@ -403,9 +483,14 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
                     <SearchIcon fontSize="small" />
                   </InputAdornment>
                 ),
+                sx: { bgcolor: '#fff', fontSize: 13, height: 34 },
               },
             }}
-            sx={{ minWidth: { md: 260 }, bgcolor: '#fff' }}
+            sx={{
+              flex: 1,
+              minWidth: { xs: '100%', sm: 240 },
+              maxWidth: 420,
+            }}
           />
         </Box>
       </Box>

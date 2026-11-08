@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Add as AddIcon, Close as CloseIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -266,17 +266,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
 
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-        <Button
-          size="small"
-          variant="text"
-          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
-          onClick={() => setExplicacaoOpen(true)}
-          sx={{ textTransform: 'none', fontWeight: 700, fontSize: 12 }}
-        >
-          Explicação Detalhada
-        </Button>
-      </Box>
       <input
         ref={importInputRef}
         type="file"
@@ -290,6 +279,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
         importing={importing}
         onImportClick={handleImportClick}
         onEntradaClick={openEntradaNovo}
+        onExplicacaoClick={() => setExplicacaoOpen(true)}
         onEditLinha={handleEditLinha}
         onDeleteLinha={handleDeleteLinha}
         onMovimentarLinha={handleMovimentarLinha}
