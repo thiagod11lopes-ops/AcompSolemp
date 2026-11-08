@@ -112,12 +112,19 @@ function Invoke-StepPastas {
   if (-not $script:SupabaseDocker -or -not (Test-Path -LiteralPath $script:SupabaseDocker)) {
     $problems += 'supabase-master\docker nao encontrado'
   }
-  if (-not $script:Instaladores -or -not (Test-Path -LiteralPath $script:Instaladores)) {
+  $faltamInstaladores = (-not $script:Instaladores -or -not (Test-Path -LiteralPath $script:Instaladores))
+  if ($faltamInstaladores) {
     $problems += 'pasta instaladores nao encontrada'
   }
-  if ($problems.Count -gt 0) {
+  # Sem instaladores ainda da para seguir se Docker/Node ja estiverem no PC.
+  $criticos = @($problems | Where-Object { $_ -notmatch 'instaladores' })
+  if ($criticos.Count -gt 0) {
     Set-StepUi 'pastas' 'error' ($problems -join '; ')
     return $false
+  }
+  if ($faltamInstaladores) {
+    Set-StepUi 'pastas' 'ok' 'Pacote OK (pasta instaladores ausente — so importa se faltar Docker/Node)'
+    return $true
   }
   Set-StepUi 'pastas' 'ok' 'Pacote localizado'
   return $true
