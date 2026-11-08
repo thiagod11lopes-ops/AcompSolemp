@@ -41,6 +41,7 @@ import {
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
+import { NovoPacientePmeModal } from '@/components/clinica/NovoPacientePmeModal'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
 import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
@@ -96,6 +97,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     message: string
   }>({ open: false, severity: 'success', message: '' })
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [novoPacienteOpen, setNovoPacienteOpen] = useState(false)
 
   const handleCellChange = useCallback(
     (rowId: string, field: string, nextValue: string) => {
@@ -131,6 +133,17 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     const next = [...rowsRef.current]
     next.splice(idx + 1, 0, empty)
     onChange(next)
+  }
+
+  const handleAddPacienteFromModal = (row: PacientePmeRow) => {
+    onChange([row, ...rowsRef.current])
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    setNovoPacienteOpen(false)
+    setFeedback({
+      open: true,
+      severity: 'success',
+      message: `Paciente “${row.nome}” adicionado.`,
+    })
   }
 
   const handleDeleteRow = (rowId: string) => {
@@ -373,7 +386,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
           variant="contained"
           disableElevation
           startIcon={<AddIcon sx={{ fontSize: 15 }} />}
-          onClick={() => handleAddRow()}
+          onClick={() => setNovoPacienteOpen(true)}
           sx={{
             height: 28,
             px: 1.1,
@@ -384,7 +397,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
             whiteSpace: 'nowrap',
           }}
         >
-          Novo
+          Novo Paciente
         </Button>
         <Tooltip title={importing ? 'Importando…' : 'Importar planilha'}>
           <span>
@@ -613,6 +626,12 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
             formato,
           )
         }}
+      />
+
+      <NovoPacientePmeModal
+        open={novoPacienteOpen}
+        onClose={() => setNovoPacienteOpen(false)}
+        onAdd={handleAddPacienteFromModal}
       />
     </Paper>
   )
