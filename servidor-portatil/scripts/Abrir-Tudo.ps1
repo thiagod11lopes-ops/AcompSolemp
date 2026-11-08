@@ -155,7 +155,7 @@ try {
     Write-Log 'Painel unificado OK (status + rede + 30s). Seguindo inicio...'
   }
 
-  # Painel unificado ja tem rede/alias e contagem 30s — nao abre o cronometro antigo.
+  # Painel unificado ja tem rede/alias e contagem 30s - nao abre o cronometro antigo.
   $gate = if ($cameFromInstallPanel) {
     'Continue'
   } else {
@@ -268,7 +268,7 @@ try {
          "   (pasta servidor-portatil\cliente)`n" +
          "2) Digite no navegador a URL completa:`n`n" +
          "    $publicHome`n`n" +
-         "(use https:// e o IP — sem porta :5173)`n`n" +
+         "(use https:// e o IP - sem porta :5173)`n`n" +
          "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
          "Liberar-Firewall.cmd (Admin) - instala inicio automatico."),
         'Iniciar Servidor OMPS',
