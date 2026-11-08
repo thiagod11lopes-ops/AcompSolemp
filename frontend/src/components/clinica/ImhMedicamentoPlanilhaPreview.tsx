@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DeleteOutlined as DeleteIcon,
   DescriptionOutlined as GerarDocIcon,
@@ -121,7 +121,7 @@ const selectedCheckboxSx = {
   '&.Mui-checked': { color: EXCEL_SHEET.selectedCheck },
 } as const
 
-export function ImhMedicamentoPlanilhaPreview({
+function ImhMedicamentoPlanilhaPreviewInner({
   value,
   editingLinhaId = null,
   importing = false,
@@ -828,3 +828,5 @@ export function ImhMedicamentoPlanilhaPreview({
     </Box>
   )
 }
+
+export const ImhMedicamentoPlanilhaPreview = memo(ImhMedicamentoPlanilhaPreviewInner)

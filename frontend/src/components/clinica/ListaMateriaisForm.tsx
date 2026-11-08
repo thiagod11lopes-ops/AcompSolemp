@@ -163,10 +163,6 @@ export function ListaMateriaisForm({ value, onChange }: ListaMateriaisFormProps)
 
   const syncDraftToList = (nextDraft: ListaMateriaisLinha) => {
     setLinhaDraft(nextDraft)
-    if (!editingLinhaId) return
-    persistLinhas(
-      value.linhas.map((l) => (l.id === editingLinhaId ? { ...nextDraft, id: editingLinhaId } : l)),
-    )
   }
 
   const updateDraft = (patch: Partial<Omit<ListaMateriaisLinha, 'id'>>) => {
@@ -224,13 +220,6 @@ export function ListaMateriaisForm({ value, onChange }: ListaMateriaisFormProps)
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
-      )
-    }
     resetLinhaForm()
   }
 

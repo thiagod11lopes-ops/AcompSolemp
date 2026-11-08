@@ -84,12 +84,7 @@ export function DivMaterialForm({
   }
 
   const syncDraftToList = (nextDraft: DivMaterialLinha) => {
-    const ready = withNormalizedDivMaterialLinha(nextDraft)
-    setLinhaDraft(ready)
-    if (!editingLinhaId) return
-    persistLinhas(
-      linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
-    )
+    setLinhaDraft(withNormalizedDivMaterialLinha(nextDraft))
   }
 
   const updateDraft = (patch: Partial<Omit<DivMaterialLinha, 'id' | 'sourceKey'>>) => {
@@ -147,13 +142,6 @@ export function DivMaterialForm({
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
-      persistLinhas(
-        linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
-      )
-    }
     resetLinhaForm()
   }
 

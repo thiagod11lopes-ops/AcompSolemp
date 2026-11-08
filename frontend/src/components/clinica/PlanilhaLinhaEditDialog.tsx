@@ -237,16 +237,12 @@ export function PlanilhaLinhaEditDialog({
     }
 
     update()
-    // Aguarda a linha subir ao topo / layout estabilizar
-    const t1 = window.setTimeout(update, 50)
-    const t2 = window.setTimeout(update, 160)
-    const t3 = window.setTimeout(update, 320)
+    // Um único reajuste após o layout da linha (evita 3 timers + blur caros).
+    const t1 = window.setTimeout(update, 80)
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
     return () => {
       window.clearTimeout(t1)
-      window.clearTimeout(t2)
-      window.clearTimeout(t3)
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
@@ -286,8 +282,7 @@ export function PlanilhaLinhaEditDialog({
                 )`,
               }
             : {
-                bgcolor: alpha('#0f172a', 0.4),
-                backdropFilter: 'blur(3px)',
+                bgcolor: alpha('#0f172a', 0.45),
               },
         },
         paper: {

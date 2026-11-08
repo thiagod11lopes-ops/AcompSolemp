@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
@@ -488,10 +488,9 @@ export function ImhMedicamentoForm({
     if (sheet) applyImportedSheet(sheet)
   }
 
+  /** Persiste a lista; não recalcula todas as linhas (já vêm prontas do Salvar). */
   const persistLinhas = (linhas: ImhMedicamentoLinha[]) => {
-    const nextLinhas = linhas
-      .map(recalcLinha)
-      .filter((l) => linhaImhMedicamentoHasContent(l))
+    const nextLinhas = linhas.filter((l) => linhaImhMedicamentoHasContent(l))
     const ids = new Set(nextLinhas.map((l) => l.id))
     onChange({
       linhas: nextLinhas,
@@ -574,14 +573,11 @@ export function ImhMedicamentoForm({
     }
   }
 
+  /** Só atualiza o rascunho local; a planilha só muda no Salvar/Adicionar. */
   const syncDraftToList = (nextDraft: ImhMedicamentoLinha) => {
     const ready = recalcLinha(nextDraft)
     setLinhaDraft(ready)
     setNomeInput(ready.nome)
-    if (!editingLinhaId) return
-    persistLinhas(
-      value.linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
-    )
   }
 
   const updateDraft = (patch: Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>>) => {
@@ -928,13 +924,7 @@ export function ImhMedicamentoForm({
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
-      )
-    }
+    // Rascunho nunca foi persistido durante a digitação — basta descartar o formulário.
     resetLinhaForm()
   }
 
@@ -953,6 +943,76 @@ export function ImhMedicamentoForm({
     (linhaDraft.lote.trim()
       ? null
       : findListaMedicamentoByNome(linhaDraft.itemPme, { linhas: medicamentoOptions }))
+
+  /** Mantém callbacks estáveis para o memo da planilha não re-renderizar a cada tecla no modal. */
+  const previewActionsRef = useRef({
+    onRevertFinalizadoIds: (_ids: string[]) => {},
+    onImportClick: () => {},
+    onEnviarImh: () => {},
+    onEditLinha: (_id: string) => {},
+    onDeleteLinha: (_id: string) => {},
+  })
+  previewActionsRef.current = {
+    onRevertFinalizadoIds: (ids) => {
+      const remove = new Set(ids)
+      onChange({
+        ...value,
+        finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
+      })
+    },
+    onImportClick: handleImportClick,
+    onEnviarImh: () => {
+      void handleEnviarImh()
+    },
+    onEditLinha: handleEditLinha,
+    onDeleteLinha: handleDeleteLinha,
+  }
+  const onRevertFinalizadoIdsStable = useCallback((ids: string[]) => {
+    previewActionsRef.current.onRevertFinalizadoIds(ids)
+  }, [])
+  const onImportClickStable = useCallback(() => {
+    previewActionsRef.current.onImportClick()
+  }, [])
+  const onEnviarImhStable = useCallback(() => {
+    previewActionsRef.current.onEnviarImh()
+  }, [])
+  const onEditLinhaStable = useCallback((id: string) => {
+    previewActionsRef.current.onEditLinha(id)
+  }, [])
+  const onDeleteLinhaStable = useCallback((id: string) => {
+    previewActionsRef.current.onDeleteLinha(id)
+  }, [])
+
+  const filterPacientesByNome = useCallback(
+    (options: PacientePmeRow[], state: { inputValue: string }) =>
+      searchPacientesPmeByNome(state.inputValue, options, 40),
+    [],
+  )
+
+  const filterMedicamentos = useCallback(
+    (options: ListaMedicamentosLinha[], state: { inputValue: string }) => {
+      const q = state.inputValue.trim().toLowerCase()
+      if (!q) return []
+      const startsWith: ListaMedicamentosLinha[] = []
+      const includes: ListaMedicamentosLinha[] = []
+      for (const opt of options) {
+        const nome = opt.medicamento.toLowerCase()
+        if (nome.startsWith(q)) {
+          startsWith.push(opt)
+          continue
+        }
+        if (
+          nome.includes(q) ||
+          opt.neb.toLowerCase().includes(q) ||
+          opt.lote.toLowerCase().includes(q)
+        ) {
+          includes.push(opt)
+        }
+      }
+      return [...startsWith, ...includes].slice(0, 40)
+    },
+    [],
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
@@ -1076,17 +1136,11 @@ export function ImhMedicamentoForm({
         emptyHint={emptyHint}
         selectedImhIds={selectedImhIds}
         onSelectedImhIdsChange={setSelectedImhIds}
-        onRevertFinalizadoIds={(ids) => {
-          const remove = new Set(ids)
-          onChange({
-            ...value,
-            finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
-          })
-        }}
-        onImportClick={handleImportClick}
-        onEnviarImh={handleEnviarImh}
-        onEditLinha={handleEditLinha}
-        onDeleteLinha={handleDeleteLinha}
+        onRevertFinalizadoIds={onRevertFinalizadoIdsStable}
+        onImportClick={onImportClickStable}
+        onEnviarImh={onEnviarImhStable}
+        onEditLinha={onEditLinhaStable}
+        onDeleteLinha={onDeleteLinhaStable}
         listaMedicamentos={listaMedicamentos}
         todasLinhasImh={value.linhas}
         filtroMes={filtroMes}
@@ -1179,9 +1233,8 @@ export function ImhMedicamentoForm({
                 }
                 return a.id === b.id
               }}
-              filterOptions={(options, state) =>
-                searchPacientesPmeByNome(state.inputValue, options, 40)
-              }
+              filterOptions={filterPacientesByNome}
+              openOnFocus={false}
               freeSolo
               onBlur={() => tryFillFromNome(nomeInput || linhaDraft.nome)}
               renderOption={(props, option) => (
@@ -1236,24 +1289,7 @@ export function ImhMedicamentoForm({
                 typeof option === 'string' ? option : option.medicamento
               }
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              filterOptions={(options, state) => {
-                const q = state.inputValue.trim().toLowerCase()
-                // Select aparece a partir da primeira letra digitada.
-                if (!q) return []
-                const startsWith = options.filter((opt) =>
-                  opt.medicamento.toLowerCase().startsWith(q),
-                )
-                const includes = options.filter((opt) => {
-                  const nome = opt.medicamento.toLowerCase()
-                  if (nome.startsWith(q)) return false
-                  return (
-                    nome.includes(q) ||
-                    opt.neb.toLowerCase().includes(q) ||
-                    opt.lote.toLowerCase().includes(q)
-                  )
-                })
-                return [...startsWith, ...includes].slice(0, 40)
-              }}
+              filterOptions={filterMedicamentos}
               autoHighlight
               openOnFocus={false}
               selectOnFocus

@@ -168,10 +168,15 @@ export function searchPacientesPmeByNome(
   limit = 25,
 ): PacientePmeRow[] {
   const q = formatPacientePmeUpper(nome)
-  if (!q) return rows.slice(0, limit)
-  return rows
-    .filter((row) => formatPacientePmeUpper(row.nome).includes(q))
-    .slice(0, limit)
+  // Sem texto: não monta lista completa (Autocomplete fica leve até digitar).
+  if (!q) return []
+  const out: PacientePmeRow[] = []
+  for (const row of rows) {
+    if (!formatPacientePmeUpper(row.nome).includes(q)) continue
+    out.push(row)
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 /** Dados mínimos do lançamento IMH para cadastrar paciente novo. */
