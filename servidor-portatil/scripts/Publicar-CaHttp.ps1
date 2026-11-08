@@ -1,5 +1,5 @@
-﻿# Publica a CA e o instalador automatico em cliente\www-ca (servido em http://IP/acomp-ca/).
-# Win+R usa -EncodedCommand (sem | nem aspas) — o | no Executar quebra o PowerShell.
+﻿# Publica a CA e o instalador automatico em cliente\www-ca (http://IP/acomp-ca/).
+# Sem PowerShell no cliente: Win+R usa cmd+curl (arquivo em %TEMP% nao leva SmartScreen).
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 
@@ -18,82 +18,48 @@ if (-not (Test-Path -LiteralPath $caSrc)) {
 }
 Copy-Item -Force $caSrc (Join-Path $www 'AcompOPMS-rootCA.pem')
 
-# Comando curto para EncodedCommand / elevacao (sem pipe |)
-$bootExpr = "iex (irm http://$ip/acomp-ca/install.ps1)"
-$bootEncoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootExpr))
-$runCmd = "powershell -NoP -EP Bypass -EncodedCommand $bootEncoded"
-if ($runCmd.Length -gt 240) {
-  throw "Comando Win+R longo demais ($($runCmd.Length)). Reduza o IP/caminho."
-}
-
-# Script remoto (roda na memoria)
-$installPs1 = @"
-# AcompOPMS — instala CA da rede local e abre o sistema
-`$ErrorActionPreference = 'Stop'
-`$Server = '$ip'
-`$CaUrl = "http://`$Server/acomp-ca/AcompOPMS-rootCA.pem"
-`$Https = "https://`$Server/"
-`$BootEncoded = '$bootEncoded'
-
-function Test-IsAdmin {
-  return ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
-    IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
-
-if (-not (Test-IsAdmin)) {
-  Write-Host 'Solicitando Administrador (UAC)...'
-  `$p = Start-Process -FilePath "`$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" ``
-    -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', `$BootEncoded) ``
-    -Verb RunAs -Wait -PassThru
-  if (`$null -eq `$p -or `$p.ExitCode -ne 0) { throw 'Instalacao cancelada ou falhou.' }
-  exit 0
-}
-
-`$ca = Join-Path `$env:TEMP 'AcompOPMS-rootCA.pem'
-Write-Host "Baixando CA: `$CaUrl"
-`$ok = `$false
-try {
-  & curl.exe -fsSL --connect-timeout 5 --max-time 20 `$CaUrl -o `$ca
-  if (`$LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath `$ca)) { `$ok = `$true }
-} catch { }
-if (-not `$ok) {
-  # Fallback sem curl.exe
-  Invoke-WebRequest -Uri `$CaUrl -OutFile `$ca -UseBasicParsing
-}
-if (-not (Test-Path -LiteralPath `$ca)) { throw 'Falha ao baixar a CA.' }
-
-`$dump = & certutil.exe -dump `$ca 2>&1 | Out-String
-`$hash = `$null
-if (`$dump -match 'Cert Hash\(sha1\):\s*([a-fA-F0-9 ]+)') {
-  `$hash = ((`$Matches[1] -replace '\s','').ToUpperInvariant())
-}
-`$store = & certutil.exe -store Root 2>&1 | Out-String
-if (-not (`$hash -and `$store.ToUpperInvariant().Contains(`$hash))) {
-  Write-Host 'Instalando certificado na loja Raiz...'
-  & certutil.exe -addstore -f Root `$ca | Out-Null
-  if (`$LASTEXITCODE -ne 0) { throw 'certutil falhou.' }
-} else {
-  Write-Host 'Certificado ja estava confiado.'
-}
-
-Write-Host "Abrindo `$Https"
-Start-Process `$Https | Out-Null
-"@
-Set-Content -LiteralPath (Join-Path $www 'install.ps1') -Value $installPs1.Trim() -Encoding UTF8
-
-# CMD legado: tambem usa EncodedCommand (sem | )
-$cmd = @"
+# install.cmd — so ferramentas do Windows (cmd, curl, certutil, mshta). Sem PowerShell.
+$installCmd = @"
 @echo off
+setlocal
 title AcompOPMS - Certificado
-echo Instalando certificado da rede local...
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -EncodedCommand $bootEncoded
+set "SERVER=$ip"
+set "CA=%TEMP%\AcompOPMS-rootCA.pem"
+
+net session >nul 2>&1
 if errorlevel 1 (
-  echo.
-  echo Se o Windows bloqueou, use a pagina http://$ip/ : Copiar comando, Win+R, Enter.
-  pause
+  echo Solicitando Administrador...
+  mshta "javascript:var s=new ActiveXObject('Shell.Application');s.ShellExecute('%~f0','','','runas',1);close();"
+  exit /b
 )
+
+echo Baixando certificado...
+curl.exe -fsSL --connect-timeout 5 --max-time 20 "http://%SERVER%/acomp-ca/AcompOPMS-rootCA.pem" -o "%CA%"
+if errorlevel 1 (
+  echo Falha ao baixar a CA. Servidor no ar?
+  pause
+  exit /b 1
+)
+
+echo Instalando certificado confiavel...
+certutil.exe -addstore -f Root "%CA%"
+if errorlevel 1 (
+  echo Falha no certutil.
+  pause
+  exit /b 1
+)
+
+echo OK. Abrindo o sistema...
+start "" "https://%SERVER%/"
+exit /b 0
 "@
-Set-Content -LiteralPath (Join-Path $www 'Abrir-AcompOPMS.cmd') -Value $cmd.Trim() -Encoding ASCII
+Set-Content -LiteralPath (Join-Path $www 'install.cmd') -Value $installCmd.Trim() -Encoding ASCII
+
+# Atalho antigo (mesmo conteudo)
+Copy-Item -Force (Join-Path $www 'install.cmd') (Join-Path $www 'Abrir-AcompOPMS.cmd')
+
+# Win+R: baixa o .cmd com curl (sem marca de internet) e executa — sem PowerShell
+$runCmd = "cmd /c `"curl.exe -fsSL http://$ip/acomp-ca/install.cmd -o %TEMP%\acomp-install.cmd & call %TEMP%\acomp-install.cmd`""
 
 $html = @"
 <!DOCTYPE html>
@@ -122,7 +88,7 @@ $html = @"
       border-radius: 10px; background: #f0f0f2; font-size: .68rem;
       font-family: Consolas, "Courier New", monospace; line-height: 1.35;
       text-align: left; border: 1px solid rgba(0,0,0,.06); resize: none;
-      min-height: 88px; color: #1d1d1f;
+      min-height: 72px; color: #1d1d1f;
     }
     button.btn {
       display: inline-flex; width: 100%; align-items: center; justify-content: center;
@@ -133,24 +99,23 @@ $html = @"
     button.btn:hover { filter: brightness(1.05); }
     .ok { color: #3f6b56; font-weight: 700; font-size: .85rem; text-align: center; min-height: 1.2em; margin-top: 10px; }
     .alt { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #6e6e73; text-align: center; }
-    .alt a { color: #3f6b56; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Instalar certificado da rede</h1>
-    <p>Use o comando abaixo no <strong>Executar</strong> do Windows (sem baixar arquivo):</p>
+    <p>Neste PC o PowerShell pode estar bloqueado. Use o comando abaixo (so CMD do Windows):</p>
     <ol>
       <li>Clique em <strong>Copiar comando</strong></li>
       <li>Pressione <strong>Win + R</strong></li>
       <li>Cole com <strong>Ctrl + V</strong> e aperte <strong>Enter</strong></li>
       <li>Aceite o <strong>UAC</strong> — o sistema abre sozinho</li>
     </ol>
-    <textarea class="cmd" id="cmd" readonly rows="4">$runCmd</textarea>
+    <textarea class="cmd" id="cmd" readonly rows="3">$runCmd</textarea>
     <button class="btn" type="button" id="copy">Copiar comando</button>
     <div class="ok" id="status"></div>
     <div class="alt">
-      Alternativa: rode como Admin o arquivo em<br />
+      Ou, no PC servidor, rode como Administrador:<br />
       <code>servidor-portatil\cliente\Instalar-Certificado-Confianca.cmd</code>
     </div>
   </div>
@@ -173,18 +138,10 @@ $html = @"
       }
 
       function copyCommand() {
-        if (navigator.clipboard && window.isSecureContext) {
-          return navigator.clipboard.writeText(box.value).then(function () {
-            setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
-          }).catch(function () {
-            if (copyLegacy()) setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
-            else setStatus('Selecione o texto e pressione Ctrl+C.', false);
-          });
-        }
         if (copyLegacy()) setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
         else {
           box.focus(); box.select();
-          setStatus('Texto selecionado — Ctrl+C, depois Win+R e Ctrl+V.', false);
+          setStatus('Texto selecionado — pressione Ctrl+C, depois Win+R e Ctrl+V.', false);
         }
       }
 
@@ -206,14 +163,19 @@ $html = @"
 "@
 Set-Content -LiteralPath (Join-Path $www 'index.html') -Value $html.Trim() -Encoding UTF8
 
-$localCmd = Join-Path $root 'cliente\Abrir-Sistema-OMPS.cmd'
-@"
-@echo off
-title AcompOPMS
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -EncodedCommand $bootEncoded
-if errorlevel 1 pause
-"@ | Set-Content -LiteralPath $localCmd -Encoding ASCII
+# Copia local no pacote (USB / Transferir) — sem MOTW
+Copy-Item -Force (Join-Path $www 'install.cmd') (Join-Path $root 'cliente\Abrir-Sistema-OMPS.cmd')
+
+# Mantem install.ps1 para PCs sem bloqueio de PowerShell (opcional)
+$installPs1 = @"
+`$ErrorActionPreference = 'Stop'
+`$Server = '$ip'
+`$cmd = Join-Path `$env:TEMP 'acomp-install.cmd'
+Invoke-WebRequest -Uri "http://`$Server/acomp-ca/install.cmd" -OutFile `$cmd -UseBasicParsing
+Start-Process -FilePath `$cmd -Wait
+"@
+Set-Content -LiteralPath (Join-Path $www 'install.ps1') -Value $installPs1.Trim() -Encoding UTF8
 
 Write-Host ("CA HTTP publicada em: {0}" -f $www)
-Write-Host ("Win+R ($($runCmd.Length) chars): {0}" -f $runCmd)
+Write-Host ("Win+R: {0}" -f $runCmd)
 Write-Host ("Clientes: http://{0}/" -f $ip)
