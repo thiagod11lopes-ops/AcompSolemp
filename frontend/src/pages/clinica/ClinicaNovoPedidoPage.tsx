@@ -1526,11 +1526,13 @@ export default function ClinicaNovoPedidoPage() {
   const tabsSourceAll = abas.length
     ? abas
     : fixedPlanilhas.map((f) => ({ id: f.id, nome: f.nome }))
-  // Enviar (medicamento): só IMH — Lista de Medicamentos e Pacientes ficam em Planilhas.
+  // Planilhas (medicamento): só Lista e Pacientes. Enviar: IMH em tela cheia (sem abas).
   const tabsSource =
     isMedicamento && !isPlanilhasRoute
-      ? tabsSourceAll.filter((aba) => aba.id === IMH_ABA_ID)
-      : tabsSourceAll
+      ? []
+      : isMedicamento
+        ? tabsSourceAll.filter((aba) => aba.id !== IMH_ABA_ID)
+        : tabsSourceAll
   const abaVisivelId =
     abaAtivaId && tabsSource.some((a) => a.id === abaAtivaId)
       ? abaAtivaId
@@ -1541,7 +1543,8 @@ export default function ClinicaNovoPedidoPage() {
 
   const renderContent = () => {
     if (isMedicamento) {
-      if (abaVisivelId === IMH_ABA_ID) {
+      // Enviar / correção: formulário IMH (não vive mais como aba em Planilhas).
+      if (!isPlanilhasRoute) {
         return (
           <ImhMedicamentoForm
             value={imhMedicamentoFormVisivel}
