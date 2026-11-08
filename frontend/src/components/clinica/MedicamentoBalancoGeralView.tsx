@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  Alert,
   Box,
   Card,
   CardContent,
@@ -221,6 +222,31 @@ export function MedicamentoBalancoGeralView({
           />
         ))}
       </Box>
+
+      <Alert
+        severity={balanco.estoqueMov.alinhado ? 'success' : 'warning'}
+        sx={{ borderRadius: 2 }}
+      >
+        {balanco.estoqueMov.alinhado ? (
+          <>
+            Estoque alinhado ao IMH no período: saídas IMH no ledger (
+            {formatBalancoQtd(balanco.estoqueMov.saidasImhLedger)}) conferem com a planilha (
+            {formatBalancoQtd(balanco.estoqueMov.saidasImhPlanilha)}). Entradas{' '}
+            {formatBalancoQtd(balanco.estoqueMov.entradas)} · Saídas alinhadas{' '}
+            {formatBalancoQtd(balanco.estoqueMov.saidas)} · Saldo líquido{' '}
+            {formatBalancoQtd(balanco.estoqueMov.saldoLiquido)}.
+          </>
+        ) : (
+          <>
+            Divergência IMH × ledger: planilha {formatBalancoQtd(balanco.estoqueMov.saidasImhPlanilha)}{' '}
+            vs baixas registradas {formatBalancoQtd(balanco.estoqueMov.saidasImhLedger)} (
+            {balanco.estoqueMov.divergenciaImh > 0 ? '+' : ''}
+            {formatBalancoQtd(balanco.estoqueMov.divergenciaImh)}). O balanço usa o maior valor para
+            não subcontar consumo antigo sem movimentação. Saídas manuais:{' '}
+            {formatBalancoQtd(balanco.estoqueMov.saidasManuais)}.
+          </>
+        )}
+      </Alert>
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 8 }}>
@@ -468,7 +494,11 @@ export function MedicamentoBalancoGeralView({
                 <Tooltip
                   formatter={(value, _name, item) => {
                     const label = String(item?.payload?.nome ?? '')
-                    if (label.includes('Entradas') || label.includes('Saídas') || label === 'Saldo') {
+                    if (
+                      label.includes('Entradas') ||
+                      label.includes('Saídas') ||
+                      label === 'Saldo'
+                    ) {
                       return [formatBalancoQtd(Number(value)), label]
                     }
                     return [formatCurrency(Number(value)), label]
