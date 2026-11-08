@@ -175,3 +175,186 @@ export function listAuditoriaForPedido(
 
   return out.sort((a, b) => new Date(b.em).getTime() - new Date(a.em).getTime())
 }
+
+const DEMO_AUD_PREFIX = 'demo-aud-'
+const FIC_AUD_PREFIX = 'fic-aud-'
+
+function hoursAfter(iso: string, hours: number): string {
+  const d = new Date(iso)
+  d.setHours(d.getHours() + hours)
+  return d.toISOString()
+}
+
+/**
+ * Preenche auditoria rica para PEDs do modo exemplo / seed fictício,
+ * para testar a aba Auditoria sem precisar percorrer o fluxo real.
+ */
+export function seedAuditoriaModoExemplo(data: AppData): number {
+  const list = ensureAuditoriaArray(data)
+  const kept = list.filter(
+    (e) => !e.id.startsWith(DEMO_AUD_PREFIX) && !e.id.startsWith(FIC_AUD_PREFIX),
+  )
+  const novos: PedidoAuditoriaEvento[] = []
+
+  const usuariosDemo = {
+    clinica: { id: 'demo-u-clinica', nome: 'Clínica Exemplo' },
+    medicamento: { id: 'demo-u-medicamento', nome: 'Medicamento Exemplo' },
+    auditoria: { id: 'demo-u-auditoria', nome: 'Cap. Ana Paula' },
+    imh: { id: 'demo-u-imh', nome: 'Ten. Roberto Lima' },
+    solemp: { id: 'demo-u-solemp', nome: 'Sgt. Maria Souza' },
+    financeiro: { id: 'demo-u-fin', nome: 'Ten. Santos' },
+  }
+
+  let seq = 0
+  const push = (
+    pedidoId: string,
+    em: string,
+    usuario: { id: string; nome: string },
+    acao: PedidoAuditoriaAcao,
+    titulo: string,
+    detalhe?: string,
+    alteracao?: string,
+    etapaNome?: string,
+  ) => {
+    seq += 1
+    const prefix = pedidoId.startsWith('fic-ped-') ? FIC_AUD_PREFIX : DEMO_AUD_PREFIX
+    novos.push({
+      id: `${prefix}${pedidoId}-${seq}`,
+      pedidoId,
+      em,
+      usuarioId: usuario.id,
+      usuarioNome: usuario.nome,
+      acao,
+      titulo,
+      detalhe: detalhe ?? null,
+      etapaNome: etapaNome ?? null,
+      etapaChave: null,
+      alteracao: alteracao ?? null,
+    })
+  }
+
+  for (const pedido of data.pedidos) {
+    const isFic = pedido.id.startsWith('fic-ped-')
+    const isDemoCorr = pedido.id.startsWith('demo-ped-correcao')
+    if (!isFic && !isDemoCorr) continue
+
+    const base = pedido.dataSolicitacao || new Date().toISOString()
+    const isPme = pedido.id.includes('-pme-') || pedido.id.includes('PME')
+    const origem = isPme ? usuariosDemo.medicamento : usuariosDemo.clinica
+    const solemp = data.solemp.find((s) => s.pedidoId === pedido.id)
+
+    push(
+      pedido.id,
+      base,
+      origem,
+      'PEDIDO_CRIADO',
+      `Pedido ${pedido.numero} criado`,
+      pedido.observacoes || 'Abertura da timeline no modo exemplo.',
+      undefined,
+      'Solicitação da Clínica',
+    )
+
+    push(
+      pedido.id,
+      hoursAfter(base, 2),
+      origem,
+      'PLANILHA_ENVIADA',
+      isPme ? 'Planilha PME enviada' : 'Planilha IMH / Div. Material enviada',
+      `${pedido.quantidade} item(ns) · valor ${pedido.valor.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      })}`,
+      undefined,
+      isPme ? 'IMH' : 'Auditoria',
+    )
+
+    if (isDemoCorr || pedido.planilhaDevolvidaEm) {
+      push(
+        pedido.id,
+        pedido.planilhaDevolvidaEm || hoursAfter(base, 8),
+        usuariosDemo.auditoria,
+        'PLANILHA_DEVOLVIDA',
+        'Planilha devolvida para correção',
+        pedido.planilhaDevolvidaJustificativa ||
+          'Ajuste de lote e quantidade na planilha (exemplo).',
+        `Auditoria → ${origem.nome}`,
+        'Auditoria',
+      )
+      continue
+    }
+
+    if (!isPme) {
+      push(
+        pedido.id,
+        hoursAfter(base, 10),
+        usuariosDemo.auditoria,
+        'ETAPA_AVANCADA',
+        'Auditoria concluída',
+        'Planilha conferida e encaminhada.',
+        'Auditoria → IMH / Confecção',
+        'Auditoria',
+      )
+    }
+
+    push(
+      pedido.id,
+      hoursAfter(base, 18),
+      usuariosDemo.imh,
+      'ETAPA_AVANCADA',
+      'IMH / Contabilidade concluída',
+      'Indenização registrada no modo exemplo.',
+      undefined,
+      'IMH',
+    )
+
+    if (solemp?.numero) {
+      push(
+        pedido.id,
+        solemp.data || hoursAfter(base, 30),
+        usuariosDemo.solemp,
+        'SOLEMP_CONFECCIONADA',
+        `SOLEMP ${solemp.numero}`,
+        solemp.valor != null
+          ? `Valor ${solemp.valor.toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            })}`
+          : 'Confecção registrada.',
+        undefined,
+        'Confecção de Solemp',
+      )
+    }
+
+    if (pedido.empenhoNumero || pedido.concluido) {
+      const ne = pedido.empenhoNumero || `NE-${pedido.numero.slice(-4)}`
+      push(
+        pedido.id,
+        hoursAfter(base, 48),
+        usuariosDemo.financeiro,
+        'NE_INFORMADA',
+        `Empenho / NE ${ne}`,
+        pedido.concluido
+          ? 'Pagamento confirmado e processo concluído (exemplo).'
+          : 'Aguardando empenho na rede local (exemplo).',
+        undefined,
+        'Aguardando NE',
+      )
+    }
+
+    if (pedido.concluido) {
+      push(
+        pedido.id,
+        hoursAfter(base, 52),
+        usuariosDemo.financeiro,
+        'PAGAMENTO_CONFIRMADO',
+        'Processo concluído',
+        'Empenhado finalizado no modo exemplo.',
+        undefined,
+        'Empenhado',
+      )
+    }
+  }
+
+  data.auditoria = [...kept, ...novos]
+  return novos.length
+}

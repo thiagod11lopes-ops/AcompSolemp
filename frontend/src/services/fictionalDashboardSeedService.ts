@@ -28,6 +28,7 @@ import {
   isDemoExampleUser,
   seedDemoExampleCadastros,
 } from '@/services/demoCadastrosService'
+import { seedAuditoriaModoExemplo } from '@/utils/pedidoAuditoria'
 
 const TARGET_CONCLUIDOS = 520
 const TARGET_EMPENHO = 5_000_000
@@ -524,6 +525,9 @@ export function buildFictionalDashboardAppData(base: AppData): AppData {
     },
   ]
 
+  // Aba Auditoria: trilha rica para testar no modo exemplo
+  seedAuditoriaModoExemplo(data)
+
   return data
 }
 
@@ -692,6 +696,11 @@ export function stripFictionalSeedArtifacts(data: AppData): AppData {
   next.pedidos = next.pedidos.filter((p) => !p.id.startsWith('fic-ped-'))
   next.solemp = next.solemp.filter((s) => !s.id.startsWith('fic-solemp-'))
   next.notificacoes = next.notificacoes.filter((n) => !n.id.startsWith('fic-notif-'))
+  if (Array.isArray(next.auditoria)) {
+    next.auditoria = next.auditoria.filter(
+      (e) => !e.id.startsWith('fic-aud-') && !e.id.startsWith('demo-aud-'),
+    )
+  }
 
   if (next.pedidoPlanilhaEnvio) {
     for (const key of Object.keys(next.pedidoPlanilhaEnvio)) {
