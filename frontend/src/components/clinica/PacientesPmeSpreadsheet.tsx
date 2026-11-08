@@ -314,6 +314,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
           minHeight: 44,
           px: 1.25,
           py: 0.5,
+          background: '#fff',
           bgcolor: '#fff',
           borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
         }}
@@ -335,8 +336,6 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
         >
           {rows.length}
         </Typography>
-
-        <Box sx={{ width: 1, height: 16, bgcolor: EXCEL_SHEET.toolbarBorder, mx: 0.25 }} />
 
         <TextField
           size="small"
@@ -529,6 +528,11 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
         }
         rowsPerPageOptions={[25, 50, 100, 200]}
         labelRowsPerPage="Linhas"
+        sx={{
+          background: '#fff',
+          borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+          '.MuiTablePagination-toolbar': { minHeight: 40 },
+        }}
       />
 
       <Menu
