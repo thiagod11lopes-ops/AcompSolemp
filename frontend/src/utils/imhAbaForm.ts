@@ -19,7 +19,7 @@ import {
   isPctIndenizarManualPorVinculo,
   parsePctIndenizar,
   pctIndenizarFromVinculo,
-} from '@/utils/imhMedicamentoForm'
+} from '@/utils/pctIndenizarVinculo'
 
 export function createEmptyImhAbaLinha(): ImhAbaLinha {
   return {
