@@ -101,10 +101,12 @@ $html = @"
     h1 { font-size: 1.25rem; margin: 0 0 8px; letter-spacing: -0.02em; text-align: center; }
     p { margin: 0 0 14px; color: #6e6e73; font-size: .95rem; line-height: 1.45; text-align: center; }
     ol { margin: 0 0 16px 1.1rem; padding: 0; color: #1d1d1f; font-size: .92rem; line-height: 1.55; }
-    code, .cmd {
+    textarea.cmd {
       display: block; width: 100%; margin: 10px 0 14px; padding: 12px;
       border-radius: 10px; background: #f0f0f2; font-size: .72rem;
-      word-break: break-all; text-align: left; border: 1px solid rgba(0,0,0,.06);
+      font-family: Consolas, "Courier New", monospace; line-height: 1.35;
+      text-align: left; border: 1px solid rgba(0,0,0,.06); resize: none;
+      min-height: 72px; color: #1d1d1f;
     }
     button.btn {
       display: inline-flex; width: 100%; align-items: center; justify-content: center;
@@ -113,7 +115,7 @@ $html = @"
       background: linear-gradient(135deg, #558b71, #3f6b56);
     }
     button.btn:hover { filter: brightness(1.05); }
-    .ok { color: #3f6b56; font-weight: 700; font-size: .85rem; text-align: center; min-height: 1.2em; }
+    .ok { color: #3f6b56; font-weight: 700; font-size: .85rem; text-align: center; min-height: 1.2em; margin-top: 10px; }
     .alt { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #6e6e73; text-align: center; }
     .alt a { color: #3f6b56; font-weight: 600; }
   </style>
@@ -128,7 +130,7 @@ $html = @"
       <li>Cole com <strong>Ctrl + V</strong> e aperte <strong>Enter</strong></li>
       <li>Aceite o <strong>UAC</strong> — o sistema abre sozinho</li>
     </ol>
-    <div class="cmd" id="cmd">$runCmd</div>
+    <textarea class="cmd" id="cmd" readonly rows="3">$runCmd</textarea>
     <button class="btn" type="button" id="copy">Copiar comando</button>
     <div class="ok" id="status"></div>
     <div class="alt">
@@ -137,24 +139,67 @@ $html = @"
     </div>
   </div>
   <script>
-    var cmd = document.getElementById('cmd').textContent.trim();
-    var status = document.getElementById('status');
-    document.getElementById('copy').addEventListener('click', async function () {
-      try {
-        await navigator.clipboard.writeText(cmd);
-        status.textContent = 'Comando copiado. Agora Win+R, Ctrl+V, Enter.';
-      } catch (e) {
-        status.textContent = 'Selecione o texto do comando e copie com Ctrl+C.';
+    (function () {
+      var box = document.getElementById('cmd');
+      var status = document.getElementById('status');
+      var btn = document.getElementById('copy');
+
+      function setStatus(msg, ok) {
+        status.textContent = msg;
+        status.style.color = ok ? '#3f6b56' : '#b3261e';
       }
-    });
-    // Copia automaticamente ao abrir a pagina
-    window.addEventListener('load', function () {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(cmd).then(function () {
-          status.textContent = 'Comando ja copiado. Pressione Win+R, Ctrl+V e Enter.';
-        }).catch(function () {});
+
+      function copyLegacy() {
+        box.focus();
+        box.select();
+        box.setSelectionRange(0, box.value.length);
+        var ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (e) {
+          ok = false;
+        }
+        return ok;
       }
-    });
+
+      function copyCommand() {
+        var text = box.value;
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text).then(function () {
+            setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
+          }).catch(function () {
+            if (copyLegacy()) {
+              setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
+            } else {
+              setStatus('Selecione o texto acima e pressione Ctrl+C.', false);
+            }
+          });
+        }
+        if (copyLegacy()) {
+          setStatus('Comando copiado. Agora Win+R, Ctrl+V, Enter.', true);
+        } else {
+          box.focus();
+          box.select();
+          setStatus('Texto selecionado — pressione Ctrl+C, depois Win+R e Ctrl+V.', false);
+        }
+      }
+
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        copyCommand();
+      });
+
+      // Em HTTP a API moderna falha; ja seleciona o texto para facilitar Ctrl+C
+      window.addEventListener('load', function () {
+        box.focus();
+        box.select();
+        if (copyLegacy()) {
+          setStatus('Comando copiado. Pressione Win+R, Ctrl+V e Enter.', true);
+        } else {
+          setStatus('Clique em Copiar comando (ou Ctrl+C com o texto selecionado).', true);
+        }
+      });
+    })();
   </script>
 </body>
 </html>
