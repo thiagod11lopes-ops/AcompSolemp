@@ -68,8 +68,25 @@ if ($isAdmin) {
     Write-Host "Aviso mkcert -install: $($_.Exception.Message)"
   }
 } else {
-  Write-Host 'Aviso: sem Admin - pulando mkcert -install (evita tela UAC).'
-  Write-Host 'Neste PC servidor, rode Liberar-Firewall.cmd (Admin) uma vez para confiar na CA.'
+  Write-Host '==> Sem Admin: solicitando UAC para instalar a CA automaticamente...'
+  $elevatePs1 = Join-Path $env:TEMP 'acomp-mkcert-install.ps1'
+  @"
+`$ErrorActionPreference = 'Continue'
+& '$mkcert' -install
+if (Test-Path '$PSScriptRoot\Ensure-Certificado-Confianca.ps1') {
+  & '$PSScriptRoot\Ensure-Certificado-Confianca.ps1' -Quiet
+}
+"@ | Set-Content -LiteralPath $elevatePs1 -Encoding UTF8
+  try {
+    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $elevatePs1
+    ) -Verb RunAs -Wait -PassThru
+    if ($p.ExitCode -ne 0) {
+      Write-Host 'Aviso: instalacao elevada da CA cancelada ou incompleta.'
+    }
+  } catch {
+    Write-Host ("Aviso UAC CA: {0}" -f $_.Exception.Message)
+  }
 }
 
 if ($needRegen) {

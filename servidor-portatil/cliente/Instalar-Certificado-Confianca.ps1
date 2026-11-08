@@ -1,9 +1,28 @@
 # Instala a CA do Servidor OMPS neste PC (remove o aviso "Nao seguro" no Chrome/Edge).
-# Execute como Administrador, UMA VEZ por computador cliente.
+# Preferir: Ensure-Certificado-Confianca.ps1 (baixa da rede se preciso + UAC automatico).
 # Uso: .\Instalar-Certificado-Confianca.ps1
 
 $ErrorActionPreference = 'Stop'
 
+$ensure = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\Ensure-Certificado-Confianca.ps1'
+if (-not (Test-Path -LiteralPath $ensure)) {
+  $ensure = Join-Path $PSScriptRoot '..\scripts\Ensure-Certificado-Confianca.ps1'
+}
+
+if (Test-Path -LiteralPath $ensure) {
+  $caLocal = Join-Path $PSScriptRoot 'AcompOPMS-rootCA.pem'
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ensure)
+  if (Test-Path -LiteralPath $caLocal) {
+    $args += @('-CaPath', $caLocal)
+  }
+  & powershell.exe @args
+  if ($LASTEXITCODE -ne 0) { throw 'Falha ao garantir certificado.' }
+  Write-Host ''
+  Write-Host 'OK. Feche e abra o Chrome/Edge, depois acesse https://IP_DO_SERVIDOR/'
+  exit 0
+}
+
+# Fallback legado
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
   IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
@@ -31,5 +50,4 @@ certutil.exe -addstore -f "ROOT" $ca
 if ($LASTEXITCODE -ne 0) { throw 'certutil falhou ao instalar a CA.' }
 
 Write-Host ''
-Write-Host 'OK. Feche e abra o Chrome/Edge, depois acesse o nome do sistema (https).'
-Write-Host 'O aviso "Nao seguro" deve sumir e aparecer o cadeado.'
+Write-Host 'OK. Feche e abra o Chrome/Edge, depois acesse o sistema (https).'

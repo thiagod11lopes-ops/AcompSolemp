@@ -243,8 +243,14 @@ try {
     }
     Write-Log 'Boot automatico: Dashboard maximizado; auxiliares minimizados.'
   } elseif (-not $NoBrowser) {
-    # Espera o Vite local; abre o HTTPS publico (cadeado apos instalar a CA).
+    # Garante CA confiada neste PC; depois abre HTTPS.
     Wait-AppReady $localLogin
+    try {
+      Write-Log '==> Garantindo certificado HTTPS confiado neste PC...'
+      & "$PSScriptRoot\Ensure-Certificado-Confianca.ps1" -Quiet
+    } catch {
+      Write-Log ("Aviso certificado: {0}" -f $_.Exception.Message)
+    }
     $chrome = Get-ChromePath
     if ($chrome) {
       Write-Log "==> Abrindo Chrome: $publicLogin"
@@ -257,20 +263,22 @@ try {
     Write-Log "==> Navegador nao aberto. Acesso: $publicHome"
   }
 
-  Write-Log "Pronto. Nos outros PCs use: $publicHome"
+  $httpBootstrap = if ($ip) { "http://${ip}/" } else { $publicHome }
+  Write-Log "Pronto. Nos outros PCs use: $httpBootstrap (instala certificado e abre o sistema)."
   if (-not $Silent) {
     try {
       Add-Type -AssemblyName System.Windows.Forms
       [System.Windows.Forms.MessageBox]::Show(
         ("Servidor pronto (HTTPS).`n`n" +
-         "Nos outros computadores:`n" +
-         "1) Uma vez: Instalar-Certificado-Confianca.cmd (Admin)`n" +
-         "   (pasta servidor-portatil\cliente)`n" +
-         "2) Digite no navegador a URL completa:`n`n" +
+         "Nos outros computadores, abra:`n`n" +
+         "    $httpBootstrap`n`n" +
+         "A pagina instala o certificado automaticamente`n" +
+         "(aceite o UAC) e abre o sistema sem o aviso`n" +
+         "'Sua conexao nao e particular'.`n`n" +
+         "Depois pode usar diretamente:`n" +
          "    $publicHome`n`n" +
-         "(use https:// e o IP - sem porta :5173)`n`n" +
          "Se for a primeira vez neste PC servidor, rode UMA VEZ:`n" +
-         "Liberar-Firewall.cmd (Admin) - instala inicio automatico."),
+         "Liberar-Firewall.cmd (Admin)."),
         'Iniciar Servidor OMPS',
         [System.Windows.Forms.MessageBoxButtons]::OK,
         [System.Windows.Forms.MessageBoxIcon]::Information
