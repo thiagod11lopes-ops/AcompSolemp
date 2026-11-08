@@ -52,8 +52,10 @@ export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
 }
 
 /**
- * Mesma regra da IMH da clínica:
- * titular e dependente direto → 20%; dependente indireto → 100%.
+ * Regra PME:
+ * TITULAR / DEPENDENTE DIRETO / PENSIONISTA → 20%
+ * DEPENDENTE INDIRETO → 100%
+ * OUTRO (ou vazio) → null (edição manual do %)
  */
 export function pctIndenizarFromVinculo(vinculo: string): string | null {
   const normalized = vinculo
@@ -65,12 +67,18 @@ export function pctIndenizarFromVinculo(vinculo: string): string | null {
   if (normalized.includes('INDIRETO')) return '100%'
   if (
     normalized === 'TITULAR' ||
+    normalized === 'PENSIONISTA' ||
     normalized === 'DEPENDENTE' ||
     normalized.includes('DEPENDENTE DIRETO')
   ) {
     return '20%'
   }
   return null
+}
+
+/** % editável só quando o vínculo é OUTRO (ou ainda não escolhido). */
+export function isPctIndenizarManualPorVinculo(vinculo: string): boolean {
+  return pctIndenizarFromVinculo(vinculo) === null
 }
 
 export const IMH_MEDICAMENTO_COLUNAS = [

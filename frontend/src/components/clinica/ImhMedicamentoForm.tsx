@@ -49,6 +49,7 @@ import {
   linhaImhMedicamentoHasContent,
   markImhMedicamentoLinhasFinalized,
   normalizeImhMedicamentoForm,
+  isPctIndenizarManualPorVinculo,
   pctIndenizarFromVinculo,
   withRecalculatedImhMedicamentoLinha,
 } from '@/utils/imhMedicamentoForm'
@@ -161,7 +162,7 @@ function matchToDraftPatch(
   const { row, isTitular } = match
   const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
   const vinculoPlanilha = formatImhMedUppercase(row.vinculo)
-  const pctIndenizar = pctIndenizarFromVinculo(vinculoPlanilha) ?? undefined
+  const pctIndenizar = pctIndenizarFromVinculo(vinculoPlanilha) ?? ''
 
   if (isTitular) {
     return {
@@ -170,7 +171,7 @@ function matchToDraftPatch(
       nipTitular: nipUsuario,
       postoGrad: formatImhMedUppercase(row.postoGradTitular),
       vinculo: vinculoPlanilha,
-      ...(pctIndenizar ? { pctIndenizar } : {}),
+      pctIndenizar,
     }
   }
 
@@ -180,7 +181,7 @@ function matchToDraftPatch(
     nipTitular: formatImhMedNip(row.nipTitular),
     postoGrad: formatImhMedUppercase(row.postoGradTitular),
     vinculo: vinculoPlanilha,
-    ...(pctIndenizar ? { pctIndenizar } : {}),
+    pctIndenizar,
   }
 }
 
@@ -415,6 +416,8 @@ export function ImhMedicamentoForm({
     if (atual) set.add(atual)
     return [...set]
   }, [linhaDraft.vinculo])
+
+  const pctIndenizarManual = isPctIndenizarManualPorVinculo(linhaDraft.vinculo)
 
   const selectedPacienteNome = findPacientePmeByNome(linhaDraft.nome, pacientes) ?? null
 
@@ -1414,8 +1417,17 @@ export function ImhMedicamentoForm({
               label="% A INDENIZAR"
               value={linhaDraft.pctIndenizar}
               onChange={(e) => updateDraft({ pctIndenizar: e.target.value })}
+              placeholder={pctIndenizarManual ? 'Ex.: 20%' : undefined}
+              helperText={
+                pctIndenizarManual
+                  ? 'Vínculo OUTRO: informe o % manualmente'
+                  : 'Preenchido automaticamente pelo vínculo'
+              }
               size="small"
               fullWidth
+              slotProps={{
+                input: { readOnly: !pctIndenizarManual },
+              }}
               sx={planilhaEditFieldSx}
             />
             <TextField
