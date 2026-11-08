@@ -666,7 +666,7 @@ export interface ListaMedicamentosLinha {
   movimentacoes?: ListaMedicamentoMovimentacao[]
 }
 
-/** Movimentação manual de estoque (entrada ou saída) */
+/** Movimentação de estoque (manual ou automática via IMH) */
 export interface ListaMedicamentoMovimentacao {
   id: string
   tipo: 'entrada' | 'saida'
@@ -675,7 +675,17 @@ export interface ListaMedicamentoMovimentacao {
   data: string
   /** De onde veio (entrada) ou para onde vai (saída) */
   origemDestino: string
+  /** Nome de quem registrou (usuário logado ou digitado na mov. manual) */
   responsavel: string
+  /** Id do usuário logado, quando a mov. veio da sessão */
+  usuarioId?: string | null
+  /**
+   * Origem do lançamento no ledger.
+   * Omitido / `manual` = entrada/saída pela Lista; `imh_*` = baixa/estorno do IMH PME.
+   */
+  origemTipo?: 'manual' | 'imh_baixa' | 'imh_devolucao'
+  /** Ex.: id da linha IMH ou NIP do paciente */
+  referencia?: string | null
   /** ISO 8601 do momento do registro no sistema */
   createdAt: string
 }

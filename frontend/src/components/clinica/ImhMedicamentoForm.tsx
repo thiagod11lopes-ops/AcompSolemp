@@ -711,6 +711,21 @@ export function ImhMedicamentoForm({
   const qtdMovidaEstoque = (linha: ImhMedicamentoLinha) =>
     (linha.estoqueQtdMovida?.trim() || linha.qtd).trim()
 
+  const metaEstoqueImh = (linha: ImhMedicamentoLinha) => {
+    const nip = linha.nip?.trim()
+    const refParts = [
+      linha.id ? `IMH:${linha.id}` : null,
+      nip ? `NIP ${nip}` : null,
+      linha.nome?.trim() ? linha.nome.trim() : null,
+    ].filter(Boolean)
+    return {
+      responsavel: user?.nome?.trim() || 'Usuário Medicamento',
+      usuarioId: user?.id ?? null,
+      data: linha.data,
+      referencia: refParts.join(' · ') || null,
+    }
+  }
+
   const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
     if (!linha.itemPme.trim() && !linha.listaMedicamentoId?.trim()) return
@@ -720,6 +735,7 @@ export function ImhMedicamentoForm({
       linha.lote,
       qtdMovidaEstoque(linha),
       linha.listaMedicamentoId,
+      metaEstoqueImh(linha),
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -734,6 +750,7 @@ export function ImhMedicamentoForm({
       linha.lote,
       qtdMovidaEstoque(linha),
       linha.listaMedicamentoId,
+      metaEstoqueImh(linha),
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -752,6 +769,7 @@ export function ImhMedicamentoForm({
         snapshot.lote,
         qtdMovidaEstoque(snapshot),
         snapshot.listaMedicamentoId,
+        metaEstoqueImh(snapshot),
       )
     return previewBaixaEstoqueListaMedicamentos(
       formAposDevolver || listaMedicamentos,
@@ -781,6 +799,7 @@ export function ImhMedicamentoForm({
         snapshot.lote,
         qtdMovidaEstoque(snapshot),
         snapshot.listaMedicamentoId,
+        metaEstoqueImh(snapshot),
       )
       next = baixarEstoqueListaMedicamentos(
         next,
@@ -788,6 +807,7 @@ export function ImhMedicamentoForm({
         readyMeta.lote,
         qtdMovidaEstoque(readyMeta),
         readyMeta.listaMedicamentoId,
+        metaEstoqueImh(readyMeta),
       )
       if (next !== listaMedicamentos) onListaMedicamentosChange(next)
     }

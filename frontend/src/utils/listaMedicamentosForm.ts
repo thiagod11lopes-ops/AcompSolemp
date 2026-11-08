@@ -180,6 +180,19 @@ export function filterListaMedicamentosByEstoque(
   return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
 }
 
+/** Metadados de auditoria ao ajustar estoque via IMH PME. */
+export type AjusteEstoqueImhMeta = {
+  /** Nome do usuário logado (obrigatório para rastreio). */
+  responsavel: string
+  usuarioId?: string | null
+  /** Data dd/mm/aaaa do lançamento IMH; fallback = hoje. */
+  data?: string
+  /** Ex.: id da linha IMH, NIP, número do PED. */
+  referencia?: string | null
+  /** Texto livre em origemDestino (default conforme modo). */
+  origemDestino?: string
+}
+
 /** Baixa estoque da linha (id da lista ou medicamento + lote) ao lançar no IMH. */
 export function baixarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
@@ -187,6 +200,7 @@ export function baixarEstoqueListaMedicamentos(
   lote: string,
   qtdBaixaRaw: string,
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   return ajustarEstoqueListaMedicamentos(
     form,
@@ -195,6 +209,7 @@ export function baixarEstoqueListaMedicamentos(
     qtdBaixaRaw,
     'baixar',
     listaMedicamentoId,
+    meta,
   )
 }
 
@@ -205,6 +220,7 @@ export function devolverEstoqueListaMedicamentos(
   lote: string,
   qtdDevolverRaw: string,
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   return ajustarEstoqueListaMedicamentos(
     form,
@@ -213,6 +229,7 @@ export function devolverEstoqueListaMedicamentos(
     qtdDevolverRaw,
     'devolver',
     listaMedicamentoId,
+    meta,
   )
 }
 
@@ -247,6 +264,7 @@ export function aplicarMovimentacaoListaMedicamentos(
       data: formatListaMedValidade(input.data) || formatListaMedDataHoje(),
       origemDestino: input.origemDestino.trim(),
       responsavel: input.responsavel.trim(),
+      origemTipo: 'manual' as const,
       createdAt: new Date().toISOString(),
     }
     changed = true
@@ -440,6 +458,7 @@ function ajustarEstoqueListaMedicamentos(
   qtdRaw: string,
   modo: 'baixar' | 'devolver',
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   const nome = normMedKey(itemPme)
   const qtd = parseListaMedQtdNumber(qtdRaw)
@@ -455,7 +474,33 @@ function ajustarEstoqueListaMedicamentos(
     // Baixa pode deixar o estoque negativo (ex.: 8 − 10 = −2).
     const next = modo === 'baixar' ? atual - qtd : atual + qtd
     changed = true
-    return { ...linha, qtd: formatQtdEstoque(next) }
+
+    const responsavel = meta?.responsavel?.trim() || 'Sistema'
+    const dataMov =
+      formatListaMedValidade(meta?.data?.trim() || '') || formatListaMedDataHoje()
+    const origemDestino =
+      meta?.origemDestino?.trim() ||
+      (modo === 'baixar' ? 'Paciente / IMH PME' : 'Estorno IMH PME')
+    const mov = {
+      id: `lista-med-mov-imh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tipo: (modo === 'baixar' ? 'saida' : 'entrada') as 'entrada' | 'saida',
+      qtd: formatQtdEstoque(qtd),
+      data: dataMov,
+      origemDestino,
+      responsavel,
+      usuarioId: meta?.usuarioId ?? null,
+      origemTipo: (modo === 'baixar' ? 'imh_baixa' : 'imh_devolucao') as
+        | 'imh_baixa'
+        | 'imh_devolucao',
+      referencia: meta?.referencia?.trim() || null,
+      createdAt: new Date().toISOString(),
+    }
+
+    return {
+      ...linha,
+      qtd: formatQtdEstoque(next),
+      movimentacoes: [...(linha.movimentacoes ?? []), mov],
+    }
   })
 
   return changed ? { linhas } : form
