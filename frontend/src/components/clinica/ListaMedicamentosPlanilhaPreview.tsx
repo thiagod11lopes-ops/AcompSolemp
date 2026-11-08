@@ -4,7 +4,7 @@ import {
   DeleteOutlined as DeleteIcon,
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
-  HelpOutline as HelpIcon,
+  HelpOutlineOutlined as HelpIcon,
   HistoryOutlined as HistoricoIcon,
   SwapVert as MovimentarIcon,
   UploadFileOutlined as UploadFileIcon,
