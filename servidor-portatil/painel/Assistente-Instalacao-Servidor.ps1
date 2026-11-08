@@ -667,21 +667,60 @@ function Invoke-StepCert {
 
 function Invoke-StepHealth {
   $hostName = Get-AccessHostForWizard
-  Set-StepUi 'health' 'running' 'Validando app local (:5173) e HTTPS…'
+  $lanIp = $null
+  if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+    try { $lanIp = Get-PreferredLanIPv4 } catch { }
+  }
+  $candidates = @($hostName, $lanIp, '127.0.0.1') |
+    Where-Object { $_ -and $_.Trim() } |
+    ForEach-Object { $_.Trim() } |
+    Select-Object -Unique
+
+  Set-StepUi 'health' 'running' ("Validando app local (:5173) e HTTPS ({0})…" -f ($candidates -join ', '))
   $appOk = Test-LocalAppReady
   $httpsOk = $false
+  $httpsHit = $null
   for ($i = 0; $i -lt 8; $i++) {
-    if (Test-HttpsGatewayReady $hostName) { $httpsOk = $true; break }
+    foreach ($h in $candidates) {
+      if (Test-HttpsGatewayReady $h) {
+        $httpsOk = $true
+        $httpsHit = $h
+        break
+      }
+    }
+    if ($httpsOk) { break }
     Start-Sleep -Seconds 2
     [Windows.Forms.Application]::DoEvents()
   }
+
+  # Se o IP configurado nao e o da rede atual, avisa e usa o IP que respondeu.
+  if ($httpsOk -and $hostName -and $httpsHit -and ($hostName -ne $httpsHit) -and ($httpsHit -ne '127.0.0.1')) {
+    Set-StepUi 'health' 'running' ("HTTPS OK em {0}, mas config aponta {1}. Alinhando config.env…" -f $httpsHit, $hostName)
+    $aplicar = Get-AplicarHostPs1
+    if ($aplicar) {
+      try {
+        Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+          '-NoProfile', '-ExecutionPolicy', 'Bypass',
+          '-File', $aplicar, '-HostAddress', $httpsHit
+        ) -Wait -WindowStyle Minimized | Out-Null
+        $hostName = $httpsHit
+      } catch { }
+    }
+  }
+
   $script:HealthOk = ($appOk -and $httpsOk)
   if ($script:HealthOk) {
-    Set-StepUi 'health' 'ok' ("App OK + https://{0}/ OK" -f $hostName)
+    $show = if ($httpsHit) { $httpsHit } else { $hostName }
+    Set-StepUi 'health' 'ok' ("App OK + https://{0}/ OK" -f $show)
     return $true
   }
   if ($appOk -and -not $httpsOk) {
-    Set-StepUi 'health' 'error' ("App local OK, mas HTTPS em https://{0}/ nao respondeu. Verifique gateway/firewall." -f $hostName)
+    $tried = ($candidates | ForEach-Object { "https://$_/" }) -join ', '
+    $hint = ''
+    if ($lanIp -and $hostName -and ($lanIp -ne $hostName)) {
+      $hint = (" IP atual da rede e {0}, nao {1}." -f $lanIp, $hostName)
+    }
+    Set-StepUi 'health' 'error' ("App local OK, mas HTTPS nao respondeu ({0}). Verifique gateway/firewall.{1}" -f $tried, $hint)
     return $false
   }
   if (-not $appOk -and $httpsOk) {
