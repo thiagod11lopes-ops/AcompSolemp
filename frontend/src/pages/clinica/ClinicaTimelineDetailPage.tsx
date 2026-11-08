@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
+import { PedidoDetalheTabs } from '@/components/pedido/PedidoDetalheTabs'
 import { useClinicaPedido } from '@/hooks/useClinicaPedidos'
 import { useWorkflowEtapas } from '@/hooks/useCadastros'
 import { resolveEtapaNomeExibicao } from '@/utils/timelineFlow'
@@ -99,10 +100,15 @@ export default function ClinicaTimelineDetailPage() {
       </Paper>
 
       <Box sx={{ mb: 3 }}>
-        <ClinicaInteractiveTimeline
-          pedido={pedido}
-          etapas={etapas}
-          somenteLeitura
+        <PedidoDetalheTabs
+          pedidoId={pedido.id}
+          timeline={
+            <ClinicaInteractiveTimeline
+              pedido={pedido}
+              etapas={etapas}
+              somenteLeitura
+            />
+          }
         />
       </Box>
     </>

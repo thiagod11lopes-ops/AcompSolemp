@@ -6,6 +6,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { OrdenadorInteractiveTimeline } from '@/components/workflow/OrdenadorInteractiveTimeline'
+import { PedidoDetalheTabs } from '@/components/pedido/PedidoDetalheTabs'
 import { SetorConclusaoModal } from '@/components/ordenador/SetorConclusaoModal'
 import { useAssinarSolemp, useDevolverPlanilha, useOrdenadorPedido } from '@/hooks/useOrdenadorPedidos'
 import { useProcessosArquivadosSetor } from '@/hooks/useProcessosArquivados'
@@ -470,25 +471,30 @@ export default function OrdenadorTimelineDetailPage() {
         )}
       </Paper>
 
-      <OrdenadorInteractiveTimeline
-        pedido={pedido}
-        etapas={etapas}
-        processosArquivados={processosArquivados}
-        onAssinar={handleAssinar}
-        assinando={assinar.isPending && !modalAberto}
-        onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
-        onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
-        onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
-        onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
-        planilhaRecebida={planilhaRecebida}
-        planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
-        planilhaRecebidaRascunho={planilhaRecebidaRascunho}
-        onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
-        planilhaEncaminhadaImh={planilhaEncaminhadaImh}
-        planilhaRecebidaImh={planilhaRecebidaImh}
-        fluxoDiretoImh={fluxoDiretoImh}
-        fluxoEncerrado={fluxoEncerrado}
-        mensagemFluxoEncerrado={mensagemFluxoEncerrado}
+      <PedidoDetalheTabs
+        pedidoId={pedido.id}
+        timeline={
+          <OrdenadorInteractiveTimeline
+            pedido={pedido}
+            etapas={etapas}
+            processosArquivados={processosArquivados}
+            onAssinar={handleAssinar}
+            assinando={assinar.isPending && !modalAberto}
+            onReceberPlanilha={isAuditoria ? handleReceberPlanilha : undefined}
+            onReceberPlanilhaConfeccao={isConfeccao ? handleReceberPlanilhaConfeccao : undefined}
+            onReceberPlanilhaRascunho={isConfeccao ? handleReceberPlanilhaRascunho : undefined}
+            onEncaminharImh={isAuditoria ? handleEncaminharImh : undefined}
+            planilhaRecebida={planilhaRecebida}
+            planilhaRecebidaConfeccao={planilhaRecebidaConfeccao}
+            planilhaRecebidaRascunho={planilhaRecebidaRascunho}
+            onReceberPlanilhaImh={isContabilidade ? handleReceberPlanilhaImh : undefined}
+            planilhaEncaminhadaImh={planilhaEncaminhadaImh}
+            planilhaRecebidaImh={planilhaRecebidaImh}
+            fluxoDiretoImh={fluxoDiretoImh}
+            fluxoEncerrado={fluxoEncerrado}
+            mensagemFluxoEncerrado={mensagemFluxoEncerrado}
+          />
+        }
       />
       {fluxoEncerrado && (
         <Button

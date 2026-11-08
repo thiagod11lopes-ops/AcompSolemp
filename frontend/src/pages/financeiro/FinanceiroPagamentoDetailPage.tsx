@@ -8,6 +8,7 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { FinanceiroInteractiveTimeline } from '@/components/workflow/FinanceiroInteractiveTimeline'
+import { PedidoDetalheTabs } from '@/components/pedido/PedidoDetalheTabs'
 import { FinanceiroPagamentoModal } from '@/components/financeiro/FinanceiroPagamentoModal'
 import { AuditoriaPlanilhaModal } from '@/components/ordenador/AuditoriaPlanilhaModal'
 import {
@@ -178,16 +179,21 @@ export default function FinanceiroPagamentoDetailPage() {
             },
           }}
         >
-          <FinanceiroInteractiveTimeline
-            pedido={pedido}
-            etapas={etapas}
-            onPagamento={pagamentoConcluido ? undefined : abrirModal}
-            onAguardandoEmpenhar={pagamentoConcluido ? undefined : handleAguardandoEmpenhar}
-            onVerPlanilha={planilhaEnvio ? () => setPlanilhaOpen(true) : undefined}
-            registrando={registrar.isPending && !modalOpen}
-            marcandoAguardando={marcarAguardando.isPending}
-            mensagemFluxoEncerrado={
-              pagamentoConcluido ? MENSAGENS_ARQUIVAMENTO.DIV_MAT_FINANCAS : null
+          <PedidoDetalheTabs
+            pedidoId={pedido.id}
+            timeline={
+              <FinanceiroInteractiveTimeline
+                pedido={pedido}
+                etapas={etapas}
+                onPagamento={pagamentoConcluido ? undefined : abrirModal}
+                onAguardandoEmpenhar={pagamentoConcluido ? undefined : handleAguardandoEmpenhar}
+                onVerPlanilha={planilhaEnvio ? () => setPlanilhaOpen(true) : undefined}
+                registrando={registrar.isPending && !modalOpen}
+                marcandoAguardando={marcarAguardando.isPending}
+                mensagemFluxoEncerrado={
+                  pagamentoConcluido ? MENSAGENS_ARQUIVAMENTO.DIV_MAT_FINANCAS : null
+                }
+              />
             }
           />
           {(planilhaEnvio || pagamentoConcluido) && (

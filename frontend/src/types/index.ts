@@ -129,6 +129,37 @@ export interface HistoricoEvento {
   observacao: string
 }
 
+/** Ações do histórico auditável do PED (append-only). */
+export type PedidoAuditoriaAcao =
+  | 'PEDIDO_CRIADO'
+  | 'ETAPA_AVANCADA'
+  | 'PLANILHA_ENVIADA'
+  | 'PLANILHA_DEVOLVIDA'
+  | 'PLANILHA_REENVIADA'
+  | 'SOLEMP_CONFECCIONADA'
+  | 'NE_INFORMADA'
+  | 'NF_ANEXADA'
+  | 'PAGAMENTO_CONFIRMADO'
+  | 'ARQUIVADO'
+  | 'OUTRO'
+
+/** Evento imutável de auditoria — quem mudou o quê no PED. */
+export interface PedidoAuditoriaEvento {
+  id: string
+  pedidoId: string
+  /** ISO */
+  em: string
+  usuarioId: string
+  usuarioNome: string
+  acao: PedidoAuditoriaAcao
+  titulo: string
+  detalhe?: string | null
+  etapaChave?: string | null
+  etapaNome?: string | null
+  /** Ex.: valor antigo → novo */
+  alteracao?: string | null
+}
+
 export interface ArquivoAnexo {
   id: string
   pedidoId: string
@@ -800,6 +831,8 @@ export interface AppData {
   solemp: Solemp[]
   notasFiscais: NotaFiscal[]
   historico: HistoricoEvento[]
+  /** Trilha auditável append-only dos PEDs (quem / o quê / quando). */
+  auditoria?: PedidoAuditoriaEvento[]
   arquivos: ArquivoAnexo[]
   notificacoes: Notification[]
   reversoes: ReversaoTimeline[]

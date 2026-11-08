@@ -6,27 +6,23 @@ import {
   Button,
   Chip,
   Box,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ProcessTimeline } from '@/components/workflow/ProcessTimeline'
+import { PedidoAuditoriaPanel } from '@/components/pedido/PedidoAuditoriaPanel'
 import { usePedido } from '@/hooks/usePedidos'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { useWorkflowEtapas, useHistorico } from '@/hooks/useCadastros'
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/format'
+import { useWorkflowEtapas } from '@/hooks/useCadastros'
+import { formatCurrency, formatDate } from '@/utils/format'
 
 export default function ProcessoDetailPage() {
   const { id = '' } = useParams()
   const { navigatePortal } = usePortalPaths()
   const { data: pedido, isLoading } = usePedido(id)
   const { data: etapas = [] } = useWorkflowEtapas()
-  const { data: historico = [] } = useHistorico(id)
 
   if (isLoading) return <LoadingSpinner />
   if (!pedido) {
@@ -127,36 +123,7 @@ export default function ProcessoDetailPage() {
         </Grid>
 
         <Grid size={{ xs: 12, md: 3 }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Histórico
-            </Typography>
-            <List dense>
-              {historico.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  Nenhum evento registrado
-                </Typography>
-              ) : (
-                historico.map((h, i) => (
-                  <Box key={h.id}>
-                    <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                      <ListItemText
-                        primary={`${h.usuarioNome} — ${h.etapaNome}`}
-                        secondary={
-                          <>
-                            {formatDateTime(h.data)}
-                            <br />
-                            {h.observacao}
-                          </>
-                        }
-                      />
-                    </ListItem>
-                    {i < historico.length - 1 && <Divider />}
-                  </Box>
-                ))
-              )}
-            </List>
-          </Paper>
+          <PedidoAuditoriaPanel pedidoId={pedido.id} />
         </Grid>
       </Grid>
     </>

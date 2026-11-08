@@ -23,6 +23,7 @@ import {
 import { limparEstadoDevolucaoPlanilha } from '@/utils/devolverPlanilha'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
 import { requestDadosCsvExport } from '@/utils/exportDadosCsv'
+import { appendPedidoAuditoria } from '@/utils/pedidoAuditoria'
 
 export interface CreatePedidoInput {
   id?: string
@@ -321,6 +322,11 @@ export const clinicaPedidoService = {
     }
 
     data.pedidos.push(pedido)
+    const obsCriacao = somenteImh
+      ? `Timeline iniciada — pedido ${numero} enviado diretamente para IMH.`
+      : somenteConfeccao
+        ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
+        : `Timeline iniciada — pedido ${numero} enviado para Auditoria.`
     data.historico.push({
       id: `hist-${Date.now()}`,
       pedidoId: pedido.id,
@@ -329,11 +335,17 @@ export const clinicaPedidoService = {
       usuarioId: usuario.id,
       usuarioNome: usuario.nome,
       data: agora,
-      observacao: somenteImh
-        ? `Timeline iniciada — pedido ${numero} enviado diretamente para IMH.`
-        : somenteConfeccao
-          ? `Timeline iniciada — pedido ${numero} enviado para Confecção de Solemp.`
-          : `Timeline iniciada — pedido ${numero} enviado para Auditoria.`,
+      observacao: obsCriacao,
+    })
+    appendPedidoAuditoria(data, {
+      pedidoId: pedido.id,
+      usuario,
+      acao: 'PEDIDO_CRIADO',
+      titulo: `Pedido ${numero} criado`,
+      detalhe: obsCriacao,
+      etapaChave: solicitacao.chave,
+      etapaNome: solicitacao.nome,
+      em: agora,
     })
 
     notifySetoresEtapasAtivas(data, pedido.id)
