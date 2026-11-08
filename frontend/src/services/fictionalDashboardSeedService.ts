@@ -695,7 +695,11 @@ export function stripFictionalSeedArtifacts(data: AppData): AppData {
   )
   next.pedidos = next.pedidos.filter((p) => !p.id.startsWith('fic-ped-'))
   next.solemp = next.solemp.filter((s) => !s.id.startsWith('fic-solemp-'))
-  next.notificacoes = next.notificacoes.filter((n) => !n.id.startsWith('fic-notif-'))
+  next.notificacoes = next.notificacoes.filter(
+    (n) =>
+      !n.id.startsWith('fic-notif-') &&
+      !(n.pedidoId?.startsWith('fic-ped-') || n.pedidoId?.startsWith('demo-ped-correcao')),
+  )
   if (Array.isArray(next.auditoria)) {
     next.auditoria = next.auditoria.filter(
       (e) => !e.id.startsWith('fic-aud-') && !e.id.startsWith('demo-aud-'),

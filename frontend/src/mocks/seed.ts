@@ -11,6 +11,7 @@ import {
 } from '@/types'
 import { syncPagamentoPendenteNotifications } from '@/utils/workflowAdvance'
 import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
+import { syncPrazoEtapaNotifications } from '@/utils/prazoEtapaAlertas'
 import { asStringArray } from '@/utils/format'
 import {
   STORAGE_KEYS,
@@ -534,7 +535,9 @@ function normalizeAppData(raw: AppData): { data: AppData; changed: boolean } {
   const beforeNotifCount = data.notificacoes.length
   syncPagamentoPendenteNotifications(data)
   syncPrazoCorrecaoNotifications(data)
-  const notifChanged = data.notificacoes.length > beforeNotifCount
+  const prazoEtapaNovas = syncPrazoEtapaNotifications(data)
+  const notifChanged =
+    data.notificacoes.length > beforeNotifCount || prazoEtapaNovas > 0
   const orphanChanged = purgeOrphanPedidoSideData(data)
   return {
     data,

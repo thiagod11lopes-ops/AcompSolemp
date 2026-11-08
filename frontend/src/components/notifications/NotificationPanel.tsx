@@ -25,11 +25,17 @@ import type { Notification, NotificationType, UserRole } from '@/types'
 
 function getNotificationPath(n: Notification): string | null {
   if (
-    (n.tipo === 'PLANILHA_DEVOLVIDA' || n.tipo === 'PRAZO_CORRECAO_VENCIDO') &&
+    (n.tipo === 'PLANILHA_DEVOLVIDA' ||
+      n.tipo === 'PRAZO_CORRECAO_VENCIDO' ||
+      n.tipo === 'VENCENDO' ||
+      n.tipo === 'ATRASADO') &&
     n.pedidoId
   ) {
     if (n.perfilDestino === 'CLINICA' || n.perfilDestino === 'MEDICAMENTO' || n.perfilDestino === 'EMPENHADO') {
       return `/clinica/timeline/${n.pedidoId}`
+    }
+    if (n.perfilDestino === 'FINANCEIRO') {
+      return `/financeiro/pagamentos/${n.pedidoId}`
     }
     return `/ordenador/timelines/${n.pedidoId}`
   }

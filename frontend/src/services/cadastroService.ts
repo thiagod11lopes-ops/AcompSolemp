@@ -14,6 +14,7 @@ import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
+import { syncPrazoEtapaNotifications } from '@/utils/prazoEtapaAlertas'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -200,7 +201,8 @@ export const notificationService = {
     const data = loadAppData()
     const before = data.notificacoes.length
     syncPrazoCorrecaoNotifications(data)
-    if (data.notificacoes.length !== before) {
+    const prazoEtapaNovas = syncPrazoEtapaNotifications(data)
+    if (data.notificacoes.length !== before || prazoEtapaNovas > 0) {
       saveAppData(data)
     }
     const all = data.notificacoes.sort(

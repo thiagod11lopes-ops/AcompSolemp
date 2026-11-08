@@ -8,6 +8,8 @@ export const TIPOS_NOTIFICACAO_TIMELINE_SETOR: NotificationType[] = [
   'PLANILHA_DEVOLVIDA',
   'PLANILHA_CORRIGIDA_REENVIADA',
   'PRAZO_CORRECAO_VENCIDO',
+  'VENCENDO',
+  'ATRASADO',
 ]
 
 export function notificacaoPertenceAosTipos(

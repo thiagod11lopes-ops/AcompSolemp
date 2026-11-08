@@ -19,6 +19,7 @@ import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
 import { appendPedidoAuditoria } from '@/utils/pedidoAuditoria'
+import { marcarPrazoEtapaNotificationsLidas } from '@/utils/prazoEtapaAlertas'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -344,6 +345,7 @@ export function advancePedidoEtapa(
   }
 
   markEtapaNotificationsRead(data, pedidoId, etapaAtual.chave)
+  marcarPrazoEtapaNotificationsLidas(data, pedidoId, etapaAtual.chave)
 
   let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao, etapas)
   // Remove a etapa concluída mesmo se o id no pedido estiver defasado.
