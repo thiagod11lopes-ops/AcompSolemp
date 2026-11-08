@@ -39,7 +39,6 @@ export const PACIENTES_PME_POSTOS_GRAD = [
   '2SG',
   '3SG',
   'CB',
-  'SD/MN',
   'MN',
   'SD',
 ] as const
@@ -49,7 +48,7 @@ export const PACIENTES_PME_VINCULOS = [
   'TITULAR',
   'DEPENDENTE DIRETO',
   'DEPENDENTE INDIRETO',
-  'DEPENDENTE',
+  'PENSIONISTA',
   'OUTRO',
 ] as const
 
