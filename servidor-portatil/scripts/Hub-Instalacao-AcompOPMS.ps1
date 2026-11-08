@@ -49,7 +49,7 @@ function Show-HubInstalacao {
   $form.Controls.Add($header)
   $header.Controls.Add((New-DashKicker 'Instalador portatil' 24 16 560 $t.Panel))
   $header.Controls.Add((New-DashTitle 'Instalar AcompOPMS' 24 36 560 $t.Panel))
-  $header.Controls.Add((New-DashSub 'Um unico instalador: escolha Servidor ou Cliente. Pode copiar esta pasta inteira para outro PC e usar o mesmo icone.' 24 72 570 32 $t.Panel))
+  $header.Controls.Add((New-DashSub 'Instalador: escolha Servidor ou Cliente. Ao instalar o servidor, cria o icone Desktop "Servidor" para abrir o sistema depois.' 24 72 570 32 $t.Panel))
 
   $cardSrv = New-DashPanel 24 130 278 210
   $cardCli = New-DashPanel 318 130 278 210
@@ -57,7 +57,7 @@ function Show-HubInstalacao {
   $form.Controls.Add($cardCli)
 
   $cardSrv.Controls.Add((New-DashLabel 'PC SERVIDOR' 16 16 246 22 $t.AccentBright $t.Panel 9 ([System.Drawing.FontStyle]::Bold)))
-  $cardSrv.Controls.Add((New-DashLabel 'Instala Docker, Node, rede, HTTPS, sobe o servidor e abre o Dashboard.' 16 48 246 70 $t.Muted $t.Panel 9))
+  $cardSrv.Controls.Add((New-DashLabel 'Instala Docker, Node, rede, HTTPS, sobe o servidor, Dashboard e cria o icone "Servidor".' 16 48 246 70 $t.Muted $t.Panel 9))
   $cardSrv.Controls.Add((New-DashLabel 'Use neste PC que vai hospedar o sistema para a rede.' 16 122 246 40 $t.Text $t.Panel 8.5))
   $btnSrv = New-DashButton 'Instalar servidor' 16 168 246 34 'primary'
   $cardSrv.Controls.Add($btnSrv)

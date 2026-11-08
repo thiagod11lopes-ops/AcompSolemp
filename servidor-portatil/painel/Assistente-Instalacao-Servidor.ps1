@@ -43,7 +43,7 @@ $script:WizardSteps = @(
   @{ id = 'servidor'; title = 'Iniciar Servidor OMPS'; hint = 'Automatico: sobe Supabase, app e gateway HTTPS.' },
   @{ id = 'cert'; title = 'Confianca do certificado neste PC'; hint = 'Automatico com UAC: instala a CA local (sem aviso no Chrome).' },
   @{ id = 'health'; title = 'Health-check app + HTTPS'; hint = 'Automatico: valida app local e https://IP/.' },
-  @{ id = 'dashboard'; title = 'Abrir Dashboard e atalho'; hint = 'Abre o Dashboard; cria atalho Desktop se marcado no hub.' }
+  @{ id = 'dashboard'; title = 'Abrir Dashboard e atalho'; hint = 'Abre o Dashboard e cria o icone Desktop "Servidor" (sobe o sistema).' }
 )
 
 # IP fixo padrao da instalacao (opcao do assistente)
@@ -739,20 +739,31 @@ function Invoke-StepHealth {
 }
 
 function New-DesktopShortcutServidor {
+  # Atalho diario "Servidor" — sobe o sistema (nao o instalador AcompOPMS).
   $helper = Join-Path $script:ScriptsDir 'Criar-Atalho-Desktop.ps1'
   if (-not (Test-Path -LiteralPath $helper)) { return $false }
+
+  $desk = [Environment]::GetFolderPath('Desktop')
   $targets = @(
-    (Join-Path $script:PackRoot 'Iniciar AcompOPMS.vbs'),
-    (Join-Path $script:PackRoot 'Iniciar Servidor OMPS.vbs')
+    (Join-Path $script:PackRoot 'Iniciar Servidor OMPS.vbs'),
+    (Join-Path $desk 'Iniciar Servidor\Gereal\AcompSolemp\servidor-portatil\Iniciar Servidor OMPS.vbs'),
+    (Join-Path $desk 'Iniciar Servidor\Iniciar-Servidor-OMPS.vbs')
   )
   $target = $targets | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
   if (-not $target) { return $false }
+
   try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper `
-      -Name 'AcompOPMS — Servidor' `
+      -Name 'Servidor' `
       -TargetPath $target `
-      -WorkingDirectory $script:PackRoot `
-      -Description 'Abrir hub / servidor AcompOPMS' | Out-Null
+      -WorkingDirectory (Split-Path -Parent $target) `
+      -Description 'Abre / sobe o servidor AcompOPMS' | Out-Null
+    foreach ($oldName in @('AcompOPMS — Servidor.lnk', 'Iniciar Servidor OMPS.lnk')) {
+      $old = Join-Path $desk $oldName
+      if (Test-Path -LiteralPath $old) {
+        Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue
+      }
+    }
     return $true
   } catch { return $false }
 }
@@ -774,12 +785,11 @@ function Invoke-StepDashboard {
   }
   $ipAccess = Get-AccessHostForWizard
   $atalhoMsg = ''
-  if ($script:WantDesktop) {
-    if (New-DesktopShortcutServidor) {
-      $atalhoMsg = ' Atalho Desktop "AcompOPMS — Servidor" criado.'
-    } else {
-      $atalhoMsg = ' (atalho Desktop nao criado — veja Criar-Atalho-Desktop.ps1)'
-    }
+  # Sempre cria o icone diario "Servidor" (sobe o sistema).
+  if (New-DesktopShortcutServidor) {
+    $atalhoMsg = ' Atalho Desktop "Servidor" criado.'
+  } else {
+    $atalhoMsg = ' (atalho Desktop "Servidor" nao criado)'
   }
   Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/{1}" -f $ipAccess, $atalhoMsg)
   return $true
@@ -1197,7 +1207,7 @@ function Show-AssistenteInstalacaoServidor {
     $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
     if ($script:HealthOk -and $nErr -eq 0) {
       $extra = ''
-      if ($script:WantDesktop) { $extra = ' Atalho Desktop "AcompOPMS — Servidor" disponivel.' }
+      $extra = ' Use o icone Desktop "Servidor" para subir o sistema nas proximas vezes.'
       $script:lblStatus.Text = ("Pronto. Dashboard aberto. Use https://{0}/ neste PC e nos clientes.{1}" -f $ipDone, $extra)
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
     } elseif ($nErr -gt 0) {
