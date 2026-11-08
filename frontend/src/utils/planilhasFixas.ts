@@ -14,7 +14,7 @@ export const FIXED_PLANILHAS = [
 
 /** Abas fixas do portal medicamento (Planilhas). IMH fica só em Enviar. */
 export const FIXED_PLANILHAS_MEDICAMENTO = [
-  { id: 'lista-de-medicamentos', nome: 'Lista de Medicamentos' },
+  { id: 'lista-de-medicamentos', nome: 'Medicamentos' },
   { id: 'pacientes', nome: 'Pacientes' },
 ] as const
 

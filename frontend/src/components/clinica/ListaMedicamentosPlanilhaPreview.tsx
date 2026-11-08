@@ -285,7 +285,7 @@ export function ListaMedicamentosPlanilhaPreview({
                 whiteSpace: 'nowrap',
               }}
             >
-              Entrada
+              Adicionar Medicamento
             </Button>
           ) : null}
           {onImportClick ? (
