@@ -43,13 +43,13 @@ function Ensure-HubDesktopShortcut {
 function Show-HubInstalacao {
   $t = Get-DashTheme
   $form = New-Object System.Windows.Forms.Form
-  Set-DashForm $form 'AcompOPMS — Iniciar' 620 520
+  Set-DashForm $form 'AcompOPMS — Instalador' 620 520
 
   $header = New-DashPanel 0 0 620 110
   $form.Controls.Add($header)
-  $header.Controls.Add((New-DashKicker 'Pacote portatil' 24 16 560 $t.Panel))
-  $header.Controls.Add((New-DashTitle 'Iniciar AcompOPMS' 24 36 560 $t.Panel))
-  $header.Controls.Add((New-DashSub 'Escolha o papel deste computador. O assistente guia cada passo ate o sistema funcionar com HTTPS sem aviso de certificado.' 24 72 570 32 $t.Panel))
+  $header.Controls.Add((New-DashKicker 'Instalador portatil' 24 16 560 $t.Panel))
+  $header.Controls.Add((New-DashTitle 'Instalar AcompOPMS' 24 36 560 $t.Panel))
+  $header.Controls.Add((New-DashSub 'Um unico instalador: escolha Servidor ou Cliente. Pode copiar esta pasta inteira para outro PC e usar o mesmo icone.' 24 72 570 32 $t.Panel))
 
   $cardSrv = New-DashPanel 24 130 278 210
   $cardCli = New-DashPanel 318 130 278 210

@@ -12,9 +12,11 @@ ps1 = ""
 Dim candidates
 candidates = Array( _
   root & "\scripts\Hub-Instalacao-AcompOPMS.ps1", _
+  root & "\Gereal\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
+  root & "\Geral\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
+  root & "\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Gereal\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Geral\scripts\Hub-Instalacao-AcompOPMS.ps1", _
-  root & "\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\..\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1" _
 )

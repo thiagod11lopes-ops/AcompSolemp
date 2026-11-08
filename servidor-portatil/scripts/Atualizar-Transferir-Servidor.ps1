@@ -133,6 +133,18 @@ function Write-RootVbsLauncher {
   if (Test-Path -LiteralPath $cmdTwin) { Remove-Item -LiteralPath $cmdTwin -Force -ErrorAction SilentlyContinue }
 }
 
+# Instalador unico (Servidor ou Cliente) — icone principal para transferir
+$instalarSrc = Join-Path $proj 'servidor-portatil\AcompOPMS Instalar.vbs'
+$instalarDst = Join-Path $dstRoot 'AcompOPMS Instalar.vbs'
+if (Test-Path -LiteralPath $instalarSrc) {
+  Copy-Item -Force $instalarSrc $instalarDst
+} else {
+  Write-RootVbsLauncher -BaseName 'AcompOPMS Instalar' -Title 'AcompOPMS Instalar' -Ps1RelPaths @(
+    'Gereal\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1',
+    'Gereal\scripts\Hub-Instalacao-AcompOPMS.ps1'
+  )
+}
+
 Write-RootVbsLauncher -BaseName '1-Instalacao-do-Servidor' -Title 'Instalacao do Servidor' -Ps1RelPaths @(
   'Gereal\painel\Assistente-Instalacao-Servidor.ps1',
   'Gereal\AcompSolemp\servidor-portatil\painel\Assistente-Instalacao-Servidor.ps1'
@@ -144,9 +156,12 @@ Write-RootVbsLauncher -BaseName '3-Dashboard-Servidor' -Title 'Dashboard Servido
   'Gereal\AcompSolemp\servidor-portatil\scripts\Abrir-Dashboard.ps1'
 )
 
-# Limpa .cmd/.lnk extras na raiz (ficam so os 3 .vbs + LEIA-ME)
+# Limpa .cmd extras na raiz; mantem .lnk do instalador (recriado abaixo)
 Get-ChildItem -LiteralPath $dstRoot -File -ErrorAction SilentlyContinue |
-  Where-Object { $_.Extension -in @('.cmd', '.lnk') } |
+  Where-Object { $_.Extension -eq '.cmd' } |
+  Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem -LiteralPath $dstRoot -File -ErrorAction SilentlyContinue |
+  Where-Object { $_.Extension -eq '.lnk' -and $_.BaseName -ne 'AcompOPMS Instalar' } |
   Remove-Item -Force -ErrorAction SilentlyContinue
 # VBS internos do Gereal bastam; remove VBS soltos desnecessarios na raiz do Gereal se confundirem
 foreach ($extra in @('Servidor OMPS.vbs')) {
@@ -252,10 +267,16 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
 @(
   'TRANSFERIR PARA OUTRO PC'
   '========================'
-  'INSTALACAO (1a vez / pacote completo):'
+  'INSTALADOR UNICO (recomendado):'
   '1) Rode neste PC: "Atualizar Transferir Servidor".'
   '2) Copie a pasta INTEIRA "Transferir Servidor" (com Gereal).'
-  '3) No PC destino use SO estes 3 icones na raiz:'
+  '3) No PC destino, duplo clique em:'
+  '   - AcompOPMS Instalar.vbs   (ou o atalho AcompOPMS Instalar)'
+  '4) Escolha:'
+  '   - Este PC e o servidor  → instala Docker/rede/HTTPS e sobe o sistema'
+  '   - Este PC so acessa     → instala certificado (CA) + atalho HTTPS'
+  ''
+  'Icones tecnicos (opcional):'
   '   - 1-Instalacao-do-Servidor.vbs'
   '   - 2-Iniciar-Servidor-OMPS.vbs'
   '   - 3-Dashboard-Servidor.vbs'
@@ -266,7 +287,7 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
   '3) No destino, abra a pasta e clique em "Atualizar Agora".'
   '   Isso atualiza "%USERPROFILE%\Desktop\Transferir Servidor".'
   ''
-  '4) 1a vez: internet + Admin; clientes: certificado + DNS seguro off.'
+  '4) 1a vez: internet + Admin; clientes: aceite o UAC da CA uma vez.'
   '5) Pacote enxuto: sem Instalador OPMS e sem instalador Cursor (so Docker/Node/VC/WSL).'
   ''
   ('frontend\node_modules no pacote: {0}' -f ($(if ($nmOk) { 'SIM (npm install deve pular)' } else { 'NAO (destino fara npm install)' })))
@@ -274,13 +295,36 @@ $nmOk = Test-Path -LiteralPath (Join-Path $acompDst 'frontend\node_modules')
 ) | Set-Content -LiteralPath (Join-Path $geral 'LEIA-ME.txt') -Encoding UTF8
 Copy-Item -Force (Join-Path $geral 'LEIA-ME.txt') (Join-Path $dstRoot 'LEIA-ME.txt') -ErrorAction SilentlyContinue
 
+# Atalho com icone OPMS na raiz do pacote + Area de Trabalho
+$wsh = New-Object -ComObject WScript.Shell
+$icoPack = Join-Path $geral 'icons\opms.ico'
+if (-not (Test-Path -LiteralPath $icoPack)) { $icoPack = Join-Path $proj 'servidor-portatil\icons\opms.ico' }
+if (Test-Path -LiteralPath $instalarDst) {
+  $lnkPack = Join-Path $dstRoot 'AcompOPMS Instalar.lnk'
+  $scInst = $wsh.CreateShortcut($lnkPack)
+  $scInst.TargetPath = $instalarDst
+  $scInst.WorkingDirectory = $dstRoot
+  $scInst.WindowStyle = 1
+  $scInst.Description = 'Instalador AcompOPMS — Servidor ou Cliente'
+  if (Test-Path -LiteralPath $icoPack) { $scInst.IconLocation = "$icoPack,0" }
+  $scInst.Save()
+
+  $deskInst = Join-Path $desk 'AcompOPMS Instalar.lnk'
+  $scDesk = $wsh.CreateShortcut($deskInst)
+  $scDesk.TargetPath = $instalarDst
+  $scDesk.WorkingDirectory = $dstRoot
+  $scDesk.WindowStyle = 1
+  $scDesk.Description = 'Instalador AcompOPMS — Servidor ou Cliente (copie a pasta Transferir Servidor para outros PCs)'
+  if (Test-Path -LiteralPath $icoPack) { $scDesk.IconLocation = "$icoPack,0" }
+  $scDesk.Save()
+}
+
 # Remove Reparar-Atalhos antigo (nao usamos mais .lnk no pacote)
 Remove-Item -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.cmd') -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $dstRoot 'Reparar-Atalhos.ps1') -Force -ErrorAction SilentlyContinue
 
 # Recria atalho na Area de Trabalho deste PC (fonte do Cursor)
 Write-Step 'atalho Desktop Atualizar Transferir Servidor...'
-$wsh = New-Object -ComObject WScript.Shell
 $ico = Join-Path $geral 'icons\opms.ico'
 $updateCmd = Join-Path $proj 'servidor-portatil\Atualizar-Transferir-Servidor.cmd'
 $deskLnk = Join-Path $desk 'Atualizar Transferir Servidor.lnk'
@@ -329,8 +373,9 @@ function Copy-PatchItem([string]$RelPath) {
   }
 }
 
-# Raiz Transferir Servidor (icones + LEIA-ME)
+# Raiz Transferir Servidor (instalador + icones + LEIA-ME)
 foreach ($rel in @(
+    'AcompOPMS Instalar.vbs',
     '1-Instalacao-do-Servidor.vbs',
     '2-Iniciar-Servidor-OMPS.vbs',
     '3-Dashboard-Servidor.vbs',

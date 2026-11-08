@@ -4,10 +4,10 @@ Pacote para rodar o **AcompSolemp + Supabase local** nesta máquina Windows e **
 
 ## Começar aqui (recomendado)
 
-1. Na Área de Trabalho, use o ícone **`AcompOPMS`** (cria com `Instalar-Atalho-na-Area-de-Trabalho.cmd`).
-2. Ou duplo clique em **`Iniciar AcompOPMS.vbs`** na pasta do pacote (hub único).
+1. Na Área de Trabalho: ícone **`AcompOPMS Instalar`** (abre o instalador com opções Servidor / Cliente).
+2. Ou, na pasta do pacote / **Transferir Servidor**: **`AcompOPMS Instalar.vbs`**.
 
-Marque **Criar atalho na Área de Trabalho** no hub se quiser. Para **enviar a outro PC**, copie a pasta `servidor-portatil` (ou o pacote completo) e, no PC destino, rode `Instalar-Atalho-na-Area-de-Trabalho.cmd` — o atalho `.lnk` sozinho não funciona em outro caminho; o `.cmd` / `.vbs` recria o ícone lá.
+**Para enviar a outro PC:** copie a pasta inteira **Transferir Servidor** (com `Gereal`). No destino, clique no mesmo **`AcompOPMS Instalar`** e escolha Servidor ou Cliente. O `.lnk` pode precisar ser recriado lá; o `.vbs` viaja com a pasta e funciona.
 
 | Este PC… | Escolha no hub | O que faz |
 |----------|----------------|-----------|
