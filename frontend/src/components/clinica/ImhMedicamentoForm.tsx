@@ -76,6 +76,7 @@ import {
   formatPacientePmeUpper,
   normalizePacienteNipKey,
   pacienteNipsIguais,
+  PACIENTES_PME_POSTOS_GRAD,
   resolvePacientePmeFromNip,
   searchPacientesPmeByNome,
   type PacientePmeNipMatch,
@@ -405,6 +406,13 @@ export function ImhMedicamentoForm({
       nipAlertTimerRef.current = null
     }, 5000)
   }
+
+  const postoGradOptions = useMemo(() => {
+    const set = new Set<string>([...PACIENTES_PME_POSTOS_GRAD])
+    const atual = linhaDraft.postoGrad.trim()
+    if (atual) set.add(atual)
+    return [...set]
+  }, [linhaDraft.postoGrad])
 
   const vinculoOptions = useMemo(() => {
     const set = new Set<string>([...VINCULOS])
@@ -1369,13 +1377,21 @@ export function ImhMedicamentoForm({
               sx={planilhaEditFieldSx}
             />
             <TextField
+              select
               label="POSTO/GRAD"
-              value={linhaDraft.postoGrad}
+              value={linhaDraft.postoGrad || ''}
               onChange={(e) => updateDraft({ postoGrad: formatImhMedUppercase(e.target.value) })}
               size="small"
               fullWidth
               sx={planilhaEditFieldSx}
-            />
+            >
+              <MenuItem value="">—</MenuItem>
+              {postoGradOptions.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               select
               label="VINCULO"
