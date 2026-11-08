@@ -169,7 +169,7 @@ export function measureColumnWidths(
 }
 
 /**
- * Mede larguras fit-to-content para planilhas genéricas (ex.: Preço de Medicamentos).
+ * Mede larguras fit-to-content para planilhas genéricas.
  * Cada coluna usa o maior entre o rótulo e o texto das células.
  */
 export function measurePlainColumnWidths(

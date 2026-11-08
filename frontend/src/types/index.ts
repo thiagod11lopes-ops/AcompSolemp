@@ -850,7 +850,7 @@ export interface AppData {
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
   /** Planilhas livres (grade Excel) da página Planilhas da clínica */
   planilhasLivres?: Record<string, ClinicaPlanilhasLivresState>
-  /** Planilha editável da aba Preço de Medicamentos (persistida no IndexedDB). */
+  /** Catálogo interno de preços (sincronizado a partir de Planilhas → Medicamentos). */
   medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
   /**

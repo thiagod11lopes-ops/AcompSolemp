@@ -17,7 +17,6 @@ import ListAltIcon from '@mui/icons-material/ListAlt'
 import AddIcon from '@mui/icons-material/Add'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import TimelineIcon from '@mui/icons-material/Timeline'
-import MedicationIcon from '@mui/icons-material/Medication'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import { useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -52,13 +51,6 @@ const MENU_ITEMS = [
     label: 'Balanço',
     icon: <AccountBalanceIcon />,
     end: true,
-  },
-  {
-    path: '/clinica/precos-medicamentos',
-    label: 'Preço de Medicamentos',
-    icon: <MedicationIcon />,
-    end: true,
-    medicamentoOnly: true,
   },
 ] as const
 
