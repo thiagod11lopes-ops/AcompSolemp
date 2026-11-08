@@ -1,40 +1,61 @@
 ' Hub unico AcompOPMS: escolhe Servidor ou Cliente (sem janela preta).
+' Alias do instalador — mesma busca robusta.
 Option Explicit
 
-Dim sh, fso, root, ps1, cmd, tried, cand, i
+Dim sh, fso, root, desk, ps1, cmd, tried, cand, i, walk, depth, p1
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 root = fso.GetParentFolderName(WScript.ScriptFullName)
+desk = ""
+On Error Resume Next
+desk = sh.SpecialFolders("Desktop")
+On Error GoTo 0
 tried = ""
 ps1 = ""
 
 Dim candidates
 candidates = Array( _
   root & "\scripts\Hub-Instalacao-AcompOPMS.ps1", _
+  root & "\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
+  root & "\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Gereal\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Geral\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
-  root & "\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Gereal\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\Geral\scripts\Hub-Instalacao-AcompOPMS.ps1", _
   root & "\..\scripts\Hub-Instalacao-AcompOPMS.ps1", _
-  root & "\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1" _
+  root & "\..\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1" _
 )
+
+If desk <> "" Then
+  ReDim Preserve candidates(UBound(candidates) + 4)
+  candidates(UBound(candidates) - 3) = desk & "\Thiago\Projetos\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
+  candidates(UBound(candidates) - 2) = desk & "\Transferir Servidor\Gereal\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
+  candidates(UBound(candidates) - 1) = desk & "\Iniciar Servidor\Gereal\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
+  candidates(UBound(candidates) - 0) = desk & "\Projetos\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
+End If
 
 For i = 0 To UBound(candidates)
   cand = candidates(i)
-  tried = tried & cand & vbCrLf
-  If fso.FileExists(cand) Then
-    ps1 = fso.GetAbsolutePathName(cand)
-    Exit For
+  If cand <> "" Then
+    tried = tried & cand & vbCrLf
+    If fso.FileExists(cand) Then
+      ps1 = fso.GetAbsolutePathName(cand)
+      Exit For
+    End If
   End If
 Next
 
 If ps1 = "" Then
-  Dim walk, depth, p1
   walk = root
-  For depth = 1 To 4
+  For depth = 1 To 6
     p1 = walk & "\scripts\Hub-Instalacao-AcompOPMS.ps1"
+    tried = tried & p1 & vbCrLf
+    If fso.FileExists(p1) Then ps1 = fso.GetAbsolutePathName(p1) : Exit For
+    p1 = walk & "\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
+    tried = tried & p1 & vbCrLf
+    If fso.FileExists(p1) Then ps1 = fso.GetAbsolutePathName(p1) : Exit For
+    p1 = walk & "\AcompSolemp\servidor-portatil\scripts\Hub-Instalacao-AcompOPMS.ps1"
     tried = tried & p1 & vbCrLf
     If fso.FileExists(p1) Then ps1 = fso.GetAbsolutePathName(p1) : Exit For
     If fso.GetParentFolderName(walk) = walk Or fso.GetParentFolderName(walk) = "" Then Exit For
