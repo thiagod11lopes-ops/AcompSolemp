@@ -8,6 +8,8 @@ import {
   Box,
   Typography,
   Divider,
+  Tooltip,
+  Badge,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -36,8 +38,13 @@ import {
 } from '@/utils/setorNav'
 import { userHasPerfil } from '@/utils/userPerfis'
 import type { UserRole } from '@/types'
+import { SidebarRailToggle } from '@/layouts/SidebarRailToggle'
+import {
+  SIDEBAR_EXPANDED_WIDTH_SETOR,
+  useSidebarRail,
+} from '@/layouts/sidebarRail'
 
-const DRAWER_WIDTH = 240
+const DRAWER_WIDTH = SIDEBAR_EXPANDED_WIDTH_SETOR
 
 const ICON_POR_PERFIL: Partial<Record<UserRole | string, React.ReactNode>> = {
   AUDITORIA: <FactCheckIcon />,
@@ -73,6 +80,8 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { collapsed, toggle, width } = useSidebarRail(DRAWER_WIDTH)
+  const railCollapsed = collapsed && !isMobile
   const multiSetor = Boolean(user && userTemMultiSetorNav(user))
   const mostraBalanco = Boolean(user && userPodeVerAbaBalanco(user))
   const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
@@ -93,7 +102,6 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
 
     if (!user || !multiSetor) {
       if (!mostraBalanco) return menuBase
-      // IMH: Balanço fica abaixo de Arquivados.
       if (isImh) return [...menuBase, menuBalanco]
       return [menuBase[0], menuBase[1], menuBalanco, menuBase[2]]
     }
@@ -123,20 +131,33 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
-        <BrandLogo />
+      <Toolbar
+        sx={{
+          px: railCollapsed ? 0.75 : 2.25,
+          py: railCollapsed ? 1.25 : 0,
+          minHeight: railCollapsed ? 96 : 72,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: railCollapsed ? 'column' : 'row',
+          alignItems: 'center',
+          justifyContent: railCollapsed ? 'center' : 'space-between',
+          gap: 1,
+        }}
+      >
+        <BrandLogo iconOnly={railCollapsed} />
+        {!isMobile ? <SidebarRailToggle collapsed={collapsed} onToggle={toggle} /> : null}
       </Toolbar>
       <Divider />
-      {user && (
+      {user && !railCollapsed ? (
         <Box sx={{ px: 2.25, py: 1.75, flexShrink: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
             Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
           </Typography>
         </Box>
-      )}
-      <Divider />
+      ) : null}
+      {user && !railCollapsed ? <Divider /> : null}
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <List sx={{ flexShrink: 0 }}>
+        <List sx={{ px: railCollapsed ? 0.75 : 0, flexShrink: 0 }}>
           {menuItems.map((item) => {
             const etapa = 'etapa' in item ? item.etapa : undefined
             const to = etapa
@@ -160,15 +181,17 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
               : 0
             const etapaChave = etapaChaveDaAbaSetor({ etapa, perfil: perfilItem }) ?? undefined
 
-            return (
+            const button = (
               <ListItemButton
-                key={`${item.path}-${etapa ?? 'default'}-${item.label}`}
                 component={NavLink}
                 to={to}
                 end={!etapa}
                 onClick={isMobile ? onClose : undefined}
                 selected={Boolean(isActive)}
                 sx={{
+                  justifyContent: railCollapsed ? 'center' : 'flex-start',
+                  px: railCollapsed ? 1 : 2,
+                  minHeight: 44,
                   '&.active, &.Mui-selected': {
                     bgcolor: 'action.selected',
                     borderRight: 3,
@@ -176,44 +199,78 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 1,
-                        width: '100%',
-                        pr: 0.5,
-                      }}
-                    >
-                      <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
-                        {item.label}
-                      </Typography>
-                      {abaTimeline ? (
-                        <TimelineAbaSino
-                          pendencias={pendencias}
-                          etapaChave={etapaChave}
-                          perfil={perfilItem}
-                          iconColor="warning"
-                        />
-                      ) : null}
-                    </Box>
-                  }
-                />
+                <ListItemIcon
+                  sx={{
+                    minWidth: railCollapsed ? 0 : 40,
+                    justifyContent: 'center',
+                  }}
+                >
+                  {railCollapsed && abaTimeline && pendencias > 0 ? (
+                    <Badge badgeContent={pendencias} color="warning" max={99}>
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
+                </ListItemIcon>
+                {!railCollapsed ? (
+                  <ListItemText
+                    primary={
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                          width: '100%',
+                          pr: 0.5,
+                        }}
+                      >
+                        <Typography component="span" variant="body1" sx={{ fontSize: 'inherit' }}>
+                          {item.label}
+                        </Typography>
+                        {abaTimeline ? (
+                          <TimelineAbaSino
+                            pendencias={pendencias}
+                            etapaChave={etapaChave}
+                            perfil={perfilItem}
+                            iconColor="warning"
+                          />
+                        ) : null}
+                      </Box>
+                    }
+                  />
+                ) : null}
               </ListItemButton>
+            )
+
+            const key = `${item.path}-${etapa ?? 'default'}-${item.label}`
+            return railCollapsed ? (
+              <Tooltip key={key} title={item.label} placement="right">
+                <Box>{button}</Box>
+              </Tooltip>
+            ) : (
+              <Box key={key}>{button}</Box>
             )
           })}
         </List>
-        <ChatDock />
+        {!railCollapsed ? <ChatDock /> : null}
       </Box>
     </Box>
   )
 
   return (
-    <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+    <Box
+      component="nav"
+      sx={{
+        width: { md: width },
+        flexShrink: { md: 0 },
+        transition: theme.transitions.create('width', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+      }}
+    >
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -226,6 +283,7 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            overflowX: 'hidden',
           },
         }}
       >
@@ -236,12 +294,17 @@ export function OrdenadorSidebar({ mobileOpen, onClose }: OrdenadorSidebarProps)
         sx={{
           display: { xs: 'none', md: 'block' },
           '& .MuiDrawer-paper': {
-            width: DRAWER_WIDTH,
+            width,
             boxSizing: 'border-box',
             pt: `${demoBannerHeight}px`,
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            overflowX: 'hidden',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
           },
         }}
         open

@@ -8,6 +8,7 @@ import {
   Box,
   Typography,
   Divider,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from '@mui/material'
@@ -26,8 +27,13 @@ import { useClinicaAuth } from '@/contexts/AuthContext'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
 import { useClinicas } from '@/hooks/useCadastros'
 import { stripDemoRouteBase } from '@/utils/portalPaths'
+import { SidebarRailToggle } from '@/layouts/SidebarRailToggle'
+import {
+  SIDEBAR_EXPANDED_WIDTH_CLINICA,
+  useSidebarRail,
+} from '@/layouts/sidebarRail'
 
-const DRAWER_WIDTH = 260
+const DRAWER_WIDTH = SIDEBAR_EXPANDED_WIDTH_CLINICA
 
 const MENU_ITEMS = [
   { path: '/clinica/dashboard', label: 'Dashboard', icon: <DashboardIcon />, end: true },
@@ -91,6 +97,8 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
   const location = useLocation()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const { collapsed, toggle, width } = useSidebarRail(DRAWER_WIDTH)
+  const railCollapsed = collapsed && !isMobile
 
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
   const isMedicamento =
@@ -105,10 +113,15 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
   )
 
   const drawerPaperSx = {
-    width: DRAWER_WIDTH,
+    width: isMobile ? DRAWER_WIDTH : width,
     boxSizing: 'border-box' as const,
     display: 'flex',
     flexDirection: 'column' as const,
+    overflowX: 'hidden' as const,
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
     height: demoBannerHeight > 0 ? `calc(100% - ${demoBannerHeight}px)` : '100%',
     ...(demoBannerHeight > 0 && {
       top: demoBannerHeight,
@@ -117,11 +130,24 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
 
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ px: 2.25, minHeight: 72, flexShrink: 0 }}>
-        <BrandLogo />
+      <Toolbar
+        sx={{
+          px: railCollapsed ? 0.75 : 2.25,
+          py: railCollapsed ? 1.25 : 0,
+          minHeight: railCollapsed ? 96 : 72,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: railCollapsed ? 'column' : 'row',
+          alignItems: 'center',
+          justifyContent: railCollapsed ? 'center' : 'space-between',
+          gap: 1,
+        }}
+      >
+        <BrandLogo iconOnly={railCollapsed} />
+        {!isMobile ? <SidebarRailToggle collapsed={collapsed} onToggle={toggle} /> : null}
       </Toolbar>
       <Divider />
-      {user && (
+      {user && !railCollapsed ? (
         <Box sx={{ px: 2.25, py: 1.75, flexShrink: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, letterSpacing: '-0.015em' }}>
             Usuário logado: {user.posto ? `${user.posto} ${user.nome}` : user.nome}
@@ -133,21 +159,23 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
             </Typography>
           ) : null}
         </Box>
-      )}
-      <Divider />
+      ) : null}
+      {user && !railCollapsed ? <Divider /> : null}
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <List sx={{ px: 0.5, py: 1, flexShrink: 0 }}>
+        <List sx={{ px: railCollapsed ? 0.75 : 0.5, py: 1, flexShrink: 0 }}>
           {menuItems.map((item) => {
             const selected = isMenuPathActive(location.pathname, item.path)
-            return (
+            const button = (
               <ListItemButton
-                key={item.path}
                 component={NavLink}
                 to={mapPath(item.path)}
                 end={item.end}
                 onClick={isMobile ? onClose : undefined}
                 selected={selected}
                 sx={{
+                  justifyContent: railCollapsed ? 'center' : 'flex-start',
+                  px: railCollapsed ? 1 : 2,
+                  minHeight: 44,
                   '&.active, &.Mui-selected': {
                     bgcolor: 'action.selected',
                     borderRight: 3,
@@ -155,28 +183,53 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 38, color: 'text.secondary' }}>
+                <ListItemIcon
+                  sx={{
+                    minWidth: railCollapsed ? 0 : 38,
+                    color: 'text.secondary',
+                    justifyContent: 'center',
+                  }}
+                >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  slotProps={{
-                    primary: {
-                      sx: { fontWeight: 600, fontSize: '0.925rem', letterSpacing: '-0.015em' },
-                    },
-                  }}
-                />
+                {!railCollapsed ? (
+                  <ListItemText
+                    primary={item.label}
+                    slotProps={{
+                      primary: {
+                        sx: { fontWeight: 600, fontSize: '0.925rem', letterSpacing: '-0.015em' },
+                      },
+                    }}
+                  />
+                ) : null}
               </ListItemButton>
+            )
+            return railCollapsed ? (
+              <Tooltip key={item.path} title={item.label} placement="right">
+                <Box>{button}</Box>
+              </Tooltip>
+            ) : (
+              <Box key={item.path}>{button}</Box>
             )
           })}
         </List>
-        <ChatDock />
+        {!railCollapsed ? <ChatDock /> : null}
       </Box>
     </Box>
   )
 
   return (
-    <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+    <Box
+      component="nav"
+      sx={{
+        width: { md: width },
+        flexShrink: { md: 0 },
+        transition: theme.transitions.create('width', {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+      }}
+    >
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -184,7 +237,7 @@ export function ClinicaSidebar({ mobileOpen, onClose }: ClinicaSidebarProps) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': drawerPaperSx,
+          '& .MuiDrawer-paper': { ...drawerPaperSx, width: DRAWER_WIDTH },
         }}
       >
         {drawer}

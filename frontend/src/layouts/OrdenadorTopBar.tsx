@@ -12,6 +12,7 @@ import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { TIPOS_NOTIFICACAO_TIMELINE_SETOR } from '@/utils/notificacoes'
 import { userHasPerfil } from '@/utils/userPerfis'
 import { ORDENADOR_DRAWER_WIDTH } from './OrdenadorSidebar'
+import { useSidebarRail } from '@/layouts/sidebarRail'
 
 interface OrdenadorTopBarProps {
   onMenuClick: () => void
@@ -24,6 +25,7 @@ export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const isImh = Boolean(user && userHasPerfil(user, 'CONTABILIDADE_IMH'))
+  const { width: drawerWidth } = useSidebarRail(ORDENADOR_DRAWER_WIDTH)
 
   const handleLogout = async () => {
     const wasImpersonating = Boolean(impersonationTargetEmail)
@@ -45,12 +47,17 @@ export function OrdenadorTopBar({ onMenuClick }: OrdenadorTopBarProps) {
       sx={{
         position: 'fixed',
         top: demoBannerHeight,
-        left: { md: ORDENADOR_DRAWER_WIDTH },
+        left: { md: drawerWidth },
         right: 0,
         zIndex: (t) => t.zIndex.drawer + 1,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
+        transition: (t) =>
+          t.transitions.create('left', {
+            easing: t.transitions.easing.sharp,
+            duration: t.transitions.duration.enteringScreen,
+          }),
       }}
     >
       <ImpersonationBanner />

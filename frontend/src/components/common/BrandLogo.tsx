@@ -5,19 +5,22 @@ import { premiumTokens } from '@/theme/tokens'
 interface BrandLogoProps {
   subtitle?: string
   compact?: boolean
+  /** Só o ícone da marca (menu lateral recolhido). */
+  iconOnly?: boolean
 }
 
 /** Logotipo AcompOPMS — marca com ícone de organização; wordmark limpo. */
-export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
-  const markSize = compact ? 28 : 32
+export function BrandLogo({ subtitle, compact = false, iconOnly = false }: BrandLogoProps) {
+  const markSize = iconOnly ? 32 : compact ? 28 : 32
 
   return (
     <Box
       sx={{
         display: 'flex',
         alignItems: 'center',
-        gap: compact ? 1 : 1.15,
+        gap: compact || iconOnly ? 1 : 1.15,
         minWidth: 0,
+        justifyContent: iconOnly ? 'center' : 'flex-start',
       }}
     >
       <Box
@@ -38,39 +41,41 @@ export function BrandLogo({ subtitle, compact = false }: BrandLogoProps) {
           color: '#FFFFFF',
         }}
       >
-        <CorporateFareRoundedIcon sx={{ fontSize: compact ? 18 : 20 }} />
+        <CorporateFareRoundedIcon sx={{ fontSize: iconOnly || compact ? 18 : 20 }} />
       </Box>
 
-      <Box sx={{ minWidth: 0 }}>
-        <Typography
-          component="div"
-          sx={{
-            fontWeight: 800,
-            fontSize: compact ? '0.95rem' : '1.05rem',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.2,
-            color: premiumTokens.primaryDark,
-            textShadow: '0 1px 2px rgba(0,0,0,0.12)',
-            userSelect: 'none',
-          }}
-        >
-          AcompOPMS
-        </Typography>
-        {subtitle ? (
+      {!iconOnly ? (
+        <Box sx={{ minWidth: 0 }}>
           <Typography
-            variant="caption"
-            color="text.secondary"
+            component="div"
             sx={{
-              display: 'block',
-              letterSpacing: '-0.01em',
-              mt: 0.1,
+              fontWeight: 800,
+              fontSize: compact ? '0.95rem' : '1.05rem',
+              letterSpacing: '-0.03em',
               lineHeight: 1.2,
+              color: premiumTokens.primaryDark,
+              textShadow: '0 1px 2px rgba(0,0,0,0.12)',
+              userSelect: 'none',
             }}
           >
-            {subtitle}
+            AcompOPMS
           </Typography>
-        ) : null}
-      </Box>
+          {subtitle ? (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                display: 'block',
+                letterSpacing: '-0.01em',
+                mt: 0.1,
+                lineHeight: 1.2,
+              }}
+            >
+              {subtitle}
+            </Typography>
+          ) : null}
+        </Box>
+      ) : null}
     </Box>
   )
 }
