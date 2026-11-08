@@ -3,8 +3,8 @@ import { Box, TextField, Typography, InputAdornment } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import { useLocation } from 'react-router-dom'
 import {
-  clearPageSearchHighlights,
-  highlightPageText,
+  applyPageSearch,
+  clearPageSearch,
   PAGE_SEARCH_SKIP_ATTR,
 } from '@/utils/pageTextSearch'
 import type { GlobalSearchPortal } from '@/utils/globalProcessSearch'
@@ -23,6 +23,7 @@ export function GlobalProcessSearch({ dense = false }: GlobalProcessSearchProps)
   const location = useLocation()
   const [input, setInput] = useState('')
   const [matchCount, setMatchCount] = useState(0)
+  const [visibleUnits, setVisibleUnits] = useState(0)
   const applyingRef = useRef(false)
   const inputRef = useRef(input)
   inputRef.current = input
@@ -31,12 +32,14 @@ export function GlobalProcessSearch({ dense = false }: GlobalProcessSearchProps)
     const root = getPageSearchRoot()
     if (!root) {
       setMatchCount(0)
+      setVisibleUnits(0)
       return
     }
     applyingRef.current = true
     try {
-      const n = highlightPageText(root, inputRef.current)
-      setMatchCount(n)
+      const result = applyPageSearch(root, inputRef.current)
+      setMatchCount(result.hits)
+      setVisibleUnits(result.visibleUnits)
     } finally {
       window.setTimeout(() => {
         applyingRef.current = false
@@ -69,12 +72,22 @@ export function GlobalProcessSearch({ dense = false }: GlobalProcessSearchProps)
   useEffect(
     () => () => {
       const root = getPageSearchRoot()
-      if (root) clearPageSearchHighlights(root)
+      if (root) clearPageSearch(root)
     },
     [],
   )
 
   const trimmed = input.trim()
+  const statusText = (() => {
+    if (!trimmed) return null
+    if (matchCount === 0 && (visibleUnits === 0 || visibleUnits === -1)) {
+      return 'Nenhum resultado nesta página'
+    }
+    if (visibleUnits > 0) {
+      return `${visibleUnits} item${visibleUnits === 1 ? '' : 's'} · ${matchCount} em negrito`
+    }
+    return `${matchCount} encontrado${matchCount === 1 ? '' : 's'}`
+  })()
 
   return (
     <Box
@@ -110,11 +123,9 @@ export function GlobalProcessSearch({ dense = false }: GlobalProcessSearchProps)
           },
         }}
       />
-      {trimmed ? (
+      {statusText ? (
         <Typography variant="caption" color="text.secondary" sx={{ px: 0.5, lineHeight: 1.2 }}>
-          {matchCount === 0
-            ? 'Nenhum resultado nesta página'
-            : `${matchCount} encontrado${matchCount === 1 ? '' : 's'}`}
+          {statusText}
         </Typography>
       ) : null}
     </Box>

@@ -57,3 +57,7 @@ strong[data-page-search-hit] {
   font-weight: 700;
   color: inherit;
 }
+
+[data-page-search-hidden] {
+  display: none !important;
+}

@@ -1,7 +1,8 @@
-/** Busca textual na página atual com destaque em negrito. */
+/** Busca textual na página atual: oculta o que não casa e destaca matches em negrito. */
 
 export const PAGE_SEARCH_HIT_ATTR = 'data-page-search-hit'
 export const PAGE_SEARCH_SKIP_ATTR = 'data-page-search-skip'
+export const PAGE_SEARCH_HIDDEN_ATTR = 'data-page-search-hidden'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -18,13 +19,101 @@ export function clearPageSearchHighlights(root: ParentNode = document.body): voi
   })
 }
 
+export function clearPageSearchHidden(root: ParentNode = document.body): void {
+  root.querySelectorAll(`[${PAGE_SEARCH_HIDDEN_ATTR}]`).forEach((el) => {
+    el.removeAttribute(PAGE_SEARCH_HIDDEN_ATTR)
+    if (el instanceof HTMLElement) {
+      el.style.removeProperty('display')
+    }
+  })
+}
+
+export function clearPageSearch(root: ParentNode = document.body): void {
+  clearPageSearchHighlights(root)
+  clearPageSearchHidden(root)
+}
+
 function isSkippedNode(node: Node): boolean {
   const el = node.parentElement
   if (!el) return true
   if (el.closest(`[${PAGE_SEARCH_SKIP_ATTR}]`)) return true
   if (el.closest('script, style, noscript, textarea, input, select, option')) return true
   if (el.closest(`[${PAGE_SEARCH_HIT_ATTR}]`)) return true
+  if (el.closest(`[${PAGE_SEARCH_HIDDEN_ATTR}]`)) return true
   return false
+}
+
+function hideUnit(el: HTMLElement): void {
+  el.setAttribute(PAGE_SEARCH_HIDDEN_ATTR, '1')
+  el.style.display = 'none'
+}
+
+function showUnit(el: HTMLElement): void {
+  el.removeAttribute(PAGE_SEARCH_HIDDEN_ATTR)
+  el.style.removeProperty('display')
+}
+
+function isHeaderRow(el: HTMLElement): boolean {
+  if (el.closest('thead')) return true
+  if (el.getAttribute('role') === 'columnheader') return true
+  if (el.querySelector(':scope > th')) return true
+  return false
+}
+
+/** Unidades filtráveis: linhas de tabela, itens explícitos e cards em lista. */
+export function collectFilterUnits(root: HTMLElement): HTMLElement[] {
+  const marked = Array.from(
+    root.querySelectorAll<HTMLElement>('[data-page-search-item]'),
+  ).filter((el) => !el.closest(`[${PAGE_SEARCH_SKIP_ATTR}]`))
+  if (marked.length > 0) return marked
+
+  const rows = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'tbody > tr, .MuiTableBody-root > .MuiTableRow-root, [role="row"]',
+    ),
+  ).filter((el) => {
+    if (el.closest(`[${PAGE_SEARCH_SKIP_ATTR}]`)) return false
+    if (isHeaderRow(el)) return false
+    if (el.getAttribute('role') === 'columnheader') return false
+    return true
+  })
+  if (rows.length > 0) return rows
+
+  const cards = Array.from(root.querySelectorAll<HTMLElement>('.MuiCard-root')).filter(
+    (el) => !el.closest(`[${PAGE_SEARCH_SKIP_ATTR}]`),
+  )
+  const byParent = new Map<HTMLElement, HTMLElement[]>()
+  for (const card of cards) {
+    const parent = card.parentElement
+    if (!parent) continue
+    const list = byParent.get(parent) ?? []
+    list.push(card)
+    byParent.set(parent, list)
+  }
+  const listCards: HTMLElement[] = []
+  for (const kids of byParent.values()) {
+    if (kids.length >= 2) listCards.push(...kids)
+  }
+  return listCards
+}
+
+function filterUnitsByTerm(root: HTMLElement, term: string): number {
+  clearPageSearchHidden(root)
+  const units = collectFilterUnits(root)
+  if (units.length === 0) return -1
+
+  const q = term.toLowerCase()
+  let visible = 0
+  for (const unit of units) {
+    const text = (unit.textContent ?? '').toLowerCase()
+    if (text.includes(q)) {
+      showUnit(unit)
+      visible += 1
+    } else {
+      hideUnit(unit)
+    }
+  }
+  return visible
 }
 
 /**
@@ -89,4 +178,24 @@ export function highlightPageText(root: HTMLElement, term: string): number {
   }
 
   return count
+}
+
+export type PageSearchResult = {
+  /** Trechos em negrito. */
+  hits: number
+  /** Itens de lista/tabela visíveis após filtro (-1 se a página não tem unidades filtráveis). */
+  visibleUnits: number
+}
+
+/** Filtra a página (oculta não-matches) e destaca o termo em negrito. */
+export function applyPageSearch(root: HTMLElement, term: string): PageSearchResult {
+  const q = term.trim()
+  if (!q) {
+    clearPageSearch(root)
+    return { hits: 0, visibleUnits: 0 }
+  }
+
+  const visibleUnits = filterUnitsByTerm(root, q)
+  const hits = highlightPageText(root, q)
+  return { hits, visibleUnits }
 }
