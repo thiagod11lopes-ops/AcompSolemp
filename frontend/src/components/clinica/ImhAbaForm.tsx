@@ -40,6 +40,7 @@ import {
   linhaHasContent,
   normalizeImhAbaForm,
   normalizeImhVinculo,
+  isPctIndenizarManualPorVinculo,
   withRecalculatedImhLinha,
   sortImhLinhasByData,
 } from '@/utils/imhAbaForm'
@@ -68,6 +69,7 @@ const VINCULOS = [
   'TITULAR',
   'DEPENDENTE DIRETO',
   'DEPENDENTE INDIRETO',
+  'PENSIONISTA',
   'OUTROS',
 ] as const
 
@@ -514,7 +516,7 @@ export function ImhAbaForm({
                   <Chip
                     size="small"
                     variant="outlined"
-                    label={`Indenizar ${formatValorBrasileiro(somasGrupo.pctIndenizar)}`}
+                    label={`A indenizar ${formatValorBrasileiro(somasGrupo.pctIndenizar)}`}
                     sx={{ height: 22, fontWeight: 700 }}
                   />
                 ) : null}
@@ -644,9 +646,26 @@ export function ImhAbaForm({
                     <TextField
                       label="% A INDENIZAR"
                       value={draft.pctIndenizar}
+                      onChange={(e) =>
+                        updateLinhaAt(index, { pctIndenizar: e.target.value })
+                      }
                       size="small"
                       fullWidth
-                      slotProps={{ input: { readOnly: true } }}
+                      placeholder={
+                        isPctIndenizarManualPorVinculo(draft.vinculo)
+                          ? 'Ex.: 20%'
+                          : undefined
+                      }
+                      helperText={
+                        isPctIndenizarManualPorVinculo(draft.vinculo)
+                          ? 'Vínculo OUTROS: informe o % manualmente'
+                          : 'Automático pelo vínculo (20% / 100%)'
+                      }
+                      slotProps={{
+                        input: {
+                          readOnly: !isPctIndenizarManualPorVinculo(draft.vinculo),
+                        },
+                      }}
                       sx={planilhaEditFieldSx}
                     />
                   </PlanilhaEditSection>

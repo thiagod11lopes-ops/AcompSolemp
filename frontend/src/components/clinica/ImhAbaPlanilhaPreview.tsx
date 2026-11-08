@@ -442,7 +442,7 @@ export function ImhAbaPlanilhaPreview({
               <Chip
                 size="small"
                 variant="outlined"
-                label={`% A INDENIZAR ${formatValorBrasileiro(somas.pctIndenizar)}`}
+                label={`A indenizar ${formatValorBrasileiro(somas.pctIndenizar)}`}
                 sx={{ height: 22, fontWeight: 600 }}
               />
             </>

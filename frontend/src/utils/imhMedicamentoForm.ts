@@ -139,7 +139,8 @@ function parseQuantidade(raw: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-function parsePctIndenizar(raw: string): number {
+/** Converte "20%", "20" ou "0,2" em fração 0–1. */
+export function parsePctIndenizar(raw: string): number {
   const cleaned = raw.trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
   const n = parseFloat(cleaned)
   if (!Number.isFinite(n) || n < 0) return 0
