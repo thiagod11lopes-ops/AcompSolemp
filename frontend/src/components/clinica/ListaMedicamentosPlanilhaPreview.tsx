@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  Add as AddIcon,
   DeleteOutlined as DeleteIcon,
   DescriptionOutlined as GerarDocIcon,
   EditOutlined as EditIcon,
@@ -43,6 +44,8 @@ interface ListaMedicamentosPlanilhaPreviewProps {
   editingLinhaId?: string | null
   importing?: boolean
   onImportClick?: () => void
+  /** Abre o modal de cadastro/entrada de medicamento. */
+  onEntradaClick?: () => void
   onEditLinha?: (linhaId: string) => void
   onDeleteLinha?: (linhaId: string) => void
   onMovimentarLinha?: (linhaId: string) => void
@@ -103,6 +106,7 @@ export function ListaMedicamentosPlanilhaPreview({
   editingLinhaId = null,
   importing = false,
   onImportClick,
+  onEntradaClick,
   onEditLinha,
   onDeleteLinha,
   onMovimentarLinha,
@@ -289,6 +293,23 @@ export function ListaMedicamentosPlanilhaPreview({
               onDelete={() => setFiltro({ tipo: 'todos' })}
               sx={{ height: 22, fontWeight: 600 }}
             />
+          ) : null}
+          {onEntradaClick ? (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+              onClick={onEntradaClick}
+              sx={{
+                ml: 0.5,
+                height: 26,
+                textTransform: 'none',
+                fontWeight: 700,
+                fontSize: 12,
+              }}
+            >
+              Entrada de Medicamento
+            </Button>
           ) : null}
           {onImportClick ? (
             <Button

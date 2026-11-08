@@ -1,14 +1,17 @@
 import { useRef, useState } from 'react'
-import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
+import { Add as AddIcon, Close as CloseIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
   Box,
   Button,
-  Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Snackbar,
   TextField,
   Typography,
-  alpha,
 } from '@mui/material'
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
@@ -75,8 +78,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     createEmptyListaMedicamentosLinha(),
   )
   const [editingLinhaId, setEditingLinhaId] = useState<string | null>(null)
-  const linhaSnapshotRef = useRef<ListaMedicamentosLinha | null>(null)
-  const linhaFormRef = useRef<HTMLDivElement | null>(null)
+  const [entradaModalOpen, setEntradaModalOpen] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const [importing, setImporting] = useState(false)
   const [explicacaoOpen, setExplicacaoOpen] = useState(false)
@@ -173,23 +175,20 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     })
   }
 
-  const syncDraftToList = (nextDraft: ListaMedicamentosLinha) => {
-    const ready = withNormalizedListaMedicamentosLinha(nextDraft)
-    setLinhaDraft(ready)
-    if (!editingLinhaId) return
-    persistLinhas(
-      value.linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
-    )
-  }
-
   const updateDraft = (patch: Partial<Omit<ListaMedicamentosLinha, 'id'>>) => {
-    syncDraftToList({ ...linhaDraft, ...patch })
+    setLinhaDraft((prev) => withNormalizedListaMedicamentosLinha({ ...prev, ...patch }))
   }
 
   const resetLinhaForm = () => {
     setLinhaDraft(createEmptyListaMedicamentosLinha())
     setEditingLinhaId(null)
-    linhaSnapshotRef.current = null
+    setEntradaModalOpen(false)
+  }
+
+  const openEntradaNovo = () => {
+    setEditingLinhaId(null)
+    setLinhaDraft(createEmptyListaMedicamentosLinha())
+    setEntradaModalOpen(true)
   }
 
   const handleAdicionarLinha = () => {
@@ -204,14 +203,13 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
       return
     }
     if (!linhaListaMedicamentosHasContent(ready) || !ready.medicamento.trim()) {
-      if (!ready.medicamento.trim() && linhaListaMedicamentosHasContent(ready)) {
+      if (!ready.medicamento.trim()) {
         setImportFeedback({
           open: true,
           severity: 'error',
           message: 'Informe o nome do medicamento.',
         })
       }
-      if (!linhaListaMedicamentosHasContent(ready)) resetLinhaForm()
       return
     }
     persistLinhas([...value.linhas, ready])
@@ -221,12 +219,9 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   const handleEditLinha = (id: string) => {
     const found = value.linhas.find((l) => l.id === id)
     if (!found) return
-    linhaSnapshotRef.current = cloneLinha(found)
     setEditingLinhaId(id)
     setLinhaDraft(cloneLinha(found))
-    requestAnimationFrame(() => {
-      linhaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
+    setEntradaModalOpen(true)
   }
 
   const handleDeleteLinha = (id: string) => {
@@ -235,13 +230,6 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
-      )
-    }
     resetLinhaForm()
   }
 
@@ -277,54 +265,62 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   }
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 2,
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(320px, 380px) minmax(0, 1fr)' },
-        alignItems: 'start',
-      }}
-    >
-      <Paper
-        elevation={0}
-        sx={(theme) => ({
-          p: { xs: 1.25, md: 1.5 },
-          borderRadius: 2,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-          bgcolor: alpha(theme.palette.primary.main, 0.02),
-          display: 'grid',
-          gap: 1.25,
-          position: { xl: 'sticky' },
-          top: { xl: 12 },
-          maxHeight: { xl: 'calc(100vh - 120px)' },
-          overflow: { xl: 'auto' },
-        })}
-      >
-        <Box>
-          <Typography
-            variant="subtitle2"
-            sx={{ fontWeight: 800, lineHeight: 1.2, fontSize: '0.9rem' }}
-          >
-            Entrada — Lista de Medicamentos
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-            Cada lote do mesmo medicamento deve ser uma linha (LOTE, VALIDADE e QTD próprios). A
-            tabela à direita atualiza ao vivo.
-          </Typography>
-        </Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
+          onClick={() => setExplicacaoOpen(true)}
+          sx={{ textTransform: 'none', fontWeight: 700, fontSize: 12 }}
+        >
+          Explicação Detalhada
+        </Button>
+      </Box>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
+        hidden
+        onChange={handleImportFileChange}
+      />
+      <ListaMedicamentosPlanilhaPreview
+        value={value}
+        editingLinhaId={editingLinhaId}
+        importing={importing}
+        onImportClick={handleImportClick}
+        onEntradaClick={openEntradaNovo}
+        onEditLinha={handleEditLinha}
+        onDeleteLinha={handleDeleteLinha}
+        onMovimentarLinha={handleMovimentarLinha}
+      />
 
-        <Box ref={linhaFormRef}>
-          <Typography
-            variant="overline"
-            sx={{ fontWeight: 700, letterSpacing: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}
+      <Dialog
+        open={entradaModalOpen}
+        onClose={handleCancelLinha}
+        maxWidth="sm"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle sx={{ pr: 6, fontWeight: 800 }}>
+          {editingLinhaId ? 'Editar medicamento' : 'Entrada de Medicamento'}
+          <IconButton
+            aria-label="Fechar"
+            onClick={handleCancelLinha}
+            size="small"
+            sx={{ position: 'absolute', right: 8, top: 8 }}
           >
-            {editingLinhaId ? 'Editando medicamento' : 'Novo medicamento'}
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Cada lote do mesmo medicamento deve ser uma linha (LOTE, VALIDADE e QTD próprios).
           </Typography>
           <Box
             sx={{
-              mt: 0.5,
               display: 'grid',
-              gap: 0.85,
+              gap: 1.25,
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
             }}
           >
@@ -336,6 +332,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               fullWidth
               multiline
               minRows={2}
+              autoFocus
               sx={multilineFieldSx}
             />
             <TextField
@@ -420,103 +417,61 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
               sx={{ ...compactFieldSx, gridColumn: { sm: '1 / -1' } }}
             />
           </Box>
-
-          <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAdicionarLinha}
-              sx={{ textTransform: 'none', fontWeight: 700 }}
-            >
-              {editingLinhaId ? 'Salvar medicamento' : 'Adicionar medicamento'}
-            </Button>
-            {editingLinhaId ? (
-              <Button
-                size="small"
-                variant="text"
-                onClick={handleCancelLinha}
-                sx={{ textTransform: 'none' }}
-              >
-                Cancelar
-              </Button>
-            ) : null}
-          </Box>
-        </Box>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<MenuBookIcon sx={{ fontSize: 16 }} />}
-          onClick={() => setExplicacaoOpen(true)}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 800,
-            fontSize: 12,
-            borderRadius: 2,
-            justifySelf: 'stretch',
-          }}
-        >
-          Explicação Detalhada
-        </Button>
-      </Paper>
-
-      <Box sx={{ minWidth: 0 }}>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".xlsx,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
-          hidden
-          onChange={handleImportFileChange}
-        />
-        <ListaMedicamentosPlanilhaPreview
-          value={value}
-          editingLinhaId={editingLinhaId}
-          importing={importing}
-          onImportClick={handleImportClick}
-          onEditLinha={handleEditLinha}
-          onDeleteLinha={handleDeleteLinha}
-          onMovimentarLinha={handleMovimentarLinha}
-        />
-        <ListaMedicamentoMovimentacaoModal
-          open={Boolean(movimentacaoLinha)}
-          linha={movimentacaoLinha}
-          onClose={() => setMovimentacaoLinhaId(null)}
-          onConfirm={handleConfirmarMovimentacao}
-        />
-        <ConmedEscolherAbaModal
-          open={sheetPicker.open}
-          sheetNames={sheetPicker.sheets.map((s) => s.nome)}
-          fileName={sheetPicker.fileName}
-          initialSheetIndex={sheetPicker.initialSheetIndex}
-          description={
-            sheetPicker.fileName
-              ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar (ex.: Planilha1).`
-              : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
-          }
-          onCancel={() =>
-            setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
-          }
-          onConfirm={handleConfirmSheet}
-        />
-        <MedicamentoAbasExplicacaoModal
-          open={explicacaoOpen}
-          onClose={() => setExplicacaoOpen(false)}
-        />
-        <Snackbar
-          open={importFeedback.open}
-          autoHideDuration={5000}
-          onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert
-            severity={importFeedback.severity}
-            variant="filled"
-            onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+          <Button onClick={handleCancelLinha} sx={{ textTransform: 'none' }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAdicionarLinha}
+            sx={{ textTransform: 'none', fontWeight: 700 }}
           >
-            {importFeedback.message}
-          </Alert>
-        </Snackbar>
-      </Box>
+            {editingLinhaId ? 'Salvar medicamento' : 'Adicionar medicamento'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ListaMedicamentoMovimentacaoModal
+        open={Boolean(movimentacaoLinha)}
+        linha={movimentacaoLinha}
+        onClose={() => setMovimentacaoLinhaId(null)}
+        onConfirm={handleConfirmarMovimentacao}
+      />
+      <ConmedEscolherAbaModal
+        open={sheetPicker.open}
+        sheetNames={sheetPicker.sheets.map((s) => s.nome)}
+        fileName={sheetPicker.fileName}
+        initialSheetIndex={sheetPicker.initialSheetIndex}
+        description={
+          sheetPicker.fileName
+            ? `O arquivo “${sheetPicker.fileName}” tem várias abas. Escolha qual aba deseja importar (ex.: Planilha1).`
+            : 'O arquivo tem várias abas. Escolha qual aba deseja importar.'
+        }
+        onCancel={() =>
+          setSheetPicker({ open: false, fileName: '', sheets: [], initialSheetIndex: 0 })
+        }
+        onConfirm={handleConfirmSheet}
+      />
+      <MedicamentoAbasExplicacaoModal
+        open={explicacaoOpen}
+        onClose={() => setExplicacaoOpen(false)}
+      />
+      <Snackbar
+        open={importFeedback.open}
+        autoHideDuration={5000}
+        onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={importFeedback.severity}
+          variant="filled"
+          onClose={() => setImportFeedback((prev) => ({ ...prev, open: false }))}
+        >
+          {importFeedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }
