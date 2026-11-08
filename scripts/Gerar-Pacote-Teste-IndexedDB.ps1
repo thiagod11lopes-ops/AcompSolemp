@@ -192,30 +192,33 @@ while ($listener.IsListening) {
 }
 '@ | Set-Content -LiteralPath $servePs1 -Encoding UTF8
 
-$vbs = Join-Path $Destino 'Iniciar-sistema.vbs'
+# Auxiliares ficam em scripts\ — na raiz so aparece o atalho "Iniciar sistema".
+$vbs = Join-Path $scripts 'Iniciar-sistema.vbs'
 @"
-' Launcher silencioso do AcompOMPS (teste IndexedDB)
+' Launcher interno do AcompOMPS (teste IndexedDB) — use o atalho da pasta raiz.
 Option Explicit
-Dim sh, fso, here, ps1, porta, cmd
+Dim sh, fso, here, root, ps1, porta, cmd
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 here = fso.GetParentFolderName(WScript.ScriptFullName)
-ps1 = here & "\scripts\Serve-Local.ps1"
+root = fso.GetParentFolderName(here)
+ps1 = here & "\Serve-Local.ps1"
 porta = "$Porta"
 If Not fso.FileExists(ps1) Then
   MsgBox "Arquivo nao encontrado:" & vbCrLf & ps1, 16, "AcompOMPS"
   WScript.Quit 1
 End If
 cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File """ & ps1 & """ -Port " & porta
+sh.CurrentDirectory = root
 sh.Run cmd, 1, False
 "@ | Set-Content -LiteralPath $vbs -Encoding ASCII
 
-$cmdFile = Join-Path $Destino 'Iniciar-sistema.cmd'
+$cmdFile = Join-Path $scripts 'Iniciar-sistema.cmd'
 @"
 @echo off
 title AcompOMPS
-cd /d "%~dp0"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Serve-Local.ps1" -Port $Porta
+cd /d "%~dp0.."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Serve-Local.ps1" -Port $Porta
 "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
 $leia = Join-Path $Destino 'LEIA-ME.txt'
@@ -225,9 +228,10 @@ AcompOMPS — pacote de teste (IndexedDB)
 
 Como usar em outro computador
 1. Copie a pasta inteira AcompOMPS (pendrive, zip, rede).
-2. No Windows, clique duas vezes em "Iniciar sistema".
+2. Clique DUAS VEZES apenas no atalho "Iniciar sistema" (icone OPMS azul/dourado).
+   Nao abra pastas internas (icons, scripts, www).
 3. O navegador abre em http://127.0.0.1:$Porta/
-4. Deixe a janela preta/PowerShell aberta enquanto usa o sistema.
+4. Deixe a janela PowerShell aberta enquanto usa o sistema.
 5. Para encerrar: feche a janela do PowerShell (ou Ctrl+C).
 
 Dados
@@ -250,6 +254,15 @@ Gerado em: $(Get-Date -Format 'yyyy-MM-dd HH:mm')
 Write-Host '4/5 criando atalho "Iniciar sistema"...'
 $ico = Join-Path $icons 'opms.ico'
 $lnk = Join-Path $Destino 'Iniciar sistema.lnk'
+# Remove lancadores antigos da raiz (versoes anteriores do pacote).
+@(
+  (Join-Path $Destino 'Iniciar-sistema.vbs'),
+  (Join-Path $Destino 'Iniciar-sistema.cmd'),
+  (Join-Path $Destino 'Iniciar sistema.vbs'),
+  (Join-Path $Destino 'Iniciar sistema.cmd')
+) | ForEach-Object {
+  if (Test-Path -LiteralPath $_) { Remove-Item -LiteralPath $_ -Force }
+}
 $wsh = New-Object -ComObject WScript.Shell
 $sc = $wsh.CreateShortcut($lnk)
 $sc.TargetPath = $vbs
