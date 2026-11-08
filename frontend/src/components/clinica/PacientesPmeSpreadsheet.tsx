@@ -311,6 +311,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
       elevation={0}
       className="excel-sheet"
       sx={{
+        width: '100%',
         borderRadius: 2,
         overflow: 'hidden',
         border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
@@ -460,8 +461,8 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
         onChange={handleImportFileChange}
       />
 
-      <TableContainer sx={{ maxHeight: 'min(70vh, 720px)' }}>
-        <Table size="small" stickyHeader sx={{ tableLayout: 'fixed', minWidth: 960 }}>
+      <TableContainer sx={{ width: '100%', maxHeight: 'min(70vh, 720px)' }}>
+        <Table size="small" stickyHeader sx={{ width: '100%', tableLayout: 'fixed' }}>
           <TableHead>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>

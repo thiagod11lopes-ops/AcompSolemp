@@ -18,6 +18,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Tooltip,
@@ -91,8 +92,8 @@ const cellSx = {
   fontFamily: EXCEL_SHEET.fontFamily,
   fontSize: EXCEL_SHEET.fontSize,
   fontWeight: EXCEL_SHEET.fontWeight,
-  py: 0.75,
-  px: 1,
+  py: 0.35,
+  px: 0.75,
   color: EXCEL_SHEET.text,
   bgcolor: EXCEL_SHEET.cellBg,
   verticalAlign: 'middle' as const,
@@ -105,6 +106,8 @@ const headerSx = {
   fontWeight: 700,
   color: EXCEL_SHEET.mutedText,
 } as const
+
+const ACOES_COL_WIDTH = 132
 
 export function ListaMedicamentosPlanilhaPreview({
   value,
@@ -147,23 +150,15 @@ export function ListaMedicamentosPlanilhaPreview({
   }
 
   return (
-    <Box
-      sx={{
-        opacity: visible ? 1 : 0.92,
-        transform: visible ? 'translateY(0)' : 'translateY(4px)',
-        transition: 'opacity 280ms ease, transform 280ms ease',
-      }}
-    >
+    <Box sx={{ width: '100%' }}>
       <Paper
         elevation={0}
         className="excel-sheet"
         sx={{
+          width: '100%',
           borderRadius: 2,
           overflow: 'hidden',
           border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
-          boxShadow: visible
-            ? '0 12px 40px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04)'
-            : 'none',
           bgcolor: EXCEL_SHEET.sheetBg,
         }}
       >
@@ -177,6 +172,7 @@ export function ListaMedicamentosPlanilhaPreview({
             minHeight: 44,
             px: 1.25,
             py: 0.5,
+            background: '#fff',
             bgcolor: '#fff',
             borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
           }}
@@ -194,12 +190,10 @@ export function ListaMedicamentosPlanilhaPreview({
           </Typography>
           <Typography
             component="span"
-            sx={{ fontSize: 12, fontWeight: 600, color: EXCEL_SHEET.mutedText, mr: 0.5 }}
+            sx={{ fontSize: 12, fontWeight: 600, color: EXCEL_SHEET.mutedText }}
           >
             {value.linhas.length}
           </Typography>
-
-          <Box sx={{ width: 1, height: 16, bgcolor: EXCEL_SHEET.toolbarBorder, mx: 0.25 }} />
 
           <Chip
             size="small"
@@ -341,180 +335,156 @@ export function ListaMedicamentosPlanilhaPreview({
           ) : null}
         </Box>
 
-        {!visible ? (
-          <Box sx={{ px: 2.5, py: 4, textAlign: 'center', opacity: 0.55 }}>
-            <Typography variant="body2" color="text.secondary">
-              Adicione medicamentos — ou importe a planilha de preços — para ver a lista ao vivo.
-            </Typography>
-          </Box>
-        ) : (
-          <Box
-            className="excel-sheet-grid"
-            sx={{
-              p: 1.5,
-              borderTop: EXCEL_SHEET.border,
-              width: 'fit-content',
-              maxWidth: '100%',
-              overflowX: 'auto',
-              maxHeight: 'min(70vh, 720px)',
-              overflowY: 'auto',
-            }}
-          >
-            <Box
-              sx={{
-                width: 'fit-content',
-                maxWidth: '100%',
-                border: EXCEL_SHEET.border,
-                borderRadius: 1,
-                bgcolor: EXCEL_SHEET.sheetBg,
-              }}
-            >
-              <Table size="small" stickyHeader sx={{ width: 'auto', tableLayout: 'auto' }}>
-                <TableHead>
-                  <TableRow>
-                    {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
-                      <TableCell
-                        key={col.key}
-                        sx={{
-                          ...headerSx,
-                          minWidth: col.width,
-                          position: 'sticky',
-                          top: 0,
-                          zIndex: 2,
-                        }}
-                      >
-                        {col.label}
-                      </TableCell>
-                    ))}
-                    <TableCell
+        <TableContainer sx={{ width: '100%', maxHeight: 'min(70vh, 720px)' }}>
+          <Table size="small" stickyHeader sx={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHead>
+              <TableRow>
+                {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
+                  <TableCell
+                    key={col.key}
+                    sx={{
+                      ...headerSx,
+                      width: col.width,
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 2,
+                    }}
+                  >
+                    {col.label}
+                  </TableCell>
+                ))}
+                <TableCell
+                  sx={{
+                    ...headerSx,
+                    textAlign: 'center',
+                    width: ACOES_COL_WIDTH,
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 2,
+                  }}
+                >
+                  AÇÕES
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {!visible || linhasVisiveis.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={colCount}
+                    sx={{ ...cellSx, color: EXCEL_SHEET.mutedText, py: 4, textAlign: 'center' }}
+                  >
+                    {!visible
+                      ? 'Adicione medicamentos — ou importe a planilha de preços — para ver a lista ao vivo.'
+                      : filtro.tipo === 'todos'
+                        ? 'Nenhum medicamento'
+                        : 'Nenhum medicamento neste filtro'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                linhasVisiveis.map((linha, index) => {
+                  const editing = editingLinhaId === linha.id
+                  const statusEstoque = getListaMedEstoqueStatus(linha)
+                  const statusValidade = getListaMedValidadeStatus(linha)
+                  const rowBg = editing ? EXCEL_SHEET.selectedBg : undefined
+                  const qtdBorder =
+                    statusEstoque === 'zerado'
+                      ? alertCellBorderSx(BORDER_ALERT_RED)
+                      : statusEstoque === 'baixo'
+                        ? alertCellBorderSx(BORDER_ALERT_ORANGE)
+                        : null
+                  const validadeBorder =
+                    statusValidade === 'vencido'
+                      ? alertCellBorderSx(BORDER_ALERT_RED)
+                      : statusValidade === 'proximo'
+                        ? alertCellBorderSx(BORDER_ALERT_ORANGE)
+                        : null
+                  return (
+                    <TableRow
+                      key={linha.id}
+                      hover
                       sx={{
-                        ...headerSx,
-                        textAlign: 'center',
-                        minWidth: 132,
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 2,
+                        bgcolor: rowBg,
+                        '& td': { bgcolor: rowBg },
+                        '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
                       }}
                     >
-                      AÇÕES
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {linhasVisiveis.map((linha, index) => {
-                    const editing = editingLinhaId === linha.id
-                    const statusEstoque = getListaMedEstoqueStatus(linha)
-                    const statusValidade = getListaMedValidadeStatus(linha)
-                    const rowBg = editing ? EXCEL_SHEET.selectedBg : undefined
-                    const qtdBorder =
-                      statusEstoque === 'zerado'
-                        ? alertCellBorderSx(BORDER_ALERT_RED)
-                        : statusEstoque === 'baixo'
-                          ? alertCellBorderSx(BORDER_ALERT_ORANGE)
-                          : null
-                    const validadeBorder =
-                      statusValidade === 'vencido'
-                        ? alertCellBorderSx(BORDER_ALERT_RED)
-                        : statusValidade === 'proximo'
-                          ? alertCellBorderSx(BORDER_ALERT_ORANGE)
-                          : null
-                    return (
-                      <TableRow
-                        key={linha.id}
-                        sx={{
-                          bgcolor: rowBg,
-                          '& td': { bgcolor: rowBg },
-                          '&:hover td': { bgcolor: EXCEL_SHEET.hoverBg },
-                        }}
-                      >
-                        {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
-                          <TableCell
-                            key={col.key}
-                            sx={{
-                              ...cellSx,
-                              bgcolor: rowBg ?? cellSx.bgcolor,
-                              ...(col.key === 'medicamento'
-                                ? {
-                                    whiteSpace: 'pre-wrap',
-                                    maxWidth: col.width + 40,
-                                    minWidth: 180,
-                                  }
-                                : null),
-                              ...(col.key === 'qtd'
-                                ? { fontWeight: 700, textAlign: 'center', ...qtdBorder }
-                                : null),
-                              ...(col.key === 'validade' ? validadeBorder : null),
-                            }}
-                          >
-                            {dash(String(linha[col.key] ?? ''))}
-                          </TableCell>
-                        ))}
+                      {LISTA_MEDICAMENTOS_COLUNAS.map((col) => (
                         <TableCell
+                          key={col.key}
                           sx={{
                             ...cellSx,
+                            width: col.width,
                             bgcolor: rowBg ?? cellSx.bgcolor,
-                            textAlign: 'center',
+                            ...(col.key === 'medicamento'
+                              ? { whiteSpace: 'pre-wrap', wordBreak: 'break-word' }
+                              : null),
+                            ...(col.key === 'qtd'
+                              ? { fontWeight: 700, textAlign: 'center', ...qtdBorder }
+                              : null),
+                            ...(col.key === 'validade' ? validadeBorder : null),
                           }}
                         >
-                          <Tooltip title="Movimentar estoque">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              aria-label={`Movimentar medicamento ${index + 1}`}
-                              onClick={() => onMovimentarLinha?.(linha.id)}
-                              sx={{ p: 0.35, color: EXCEL_SHEET.selectedCheck }}
-                            >
-                              <MovimentarIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Histórico de movimentações">
-                            <IconButton
-                              size="small"
-                              aria-label={`Histórico de movimentações ${index + 1}`}
-                              onClick={() => {
-                                setHistoricoSeed(linha)
-                                setHistoricoOpen(true)
-                              }}
-                              sx={{ p: 0.35, color: '#0f5c8c' }}
-                            >
-                              <HistoricoIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-                          <IconButton
-                            size="small"
-                            aria-label={`Editar medicamento ${index + 1}`}
-                            onClick={() => onEditLinha?.(linha.id)}
-                            sx={{ p: 0.35 }}
-                          >
-                            <EditIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            aria-label={`Excluir medicamento ${index + 1}`}
-                            onClick={() => onDeleteLinha?.(linha.id)}
-                            sx={{ p: 0.35 }}
-                          >
-                            <DeleteIcon sx={{ fontSize: 16 }} />
-                          </IconButton>
+                          {dash(String(linha[col.key] ?? ''))}
                         </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                  {linhasVisiveis.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={colCount} sx={{ ...cellSx, color: EXCEL_SHEET.mutedText }}>
-                        {filtro.tipo === 'todos'
-                          ? 'Nenhum medicamento'
-                          : 'Nenhum medicamento neste filtro'}
+                      ))}
+                      <TableCell
+                        sx={{
+                          ...cellSx,
+                          width: ACOES_COL_WIDTH,
+                          bgcolor: rowBg ?? cellSx.bgcolor,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Tooltip title="Movimentar estoque">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            aria-label={`Movimentar medicamento ${index + 1}`}
+                            onClick={() => onMovimentarLinha?.(linha.id)}
+                            sx={{ p: 0.35, color: EXCEL_SHEET.selectedCheck }}
+                          >
+                            <MovimentarIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Histórico de movimentações">
+                          <IconButton
+                            size="small"
+                            aria-label={`Histórico de movimentações ${index + 1}`}
+                            onClick={() => {
+                              setHistoricoSeed(linha)
+                              setHistoricoOpen(true)
+                            }}
+                            sx={{ p: 0.35, color: '#0f5c8c' }}
+                          >
+                            <HistoricoIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <IconButton
+                          size="small"
+                          aria-label={`Editar medicamento ${index + 1}`}
+                          onClick={() => onEditLinha?.(linha.id)}
+                          sx={{ p: 0.35 }}
+                        >
+                          <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          aria-label={`Excluir medicamento ${index + 1}`}
+                          onClick={() => onDeleteLinha?.(linha.id)}
+                          sx={{ p: 0.35 }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </Box>
-          </Box>
-        )}
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
       <GerarDocumentoModal

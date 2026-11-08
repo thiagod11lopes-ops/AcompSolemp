@@ -265,7 +265,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
   }
 
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Box sx={{ width: '100%', minWidth: 0 }}>
       <input
         ref={importInputRef}
         type="file"
