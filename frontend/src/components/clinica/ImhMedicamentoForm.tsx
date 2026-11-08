@@ -5,6 +5,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -90,9 +91,14 @@ import {
   devolverEstoqueListaMedicamentos,
   findListaMedicamentoByNome,
   findListaMedicamentoByNomeELote,
+  getListaMedValidadeStatus,
+  mapaFefoIdPorMedicamento,
   motivoEstoqueNegativoValido,
+  parseListaMedQtdNumber,
   previewBaixaEstoqueListaMedicamentos,
   resolveListaMedicamentoEstoque,
+  sortListaMedicamentosFefo,
+  suggestListaMedicamentoFefo,
   type AutorizacaoEstoqueNegativo,
 } from '@/utils/listaMedicamentosForm'
 
@@ -111,6 +117,10 @@ interface ImhMedicamentoFormProps {
 
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 const MEDICAMENTO_SEM_LOTE = 'Medicamento sem lote definido'
+const MEDICAMENTO_LOTE_VENCIDO =
+  'Lote vencido — FEFO recomenda priorizar outro lote com validade mais próxima.'
+const MEDICAMENTO_LOTE_FEFO =
+  'Lote sugerido por FEFO (validade mais próxima com estoque).'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -652,7 +662,19 @@ export function ImhMedicamentoForm({
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
     const lote = formatImhMedUppercase(row.lote)
     const validade = formatImhMedData(row.validade)
-    const aviso = !lote.trim() ? MEDICAMENTO_SEM_LOTE : null
+    const semLote = !lote.trim()
+    const vencido = getListaMedValidadeStatus(row) === 'vencido'
+    const fefoSugerido = suggestListaMedicamentoFefo(row.medicamento, listaMedicamentos)
+    const isFefo = Boolean(fefoSugerido && fefoSugerido.id === row.id)
+    const aviso = semLote
+      ? MEDICAMENTO_SEM_LOTE
+      : vencido
+        ? MEDICAMENTO_LOTE_VENCIDO
+        : isFefo
+          ? MEDICAMENTO_LOTE_FEFO
+          : fefoSugerido && fefoSugerido.id !== row.id
+            ? `Há lote FEFO preferencial: ${fefoSugerido.lote.trim() || 's/lote'} (val. ${fefoSugerido.validade.trim() || '—'}).`
+            : null
     updateDraft({
       itemPme: formatImhMedUppercase(row.medicamento),
       lote,
@@ -664,20 +686,34 @@ export function ImhMedicamentoForm({
       qtd: linhaDraft.qtd.trim() || '1',
     })
     setItemPmeInput(row.medicamento)
-    setLoteSemDefinir(Boolean(aviso))
+    setLoteSemDefinir(Boolean(semLote))
     setLoteAviso(aviso)
   }
 
   const withListaEstoqueMeta = (linha: ImhMedicamentoLinha): ImhMedicamentoLinha => {
-    const resolved = resolveListaMedicamentoEstoque(
+    let resolved = resolveListaMedicamentoEstoque(
       listaMedicamentos,
       linha.itemPme,
       linha.lote,
       linha.listaMedicamentoId,
     )
+    // Sem lote/id: aplica FEFO automaticamente na baixa.
+    if (!resolved && linha.itemPme.trim()) {
+      resolved = suggestListaMedicamentoFefo(linha.itemPme, listaMedicamentos, {
+        qtdMinima: parseListaMedQtdNumber(linha.qtd || '0'),
+      })
+    }
+    if (!resolved) {
+      return {
+        ...linha,
+        estoqueQtdMovida: linha.qtd,
+      }
+    }
     return {
       ...linha,
-      listaMedicamentoId: resolved?.id ?? linha.listaMedicamentoId,
+      listaMedicamentoId: resolved.id,
+      lote: linha.lote.trim() || formatImhMedUppercase(resolved.lote),
+      validade: linha.validade.trim() || formatImhMedData(resolved.validade),
       estoqueQtdMovida: linha.qtd,
     }
   }
@@ -1028,9 +1064,15 @@ export function ImhMedicamentoForm({
           includes.push(opt)
         }
       }
-      return [...startsWith, ...includes].slice(0, 40)
+      // Dentro do resultado, prioriza FEFO (validade mais próxima com estoque).
+      return sortListaMedicamentosFefo([...startsWith, ...includes]).slice(0, 40)
     },
     [],
+  )
+
+  const fefoIdPorMedicamento = useMemo(
+    () => mapaFefoIdPorMedicamento(medicamentoOptions),
+    [medicamentoOptions],
   )
 
   return (
@@ -1115,9 +1157,15 @@ export function ImhMedicamentoForm({
         </Box>
       </Box>
 
-      {loteSemDefinir && loteAviso ? (
+      {loteAviso ? (
         <Alert
-          severity="warning"
+          severity={
+            loteAviso === MEDICAMENTO_LOTE_VENCIDO
+              ? 'error'
+              : loteAviso === MEDICAMENTO_LOTE_FEFO
+                ? 'info'
+                : 'warning'
+          }
           variant="filled"
           sx={{ fontWeight: 800, letterSpacing: 0.3 }}
           onClose={() => {
@@ -1314,27 +1362,62 @@ export function ImhMedicamentoForm({
               selectOnFocus
               clearOnBlur={false}
               handleHomeEndKeys
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box sx={{ py: 0.25 }}>
-                    <Typography variant="body2">{option.medicamento}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {[
-                        option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
-                        option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
-                        option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
-                        option.neb.trim() || null,
-                        option.uf.trim() || null,
-                        option.precoReferencia.trim()
-                          ? formatPrecoReferenciaMedicamento(option.precoReferencia)
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </Typography>
-                  </Box>
-                </li>
-              )}
+              renderOption={(props, option) => {
+                const isFefo =
+                  fefoIdPorMedicamento.get(option.medicamento.trim().toUpperCase()) ===
+                  option.id
+                const vencido = getListaMedValidadeStatus(option) === 'vencido'
+                return (
+                  <li {...props} key={option.id}>
+                    <Box
+                      sx={{
+                        py: 0.25,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        width: '100%',
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2">{option.medicamento}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {[
+                            option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
+                            option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
+                            option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
+                            option.neb.trim() || null,
+                            option.uf.trim() || null,
+                            option.precoReferencia.trim()
+                              ? formatPrecoReferenciaMedicamento(option.precoReferencia)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                        {isFefo ? (
+                          <Chip
+                            label="FEFO"
+                            size="small"
+                            color="success"
+                            sx={{ height: 20, fontWeight: 800, fontSize: '0.65rem' }}
+                          />
+                        ) : null}
+                        {vencido ? (
+                          <Chip
+                            label="Vencido"
+                            size="small"
+                            color="error"
+                            sx={{ height: 20, fontWeight: 700, fontSize: '0.65rem' }}
+                          />
+                        ) : null}
+                      </Box>
+                    </Box>
+                  </li>
+                )
+              }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -1345,7 +1428,7 @@ export function ImhMedicamentoForm({
                   helperText={
                     medicamentoOptions.length === 0
                       ? 'Cadastre medicamentos na aba Planilhas → Lista de Medicamentos'
-                      : undefined
+                      : 'Lotes ordenados por FEFO (validade mais próxima com estoque).'
                   }
                   sx={multilineFieldSx}
                 />

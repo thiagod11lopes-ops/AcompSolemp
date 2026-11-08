@@ -716,7 +716,91 @@ export function findListaMedicamentoByNome(
   return matches.length === 1 ? matches[0]! : null
 }
 
-/** Cada lote é uma linha: localiza por nome + lote. */
+/**
+ * Ordenação FEFO (First Expiry First Out):
+ * 1) com estoque > 0
+ * 2) não vencidos antes de vencidos
+ * 3) validade mais próxima primeiro
+ * 4) sem validade por último entre os do mesmo grupo
+ */
+export function compareListaMedFefo(
+  a: ListaMedicamentosLinha,
+  b: ListaMedicamentosLinha,
+): number {
+  const estoqueRank = (linha: ListaMedicamentosLinha) =>
+    parseListaMedQtdNumber(linha.qtd) > 0 ? 0 : 1
+  const byEstoque = estoqueRank(a) - estoqueRank(b)
+  if (byEstoque !== 0) return byEstoque
+
+  const vencidoRank = (linha: ListaMedicamentosLinha) =>
+    getListaMedValidadeStatus(linha) === 'vencido' ? 1 : 0
+  const byVencido = vencidoRank(a) - vencidoRank(b)
+  if (byVencido !== 0) return byVencido
+
+  const dateA = parseListaMedDataToDate(a.validade)
+  const dateB = parseListaMedDataToDate(b.validade)
+  if (dateA && !dateB) return -1
+  if (!dateA && dateB) return 1
+  if (dateA && dateB && dateA.getTime() !== dateB.getTime()) {
+    return dateA.getTime() - dateB.getTime()
+  }
+
+  return a.lote.localeCompare(b.lote, 'pt-BR', { sensitivity: 'base' })
+}
+
+export function sortListaMedicamentosFefo(
+  linhas: ListaMedicamentosLinha[],
+): ListaMedicamentosLinha[] {
+  return [...linhas].sort(compareListaMedFefo)
+}
+
+/**
+ * Sugere o lote FEFO para um medicamento (nome).
+ * Por padrão evita vencidos se houver alternativa com validade ok/próxima.
+ */
+export function suggestListaMedicamentoFefo(
+  nome: string,
+  form: ListaMedicamentosFormData | undefined,
+  options?: { qtdMinima?: number; incluirVencidos?: boolean },
+): ListaMedicamentosLinha | null {
+  let matches = findListaMedicamentosByNome(nome, form)
+  if (matches.length === 0) return null
+
+  const qtdMin = options?.qtdMinima ?? 0
+  if (qtdMin > 0) {
+    const comSaldo = matches.filter((linha) => parseListaMedQtdNumber(linha.qtd) >= qtdMin)
+    if (comSaldo.length > 0) matches = comSaldo
+  }
+
+  if (!options?.incluirVencidos) {
+    const naoVencidos = matches.filter((linha) => getListaMedValidadeStatus(linha) !== 'vencido')
+    if (naoVencidos.length > 0) matches = naoVencidos
+  }
+
+  return sortListaMedicamentosFefo(matches)[0] ?? null
+}
+
+/** Mapa nome → id do lote FEFO sugerido (para badge na UI). */
+export function mapaFefoIdPorMedicamento(
+  linhas: ListaMedicamentosLinha[],
+): Map<string, string> {
+  const byNome = new Map<string, ListaMedicamentosLinha[]>()
+  for (const linha of linhas) {
+    const key = normMedKey(linha.medicamento)
+    if (!key) continue
+    const list = byNome.get(key) ?? []
+    list.push(linha)
+    byNome.set(key, list)
+  }
+  const map = new Map<string, string>()
+  for (const [key, list] of byNome) {
+    const best = sortListaMedicamentosFefo(list)[0]
+    if (best) map.set(key, best.id)
+  }
+  return map
+}
+
+/** Cada lote é uma linha: localiza por nome + lote; sem lote → FEFO. */
 export function findListaMedicamentoByNomeELote(
   nome: string,
   lote: string,
@@ -730,9 +814,7 @@ export function findListaMedicamentoByNomeELote(
   if (loteKey) {
     return matches.find((linha) => normMedKey(linha.lote) === loteKey) ?? null
   }
-  const semLote = matches.filter((linha) => !normMedKey(linha.lote))
-  if (semLote.length === 1) return semLote[0]!
-  return matches.length === 1 ? matches[0]! : null
+  return suggestListaMedicamentoFefo(nome, form)
 }
 
 /** Rótulo das opções do Autocomplete no IMH (nome + lote + validade). */
