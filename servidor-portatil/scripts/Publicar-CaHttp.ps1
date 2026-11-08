@@ -1,4 +1,5 @@
 ﻿# Publica a CA e o instalador automatico em cliente\www-ca (servido em http://IP/acomp-ca/).
+# Evita SmartScreen: fluxo principal e Win+R + irm|iex (sem baixar .cmd).
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\_common.ps1"
 
@@ -17,40 +18,66 @@ if (-not (Test-Path -LiteralPath $caSrc)) {
 }
 Copy-Item -Force $caSrc (Join-Path $www 'AcompOPMS-rootCA.pem')
 
-# CMD auto-contido: UAC -> baixa CA via HTTP -> instala -> abre HTTPS
+# Script remoto (roda na memoria — nao gera arquivo baixado com bloqueio do Windows)
+$installPs1 = @"
+# AcompOPMS — instala CA da rede local e abre o sistema (uso: irm ... | iex)
+`$ErrorActionPreference = 'Stop'
+`$Server = '$ip'
+`$CaUrl = "http://`$Server/acomp-ca/AcompOPMS-rootCA.pem"
+`$Https = "https://`$Server/"
+
+function Test-IsAdmin {
+  return ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
+    IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-IsAdmin)) {
+  Write-Host 'Solicitando Administrador (UAC)...'
+  `$arg = "-NoProfile -ExecutionPolicy Bypass -Command `"irm http://$ip/acomp-ca/install.ps1 | iex`""
+  `$p = Start-Process -FilePath powershell.exe -ArgumentList `$arg -Verb RunAs -Wait -PassThru
+  if (`$p.ExitCode -ne 0) { throw 'Instalacao cancelada ou falhou.' }
+  exit 0
+}
+
+`$ca = Join-Path `$env:TEMP 'AcompOPMS-rootCA.pem'
+Write-Host "Baixando CA: `$CaUrl"
+& curl.exe -fsSL --connect-timeout 5 --max-time 20 `$CaUrl -o `$ca
+if (`$LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath `$ca)) { throw 'Falha ao baixar a CA.' }
+
+`$dump = & certutil.exe -dump `$ca 2>&1 | Out-String
+`$hash = `$null
+if (`$dump -match 'Cert Hash\(sha1\):\s*([a-fA-F0-9 ]+)') {
+  `$hash = ((`$Matches[1] -replace '\s','').ToUpperInvariant())
+}
+`$store = & certutil.exe -store Root 2>&1 | Out-String
+if (-not (`$hash -and `$store.ToUpperInvariant().Contains(`$hash))) {
+  Write-Host 'Instalando certificado na loja Raiz...'
+  & certutil.exe -addstore -f Root `$ca | Out-Null
+  if (`$LASTEXITCODE -ne 0) { throw 'certutil falhou.' }
+} else {
+  Write-Host 'Certificado ja estava confiado.'
+}
+
+Write-Host "Abrindo `$Https"
+Start-Process `$Https | Out-Null
+"@
+Set-Content -LiteralPath (Join-Path $www 'install.ps1') -Value $installPs1.Trim() -Encoding UTF8
+
+# CMD legado (pode cair no SmartScreen se baixado pelo Chrome)
 $cmd = @"
 @echo off
-title AcompOPMS - Certificado automatico
-net session >nul 2>&1
-if errorlevel 1 (
-  echo Solicitando Administrador para instalar o certificado...
-  powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-  exit /b
-)
-
-set "SERVER=$ip"
-set "CA=%TEMP%\AcompOPMS-rootCA.pem"
-echo Baixando certificado de http://%SERVER%/acomp-ca/ ...
-curl.exe -fsSL --connect-timeout 5 --max-time 20 "http://%SERVER%/acomp-ca/AcompOPMS-rootCA.pem" -o "%CA%"
-if errorlevel 1 (
-  echo Falha ao baixar a CA. Confira se o servidor esta no ar.
-  pause
-  exit /b 1
-)
-
-echo Instalando certificado confiavel...
-certutil.exe -addstore -f Root "%CA%" >nul
-if errorlevel 1 (
-  echo Falha no certutil.
-  pause
-  exit /b 1
-)
-
-echo OK. Abrindo o sistema...
-start "" "https://%SERVER%/"
-exit /b 0
+title AcompOPMS - Certificado
+echo.
+echo Este arquivo baixado pode ser bloqueado pelo Windows.
+echo Prefira o metodo da pagina: Win+R e cole o comando.
+echo.
+echo Tentando instalar mesmo assim...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm http://$ip/acomp-ca/install.ps1 | iex"
+if errorlevel 1 pause
 "@
 Set-Content -LiteralPath (Join-Path $www 'Abrir-AcompOPMS.cmd') -Value $cmd.Trim() -Encoding ASCII
+
+$runCmd = "powershell -NoP -EP Bypass -C `"irm http://$ip/acomp-ca/install.ps1 | iex`""
 
 $html = @"
 <!DOCTYPE html>
@@ -60,46 +87,73 @@ $html = @"
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AcompOPMS — Acesso seguro</title>
   <style>
-    :root { color-scheme: light; }
     * { box-sizing: border-box; }
     body {
       margin: 0; min-height: 100vh; display: grid; place-items: center;
-      font-family: Inter, Segoe UI, system-ui, sans-serif;
+      font-family: "Segoe UI", system-ui, sans-serif;
       background: #f5f5f7; color: #1d1d1f;
     }
     .card {
-      width: min(440px, calc(100vw - 32px));
+      width: min(480px, calc(100vw - 32px));
       background: #fff; border: 1px solid rgba(0,0,0,.08);
-      border-radius: 18px; padding: 28px 24px; text-align: center;
+      border-radius: 18px; padding: 28px 24px;
     }
-    .icon {
-      width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 18px;
-      display: grid; place-items: center; background: rgba(85,139,113,.12); font-size: 28px;
+    h1 { font-size: 1.25rem; margin: 0 0 8px; letter-spacing: -0.02em; text-align: center; }
+    p { margin: 0 0 14px; color: #6e6e73; font-size: .95rem; line-height: 1.45; text-align: center; }
+    ol { margin: 0 0 16px 1.1rem; padding: 0; color: #1d1d1f; font-size: .92rem; line-height: 1.55; }
+    code, .cmd {
+      display: block; width: 100%; margin: 10px 0 14px; padding: 12px;
+      border-radius: 10px; background: #f0f0f2; font-size: .72rem;
+      word-break: break-all; text-align: left; border: 1px solid rgba(0,0,0,.06);
     }
-    h1 { font-size: 1.25rem; margin: 0 0 8px; letter-spacing: -0.02em; }
-    p { margin: 0 0 18px; color: #6e6e73; font-size: .95rem; line-height: 1.45; }
-    a.btn, button.btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    button.btn {
+      display: inline-flex; width: 100%; align-items: center; justify-content: center;
       border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 700;
-      text-decoration: none; cursor: pointer; color: #fff;
+      cursor: pointer; color: #fff; font-size: .95rem;
       background: linear-gradient(135deg, #558b71, #3f6b56);
     }
-    .hint { margin-top: 14px; font-size: .8rem; color: #6e6e73; }
+    button.btn:hover { filter: brightness(1.05); }
+    .ok { color: #3f6b56; font-weight: 700; font-size: .85rem; text-align: center; min-height: 1.2em; }
+    .alt { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-size: .8rem; color: #6e6e73; text-align: center; }
+    .alt a { color: #3f6b56; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">🔒</div>
-    <h1>Preparando acesso seguro</h1>
-    <p>Para remover o aviso “Sua conexão não é particular”, o certificado da rede local será instalado automaticamente neste computador.</p>
-    <a class="btn" id="go" href="Abrir-AcompOPMS.cmd" download="Abrir-AcompOPMS.cmd">Instalar e abrir o sistema</a>
-    <p class="hint">Aceite o UAC do Windows. Depois o navegador abre em https://$ip/</p>
+    <h1>Instalar certificado da rede</h1>
+    <p>O Windows bloqueia o arquivo <strong>.cmd</strong> baixado do navegador. Use este metodo (sem download):</p>
+    <ol>
+      <li>Clique em <strong>Copiar comando</strong></li>
+      <li>Pressione <strong>Win + R</strong></li>
+      <li>Cole com <strong>Ctrl + V</strong> e aperte <strong>Enter</strong></li>
+      <li>Aceite o <strong>UAC</strong> — o sistema abre sozinho</li>
+    </ol>
+    <div class="cmd" id="cmd">$runCmd</div>
+    <button class="btn" type="button" id="copy">Copiar comando</button>
+    <div class="ok" id="status"></div>
+    <div class="alt">
+      Se ainda quiser o arquivo: <a href="Abrir-AcompOPMS.cmd">Abrir-AcompOPMS.cmd</a><br />
+      No bloqueio do Windows: <strong>Mais informacoes</strong> → <strong>Executar assim mesmo</strong>
+    </div>
   </div>
   <script>
-    // Dispara o download automaticamente na primeira visita
+    var cmd = document.getElementById('cmd').textContent.trim();
+    var status = document.getElementById('status');
+    document.getElementById('copy').addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(cmd);
+        status.textContent = 'Comando copiado. Agora Win+R, Ctrl+V, Enter.';
+      } catch (e) {
+        status.textContent = 'Selecione o texto do comando e copie com Ctrl+C.';
+      }
+    });
+    // Copia automaticamente ao abrir a pagina
     window.addEventListener('load', function () {
-      var a = document.getElementById('go');
-      try { a.click(); } catch (e) {}
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cmd).then(function () {
+          status.textContent = 'Comando ja copiado. Pressione Win+R, Ctrl+V e Enter.';
+        }).catch(function () {});
+      }
     });
   </script>
 </body>
@@ -107,5 +161,14 @@ $html = @"
 "@
 Set-Content -LiteralPath (Join-Path $www 'index.html') -Value $html.Trim() -Encoding UTF8
 
+# Atalho local (pen drive / Transferir Servidor) — sem SmartScreen de download
+$localCmd = Join-Path $root 'cliente\Abrir-Sistema-OMPS.cmd'
+@"
+@echo off
+title AcompOPMS
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm http://$ip/acomp-ca/install.ps1 | iex"
+if errorlevel 1 pause
+"@ | Set-Content -LiteralPath $localCmd -Encoding ASCII
+
 Write-Host ("CA HTTP publicada em: {0}" -f $www)
-Write-Host ("Clientes: http://{0}/acomp-ca/  ou  http://{0}/" -f $ip)
+Write-Host ("Clientes: http://{0}/  → Copiar comando → Win+R → Enter" -f $ip)
