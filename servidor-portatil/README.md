@@ -2,6 +2,20 @@
 
 Pacote para rodar o **AcompSolemp + Supabase local** nesta máquina Windows e **levar tudo para outro PC** com o mínimo de dor.
 
+## Começar aqui (recomendado)
+
+Duplo clique em **`Iniciar AcompOPMS.vbs`** (hub único). Marque **Criar atalho na Área de Trabalho** se quiser.
+
+| Este PC… | Escolha no hub | O que faz |
+|----------|----------------|-----------|
+| **É o servidor** (hospeda o sistema) | **Instalar servidor** | Dependências, firewall/HTTPS, sobe Docker+app, instala a CA neste PC, health-check e Dashboard |
+| **Só acessa o sistema** | **Instalar neste PC** | Informa o endereço do servidor, instala a CA (UAC), hosts se precisar, atalho e abre HTTPS sem aviso |
+
+- **1ª vez no servidor:** `Iniciar AcompOPMS` → Servidor → ao final use `https://IP/` (ou o nome amigável).
+- **Nos outros PCs:** copie a pasta `cliente` (ou abra a URL da CA do servidor) → rode o mesmo hub → Cliente → informe o IP/nome do servidor.
+
+Atalhos técnicos (`Iniciar Servidor OMPS.vbs`, `Instalacao-do-Servidor.vbs`) continuam na pasta do pacote; o hub é o ponto de entrada recomendado.
+
 ## Ideia
 
 | Peça | Onde fica | Portátil? |
@@ -11,14 +25,14 @@ Pacote para rodar o **AcompSolemp + Supabase local** nesta máquina Windows e **
 | App React | `AcompSolemp\frontend` | Sim |
 | IP da rede | `servidor-portatil\config.env` + `server-config.js` | Ajustável sem rebuild |
 
-O outro computador só precisa do navegador: `http://192.168.1.202:5173`.
+Nos clientes, após o assistente: `https://IP_DO_SERVIDOR/` (HTTPS com CA confiável).
 
 ---
 
 ## Uso diário (máquina servidor)
 
 1. Abra a pasta `servidor-portatil`
-2. Dê **duplo clique** no ícone **Iniciar Servidor OMPS**  
+2. Prefira **`Iniciar AcompOPMS`** (hub) ou o atalho Desktop; para só subir de novo, use **Iniciar Servidor OMPS**  
    - **1ª vez** (ou após interromper): checklist + IP atual + campo do endereço amigável  
    - **Próximas vezes** (automático): cronômetro 60 s com **Pausar** / Interromper / Iniciar agora + IP + endereço amigável  
    - Depois sobe Docker + app e abre o Chrome em `/login`
@@ -28,17 +42,18 @@ Se o atalho `.lnk` sumir ou for copiado para outro PC, rode uma vez:
 ```powershell
 cd ...\servidor-portatil\scripts
 powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Iniciar.ps1
+powershell -ExecutionPolicy Bypass -File .\Criar-Atalho-Desktop.ps1 -Name "AcompOPMS" -TargetPath "..\Iniciar AcompOPMS.vbs"
 ```
 
-Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito).
+Ou use o arquivo `Iniciar Servidor OMPS.vbs` (mesmo efeito de subir o servidor).
 
-Nos outros PCs, digite **exatamente** o nome do campo do modal (sem `http://` e sem porta), por exemplo:
+Nos outros PCs, use o hub → **Cliente**, ou digite **exatamente** o nome cadastrado (sem `http://` e sem porta), por exemplo:
 
 `sistema.acompomps.rede`
 
-1. Neste PC servidor, **uma vez**: `Liberar-Firewall.cmd` (Admin).  
+1. Neste PC servidor, **uma vez**: fluxo Servidor do hub (ou `Liberar-Firewall.cmd` Admin).  
 2. No roteador (só na instalação): DNS primário = IP deste servidor.  
-Usuários finais não configuram nada — só digitam o nome no Chrome/Firefox/Edge.
+Usuários finais: hub Cliente uma vez, depois só o atalho Desktop.
 
 Para parar: duplo clique em `Parar-Servidor.cmd`
 

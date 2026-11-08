@@ -2,7 +2,12 @@
 # Etapas 1/N com status e erro por passo. Reutiliza funcoes do Painel-Servidor-OMPS.ps1
 # e scripts reais (Aplicar-Host, Liberar-Firewall, Abrir-Tudo, Abrir-Dashboard).
 # Uso: .\Assistente-Instalacao-Servidor.ps1
-#      Instalacao-do-Servidor.vbs
+#      .\Assistente-Instalacao-Servidor.ps1 -CreateDesktopShortcut
+#      Instalacao-do-Servidor.vbs / Hub Iniciar AcompOPMS
+
+param(
+  [switch]$CreateDesktopShortcut
+)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
@@ -25,22 +30,27 @@ if ((Test-Path -LiteralPath $commonPs1) -and -not (Get-Command Normalize-AliasIn
 }
 
 # --- Definicao das etapas (somente acoes reais do pacote) ---
+# hint: o que e automatico vs o que o usuario precisa fazer
 $script:WizardSteps = @(
-  @{ id = 'pastas'; title = 'Verificar pastas do pacote' },
-  @{ id = 'vcredist'; title = 'Visual C++ Redistributable' },
-  @{ id = 'wsl'; title = 'WSL' },
-  @{ id = 'docker'; title = 'Docker Desktop' },
-  @{ id = 'node'; title = 'Node.js' },
-  @{ id = 'npm'; title = 'Dependencias do frontend (npm)' },
-  @{ id = 'ip'; title = 'Escolher IP do servidor' },
-  @{ id = 'rede'; title = 'Firewall, hosts e HTTPS (Admin)' },
-  @{ id = 'servidor'; title = 'Iniciar Servidor OMPS' },
-  @{ id = 'dashboard'; title = 'Abrir Dashboard' }
+  @{ id = 'pastas'; title = 'Verificar pastas do pacote'; hint = 'Automatico: confere AcompSolemp, frontend e Supabase.' },
+  @{ id = 'vcredist'; title = 'Visual C++ Redistributable'; hint = 'Automatico se ja instalado; senao abre o instalador.' },
+  @{ id = 'wsl'; title = 'WSL'; hint = 'Automatico / pode pedir reinicio do Windows.' },
+  @{ id = 'docker'; title = 'Docker Desktop'; hint = 'Voce: conclua o instalador se abrir; depois o Docker precisa ficar Ready.' },
+  @{ id = 'node'; title = 'Node.js'; hint = 'Automatico se ja instalado; senao abre o MSI.' },
+  @{ id = 'npm'; title = 'Dependencias do frontend (npm)'; hint = 'Automatico: npm install no frontend.' },
+  @{ id = 'ip'; title = 'Escolher IP do servidor'; hint = 'Voce: escolha IP fixo ou IP da rede abaixo, depois Continuar.' },
+  @{ id = 'rede'; title = 'Firewall, hosts e HTTPS (Admin)'; hint = 'Voce: aceite o UAC na janela Liberar-Firewall.' },
+  @{ id = 'servidor'; title = 'Iniciar Servidor OMPS'; hint = 'Automatico: sobe Supabase, app e gateway HTTPS.' },
+  @{ id = 'cert'; title = 'Confianca do certificado neste PC'; hint = 'Automatico com UAC: instala a CA local (sem aviso no Chrome).' },
+  @{ id = 'health'; title = 'Health-check app + HTTPS'; hint = 'Automatico: valida app local e https://IP/.' },
+  @{ id = 'dashboard'; title = 'Abrir Dashboard e atalho'; hint = 'Abre o Dashboard; cria atalho Desktop se marcado no hub.' }
 )
 
 # IP fixo padrao da instalacao (opcao do assistente)
 $script:FixedServerIp = '10.6.167.66'
 $script:IpModeChoice = 'fixed' # fixed | network
+$script:WantDesktop = [bool]$CreateDesktopShortcut
+$script:HealthOk = $false
 
 $script:StepState = @{}
 foreach ($s in $script:WizardSteps) {
@@ -613,6 +623,94 @@ function Invoke-StepServidor {
   return $false
 }
 
+function Get-AccessHostForWizard {
+  $ipAccess = $script:FixedServerIp
+  try {
+    $cfg = Import-ServidorConfig
+    if ($cfg -and $cfg.SERVER_HOST) { $ipAccess = [string]$cfg.SERVER_HOST }
+  } catch { }
+  return $ipAccess
+}
+
+function Test-HttpsGatewayReady([string]$HostName) {
+  if (-not $HostName) { return $false }
+  try {
+    $code = & curl.exe -sk -o NUL -w '%{http_code}' --connect-timeout 4 --max-time 6 ("https://{0}/" -f $HostName) 2>$null
+    return ("$code" -match '^(200|301|302|304)$')
+  } catch { return $false }
+}
+
+function Invoke-StepCert {
+  $ensure = Join-Path $script:ScriptsDir 'Ensure-Certificado-Confianca.ps1'
+  if (-not (Test-Path -LiteralPath $ensure)) {
+    Set-StepUi 'cert' 'error' "Ensure-Certificado-Confianca.ps1 nao encontrado: $ensure"
+    return $false
+  }
+  $hostName = Get-AccessHostForWizard
+  $caLocal = Join-Path $script:PackRoot 'cliente\AcompOPMS-rootCA.pem'
+  Set-StepUi 'cert' 'running' 'Instalando CA neste PC (pode pedir UAC)…'
+  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ensure, '-ServerHost', $hostName, '-Quiet')
+  if (Test-Path -LiteralPath $caLocal) { $args += @('-CaPath', $caLocal) }
+  try {
+    $p = Start-Process -FilePath 'powershell.exe' -ArgumentList $args -Wait -PassThru -WindowStyle Minimized
+    if ($null -ne $p.ExitCode -and $p.ExitCode -ne 0) {
+      Set-StepUi 'cert' 'error' ("Falha ao instalar CA (codigo {0}). Aceite o UAC e tente de novo." -f $p.ExitCode)
+      return $false
+    }
+  } catch {
+    Set-StepUi 'cert' 'error' $_.Exception.Message
+    return $false
+  }
+  Set-StepUi 'cert' 'ok' ("CA confiavel neste servidor ({0})" -f $hostName)
+  return $true
+}
+
+function Invoke-StepHealth {
+  $hostName = Get-AccessHostForWizard
+  Set-StepUi 'health' 'running' 'Validando app local (:5173) e HTTPS…'
+  $appOk = Test-LocalAppReady
+  $httpsOk = $false
+  for ($i = 0; $i -lt 8; $i++) {
+    if (Test-HttpsGatewayReady $hostName) { $httpsOk = $true; break }
+    Start-Sleep -Seconds 2
+    [Windows.Forms.Application]::DoEvents()
+  }
+  $script:HealthOk = ($appOk -and $httpsOk)
+  if ($script:HealthOk) {
+    Set-StepUi 'health' 'ok' ("App OK + https://{0}/ OK" -f $hostName)
+    return $true
+  }
+  if ($appOk -and -not $httpsOk) {
+    Set-StepUi 'health' 'error' ("App local OK, mas HTTPS em https://{0}/ nao respondeu. Verifique gateway/firewall." -f $hostName)
+    return $false
+  }
+  if (-not $appOk -and $httpsOk) {
+    Set-StepUi 'health' 'error' 'HTTPS OK, mas app local :5173 nao respondeu.'
+    return $false
+  }
+  Set-StepUi 'health' 'error' 'App local e HTTPS falharam. Suba o servidor e tente de novo.'
+  return $false
+}
+
+function New-DesktopShortcutServidor {
+  $helper = Join-Path $script:ScriptsDir 'Criar-Atalho-Desktop.ps1'
+  if (-not (Test-Path -LiteralPath $helper)) { return $false }
+  $targets = @(
+    (Join-Path $script:PackRoot 'Iniciar AcompOPMS.vbs'),
+    (Join-Path $script:PackRoot 'Iniciar Servidor OMPS.vbs')
+  )
+  $target = $targets | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  if (-not $target) { return $false }
+  try {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper `
+      -Name 'AcompOPMS — Servidor' `
+      -TargetPath $target `
+      -WorkingDirectory $script:PackRoot `
+      -Description 'Abrir hub / servidor AcompOPMS' | Out-Null
+    return $true
+  } catch { return $false }
+}
+
 function Invoke-StepDashboard {
   $ps1 = Get-AbrirDashboardPs1
   if (-not $ps1) {
@@ -628,12 +726,16 @@ function Invoke-StepDashboard {
     Set-StepUi 'dashboard' 'error' $_.Exception.Message
     return $false
   }
-  $ipAccess = $script:FixedServerIp
-  try {
-    $cfg = Import-ServidorConfig
-    if ($cfg -and $cfg.SERVER_HOST) { $ipAccess = [string]$cfg.SERVER_HOST }
-  } catch { }
-  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/" -f $ipAccess)
+  $ipAccess = Get-AccessHostForWizard
+  $atalhoMsg = ''
+  if ($script:WantDesktop) {
+    if (New-DesktopShortcutServidor) {
+      $atalhoMsg = ' Atalho Desktop "AcompOPMS — Servidor" criado.'
+    } else {
+      $atalhoMsg = ' (atalho Desktop nao criado — veja Criar-Atalho-Desktop.ps1)'
+    }
+  }
+  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/{1}" -f $ipAccess, $atalhoMsg)
   return $true
 }
 
@@ -649,6 +751,8 @@ function Invoke-WizardStep([int]$Index) {
     'ip' { return Invoke-StepIp }
     'rede' { return Invoke-StepRede }
     'servidor' { return Invoke-StepServidor }
+    'cert' { return Invoke-StepCert }
+    'health' { return Invoke-StepHealth }
     'dashboard' { return Invoke-StepDashboard }
     default {
       Set-StepUi $step.id 'error' 'Etapa desconhecida'
@@ -699,7 +803,7 @@ function Show-AssistenteInstalacaoServidor {
   $top.Controls.Add($script:lblProgress)
 
   $script:lblHint = New-Object Windows.Forms.Label
-  $script:lblHint.Text = 'Maximize a janela para ler a coluna Detalhe. Clique numa linha para ver o texto completo abaixo. Fluxo: programas, rede, firewall/HTTPS, servidor e Dashboard.'
+  $script:lblHint.Text = 'Maximize para ler Detalhe. Cada etapa indica o que e automatico vs o que voce precisa fazer (UAC/instalador). Fluxo: programas → rede → servidor → CA → health → Dashboard.'
   $script:lblHint.Location = New-Object Drawing.Point(16, 44)
   $script:lblHint.Size = New-Object Drawing.Size(820, 36)
   $script:lblHint.Anchor = 'Top,Left,Right'
@@ -875,7 +979,8 @@ function Show-AssistenteInstalacaoServidor {
     $item = New-Object Windows.Forms.ListViewItem ("{0}/{1}" -f $i, $totalSteps)
     [void]$item.SubItems.Add($s.title)
     [void]$item.SubItems.Add('Pendente')
-    [void]$item.SubItems.Add('')
+    $hint0 = if ($s.hint) { [string]$s.hint } else { '' }
+    [void]$item.SubItems.Add($hint0)
     $item.Tag = $s.id
     [void]$list.Items.Add($item)
     $i++
@@ -895,9 +1000,14 @@ function Show-AssistenteInstalacaoServidor {
     $id = $script:WizardSteps[$idx].id
     $st = $script:StepState[$id]
     $title = $script:WizardSteps[$idx].title
+    $hint = [string]$script:WizardSteps[$idx].hint
     $detail = [string]$st.detail
     if ([string]::IsNullOrWhiteSpace($detail)) {
-      $script:txtDetailFull.Text = ("{0}`r`n(sem detalhe)" -f $title)
+      if ($hint) {
+        $script:txtDetailFull.Text = ("{0}`r`n{1}" -f $title, $hint)
+      } else {
+        $script:txtDetailFull.Text = ("{0}`r`n(sem detalhe)" -f $title)
+      }
     } else {
       $script:txtDetailFull.Text = ("{0}`r`n{1}" -f $title, $detail)
     }
@@ -949,7 +1059,11 @@ function Show-AssistenteInstalacaoServidor {
         default { $st.status }
       }
       $item.SubItems[2].Text = $label
-      $item.SubItems[3].Text = [string]$st.detail
+      $detailTxt = [string]$st.detail
+      if ([string]::IsNullOrWhiteSpace($detailTxt) -and $script:WizardSteps[$idx].hint) {
+        $detailTxt = [string]$script:WizardSteps[$idx].hint
+      }
+      $item.SubItems[3].Text = $detailTxt
       if ($st.status -eq 'error') {
         $item.BackColor = [Drawing.Color]::FromArgb(255, 235, 235)
       } elseif ($st.status -eq 'running') {
@@ -1017,10 +1131,11 @@ function Show-AssistenteInstalacaoServidor {
         }
       }
       'done' {
-        $btnStart.Enabled = $false
         $btnRetry.Enabled = $false
         Set-IpChoicesEnabled $false
-        $btnStart.Text = 'Concluido'
+        # Concluir so habilita com health-check app + HTTPS OK
+        $btnStart.Enabled = [bool]$script:HealthOk
+        $btnStart.Text = 'Concluir'
       }
       default {
         $btnStart.Enabled = $true
@@ -1032,18 +1147,19 @@ function Show-AssistenteInstalacaoServidor {
   }
 
   function Complete-WizardUi {
-    $ipDone = $script:FixedServerIp
-    try {
-      $cfg = Import-ServidorConfig
-      if ($cfg -and $cfg.SERVER_HOST) { $ipDone = [string]$cfg.SERVER_HOST }
-    } catch { }
+    $ipDone = Get-AccessHostForWizard
     $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
-    if ($nErr -gt 0) {
-      $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. O restante foi aplicado. Acesso: https://{1}/" -f $nErr, $ipDone)
+    if ($script:HealthOk -and $nErr -eq 0) {
+      $extra = ''
+      if ($script:WantDesktop) { $extra = ' Atalho Desktop "AcompOPMS — Servidor" disponivel.' }
+      $script:lblStatus.Text = ("Pronto. Dashboard aberto. Use https://{0}/ neste PC e nos clientes.{1}" -f $ipDone, $extra)
+      $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
+    } elseif ($nErr -gt 0) {
+      $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. Veja a linha em vermelho. Acesso tentado: https://{1}/" -f $nErr, $ipDone)
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkOrange
     } else {
-      $script:lblStatus.Text = ("Fluxo concluido. Use https://{0}/ nos PCs da rede (DNS seguro do Chrome desligado)." -f $ipDone)
-      $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
+      $script:lblStatus.Text = ("Etapas ok, mas health HTTPS incompleto. Confira gateway e tente de novo. https://{0}/" -f $ipDone)
+      $script:lblStatus.ForeColor = [Drawing.Color]::DarkOrange
     }
     & $script:RefreshSteps
     Update-PercentBar
@@ -1078,6 +1194,10 @@ function Show-AssistenteInstalacaoServidor {
 
   $btnStart.Add_Click({
       if ($script:WizardBusy) { return }
+      if ($btnStart.Text -eq 'Concluir') {
+        $form.Close()
+        return
+      }
       # Apos erro: Continuar avanca sem reexecutar a etapa falha
       if ($script:WizardIndex -lt $script:WizardSteps.Count) {
         $curId = $script:WizardSteps[$script:WizardIndex].id
