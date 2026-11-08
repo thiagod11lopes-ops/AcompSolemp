@@ -48,7 +48,19 @@ export function PlanilhaDataFiltros({
           <Checkbox
             size="small"
             checked={value.mostrarTodos}
-            onChange={(_, checked) => patch({ mostrarTodos: checked })}
+            onChange={(_, checked) => {
+              if (checked) {
+                patch({ mostrarTodos: true })
+                return
+              }
+              const now = new Date()
+              patch({
+                mostrarTodos: false,
+                dia: now.getDate(),
+                mes: now.getMonth() + 1,
+                ano: now.getFullYear(),
+              })
+            }}
           />
         }
         label="Todos"

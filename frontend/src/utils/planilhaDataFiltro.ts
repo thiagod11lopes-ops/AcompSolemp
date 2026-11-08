@@ -80,8 +80,10 @@ export function linhaPassaNoFiltroData(
 }
 
 /**
- * Se o filtro atual esconder todas as linhas, libera "Todos".
- * Evita planilha importada "sumir" após F5 (ex.: dados em agosto, filtro em outubro).
+ * Normaliza o filtro. So forca "Todos" quando ha linhas sem data
+ * (senao a grade ficaria vazia sem como filtrar por dia).
+ * Nao remarca "Todos" se o dia/mes/ano atual simplesmente nao tem linhas —
+ * o usuario pode desmarcar de proposito para ver o dia de hoje.
  */
 export function ensureFiltroMostraAlgumaLinha(
   filtro: PlanilhaDataFiltro,
@@ -94,13 +96,7 @@ export function ensureFiltroMostraAlgumaLinha(
   if (totalLinhas > 0 && datasOk.length === 0) {
     return { ...normalized, mostrarTodos: true }
   }
-  if (datasOk.length === 0) return normalized
-  if (datasOk.some((d) => linhaPassaNoFiltroData(d, normalized))) return normalized
-
-  return {
-    ...normalized,
-    mostrarTodos: true,
-  }
+  return normalized
 }
 
 export function anosDisponiveisFromDatas(datas: string[]): number[] {
