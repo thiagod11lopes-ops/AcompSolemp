@@ -100,95 +100,116 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$root = (Resolve-Path (Join-Path $PSScriptRoot '..\www')).Path
-$url = "http://127.0.0.1:$Port/"
-
-$mime = @{
-  '.html' = 'text/html; charset=utf-8'
-  '.js'   = 'application/javascript; charset=utf-8'
-  '.css'  = 'text/css; charset=utf-8'
-  '.json' = 'application/json; charset=utf-8'
-  '.svg'  = 'image/svg+xml'
-  '.png'  = 'image/png'
-  '.jpg'  = 'image/jpeg'
-  '.jpeg' = 'image/jpeg'
-  '.ico'  = 'image/x-icon'
-  '.woff' = 'font/woff'
-  '.woff2'= 'font/woff2'
-  '.map'  = 'application/json'
-  '.txt'  = 'text/plain; charset=utf-8'
-  '.webp' = 'image/webp'
-}
-
-Add-Type -AssemblyName System.Net.HttpListener
-$listener = [System.Net.HttpListener]::new()
-$prefix = "http://127.0.0.1:$Port/"
-$listener.Prefixes.Add($prefix)
-
 try {
-  $listener.Start()
-} catch {
-  throw "Nao foi possivel abrir a porta $Port. Feche outro AcompOMPS ou altere a porta.`n$($_.Exception.Message)"
-}
-
-Write-Host "AcompOMPS (IndexedDB) em $url"
-Write-Host "Pasta: $root"
-Write-Host "Deixe esta janela aberta enquanto usa o sistema. Ctrl+C para encerrar."
-
-if (-not $NoBrowser) {
-  Start-Process $url
-}
-
-function Get-SafePath([string]$rel) {
-  $rel = [Uri]::UnescapeDataString(($rel -replace '\\', '/'))
-  if ([string]::IsNullOrWhiteSpace($rel) -or $rel -eq '/') { return (Join-Path $root 'index.html') }
-  $rel = $rel.TrimStart('/')
-  $candidate = [System.IO.Path]::GetFullPath((Join-Path $root ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)))
-  $rootFull = [System.IO.Path]::GetFullPath($root)
-  if (-not $candidate.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase)) {
-    return $null
+  $root = (Resolve-Path (Join-Path $PSScriptRoot '..\www')).Path
+  $mime = @{
+    '.html' = 'text/html; charset=utf-8'
+    '.js'   = 'application/javascript; charset=utf-8'
+    '.css'  = 'text/css; charset=utf-8'
+    '.json' = 'application/json; charset=utf-8'
+    '.svg'  = 'image/svg+xml'
+    '.png'  = 'image/png'
+    '.jpg'  = 'image/jpeg'
+    '.jpeg' = 'image/jpeg'
+    '.ico'  = 'image/x-icon'
+    '.woff' = 'font/woff'
+    '.woff2'= 'font/woff2'
+    '.map'  = 'application/json'
+    '.txt'  = 'text/plain; charset=utf-8'
+    '.webp' = 'image/webp'
   }
-  return $candidate
-}
 
-while ($listener.IsListening) {
-  $ctx = $listener.GetContext()
-  $req = $ctx.Request
-  $res = $ctx.Response
-  try {
-    $path = Get-SafePath $req.Url.AbsolutePath
-    if (-not $path) {
-      $res.StatusCode = 403
-      $bytes = [Text.Encoding]::UTF8.GetBytes('Forbidden')
-      $res.OutputStream.Write($bytes, 0, $bytes.Length)
-      $res.Close()
-      continue
-    }
-
-    if (-not (Test-Path -LiteralPath $path) -or (Test-Path -LiteralPath $path -PathType Container)) {
-      # SPA fallback
-      $path = Join-Path $root 'index.html'
-    }
-
-    $ext = [IO.Path]::GetExtension($path).ToLowerInvariant()
-    $contentType = $mime[$ext]
-    if (-not $contentType) { $contentType = 'application/octet-stream' }
-
-    $bytes = [IO.File]::ReadAllBytes($path)
-    $res.StatusCode = 200
-    $res.ContentType = $contentType
-    $res.ContentLength64 = $bytes.LongLength
-    $res.Headers['Cache-Control'] = 'no-cache'
-    $res.OutputStream.Write($bytes, 0, $bytes.Length)
-  } catch {
+  # System.Net.HttpListener ja vem no .NET Framework — NAO usar Add-Type com esse nome.
+  $listener = $null
+  $chosenPort = $null
+  $ports = @($Port) + (5178..5187)
+  foreach ($p in $ports) {
     try {
-      $res.StatusCode = 500
-      $msg = [Text.Encoding]::UTF8.GetBytes($_.Exception.Message)
-      $res.OutputStream.Write($msg, 0, $msg.Length)
-    } catch {}
-  } finally {
-    try { $res.Close() } catch {}
+      $candidate = New-Object System.Net.HttpListener
+      $candidate.Prefixes.Clear()
+      $candidate.Prefixes.Add("http://127.0.0.1:$p/")
+      $candidate.Start()
+      $listener = $candidate
+      $chosenPort = $p
+      break
+    } catch {
+      try { if ($candidate) { $candidate.Close() } } catch {}
+    }
   }
+
+  if (-not $listener) {
+    throw "Nao foi possivel abrir as portas $($ports -join ', '). Feche outro AcompOMPS e tente de novo."
+  }
+
+  $url = "http://127.0.0.1:$chosenPort/"
+  Write-Host "AcompOMPS (IndexedDB) em $url"
+  Write-Host "Pasta: $root"
+  Write-Host "Deixe esta janela aberta enquanto usa o sistema."
+  Write-Host "Para encerrar: feche esta janela ou pressione Ctrl+C."
+  Write-Host ""
+
+  if (-not $NoBrowser) {
+    Start-Process $url
+  }
+
+  function Get-SafePath([string]$rel) {
+    $rel = [Uri]::UnescapeDataString(($rel -replace '\\', '/'))
+    if ([string]::IsNullOrWhiteSpace($rel) -or $rel -eq '/') { return (Join-Path $root 'index.html') }
+    $rel = $rel.TrimStart('/')
+    $candidate = [System.IO.Path]::GetFullPath((Join-Path $root ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)))
+    $rootFull = [System.IO.Path]::GetFullPath($root)
+    if (-not $candidate.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase)) {
+      return $null
+    }
+    return $candidate
+  }
+
+  while ($listener.IsListening) {
+    $ctx = $listener.GetContext()
+    $req = $ctx.Request
+    $res = $ctx.Response
+    try {
+      $path = Get-SafePath $req.Url.AbsolutePath
+      if (-not $path) {
+        $res.StatusCode = 403
+        $bytes = [Text.Encoding]::UTF8.GetBytes('Forbidden')
+        $res.OutputStream.Write($bytes, 0, $bytes.Length)
+        $res.Close()
+        continue
+      }
+
+      if (-not (Test-Path -LiteralPath $path) -or (Test-Path -LiteralPath $path -PathType Container)) {
+        $path = Join-Path $root 'index.html'
+      }
+
+      $ext = [IO.Path]::GetExtension($path).ToLowerInvariant()
+      $contentType = $mime[$ext]
+      if (-not $contentType) { $contentType = 'application/octet-stream' }
+
+      $bytes = [IO.File]::ReadAllBytes($path)
+      $res.StatusCode = 200
+      $res.ContentType = $contentType
+      $res.ContentLength64 = $bytes.LongLength
+      $res.Headers['Cache-Control'] = 'no-cache'
+      $res.OutputStream.Write($bytes, 0, $bytes.Length)
+    } catch {
+      try {
+        $res.StatusCode = 500
+        $msg = [Text.Encoding]::UTF8.GetBytes($_.Exception.Message)
+        $res.OutputStream.Write($msg, 0, $msg.Length)
+      } catch {}
+    } finally {
+      try { $res.Close() } catch {}
+    }
+  }
+} catch {
+  Write-Host ""
+  Write-Host "ERRO ao iniciar o AcompOMPS:" -ForegroundColor Red
+  Write-Host $_.Exception.Message
+  Write-Host ""
+  Write-Host "Pressione Enter para fechar..."
+  [void][Console]::ReadLine()
+  exit 1
 }
 '@ | Set-Content -LiteralPath $servePs1 -Encoding UTF8
 
@@ -219,6 +240,7 @@ $cmdFile = Join-Path $scripts 'Iniciar-sistema.cmd'
 title AcompOMPS
 cd /d "%~dp0.."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Serve-Local.ps1" -Port $Porta
+if errorlevel 1 pause
 "@ | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
 $leia = Join-Path $Destino 'LEIA-ME.txt'
