@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   TextField,
   Typography,
 } from '@mui/material'
@@ -15,6 +16,8 @@ import AddIcon from '@mui/icons-material/Add'
 import {
   createEmptyPacientePmeRow,
   formatPacientePmeUpper,
+  PACIENTES_PME_POSTOS_GRAD,
+  PACIENTES_PME_VINCULOS,
   type PacientePmeRow,
 } from '@/utils/pacientesPme'
 
@@ -58,14 +61,22 @@ export function NovoPacientePmeModal({ open, onClose, onAdd }: NovoPacientePmeMo
       setErro('Informe o NIP do usuário.')
       return
     }
+    if (!draft.postoGradTitular) {
+      setErro('Selecione o posto/graduação do titular.')
+      return
+    }
+    if (!draft.vinculo) {
+      setErro('Selecione o vínculo.')
+      return
+    }
 
     onAdd({
       ...createEmptyPacientePmeRow(),
       nome,
       nipUsuario,
       nipTitular: draft.nipTitular.trim() || nipUsuario,
-      postoGradTitular: formatPacientePmeUpper(draft.postoGradTitular),
-      vinculo: formatPacientePmeUpper(draft.vinculo),
+      postoGradTitular: draft.postoGradTitular,
+      vinculo: draft.vinculo,
     })
   }
 
@@ -120,19 +131,41 @@ export function NovoPacientePmeModal({ open, onClose, onAdd }: NovoPacientePmeMo
             placeholder="Igual ao usuário se vazio"
           />
           <TextField
+            select
             label="Posto/Grad do titular"
             value={draft.postoGradTitular}
-            onChange={(e) => update({ postoGradTitular: formatPacientePmeUpper(e.target.value) })}
+            onChange={(e) => update({ postoGradTitular: e.target.value })}
             size="small"
             fullWidth
-          />
+            required
+          >
+            <MenuItem value="">
+              <em>Selecione</em>
+            </MenuItem>
+            {PACIENTES_PME_POSTOS_GRAD.map((posto) => (
+              <MenuItem key={posto} value={posto}>
+                {posto}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
+            select
             label="Vínculo"
             value={draft.vinculo}
-            onChange={(e) => update({ vinculo: formatPacientePmeUpper(e.target.value) })}
+            onChange={(e) => update({ vinculo: e.target.value })}
             size="small"
             fullWidth
-          />
+            required
+          >
+            <MenuItem value="">
+              <em>Selecione</em>
+            </MenuItem>
+            {PACIENTES_PME_VINCULOS.map((vinculo) => (
+              <MenuItem key={vinculo} value={vinculo}>
+                {vinculo}
+              </MenuItem>
+            ))}
+          </TextField>
         </Box>
         {erro ? (
           <Typography variant="caption" color="error" sx={{ mt: 1.25, display: 'block' }}>

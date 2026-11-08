@@ -23,6 +23,36 @@ export const PACIENTES_PME_HEADERS: {
   { key: 'vinculo', label: 'VÍNCULO', width: 220 },
 ]
 
+/** Postos/graduações da MB usados no cadastro PME. */
+export const PACIENTES_PME_POSTOS_GRAD = [
+  'AE',
+  'VA',
+  'CA',
+  'CMG',
+  'CF',
+  'CC',
+  'CT',
+  '1T',
+  '2T',
+  'SO',
+  '1SG',
+  '2SG',
+  '3SG',
+  'CB',
+  'SD/MN',
+  'MN',
+  'SD',
+] as const
+
+/** Vínculos alinhados ao IMH PME. */
+export const PACIENTES_PME_VINCULOS = [
+  'TITULAR',
+  'DEPENDENTE DIRETO',
+  'DEPENDENTE INDIRETO',
+  'DEPENDENTE',
+  'OUTRO',
+] as const
+
 type SeedFile = {
   headers: string[]
   rows: Array<{
