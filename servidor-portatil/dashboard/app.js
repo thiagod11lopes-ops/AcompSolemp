@@ -306,10 +306,11 @@ function renderDiskSection(disks) {
 function renderPack(container, item) {
   const el = document.createElement('div')
   el.className = 'row'
+  const fullPath = item.path || ''
   el.innerHTML = `
     <div>
       <div class="row-title">${escapeHtml(item.name)}</div>
-      <span class="row-sub">${escapeHtml(item.path || '')}</span>
+      <span class="row-sub" title="${escapeHtml(fullPath)}">${escapeHtml(fullPath)}</span>
     </div>
     <span class="badge ok">${escapeHtml(item.label)}</span>
   `

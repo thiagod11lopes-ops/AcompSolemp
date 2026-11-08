@@ -49,8 +49,10 @@ $desktop = [Environment]::GetFolderPath('Desktop')
 $deskLnk = Join-Path $desktop 'AcompOPMS.lnk'
 Write-Host ''
 Write-Host 'Pronto.'
-Write-Host ("  Area de Trabalho: {0}" -f $deskLnk)
-Write-Host ("  No pacote:        {0}" -f $packLnk)
+Write-Host '  Area de Trabalho:'
+Write-Host ("    {0}" -f $deskLnk)
+Write-Host '  Pacote:'
+Write-Host ("    {0}" -f $packLnk)
 Write-Host ''
 Write-Host 'Para enviar a outro PC: copie a pasta servidor-portatil (ou o pacote completo).'
 Write-Host 'La, rode Instalar-Atalho-na-Area-de-Trabalho.cmd ou Iniciar AcompOPMS.vbs.'
