@@ -180,6 +180,12 @@ export function filterListaMedicamentosByEstoque(
   return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
 }
 
+/** Autorização explícita para deixar o estoque negativo. */
+export type AutorizacaoEstoqueNegativo = {
+  /** Motivo obrigatório (mín. 5 caracteres após trim). */
+  motivo: string
+}
+
 /** Metadados de auditoria ao ajustar estoque via IMH PME. */
 export type AjusteEstoqueImhMeta = {
   /** Nome do usuário logado (obrigatório para rastreio). */
@@ -191,6 +197,15 @@ export type AjusteEstoqueImhMeta = {
   referencia?: string | null
   /** Texto livre em origemDestino (default conforme modo). */
   origemDestino?: string
+  /**
+   * Obrigatório se a baixa deixar QTD < 0.
+   * Sem motivo válido a baixa é bloqueada (form inalterado).
+   */
+  autorizacaoNegativo?: AutorizacaoEstoqueNegativo
+}
+
+export function motivoEstoqueNegativoValido(motivo: string | null | undefined): boolean {
+  return (motivo?.trim().length ?? 0) >= 5
 }
 
 /** Baixa estoque da linha (id da lista ou medicamento + lote) ao lançar no IMH. */
@@ -247,16 +262,24 @@ export function aplicarMovimentacaoListaMedicamentos(
     data: string
     origemDestino: string
     responsavel: string
+    /** Obrigatório quando a saída deixa estoque negativo. */
+    motivoNegativo?: string
   },
 ): ListaMedicamentosFormData {
   const qtdMov = parseListaMedQtdNumber(input.qtdRaw)
   if (!linhaId.trim() || qtdMov <= 0) return form
 
   let changed = false
+  let blocked = false
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== linhaId) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
     const nextQtd = input.tipo === 'entrada' ? atual + qtdMov : atual - qtdMov
+    const ficouNegativo = input.tipo === 'saida' && nextQtd < 0
+    if (ficouNegativo && !motivoEstoqueNegativoValido(input.motivoNegativo)) {
+      blocked = true
+      return linha
+    }
     const mov = {
       id: `lista-med-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       tipo: input.tipo,
@@ -265,6 +288,14 @@ export function aplicarMovimentacaoListaMedicamentos(
       origemDestino: input.origemDestino.trim(),
       responsavel: input.responsavel.trim(),
       origemTipo: 'manual' as const,
+      estoqueAntes: formatQtdEstoque(atual),
+      estoqueDepois: formatQtdEstoque(nextQtd),
+      ...(ficouNegativo
+        ? {
+            autorizouNegativo: true,
+            motivoNegativo: input.motivoNegativo!.trim(),
+          }
+        : {}),
       createdAt: new Date().toISOString(),
     }
     changed = true
@@ -275,6 +306,7 @@ export function aplicarMovimentacaoListaMedicamentos(
     }
   })
 
+  if (blocked) return form
   return changed ? { linhas } : form
 }
 
@@ -293,6 +325,10 @@ export interface ListaMedicamentoHistoricoItem {
   lote: string
   validade: string
   uf: string
+  autorizouNegativo?: boolean
+  motivoNegativo?: string | null
+  estoqueAntes?: string | null
+  estoqueDepois?: string | null
 }
 
 function parseDataListaMedToSortKey(data: string): number {
@@ -326,6 +362,10 @@ export function listarHistoricoMovimentacoesListaMedicamentos(
         lote: linha.lote,
         validade: linha.validade,
         uf: linha.uf,
+        autorizouNegativo: mov.autorizouNegativo,
+        motivoNegativo: mov.motivoNegativo,
+        estoqueAntes: mov.estoqueAntes,
+        estoqueDepois: mov.estoqueDepois,
       })
     }
   }
@@ -467,11 +507,18 @@ function ajustarEstoqueListaMedicamentos(
   const alvo = resolveListaMedicamentoEstoque(form, itemPme, lote, listaMedicamentoId)
   if (!alvo) return form
 
+  const atualAlvo = parseListaMedQtdNumber(alvo.qtd)
+  const nextAlvo = modo === 'baixar' ? atualAlvo - qtd : atualAlvo + qtd
+  const ficouNegativo = modo === 'baixar' && nextAlvo < 0
+  if (ficouNegativo && !motivoEstoqueNegativoValido(meta?.autorizacaoNegativo?.motivo)) {
+    // Política: bloqueia estoque negativo sem motivo explícito de autorização.
+    return form
+  }
+
   let changed = false
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== alvo.id) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
-    // Baixa pode deixar o estoque negativo (ex.: 8 − 10 = −2).
     const next = modo === 'baixar' ? atual - qtd : atual + qtd
     changed = true
 
@@ -493,6 +540,14 @@ function ajustarEstoqueListaMedicamentos(
         | 'imh_baixa'
         | 'imh_devolucao',
       referencia: meta?.referencia?.trim() || null,
+      estoqueAntes: formatQtdEstoque(atual),
+      estoqueDepois: formatQtdEstoque(next),
+      ...(ficouNegativo
+        ? {
+            autorizouNegativo: true,
+            motivoNegativo: meta!.autorizacaoNegativo!.motivo.trim(),
+          }
+        : {}),
       createdAt: new Date().toISOString(),
     }
 

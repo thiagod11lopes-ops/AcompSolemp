@@ -686,6 +686,14 @@ export interface ListaMedicamentoMovimentacao {
   origemTipo?: 'manual' | 'imh_baixa' | 'imh_devolucao'
   /** Ex.: id da linha IMH ou NIP do paciente */
   referencia?: string | null
+  /** QTD imediatamente antes desta movimentação. */
+  estoqueAntes?: string | null
+  /** QTD imediatamente depois desta movimentação. */
+  estoqueDepois?: string | null
+  /** True quando a saída deixou (ou manteve) estoque < 0 com autorização explícita. */
+  autorizouNegativo?: boolean
+  /** Motivo obrigatório ao autorizar estoque negativo. */
+  motivoNegativo?: string | null
   /** ISO 8601 do momento do registro no sistema */
   createdAt: string
 }

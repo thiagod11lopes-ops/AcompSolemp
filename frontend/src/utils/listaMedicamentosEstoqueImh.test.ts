@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ListaMedicamentosFormData, ListaMedicamentosLinha } from '@/types'
 import {
+  aplicarMovimentacaoListaMedicamentos,
   baixarEstoqueListaMedicamentos,
   createEmptyListaMedicamentosLinha,
   devolverEstoqueListaMedicamentos,
@@ -89,5 +90,66 @@ describe('ledger de estoque via IMH', () => {
     expect(hist[0].responsavel).toBe('Medicamento Exemplo')
     expect(hist[0].origemDestino).toBe('Paciente / IMH PME')
     expect(hist[0].tipo).toBe('saida')
+  })
+
+  it('bloqueia baixa IMH que deixaria estoque negativo sem motivo', () => {
+    const form = formComLinha({ qtd: '5' })
+    const next = baixarEstoqueListaMedicamentos(
+      form,
+      'DIPIRONA 500MG',
+      'Lote-A',
+      '10',
+      'lista-1',
+      { responsavel: 'Ana', data: '08/11/2026' },
+    )
+    expect(next).toBe(form)
+    expect(next.linhas[0].qtd).toBe('5')
+  })
+
+  it('autoriza estoque negativo no IMH com motivo e trilha de auditoria', () => {
+    const form = formComLinha({ qtd: '5' })
+    const next = baixarEstoqueListaMedicamentos(
+      form,
+      'DIPIRONA 500MG',
+      'Lote-A',
+      '10',
+      'lista-1',
+      {
+        responsavel: 'Ana',
+        usuarioId: 'u-ana',
+        data: '08/11/2026',
+        autorizacaoNegativo: { motivo: 'Dispensação emergencial do plantão' },
+      },
+    )
+    expect(next.linhas[0].qtd).toBe('-5')
+    const mov = next.linhas[0].movimentacoes?.[0]
+    expect(mov?.autorizouNegativo).toBe(true)
+    expect(mov?.motivoNegativo).toBe('Dispensação emergencial do plantão')
+    expect(mov?.estoqueAntes).toBe('5')
+    expect(mov?.estoqueDepois).toBe('-5')
+  })
+
+  it('bloqueia saída manual negativa sem motivo e autoriza com motivo', () => {
+    const form = formComLinha({ qtd: '3' })
+    const bloqueado = aplicarMovimentacaoListaMedicamentos(form, 'lista-1', {
+      tipo: 'saida',
+      qtdRaw: '5',
+      data: '08/11/2026',
+      origemDestino: 'Ajuste',
+      responsavel: 'ANA',
+    })
+    expect(bloqueado).toBe(form)
+
+    const autorizado = aplicarMovimentacaoListaMedicamentos(form, 'lista-1', {
+      tipo: 'saida',
+      qtdRaw: '5',
+      data: '08/11/2026',
+      origemDestino: 'Ajuste',
+      responsavel: 'ANA',
+      motivoNegativo: 'Inventário autorizado pela chefia',
+    })
+    expect(autorizado.linhas[0].qtd).toBe('-2')
+    expect(autorizado.linhas[0].movimentacoes?.[0].autorizouNegativo).toBe(true)
+    expect(autorizado.linhas[0].movimentacoes?.[0].motivoNegativo).toContain('Inventário')
   })
 })

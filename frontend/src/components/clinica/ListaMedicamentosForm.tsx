@@ -243,6 +243,7 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
     data: string
     origemDestino: string
     responsavel: string
+    motivoNegativo?: string
   }) => {
     if (!movimentacaoLinhaId) return
     const next = aplicarMovimentacaoListaMedicamentos(value, movimentacaoLinhaId, {
@@ -251,8 +252,18 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
       data: payload.data,
       origemDestino: payload.origemDestino,
       responsavel: payload.responsavel,
+      motivoNegativo: payload.motivoNegativo,
     })
-    if (next !== value) onChange(next)
+    if (next === value) {
+      setImportFeedback({
+        open: true,
+        severity: 'error',
+        message:
+          'Saída bloqueada: estoque ficaria negativo sem motivo de autorização válido.',
+      })
+      return
+    }
+    onChange(next)
     setMovimentacaoLinhaId(null)
     setImportFeedback({
       open: true,
@@ -260,7 +271,9 @@ export function ListaMedicamentosForm({ value, onChange }: ListaMedicamentosForm
       message:
         payload.tipo === 'entrada'
           ? `Entrada de ${payload.qtd} em ${payload.data} registrada.`
-          : `Saída de ${payload.qtd} em ${payload.data} registrada.`,
+          : payload.motivoNegativo
+            ? `Saída de ${payload.qtd} com estoque negativo autorizada.`
+            : `Saída de ${payload.qtd} em ${payload.data} registrada.`,
     })
   }
 

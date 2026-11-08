@@ -192,6 +192,8 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
                     'UF',
                     'Origem / Destino',
                     'Responsável',
+                    'Estoque −/+',
+                    'Autorização negativa',
                   ].map((label) => (
                     <TableCell key={label} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {label}
@@ -202,6 +204,10 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
               <TableBody>
                 {filtrados.map((item) => {
                   const entrada = item.tipo === 'entrada'
+                  const saldoTrail =
+                    item.estoqueAntes != null || item.estoqueDepois != null
+                      ? `${dash(item.estoqueAntes ?? '')} → ${dash(item.estoqueDepois ?? '')}`
+                      : '—'
                   return (
                     <TableRow key={`${item.linhaId}-${item.movId}`} hover>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{dash(item.data)}</TableCell>
@@ -219,6 +225,12 @@ export function ListaMedicamentoHistoricoMovimentacoesModal({
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{dash(item.uf)}</TableCell>
                       <TableCell>{dash(item.origemDestino)}</TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{dash(item.responsavel)}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{saldoTrail}</TableCell>
+                      <TableCell>
+                        {item.autorizouNegativo
+                          ? dash(item.motivoNegativo ?? 'Autorizado')
+                          : '—'}
+                      </TableCell>
                     </TableRow>
                   )
                 })}

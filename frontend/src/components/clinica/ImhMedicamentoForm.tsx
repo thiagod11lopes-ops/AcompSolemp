@@ -90,8 +90,10 @@ import {
   devolverEstoqueListaMedicamentos,
   findListaMedicamentoByNome,
   findListaMedicamentoByNomeELote,
+  motivoEstoqueNegativoValido,
   previewBaixaEstoqueListaMedicamentos,
   resolveListaMedicamentoEstoque,
+  type AutorizacaoEstoqueNegativo,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -729,7 +731,10 @@ export function ImhMedicamentoForm({
     }
   }
 
-  const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
+  const baixarEstoqueDoLancamento = (
+    linha: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
     if (!linha.itemPme.trim() && !linha.listaMedicamentoId?.trim()) return
     const next = baixarEstoqueListaMedicamentos(
@@ -738,7 +743,10 @@ export function ImhMedicamentoForm({
       linha.lote,
       qtdMovidaEstoque(linha),
       linha.listaMedicamentoId,
-      metaEstoqueImh(linha),
+      {
+        ...metaEstoqueImh(linha),
+        ...(autorizacaoNegativo ? { autorizacaoNegativo } : {}),
+      },
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -783,15 +791,21 @@ export function ImhMedicamentoForm({
     )
   }
 
-  const confirmarAdicaoComBaixa = (ready: ImhMedicamentoLinha) => {
+  const confirmarAdicaoComBaixa = (
+    ready: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     const readyMeta = withListaEstoqueMeta(ready)
     persistLinhas([...value.linhas, readyMeta])
     syncPacienteFromLancamento(readyMeta)
-    baixarEstoqueDoLancamento(readyMeta)
+    baixarEstoqueDoLancamento(readyMeta, autorizacaoNegativo)
     resetLinhaForm()
   }
 
-  const confirmarEdicaoComAjusteEstoque = (ready: ImhMedicamentoLinha) => {
+  const confirmarEdicaoComAjusteEstoque = (
+    ready: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     if (!editingLinhaId) return
     const snapshot = linhaSnapshotRef.current
     const readyMeta = withListaEstoqueMeta({ ...ready, id: editingLinhaId })
@@ -810,7 +824,10 @@ export function ImhMedicamentoForm({
         readyMeta.lote,
         qtdMovidaEstoque(readyMeta),
         readyMeta.listaMedicamentoId,
-        metaEstoqueImh(readyMeta),
+        {
+          ...metaEstoqueImh(readyMeta),
+          ...(autorizacaoNegativo ? { autorizacaoNegativo } : {}),
+        },
       )
       if (next !== listaMedicamentos) onListaMedicamentosChange(next)
     }
@@ -880,16 +897,18 @@ export function ImhMedicamentoForm({
     confirmarAdicaoComBaixa(ready)
   }
 
-  const handleConfirmarEstoqueInsuficiente = () => {
+  const handleConfirmarEstoqueInsuficiente = (motivoNegativo: string) => {
+    if (!motivoEstoqueNegativoValido(motivoNegativo)) return
     const pending = estoqueInsuficiente.linha
     const modo = estoqueInsuficiente.modo
+    const autorizacao: AutorizacaoEstoqueNegativo = { motivo: motivoNegativo.trim() }
     setEstoqueInsuficiente((prev) => ({ ...prev, open: false, linha: null }))
     if (!pending) return
     if (modo === 'edit') {
-      confirmarEdicaoComAjusteEstoque(pending)
+      confirmarEdicaoComAjusteEstoque(pending, autorizacao)
       return
     }
-    confirmarAdicaoComBaixa(pending)
+    confirmarAdicaoComBaixa(pending, autorizacao)
   }
 
   const handleCancelarEstoqueInsuficiente = () => {
@@ -1586,15 +1605,32 @@ function ImhEstoqueInsuficienteModal({
   qtdBaixa: number
   estoqueApos: number
   onCancel: () => void
-  onConfirm: () => void
+  onConfirm: (motivoNegativo: string) => void
 }) {
+  const [motivo, setMotivo] = useState('')
+  const [erroMotivo, setErroMotivo] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setMotivo('')
+    setErroMotivo('')
+  }, [open])
+
+  const handleConfirm = () => {
+    if (!motivoEstoqueNegativoValido(motivo)) {
+      setErroMotivo('Informe o motivo da autorização (mínimo 5 caracteres).')
+      return
+    }
+    onConfirm(motivo.trim())
+  }
+
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>Estoque insuficiente</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 1.25 }}>
         <Typography variant="body2" color="text.secondary">
-          A quantidade lançada é maior que o estoque disponível. O medicamento será incluído na
-          planilha IMH e o estoque ficará negativo.
+          A quantidade lançada é maior que o estoque disponível. Para continuar, autorize o estoque
+          negativo com motivo — o lançamento IMH e a baixa ficam registrados com o seu nome.
         </Typography>
         <Box>
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -1610,13 +1646,33 @@ function ImhEstoqueInsuficienteModal({
           Estoque: {formatEstoqueNumero(estoqueAtual)} · Lançado:{' '}
           {formatEstoqueNumero(qtdBaixa)} · Após: {formatEstoqueNumero(estoqueApos)}
         </Typography>
+        <TextField
+          label="Motivo da autorização"
+          value={motivo}
+          onChange={(e) => {
+            setMotivo(e.target.value)
+            setErroMotivo('')
+          }}
+          fullWidth
+          size="small"
+          multiline
+          minRows={2}
+          placeholder="Ex.: dispensação emergencial autorizada pelo plantão"
+          error={Boolean(erroMotivo)}
+          helperText={erroMotivo || 'Obrigatório para estoque negativo (mín. 5 caracteres).'}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 2.5, pb: 2 }}>
         <Button onClick={onCancel} sx={{ textTransform: 'none' }}>
           Cancelar
         </Button>
-        <Button variant="contained" color="error" onClick={onConfirm} sx={{ textTransform: 'none' }}>
-          Continuar mesmo assim
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleConfirm}
+          sx={{ textTransform: 'none' }}
+        >
+          Autorizar estoque negativo
         </Button>
       </DialogActions>
     </Dialog>

@@ -18,6 +18,7 @@ import {
   formatListaMedDataHoje,
   formatListaMedQtd,
   formatListaMedValidade,
+  motivoEstoqueNegativoValido,
   parseListaMedQtdNumber,
 } from '@/utils/listaMedicamentosForm'
 
@@ -29,6 +30,8 @@ export interface ListaMedicamentoMovimentacaoSubmit {
   data: string
   origemDestino: string
   responsavel: string
+  /** Preenchido quando a saída deixa estoque negativo. */
+  motivoNegativo?: string
 }
 
 interface ListaMedicamentoMovimentacaoModalProps {
@@ -53,6 +56,7 @@ export function ListaMedicamentoMovimentacaoModal({
   const [qtd, setQtd] = useState('')
   const [origemDestino, setOrigemDestino] = useState('')
   const [responsavel, setResponsavel] = useState('')
+  const [motivoNegativo, setMotivoNegativo] = useState('')
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -62,6 +66,7 @@ export function ListaMedicamentoMovimentacaoModal({
     setQtd('')
     setOrigemDestino('')
     setResponsavel('')
+    setMotivoNegativo('')
     setErro('')
   }, [open, linha?.id])
 
@@ -71,6 +76,7 @@ export function ListaMedicamentoMovimentacaoModal({
     if (qtdNum <= 0) return estoqueAtual
     return tipo === 'entrada' ? estoqueAtual + qtdNum : estoqueAtual - qtdNum
   }, [estoqueAtual, qtdNum, tipo])
+  const saidaNegativa = tipo === 'saida' && qtdNum > 0 && estoqueApos < 0
 
   const dataPronta = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(data.trim())
 
@@ -95,12 +101,17 @@ export function ListaMedicamentoMovimentacaoModal({
       setErro('Informe o responsável pela movimentação.')
       return
     }
+    if (saidaNegativa && !motivoEstoqueNegativoValido(motivoNegativo)) {
+      setErro('Estoque ficará negativo: informe o motivo da autorização (mín. 5 caracteres).')
+      return
+    }
     onConfirm({
       tipo,
       qtd: formatListaMedQtd(qtd) || String(qtdNum),
       data: formatListaMedValidade(data),
       origemDestino: origemDestino.trim(),
       responsavel: responsavel.trim().toUpperCase(),
+      ...(saidaNegativa ? { motivoNegativo: motivoNegativo.trim() } : {}),
     })
   }
 
@@ -174,9 +185,12 @@ export function ListaMedicamentoMovimentacaoModal({
           autoFocus
           helperText={
             qtdNum > 0
-              ? `Estoque após ${tipo === 'entrada' ? 'entrada' : 'saída'}: ${formatEstoqueNumero(estoqueApos)}`
+              ? saidaNegativa
+                ? `Atenção: estoque ficará negativo (${formatEstoqueNumero(estoqueApos)}).`
+                : `Estoque após ${tipo === 'entrada' ? 'entrada' : 'saída'}: ${formatEstoqueNumero(estoqueApos)}`
               : undefined
           }
+          FormHelperTextProps={saidaNegativa ? { sx: { color: 'error.main', fontWeight: 700 } } : undefined}
           slotProps={{ htmlInput: { inputMode: 'decimal' } }}
         />
 
@@ -202,6 +216,23 @@ export function ListaMedicamentoMovimentacaoModal({
           size="small"
         />
 
+        {saidaNegativa ? (
+          <TextField
+            label="Motivo da autorização (estoque negativo)"
+            value={motivoNegativo}
+            onChange={(e) => {
+              setMotivoNegativo(e.target.value)
+              setErro('')
+            }}
+            fullWidth
+            size="small"
+            multiline
+            minRows={2}
+            placeholder="Ex.: ajuste de inventário autorizado pela chefia"
+            helperText="Obrigatório para registrar saída com estoque negativo."
+          />
+        ) : null}
+
         {erro ? (
           <Typography color="error" variant="body2" sx={{ fontWeight: 600 }}>
             {erro}
@@ -213,8 +244,15 @@ export function ListaMedicamentoMovimentacaoModal({
         <Button onClick={onClose} sx={{ textTransform: 'none' }}>
           Cancelar
         </Button>
-        <Button variant="contained" onClick={handleConfirm} sx={{ textTransform: 'none' }}>
-          Confirmar {tipo === 'entrada' ? 'entrada' : 'saída'}
+        <Button
+          variant="contained"
+          color={saidaNegativa ? 'error' : 'primary'}
+          onClick={handleConfirm}
+          sx={{ textTransform: 'none' }}
+        >
+          {saidaNegativa
+            ? 'Autorizar saída negativa'
+            : `Confirmar ${tipo === 'entrada' ? 'entrada' : 'saída'}`}
         </Button>
       </DialogActions>
     </Dialog>
