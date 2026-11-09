@@ -43,7 +43,7 @@ $script:WizardSteps = @(
   @{ id = 'servidor'; title = 'Iniciar Servidor OMPS'; hint = 'Automatico: sobe Supabase, app e gateway HTTPS.' },
   @{ id = 'cert'; title = 'Confianca do certificado neste PC'; hint = 'Automatico com UAC: instala a CA local (sem aviso no Chrome).' },
   @{ id = 'health'; title = 'Health-check app + HTTPS'; hint = 'Automatico: valida app local e https://IP/.' },
-  @{ id = 'dashboard'; title = 'Abrir Dashboard e atalho'; hint = 'Abre o Dashboard e cria o icone Desktop "Servidor" (sobe o sistema).' }
+  @{ id = 'dashboard'; title = 'Abrir Dashboard e atalho'; hint = 'Abre o Dashboard e cria o icone Desktop "Servidor" (painel do servidor).' }
 )
 
 # IP fixo padrao da instalacao (opcao do assistente)
@@ -739,26 +739,41 @@ function Invoke-StepHealth {
 }
 
 function New-DesktopShortcutServidor {
-  # Atalho diario "Servidor" — sobe o sistema (nao o instalador AcompOPMS).
+  # Atalho diario "Servidor" — abre o Dashboard do servidor (nao o sistema no Chrome).
   $helper = Join-Path $script:ScriptsDir 'Criar-Atalho-Desktop.ps1'
   if (-not (Test-Path -LiteralPath $helper)) { return $false }
 
   $desk = [Environment]::GetFolderPath('Desktop')
   $targets = @(
-    (Join-Path $script:PackRoot 'Iniciar Servidor OMPS.vbs'),
-    (Join-Path $desk 'Iniciar Servidor\Gereal\AcompSolemp\servidor-portatil\Iniciar Servidor OMPS.vbs'),
-    (Join-Path $desk 'Iniciar Servidor\Iniciar-Servidor-OMPS.vbs')
+    (Join-Path $script:PackRoot 'Dashboard.vbs'),
+    (Join-Path $desk 'Iniciar Servidor\Gereal\AcompSolemp\servidor-portatil\Dashboard.vbs'),
+    (Join-Path $desk 'Iniciar Servidor\Dashboard.vbs'),
+    (Join-Path $script:ScriptsDir 'Abrir-Dashboard.ps1')
   )
   $target = $targets | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
   if (-not $target) { return $false }
 
   try {
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper `
-      -Name 'Servidor' `
-      -TargetPath $target `
-      -WorkingDirectory (Split-Path -Parent $target) `
-      -Description 'Abre / sobe o servidor AcompOPMS' | Out-Null
-    foreach ($oldName in @('AcompOPMS — Servidor.lnk', 'Iniciar Servidor OMPS.lnk')) {
+    if ($target -like '*.ps1') {
+      $wsh = New-Object -ComObject WScript.Shell
+      $lnk = Join-Path $desk 'Servidor.lnk'
+      $sc = $wsh.CreateShortcut($lnk)
+      $sc.TargetPath = 'powershell.exe'
+      $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$target`""
+      $sc.WorkingDirectory = (Split-Path -Parent $target)
+      $sc.WindowStyle = 7
+      $sc.Description = 'Abre o Dashboard do servidor AcompOPMS'
+      $ico = Join-Path $script:PackRoot 'icons\opms.ico'
+      if (Test-Path -LiteralPath $ico) { $sc.IconLocation = "$ico,0" }
+      $sc.Save()
+    } else {
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $helper `
+        -Name 'Servidor' `
+        -TargetPath $target `
+        -WorkingDirectory (Split-Path -Parent $target) `
+        -Description 'Abre o Dashboard do servidor AcompOPMS' | Out-Null
+    }
+    foreach ($oldName in @('AcompOPMS — Servidor.lnk')) {
       $old = Join-Path $desk $oldName
       if (Test-Path -LiteralPath $old) {
         Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue
@@ -785,13 +800,13 @@ function Invoke-StepDashboard {
   }
   $ipAccess = Get-AccessHostForWizard
   $atalhoMsg = ''
-  # Sempre cria o icone diario "Servidor" (sobe o sistema).
+  # Sempre cria o icone diario "Servidor" (abre o Dashboard).
   if (New-DesktopShortcutServidor) {
-    $atalhoMsg = ' Atalho Desktop "Servidor" criado.'
+    $atalhoMsg = ' Atalho Desktop "Servidor" (Dashboard) criado.'
   } else {
     $atalhoMsg = ' (atalho Desktop "Servidor" nao criado)'
   }
-  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Acesso: https://{0}/{1}" -f $ipAccess, $atalhoMsg)
+  Set-StepUi 'dashboard' 'ok' ("Dashboard aberto. Clientes: https://{0}/{1}" -f $ipAccess, $atalhoMsg)
   return $true
 }
 
@@ -1207,8 +1222,8 @@ function Show-AssistenteInstalacaoServidor {
     $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
     if ($script:HealthOk -and $nErr -eq 0) {
       $extra = ''
-      $extra = ' Use o icone Desktop "Servidor" para subir o sistema nas proximas vezes.'
-      $script:lblStatus.Text = ("Pronto. Dashboard aberto. Use https://{0}/ neste PC e nos clientes.{1}" -f $ipDone, $extra)
+      $extra = ' Use o icone Desktop "Servidor" para abrir o Dashboard.'
+      $script:lblStatus.Text = ("Pronto. Dashboard aberto. Clientes: https://{0}/{1}" -f $ipDone, $extra)
       $script:lblStatus.ForeColor = [Drawing.Color]::DarkGreen
     } elseif ($nErr -gt 0) {
       $script:lblStatus.Text = ("Fluxo encerrado com {0} etapa(s) com erro. Veja a linha em vermelho. Acesso tentado: https://{1}/" -f $nErr, $ipDone)
