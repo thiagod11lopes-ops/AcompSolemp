@@ -1,6 +1,6 @@
-﻿# Gera na Area de Trabalho duas pastas transferiveis:
-#   Servidor\  — instalacao completa do PC servidor (Docker/Node/Supabase/app)
-#   Sistema\   — instalacao do PC cliente (CA + atalho ClienteOMPS)
+﻿# Gera na Area de Trabalho:
+#   Servidor\                 — instalacao completa do PC servidor (Docker/Node/Supabase/app)
+#   Instalar ClienteOMPS.lnk  — icone unico do PC sistema/cliente (CA + atalho ClienteOMPS)
 # Uso: .\Preparar-Pacotes-Transferencia.ps1
 
 $ErrorActionPreference = 'Stop'
@@ -18,7 +18,6 @@ if (-not (Test-Path -LiteralPath $instSrc)) {
 }
 
 $dstServidor = Join-Path $desk 'Servidor'
-$dstSistema = Join-Path $desk 'Sistema'
 
 function Write-Step([string]$Message) {
   Write-Host ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Message)
@@ -81,11 +80,11 @@ function New-PackShortcut([string]$LnkPath, [string]$Target, [string]$WorkDir, [
 }
 
 Write-Host '========================================'
-Write-Host '  Preparar pacotes Servidor + Sistema'
+Write-Host '  Preparar pacotes Servidor + ClienteOMPS'
 Write-Host '========================================'
 Write-Host ("Projeto : {0}" -f $proj)
 Write-Host ("Servidor: {0}" -f $dstServidor)
-Write-Host ("Sistema : {0}" -f $dstSistema)
+Write-Host ("Cliente : Instalar ClienteOMPS.lnk (icone unico)" )
 Write-Host ''
 
 if (-not (Test-Path -LiteralPath (Join-Path $proj 'servidor-portatil'))) {
@@ -190,81 +189,24 @@ New-PackShortcut -LnkPath (Join-Path $dstServidor 'Instalar Servidor.lnk') -Targ
   '3) Siga o assistente (Docker, Node, rede, HTTPS, Dashboard)'
   '4) Ao final, use o atalho Desktop "Servidor" (Dashboard)'
   ''
-  'Clientes da rede: use a pasta "Sistema" (separada) e o IP deste PC.'
+  'Clientes da rede: use o icone "Instalar ClienteOMPS" (ou o ZIP Instalar-ClienteOMPS-Portatil.zip nesta pasta).'
   ''
   ('Gerado em: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm'))
 ) | Set-Content -LiteralPath (Join-Path $dstServidor 'LEIA-ME.txt') -Encoding UTF8
 
 # ---------------------------------------------------------------------------
-# SISTEMA (cliente)
+# SISTEMA (cliente) — icone unico no Desktop
 # ---------------------------------------------------------------------------
-Write-Step 'Limpando pasta Sistema...'
-if (Test-Path -LiteralPath $dstSistema) {
-  Remove-Item -LiteralPath $dstSistema -Recurse -Force -ErrorAction SilentlyContinue
+Write-Step 'Gerando icone unico Instalar ClienteOMPS...'
+$montar = Join-Path $PSScriptRoot 'Montar-Instalador-Sistema-Unico.ps1'
+if (-not (Test-Path -LiteralPath $montar)) {
+  throw "Montar-Instalador-Sistema-Unico.ps1 nao encontrado: $montar"
 }
-New-Item -ItemType Directory -Force -Path $dstSistema | Out-Null
-
-$sysScripts = Join-Path $dstSistema 'scripts'
-$sysCliente = Join-Path $dstSistema 'cliente'
-$sysIcons = Join-Path $dstSistema 'icons'
-New-Item -ItemType Directory -Force -Path $sysScripts, $sysCliente, $sysIcons | Out-Null
-
-Write-Step 'Copiando scripts do cliente...'
-foreach ($name in @(
-    'Assistente-Instalacao-Cliente.ps1',
-    'Instalar-Pacote-Sistema.ps1',
-    'Ensure-Certificado-Confianca.ps1',
-    'Ui-Theme-Dashboard.ps1',
-    'Criar-Atalho-Desktop.ps1',
-    '_common.ps1'
-  )) {
-  $from = Join-Path $sp ("scripts\{0}" -f $name)
-  if (Test-Path -LiteralPath $from) {
-    Copy-Item -Force $from (Join-Path $sysScripts $name)
-  }
-}
-
-Write-Step 'Copiando pasta cliente (CA / www-ca)...'
-$cliSrc = Join-Path $sp 'cliente'
-if (Test-Path -LiteralPath $cliSrc) {
-  [void](Invoke-Rcopy $cliSrc $sysCliente)
-}
-if (Test-Path -LiteralPath $iconsSrc) {
-  [void](Invoke-Rcopy $iconsSrc $sysIcons)
-}
-
-Write-Step 'Criando Instalar Sistema.vbs...'
-$vbsSys = Join-Path $dstSistema 'Instalar Sistema.vbs'
-Write-RootVbs -Path $vbsSys -Title 'Instalar Sistema' -RelPs1 @(
-  'scripts\Instalar-Pacote-Sistema.ps1',
-  'scripts\Assistente-Instalacao-Cliente.ps1'
-)
-
-$icoSys = Join-Path $sysIcons 'opms.ico'
-if (-not (Test-Path -LiteralPath $icoSys)) { $icoSys = $ico }
-New-PackShortcut -LnkPath (Join-Path $dstSistema 'Instalar Sistema.lnk') -Target $vbsSys -WorkDir $dstSistema `
-  -Desc 'Instala o sistema neste PC (CA + atalho ClienteOMPS)' -Ico $icoSys
-
-@(
-  'PACOTE SISTEMA — AcompOPMS (PC cliente)'
-  '======================================'
-  'Use nos PCs que so acessam o sistema (nao hospedam o servidor).'
-  ''
-  '1) No PC servidor, o sistema ja deve estar no ar (HTTPS).'
-  '2) Copie esta pasta INTEIRA para o PC cliente.'
-  '3) Duplo clique em "Instalar Sistema"'
-  '4) Informe o IP do servidor (ex.: 192.168.0.17)'
-  '5) Aceite o UAC da CA'
-  '6) Use o atalho Desktop "ClienteOMPS"'
-  ''
-  'Nao precisa Docker nem Node neste PC.'
-  ''
-  ('Gerado em: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm'))
-) | Set-Content -LiteralPath (Join-Path $dstSistema 'LEIA-ME.txt') -Encoding UTF8
+& $montar
 
 Write-Host ''
 Write-Host 'Pronto.'
 Write-Host ("  {0}" -f $dstServidor)
-Write-Host ("  {0}" -f $dstSistema)
+Write-Host ("  {0}" -f (Join-Path $desk 'Instalar ClienteOMPS.lnk'))
 Write-Host ''
-Write-Host 'Transfira cada pasta inteira (pendrive/rede) para o PC destino.'
+Write-Host 'Servidor: transfira a pasta inteira. Cliente: use o icone unico (ou o ZIP portatil dentro de Servidor).'
