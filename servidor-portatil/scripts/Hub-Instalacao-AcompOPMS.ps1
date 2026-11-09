@@ -30,7 +30,10 @@ function Start-Assistente([string]$Ps1Path, [bool]$CreateDesktop) {
     '-File', $Ps1Path
   )
   if ($CreateDesktop) { $args += '-CreateDesktopShortcut' }
-  Start-Process -FilePath 'powershell.exe' -ArgumentList $args -WorkingDirectory (Split-Path $Ps1Path -Parent) -Wait
+  # Hidden: sem janela preta; o assistente WinForms aparece normalmente.
+  Start-Process -FilePath 'powershell.exe' -ArgumentList $args `
+    -WorkingDirectory (Split-Path $Ps1Path -Parent) `
+    -WindowStyle Hidden -Wait
 }
 
 function Ensure-HubDesktopShortcut {
@@ -151,7 +154,8 @@ function Show-HubInstalacao {
       } catch {
         [Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Servidor', 'OK', 'Error') | Out-Null
       } finally {
-        try { $form.Show() } catch { }
+        # Nao reabre o hub — pastas Servidor/Sistema sao o fluxo oficial.
+        try { $form.Close() } catch { }
       }
     })
 
@@ -163,7 +167,7 @@ function Show-HubInstalacao {
       } catch {
         [Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Cliente', 'OK', 'Error') | Out-Null
       } finally {
-        try { $form.Show() } catch { }
+        try { $form.Close() } catch { }
       }
     })
 

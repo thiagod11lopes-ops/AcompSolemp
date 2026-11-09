@@ -1235,6 +1235,12 @@ function Show-AssistenteInstalacaoServidor {
     & $script:RefreshSteps
     Update-PercentBar
     Update-Buttons 'done'
+    if ($script:HealthOk -and $nErr -eq 0) {
+      # Fecha o assistente ao concluir (nao volta ao hub Servidor/Cliente).
+      [Windows.Forms.Application]::DoEvents()
+      Start-Sleep -Milliseconds 900
+      $form.Close()
+    }
   }
 
   function Start-WizardFromCurrent {

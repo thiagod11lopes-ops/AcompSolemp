@@ -463,13 +463,18 @@ function Show-AssistenteCliente {
   function Complete-WizardUi {
     & $script:RefreshSteps
     if ($script:HealthOk) {
-      $script:lblStatus.Text = ("Pronto. Use o atalho ClienteOMPS ou {0}. Sem aviso de certificado apos reiniciar o navegador." -f $script:ServerUrl)
+      $script:lblStatus.Text = ("Pronto. Use o atalho ClienteOMPS ou {0}." -f $script:ServerUrl)
       $script:lblStatus.ForeColor = $t.Ok
-    } else {
-      $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
-      $script:lblStatus.Text = ("Fluxo encerrado com {0} erro(s). Veja a etapa em vermelho e use Tentar de novo." -f $nErr)
-      $script:lblStatus.ForeColor = $t.Warn
+      Update-Buttons 'done'
+      # Fecha sozinho ao concluir com sucesso (sem voltar ao hub).
+      [Windows.Forms.Application]::DoEvents()
+      Start-Sleep -Milliseconds 800
+      $form.Close()
+      return
     }
+    $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
+    $script:lblStatus.Text = ("Fluxo encerrado com {0} erro(s). Veja a etapa em vermelho e use Tentar de novo." -f $nErr)
+    $script:lblStatus.ForeColor = $t.Warn
     Update-Buttons 'done'
   }
 

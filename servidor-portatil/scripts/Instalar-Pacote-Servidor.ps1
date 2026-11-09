@@ -97,7 +97,11 @@ if (-not $assistente) {
 if (-not $assistente) { throw 'Assistente-Instalacao-Servidor.ps1 nao encontrado neste pacote.' }
 
 $assistente = (Resolve-Path -LiteralPath $assistente).Path
-Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-  '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass',
-  '-File', $assistente, '-CreateDesktopShortcut'
-) -WorkingDirectory (Split-Path $assistente -Parent) -Wait
+Push-Location (Split-Path $assistente -Parent)
+try {
+  # Mesmo processo — sem janela preta extra e sem voltar ao hub.
+  & $assistente -CreateDesktopShortcut
+} finally {
+  Pop-Location
+}
+exit 0

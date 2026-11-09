@@ -62,7 +62,8 @@ function Write-RootVbs([string]$Path, [string]$Title, [string[]]$RelPs1) {
     '  WScript.Quit 1'
     'End If'
     'sh.CurrentDirectory = fso.GetParentFolderName(ps1)'
-    'sh.Run "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File " & Chr(34) & ps1 & Chr(34), 1, True'
+    ' # 0 = oculto (sem janela preta); o WinForms do assistente aparece normalmente'
+    'sh.Run "powershell.exe -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File " & Chr(34) & ps1 & Chr(34), 0, True'
   )
   Set-Content -LiteralPath $Path -Value ($lines -join "`r`n") -Encoding ASCII
 }
