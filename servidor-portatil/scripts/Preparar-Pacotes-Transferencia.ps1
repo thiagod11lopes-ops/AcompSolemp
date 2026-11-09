@@ -1,11 +1,15 @@
-﻿# Gera na Area de Trabalho:
-#   Servidor\                 — instalacao completa do PC servidor (Docker/Node/Supabase/app)
-#   Instalar ClienteOMPS.lnk  — icone unico do PC sistema/cliente (CA + atalho ClienteOMPS)
+﻿# Gera na pasta Desktop\Arquivos:
+#   Arquivos\Servidor\                    — instalacao completa do PC servidor
+#   Arquivos\Instalar-ClienteOMPS-Portatil.zip — instalador portatil do PC cliente
+# E no Desktop:
+#   Instalar ClienteOMPS.lnk              — icone unico para instalar o sistema
 # Uso: .\Preparar-Pacotes-Transferencia.ps1
 
 $ErrorActionPreference = 'Stop'
 
 $desk = [Environment]::GetFolderPath('Desktop')
+$packRoot = Join-Path $desk 'Arquivos'
+New-Item -ItemType Directory -Force -Path $packRoot | Out-Null
 $proj = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $sp = Join-Path $proj 'servidor-portatil'
 $sbDockerSrc = Join-Path (Split-Path $proj -Parent) 'supabase-master\docker'
@@ -17,7 +21,7 @@ if (-not (Test-Path -LiteralPath $instSrc)) {
   $instSrc = Join-Path $sp 'instaladores'
 }
 
-$dstServidor = Join-Path $desk 'Servidor'
+$dstServidor = Join-Path $packRoot 'Servidor'
 
 function Write-Step([string]$Message) {
   Write-Host ("[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Message)
@@ -82,9 +86,10 @@ function New-PackShortcut([string]$LnkPath, [string]$Target, [string]$WorkDir, [
 Write-Host '========================================'
 Write-Host '  Preparar pacotes Servidor + ClienteOMPS'
 Write-Host '========================================'
-Write-Host ("Projeto : {0}" -f $proj)
-Write-Host ("Servidor: {0}" -f $dstServidor)
-Write-Host ("Cliente : Instalar ClienteOMPS.lnk (icone unico)" )
+Write-Host ("Projeto  : {0}" -f $proj)
+Write-Host ("Arquivos : {0}" -f $packRoot)
+Write-Host ("Servidor : {0}" -f $dstServidor)
+Write-Host ("Cliente  : Instalar ClienteOMPS.lnk (icone unico no Desktop)")
 Write-Host ''
 
 if (-not (Test-Path -LiteralPath (Join-Path $proj 'servidor-portatil'))) {
@@ -189,24 +194,26 @@ New-PackShortcut -LnkPath (Join-Path $dstServidor 'Instalar Servidor.lnk') -Targ
   '3) Siga o assistente (Docker, Node, rede, HTTPS, Dashboard)'
   '4) Ao final, use o atalho Desktop "Servidor" (Dashboard)'
   ''
-  'Clientes da rede: use o icone "Instalar ClienteOMPS" (ou o ZIP Instalar-ClienteOMPS-Portatil.zip nesta pasta).'
+  'Clientes da rede: use o icone Desktop "Instalar ClienteOMPS"'
+  'ou o ZIP Instalar-ClienteOMPS-Portatil.zip (pasta Arquivos / nesta pasta).'
   ''
   ('Gerado em: {0}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm'))
 ) | Set-Content -LiteralPath (Join-Path $dstServidor 'LEIA-ME.txt') -Encoding UTF8
 
 # ---------------------------------------------------------------------------
-# SISTEMA (cliente) — icone unico no Desktop
+# SISTEMA (cliente) — icone unico no Desktop + ZIP em Arquivos
 # ---------------------------------------------------------------------------
 Write-Step 'Gerando icone unico Instalar ClienteOMPS...'
 $montar = Join-Path $PSScriptRoot 'Montar-Instalador-Sistema-Unico.ps1'
 if (-not (Test-Path -LiteralPath $montar)) {
   throw "Montar-Instalador-Sistema-Unico.ps1 nao encontrado: $montar"
 }
-& $montar
+& $montar -PackRoot $packRoot
 
 Write-Host ''
 Write-Host 'Pronto.'
 Write-Host ("  {0}" -f $dstServidor)
 Write-Host ("  {0}" -f (Join-Path $desk 'Instalar ClienteOMPS.lnk'))
+Write-Host ("  {0}" -f (Join-Path $packRoot 'Instalar-ClienteOMPS-Portatil.zip'))
 Write-Host ''
-Write-Host 'Servidor: transfira a pasta inteira. Cliente: use o icone unico (ou o ZIP portatil dentro de Servidor).'
+Write-Host 'Pacotes ficam em Desktop\Arquivos. Cliente: icone unico no Desktop (ou ZIP portatil).'

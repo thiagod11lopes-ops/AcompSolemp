@@ -2,15 +2,22 @@
 # - Remove a pasta Desktop\Sistema (se existir)
 # - Copia o payload para %LOCALAPPDATA%\AcompOPMS\setup-sistema\
 # - Cria o atalho "Instalar ClienteOMPS.lnk" (icone OPMS)
-# - Gera tambem um .vbs autocontido (oculto) + ZIP portatil para pendrive
+# - Gera ZIP portatil em Desktop\Arquivos (e dentro de Servidor, se houver)
 #
 # Uso: .\Montar-Instalador-Sistema-Unico.ps1
+#      .\Montar-Instalador-Sistema-Unico.ps1 -PackRoot 'C:\Users\...\Desktop\Arquivos'
 #      chamado por Preparar-Pacotes-Transferencia.ps1
+
+param(
+  [string]$PackRoot = ''
+)
 
 $ErrorActionPreference = 'Stop'
 
 $sp = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $desk = [Environment]::GetFolderPath('Desktop')
+if (-not $PackRoot) { $PackRoot = Join-Path $desk 'Arquivos' }
+New-Item -ItemType Directory -Force -Path $PackRoot | Out-Null
 $appData = Join-Path $env:LOCALAPPDATA 'AcompOPMS\setup-sistema'
 $icoSrc = Join-Path $sp 'icons\opms.ico'
 $dstSistemaOld = Join-Path $desk 'Sistema'
@@ -185,17 +192,26 @@ foreach ($line in $b64Lines) {
 $vbs | Set-Content -LiteralPath $portVbsApp -Encoding ASCII
 
 # ZIP portatil: um unico .vbs para copiar no pendrive (sem pasta Sistema)
-$zipOut = Join-Path $appData 'Instalar-ClienteOMPS-Portatil.zip'
+$zipOut = Join-Path $PackRoot 'Instalar-ClienteOMPS-Portatil.zip'
 $portableDir = Join-Path $stage 'portable'
 New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
 Copy-Item -Force $portVbsApp (Join-Path $portableDir $portVbsName)
 if (Test-Path -LiteralPath $zipOut) { Remove-Item -Force $zipOut }
 Compress-Archive -Path (Join-Path $portableDir $portVbsName) -DestinationPath $zipOut -Force
+# Copia tambem para LocalAppData (backup)
+Copy-Item -Force $zipOut (Join-Path $appData 'Instalar-ClienteOMPS-Portatil.zip')
 
-# Copia o ZIP para a pasta Servidor (se existir), para ir junto no pendrive do servidor
-$srvZip = Join-Path $desk 'Servidor\Instalar-ClienteOMPS-Portatil.zip'
-if (Test-Path -LiteralPath (Join-Path $desk 'Servidor')) {
-  Copy-Item -Force $zipOut $srvZip
+# Copia o ZIP para dentro de Servidor (Arquivos\Servidor ou Desktop\Servidor)
+$srvZip = $null
+foreach ($srvDir in @(
+    (Join-Path $PackRoot 'Servidor'),
+    (Join-Path $desk 'Servidor')
+  )) {
+  if (Test-Path -LiteralPath $srvDir) {
+    $srvZip = Join-Path $srvDir 'Instalar-ClienteOMPS-Portatil.zip'
+    Copy-Item -Force $zipOut $srvZip
+    break
+  }
 }
 
 # ---------------------------------------------------------------------------
