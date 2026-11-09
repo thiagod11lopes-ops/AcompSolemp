@@ -93,9 +93,22 @@ export async function saveAppDataToSupabase(
   const { stripNormalizedDomainsFromAppData } = await import(
     '@/data/persistence/normalized/stripFromBlob'
   )
-  const appDataBlob = stripNormalizedDomainsFromAppData(appDataLeve)
+  const {
+    dualWritePlanilhasLivres,
+    mergePlanilhasLivresFromNormalized,
+    omitEmptyPlanilhasLivres,
+  } = await import('@/data/persistence/normalized/planilhasLivresSync')
 
-  const snapshot = serializeAppData(appDataBlob, version)
+  // 1) SQL primeiro (fonte da verdade da aba Enviar) — antes do blob.
+  await dualWritePlanilhasLivres(appDataLeve)
+
+  // 2) Blob: sem cascas vazias; remescla o que já está na tabela SQL.
+  const appDataBlob = omitEmptyPlanilhasLivres(
+    stripNormalizedDomainsFromAppData(appDataLeve),
+  )
+  const appDataComPlanilhas = await mergePlanilhasLivresFromNormalized(appDataBlob)
+
+  const snapshot = serializeAppData(appDataComPlanilhas, version)
   const payload = JSON.parse(snapshot.payload) as AppData
 
   // Fase 0: inventário de tamanho do monolito (diagnóstico de egress).
@@ -104,13 +117,15 @@ export async function saveAppDataToSupabase(
   )
   logAppDataPayloadMetrics(payload, `save tenant=${id}`)
 
+  // Dual-write dos demais domínios usa AppData leve + planilhas ricas.
+  const appDataDual = await mergePlanilhasLivresFromNormalized(appDataLeve)
+
   if (isImpersonationSession()) {
     await adminSaveAppState(id, snapshot.version, payload)
-    // Dual-write normalizado também no fluxo admin quando possível.
     const { dualWriteNormalizedDomains } = await import(
       '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWriteNormalizedDomains(appDataLeve)
+    await dualWriteNormalizedDomains(appDataDual)
     return
   }
 
@@ -127,7 +142,7 @@ export async function saveAppDataToSupabase(
     const { dualWriteNormalizedDomains } = await import(
       '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWriteNormalizedDomains(appDataLeve)
+    await dualWriteNormalizedDomains(appDataDual)
     return
   }
 
@@ -146,7 +161,7 @@ export async function saveAppDataToSupabase(
     const { dualWriteNormalizedDomains } = await import(
       '@/data/persistence/normalized/dualWriteAll'
     )
-    await dualWriteNormalizedDomains(appDataLeve)
+    await dualWriteNormalizedDomains(appDataDual)
     return
   }
 

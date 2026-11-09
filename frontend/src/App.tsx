@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { PageTitleProvider } from '@/contexts/PageTitleContext'
@@ -9,6 +9,8 @@ import { authService } from '@/services/authService'
 import { initStorage } from '@/storage/indexedDb'
 import { useLiveAppDataSync } from '@/hooks/useLiveAppDataSync'
 import { usePlanilhaFontZoom } from '@/hooks/usePlanilhaFontZoom'
+import { useServerReachable } from '@/hooks/useServerReachable'
+import { SistemaForaDoArModal } from '@/components/common/SistemaForaDoArModal'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +40,20 @@ function LiveAppDataBridge() {
 function PlanilhaFontZoomBridge() {
   usePlanilhaFontZoom()
   return null
+}
+
+function NetworkGate({ children }: { children: ReactNode }) {
+  const { reachable, checking, recheck } = useServerReachable()
+  return (
+    <>
+      {children}
+      <SistemaForaDoArModal
+        open={!reachable}
+        checking={checking && !reachable}
+        onRetry={recheck}
+      />
+    </>
+  )
 }
 
 function App() {
@@ -90,9 +106,11 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <PageTitleProvider>
-            <LiveAppDataBridge />
-            <PlanilhaFontZoomBridge />
-            <AppRoutes />
+            <NetworkGate>
+              <LiveAppDataBridge />
+              <PlanilhaFontZoomBridge />
+              <AppRoutes />
+            </NetworkGate>
           </PageTitleProvider>
         </AuthProvider>
       </ThemeProvider>

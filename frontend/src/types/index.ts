@@ -30,6 +30,10 @@ export type NotificationType =
   | 'PLANILHA_DEVOLVIDA'
   | 'PLANILHA_CORRIGIDA_REENVIADA'
   | 'PRAZO_CORRECAO_VENCIDO'
+  | 'ESTOQUE_BAIXO'
+  | 'ESTOQUE_ZERADO'
+  | 'VALIDADE_PROXIMA'
+  | 'VALIDADE_VENCIDA'
 
 export type ReversaoStatus = 'PENDENTE' | 'CIENTE' | 'RESPONDIDO'
 
@@ -127,6 +131,37 @@ export interface HistoricoEvento {
   usuarioNome: string
   data: string
   observacao: string
+}
+
+/** Ações do histórico auditável do PED (append-only). */
+export type PedidoAuditoriaAcao =
+  | 'PEDIDO_CRIADO'
+  | 'ETAPA_AVANCADA'
+  | 'PLANILHA_ENVIADA'
+  | 'PLANILHA_DEVOLVIDA'
+  | 'PLANILHA_REENVIADA'
+  | 'SOLEMP_CONFECCIONADA'
+  | 'NE_INFORMADA'
+  | 'NF_ANEXADA'
+  | 'PAGAMENTO_CONFIRMADO'
+  | 'ARQUIVADO'
+  | 'OUTRO'
+
+/** Evento imutável de auditoria — quem mudou o quê no PED. */
+export interface PedidoAuditoriaEvento {
+  id: string
+  pedidoId: string
+  /** ISO */
+  em: string
+  usuarioId: string
+  usuarioNome: string
+  acao: PedidoAuditoriaAcao
+  titulo: string
+  detalhe?: string | null
+  etapaChave?: string | null
+  etapaNome?: string | null
+  /** Ex.: valor antigo → novo */
+  alteracao?: string | null
 }
 
 export interface ArquivoAnexo {
@@ -635,7 +670,7 @@ export interface ListaMedicamentosLinha {
   movimentacoes?: ListaMedicamentoMovimentacao[]
 }
 
-/** Movimentação manual de estoque (entrada ou saída) */
+/** Movimentação de estoque (manual ou automática via IMH) */
 export interface ListaMedicamentoMovimentacao {
   id: string
   tipo: 'entrada' | 'saida'
@@ -644,7 +679,25 @@ export interface ListaMedicamentoMovimentacao {
   data: string
   /** De onde veio (entrada) ou para onde vai (saída) */
   origemDestino: string
+  /** Nome de quem registrou (usuário logado ou digitado na mov. manual) */
   responsavel: string
+  /** Id do usuário logado, quando a mov. veio da sessão */
+  usuarioId?: string | null
+  /**
+   * Origem do lançamento no ledger.
+   * Omitido / `manual` = entrada/saída pela Lista; `imh_*` = baixa/estorno do IMH PME.
+   */
+  origemTipo?: 'manual' | 'imh_baixa' | 'imh_devolucao'
+  /** Ex.: id da linha IMH ou NIP do paciente */
+  referencia?: string | null
+  /** QTD imediatamente antes desta movimentação. */
+  estoqueAntes?: string | null
+  /** QTD imediatamente depois desta movimentação. */
+  estoqueDepois?: string | null
+  /** True quando a saída deixou (ou manteve) estoque < 0 com autorização explícita. */
+  autorizouNegativo?: boolean
+  /** Motivo obrigatório ao autorizar estoque negativo. */
+  motivoNegativo?: string | null
   /** ISO 8601 do momento do registro no sistema */
   createdAt: string
 }
@@ -692,6 +745,11 @@ export interface ClinicaPlanilhasLivresState {
   listaMateriais?: ListaMateriaisFormData
   /** Lançamentos tipados da aba Consumo Material Consignado */
   consumoMaterialConsignado?: import('@/utils/consumoMaterialOds').ConsumoMaterialRow[]
+  /**
+   * Snapshot das linhas da aba Div. Material (grade DM).
+   * Complementa o rebuild a partir do CONMED — evita grade vazia após F5/troca de aba.
+   */
+  divMaterialLinhas?: import('@/utils/divMaterialForm').DivMaterialLinha[]
   /** Linhas da Div. Material já enviadas para Confecção de Solemp. */
   finalizedDivMaterialIds?: string[]
   /** Linhas da Div. Material desmarcadas após devolução (reenvio). */
@@ -795,6 +853,8 @@ export interface AppData {
   solemp: Solemp[]
   notasFiscais: NotaFiscal[]
   historico: HistoricoEvento[]
+  /** Trilha auditável append-only dos PEDs (quem / o quê / quando). */
+  auditoria?: PedidoAuditoriaEvento[]
   arquivos: ArquivoAnexo[]
   notificacoes: Notification[]
   reversoes: ReversaoTimeline[]
@@ -802,7 +862,7 @@ export interface AppData {
   consumoPlanilha?: Record<string, ConsumoPlanilhaClinicaState>
   /** Planilhas livres (grade Excel) da página Planilhas da clínica */
   planilhasLivres?: Record<string, ClinicaPlanilhasLivresState>
-  /** Planilha editável da aba Preço de Medicamentos (persistida no IndexedDB). */
+  /** Catálogo interno de preços (sincronizado a partir de Planilhas → Medicamentos). */
   medicamentosPrecos?: import('@/utils/medicamentosPrecos').MedicamentoPrecoRow[]
   pedidoPlanilhaEnvio?: Record<string, PedidoPlanilhaEnvioState>
   /**

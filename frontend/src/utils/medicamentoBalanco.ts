@@ -34,10 +34,27 @@ export interface MedicamentoBalancoImhResumo {
 }
 
 export interface MedicamentoBalancoEstoqueResumo {
+  /** Entradas do ledger no período (manual + estorno IMH). */
   entradas: number
+  /** Saídas alinhadas: manuais + max(saídas IMH no ledger, QTD da planilha IMH). */
   saidas: number
   saldoLiquido: number
   movimentacoes: number
+  entradasManuais: number
+  entradasEstornoImh: number
+  saidasManuais: number
+  /** Saídas com origem `imh_baixa` no ledger. */
+  saidasImhLedger: number
+  /** Soma da QTD das linhas IMH PME no período. */
+  saidasImhPlanilha: number
+  /** max(ledger IMH, planilha IMH) — cobre histórico sem ledger. */
+  saidasImhAlinhadas: number
+  /** planilha − ledger (positivo = balanço subcontava o consumo clínico). */
+  divergenciaImh: number
+  /** Soma atual das QTDs na Lista (snapshot, fora do filtro de período). */
+  saldoAtualLista: number
+  /** True quando |divergenciaImh| < 0,001. */
+  alinhado: boolean
 }
 
 export interface MedicamentoBalancoAlertas {
@@ -154,32 +171,82 @@ function summarizeImh(
   return { lancamentos, qtdTotal, valorTotal, valorIndenizar, topMedicamentos }
 }
 
-function summarizeMovimentacoes(
-  linhas: ListaMedicamentosLinha[],
+function isMovImhBaixa(mov: ListaMedicamentoMovimentacao): boolean {
+  if (mov.origemTipo === 'imh_baixa') return true
+  if (mov.origemTipo && mov.origemTipo !== 'manual') return false
+  return mov.tipo === 'saida' && /IMH/i.test(mov.origemDestino || '')
+}
+
+function isMovImhDevolucao(mov: ListaMedicamentoMovimentacao): boolean {
+  if (mov.origemTipo === 'imh_devolucao') return true
+  if (mov.origemTipo && mov.origemTipo !== 'manual') return false
+  return mov.tipo === 'entrada' && /IMH|estorno/i.test(mov.origemDestino || '')
+}
+
+/**
+ * Consolida o ledger da Lista com o consumo da planilha IMH no período.
+ * Saídas IMH usam max(ledger, planilha) para não subcontar históricos sem movimentação.
+ */
+function summarizeMovimentacoesAlinhadas(
+  linhasLista: ListaMedicamentosLinha[],
+  linhasImh: ImhMedicamentoLinha[],
   tipo: BalancoPeriodoTipo,
   referencia: Date,
 ): MedicamentoBalancoEstoqueResumo {
-  let entradas = 0
-  let saidas = 0
+  let entradasManuais = 0
+  let entradasEstornoImh = 0
+  let saidasManuais = 0
+  let saidasImhLedger = 0
   let movimentacoes = 0
 
-  for (const linha of linhas) {
+  for (const linha of linhasLista) {
     const movs: ListaMedicamentoMovimentacao[] = linha.movimentacoes ?? []
     for (const mov of movs) {
       const data = parseIsoOrBrDate(mov.data)
       if (!data || !dateMatchesBalancoPeriodo(data, tipo, referencia)) continue
       movimentacoes += 1
       const qtd = parseListaMedQtdNumber(mov.qtd)
-      if (mov.tipo === 'entrada') entradas += qtd
-      else saidas += qtd
+      if (mov.tipo === 'entrada') {
+        if (isMovImhDevolucao(mov)) entradasEstornoImh += qtd
+        else entradasManuais += qtd
+      } else if (isMovImhBaixa(mov)) {
+        saidasImhLedger += qtd
+      } else {
+        saidasManuais += qtd
+      }
     }
   }
+
+  let saidasImhPlanilha = 0
+  for (const linha of linhasImh) {
+    const data = parseIsoOrBrDate(linha.data)
+    if (!data || !dateMatchesBalancoPeriodo(data, tipo, referencia)) continue
+    saidasImhPlanilha += parseListaMedQtdNumber(linha.qtd || '0')
+  }
+
+  const saidasImhAlinhadas = Math.max(saidasImhLedger, saidasImhPlanilha)
+  const entradas = entradasManuais + entradasEstornoImh
+  const saidas = saidasManuais + saidasImhAlinhadas
+  const divergenciaImh = saidasImhPlanilha - saidasImhLedger
+  const saldoAtualLista = linhasLista.reduce(
+    (acc, linha) => acc + parseListaMedQtdNumber(String(linha.qtd ?? '')),
+    0,
+  )
 
   return {
     entradas,
     saidas,
     saldoLiquido: entradas - saidas,
     movimentacoes,
+    entradasManuais,
+    entradasEstornoImh,
+    saidasManuais,
+    saidasImhLedger,
+    saidasImhPlanilha,
+    saidasImhAlinhadas,
+    divergenciaImh,
+    saldoAtualLista,
+    alinhado: Math.abs(divergenciaImh) < 0.001,
   }
 }
 
@@ -243,7 +310,12 @@ export function buildMedicamentoBalanco(input: MedicamentoBalancoInput): Medicam
   return {
     periodoLabel: formatBalancoPeriodoLabel(periodoTipo, referencia),
     imh: summarizeImh(imhMedicamento.linhas, periodoTipo, referencia),
-    estoqueMov: summarizeMovimentacoes(listaMedicamentos.linhas, periodoTipo, referencia),
+    estoqueMov: summarizeMovimentacoesAlinhadas(
+      listaMedicamentos.linhas,
+      imhMedicamento.linhas,
+      periodoTipo,
+      referencia,
+    ),
     alertas: summarizeAlertas(listaMedicamentos.linhas),
     pedidos: summarizePedidos(pedidos, periodoTipo, referencia),
   }
@@ -310,7 +382,12 @@ export function buildMedicamentoPmeChartData(
 ): MedicamentoPmeChartData {
   const { listaMedicamentos, imhMedicamento, periodoTipo, referencia } = input
   const imh = summarizeImh(imhMedicamento.linhas, periodoTipo, referencia)
-  const estoque = summarizeMovimentacoes(listaMedicamentos.linhas, periodoTipo, referencia)
+  const estoque = summarizeMovimentacoesAlinhadas(
+    listaMedicamentos.linhas,
+    imhMedicamento.linhas,
+    periodoTipo,
+    referencia,
+  )
   const alertas = summarizeAlertas(listaMedicamentos.linhas)
   const evolucao = seedEvolucao(periodoTipo, referencia)
 
@@ -341,7 +418,9 @@ export function buildMedicamentoPmeChartData(
     ],
     fluxoEstoque: [
       { nome: 'Entradas', valor: estoque.entradas },
-      { nome: 'Saídas', valor: estoque.saidas },
+      { nome: 'Saídas IMH', valor: estoque.saidasImhAlinhadas },
+      { nome: 'Saídas manuais', valor: estoque.saidasManuais },
+      { nome: 'Saídas totais', valor: estoque.saidas },
     ],
   }
 }
@@ -866,7 +945,8 @@ export function buildMedicamentoBalancoChartBundles(
 
   const estoqueMov = [
     { nome: 'Entradas', valor: balanco.estoqueMov.entradas, fill: '#22C55E' },
-    { nome: 'Saídas', valor: balanco.estoqueMov.saidas, fill: '#F97316' },
+    { nome: 'Saídas IMH', valor: balanco.estoqueMov.saidasImhAlinhadas, fill: '#F97316' },
+    { nome: 'Saídas manuais', valor: balanco.estoqueMov.saidasManuais, fill: '#FB923C' },
     {
       nome: 'Saldo',
       valor: Math.abs(balanco.estoqueMov.saldoLiquido),
@@ -918,9 +998,23 @@ export function buildMedicamentoBalancoChartBundles(
 
   const kpis: MedicamentoBalancoChartBundles['kpis'] = [
     { key: 'lanc', label: 'Lançamentos IMH', value: balanco.imh.lancamentos, format: 'int' },
-    { key: 'qtd', label: 'QTD consumida', value: balanco.imh.qtdTotal, format: 'qtd' },
+    { key: 'qtd', label: 'QTD consumida IMH', value: balanco.imh.qtdTotal, format: 'qtd' },
     { key: 'valor', label: 'Valor total', value: balanco.imh.valorTotal, format: 'moeda' },
     { key: 'inden', label: 'A indenizar', value: balanco.imh.valorIndenizar, format: 'moeda' },
+    { key: 'ent', label: 'Entradas estoque', value: balanco.estoqueMov.entradas, format: 'qtd' },
+    { key: 'sai', label: 'Saídas alinhadas', value: balanco.estoqueMov.saidas, format: 'qtd' },
+    {
+      key: 'saldo',
+      label: 'Saldo líquido',
+      value: balanco.estoqueMov.saldoLiquido,
+      format: 'qtd',
+    },
+    {
+      key: 'saldoLista',
+      label: 'Saldo atual (Lista)',
+      value: balanco.estoqueMov.saldoAtualLista,
+      format: 'qtd',
+    },
     { key: 'mov', label: 'Movimentações', value: balanco.estoqueMov.movimentacoes, format: 'int' },
     { key: 'ped', label: 'Pedidos', value: balanco.pedidos.total, format: 'int' },
     {

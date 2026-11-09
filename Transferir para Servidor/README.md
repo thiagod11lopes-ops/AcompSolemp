@@ -234,7 +234,7 @@ Se o “servidor local” for um PC/servidor na LAN (não o seu notebook de dese
 4. No frontend / GitHub Pages, aponte:
 
 ```env
-VITE_SUPABASE_URL=http://IP_DO_SERVIDOR:54321
+VITE_SUPABASE_URL=http://192.168.1.202:8000
 VITE_SUPABASE_ANON_KEY=...
 ```
 

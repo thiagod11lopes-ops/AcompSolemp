@@ -132,10 +132,13 @@ export function useDemoHistorico(pedidoId?: string) {
   })
 }
 
-export function useNotifications(perfil?: Parameters<typeof notificationService.list>[0]) {
+export function useNotifications(
+  perfil?: Parameters<typeof notificationService.list>[0],
+  clinicaId?: string | null,
+) {
   return useQuery({
-    queryKey: ['notifications', perfil ?? 'all'],
-    queryFn: () => notificationService.list(perfil),
+    queryKey: ['notifications', perfil ?? 'all', clinicaId ?? ''],
+    queryFn: () => notificationService.list(perfil, { clinicaId }),
     staleTime: 0,
     refetchInterval: 8_000,
     refetchOnWindowFocus: true,

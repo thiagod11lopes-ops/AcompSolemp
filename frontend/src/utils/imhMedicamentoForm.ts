@@ -12,6 +12,13 @@ import {
   parseValorBrasileiro,
 } from '@/utils/consumoMaterialOds'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
+import { parsePctIndenizar } from '@/utils/pctIndenizarVinculo'
+
+export {
+  isPctIndenizarManualPorVinculo,
+  parsePctIndenizar,
+  pctIndenizarFromVinculo,
+} from '@/utils/pctIndenizarVinculo'
 
 function formatDataHojeImh(): string {
   const d = new Date()
@@ -49,28 +56,6 @@ export const EMPTY_IMH_MEDICAMENTO_FORM: ImhMedicamentoFormData = {
   linhas: [],
   finalizedImhIds: [],
   devolvidosImhIds: [],
-}
-
-/**
- * Mesma regra da IMH da clínica:
- * titular e dependente direto → 20%; dependente indireto → 100%.
- */
-export function pctIndenizarFromVinculo(vinculo: string): string | null {
-  const normalized = vinculo
-    .trim()
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (!normalized || normalized === 'OUTRO' || normalized === 'OUTROS') return null
-  if (normalized.includes('INDIRETO')) return '100%'
-  if (
-    normalized === 'TITULAR' ||
-    normalized === 'DEPENDENTE' ||
-    normalized.includes('DEPENDENTE DIRETO')
-  ) {
-    return '20%'
-  }
-  return null
 }
 
 export const IMH_MEDICAMENTO_COLUNAS = [
@@ -129,15 +114,6 @@ function parseQuantidade(raw: string): number {
   const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
   const n = parseFloat(cleaned)
   return Number.isFinite(n) && n > 0 ? n : 0
-}
-
-function parsePctIndenizar(raw: string): number {
-  const cleaned = raw.trim().replace('%', '').replace(/\s/g, '').replace(',', '.')
-  const n = parseFloat(cleaned)
-  if (!Number.isFinite(n) || n < 0) return 0
-  if (n > 1) return n / 100
-  if (n === 1) return 1
-  return n
 }
 
 export function withRecalculatedImhMedicamentoLinha(

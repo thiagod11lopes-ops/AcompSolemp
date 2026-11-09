@@ -517,7 +517,7 @@ export function ConsumoMaterialManualForm({
                                   error={Boolean(errors.itemPme)}
                                   helperText={
                                     errors.itemPme?.message ??
-                                    (compact ? undefined : 'Opções da aba Preço de Medicamentos')
+                                    (compact ? undefined : 'Opções de Planilhas → Medicamentos')
                                   }
                                   sx={denseFieldSx}
                                   slotProps={{

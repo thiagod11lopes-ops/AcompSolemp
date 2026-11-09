@@ -1,5 +1,5 @@
 import path from 'path'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // GitHub Pages: base path = nome do repositório no GitHub (ainda AcompSolemp).
@@ -14,5 +14,21 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  server: {
+    host: '0.0.0.0',
+    // Permite acesso pelo nome amigavel da LAN (ex.: sistema.acompomps.rede)
+    allowedHosts: true,
+    proxy: {
+      // Export CSV local (Local-Export-Api.ps1) — same-origin no Vite e no gateway.
+      '/api/export-dados': {
+        target: 'http://127.0.0.1:9788',
+        changeOrigin: true,
+      },
+    },
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.ts'],
   },
 })

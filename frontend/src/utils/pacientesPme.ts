@@ -23,6 +23,35 @@ export const PACIENTES_PME_HEADERS: {
   { key: 'vinculo', label: 'VÍNCULO', width: 220 },
 ]
 
+/** Postos/graduações da MB usados no cadastro PME. */
+export const PACIENTES_PME_POSTOS_GRAD = [
+  'AE',
+  'VA',
+  'CA',
+  'CMG',
+  'CF',
+  'CC',
+  'CT',
+  '1T',
+  '2T',
+  'SO',
+  '1SG',
+  '2SG',
+  '3SG',
+  'CB',
+  'MN',
+  'SD',
+] as const
+
+/** Vínculos alinhados ao IMH PME. */
+export const PACIENTES_PME_VINCULOS = [
+  'TITULAR',
+  'DEPENDENTE DIRETO',
+  'DEPENDENTE INDIRETO',
+  'PENSIONISTA',
+  'OUTRO',
+] as const
+
 type SeedFile = {
   headers: string[]
   rows: Array<{
@@ -139,10 +168,15 @@ export function searchPacientesPmeByNome(
   limit = 25,
 ): PacientePmeRow[] {
   const q = formatPacientePmeUpper(nome)
-  if (!q) return rows.slice(0, limit)
-  return rows
-    .filter((row) => formatPacientePmeUpper(row.nome).includes(q))
-    .slice(0, limit)
+  // Sem texto: não monta lista completa (Autocomplete fica leve até digitar).
+  if (!q) return []
+  const out: PacientePmeRow[] = []
+  for (const row of rows) {
+    if (!formatPacientePmeUpper(row.nome).includes(q)) continue
+    out.push(row)
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 /** Dados mínimos do lançamento IMH para cadastrar paciente novo. */

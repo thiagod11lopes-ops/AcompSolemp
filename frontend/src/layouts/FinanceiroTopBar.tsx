@@ -10,6 +10,7 @@ import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { FINANCEIRO_DRAWER_WIDTH } from './FinanceiroSidebar'
+import { useSidebarRail } from '@/layouts/sidebarRail'
 
 interface FinanceiroTopBarProps {
   onMenuClick: () => void
@@ -21,6 +22,7 @@ export function FinanceiroTopBar({ onMenuClick }: FinanceiroTopBarProps) {
   const { navigatePortal, demoBannerHeight } = usePortalPaths()
   const navigate = useNavigate()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const { width: drawerWidth } = useSidebarRail(FINANCEIRO_DRAWER_WIDTH)
 
   const handleLogout = async () => {
     const wasImpersonating = Boolean(impersonationTargetEmail)
@@ -42,12 +44,17 @@ export function FinanceiroTopBar({ onMenuClick }: FinanceiroTopBarProps) {
       sx={{
         position: 'fixed',
         top: demoBannerHeight,
-        left: { md: FINANCEIRO_DRAWER_WIDTH },
+        left: { md: drawerWidth },
         right: 0,
         zIndex: (t) => t.zIndex.drawer + 1,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
+        transition: (t) =>
+          t.transitions.create('left', {
+            easing: t.transitions.easing.sharp,
+            duration: t.transitions.duration.enteringScreen,
+          }),
       }}
     >
       <ImpersonationBanner />

@@ -40,6 +40,7 @@ import {
   linhaHasContent,
   normalizeImhAbaForm,
   normalizeImhVinculo,
+  isPctIndenizarManualPorVinculo,
   withRecalculatedImhLinha,
   sortImhLinhasByData,
 } from '@/utils/imhAbaForm'
@@ -68,6 +69,7 @@ const VINCULOS = [
   'TITULAR',
   'DEPENDENTE DIRETO',
   'DEPENDENTE INDIRETO',
+  'PENSIONISTA',
   'OUTROS',
 ] as const
 
@@ -109,11 +111,16 @@ export function ImhAbaForm({
     [grupoDrafts],
   )
 
-  /** Preenche Clínica com o nome da clínica logada quando ainda estiver vazio. */
+  /**
+   * Preenche Clínica com o nome da clínica logada quando ainda estiver vazio.
+   * Só persiste se já houver linhas — evita flush vazio no mount (F5) antes da
+   * hidratação da planilha importada; o campo já exibe o padrão visualmente.
+   */
   useEffect(() => {
     const padrao = clinicaNomePadrao.trim()
     if (!padrao) return
     if (value.clinica.trim()) return
+    if ((value.linhas?.length ?? 0) === 0) return
     onChange({ ...value, clinica: formatImhUppercase(padrao) })
   }, [clinicaNomePadrao, value, onChange])
   const [sheetPicker, setSheetPicker] = useState<{
@@ -213,17 +220,9 @@ export function ImhAbaForm({
     })
   }
 
+  /** Só rascunho local; a planilha grava no Salvar (evita persistir a cada tecla). */
   const syncGrupoToList = (nextDrafts: ImhAbaLinha[]) => {
-    const ready = nextDrafts.map(withRecalculatedImhLinha)
-    setGrupoDrafts(ready)
-    if (ready.length === 0) return
-    const byId = new Map(ready.map((l) => [l.id, l]))
-    persistLinhas(
-      value.linhas.map((l) => {
-        const updated = byId.get(l.id)
-        return updated ? { ...updated, id: l.id } : l
-      }),
-    )
+    setGrupoDrafts(nextDrafts.map(withRecalculatedImhLinha))
   }
 
   const updateShared = (patch: Partial<Omit<ImhAbaLinha, 'id' | 'valorTotal'>>) => {
@@ -250,12 +249,11 @@ export function ImhAbaForm({
     if (!removed) return
     const nextDrafts = grupoDrafts.filter((_, i) => i !== index)
     setGrupoDrafts(nextDrafts)
-    persistLinhas(value.linhas.filter((l) => l.id !== removed.id))
     onSelectedImhIdsChange?.(
       new Set([...(selectedImhIds ?? [])].filter((id) => id !== removed.id)),
     )
     if (nextDrafts.length === 0) {
-      grupoSnapshotRef.current = []
+      resetLinhaForm()
     }
   }
 
@@ -268,12 +266,15 @@ export function ImhAbaForm({
     if (!isEditingGrupo) return
     const ready = grupoDrafts.map(withRecalculatedImhLinha).filter(linhaHasContent)
     const readyIds = new Set(ready.map((l) => l.id))
-    const semGrupo = value.linhas.filter((l) => !editingIds.has(l.id))
+    // Snapshot cobre linhas removidas no modal (editingIds só tem o rascunho atual).
+    const originalIds = new Set(grupoSnapshotRef.current.map((l) => l.id))
+    for (const id of editingIds) originalIds.add(id)
+    const semGrupo = value.linhas.filter((l) => !originalIds.has(l.id))
     persistLinhas([...semGrupo, ...ready])
     // Remove da seleção ids que sumiram por ficarem vazios
     if (selectedImhIds && onSelectedImhIdsChange) {
       const nextSel = new Set(
-        [...selectedImhIds].filter((id) => !editingIds.has(id) || readyIds.has(id)),
+        [...selectedImhIds].filter((id) => !originalIds.has(id) || readyIds.has(id)),
       )
       onSelectedImhIdsChange(nextSel)
     }
@@ -313,15 +314,6 @@ export function ImhAbaForm({
   }
 
   const handleCancelLinha = () => {
-    if (grupoSnapshotRef.current.length > 0) {
-      const snapById = new Map(grupoSnapshotRef.current.map((l) => [l.id, l]))
-      persistLinhas(
-        value.linhas.map((l) => {
-          const snap = snapById.get(l.id)
-          return snap ? cloneLinha(snap) : l
-        }),
-      )
-    }
     resetLinhaForm()
   }
 
@@ -524,7 +516,7 @@ export function ImhAbaForm({
                   <Chip
                     size="small"
                     variant="outlined"
-                    label={`Indenizar ${formatValorBrasileiro(somasGrupo.pctIndenizar)}`}
+                    label={`A indenizar ${formatValorBrasileiro(somasGrupo.pctIndenizar)}`}
                     sx={{ height: 22, fontWeight: 700 }}
                   />
                 ) : null}
@@ -654,9 +646,26 @@ export function ImhAbaForm({
                     <TextField
                       label="% A INDENIZAR"
                       value={draft.pctIndenizar}
+                      onChange={(e) =>
+                        updateLinhaAt(index, { pctIndenizar: e.target.value })
+                      }
                       size="small"
                       fullWidth
-                      slotProps={{ input: { readOnly: true } }}
+                      placeholder={
+                        isPctIndenizarManualPorVinculo(draft.vinculo)
+                          ? 'Ex.: 20%'
+                          : undefined
+                      }
+                      helperText={
+                        isPctIndenizarManualPorVinculo(draft.vinculo)
+                          ? 'Vínculo OUTROS: informe o % manualmente'
+                          : 'Automático pelo vínculo (20% / 100%)'
+                      }
+                      slotProps={{
+                        input: {
+                          readOnly: !isPctIndenizarManualPorVinculo(draft.vinculo),
+                        },
+                      }}
                       sx={planilhaEditFieldSx}
                     />
                   </PlanilhaEditSection>

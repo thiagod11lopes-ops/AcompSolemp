@@ -18,6 +18,8 @@ import {
 import { arquivarEtapaConcluida } from '@/utils/processoArquivamento'
 import { validateSolempNumero } from '@/utils/solemp'
 import { formatDuracaoEntre, formatTempoCorrecaoPrefixo } from '@/utils/format'
+import { appendPedidoAuditoria } from '@/utils/pedidoAuditoria'
+import { marcarPrazoEtapaNotificationsLidas } from '@/utils/prazoEtapaAlertas'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -343,6 +345,7 @@ export function advancePedidoEtapa(
   }
 
   markEtapaNotificationsRead(data, pedidoId, etapaAtual.chave)
+  marcarPrazoEtapaNotificationsLidas(data, pedidoId, etapaAtual.chave)
 
   let etapasHistorico = completeEtapaById(pedido, etapaAtual.id, observacao, etapas)
   // Remove a etapa concluída mesmo se o id no pedido estiver defasado.
@@ -522,6 +525,20 @@ export function advancePedidoEtapa(
     observacao,
   }
   data.historico.push(evento)
+  appendPedidoAuditoria(data, {
+    pedidoId,
+    usuario,
+    acao: observacao.toLowerCase().includes('solemp')
+      ? 'SOLEMP_CONFECCIONADA'
+      : observacao.toLowerCase().includes('empenho') || observacao.toLowerCase().includes(' ne')
+        ? 'NE_INFORMADA'
+        : 'ETAPA_AVANCADA',
+    titulo: etapaAtual.nome,
+    detalhe: observacao,
+    etapaChave: etapaAtual.chave,
+    etapaNome: etapaAtual.nome,
+    em: evento.data,
+  })
 
   // Uma única linha em Arquivados: a etapa concluída (em Aguardando NE o Empenhado
   // já entra como concluído no histórico, sem gerar segundo registro).

@@ -39,36 +39,20 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { endOfDay, endOfMonth, format, startOfDay, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns'
 import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useDashboardMetrics } from '@/hooks/usePedidos'
 import { buildGestorBalanco } from '@/utils/gestorBalanco'
 import { downloadGestorBalancoPdf } from '@/utils/gestorBalancoPdf'
 import { formatCurrency } from '@/utils/format'
+import {
+  maxDataFimInput,
+  presetRange,
+  type PeriodoPreset,
+} from '@/utils/periodoPresets'
 import { premiumTokens } from '@/theme/tokens'
 
-type Preset = 'mes' | 'trimestre' | 'ano' | '12m' | 'custom'
-
-function toDateInputValue(d: Date): string {
-  return format(d, 'yyyy-MM-dd')
-}
-
-function presetRange(preset: Preset): { inicio: string; fim: string } {
-  const now = new Date()
-  const fim = endOfDay(now)
-  if (preset === 'mes') {
-    return { inicio: toDateInputValue(startOfMonth(now)), fim: toDateInputValue(fim) }
-  }
-  if (preset === 'trimestre') {
-    return { inicio: toDateInputValue(startOfDay(subMonths(now, 2))), fim: toDateInputValue(fim) }
-  }
-  if (preset === 'ano') {
-    return { inicio: toDateInputValue(startOfYear(now)), fim: toDateInputValue(fim) }
-  }
-  // 12m default
-  return { inicio: toDateInputValue(startOfDay(subYears(now, 1))), fim: toDateInputValue(fim) }
-}
+type Preset = PeriodoPreset
 
 const CHART_COLORS = [
   premiumTokens.primary,
@@ -351,7 +335,7 @@ export default function GestorBalancoPage({
                   inputLabel: { shrink: true },
                   htmlInput: {
                     min: dataInicio || undefined,
-                    max: toDateInputValue(endOfMonth(new Date())),
+                    max: maxDataFimInput(),
                   },
                 }}
                 sx={{ minWidth: 150 }}

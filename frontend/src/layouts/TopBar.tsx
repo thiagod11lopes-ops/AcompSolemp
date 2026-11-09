@@ -31,6 +31,7 @@ import { DemoCadastrosModal } from '@/components/gestor/DemoCadastrosModal'
 import { SuperAdminGestoresDialog } from '@/components/gestor/SuperAdminGestoresDialog'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { DRAWER_WIDTH } from './Sidebar'
+import { useSidebarRail } from '@/layouts/sidebarRail'
 import { TIPOS_NOTIFICACAO_REVERSAO, notificacaoPertenceAosTipos } from '@/utils/notificacoes'
 import { useNotifications } from '@/hooks/useCadastros'
 import { useIsSuperAdminSession } from '@/hooks/useIsSuperAdminSession'
@@ -57,13 +58,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [fictionalBusy, setFictionalBusy] = useState(false)
   const perfilNotif =
     isDemo && demoMode ? demoMode.authUser.perfil : (user?.perfil ?? null)
-  const { data: notifications = [] } = useNotifications(perfilNotif)
+  const { data: notifications = [] } = useNotifications(perfilNotif, null)
   const reversoesNaoLidas = notifications.filter(
     (n) =>
       !n.lida && notificacaoPertenceAosTipos(n, TIPOS_NOTIFICACAO_REVERSAO),
   ).length
 
   const showSuperAdmin = useIsSuperAdminSession()
+  const { width: drawerWidth } = useSidebarRail(DRAWER_WIDTH)
 
   useEffect(() => {
     if (!showSuperAdmin) setAdminOpen(false)
@@ -99,12 +101,17 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       color="inherit"
       elevation={0}
       sx={{
-        width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-        ml: { md: `${DRAWER_WIDTH}px` },
+        width: { md: `calc(100% - ${drawerWidth}px)` },
+        ml: { md: `${drawerWidth}px` },
         top: demoBannerHeight,
         borderBottom: 1,
         borderColor: 'divider',
         bgcolor: 'background.paper',
+        transition: (t) =>
+          t.transitions.create(['width', 'margin'], {
+            easing: t.transitions.easing.sharp,
+            duration: t.transitions.duration.enteringScreen,
+          }),
       }}
     >
       <ImpersonationBanner />

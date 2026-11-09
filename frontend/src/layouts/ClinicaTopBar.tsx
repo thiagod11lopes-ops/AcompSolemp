@@ -19,6 +19,7 @@ import { GlobalProcessSearch } from '@/components/common/GlobalProcessSearch'
 import { TopBarTitle } from '@/components/common/TopBarTitle'
 import { ImpersonationBanner } from '@/components/gestor/ImpersonationBanner'
 import { CLINICA_DRAWER_WIDTH } from './ClinicaSidebar'
+import { useSidebarRail } from '@/layouts/sidebarRail'
 
 interface ClinicaTopBarProps {
   onMenuClick: () => void
@@ -33,6 +34,7 @@ export function ClinicaTopBar({ onMenuClick }: ClinicaTopBarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 
   const clinica = clinicas.find((c) => c.id === user?.clinicaId)
+  const { width: drawerWidth } = useSidebarRail(CLINICA_DRAWER_WIDTH)
 
   const handleLogout = async () => {
     const wasImpersonating = Boolean(impersonationTargetEmail)
@@ -54,12 +56,17 @@ export function ClinicaTopBar({ onMenuClick }: ClinicaTopBarProps) {
       sx={{
         position: 'fixed',
         top: demoBannerHeight,
-        left: { md: CLINICA_DRAWER_WIDTH },
+        left: { md: drawerWidth },
         right: 0,
         zIndex: (t) => t.zIndex.drawer + 1,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
+        transition: (t) =>
+          t.transitions.create('left', {
+            easing: t.transitions.easing.sharp,
+            duration: t.transitions.duration.enteringScreen,
+          }),
       }}
     >
       <ImpersonationBanner />

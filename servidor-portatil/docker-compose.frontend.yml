@@ -1,0 +1,13 @@
+# Frontend estático (nginx) — usado com Iniciar-Servidor.ps1 -Build
+name: acomp-frontend
+
+services:
+  web:
+    image: nginx:1.27-alpine
+    container_name: acomp-frontend
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${ACOMP_APP_PORT:-5173}:80"
+    volumes:
+      - ${ACOMP_FRONTEND_DIR}/dist:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

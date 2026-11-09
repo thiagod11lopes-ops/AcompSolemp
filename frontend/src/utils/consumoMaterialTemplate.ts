@@ -109,7 +109,7 @@ export function getConsumoMaterialInicial(): ConsumoMaterialRow[] {
 
 /**
  * Linhas fixas do Modelo IHM — PME para o modo exemplo (medicamento).
- * Montadas a partir da lista de Preço de Medicamentos (conteúdo de demonstração).
+ * Montadas a partir do catálogo interno de preços (conteúdo de demonstração).
  */
 export function getConsumoMaterialDemoMedicamento(): ConsumoMaterialRow[] {
   const catalog = getMedicamentosPrecosCatalog().slice(0, 10)

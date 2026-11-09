@@ -1,0 +1,15 @@
+Pasta "Instalador OPMS" — AcompOPMS
+
+1. Gere os instaladores (Windows):
+   PowerShell na pasta "Instalador OPMS":
+   .\scripts\build-tudo.ps1
+
+2. Abra a pasta Para-distribuir e execute:
+   Instalar-AcompOPMS-1.0.2-Windows.exe  (ou versao mais recente em Para-distribuir)
+
+3. Para copiar para o Desktop (Projetos):
+   .\scripts\preparar-pasta-windows.ps1
+
+Linux: bash scripts/build-tudo.sh → arquivo .AppImage em Para-distribuir
+
+O instalador tem interface moderna com barra de progresso e campo para URL do sistema.

@@ -10,8 +10,11 @@ create table if not exists public.tenants (
   org_code text not null unique,
   owner_user_id uuid references auth.users (id) on delete set null,
   owner_email text not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  gestor_since date
 );
+
+alter table public.tenants add column if not exists gestor_since date;
 
 create index if not exists tenants_owner_user_id_idx on public.tenants (owner_user_id);
 create index if not exists tenants_org_code_idx on public.tenants (org_code);

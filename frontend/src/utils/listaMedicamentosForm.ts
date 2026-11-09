@@ -180,6 +180,34 @@ export function filterListaMedicamentosByEstoque(
   return value.linhas.filter((linha) => getListaMedEstoqueStatus(linha) === filtro)
 }
 
+/** Autorização explícita para deixar o estoque negativo. */
+export type AutorizacaoEstoqueNegativo = {
+  /** Motivo obrigatório (mín. 5 caracteres após trim). */
+  motivo: string
+}
+
+/** Metadados de auditoria ao ajustar estoque via IMH PME. */
+export type AjusteEstoqueImhMeta = {
+  /** Nome do usuário logado (obrigatório para rastreio). */
+  responsavel: string
+  usuarioId?: string | null
+  /** Data dd/mm/aaaa do lançamento IMH; fallback = hoje. */
+  data?: string
+  /** Ex.: id da linha IMH, NIP, número do PED. */
+  referencia?: string | null
+  /** Texto livre em origemDestino (default conforme modo). */
+  origemDestino?: string
+  /**
+   * Obrigatório se a baixa deixar QTD < 0.
+   * Sem motivo válido a baixa é bloqueada (form inalterado).
+   */
+  autorizacaoNegativo?: AutorizacaoEstoqueNegativo
+}
+
+export function motivoEstoqueNegativoValido(motivo: string | null | undefined): boolean {
+  return (motivo?.trim().length ?? 0) >= 5
+}
+
 /** Baixa estoque da linha (id da lista ou medicamento + lote) ao lançar no IMH. */
 export function baixarEstoqueListaMedicamentos(
   form: ListaMedicamentosFormData,
@@ -187,6 +215,7 @@ export function baixarEstoqueListaMedicamentos(
   lote: string,
   qtdBaixaRaw: string,
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   return ajustarEstoqueListaMedicamentos(
     form,
@@ -195,6 +224,7 @@ export function baixarEstoqueListaMedicamentos(
     qtdBaixaRaw,
     'baixar',
     listaMedicamentoId,
+    meta,
   )
 }
 
@@ -205,6 +235,7 @@ export function devolverEstoqueListaMedicamentos(
   lote: string,
   qtdDevolverRaw: string,
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   return ajustarEstoqueListaMedicamentos(
     form,
@@ -213,6 +244,7 @@ export function devolverEstoqueListaMedicamentos(
     qtdDevolverRaw,
     'devolver',
     listaMedicamentoId,
+    meta,
   )
 }
 
@@ -230,16 +262,24 @@ export function aplicarMovimentacaoListaMedicamentos(
     data: string
     origemDestino: string
     responsavel: string
+    /** Obrigatório quando a saída deixa estoque negativo. */
+    motivoNegativo?: string
   },
 ): ListaMedicamentosFormData {
   const qtdMov = parseListaMedQtdNumber(input.qtdRaw)
   if (!linhaId.trim() || qtdMov <= 0) return form
 
   let changed = false
+  let blocked = false
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== linhaId) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
     const nextQtd = input.tipo === 'entrada' ? atual + qtdMov : atual - qtdMov
+    const ficouNegativo = input.tipo === 'saida' && nextQtd < 0
+    if (ficouNegativo && !motivoEstoqueNegativoValido(input.motivoNegativo)) {
+      blocked = true
+      return linha
+    }
     const mov = {
       id: `lista-med-mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       tipo: input.tipo,
@@ -247,6 +287,15 @@ export function aplicarMovimentacaoListaMedicamentos(
       data: formatListaMedValidade(input.data) || formatListaMedDataHoje(),
       origemDestino: input.origemDestino.trim(),
       responsavel: input.responsavel.trim(),
+      origemTipo: 'manual' as const,
+      estoqueAntes: formatQtdEstoque(atual),
+      estoqueDepois: formatQtdEstoque(nextQtd),
+      ...(ficouNegativo
+        ? {
+            autorizouNegativo: true,
+            motivoNegativo: input.motivoNegativo!.trim(),
+          }
+        : {}),
       createdAt: new Date().toISOString(),
     }
     changed = true
@@ -257,6 +306,7 @@ export function aplicarMovimentacaoListaMedicamentos(
     }
   })
 
+  if (blocked) return form
   return changed ? { linhas } : form
 }
 
@@ -275,6 +325,10 @@ export interface ListaMedicamentoHistoricoItem {
   lote: string
   validade: string
   uf: string
+  autorizouNegativo?: boolean
+  motivoNegativo?: string | null
+  estoqueAntes?: string | null
+  estoqueDepois?: string | null
 }
 
 function parseDataListaMedToSortKey(data: string): number {
@@ -308,6 +362,10 @@ export function listarHistoricoMovimentacoesListaMedicamentos(
         lote: linha.lote,
         validade: linha.validade,
         uf: linha.uf,
+        autorizouNegativo: mov.autorizouNegativo,
+        motivoNegativo: mov.motivoNegativo,
+        estoqueAntes: mov.estoqueAntes,
+        estoqueDepois: mov.estoqueDepois,
       })
     }
   }
@@ -440,6 +498,7 @@ function ajustarEstoqueListaMedicamentos(
   qtdRaw: string,
   modo: 'baixar' | 'devolver',
   listaMedicamentoId?: string,
+  meta?: AjusteEstoqueImhMeta,
 ): ListaMedicamentosFormData {
   const nome = normMedKey(itemPme)
   const qtd = parseListaMedQtdNumber(qtdRaw)
@@ -448,14 +507,55 @@ function ajustarEstoqueListaMedicamentos(
   const alvo = resolveListaMedicamentoEstoque(form, itemPme, lote, listaMedicamentoId)
   if (!alvo) return form
 
+  const atualAlvo = parseListaMedQtdNumber(alvo.qtd)
+  const nextAlvo = modo === 'baixar' ? atualAlvo - qtd : atualAlvo + qtd
+  const ficouNegativo = modo === 'baixar' && nextAlvo < 0
+  if (ficouNegativo && !motivoEstoqueNegativoValido(meta?.autorizacaoNegativo?.motivo)) {
+    // Política: bloqueia estoque negativo sem motivo explícito de autorização.
+    return form
+  }
+
   let changed = false
   const linhas = form.linhas.map((linha) => {
     if (linha.id !== alvo.id) return linha
     const atual = parseListaMedQtdNumber(linha.qtd)
-    // Baixa pode deixar o estoque negativo (ex.: 8 − 10 = −2).
     const next = modo === 'baixar' ? atual - qtd : atual + qtd
     changed = true
-    return { ...linha, qtd: formatQtdEstoque(next) }
+
+    const responsavel = meta?.responsavel?.trim() || 'Sistema'
+    const dataMov =
+      formatListaMedValidade(meta?.data?.trim() || '') || formatListaMedDataHoje()
+    const origemDestino =
+      meta?.origemDestino?.trim() ||
+      (modo === 'baixar' ? 'Paciente / IMH PME' : 'Estorno IMH PME')
+    const mov = {
+      id: `lista-med-mov-imh-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tipo: (modo === 'baixar' ? 'saida' : 'entrada') as 'entrada' | 'saida',
+      qtd: formatQtdEstoque(qtd),
+      data: dataMov,
+      origemDestino,
+      responsavel,
+      usuarioId: meta?.usuarioId ?? null,
+      origemTipo: (modo === 'baixar' ? 'imh_baixa' : 'imh_devolucao') as
+        | 'imh_baixa'
+        | 'imh_devolucao',
+      referencia: meta?.referencia?.trim() || null,
+      estoqueAntes: formatQtdEstoque(atual),
+      estoqueDepois: formatQtdEstoque(next),
+      ...(ficouNegativo
+        ? {
+            autorizouNegativo: true,
+            motivoNegativo: meta!.autorizacaoNegativo!.motivo.trim(),
+          }
+        : {}),
+      createdAt: new Date().toISOString(),
+    }
+
+    return {
+      ...linha,
+      qtd: formatQtdEstoque(next),
+      movimentacoes: [...(linha.movimentacoes ?? []), mov],
+    }
   })
 
   return changed ? { linhas } : form
@@ -616,7 +716,91 @@ export function findListaMedicamentoByNome(
   return matches.length === 1 ? matches[0]! : null
 }
 
-/** Cada lote é uma linha: localiza por nome + lote. */
+/**
+ * Ordenação FEFO (First Expiry First Out):
+ * 1) com estoque > 0
+ * 2) não vencidos antes de vencidos
+ * 3) validade mais próxima primeiro
+ * 4) sem validade por último entre os do mesmo grupo
+ */
+export function compareListaMedFefo(
+  a: ListaMedicamentosLinha,
+  b: ListaMedicamentosLinha,
+): number {
+  const estoqueRank = (linha: ListaMedicamentosLinha) =>
+    parseListaMedQtdNumber(linha.qtd) > 0 ? 0 : 1
+  const byEstoque = estoqueRank(a) - estoqueRank(b)
+  if (byEstoque !== 0) return byEstoque
+
+  const vencidoRank = (linha: ListaMedicamentosLinha) =>
+    getListaMedValidadeStatus(linha) === 'vencido' ? 1 : 0
+  const byVencido = vencidoRank(a) - vencidoRank(b)
+  if (byVencido !== 0) return byVencido
+
+  const dateA = parseListaMedDataToDate(a.validade)
+  const dateB = parseListaMedDataToDate(b.validade)
+  if (dateA && !dateB) return -1
+  if (!dateA && dateB) return 1
+  if (dateA && dateB && dateA.getTime() !== dateB.getTime()) {
+    return dateA.getTime() - dateB.getTime()
+  }
+
+  return a.lote.localeCompare(b.lote, 'pt-BR', { sensitivity: 'base' })
+}
+
+export function sortListaMedicamentosFefo(
+  linhas: ListaMedicamentosLinha[],
+): ListaMedicamentosLinha[] {
+  return [...linhas].sort(compareListaMedFefo)
+}
+
+/**
+ * Sugere o lote FEFO para um medicamento (nome).
+ * Por padrão evita vencidos se houver alternativa com validade ok/próxima.
+ */
+export function suggestListaMedicamentoFefo(
+  nome: string,
+  form: ListaMedicamentosFormData | undefined,
+  options?: { qtdMinima?: number; incluirVencidos?: boolean },
+): ListaMedicamentosLinha | null {
+  let matches = findListaMedicamentosByNome(nome, form)
+  if (matches.length === 0) return null
+
+  const qtdMin = options?.qtdMinima ?? 0
+  if (qtdMin > 0) {
+    const comSaldo = matches.filter((linha) => parseListaMedQtdNumber(linha.qtd) >= qtdMin)
+    if (comSaldo.length > 0) matches = comSaldo
+  }
+
+  if (!options?.incluirVencidos) {
+    const naoVencidos = matches.filter((linha) => getListaMedValidadeStatus(linha) !== 'vencido')
+    if (naoVencidos.length > 0) matches = naoVencidos
+  }
+
+  return sortListaMedicamentosFefo(matches)[0] ?? null
+}
+
+/** Mapa nome → id do lote FEFO sugerido (para badge na UI). */
+export function mapaFefoIdPorMedicamento(
+  linhas: ListaMedicamentosLinha[],
+): Map<string, string> {
+  const byNome = new Map<string, ListaMedicamentosLinha[]>()
+  for (const linha of linhas) {
+    const key = normMedKey(linha.medicamento)
+    if (!key) continue
+    const list = byNome.get(key) ?? []
+    list.push(linha)
+    byNome.set(key, list)
+  }
+  const map = new Map<string, string>()
+  for (const [key, list] of byNome) {
+    const best = sortListaMedicamentosFefo(list)[0]
+    if (best) map.set(key, best.id)
+  }
+  return map
+}
+
+/** Cada lote é uma linha: localiza por nome + lote; sem lote → FEFO. */
 export function findListaMedicamentoByNomeELote(
   nome: string,
   lote: string,
@@ -630,9 +814,7 @@ export function findListaMedicamentoByNomeELote(
   if (loteKey) {
     return matches.find((linha) => normMedKey(linha.lote) === loteKey) ?? null
   }
-  const semLote = matches.filter((linha) => !normMedKey(linha.lote))
-  if (semLote.length === 1) return semLote[0]!
-  return matches.length === 1 ? matches[0]! : null
+  return suggestListaMedicamentoFefo(nome, form)
 }
 
 /** Rótulo das opções do Autocomplete no IMH (nome + lote + validade). */

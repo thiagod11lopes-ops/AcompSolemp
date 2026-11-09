@@ -1,0 +1,23 @@
+﻿ACESSO AO AcompOPMS NA REDE (HTTPS)
+==================================
+
+1) No PC SERVIDOR
+   - Rode "Iniciar Servidor OMPS" (gera o certificado e sobe o gateway HTTPS).
+   - Rode Liberar-Firewall.cmd (Admin) UMA VEZ se ainda nao rodou.
+
+2) Em CADA PC CLIENTE (UMA VEZ)
+   - Copie a pasta cliente (ou use o compartilhamento AcompOPMS-Cliente).
+   - Rode Instalar-Certificado-Confianca.cmd como Administrador.
+   - Feche e abra o Chrome/Edge.
+
+3) Abrir o sistema
+   Digite EXATAMENTE o nome cadastrado, por exemplo:
+     sistema.acompomps.rede
+   (sem http, sem https, sem :5173 — o navegador usa HTTPS automaticamente)
+
+4) Se o nome nao abrir
+   Use o IP: https://IP_DO_SERVIDOR
+   (depois de instalar o certificado; o IP tambem esta no certificado)
+
+O arquivo AcompOPMS-rootCA.pem e gerado no servidor ao iniciar.
+Nao compartilhe arquivos *-key.pem (chave privada).

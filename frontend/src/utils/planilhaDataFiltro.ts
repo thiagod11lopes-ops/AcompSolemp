@@ -19,7 +19,8 @@ export function createDefaultPlanilhaDataFiltro(
   now = new Date(),
 ): PlanilhaDataFiltro {
   return {
-    mostrarTodos: false,
+    // Import CONMED costuma ser de meses anteriores — "mês atual" escondia a grade.
+    mostrarTodos: true,
     dia: 0,
     mes: now.getMonth() + 1,
     ano: now.getFullYear(),
@@ -76,6 +77,26 @@ export function linhaPassaNoFiltroData(
 ): boolean {
   if (filtro.mostrarTodos) return true
   return dataPertenceAoDia(data, filtro.dia, mesModeloFromFiltro(filtro))
+}
+
+/**
+ * Normaliza o filtro. So forca "Todos" quando ha linhas sem data
+ * (senao a grade ficaria vazia sem como filtrar por dia).
+ * Nao remarca "Todos" se o dia/mes/ano atual simplesmente nao tem linhas —
+ * o usuario pode desmarcar de proposito para ver o dia de hoje.
+ */
+export function ensureFiltroMostraAlgumaLinha(
+  filtro: PlanilhaDataFiltro,
+  datas: string[],
+  totalLinhas = datas.length,
+): PlanilhaDataFiltro {
+  const normalized = normalizePlanilhaDataFiltro(filtro)
+  const datasOk = datas.map((d) => d.trim()).filter(Boolean)
+  if (normalized.mostrarTodos) return normalized
+  if (totalLinhas > 0 && datasOk.length === 0) {
+    return { ...normalized, mostrarTodos: true }
+  }
+  return normalized
 }
 
 export function anosDisponiveisFromDatas(datas: string[]): number[] {

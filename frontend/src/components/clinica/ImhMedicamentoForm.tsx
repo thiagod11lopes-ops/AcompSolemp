@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Add as AddIcon, MenuBookOutlined as MenuBookIcon } from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,6 +31,7 @@ import {
   PlanilhaLinhaEditDialog,
   planilhaEditAutocompleteSlotProps,
   planilhaEditFieldSx,
+  planilhaEditSelectSlotProps,
 } from '@/components/clinica/PlanilhaLinhaEditDialog'
 import { MedicamentoAbasExplicacaoModal } from '@/components/clinica/MedicamentoAbasExplicacaoModal'
 import { useClinicaAuth } from '@/contexts/AuthContext'
@@ -48,6 +50,7 @@ import {
   linhaImhMedicamentoHasContent,
   markImhMedicamentoLinhasFinalized,
   normalizeImhMedicamentoForm,
+  isPctIndenizarManualPorVinculo,
   pctIndenizarFromVinculo,
   withRecalculatedImhMedicamentoLinha,
 } from '@/utils/imhMedicamentoForm'
@@ -76,6 +79,8 @@ import {
   formatPacientePmeUpper,
   normalizePacienteNipKey,
   pacienteNipsIguais,
+  PACIENTES_PME_POSTOS_GRAD,
+  PACIENTES_PME_VINCULOS,
   resolvePacientePmeFromNip,
   searchPacientesPmeByNome,
   type PacientePmeNipMatch,
@@ -86,8 +91,15 @@ import {
   devolverEstoqueListaMedicamentos,
   findListaMedicamentoByNome,
   findListaMedicamentoByNomeELote,
+  getListaMedValidadeStatus,
+  mapaFefoIdPorMedicamento,
+  motivoEstoqueNegativoValido,
+  parseListaMedQtdNumber,
   previewBaixaEstoqueListaMedicamentos,
   resolveListaMedicamentoEstoque,
+  sortListaMedicamentosFefo,
+  suggestListaMedicamentoFefo,
+  type AutorizacaoEstoqueNegativo,
 } from '@/utils/listaMedicamentosForm'
 
 interface ImhMedicamentoFormProps {
@@ -103,15 +115,12 @@ interface ImhMedicamentoFormProps {
   corrigirLinhaIds?: Set<string> | null
 }
 
-const VINCULOS = [
-  'TITULAR',
-  'DEPENDENTE DIRETO',
-  'DEPENDENTE INDIRETO',
-  'DEPENDENTE',
-  'OUTRO',
-] as const
 const NIP_NAO_ENCONTRADO = 'NIP NÃO ENCONTRADO NO SISTEMA'
 const MEDICAMENTO_SEM_LOTE = 'Medicamento sem lote definido'
+const MEDICAMENTO_LOTE_VENCIDO =
+  'Lote vencido — FEFO recomenda priorizar outro lote com validade mais próxima.'
+const MEDICAMENTO_LOTE_FEFO =
+  'Lote sugerido por FEFO (validade mais próxima com estoque).'
 
 const MESES_OPCOES = [
   { value: 1, label: 'Janeiro' },
@@ -165,7 +174,7 @@ function matchToDraftPatch(
   const { row, isTitular } = match
   const nipUsuario = formatImhMedNip(row.nipUsuario) || nipFmt
   const vinculoPlanilha = formatImhMedUppercase(row.vinculo)
-  const pctIndenizar = pctIndenizarFromVinculo(vinculoPlanilha) ?? undefined
+  const pctIndenizar = pctIndenizarFromVinculo(vinculoPlanilha) ?? ''
 
   if (isTitular) {
     return {
@@ -174,7 +183,7 @@ function matchToDraftPatch(
       nipTitular: nipUsuario,
       postoGrad: formatImhMedUppercase(row.postoGradTitular),
       vinculo: vinculoPlanilha,
-      ...(pctIndenizar ? { pctIndenizar } : {}),
+      pctIndenizar,
     }
   }
 
@@ -184,7 +193,7 @@ function matchToDraftPatch(
     nipTitular: formatImhMedNip(row.nipTitular),
     postoGrad: formatImhMedUppercase(row.postoGradTitular),
     vinculo: vinculoPlanilha,
-    ...(pctIndenizar ? { pctIndenizar } : {}),
+    pctIndenizar,
   }
 }
 
@@ -406,11 +415,21 @@ export function ImhMedicamentoForm({
     }, 5000)
   }
 
+  const postoGradOptions = useMemo(() => {
+    const set = new Set<string>([...PACIENTES_PME_POSTOS_GRAD])
+    const atual = linhaDraft.postoGrad.trim()
+    if (atual) set.add(atual)
+    return [...set]
+  }, [linhaDraft.postoGrad])
+
   const vinculoOptions = useMemo(() => {
-    const set = new Set<string>([...VINCULOS])
-    if (linhaDraft.vinculo.trim()) set.add(linhaDraft.vinculo.trim())
+    const set = new Set<string>([...PACIENTES_PME_VINCULOS])
+    const atual = linhaDraft.vinculo.trim()
+    if (atual) set.add(atual)
     return [...set]
   }, [linhaDraft.vinculo])
+
+  const pctIndenizarManual = isPctIndenizarManualPorVinculo(linhaDraft.vinculo)
 
   const selectedPacienteNome = findPacientePmeByNome(linhaDraft.nome, pacientes) ?? null
 
@@ -481,10 +500,9 @@ export function ImhMedicamentoForm({
     if (sheet) applyImportedSheet(sheet)
   }
 
+  /** Persiste a lista; não recalcula todas as linhas (já vêm prontas do Salvar). */
   const persistLinhas = (linhas: ImhMedicamentoLinha[]) => {
-    const nextLinhas = linhas
-      .map(recalcLinha)
-      .filter((l) => linhaImhMedicamentoHasContent(l))
+    const nextLinhas = linhas.filter((l) => linhaImhMedicamentoHasContent(l))
     const ids = new Set(nextLinhas.map((l) => l.id))
     onChange({
       linhas: nextLinhas,
@@ -567,14 +585,11 @@ export function ImhMedicamentoForm({
     }
   }
 
+  /** Só atualiza o rascunho local; a planilha só muda no Salvar/Adicionar. */
   const syncDraftToList = (nextDraft: ImhMedicamentoLinha) => {
     const ready = recalcLinha(nextDraft)
     setLinhaDraft(ready)
     setNomeInput(ready.nome)
-    if (!editingLinhaId) return
-    persistLinhas(
-      value.linhas.map((l) => (l.id === editingLinhaId ? { ...ready, id: editingLinhaId } : l)),
-    )
   }
 
   const updateDraft = (patch: Partial<Omit<ImhMedicamentoLinha, 'id' | 'total'>>) => {
@@ -647,7 +662,19 @@ export function ImhMedicamentoForm({
     const unitario = formatPrecoReferenciaMedicamento(row.precoReferencia)
     const lote = formatImhMedUppercase(row.lote)
     const validade = formatImhMedData(row.validade)
-    const aviso = !lote.trim() ? MEDICAMENTO_SEM_LOTE : null
+    const semLote = !lote.trim()
+    const vencido = getListaMedValidadeStatus(row) === 'vencido'
+    const fefoSugerido = suggestListaMedicamentoFefo(row.medicamento, listaMedicamentos)
+    const isFefo = Boolean(fefoSugerido && fefoSugerido.id === row.id)
+    const aviso = semLote
+      ? MEDICAMENTO_SEM_LOTE
+      : vencido
+        ? MEDICAMENTO_LOTE_VENCIDO
+        : isFefo
+          ? MEDICAMENTO_LOTE_FEFO
+          : fefoSugerido && fefoSugerido.id !== row.id
+            ? `Há lote FEFO preferencial: ${fefoSugerido.lote.trim() || 's/lote'} (val. ${fefoSugerido.validade.trim() || '—'}).`
+            : null
     updateDraft({
       itemPme: formatImhMedUppercase(row.medicamento),
       lote,
@@ -659,20 +686,34 @@ export function ImhMedicamentoForm({
       qtd: linhaDraft.qtd.trim() || '1',
     })
     setItemPmeInput(row.medicamento)
-    setLoteSemDefinir(Boolean(aviso))
+    setLoteSemDefinir(Boolean(semLote))
     setLoteAviso(aviso)
   }
 
   const withListaEstoqueMeta = (linha: ImhMedicamentoLinha): ImhMedicamentoLinha => {
-    const resolved = resolveListaMedicamentoEstoque(
+    let resolved = resolveListaMedicamentoEstoque(
       listaMedicamentos,
       linha.itemPme,
       linha.lote,
       linha.listaMedicamentoId,
     )
+    // Sem lote/id: aplica FEFO automaticamente na baixa.
+    if (!resolved && linha.itemPme.trim()) {
+      resolved = suggestListaMedicamentoFefo(linha.itemPme, listaMedicamentos, {
+        qtdMinima: parseListaMedQtdNumber(linha.qtd || '0'),
+      })
+    }
+    if (!resolved) {
+      return {
+        ...linha,
+        estoqueQtdMovida: linha.qtd,
+      }
+    }
     return {
       ...linha,
-      listaMedicamentoId: resolved?.id ?? linha.listaMedicamentoId,
+      listaMedicamentoId: resolved.id,
+      lote: linha.lote.trim() || formatImhMedUppercase(resolved.lote),
+      validade: linha.validade.trim() || formatImhMedData(resolved.validade),
       estoqueQtdMovida: linha.qtd,
     }
   }
@@ -711,7 +752,25 @@ export function ImhMedicamentoForm({
   const qtdMovidaEstoque = (linha: ImhMedicamentoLinha) =>
     (linha.estoqueQtdMovida?.trim() || linha.qtd).trim()
 
-  const baixarEstoqueDoLancamento = (linha: ImhMedicamentoLinha) => {
+  const metaEstoqueImh = (linha: ImhMedicamentoLinha) => {
+    const nip = linha.nip?.trim()
+    const refParts = [
+      linha.id ? `IMH:${linha.id}` : null,
+      nip ? `NIP ${nip}` : null,
+      linha.nome?.trim() ? linha.nome.trim() : null,
+    ].filter(Boolean)
+    return {
+      responsavel: user?.nome?.trim() || 'Usuário Medicamento',
+      usuarioId: user?.id ?? null,
+      data: linha.data,
+      referencia: refParts.join(' · ') || null,
+    }
+  }
+
+  const baixarEstoqueDoLancamento = (
+    linha: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     if (!listaMedicamentos || !onListaMedicamentosChange) return
     if (!linha.itemPme.trim() && !linha.listaMedicamentoId?.trim()) return
     const next = baixarEstoqueListaMedicamentos(
@@ -720,6 +779,10 @@ export function ImhMedicamentoForm({
       linha.lote,
       qtdMovidaEstoque(linha),
       linha.listaMedicamentoId,
+      {
+        ...metaEstoqueImh(linha),
+        ...(autorizacaoNegativo ? { autorizacaoNegativo } : {}),
+      },
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -734,6 +797,7 @@ export function ImhMedicamentoForm({
       linha.lote,
       qtdMovidaEstoque(linha),
       linha.listaMedicamentoId,
+      metaEstoqueImh(linha),
     )
     if (next === listaMedicamentos) return
     onListaMedicamentosChange(next)
@@ -752,6 +816,7 @@ export function ImhMedicamentoForm({
         snapshot.lote,
         qtdMovidaEstoque(snapshot),
         snapshot.listaMedicamentoId,
+        metaEstoqueImh(snapshot),
       )
     return previewBaixaEstoqueListaMedicamentos(
       formAposDevolver || listaMedicamentos,
@@ -762,15 +827,21 @@ export function ImhMedicamentoForm({
     )
   }
 
-  const confirmarAdicaoComBaixa = (ready: ImhMedicamentoLinha) => {
+  const confirmarAdicaoComBaixa = (
+    ready: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     const readyMeta = withListaEstoqueMeta(ready)
     persistLinhas([...value.linhas, readyMeta])
     syncPacienteFromLancamento(readyMeta)
-    baixarEstoqueDoLancamento(readyMeta)
+    baixarEstoqueDoLancamento(readyMeta, autorizacaoNegativo)
     resetLinhaForm()
   }
 
-  const confirmarEdicaoComAjusteEstoque = (ready: ImhMedicamentoLinha) => {
+  const confirmarEdicaoComAjusteEstoque = (
+    ready: ImhMedicamentoLinha,
+    autorizacaoNegativo?: AutorizacaoEstoqueNegativo,
+  ) => {
     if (!editingLinhaId) return
     const snapshot = linhaSnapshotRef.current
     const readyMeta = withListaEstoqueMeta({ ...ready, id: editingLinhaId })
@@ -781,6 +852,7 @@ export function ImhMedicamentoForm({
         snapshot.lote,
         qtdMovidaEstoque(snapshot),
         snapshot.listaMedicamentoId,
+        metaEstoqueImh(snapshot),
       )
       next = baixarEstoqueListaMedicamentos(
         next,
@@ -788,6 +860,10 @@ export function ImhMedicamentoForm({
         readyMeta.lote,
         qtdMovidaEstoque(readyMeta),
         readyMeta.listaMedicamentoId,
+        {
+          ...metaEstoqueImh(readyMeta),
+          ...(autorizacaoNegativo ? { autorizacaoNegativo } : {}),
+        },
       )
       if (next !== listaMedicamentos) onListaMedicamentosChange(next)
     }
@@ -857,16 +933,18 @@ export function ImhMedicamentoForm({
     confirmarAdicaoComBaixa(ready)
   }
 
-  const handleConfirmarEstoqueInsuficiente = () => {
+  const handleConfirmarEstoqueInsuficiente = (motivoNegativo: string) => {
+    if (!motivoEstoqueNegativoValido(motivoNegativo)) return
     const pending = estoqueInsuficiente.linha
     const modo = estoqueInsuficiente.modo
+    const autorizacao: AutorizacaoEstoqueNegativo = { motivo: motivoNegativo.trim() }
     setEstoqueInsuficiente((prev) => ({ ...prev, open: false, linha: null }))
     if (!pending) return
     if (modo === 'edit') {
-      confirmarEdicaoComAjusteEstoque(pending)
+      confirmarEdicaoComAjusteEstoque(pending, autorizacao)
       return
     }
-    confirmarAdicaoComBaixa(pending)
+    confirmarAdicaoComBaixa(pending, autorizacao)
   }
 
   const handleCancelarEstoqueInsuficiente = () => {
@@ -901,13 +979,7 @@ export function ImhMedicamentoForm({
   }
 
   const handleCancelLinha = () => {
-    if (editingLinhaId && linhaSnapshotRef.current) {
-      persistLinhas(
-        value.linhas.map((l) =>
-          l.id === editingLinhaId ? cloneLinha(linhaSnapshotRef.current!) : l,
-        ),
-      )
-    }
+    // Rascunho nunca foi persistido durante a digitação — basta descartar o formulário.
     resetLinhaForm()
   }
 
@@ -926,6 +998,82 @@ export function ImhMedicamentoForm({
     (linhaDraft.lote.trim()
       ? null
       : findListaMedicamentoByNome(linhaDraft.itemPme, { linhas: medicamentoOptions }))
+
+  /** Mantém callbacks estáveis para o memo da planilha não re-renderizar a cada tecla no modal. */
+  const previewActionsRef = useRef({
+    onRevertFinalizadoIds: (_ids: string[]) => {},
+    onImportClick: () => {},
+    onEnviarImh: () => {},
+    onEditLinha: (_id: string) => {},
+    onDeleteLinha: (_id: string) => {},
+  })
+  previewActionsRef.current = {
+    onRevertFinalizadoIds: (ids) => {
+      const remove = new Set(ids)
+      onChange({
+        ...value,
+        finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
+      })
+    },
+    onImportClick: handleImportClick,
+    onEnviarImh: () => {
+      void handleEnviarImh()
+    },
+    onEditLinha: handleEditLinha,
+    onDeleteLinha: handleDeleteLinha,
+  }
+  const onRevertFinalizadoIdsStable = useCallback((ids: string[]) => {
+    previewActionsRef.current.onRevertFinalizadoIds(ids)
+  }, [])
+  const onImportClickStable = useCallback(() => {
+    previewActionsRef.current.onImportClick()
+  }, [])
+  const onEnviarImhStable = useCallback(() => {
+    previewActionsRef.current.onEnviarImh()
+  }, [])
+  const onEditLinhaStable = useCallback((id: string) => {
+    previewActionsRef.current.onEditLinha(id)
+  }, [])
+  const onDeleteLinhaStable = useCallback((id: string) => {
+    previewActionsRef.current.onDeleteLinha(id)
+  }, [])
+
+  const filterPacientesByNome = useCallback(
+    (options: PacientePmeRow[], state: { inputValue: string }) =>
+      searchPacientesPmeByNome(state.inputValue, options, 40),
+    [],
+  )
+
+  const filterMedicamentos = useCallback(
+    (options: ListaMedicamentosLinha[], state: { inputValue: string }) => {
+      const q = state.inputValue.trim().toLowerCase()
+      if (!q) return []
+      const startsWith: ListaMedicamentosLinha[] = []
+      const includes: ListaMedicamentosLinha[] = []
+      for (const opt of options) {
+        const nome = opt.medicamento.toLowerCase()
+        if (nome.startsWith(q)) {
+          startsWith.push(opt)
+          continue
+        }
+        if (
+          nome.includes(q) ||
+          opt.neb.toLowerCase().includes(q) ||
+          opt.lote.toLowerCase().includes(q)
+        ) {
+          includes.push(opt)
+        }
+      }
+      // Dentro do resultado, prioriza FEFO (validade mais próxima com estoque).
+      return sortListaMedicamentosFefo([...startsWith, ...includes]).slice(0, 40)
+    },
+    [],
+  )
+
+  const fefoIdPorMedicamento = useMemo(
+    () => mapaFefoIdPorMedicamento(medicamentoOptions),
+    [medicamentoOptions],
+  )
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
@@ -1009,9 +1157,15 @@ export function ImhMedicamentoForm({
         </Box>
       </Box>
 
-      {loteSemDefinir && loteAviso ? (
+      {loteAviso ? (
         <Alert
-          severity="warning"
+          severity={
+            loteAviso === MEDICAMENTO_LOTE_VENCIDO
+              ? 'error'
+              : loteAviso === MEDICAMENTO_LOTE_FEFO
+                ? 'info'
+                : 'warning'
+          }
           variant="filled"
           sx={{ fontWeight: 800, letterSpacing: 0.3 }}
           onClose={() => {
@@ -1049,17 +1203,11 @@ export function ImhMedicamentoForm({
         emptyHint={emptyHint}
         selectedImhIds={selectedImhIds}
         onSelectedImhIdsChange={setSelectedImhIds}
-        onRevertFinalizadoIds={(ids) => {
-          const remove = new Set(ids)
-          onChange({
-            ...value,
-            finalizedImhIds: (value.finalizedImhIds ?? []).filter((id) => !remove.has(id)),
-          })
-        }}
-        onImportClick={handleImportClick}
-        onEnviarImh={handleEnviarImh}
-        onEditLinha={handleEditLinha}
-        onDeleteLinha={handleDeleteLinha}
+        onRevertFinalizadoIds={onRevertFinalizadoIdsStable}
+        onImportClick={onImportClickStable}
+        onEnviarImh={onEnviarImhStable}
+        onEditLinha={onEditLinhaStable}
+        onDeleteLinha={onDeleteLinhaStable}
         listaMedicamentos={listaMedicamentos}
         todasLinhasImh={value.linhas}
         filtroMes={filtroMes}
@@ -1152,9 +1300,8 @@ export function ImhMedicamentoForm({
                 }
                 return a.id === b.id
               }}
-              filterOptions={(options, state) =>
-                searchPacientesPmeByNome(state.inputValue, options, 40)
-              }
+              filterOptions={filterPacientesByNome}
+              openOnFocus={false}
               freeSolo
               onBlur={() => tryFillFromNome(nomeInput || linhaDraft.nome)}
               renderOption={(props, option) => (
@@ -1209,50 +1356,68 @@ export function ImhMedicamentoForm({
                 typeof option === 'string' ? option : option.medicamento
               }
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              filterOptions={(options, state) => {
-                const q = state.inputValue.trim().toLowerCase()
-                // Select aparece a partir da primeira letra digitada.
-                if (!q) return []
-                const startsWith = options.filter((opt) =>
-                  opt.medicamento.toLowerCase().startsWith(q),
-                )
-                const includes = options.filter((opt) => {
-                  const nome = opt.medicamento.toLowerCase()
-                  if (nome.startsWith(q)) return false
-                  return (
-                    nome.includes(q) ||
-                    opt.neb.toLowerCase().includes(q) ||
-                    opt.lote.toLowerCase().includes(q)
-                  )
-                })
-                return [...startsWith, ...includes].slice(0, 40)
-              }}
+              filterOptions={filterMedicamentos}
               autoHighlight
               openOnFocus={false}
               selectOnFocus
               clearOnBlur={false}
               handleHomeEndKeys
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box sx={{ py: 0.25 }}>
-                    <Typography variant="body2">{option.medicamento}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {[
-                        option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
-                        option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
-                        option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
-                        option.neb.trim() || null,
-                        option.uf.trim() || null,
-                        option.precoReferencia.trim()
-                          ? formatPrecoReferenciaMedicamento(option.precoReferencia)
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </Typography>
-                  </Box>
-                </li>
-              )}
+              renderOption={(props, option) => {
+                const isFefo =
+                  fefoIdPorMedicamento.get(option.medicamento.trim().toUpperCase()) ===
+                  option.id
+                const vencido = getListaMedValidadeStatus(option) === 'vencido'
+                return (
+                  <li {...props} key={option.id}>
+                    <Box
+                      sx={{
+                        py: 0.25,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        width: '100%',
+                      }}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2">{option.medicamento}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {[
+                            option.lote.trim() ? `Lote ${option.lote.trim()}` : null,
+                            option.validade.trim() ? `Val. ${option.validade.trim()}` : null,
+                            option.qtd.trim() ? `QTD ${option.qtd.trim()}` : null,
+                            option.neb.trim() || null,
+                            option.uf.trim() || null,
+                            option.precoReferencia.trim()
+                              ? formatPrecoReferenciaMedicamento(option.precoReferencia)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                        {isFefo ? (
+                          <Chip
+                            label="FEFO"
+                            size="small"
+                            color="success"
+                            sx={{ height: 20, fontWeight: 800, fontSize: '0.65rem' }}
+                          />
+                        ) : null}
+                        {vencido ? (
+                          <Chip
+                            label="Vencido"
+                            size="small"
+                            color="error"
+                            sx={{ height: 20, fontWeight: 700, fontSize: '0.65rem' }}
+                          />
+                        ) : null}
+                      </Box>
+                    </Box>
+                  </li>
+                )
+              }}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -1263,7 +1428,7 @@ export function ImhMedicamentoForm({
                   helperText={
                     medicamentoOptions.length === 0
                       ? 'Cadastre medicamentos na aba Planilhas → Lista de Medicamentos'
-                      : undefined
+                      : 'Lotes ordenados por FEFO (validade mais próxima com estoque).'
                   }
                   sx={multilineFieldSx}
                 />
@@ -1349,23 +1514,37 @@ export function ImhMedicamentoForm({
               sx={planilhaEditFieldSx}
             />
             <TextField
+              select
               label="POSTO/GRAD"
-              value={linhaDraft.postoGrad}
+              value={linhaDraft.postoGrad || ''}
               onChange={(e) => updateDraft({ postoGrad: formatImhMedUppercase(e.target.value) })}
               size="small"
               fullWidth
+              slotProps={planilhaEditSelectSlotProps}
               sx={planilhaEditFieldSx}
-            />
+            >
+              <MenuItem value="">
+                <em>Selecione</em>
+              </MenuItem>
+              {postoGradOptions.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               select
-              label="VINCULO"
+              label="VÍNCULO"
               value={linhaDraft.vinculo || ''}
               onChange={(e) => updateDraft({ vinculo: formatImhMedUppercase(e.target.value) })}
               size="small"
               fullWidth
+              slotProps={planilhaEditSelectSlotProps}
               sx={planilhaEditFieldSx}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">
+                <em>Selecione</em>
+              </MenuItem>
               {vinculoOptions.map((item) => (
                 <MenuItem key={item} value={item}>
                   {item}
@@ -1376,8 +1555,17 @@ export function ImhMedicamentoForm({
               label="% A INDENIZAR"
               value={linhaDraft.pctIndenizar}
               onChange={(e) => updateDraft({ pctIndenizar: e.target.value })}
+              placeholder={pctIndenizarManual ? 'Ex.: 20%' : undefined}
+              helperText={
+                pctIndenizarManual
+                  ? 'Vínculo OUTRO: informe o % manualmente'
+                  : 'Preenchido automaticamente pelo vínculo'
+              }
               size="small"
               fullWidth
+              slotProps={{
+                input: { readOnly: !pctIndenizarManual },
+              }}
               sx={planilhaEditFieldSx}
             />
             <TextField
@@ -1500,15 +1688,32 @@ function ImhEstoqueInsuficienteModal({
   qtdBaixa: number
   estoqueApos: number
   onCancel: () => void
-  onConfirm: () => void
+  onConfirm: (motivoNegativo: string) => void
 }) {
+  const [motivo, setMotivo] = useState('')
+  const [erroMotivo, setErroMotivo] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setMotivo('')
+    setErroMotivo('')
+  }, [open])
+
+  const handleConfirm = () => {
+    if (!motivoEstoqueNegativoValido(motivo)) {
+      setErroMotivo('Informe o motivo da autorização (mínimo 5 caracteres).')
+      return
+    }
+    onConfirm(motivo.trim())
+  }
+
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>Estoque insuficiente</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 1.25 }}>
         <Typography variant="body2" color="text.secondary">
-          A quantidade lançada é maior que o estoque disponível. O medicamento será incluído na
-          planilha IMH e o estoque ficará negativo.
+          A quantidade lançada é maior que o estoque disponível. Para continuar, autorize o estoque
+          negativo com motivo — o lançamento IMH e a baixa ficam registrados com o seu nome.
         </Typography>
         <Box>
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -1524,13 +1729,33 @@ function ImhEstoqueInsuficienteModal({
           Estoque: {formatEstoqueNumero(estoqueAtual)} · Lançado:{' '}
           {formatEstoqueNumero(qtdBaixa)} · Após: {formatEstoqueNumero(estoqueApos)}
         </Typography>
+        <TextField
+          label="Motivo da autorização"
+          value={motivo}
+          onChange={(e) => {
+            setMotivo(e.target.value)
+            setErroMotivo('')
+          }}
+          fullWidth
+          size="small"
+          multiline
+          minRows={2}
+          placeholder="Ex.: dispensação emergencial autorizada pelo plantão"
+          error={Boolean(erroMotivo)}
+          helperText={erroMotivo || 'Obrigatório para estoque negativo (mín. 5 caracteres).'}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 2.5, pb: 2 }}>
         <Button onClick={onCancel} sx={{ textTransform: 'none' }}>
           Cancelar
         </Button>
-        <Button variant="contained" color="error" onClick={onConfirm} sx={{ textTransform: 'none' }}>
-          Continuar mesmo assim
+        <Button
+          variant="contained"
+          color="error"
+          onClick={handleConfirm}
+          sx={{ textTransform: 'none' }}
+        >
+          Autorizar estoque negativo
         </Button>
       </DialogActions>
     </Dialog>

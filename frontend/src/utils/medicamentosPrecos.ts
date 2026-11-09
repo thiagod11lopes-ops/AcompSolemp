@@ -33,7 +33,7 @@ export function createMedicamentoPrecoVazio(id?: string): MedicamentoPrecoRow {
   }
 }
 
-/** Catálogo da aba Preço de Medicamentos (persistido no IndexedDB, com fallback no seed). */
+/** Catálogo interno de preços (persistido no IndexedDB; alimentado pela planilha Medicamentos, com fallback no seed). */
 export function getMedicamentosPrecosCatalog(): MedicamentoPrecoRow[] {
   try {
     return medicamentosPrecosService.getRows()

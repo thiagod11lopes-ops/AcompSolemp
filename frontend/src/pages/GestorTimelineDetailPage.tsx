@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { StatusChip } from '@/components/common/StatusChip'
 import { ClinicaInteractiveTimeline } from '@/components/workflow/ClinicaInteractiveTimeline'
+import { PedidoDetalheTabs } from '@/components/pedido/PedidoDetalheTabs'
 import { useDemoPedido, usePedido } from '@/hooks/usePedidos'
 import { useDemoWorkflowEtapas, useWorkflowEtapas } from '@/hooks/useCadastros'
 import { usePortalPaths } from '@/contexts/DemoRouteContext'
@@ -109,7 +110,12 @@ export default function GestorTimelineDetailPage() {
       </Paper>
 
       <Box sx={{ mb: 3 }}>
-        <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
+        <PedidoDetalheTabs
+          pedidoId={pedido.id}
+          timeline={
+            <ClinicaInteractiveTimeline pedido={pedido} etapas={etapas} somenteLeitura />
+          }
+        />
       </Box>
     </>
   )

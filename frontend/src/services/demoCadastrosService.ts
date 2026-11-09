@@ -8,10 +8,11 @@ import {
   saveAppData,
   saveDemoAppDataAndWait,
 } from '@/mocks/seed'
-import { STORAGE_KEYS, storageGet } from '@/storage/indexedDb'
+import { STORAGE_KEYS, storageGet, storageSet } from '@/storage/indexedDb'
 import { createDemoMedicamentoPlanilhaExemploState, createDemoPlanilhaExemploState } from '@/utils/consumoMaterialTemplate'
 import { createDemoMedicamentoDashboardConteudo } from '@/utils/medicamentoBalanco'
 import { ensureUniqueLogin, slugLogin } from '@/utils/loginSlug'
+import { seedAuditoriaModoExemplo } from '@/utils/pedidoAuditoria'
 
 export const DEMO_EXEMPLO_USER_PREFIX = 'demo-exemplo-'
 export const DEMO_CLINICA_EXEMPLO_ID = 'demo-clinica-exemplo'
@@ -478,6 +479,13 @@ export function ensureDemoMedicamentoDashboardExemplo(data: AppData): boolean {
     }
   }
 
+  // Trilha de auditoria para PEDs de exemplo / fictícios (aba Auditoria).
+  const tinhaAudExemplo = (data.auditoria ?? []).some(
+    (e) => e.id.startsWith('fic-aud-') || e.id.startsWith('demo-aud-'),
+  )
+  const nAud = seedAuditoriaModoExemplo(data)
+  if (nAud > 0 && !tinhaAudExemplo) changed = true
+
   return changed
 }
 
@@ -506,6 +514,8 @@ export async function initDemoAppData(): Promise<void> {
         )
         polishMedicamentoDashboardFicticio(parsed)
         ensureDemoMedicamentoDashboardExemplo(parsed)
+        seedAuditoriaModoExemplo(parsed)
+        storageSet(STORAGE_KEYS.FICTIONAL_SNAPSHOT, JSON.stringify(parsed))
         await saveDemoAppDataAndWait(parsed)
         clearAppDataCache()
         reloadAppDataFromStorage()

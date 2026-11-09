@@ -1,166 +1,133 @@
-import { useMemo, useState } from 'react'
-import {
-  Autocomplete,
-  Box,
-  CircularProgress,
-  TextField,
-  Typography,
-  InputAdornment,
-} from '@mui/material'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Box, TextField, Typography, InputAdornment } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
-import { useQuery } from '@tanstack/react-query'
-import { usePortalPaths } from '@/contexts/DemoRouteContext'
-import { useClinicaAuth, useFinanceiroAuth, useGestorAuth, useOrdenadorAuth } from '@/contexts/AuthContext'
-import { pedidoService } from '@/services/pedidoService'
-import { clinicaPedidoService } from '@/services/clinicaPedidoService'
-import { ordenadorService } from '@/services/ordenadorService'
-import { financeiroService } from '@/services/financeiroService'
+import { useLocation } from 'react-router-dom'
 import {
-  detailPathForSearchPortal,
-  searchPedidosPorNumero,
-  type GlobalSearchPortal,
-  type ProcessSearchHit,
-} from '@/utils/globalProcessSearch'
-import type { PedidoComDetalhes } from '@/types'
+  applyPageSearch,
+  clearPageSearch,
+  PAGE_SEARCH_SKIP_ATTR,
+} from '@/utils/pageTextSearch'
+import type { GlobalSearchPortal } from '@/utils/globalProcessSearch'
 
 interface GlobalProcessSearchProps {
-  portal: GlobalSearchPortal
-  /** Compacto na topbar da clínica. */
+  /** Mantido por compatibilidade com as topbars; a busca é na página atual. */
+  portal?: GlobalSearchPortal
   dense?: boolean
 }
 
-function kindLabel(kind: ProcessSearchHit['kind']): string {
-  if (kind === 'PED') return 'PED'
-  if (kind === 'SOLEMP') return 'SOLEMP'
-  return 'NF'
+function getPageSearchRoot(): HTMLElement | null {
+  return document.querySelector('main')
 }
 
-export function GlobalProcessSearch({ portal, dense = false }: GlobalProcessSearchProps) {
-  const { isDemo, navigatePortal } = usePortalPaths()
-  const { user: gestorUser } = useGestorAuth()
-  const { user: clinicaUser } = useClinicaAuth()
-  const { user: ordenadorUser } = useOrdenadorAuth()
-  const { user: financeiroUser } = useFinanceiroAuth()
-
+export function GlobalProcessSearch({ dense = false }: GlobalProcessSearchProps) {
+  const location = useLocation()
   const [input, setInput] = useState('')
+  const [matchCount, setMatchCount] = useState(0)
+  const [visibleUnits, setVisibleUnits] = useState(0)
+  const applyingRef = useRef(false)
+  const inputRef = useRef(input)
+  inputRef.current = input
 
-  const clinicaId = clinicaUser?.clinicaId ?? ''
-  const ordenadorId = ordenadorUser?.id ?? ''
+  const applySearch = useCallback(() => {
+    const root = getPageSearchRoot()
+    if (!root) {
+      setMatchCount(0)
+      setVisibleUnits(0)
+      return
+    }
+    applyingRef.current = true
+    try {
+      const result = applyPageSearch(root, inputRef.current)
+      setMatchCount(result.hits)
+      setVisibleUnits(result.visibleUnits)
+    } finally {
+      window.setTimeout(() => {
+        applyingRef.current = false
+      }, 0)
+    }
+  }, [])
 
-  const enabled =
-    portal === 'gestor'
-      ? Boolean(gestorUser || isDemo)
-      : portal === 'clinica'
-        ? Boolean(clinicaId)
-        : portal === 'ordenador'
-          ? Boolean(ordenadorId)
-          : Boolean(financeiroUser || isDemo)
+  useEffect(() => {
+    const timer = window.setTimeout(applySearch, 140)
+    return () => window.clearTimeout(timer)
+  }, [input, location.pathname, location.search, applySearch])
 
-  const { data: pedidos = [], isFetching } = useQuery({
-    queryKey: ['global-process-search', portal, clinicaId, ordenadorId, isDemo],
-    queryFn: async (): Promise<PedidoComDetalhes[]> => {
-      if (portal === 'gestor') {
-        return isDemo ? pedidoService.listDemo() : pedidoService.list()
-      }
-      if (portal === 'clinica') {
-        return clinicaPedidoService.listByClinica(clinicaId)
-      }
-      if (portal === 'ordenador') {
-        return ordenadorService.listTimelines(ordenadorId)
-      }
-      return financeiroService.listTimelines()
+  useEffect(() => {
+    const root = getPageSearchRoot()
+    if (!root || !input.trim()) return
+
+    let timer = 0
+    const obs = new MutationObserver(() => {
+      if (applyingRef.current) return
+      window.clearTimeout(timer)
+      timer = window.setTimeout(applySearch, 220)
+    })
+    obs.observe(root, { childList: true, subtree: true, characterData: true })
+    return () => {
+      obs.disconnect()
+      window.clearTimeout(timer)
+    }
+  }, [input, applySearch])
+
+  useEffect(
+    () => () => {
+      const root = getPageSearchRoot()
+      if (root) clearPageSearch(root)
     },
-    enabled,
-    staleTime: 30_000,
-  })
-
-  const options = useMemo(
-    () => (input.trim().length < 2 ? [] : searchPedidosPorNumero(pedidos, input)),
-    [pedidos, input],
+    [],
   )
 
-  const goToHit = (hit: ProcessSearchHit | null) => {
-    if (!hit) return
-    navigatePortal(detailPathForSearchPortal(portal, hit.pedido.id))
-    setInput('')
-  }
+  const trimmed = input.trim()
+  const statusText = (() => {
+    if (!trimmed) return null
+    if (matchCount === 0 && (visibleUnits === 0 || visibleUnits === -1)) {
+      return 'Nenhum resultado nesta página'
+    }
+    if (visibleUnits > 0) {
+      return `${visibleUnits} item${visibleUnits === 1 ? '' : 's'} · ${matchCount} em negrito`
+    }
+    return `${matchCount} encontrado${matchCount === 1 ? '' : 's'}`
+  })()
 
   return (
-    <Autocomplete
-      size={dense ? 'small' : 'small'}
-      options={options}
-      filterOptions={(x) => x}
-      getOptionLabel={(opt) =>
-        typeof opt === 'string' ? opt : `${kindLabel(opt.kind)} ${opt.matchedValue}`
-      }
-      isOptionEqualToValue={(a, b) => a.pedido.id === b.pedido.id && a.kind === b.kind}
-      inputValue={input}
-      onInputChange={(_, value, reason) => {
-        if (reason === 'reset') return
-        setInput(value)
-      }}
-      onChange={(_, value) => {
-        if (value && typeof value !== 'string') goToHit(value)
-      }}
-      noOptionsText={
-        input.trim().length < 2
-          ? 'Digite PED, SOLEMP ou NF'
-          : isFetching
-            ? 'Buscando…'
-            : 'Nenhum processo encontrado'
-      }
+    <Box
+      {...{ [PAGE_SEARCH_SKIP_ATTR]: '' }}
       sx={{
         width: { xs: 148, sm: 220, md: 280 },
         flexShrink: 0,
-        '& .MuiInputBase-root': { bgcolor: 'background.default' },
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: 0.25,
       }}
-      renderOption={(props, option) => {
-        const { key, ...rest } = props as typeof props & { key?: string }
-        return (
-          <Box component="li" key={key ?? option.pedido.id} {...rest}>
-            <Box sx={{ minWidth: 0, py: 0.25 }}>
-              <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                {kindLabel(option.kind)} {option.matchedValue}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
-                PED {option.pedido.numero}
-                {option.pedido.solemp?.numero
-                  ? ` · SOLEMP ${option.pedido.solemp.numero}`
-                  : ''}
-                {option.pedido.notaFiscal?.numero
-                  ? ` · NF ${option.pedido.notaFiscal.numero}`
-                  : ''}
-              </Typography>
-            </Box>
-          </Box>
-        )
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          placeholder="PED, SOLEMP ou NF"
-          slotProps={{
-            ...params.slotProps,
-            input: {
-              ...params.slotProps.input,
-              startAdornment: (
-                <>
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" color="action" />
-                  </InputAdornment>
-                  {params.slotProps.input.startAdornment}
-                </>
-              ),
-              endAdornment: (
-                <>
-                  {isFetching ? <CircularProgress color="inherit" size={16} /> : null}
-                  {params.slotProps.input.endAdornment}
-                </>
-              ),
-            },
-          }}
-        />
-      )}
-    />
+    >
+      <TextField
+        size="small"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder=""
+        aria-label="Buscar nesta página"
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+            sx: { bgcolor: 'background.default' },
+          },
+        }}
+        sx={{
+          '& .MuiInputBase-root': {
+            minHeight: dense ? 36 : undefined,
+          },
+        }}
+      />
+      {statusText ? (
+        <Typography variant="caption" color="text.secondary" sx={{ px: 0.5, lineHeight: 1.2 }}>
+          {statusText}
+        </Typography>
+      ) : null}
+    </Box>
   )
 }

@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   IconButton,
   InputAdornment,
   Menu,
@@ -42,6 +41,7 @@ import {
 import { SpreadsheetEditableCell } from '@/components/clinica/SpreadsheetEditableCell'
 import { ConmedEscolherAbaModal } from '@/components/clinica/ConmedEscolherAbaModal'
 import { GerarDocumentoModal } from '@/components/clinica/GerarDocumentoModal'
+import { NovoPacientePmeModal } from '@/components/clinica/NovoPacientePmeModal'
 import { EXCEL_SHEET } from '@/components/clinica/spreadsheetExcelTheme'
 import '@/components/clinica/spreadsheet-excel.css'
 import { downloadGerarDocumento } from '@/utils/gerarDocumentoTabela'
@@ -97,6 +97,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     message: string
   }>({ open: false, severity: 'success', message: '' })
   const [gerarOpen, setGerarOpen] = useState(false)
+  const [novoPacienteOpen, setNovoPacienteOpen] = useState(false)
 
   const handleCellChange = useCallback(
     (rowId: string, field: string, nextValue: string) => {
@@ -132,6 +133,17 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
     const next = [...rowsRef.current]
     next.splice(idx + 1, 0, empty)
     onChange(next)
+  }
+
+  const handleAddPacienteFromModal = (row: PacientePmeRow) => {
+    onChange([row, ...rowsRef.current])
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    setNovoPacienteOpen(false)
+    setFeedback({
+      open: true,
+      severity: 'success',
+      message: `Paciente “${row.nome}” adicionado.`,
+    })
   }
 
   const handleDeleteRow = (rowId: string) => {
@@ -299,6 +311,7 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
       elevation={0}
       className="excel-sheet"
       sx={{
+        width: '100%',
         borderRadius: 2,
         overflow: 'hidden',
         border: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
@@ -308,106 +321,136 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
       <Box
         className="excel-sheet-toolbar"
         sx={{
-          px: 1.5,
-          py: 1,
-          background: `linear-gradient(180deg, ${EXCEL_SHEET.toolbarBg} 0%, #ebebeb 100%)`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
+          flexWrap: 'wrap',
+          minHeight: 44,
+          px: 1.25,
+          py: 0.5,
+          background: '#fff',
+          bgcolor: '#fff',
+          borderBottom: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
         }}
       >
-        <Box
+        <Typography
           sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            alignItems: { xs: 'stretch', md: 'center' },
-            justifyContent: 'space-between',
-            gap: 1,
+            fontWeight: 750,
+            fontSize: 13,
+            letterSpacing: '-0.02em',
+            color: EXCEL_SHEET.text,
+            whiteSpace: 'nowrap',
           }}
         >
-          <Box>
-            <Typography
+          Pacientes
+        </Typography>
+        <Typography
+          component="span"
+          sx={{ fontSize: 12, fontWeight: 600, color: EXCEL_SHEET.mutedText }}
+        >
+          {rows.length}
+        </Typography>
+
+        <TextField
+          size="small"
+          placeholder="Buscar…"
+          value={globalFilter}
+          onChange={(e) => {
+            setGlobalFilter(e.target.value)
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+          }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16, color: EXCEL_SHEET.mutedText }} />
+                </InputAdornment>
+              ),
+              sx: {
+                height: 28,
+                fontSize: 12,
+                bgcolor: 'rgba(15,23,42,0.03)',
+                borderRadius: 1.5,
+                '& fieldset': { borderColor: 'transparent' },
+                '&:hover fieldset': { borderColor: EXCEL_SHEET.toolbarBorder },
+                '&.Mui-focused fieldset': { borderColor: EXCEL_SHEET.selectedCheck },
+              },
+            },
+          }}
+          sx={{ width: { xs: '100%', sm: 200 }, maxWidth: 240 }}
+        />
+
+        <Box sx={{ flex: 1, minWidth: 8 }} />
+
+        <Button
+          size="small"
+          variant="contained"
+          disableElevation
+          startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+          onClick={() => setNovoPacienteOpen(true)}
+          sx={{
+            height: 28,
+            px: 1.1,
+            textTransform: 'none',
+            fontWeight: 700,
+            fontSize: 12,
+            borderRadius: 1.5,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Novo Paciente
+        </Button>
+        <Tooltip title={importing ? 'Importando…' : 'Importar planilha'}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importing}
               sx={{
-                fontFamily: EXCEL_SHEET.fontFamily,
-                fontWeight: 800,
-                fontSize: 13,
-                color: EXCEL_SHEET.selectedCheck,
+                width: 28,
+                height: 28,
+                color: EXCEL_SHEET.mutedText,
+                borderRadius: 1.25,
+                '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
               }}
             >
-              Banco de dados IMH — Pacientes PME
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5, alignItems: 'center' }}>
-              <Chip
-                size="small"
-                variant="outlined"
-                label={`${rows.length} paciente(s)`}
-                sx={{ height: 22, fontWeight: 600 }}
-              />
-              <Button
-                size="small"
-                variant="contained"
-                color="success"
-                startIcon={<AddIcon />}
-                onClick={() => handleAddRow()}
-                sx={{ textTransform: 'none', fontWeight: 700, height: 26 }}
-              >
-                Nova linha
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<UploadFileOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() => importInputRef.current?.click()}
-                disabled={importing}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  height: 26,
-                  borderColor: EXCEL_SHEET.selectedCheck,
-                  color: EXCEL_SHEET.selectedCheck,
-                  bgcolor: '#fff',
-                }}
-              >
-                {importing ? 'Importando…' : 'Importar planilha'}
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<DescriptionOutlinedIcon sx={{ fontSize: 16 }} />}
-                onClick={() => setGerarOpen(true)}
-                disabled={rows.length === 0}
-                sx={{ textTransform: 'none', fontWeight: 700, height: 26 }}
-              >
-                Gerar Documento
-              </Button>
-              <Button
-                size="small"
-                variant="text"
-                startIcon={<RestartAltIcon />}
-                onClick={handleRestoreSeed}
-                sx={{ textTransform: 'none', height: 26 }}
-              >
-                Restaurar banco original
-              </Button>
-            </Box>
-          </Box>
-          <TextField
+              <UploadFileOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Gerar documento">
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => setGerarOpen(true)}
+              disabled={rows.length === 0}
+              sx={{
+                width: 28,
+                height: 28,
+                color: EXCEL_SHEET.mutedText,
+                borderRadius: 1.25,
+                '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
+              }}
+            >
+              <DescriptionOutlinedIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="Restaurar banco original">
+          <IconButton
             size="small"
-            placeholder="Buscar nome, NIP, vínculo…"
-            value={globalFilter}
-            onChange={(e) => {
-              setGlobalFilter(e.target.value)
-              setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+            onClick={handleRestoreSeed}
+            sx={{
+              width: 28,
+              height: 28,
+              color: EXCEL_SHEET.mutedText,
+              borderRadius: 1.25,
+              '&:hover': { bgcolor: 'rgba(15,23,42,0.06)', color: EXCEL_SHEET.text },
             }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{ minWidth: { md: 260 }, bgcolor: '#fff' }}
-          />
-        </Box>
+          >
+            <RestartAltIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <input
@@ -418,8 +461,8 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
         onChange={handleImportFileChange}
       />
 
-      <TableContainer sx={{ maxHeight: 'min(70vh, 720px)' }}>
-        <Table size="small" stickyHeader sx={{ tableLayout: 'fixed', minWidth: 960 }}>
+      <TableContainer sx={{ width: '100%', maxHeight: 'min(70vh, 720px)' }}>
+        <Table size="small" stickyHeader sx={{ width: '100%', tableLayout: 'fixed' }}>
           <TableHead>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -499,6 +542,11 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
         }
         rowsPerPageOptions={[25, 50, 100, 200]}
         labelRowsPerPage="Linhas"
+        sx={{
+          background: '#fff',
+          borderTop: `1px solid ${EXCEL_SHEET.toolbarBorder}`,
+          '.MuiTablePagination-toolbar': { minHeight: 40 },
+        }}
       />
 
       <Menu
@@ -579,6 +627,12 @@ function PacientesPmeSpreadsheetInner({ value, onChange }: PacientesPmeSpreadshe
             formato,
           )
         }}
+      />
+
+      <NovoPacientePmeModal
+        open={novoPacienteOpen}
+        onClose={() => setNovoPacienteOpen(false)}
+        onAdd={handleAddPacienteFromModal}
       />
     </Paper>
   )

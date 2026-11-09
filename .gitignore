@@ -34,3 +34,9 @@ Thumbs.db
 
 # Dumps locais de transferência (não versionar dados)
 Transferir para Servidor/*.sql
+
+# Servidor portátil — config local, backups e runtime
+servidor-portatil/config.env
+servidor-portatil/backups/
+servidor-portatil/logs/
+frontend/public/server-config.js

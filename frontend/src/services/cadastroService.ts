@@ -13,7 +13,12 @@ import {
 import { delay, loadFreshAppData, loadAppData, saveAppData } from '@/mocks/seed'
 import { filtrarEtapasParaTimeline } from '@/utils/timelineFlow'
 import { notificacaoPertenceAosTipos } from '@/utils/notificacoes'
+import {
+  filtrarNotificacoesEstoquePorClinica,
+  syncEstoqueMedicamentoNotifications,
+} from '@/utils/estoqueMedicamentoAlertas'
 import { syncPrazoCorrecaoNotifications } from '@/utils/prazoCorrecao'
+import { syncPrazoEtapaNotifications } from '@/utils/prazoEtapaAlertas'
 
 export const cadastroService = {
   async listClinicas(): Promise<Clinica[]> {
@@ -195,29 +200,39 @@ export const historicoService = {
 }
 
 export const notificationService = {
-  async list(perfil?: Notification['perfilDestino']): Promise<Notification[]> {
+  async list(
+    perfil?: Notification['perfilDestino'],
+    options?: { clinicaId?: string | null },
+  ): Promise<Notification[]> {
     await delay(null, 300)
     const data = loadAppData()
     const before = data.notificacoes.length
     syncPrazoCorrecaoNotifications(data)
-    if (data.notificacoes.length !== before) {
+    const prazoEtapaNovas = syncPrazoEtapaNotifications(data)
+    const estoqueNovas = syncEstoqueMedicamentoNotifications(data)
+    if (data.notificacoes.length !== before || prazoEtapaNovas > 0 || estoqueNovas > 0) {
       saveAppData(data)
     }
-    const all = data.notificacoes.sort(
+    let all = data.notificacoes.sort(
       (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
     )
 
     if (!perfil || perfil === 'GESTOR' || perfil === 'ADMINISTRADOR') {
-      return all
+      return filtrarNotificacoesEstoquePorClinica(all, options?.clinicaId)
     }
 
-    return all.filter(
+    all = all.filter(
       (n) =>
         n.perfilDestino === perfil ||
         (n.perfilDestino == null &&
           (perfil === 'CLINICA' || perfil === 'EMPENHADO') &&
           n.tipo === 'RESPOSTA_GESTOR'),
     )
+    // Farmácia PME: só alertas de estoque/validade da própria clínica.
+    if (perfil === 'MEDICAMENTO' || options?.clinicaId) {
+      all = filtrarNotificacoesEstoquePorClinica(all, options?.clinicaId)
+    }
+    return all
   },
 
   async markAsRead(id: string): Promise<void> {

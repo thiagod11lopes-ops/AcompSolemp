@@ -15,6 +15,11 @@ import {
 } from '@/utils/consumoMaterialOds'
 import type { ImhPlanilha } from '@/utils/imhPlanilhaTemplate'
 import { formatNip } from '@/utils/format'
+import {
+  isPctIndenizarManualPorVinculo,
+  parsePctIndenizar,
+  pctIndenizarFromVinculo,
+} from '@/utils/pctIndenizarVinculo'
 
 export function createEmptyImhAbaLinha(): ImhAbaLinha {
   return {
@@ -62,7 +67,7 @@ export function isVinculoTitular(vinculo: string): boolean {
   return vinculo.trim().toUpperCase() === 'TITULAR'
 }
 
-/** Normaliza rótulos legados de vínculo da IMH. */
+/** Normaliza rótulos legados de vínculo da IMH (alinhado ao PME). */
 export function normalizeImhVinculo(vinculo: string): string {
   const n = vinculo
     .trim()
@@ -71,28 +76,47 @@ export function normalizeImhVinculo(vinculo: string): string {
     .replace(/[\u0300-\u036f]/g, '')
   if (!n) return ''
   if (n === 'OUTRO' || n === 'OUTROS') return 'OUTROS'
+  if (n === 'PENSIONISTA') return 'PENSIONISTA'
   if (n.includes('INDIRETO')) return 'DEPENDENTE INDIRETO'
   if (n.includes('DIRETO') || n === 'DEPENDENTE') return 'DEPENDENTE DIRETO'
   if (n === 'TITULAR') return 'TITULAR'
   return vinculo.trim().toUpperCase()
 }
 
+function looksLikePercentualIndenizar(raw: string): boolean {
+  const t = raw.trim()
+  if (!t) return false
+  if (t.includes('%')) return parsePctIndenizar(t) > 0 || t.replace(/\s/g, '') === '0%'
+  // Aceita 0–100 sem símbolo; rejeita valores monetários típicos (> 100).
+  const n = parseFloat(t.replace(/\./g, '').replace(',', '.'))
+  return Number.isFinite(n) && n >= 0 && n <= 100
+}
+
+function formatPctIndenizarDisplay(raw: string): string {
+  const pct = parsePctIndenizar(raw)
+  if (pct <= 0) return ''
+  const asPercent = pct * 100
+  const rounded = Number.isInteger(asPercent)
+    ? String(asPercent)
+    : String(Math.round(asPercent * 100) / 100).replace('.', ',')
+  return `${rounded}%`
+}
+
 /**
- * % A INDENIZAR = fatia do VALOR TOTAL conforme vínculo:
- * TITULAR / DEPENDENTE DIRETO → 20%; DEPENDENTE INDIRETO → 100%; OUTROS → vazio.
+ * % A INDENIZAR conforme vínculo PME (não é valor monetário):
+ * TITULAR / DEPENDENTE DIRETO / PENSIONISTA → 20%
+ * DEPENDENTE INDIRETO → 100%
+ * OUTROS / vazio → manual (string vazia aqui; o formulário preserva o digitado)
  */
-export function pctIndenizarFromVinculoETotal(vinculo: string, valorTotal: string): string {
-  const n = normalizeImhVinculo(vinculo)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (!n || n === 'OUTROS') return ''
-  const total = parseValorBrasileiro(valorTotal)
-  if (total <= 0) return ''
-  if (n.includes('INDIRETO')) return formatValorBrasileiro(total)
-  if (n === 'TITULAR' || n.includes('DEPENDENTE DIRETO')) {
-    return formatValorBrasileiro(total * 0.2)
-  }
-  return ''
+export function pctIndenizarFromVinculoETotal(vinculo: string, _valorTotal?: string): string {
+  return pctIndenizarFromVinculo(normalizeImhVinculo(vinculo) || vinculo) ?? ''
+}
+
+/** Valor monetário a indenizar = VALOR TOTAL × % A INDENIZAR. */
+export function linhaImhValorIndenizarNumerico(linha: ImhAbaLinha): number {
+  const total = linhaImhValorTotalNumerico(linha)
+  const pct = parsePctIndenizar(linha.pctIndenizar)
+  return total > 0 && pct > 0 ? total * pct : 0
 }
 
 export function withRecalculatedImhLinha(linha: ImhAbaLinha): ImhAbaLinha {
@@ -103,15 +127,24 @@ export function withRecalculatedImhLinha(linha: ImhAbaLinha): ImhAbaLinha {
   const vinculo = normalizeImhVinculo(linha.vinculo)
   const nipTitular = isVinculoTitular(vinculo) ? nip : linha.nipTitular.trim()
   const valorTotal = total > 0 ? formatValorBrasileiro(total) : linha.valorTotal.trim()
+  const autoPct = pctIndenizarFromVinculo(vinculo)
+  const pctIndenizar =
+    autoPct !== null
+      ? autoPct
+      : looksLikePercentualIndenizar(linha.pctIndenizar)
+        ? formatPctIndenizarDisplay(linha.pctIndenizar)
+        : ''
   return {
     ...linha,
     nip,
     vinculo,
     nipTitular,
     valorTotal,
-    pctIndenizar: pctIndenizarFromVinculoETotal(vinculo, valorTotal),
+    pctIndenizar,
   }
 }
+
+export { isPctIndenizarManualPorVinculo }
 
 function parseQuantidade(raw: string): number {
   const cleaned = raw.trim().replace(/\./g, '').replace(',', '.')
@@ -512,15 +545,15 @@ export function calcImhTotalGeral(value: ImhAbaFormData): number {
   return value.linhas.reduce((sum, linha) => sum + parseValorBrasileiro(linha.valorTotal), 0)
 }
 
-/** Somas das colunas VALOR TOTAL e % A INDENIZAR (valores monetários). */
+/** Somas: VALOR TOTAL e valor monetário a indenizar (TOTAL × %). */
 export function calcImhSomasValorEIndenizar(linhas: ImhAbaLinha[]): {
   valorTotal: number
   pctIndenizar: number
 } {
   return linhas.reduce(
     (acc, linha) => ({
-      valorTotal: acc.valorTotal + parseValorBrasileiro(linha.valorTotal),
-      pctIndenizar: acc.pctIndenizar + parseValorBrasileiro(linha.pctIndenizar),
+      valorTotal: acc.valorTotal + linhaImhValorTotalNumerico(linha),
+      pctIndenizar: acc.pctIndenizar + linhaImhValorIndenizarNumerico(linha),
     }),
     { valorTotal: 0, pctIndenizar: 0 },
   )
@@ -597,12 +630,12 @@ export function buildImhValorTotalNipSpans(linhas: ImhAbaLinha[]): ImhValorTotal
 
 /**
  * Mescla % A INDENIZAR pelo mesmo agrupamento de NIP do VALOR TOTAL:
- * soma os valores a indenizar do grupo e cobre as linhas com rowSpan.
+ * soma o valor monetário a indenizar (TOTAL × %) do grupo.
  */
 export function buildImhPctIndenizarNipSpans(linhas: ImhAbaLinha[]): ImhNipMergeSpan[] {
   return buildImhNipGroupSpans(
     linhas,
-    (linha) => parseValorBrasileiro(linha.pctIndenizar),
+    linhaImhValorIndenizarNumerico,
     (linha) => linha.pctIndenizar.trim() || '—',
   )
 }

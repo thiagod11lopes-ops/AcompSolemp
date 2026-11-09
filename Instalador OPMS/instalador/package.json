@@ -1,0 +1,46 @@
+{
+  "name": "instalar-acomopms",
+  "version": "1.0.8",
+  "description": "Instalador gráfico AcompOPMS (Windows e Linux)",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win portable",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist": "electron-builder --win portable --linux AppImage"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "br.marinha.acompopms.installer",
+    "productName": "Instalar AcompOPMS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": ["src/**/*", "ui/**/*"],
+    "extraResources": [
+      {
+        "from": "resources/client-payload",
+        "to": "client-payload",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "signAndEditExecutable": false,
+      "artifactName": "Instalar-AcompOPMS-${version}-Windows.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility",
+      "artifactName": "Instalar-AcompOPMS-${version}-Linux.${ext}"
+    },
+    "portable": {
+      "artifactName": "Instalar-AcompOPMS-${version}-Windows.exe",
+      "requestExecutionLevel": "user"
+    }
+  }
+}

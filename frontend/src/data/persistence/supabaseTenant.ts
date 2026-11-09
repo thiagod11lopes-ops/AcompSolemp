@@ -10,6 +10,8 @@ export interface TenantRecord {
   owner_user_id: string | null
   owner_email: string
   created_at: string
+  /** Data em que o gestor atual assumiu (YYYY-MM-DD). */
+  gestor_since?: string | null
 }
 
 export interface ProfileRecord {
@@ -64,12 +66,78 @@ export async function clearOrphanTeamProfileForGestor(): Promise<boolean> {
 export async function getTenantById(tenantId: string): Promise<TenantRecord | null> {
   const { data, error } = await getSupabaseClient()
     .from('tenants')
-    .select('id, org_code, owner_user_id, owner_email, created_at')
+    .select('id, org_code, owner_user_id, owner_email, created_at, gestor_since')
     .eq('id', tenantId)
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    // Coluna ainda nao migrada: tenta sem gestor_since.
+    if (/gestor_since/i.test(error.message)) {
+      const fallback = await getSupabaseClient()
+        .from('tenants')
+        .select('id, org_code, owner_user_id, owner_email, created_at')
+        .eq('id', tenantId)
+        .maybeSingle()
+      if (fallback.error) throw new Error(fallback.error.message)
+      return fallback.data as TenantRecord | null
+    }
+    throw new Error(error.message)
+  }
   return data as TenantRecord | null
+}
+
+/** Formata YYYY-MM-DD ou ISO para dd/mm/aaaa. */
+export function formatGestorDesdeLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const m = String(raw).trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`
+  try {
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return null
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    return `${dd}/${mm}/${yyyy}`
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apos transferencia de owner_email no Dashboard: vincula o usuario autenticado
+ * ao tenant ja existente (herda dados do gestor anterior).
+ */
+export async function claimGestorTenantForCurrentUser(): Promise<{
+  tenant: TenantRecord
+  profile: ProfileRecord
+} | null> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.rpc('claim_gestor_tenant_for_current_user')
+  if (error) {
+    if (/could not find the function|does not exist|PGRST202/i.test(error.message)) {
+      return null
+    }
+    throw new Error(error.message)
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.tenant_id) return null
+  return {
+    tenant: {
+      id: String(row.tenant_id),
+      org_code: String(row.org_code ?? ''),
+      owner_user_id: row.owner_user_id ? String(row.owner_user_id) : null,
+      owner_email: String(row.owner_email ?? '').toLowerCase(),
+      created_at: String(row.created_at ?? ''),
+      gestor_since: row.gestor_since ? String(row.gestor_since) : null,
+    },
+    profile: {
+      id: (await client.auth.getSession()).data.session?.user?.id || '',
+      tenant_id: String(row.tenant_id),
+      app_user_id: String(row.app_user_id ?? `user-owner-${row.tenant_id}`),
+      email: String(row.owner_email ?? '').toLowerCase(),
+      perfil: String(row.perfil ?? 'GESTOR'),
+    },
+  }
 }
 
 async function createUniqueOrgCode(): Promise<string> {
@@ -120,18 +188,64 @@ export async function provisionGestorTenant(input: {
     return { tenant, profile: existing, owner }
   }
 
-  const orgCode = await createUniqueOrgCode()
-  const { data: tenant, error: tenantError } = await client
-    .from('tenants')
-    .insert({
-      org_code: orgCode,
-      owner_user_id: input.authUserId,
-      owner_email: input.email,
-    })
-    .select('id, org_code, owner_user_id, owner_email, created_at')
-    .single()
+  // Heranca: Dashboard transferiu owner_email — vincula a org existente em vez de criar outra.
+  const claimed = await claimGestorTenantForCurrentUser()
+  if (claimed) {
+    const ownerId = claimed.profile.app_user_id || `user-owner-${claimed.tenant.id}`
+    const owner =
+      input.initialAppData.usuarios.find((u) => u.id === ownerId) ??
+      ({
+        id: ownerId,
+        nome: input.displayName?.trim() || input.email.split('@')[0] || 'Gestor',
+        posto: '',
+        graduacao: 'Gestor Geral',
+        login: 'gestor',
+        email: input.email,
+        perfil: 'GESTOR' as const,
+        clinicaId: null,
+        ativo: true,
+      })
+    return { tenant: claimed.tenant, profile: claimed.profile, owner }
+  }
 
-  if (tenantError) throw new Error(tenantError.message)
+  const orgCode = await createUniqueOrgCode()
+  const todaySp = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+  let tenant: TenantRecord
+  {
+    const inserted = await client
+      .from('tenants')
+      .insert({
+        org_code: orgCode,
+        owner_user_id: input.authUserId,
+        owner_email: input.email,
+        gestor_since: todaySp,
+      })
+      .select('id, org_code, owner_user_id, owner_email, created_at, gestor_since')
+      .single()
+
+    if (inserted.error && /gestor_since/i.test(inserted.error.message)) {
+      const legacy = await client
+        .from('tenants')
+        .insert({
+          org_code: orgCode,
+          owner_user_id: input.authUserId,
+          owner_email: input.email,
+        })
+        .select('id, org_code, owner_user_id, owner_email, created_at')
+        .single()
+      if (legacy.error) throw new Error(legacy.error.message)
+      tenant = legacy.data as TenantRecord
+    } else if (inserted.error) {
+      throw new Error(inserted.error.message)
+    } else {
+      tenant = inserted.data as TenantRecord
+    }
+  }
 
   const appUserId = `user-owner-${tenant.id}`
   const owner = {

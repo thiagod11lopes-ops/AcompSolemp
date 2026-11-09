@@ -124,7 +124,12 @@ export function scheduleSupabaseAppDataSync(
   if (seq < latestScheduleSeq) return
   latestScheduleSeq = seq
   lastLocalMutationAtMs = Date.now()
-  pendingData = data
+  // Clone profundo: evita que mutações/strip no cache alterem o snapshot pendente.
+  try {
+    pendingData = JSON.parse(JSON.stringify(data)) as AppData
+  } catch {
+    pendingData = data
+  }
   pendingVersion = version
   if (syncTimer) clearTimeout(syncTimer)
   syncTimer = setTimeout(() => {
@@ -168,7 +173,11 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
   // pendingData ainda é null e a gravação na nuvem era ignorada (1º cadastro sumia).
   if (!pendingData) {
     const { loadAppData } = await import('@/mocks/seed')
-    pendingData = loadAppData()
+    try {
+      pendingData = JSON.parse(JSON.stringify(loadAppData())) as AppData
+    } catch {
+      pendingData = loadAppData()
+    }
     pendingVersion = APP_DATA_SEED_VERSION
   }
 
@@ -177,7 +186,15 @@ export async function flushSupabaseAppDataSync(): Promise<void> {
   pendingData = null
   const epoch = writeEpoch
 
-  flushPromise = saveAppDataToSupabase(data, version)
+  // Segundo clone na borda do upload (strip faz shallow copy de planilhasLivres).
+  let dataToSave = data
+  try {
+    dataToSave = JSON.parse(JSON.stringify(data)) as AppData
+  } catch {
+    dataToSave = data
+  }
+
+  flushPromise = saveAppDataToSupabase(dataToSave, version)
     .then(() => {
       if (epoch !== writeEpoch) return
       lastLocalFlushAtMs = Date.now()

@@ -14,6 +14,7 @@ import {
   resolvePrazoCorrecaoDias,
   resolveStatusPrazoCorrecao,
 } from '@/utils/prazoCorrecao'
+import { appendPedidoAuditoria } from '@/utils/pedidoAuditoria'
 
 export type DestinoDevolucaoId = 'clinica' | 'medicamento' | string
 export type OrigemPlanilha = 'clinica' | 'medicamento'
@@ -568,6 +569,17 @@ export function devolverPlanilhaParaDestino(
     usuarioNome: usuario.nome,
     data: devolucaoEm,
     observacao,
+  })
+  appendPedidoAuditoria(data, {
+    pedidoId,
+    usuario,
+    acao: 'PLANILHA_DEVOLVIDA',
+    titulo: `Planilha devolvida → ${destino.label}`,
+    detalhe: justificativaLimpa,
+    etapaChave: destino.etapaChave,
+    etapaNome: destino.label,
+    alteracao: `${etapaAtual?.nome ?? 'Setor atual'} → ${destino.label}`,
+    em: devolucaoEm,
   })
 
   const pedidoAposDevolucao = data.pedidos[pedidoIndex]

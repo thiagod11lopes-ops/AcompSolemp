@@ -50,3 +50,14 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Destaque da busca global na página atual */
+.page-search-hit,
+strong[data-page-search-hit] {
+  font-weight: 700;
+  color: inherit;
+}
+
+[data-page-search-hidden] {
+  display: none !important;
+}

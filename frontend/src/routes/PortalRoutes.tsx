@@ -35,11 +35,18 @@ export function ClinicaProtectedRoute({ children }: { children: ReactNode }) {
   const { clinicaUser, demoMode, isLoading, impersonationTargetEmail } = useAuth()
   const { isDemo } = usePortalPaths()
   const location = useLocation()
+  const isSupabase = useSupabaseDataSource()
 
   const user =
     (isDemo && demoMode?.portal === 'clinica' ? demoMode.authUser : null) ??
     clinicaUser ??
     authService.getClinicaUser()
+
+  // Garante merge de planilhas_livres (IMH/Div) após login/F5 no portal Clínica.
+  useEffect(() => {
+    if (!isSupabase || !user || isDemo) return
+    void syncRemoteDataWhenAuthenticated()
+  }, [isSupabase, user, isDemo])
 
   if (isLoading) return <LoadingSpinner />
 
