@@ -44,6 +44,61 @@ function Ensure-HubDesktopShortcut {
     -Description 'Instalador AcompOPMS (Servidor ou Cliente)' | Out-Null
 }
 
+function Test-SenhaInstalacaoServidor {
+  # Retorna $true se a senha estiver correta ("Marinha").
+  $t = Get-DashTheme
+  $dlg = New-Object System.Windows.Forms.Form
+  Set-DashForm $dlg 'Senha — Instalacao do Servidor' 420 220
+  $dlg.TopMost = $true
+
+  $dlg.Controls.Add((New-DashKicker 'Protecao' 24 16 360 $t.Bg))
+  $dlg.Controls.Add((New-DashTitle 'Senha do servidor' 24 36 360 $t.Bg))
+  $dlg.Controls.Add((New-DashSub 'Informe a senha para continuar a instalacao do PC servidor.' 24 74 370 28 $t.Bg))
+
+  $lbl = New-DashLabel 'Senha:' 24 112 80 28 $t.Text $t.Bg 9.5
+  $dlg.Controls.Add($lbl)
+
+  $txt = New-DashTextBox '' 100 110 280 30
+  $txt.UseSystemPasswordChar = $true
+  $dlg.Controls.Add($txt)
+
+  $btnOk = New-DashButton 'Continuar' 170 158 110 34 'primary'
+  $btnCancel = New-DashButton 'Cancelar' 290 158 100 34 'ghost'
+  $dlg.Controls.Add($btnOk)
+  $dlg.Controls.Add($btnCancel)
+  $dlg.AcceptButton = $btnOk
+  $dlg.CancelButton = $btnCancel
+
+  $script:SenhaOk = $false
+  $btnOk.Add_Click({
+      $senha = [string]$txt.Text
+      if ($senha -ceq 'Marinha') {
+        $script:SenhaOk = $true
+        $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $dlg.Close()
+      } else {
+        [Windows.Forms.MessageBox]::Show(
+          'Senha incorreta.',
+          'Instalacao do Servidor',
+          'OK',
+          'Warning'
+        ) | Out-Null
+        $txt.SelectAll()
+        $txt.Focus()
+      }
+    })
+  $btnCancel.Add_Click({
+      $script:SenhaOk = $false
+      $dlg.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+      $dlg.Close()
+    })
+
+  [void]$dlg.ShowDialog()
+  $ok = [bool]$script:SenhaOk
+  try { $dlg.Dispose() } catch { }
+  return $ok
+}
+
 function Show-HubInstalacao {
   $t = Get-DashTheme
   $form = New-Object System.Windows.Forms.Form
@@ -88,6 +143,7 @@ function Show-HubInstalacao {
   $footer.Controls.Add($lblFoot)
 
   $btnSrv.Add_Click({
+      if (-not (Test-SenhaInstalacaoServidor)) { return }
       $form.Hide()
       try {
         if ($chkDesktop.Checked) { Ensure-HubDesktopShortcut }
