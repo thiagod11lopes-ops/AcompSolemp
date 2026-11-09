@@ -24,11 +24,11 @@ $script:DesktopHelper = Join-Path $PSScriptRoot 'Criar-Atalho-Desktop.ps1'
 $script:WantDesktop = [bool]$CreateDesktopShortcut
 
 $script:WizardSteps = @(
-  @{ id = 'endereco'; title = 'Informar endereco do servidor'; hint = 'Voce digita o IP ou nome (ex.: 10.6.167.66 ou sistema.acompomps.rede).' },
-  @{ id = 'conectividade'; title = 'Testar conectividade HTTPS / CA'; hint = 'Automatico: tenta https://endereco/ e a pagina da CA.' },
+  @{ id = 'endereco'; title = 'Informar IP do servidor'; hint = 'Digite so o numero do IP (ex.: 192.168.0.17).' },
+  @{ id = 'conectividade'; title = 'Testar conectividade HTTPS / CA'; hint = 'Automatico: tenta https://IP/ e a pagina da CA.' },
   @{ id = 'ca'; title = 'Instalar confianca do certificado (UAC)'; hint = 'Pode pedir Administrador. Aceite o UAC para remover o aviso no Chrome/Edge.' },
-  @{ id = 'hosts'; title = 'Mapear endereco no hosts (se nome)'; hint = 'Automatico com Admin se usar nome amigavel em vez de IP.' },
-  @{ id = 'atalho'; title = 'Atalho na Area de Trabalho'; hint = 'Cria atalho AcompOPMS apontando para https://endereco/.' },
+  @{ id = 'hosts'; title = 'Hosts (desnecessario com IP)'; hint = 'Com IP puro, esta etapa e pulada.' },
+  @{ id = 'atalho'; title = 'Atalho na Area de Trabalho'; hint = 'Cria atalho AcompOPMS apontando para https://IP/.' },
   @{ id = 'abrir'; title = 'Abrir sistema no navegador'; hint = 'Abre o Chrome/Edge em HTTPS e valida a pagina de login.' }
 )
 
@@ -93,7 +93,11 @@ function Resolve-LocalCaPath {
 function Invoke-StepEndereco {
   $h = Normalize-ServerHostInput $script:ServerHost
   if (-not $h) {
-    Set-StepUi 'endereco' 'error' 'Informe o IP ou nome do servidor acima e clique Continuar.'
+    Set-StepUi 'endereco' 'error' 'Informe o IP do servidor acima e clique Continuar.'
+    return $false
+  }
+  if ($h -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
+    Set-StepUi 'endereco' 'error' 'Use apenas o numero do IP (ex.: 192.168.0.17), sem nome amigavel.'
     return $false
   }
   $script:ServerHost = $h
@@ -324,7 +328,7 @@ function Show-AssistenteCliente {
   $form.Controls.Add($top)
   $top.Controls.Add((New-DashKicker 'PC cliente' 20 12 700 $t.Panel))
   $top.Controls.Add((New-DashTitle 'Instalar o sistema neste PC' 20 32 700 $t.Panel))
-  $top.Controls.Add((New-DashSub 'Passo a passo ate abrir o HTTPS sem aviso de certificado. Informe o endereco do servidor e clique Continuar.' 20 68 730 28 $t.Panel))
+  $top.Controls.Add((New-DashSub 'Passo a passo ate abrir o HTTPS sem aviso de certificado. Informe o IP do servidor e clique Continuar.' 20 68 730 28 $t.Panel))
 
   $bottom = New-Object System.Windows.Forms.Panel
   $bottom.Dock = 'Bottom'
@@ -332,10 +336,10 @@ function Show-AssistenteCliente {
   $bottom.BackColor = $t.Footer
   $form.Controls.Add($bottom)
 
-  $lblAddr = New-DashLabel 'Endereco do servidor (IP ou nome):' 16 12 420 20 $t.Muted $t.Footer 9
+  $lblAddr = New-DashLabel 'IP do servidor:' 16 12 420 20 $t.Muted $t.Footer 9
   $bottom.Controls.Add($lblAddr)
 
-  $script:txtHost = New-DashTextBox 'sistema.acompomps.rede' 16 36 480 30
+  $script:txtHost = New-DashTextBox '192.168.0.17' 16 36 480 30
   $bottom.Controls.Add($script:txtHost)
 
   $script:chkDesktop = New-DashCheckBox 'Criar atalho na Area de Trabalho' 510 38 250 28
@@ -343,7 +347,7 @@ function Show-AssistenteCliente {
   $script:chkDesktop.BackColor = $t.Footer
   $bottom.Controls.Add($script:chkDesktop)
 
-  $script:lblStatus = New-DashLabel 'Pronto. Digite o endereco e clique Continuar.' 16 78 740 36 $t.Muted $t.Footer 9
+  $script:lblStatus = New-DashLabel 'Pronto. Digite o IP do servidor e clique Continuar.' 16 78 740 36 $t.Muted $t.Footer 9
   $script:lblStatus.TextAlign = 'TopLeft'
   $bottom.Controls.Add($script:lblStatus)
 

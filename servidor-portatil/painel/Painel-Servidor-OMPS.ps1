@@ -152,7 +152,7 @@ function Set-PackConfigEnv {
   }
   if ($script:SupabaseDocker) { $map['SUPABASE_DOCKER_DIR'] = $script:SupabaseDocker }
   if (-not ($lines | Where-Object { $_ -match '^\s*SERVER_ALIAS=' })) {
-    $map['SERVER_ALIAS'] = 'sistema.acompomps.rede'
+    $map['SERVER_ALIAS'] = [string]$map['SERVER_HOST']
   }
 
   $out = foreach ($line in $lines) {
@@ -428,34 +428,29 @@ function Show-ServidorOmpsInstallPanel {
   }
 
   function Save-PanelAliasOrWarn([bool]$Force) {
-    if (-not $script:txtAlias) { return $true }
-    $raw = [string]$script:txtAlias.Text
+    # Acesso sempre pelo IP — grava SERVER_ALIAS = IP (sem campo de nome amigavel).
     try {
       if (Get-Command Save-ServerAlias -ErrorAction SilentlyContinue) {
-        $saved = Save-ServerAlias $raw
-        $script:txtAlias.Text = $saved
+        $saved = Save-ServerAlias ''
+        if ($script:lblAccessIp) {
+          $script:lblAccessIp.Text = ("https://{0}/" -f $saved)
+        }
         return $true
       }
-      # Fallback sem Launcher-UI: grava SERVER_ALIAS no config.env
-      $alias = if (Get-Command Normalize-AliasInput -ErrorAction SilentlyContinue) {
-        Normalize-AliasInput $raw
-      } else {
-        $raw.Trim().ToLowerInvariant()
+      $ip = $null
+      if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+        try { $ip = Get-PreferredLanIPv4 } catch { }
       }
-      if ($script:ConfigEnv -and (Test-Path -LiteralPath $script:ConfigEnv)) {
+      if (-not $ip) { $ip = Get-OmpsServerAlias }
+      if ($script:ConfigEnv -and (Test-Path -LiteralPath $script:ConfigEnv) -and $ip) {
         if (Get-Command Set-EnvKey -ErrorAction SilentlyContinue) {
-          Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $alias
+          Set-EnvKey $script:ConfigEnv 'SERVER_HOST' $ip
+          Set-EnvKey $script:ConfigEnv 'SERVER_ALIAS' $ip
         }
       }
       return $true
     } catch {
       if ($Force) { return $true }
-      [Windows.Forms.MessageBox]::Show(
-        $_.Exception.Message,
-        'Endereco invalido',
-        [Windows.Forms.MessageBoxButtons]::OK,
-        [Windows.Forms.MessageBoxIcon]::Warning
-      ) | Out-Null
       return $false
     }
   }
@@ -652,11 +647,11 @@ function Show-ServidorOmpsInstallPanel {
   $netCard = New-DashPanel 24 416 ($formW - 48) 148
   $form.Controls.Add($netCard)
   $netCard.Controls.Add((New-DashLabel 'ACESSO NA REDE' 20 10 280 18 $theme.Muted $theme.Panel 8 ([Drawing.FontStyle]::Bold)))
-  $netCard.Controls.Add((New-DashLabel ("IP interno: $accessIp") 20 34 640 22 $theme.Muted $theme.Panel 9))
-  $netCard.Controls.Add((New-DashLabel 'Endereco para os outros PCs (sem http e sem porta)' 20 58 640 22 $theme.Text $theme.Panel 9.5 ([Drawing.FontStyle]::Bold)))
-  $script:txtAlias = New-DashTextBox $accessAlias 20 84 640 34
-  $netCard.Controls.Add($script:txtAlias)
-  $netCard.Controls.Add((New-DashLabel 'Digite exatamente este texto na barra de endereco dos outros PCs.' 20 122 640 20 $theme.Muted $theme.Panel 8.5))
+  $netCard.Controls.Add((New-DashLabel 'IP para os outros PCs' 20 34 640 22 $theme.Text $theme.Panel 9.5 ([Drawing.FontStyle]::Bold)))
+  $script:txtAlias = $null
+  $script:lblAccessIp = New-DashLabel ("https://{0}/" -f $accessIp) 20 64 640 34 $theme.AccentBright $theme.Panel 14 ([Drawing.FontStyle]::Bold)
+  $netCard.Controls.Add($script:lblAccessIp)
+  $netCard.Controls.Add((New-DashLabel 'O acesso e sempre pelo numero do IP (sem nome amigavel).' 20 108 640 20 $theme.Muted $theme.Panel 8.5))
 
   # Contagem 30s
   $countCard = New-DashPanel 24 576 ($formW - 48) 100

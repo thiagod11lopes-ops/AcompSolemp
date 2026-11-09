@@ -61,29 +61,35 @@ function Normalize-AliasInput([string]$Raw) {
   $a = $a.Split('/')[0]
   $a = $a.Split(':')[0]
   $a = $a.Trim().ToLowerInvariant().TrimEnd('.')
-  if (-not $a) { $a = 'sistema.acompomps.rede' }
   return $a
 }
 
 function Get-AccessInfo {
-  $cfg = Import-ServidorConfig
-  $ip = Get-PreferredLanIPv4
-  if (-not $ip) { $ip = [string]$cfg.SERVER_HOST }
-  $alias = Normalize-AliasInput ([string]$cfg.SERVER_ALIAS)
+  $cfg = $null
+  try { $cfg = Import-ServidorConfig } catch { }
+  $ip = $null
+  if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+    try { $ip = Get-PreferredLanIPv4 } catch { }
+  }
+  if (-not $ip -and $cfg) { $ip = [string]$cfg.SERVER_HOST }
+  if (-not $ip) { $ip = '127.0.0.1' }
+  # Acesso na rede e sempre pelo IP (sem nome amigavel editavel).
   return [pscustomobject]@{
     Ip    = $ip
-    Alias = $alias
+    Alias = $ip
   }
 }
 
 function Save-ServerAlias([string]$Alias) {
-  $alias = Normalize-AliasInput $Alias
-  if ($alias -notmatch '^[a-z0-9]([a-z0-9\-]*\.)+[a-z0-9\-]+$') {
-    throw "Endereco invalido. Digite so o nome, ex.: sistema.acompomps.rede (sem http e sem porta)."
-  }
+  # Mantido por compatibilidade: grava SERVER_ALIAS = IP atual (ignora nome amigavel).
+  $info = Get-AccessInfo
+  $ip = $info.Ip
   $cfgPath = Join-Path (Get-ServidorRoot) 'config.env'
-  Set-EnvKey $cfgPath 'SERVER_ALIAS' $alias
-  return $alias
+  if (Test-Path -LiteralPath $cfgPath) {
+    Set-EnvKey $cfgPath 'SERVER_HOST' $ip
+    Set-EnvKey $cfgPath 'SERVER_ALIAS' $ip
+  }
+  return $ip
 }
 
 function Show-ChecklistDialog {
@@ -96,23 +102,20 @@ function Show-ChecklistDialog {
   Set-DashForm $form 'Iniciar Servidor OMPS' $formW $formH
   $form.Controls.Add((New-DashKicker 'Servidor OMPS' 28 20))
   $form.Controls.Add((New-DashTitle 'Checklist de inicializacao' 28 42))
-  $form.Controls.Add((New-DashSub 'Defina o endereco da rede e se a proxima vez sobe sozinha.' 28 82 580 28))
+  $form.Controls.Add((New-DashSub 'Confirme o IP da rede (acesso dos outros PCs) e se a proxima vez sobe sozinha.' 28 82 580 28))
 
-  $card = New-DashPanel 24 120 ($formW - 48) 230
+  $card = New-DashPanel 24 120 ($formW - 48) 200
   $form.Controls.Add($card)
 
   $chk = New-DashCheckBox 'Na proxima inicializacao, abrir e rodar automaticamente' 20 18 560 28
   $chk.Checked = $true
   $card.Controls.Add($chk)
 
-  $card.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 20 60 560 24 $theme.Muted $theme.Panel 9))
-  $card.Controls.Add((New-DashLabel 'Endereco para os outros PCs (sem http e sem porta)' 20 96 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
+  $card.Controls.Add((New-DashLabel 'IP para os outros PCs' 20 60 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
+  $card.Controls.Add((New-DashLabel ("https://{0}/" -f $info.Ip) 20 90 560 34 $theme.AccentBright $theme.Panel 14 ([System.Drawing.FontStyle]::Bold)))
+  $card.Controls.Add((New-DashLabel 'O acesso e sempre pelo numero do IP (sem nome amigavel).' 20 136 560 24 $theme.Muted $theme.Panel 8.5))
 
-  $txtAlias = New-DashTextBox $info.Alias 20 128 560 34
-  $card.Controls.Add($txtAlias)
-  $card.Controls.Add((New-DashLabel 'Exemplo: sistema.acompomps.rede' 20 172 560 24 $theme.Muted $theme.Panel 8.5))
-
-  $footer = New-DashFooter 400 $formW 80
+  $footer = New-DashFooter 360 $formW 80
   $form.Controls.Add($footer)
 
   $btnCancel = New-DashButton 'Cancelar' ($formW - 280) 20 110 40 'ghost'
@@ -127,13 +130,12 @@ function Show-ChecklistDialog {
 
   $result = $form.ShowDialog()
   $auto = [bool]$chk.Checked
-  $aliasText = [string]$txtAlias.Text
   $form.Dispose()
 
   return [pscustomobject]@{
     Confirmed = ($result -eq [System.Windows.Forms.DialogResult]::OK)
     AutoNext  = $auto
-    Alias     = $aliasText
+    Alias     = $info.Ip
   }
 }
 
@@ -143,9 +145,9 @@ function Show-CountdownDialog([int]$Seconds = 30) {
   $script:cdLeft = $Seconds
   $script:cdInterrupted = $false
   $script:cdPaused = $false
-  $script:cdAliasText = $info.Alias
+  $script:cdAliasText = $info.Ip
   $formW = 640
-  $formH = 560
+  $formH = 520
 
   $script:cdForm = New-Object System.Windows.Forms.Form
   Set-DashForm $script:cdForm 'Iniciar Servidor OMPS' $formW $formH
@@ -168,15 +170,13 @@ function Show-CountdownDialog([int]$Seconds = 30) {
   $script:cdBar.Style = 'Continuous'
   $numPanel.Controls.Add($script:cdBar)
 
-  $infoCard = New-DashPanel 24 266 ($formW - 48) 150
+  $infoCard = New-DashPanel 24 266 ($formW - 48) 110
   $script:cdForm.Controls.Add($infoCard)
-  $infoCard.Controls.Add((New-DashLabel ("IP interno: $($info.Ip)") 20 16 560 22 $theme.Muted $theme.Panel 9))
-  $infoCard.Controls.Add((New-DashLabel 'Endereco exato para os outros PCs' 20 48 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
-  $script:cdTxtAlias = New-DashTextBox $info.Alias 20 78 560 34
-  $infoCard.Controls.Add($script:cdTxtAlias)
-  $infoCard.Controls.Add((New-DashLabel 'Digite exatamente este texto na barra de endereco dos outros PCs.' 20 118 560 22 $theme.Muted $theme.Panel 8.5))
+  $infoCard.Controls.Add((New-DashLabel 'IP para os outros PCs' 20 16 560 22 $theme.Text $theme.Panel 9.5 ([System.Drawing.FontStyle]::Bold)))
+  $infoCard.Controls.Add((New-DashLabel ("https://{0}/" -f $info.Ip) 20 48 560 34 $theme.AccentBright $theme.Panel 14 ([System.Drawing.FontStyle]::Bold)))
+  $script:cdTxtAlias = $null
 
-  $footer = New-DashFooter 440 $formW 120
+  $footer = New-DashFooter 400 $formW 120
   $script:cdForm.Controls.Add($footer)
 
   $script:cdStatus = New-DashLabel '' 28 12 ($formW - 56) 22 $theme.Muted $theme.Footer 9
@@ -201,7 +201,7 @@ function Show-CountdownDialog([int]$Seconds = 30) {
       $script:cdBar.Value = $script:cdLeft
       if ($script:cdLeft -le 0) {
         $script:cdTimer.Stop()
-        $script:cdAliasText = [string]$script:cdTxtAlias.Text
+        $script:cdAliasText = (Get-AccessInfo).Ip
         $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
         $script:cdForm.Close()
       }
@@ -223,14 +223,14 @@ function Show-CountdownDialog([int]$Seconds = 30) {
 
   $btnInterrupt.Add_Click({
       $script:cdInterrupted = $true
-      $script:cdAliasText = [string]$script:cdTxtAlias.Text
+      $script:cdAliasText = (Get-AccessInfo).Ip
       $script:cdTimer.Stop()
       $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::Abort
       $script:cdForm.Close()
     })
 
   $btnNow.Add_Click({
-      $script:cdAliasText = [string]$script:cdTxtAlias.Text
+      $script:cdAliasText = (Get-AccessInfo).Ip
       $script:cdTimer.Stop()
       $script:cdForm.DialogResult = [System.Windows.Forms.DialogResult]::OK
       $script:cdForm.Close()
