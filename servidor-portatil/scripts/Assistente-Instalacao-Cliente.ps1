@@ -28,7 +28,7 @@ $script:WizardSteps = @(
   @{ id = 'conectividade'; title = 'Testar conectividade HTTPS / CA'; hint = 'Automatico: tenta https://IP/ e a pagina da CA.' },
   @{ id = 'ca'; title = 'Instalar confianca do certificado (UAC)'; hint = 'Pode pedir Administrador. Aceite o UAC para remover o aviso no Chrome/Edge.' },
   @{ id = 'hosts'; title = 'Hosts (desnecessario com IP)'; hint = 'Com IP puro, esta etapa e pulada.' },
-  @{ id = 'atalho'; title = 'Atalho na Area de Trabalho'; hint = 'Cria atalho AcompOPMS apontando para https://IP/.' },
+  @{ id = 'atalho'; title = 'Atalho ClienteOMPS'; hint = 'Cria atalho Desktop ClienteOMPS apontando para https://IP/.' },
   @{ id = 'abrir'; title = 'Abrir sistema no navegador'; hint = 'Abre o Chrome/Edge em HTTPS e valida a pagina de login.' }
 )
 
@@ -224,41 +224,37 @@ Set-Content -LiteralPath `$hostsPath -Value `$lines -Encoding ASCII
 }
 
 function Invoke-StepAtalho {
-  if (-not $script:WantDesktop) {
-    Set-StepUi 'atalho' 'skip' 'Opcao de atalho desmarcada no hub'
-    return $true
-  }
+  # Sempre cria ClienteOMPS (abre o sistema HTTPS). AcompOPMS continua sendo o instalador.
   if (-not (Test-Path -LiteralPath $script:DesktopHelper)) {
     Set-StepUi 'atalho' 'error' 'Criar-Atalho-Desktop.ps1 nao encontrado'
     return $false
   }
-  Set-StepUi 'atalho' 'running' 'Criando atalho AcompOPMS na Area de Trabalho…'
+  Set-StepUi 'atalho' 'running' 'Criando atalho ClienteOMPS na Area de Trabalho…'
   $browser = Find-ChromeOrEdge
   $url = $script:ServerUrl
   try {
     if ($browser) {
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script:DesktopHelper `
-        -Name 'AcompOPMS' `
+        -Name 'ClienteOMPS' `
         -TargetPath $browser `
         -Arguments $url `
         -WorkingDirectory (Split-Path $browser -Parent) `
-        -Description ("Abrir AcompOPMS ({0})" -f $url) | Out-Null
+        -Description ("Abrir sistema AcompOPMS ({0})" -f $url) | Out-Null
     } else {
-      # Fallback: atalho URL via mshta / explorer — usa cmd start
-      $cmdPath = Join-Path $script:ClienteDir 'Abrir-AcompOPMS-Local.cmd'
+      $cmdPath = Join-Path $script:ClienteDir 'Abrir-ClienteOMPS.cmd'
       $cmdBody = "@echo off`r`nstart `"`" `"$url`"`r`n"
       Set-Content -LiteralPath $cmdPath -Value $cmdBody -Encoding ASCII
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script:DesktopHelper `
-        -Name 'AcompOPMS' `
+        -Name 'ClienteOMPS' `
         -TargetPath $cmdPath `
         -WorkingDirectory $script:ClienteDir `
-        -Description ("Abrir AcompOPMS ({0})" -f $url) | Out-Null
+        -Description ("Abrir sistema AcompOPMS ({0})" -f $url) | Out-Null
     }
   } catch {
     Set-StepUi 'atalho' 'error' $_.Exception.Message
     return $false
   }
-  Set-StepUi 'atalho' 'ok' ("Atalho criado -> {0}" -f $url)
+  Set-StepUi 'atalho' 'ok' ("Atalho ClienteOMPS criado -> {0}" -f $url)
   return $true
 }
 
@@ -342,8 +338,9 @@ function Show-AssistenteCliente {
   $script:txtHost = New-DashTextBox '192.168.0.17' 16 36 480 30
   $bottom.Controls.Add($script:txtHost)
 
-  $script:chkDesktop = New-DashCheckBox 'Criar atalho na Area de Trabalho' 510 38 250 28
-  $script:chkDesktop.Checked = $script:WantDesktop
+  $script:chkDesktop = New-DashCheckBox 'Criar atalho ClienteOMPS (sempre recomendado)' 510 38 250 28
+  $script:chkDesktop.Checked = $true
+  $script:chkDesktop.Enabled = $false
   $script:chkDesktop.BackColor = $t.Footer
   $bottom.Controls.Add($script:chkDesktop)
 
@@ -466,7 +463,7 @@ function Show-AssistenteCliente {
   function Complete-WizardUi {
     & $script:RefreshSteps
     if ($script:HealthOk) {
-      $script:lblStatus.Text = ("Pronto. Use {0} (atalho na Area de Trabalho se marcado). Sem aviso de certificado apos reiniciar o navegador." -f $script:ServerUrl)
+      $script:lblStatus.Text = ("Pronto. Use o atalho ClienteOMPS ou {0}. Sem aviso de certificado apos reiniciar o navegador." -f $script:ServerUrl)
       $script:lblStatus.ForeColor = $t.Ok
     } else {
       $nErr = @($script:WizardSteps | Where-Object { $script:StepState[$_.id].status -eq 'error' }).Count
@@ -482,7 +479,7 @@ function Show-AssistenteCliente {
     Update-Buttons 'busy'
     try {
       $script:ServerHost = $script:txtHost.Text
-      $script:WantDesktop = [bool]$script:chkDesktop.Checked
+      $script:WantDesktop = $true
       while ($script:WizardIndex -lt $total) {
         $step = $script:WizardSteps[$script:WizardIndex]
         $script:lblStatus.Text = ("Executando {0}/{1}: {2}" -f ($script:WizardIndex + 1), $total, $step.title)

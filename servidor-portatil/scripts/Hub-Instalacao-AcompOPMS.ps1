@@ -16,7 +16,10 @@ $script:PackRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $script:AssistenteServidor = Join-Path $script:PackRoot 'painel\Assistente-Instalacao-Servidor.ps1'
 $script:AssistenteCliente = Join-Path $PSScriptRoot 'Assistente-Instalacao-Cliente.ps1'
 $script:DesktopHelper = Join-Path $PSScriptRoot 'Criar-Atalho-Desktop.ps1'
-$script:HubVbs = Join-Path $script:PackRoot 'Iniciar AcompOPMS.vbs'
+$script:HubVbs = @(
+  (Join-Path $script:PackRoot 'AcompOPMS Instalar.vbs'),
+  (Join-Path $script:PackRoot 'Iniciar AcompOPMS.vbs')
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 
 function Start-Assistente([string]$Ps1Path, [bool]$CreateDesktop) {
   if (-not (Test-Path -LiteralPath $Ps1Path)) {
@@ -31,13 +34,14 @@ function Start-Assistente([string]$Ps1Path, [bool]$CreateDesktop) {
 }
 
 function Ensure-HubDesktopShortcut {
+  # AcompOPMS = sempre o instalador (Servidor/Cliente)
   if (-not (Test-Path -LiteralPath $script:DesktopHelper)) { return }
-  if (-not (Test-Path -LiteralPath $script:HubVbs)) { return }
+  if (-not $script:HubVbs -or -not (Test-Path -LiteralPath $script:HubVbs)) { return }
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script:DesktopHelper `
     -Name 'AcompOPMS' `
     -TargetPath $script:HubVbs `
     -WorkingDirectory $script:PackRoot `
-    -Description 'Instalar ou abrir o AcompOPMS (servidor ou cliente)' | Out-Null
+    -Description 'Instalador AcompOPMS (Servidor ou Cliente)' | Out-Null
 }
 
 function Show-HubInstalacao {
@@ -63,12 +67,12 @@ function Show-HubInstalacao {
   $cardSrv.Controls.Add($btnSrv)
 
   $cardCli.Controls.Add((New-DashLabel 'PC CLIENTE' 16 16 246 22 $t.AccentBright $t.Panel 9 ([System.Drawing.FontStyle]::Bold)))
-  $cardCli.Controls.Add((New-DashLabel 'Instala a confianca do certificado, mapeia o endereco e cria atalho para abrir o sistema.' 16 48 246 70 $t.Muted $t.Panel 9))
+  $cardCli.Controls.Add((New-DashLabel 'Instala a confianca do certificado e cria o atalho ClienteOMPS para abrir o sistema.' 16 48 246 70 $t.Muted $t.Panel 9))
   $cardCli.Controls.Add((New-DashLabel 'Use nos outros PCs da rede (nao precisa Docker).' 16 122 246 40 $t.Text $t.Panel 8.5))
   $btnCli = New-DashButton 'Instalar neste PC' 16 168 246 34 'primary'
   $cardCli.Controls.Add($btnCli)
 
-  $chkDesktop = New-DashCheckBox 'Criar atalho na Area de Trabalho' 24 360 560 28
+  $chkDesktop = New-DashCheckBox 'Manter atalho AcompOPMS (instalador) na Area de Trabalho' 24 360 560 28
   $chkDesktop.Checked = $true
   $chkDesktop.BackColor = $t.Bg
   $form.Controls.Add($chkDesktop)
