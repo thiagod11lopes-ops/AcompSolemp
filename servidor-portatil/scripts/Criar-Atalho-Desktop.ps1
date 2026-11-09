@@ -48,7 +48,8 @@ function New-ShortcutFile([string]$LnkPath) {
   $wsh = New-Object -ComObject WScript.Shell
   $sc = $wsh.CreateShortcut($LnkPath)
   $sc.TargetPath = $TargetPath
-  if ($Arguments) { $sc.Arguments = $Arguments }
+  # Sempre redefine Arguments (evita sobrar URL/args de atalho antigo reaproveitado).
+  $sc.Arguments = $(if ($Arguments) { $Arguments } else { '' })
   $sc.WorkingDirectory = $WorkingDirectory
   $sc.WindowStyle = 1
   if ($IconPath -and (Test-Path -LiteralPath $IconPath)) {
