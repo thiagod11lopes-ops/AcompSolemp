@@ -175,18 +175,34 @@ function Set-PackConfigEnv {
 }
 
 function Get-OmpsServerAlias {
-  $alias = 'sistema.acompomps.rede'
+  # Preferencia: IP atual / SERVER_HOST (acesso sem nome amigavel).
+  $alias = $null
+  try {
+    if (Get-Command Get-PreferredLanIPv4 -ErrorAction SilentlyContinue) {
+      $alias = Get-PreferredLanIPv4
+    }
+  } catch { }
   try {
     if ($script:ConfigEnv -and (Test-Path -LiteralPath $script:ConfigEnv)) {
-      $line = Get-Content -LiteralPath $script:ConfigEnv -Encoding UTF8 |
-        Where-Object { $_ -match '^\s*SERVER_ALIAS=' } |
+      $hostLine = Get-Content -LiteralPath $script:ConfigEnv -Encoding UTF8 |
+        Where-Object { $_ -match '^\s*SERVER_HOST=' } |
         Select-Object -First 1
-      if ($line) {
-        $a = ($line -replace '^\s*SERVER_ALIAS=', '').Trim()
-        if ($a) { $alias = $a }
+      if ($hostLine -and -not $alias) {
+        $h = ($hostLine -replace '^\s*SERVER_HOST=', '').Trim()
+        if ($h) { $alias = $h }
+      }
+      if (-not $alias) {
+        $line = Get-Content -LiteralPath $script:ConfigEnv -Encoding UTF8 |
+          Where-Object { $_ -match '^\s*SERVER_ALIAS=' } |
+          Select-Object -First 1
+        if ($line) {
+          $a = ($line -replace '^\s*SERVER_ALIAS=', '').Trim()
+          if ($a) { $alias = $a }
+        }
       }
     }
   } catch { }
+  if (-not $alias) { $alias = '127.0.0.1' }
   return $alias
 }
 
