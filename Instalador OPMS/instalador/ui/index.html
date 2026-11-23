@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <title>Instalar AcompOPMS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>AcompOPMS</h1>
+      <p class="subtitle">Instalação — conecte ao servidor da sua organização</p>
+
+      <label for="startUrl">Endereço do servidor (URL do Manager)</label>
+      <input
+        id="startUrl"
+        type="url"
+        placeholder="http://192.168.0.42:8080/login"
+        autocomplete="off"
+      />
+      <p class="hint">Ex.: endereço exibido pelo Acomp Server Manager após instalar o servidor LAN.</p>
+
+      <label class="check">
+        <input type="checkbox" id="desktopShortcut" checked />
+        Criar atalho na área de trabalho com o nome <strong>AcompOPMS</strong>
+      </label>
+
+      <section class="overlay-box">
+        <p class="overlay-title">Acesso pela internet (opcional)</p>
+        <p class="hint">Importe <code>connection.json</code> exportado pelo Manager (WireGuard). Se não tiver, use só a URL LAN acima.</p>
+        <button type="button" id="btnPickConnection" class="secondary">Escolher connection.json…</button>
+        <span id="connectionLabel" class="connection-label">Nenhum arquivo</span>
+      </section>
+
+      <p id="installDir" class="install-dir"></p>
+
+      <div id="progress" class="progress hidden">
+        <div class="bar"><div id="barFill"></div></div>
+        <p id="progressMsg"></p>
+      </div>
+
+      <p id="error" class="error hidden"></p>
+      <p id="success" class="success hidden"></p>
+
+      <div class="actions">
+        <button type="button" id="btnInstall" class="primary">Instalar</button>
+      </div>
+    </main>
+    <script src="wizard.js"></script>
+  </body>
+</html>

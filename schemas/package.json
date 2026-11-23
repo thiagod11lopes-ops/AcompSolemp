@@ -1,0 +1,15 @@
+{
+  "name": "@acompsolemp/server-manifest-schema",
+  "private": true,
+  "type": "module",
+  "description": "JSON Schema e validação AJV do server-manifest (Etapa 8).",
+  "scripts": {
+    "validate": "node validate-manifest.mjs",
+    "validate:cli": "ajv validate -s server-manifest.schema.json -d ../server-manifest.json --spec=draft2020"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-cli": "^5.0.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

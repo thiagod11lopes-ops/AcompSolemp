@@ -2,6 +2,10 @@
 
 Use junto com o [README.md](./README.md).
 
+**Guia de uso (Etapa 14):** [../docs/guia-uso-servidor-lan.md](../docs/guia-uso-servidor-lan.md)
+
+**Servidor LAN (produção na rede, Etapa 4):** [servidor-lan/CHECKLIST-ETAPA4.md](./servidor-lan/CHECKLIST-ETAPA4.md)
+
 ## Antes
 
 - [ ] Docker Desktop instalado e em execução

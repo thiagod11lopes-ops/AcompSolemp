@@ -20,11 +20,14 @@ import { authService } from '@/services/authService'
 import { canAccessGestorRoute } from '@/utils/permissions'
 import { useSupabaseDataSource } from '@/config/dataSource'
 import { isMarinhaEmail, MARINHA_EMAIL_HINT } from '@/utils/email'
+import { mapSupabaseAuthError } from '@/supabase/authErrors'
 import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { EmailNaoCadastradoModal } from '@/components/auth/EmailNaoCadastradoModal'
+import { PwaInstallGate } from '@/components/auth/PwaInstallGate'
 import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
+import { usePwaInstall } from '@/hooks/usePwaInstall'
 
 const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o e-mail ou login'),
@@ -58,6 +61,7 @@ export default function LoginGestorPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
+  const { standalone: pwaStandalone } = usePwaInstall()
 
   const {
     register: registerField,
@@ -144,7 +148,7 @@ export default function LoginGestorPage() {
         await finishGestorLogin()
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao autenticar')
+      setError(mapSupabaseAuthError(e).message)
     }
   }
 
@@ -166,7 +170,7 @@ export default function LoginGestorPage() {
       await loginSemSenha()
       await finishGestorLogin()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao entrar sem senha')
+      setError(mapSupabaseAuthError(e).message)
     } finally {
       setOpenAccessLoading(false)
     }
@@ -198,6 +202,15 @@ export default function LoginGestorPage() {
 
   const busy = isSubmitting || openAccessLoading
   const blockUntilInviteAccepted = pendingTeamInvite
+
+  // Navegador na rede (IP): só instalação. Atalho PWA (standalone): login sem instalar.
+  // localhost fica com login direto para desenvolvimento.
+  const isLocalDevHost =
+    typeof window !== 'undefined' &&
+    /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
+  if (!pwaStandalone && !isLocalDevHost) {
+    return <PwaInstallGate />
+  }
 
   return (
     <Box>

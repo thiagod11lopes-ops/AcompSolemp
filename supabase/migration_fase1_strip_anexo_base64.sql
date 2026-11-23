@@ -1,6 +1,9 @@
 -- Fase 1 — Remove conteudoBase64 do payload quando já existe storagePath.
 -- Execute no SQL Editor do Supabase (idempotente).
 -- NÃO apaga anexos sem storagePath (legado); o app deixa de gravar base64 novo na nuvem.
+-- app_state_backup não tem unicidade em (tenant_id, note); o snapshot da fase 1
+-- só é inserido quando o tenant ainda não possui note = fase1-pre-strip-base64.
+-- app_state só é atualizado quando o payload transformado difere do atual.
 
 do $$
 begin
@@ -12,7 +15,13 @@ begin
       s.payload,
       s.updated_at,
       'fase1-pre-strip-base64'
-    from public.app_state s;
+    from public.app_state s
+    where not exists (
+      select 1
+      from public.app_state_backup b
+      where b.tenant_id = s.tenant_id
+        and b.note = 'fase1-pre-strip-base64'
+    );
   end if;
 end $$;
 
@@ -40,19 +49,23 @@ $$;
 
 update public.app_state s
 set
-  payload = (
+  payload = transformed.payload,
+  updated_at = now()
+from (
+  select
+    src.tenant_id,
     jsonb_set(
       jsonb_set(
         jsonb_set(
-          s.payload,
+          src.payload,
           '{arquivos}',
-          public._strip_anexo_base64_array(coalesce(s.payload->'arquivos', '[]'::jsonb))
+          public._strip_anexo_base64_array(coalesce(src.payload->'arquivos', '[]'::jsonb))
         ),
         '{planilhaAnexosPorPedido}',
         coalesce(
           (
             select jsonb_object_agg(key, public._strip_anexo_base64_array(value))
-            from jsonb_each(coalesce(s.payload->'planilhaAnexosPorPedido', '{}'::jsonb))
+            from jsonb_each(coalesce(src.payload->'planilhaAnexosPorPedido', '{}'::jsonb))
           ),
           '{}'::jsonb
         )
@@ -71,12 +84,14 @@ set
               else value
             end
           )
-          from jsonb_each(coalesce(s.payload->'pedidoPlanilhaEnvio', '{}'::jsonb))
+          from jsonb_each(coalesce(src.payload->'pedidoPlanilhaEnvio', '{}'::jsonb))
         ),
         '{}'::jsonb
       )
-    )
-  ),
-  updated_at = now();
+    ) as payload
+  from public.app_state src
+) transformed
+where s.tenant_id = transformed.tenant_id
+  and s.payload is distinct from transformed.payload;
 
 drop function if exists public._strip_anexo_base64_array(jsonb);

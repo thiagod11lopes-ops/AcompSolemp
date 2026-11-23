@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '@/supabase/client'
+import { mapSupabaseAuthError } from '@/supabase/authErrors'
 import { generateOrgCode } from '@/services/tenantService'
 import type { AppData } from '@/types'
 import { saveAppDataToSupabase } from '@/data/persistence/supabaseAppDataPersistence'
@@ -319,15 +320,16 @@ export async function getLoginEmailStatus(email: string): Promise<{
   })
 
   if (error) {
+    const rawMessage = typeof error.message === 'string' ? error.message : ''
     // Migration ainda não aplicada: cai no lookup de equipe.
-    if (/could not find the function|does not exist|PGRST202/i.test(error.message)) {
+    if (/could not find the function|does not exist|PGRST202/i.test(rawMessage)) {
       const access = await getEmailAccess(normalized)
       if (access) {
         return { status: 'team', gestorEmail: access.gestor_email }
       }
       return { status: 'unknown', gestorEmail: null }
     }
-    throw new Error(error.message)
+    throw mapSupabaseAuthError(error)
   }
 
   const row = Array.isArray(data) ? data[0] : data
