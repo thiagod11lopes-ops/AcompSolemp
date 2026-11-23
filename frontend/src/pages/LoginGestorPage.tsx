@@ -9,7 +9,6 @@ import {
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
-import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,6 +25,7 @@ import { ForgotPasswordButton } from '@/components/auth/ForgotPasswordLink'
 import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { EmailNaoCadastradoModal } from '@/components/auth/EmailNaoCadastradoModal'
+import { PwaInstallGate } from '@/components/auth/PwaInstallGate'
 import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
 import { usePwaInstall } from '@/hooks/usePwaInstall'
 
@@ -61,8 +61,7 @@ export default function LoginGestorPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
-  const { install: installPwa, hint: pwaHint, installed: pwaInstalled, canInstall: pwaCanInstall } =
-    usePwaInstall()
+  const { standalone: pwaStandalone } = usePwaInstall()
 
   const {
     register: registerField,
@@ -204,6 +203,15 @@ export default function LoginGestorPage() {
   const busy = isSubmitting || openAccessLoading
   const blockUntilInviteAccepted = pendingTeamInvite
 
+  // Navegador na rede (IP): só instalação. Atalho PWA (standalone): login sem instalar.
+  // localhost fica com login direto para desenvolvimento.
+  const isLocalDevHost =
+    typeof window !== 'undefined' &&
+    /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname)
+  if (!pwaStandalone && !isLocalDevHost) {
+    return <PwaInstallGate />
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3.5 }}>
@@ -277,26 +285,6 @@ export default function LoginGestorPage() {
           {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
-
-      {!pwaInstalled && (
-        <Button
-          fullWidth
-          variant="outlined"
-          size="large"
-          startIcon={<GetAppRoundedIcon />}
-          sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
-          disabled={busy}
-          onClick={() => void installPwa()}
-        >
-          Instalar AcompSolemp
-        </Button>
-      )}
-
-      {!pwaInstalled && pwaHint && (
-        <Alert severity={pwaCanInstall ? 'success' : 'info'} sx={{ mt: 1.5 }}>
-          {pwaHint}
-        </Alert>
-      )}
 
       <Button
         fullWidth

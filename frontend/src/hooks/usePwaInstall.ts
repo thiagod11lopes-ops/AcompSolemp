@@ -7,7 +7,7 @@ import {
 
 const INSTALLED_KEY = 'acompopms-pwa-installed'
 
-function isStandaloneDisplay(): boolean {
+export function isStandaloneDisplay(): boolean {
   if (typeof window === 'undefined') return false
   const mq = window.matchMedia('(display-mode: standalone)').matches
   const iosStandalone =
@@ -38,18 +38,32 @@ function isChromiumDesktop(): boolean {
 }
 
 /**
- * Captura o evento de instalação PWA e expõe ação para o botão da tela de login.
+ * Captura o evento de instalação PWA e expõe ação para o botão da tela de instalação.
  */
 export function usePwaInstall() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEventLike | null>(getDeferredInstallPrompt)
-  const [installed, setInstalled] = useState(() => isStandaloneDisplay() || readInstalledFlag())
+  const [standalone, setStandalone] = useState(isStandaloneDisplay)
+  const [installed, setInstalled] = useState(
+    () => isStandaloneDisplay() || readInstalledFlag(),
+  )
   const [hint, setHint] = useState('')
 
   useEffect(() => {
+    const mq = window.matchMedia('(display-mode: standalone)')
+    const syncDisplay = () => {
+      const next = isStandaloneDisplay()
+      setStandalone(next)
+      if (next) {
+        writeInstalledFlag(true)
+        setInstalled(true)
+      }
+    }
+    syncDisplay()
+    mq.addEventListener('change', syncDisplay)
+
     const unsub = subscribeInstallPrompt((event) => {
       setDeferred(event)
       if (event) {
-        // Prompt nativo só aparece se ainda não estiver instalado.
         writeInstalledFlag(false)
         setInstalled(false)
         setHint('')
@@ -59,10 +73,11 @@ export function usePwaInstall() {
       setDeferred(null)
       writeInstalledFlag(true)
       setInstalled(true)
-      setHint('')
+      setHint('Pronto! Abra o atalho AcompSolemp na área de trabalho.')
     }
     window.addEventListener('appinstalled', onInstalled)
     return () => {
+      mq.removeEventListener('change', syncDisplay)
       unsub()
       window.removeEventListener('appinstalled', onInstalled)
     }
@@ -72,7 +87,10 @@ export function usePwaInstall() {
 
   const install = useCallback(async () => {
     setHint('')
-    if (installed) return
+    if (installed && !deferred) {
+      setHint('Já instalado. Use o atalho na área de trabalho ou no menu Iniciar.')
+      return
+    }
     if (deferred) {
       await deferred.prompt()
       const choice = await deferred.userChoice
@@ -80,9 +98,9 @@ export function usePwaInstall() {
       if (choice.outcome === 'accepted') {
         writeInstalledFlag(true)
         setInstalled(true)
-        setHint('')
+        setHint('Pronto! Abra o atalho AcompSolemp na área de trabalho.')
       } else {
-        setHint('Instalação cancelada.')
+        setHint('Instalação cancelada. Toque de novo para tentar.')
       }
       return
     }
@@ -93,7 +111,7 @@ export function usePwaInstall() {
       return
     }
     if (!window.isSecureContext) {
-      setHint('Abra pelo atalho HTTPS do servidor (ex.: https://IP/) — HTTP não permite instalar o app.')
+      setHint('Abra pelo HTTPS do servidor (https://IP/) para instalar.')
       return
     }
 
@@ -107,22 +125,20 @@ export function usePwaInstall() {
 
     if (!swOk) {
       setHint(
-        'O navegador ainda não liberou a instalação (certificado local ou Service Worker). Confirme o cadeado HTTPS sem aviso, recarregue a página e tente de novo. Se continuar, no Chrome/Edge: menu ⋮ → Instalar aplicativo / Instalar AcompSolemp.',
+        'Confirme o cadeado HTTPS sem aviso, recarregue e tente de novo. Ou use o menu ⋮ → Instalar aplicativo.',
       )
       return
     }
 
     if (isChromiumDesktop()) {
       setHint(
-        'O Chrome/Edge ainda não ofereceu o prompt automático. Use o menu ⋮ → Instalar aplicativo (ou Aplicativos → Instalar este site como um aplicativo). Se a opção não aparecer, confie no certificado local (etapa CA do instalador) e recarregue em https://IP/.',
+        'Use o menu ⋮ → Instalar aplicativo (ou Aplicativos → Instalar este site como um aplicativo).',
       )
       return
     }
 
-    setHint(
-      'Neste navegador, use o menu (⋮) → Instalar aplicativo / Instalar AcompSolemp. Prefira Chrome ou Edge em HTTPS.',
-    )
+    setHint('Use o menu (⋮) → Instalar aplicativo. Prefira Chrome ou Edge em HTTPS.')
   }, [deferred, installed])
 
-  return { canInstall, installed, install, hint, setHint }
+  return { canInstall, installed, standalone, install, hint, setHint }
 }
