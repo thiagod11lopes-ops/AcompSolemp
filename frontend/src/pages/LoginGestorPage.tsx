@@ -61,7 +61,8 @@ export default function LoginGestorPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
-  const { install: installPwa, hint: pwaHint, installed: pwaInstalled } = usePwaInstall()
+  const { install: installPwa, hint: pwaHint, installed: pwaInstalled, canInstall: pwaCanInstall } =
+    usePwaInstall()
 
   const {
     register: registerField,
@@ -290,7 +291,7 @@ export default function LoginGestorPage() {
       </Button>
 
       {pwaHint && (
-        <Alert severity="info" sx={{ mt: 1.5 }}>
+        <Alert severity={pwaCanInstall ? 'success' : 'info'} sx={{ mt: 1.5 }}>
           {pwaHint}
         </Alert>
       )}

@@ -1,13 +1,18 @@
-/* Service worker mínimo — só para o Chrome oferecer instalação PWA.
+/* Service worker mínimo — ajuda o Chrome a oferecer instalação PWA.
  * Não intercepta API/Auth/REST (evita quebrar health-check e login). */
-const CACHE = 'acompopms-shell-v1'
+const CACHE = 'acompopms-shell-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(['/', '/manifest.webmanifest']))
-      .then(() => self.skipWaiting()),
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE)
+        await cache.addAll(['/', '/manifest.webmanifest'])
+      } catch {
+        // Certificado local / rede: não impedir ativação do SW.
+      }
+      await self.skipWaiting()
+    })(),
   )
 })
 

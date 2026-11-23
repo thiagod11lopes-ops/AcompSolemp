@@ -1,14 +1,16 @@
 {
+  "id": "/",
   "name": "AcompOPMS",
   "short_name": "AcompSolemp",
   "description": "AcompOPMS — Gestão de Materiais Consignados",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f4c3a",
   "theme_color": "#3f6b56",
   "lang": "pt-BR",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/pwa-192.png",
