@@ -9,6 +9,7 @@ import {
 } from '@mui/material'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
+import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,6 +27,7 @@ import { SignUpButton } from '@/components/auth/SignUpButton'
 import { TeamEmailRecognizedModal } from '@/components/auth/TeamEmailRecognizedModal'
 import { EmailNaoCadastradoModal } from '@/components/auth/EmailNaoCadastradoModal'
 import { useTeamEmailInvite } from '@/hooks/useTeamEmailInvite'
+import { usePwaInstall } from '@/hooks/usePwaInstall'
 
 const localLoginSchema = z.object({
   login: z.string().min(1, 'Informe o e-mail ou login'),
@@ -59,6 +61,7 @@ export default function LoginGestorPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [openAccessLoading, setOpenAccessLoading] = useState(false)
+  const { install: installPwa, hint: pwaHint, installed: pwaInstalled } = usePwaInstall()
 
   const {
     register: registerField,
@@ -273,6 +276,24 @@ export default function LoginGestorPage() {
           {isSubmitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
+
+      <Button
+        fullWidth
+        variant="outlined"
+        size="large"
+        startIcon={<GetAppRoundedIcon />}
+        sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
+        disabled={busy}
+        onClick={() => void installPwa()}
+      >
+        {pwaInstalled ? 'AcompSolemp já instalado' : 'Instalar AcompSolemp'}
+      </Button>
+
+      {pwaHint && (
+        <Alert severity="info" sx={{ mt: 1.5 }}>
+          {pwaHint}
+        </Alert>
+      )}
 
       <Button
         fullWidth
