@@ -30,23 +30,23 @@ export function PwaInstallGate() {
   const [installing, setInstalling] = useState(false)
 
   const openModal = () => {
-    setPhase(installed ? 'success' : 'install')
+    setPhase(installed ? 'success' : 'manual')
     setModalOpen(true)
   }
 
   const handleConfirmInstall = async () => {
-    if (phase === 'manual' && !canInstall) {
-      markInstalled()
-      setPhase('success')
+    if (canInstall) {
+      setInstalling(true)
+      try {
+        const result = await install()
+        setPhase(phaseFromInstallResult(result))
+      } finally {
+        setInstalling(false)
+      }
       return
     }
-    setInstalling(true)
-    try {
-      const result = await install()
-      setPhase(phaseFromInstallResult(result))
-    } finally {
-      setInstalling(false)
-    }
+    markInstalled()
+    setPhase('success')
   }
 
   return (

@@ -216,11 +216,9 @@ export function PwaInstallModal({
           >
             {installing
               ? 'Abrindo instalação…'
-              : phase === 'manual'
-                ? canInstall
-                  ? 'Tentar instalação automática'
-                  : 'Já instalei pelo menu'
-                : 'Instalar agora'}
+              : canInstall
+                ? 'Instalar agora'
+                : 'Já instalei pelo menu'}
           </Button>
         )}
 
