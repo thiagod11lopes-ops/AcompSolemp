@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Box, Button, Typography, keyframes } from '@mui/material'
 import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded'
 import DesktopWindowsRoundedIcon from '@mui/icons-material/DesktopWindowsRounded'
@@ -5,6 +6,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import { BrandLogo } from '@/components/common/BrandLogo'
 import { premiumTokens } from '@/theme/tokens'
 import { usePwaInstall } from '@/hooks/usePwaInstall'
+import { PwaInstallModal, phaseFromInstallResult } from '@/components/auth/PwaInstallModal'
 
 const floatIn = keyframes`
   from { opacity: 0; transform: translateY(18px) scale(0.98); }
@@ -16,11 +18,36 @@ const pulseGlow = keyframes`
   50% { box-shadow: 0 0 0 12px rgba(63, 107, 86, 0), 0 18px 40px rgba(63, 107, 86, 0.28); }
 `
 
+type ModalPhase = 'install' | 'manual' | 'success' | 'insecure'
+
 /**
  * Tela exclusiva de instalação PWA (navegador / IP). Sem formulário de login.
  */
 export function PwaInstallGate() {
-  const { install, hint, canInstall, installed } = usePwaInstall()
+  const { install, canInstall, installed, markInstalled } = usePwaInstall()
+  const [modalOpen, setModalOpen] = useState(false)
+  const [phase, setPhase] = useState<ModalPhase>('install')
+  const [installing, setInstalling] = useState(false)
+
+  const openModal = () => {
+    setPhase(installed ? 'success' : 'install')
+    setModalOpen(true)
+  }
+
+  const handleConfirmInstall = async () => {
+    if (phase === 'manual' && !canInstall) {
+      markInstalled()
+      setPhase('success')
+      return
+    }
+    setInstalling(true)
+    try {
+      const result = await install()
+      setPhase(phaseFromInstallResult(result))
+    } finally {
+      setInstalling(false)
+    }
+  }
 
   return (
     <Box
@@ -66,13 +93,13 @@ export function PwaInstallGate() {
           letterSpacing: '-0.04em',
           lineHeight: 1.15,
           color: premiumTokens.primaryDark,
-          mb: 1,
+          mb: 3,
         }}
       >
         {installed ? 'AcompSolemp instalado' : 'Instale o AcompSolemp'}
       </Typography>
 
-      {installed && (
+      {installed ? (
         <Typography
           sx={{
             color: 'rgba(29,29,31,0.62)',
@@ -80,21 +107,17 @@ export function PwaInstallGate() {
             lineHeight: 1.5,
             maxWidth: 340,
             mx: 'auto',
-            mb: 3,
           }}
         >
           Abra o atalho na área de trabalho ou no menu Iniciar para entrar no sistema.
         </Typography>
-      )}
-      {!installed && <Box sx={{ mb: 3 }} />}
-
-      {!installed && (
+      ) : (
         <Button
           fullWidth
           size="large"
           variant="contained"
           startIcon={<GetAppRoundedIcon />}
-          onClick={() => void install()}
+          onClick={openModal}
           sx={{
             py: 1.55,
             borderRadius: '14px',
@@ -112,36 +135,18 @@ export function PwaInstallGate() {
             },
           }}
         >
-          {canInstall ? 'Instalar agora' : 'Instalar na área de trabalho'}
+          Instalar na área de trabalho
         </Button>
       )}
 
-      {hint && (
-        <Typography
-          sx={{
-            mt: 2,
-            px: 1,
-            fontSize: '0.82rem',
-            lineHeight: 1.45,
-            color: installed || canInstall ? premiumTokens.primaryDark : 'rgba(29,29,31,0.55)',
-          }}
-        >
-          {hint}
-        </Typography>
-      )}
-
-      {!installed && (
-        <Typography
-          sx={{
-            mt: 2.5,
-            fontSize: '0.75rem',
-            color: 'rgba(29,29,31,0.4)',
-            letterSpacing: '0.01em',
-          }}
-        >
-          Após instalar, use o atalho do Desktop para entrar.
-        </Typography>
-      )}
+      <PwaInstallModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        canInstall={canInstall}
+        installing={installing}
+        phase={phase}
+        onConfirmInstall={() => void handleConfirmInstall()}
+      />
     </Box>
   )
 }

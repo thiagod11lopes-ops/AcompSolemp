@@ -7,6 +7,14 @@ import {
 
 const INSTALLED_KEY = 'acompopms-pwa-installed'
 
+export type PwaInstallResult =
+  | 'accepted'
+  | 'dismissed'
+  | 'already-installed'
+  | 'needs-manual'
+  | 'insecure'
+  | 'unavailable'
+
 export function isStandaloneDisplay(): boolean {
   if (typeof window === 'undefined') return false
   const mq = window.matchMedia('(display-mode: standalone)').matches
@@ -32,13 +40,8 @@ function writeInstalledFlag(value: boolean) {
   }
 }
 
-function isChromiumDesktop(): boolean {
-  const ua = navigator.userAgent
-  return /Chrome|Edg|Chromium/i.test(ua) && !/Mobile/i.test(ua)
-}
-
 /**
- * Captura o evento de instalação PWA e expõe ação para o botão da tela de instalação.
+ * Captura o evento de instalação PWA e expõe ação para o modal de instalação.
  */
 export function usePwaInstall() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEventLike | null>(getDeferredInstallPrompt)
@@ -46,7 +49,6 @@ export function usePwaInstall() {
   const [installed, setInstalled] = useState(
     () => isStandaloneDisplay() || readInstalledFlag(),
   )
-  const [hint, setHint] = useState('')
 
   useEffect(() => {
     const mq = window.matchMedia('(display-mode: standalone)')
@@ -66,14 +68,12 @@ export function usePwaInstall() {
       if (event) {
         writeInstalledFlag(false)
         setInstalled(false)
-        setHint('')
       }
     })
     const onInstalled = () => {
       setDeferred(null)
       writeInstalledFlag(true)
       setInstalled(true)
-      setHint('Pronto! Abra o atalho AcompSolemp na área de trabalho.')
     }
     window.addEventListener('appinstalled', onInstalled)
     return () => {
@@ -85,12 +85,15 @@ export function usePwaInstall() {
 
   const canInstall = Boolean(deferred) && !installed
 
-  const install = useCallback(async () => {
-    setHint('')
-    if (installed && !deferred) {
-      setHint('Já instalado. Use o atalho na área de trabalho ou no menu Iniciar.')
-      return
-    }
+  const markInstalled = useCallback(() => {
+    writeInstalledFlag(true)
+    setInstalled(true)
+    setDeferred(null)
+  }, [])
+
+  const install = useCallback(async (): Promise<PwaInstallResult> => {
+    if (installed && !deferred) return 'already-installed'
+
     if (deferred) {
       await deferred.prompt()
       const choice = await deferred.userChoice
@@ -98,47 +101,14 @@ export function usePwaInstall() {
       if (choice.outcome === 'accepted') {
         writeInstalledFlag(true)
         setInstalled(true)
-        setHint('Pronto! Abra o atalho AcompSolemp na área de trabalho.')
-      } else {
-        setHint('Instalação cancelada. Toque de novo para tentar.')
+        return 'accepted'
       }
-      return
+      return 'dismissed'
     }
 
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
-    if (isIos) {
-      setHint('No iPhone/iPad: toque em Compartilhar → Adicionar à Tela de Início.')
-      return
-    }
-    if (!window.isSecureContext) {
-      setHint('Abra pelo HTTPS do servidor (https://IP/) para instalar.')
-      return
-    }
-
-    let swOk = false
-    try {
-      const reg = await navigator.serviceWorker?.getRegistration()
-      swOk = Boolean(reg)
-    } catch {
-      swOk = false
-    }
-
-    if (!swOk) {
-      setHint(
-        'Confirme o cadeado HTTPS sem aviso, recarregue e tente de novo. Ou use o menu ⋮ → Instalar aplicativo.',
-      )
-      return
-    }
-
-    if (isChromiumDesktop()) {
-      setHint(
-        'Use o menu ⋮ → Instalar aplicativo (ou Aplicativos → Instalar este site como um aplicativo).',
-      )
-      return
-    }
-
-    setHint('Use o menu (⋮) → Instalar aplicativo. Prefira Chrome ou Edge em HTTPS.')
+    if (!window.isSecureContext) return 'insecure'
+    return 'needs-manual'
   }, [deferred, installed])
 
-  return { canInstall, installed, standalone, install, hint, setHint }
+  return { canInstall, installed, standalone, install, markInstalled }
 }
