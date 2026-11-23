@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, Typography, keyframes } from '@mui/material'
 import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded'
 import DesktopWindowsRoundedIcon from '@mui/icons-material/DesktopWindowsRounded'
@@ -28,6 +28,15 @@ export function PwaInstallGate() {
   const [modalOpen, setModalOpen] = useState(false)
   const [phase, setPhase] = useState<ModalPhase>('install')
   const [installing, setInstalling] = useState(false)
+
+  useEffect(() => {
+    const onInstalled = () => {
+      setModalOpen(true)
+      setPhase('success')
+    }
+    window.addEventListener('appinstalled', onInstalled)
+    return () => window.removeEventListener('appinstalled', onInstalled)
+  }, [])
 
   const openModal = () => {
     setPhase(installed ? 'success' : 'manual')

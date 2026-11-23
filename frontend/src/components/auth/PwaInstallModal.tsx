@@ -9,12 +9,12 @@ import {
 } from '@mui/material'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
 import DesktopWindowsRoundedIcon from '@mui/icons-material/DesktopWindowsRounded'
 import { premiumTokens } from '@/theme/tokens'
 import type { PwaInstallResult } from '@/hooks/usePwaInstall'
+import { PwaInstallSuccessAnimation } from '@/components/auth/PwaInstallSuccessAnimation'
 
 const floatIn = keyframes`
   from { opacity: 0; transform: translateY(16px) scale(0.97); }
@@ -86,6 +86,10 @@ export function PwaInstallModal({
       </Box>
 
       <DialogContent sx={{ px: { xs: 2.5, sm: 3.5 }, pt: 4, pb: 3.5, textAlign: 'center' }}>
+        {phase === 'success' ? (
+          <PwaInstallSuccessAnimation key="install-success" />
+        ) : (
+          <>
         <Box
           aria-hidden
           sx={{
@@ -97,19 +101,12 @@ export function PwaInstallModal({
             display: 'grid',
             placeItems: 'center',
             color: '#fff',
-            background:
-              phase === 'success'
-                ? `linear-gradient(145deg, ${premiumTokens.green}, ${premiumTokens.primaryDark})`
-                : `linear-gradient(145deg, ${premiumTokens.primaryLight}, ${premiumTokens.primaryDark})`,
+            background: `linear-gradient(145deg, ${premiumTokens.primaryLight}, ${premiumTokens.primaryDark})`,
             animation: phase === 'install' ? `${pulse} 2.4s ease-in-out infinite` : 'none',
             boxShadow: '0 16px 36px rgba(63, 107, 86, 0.3)',
           }}
         >
-          {phase === 'success' ? (
-            <CheckCircleRoundedIcon sx={{ fontSize: 40 }} />
-          ) : (
-            <GetAppRoundedIcon sx={{ fontSize: 36 }} />
-          )}
+          <GetAppRoundedIcon sx={{ fontSize: 36 }} />
         </Box>
 
         <Typography
@@ -122,11 +119,7 @@ export function PwaInstallModal({
             mb: 0.75,
           }}
         >
-          {phase === 'success'
-            ? 'Instalado com sucesso'
-            : phase === 'insecure'
-              ? 'Abra em HTTPS'
-              : 'Instalar AcompSolemp'}
+          {phase === 'insecure' ? 'Abra em HTTPS' : 'Instalar AcompSolemp'}
         </Typography>
 
         <Typography
@@ -139,13 +132,11 @@ export function PwaInstallModal({
             mx: 'auto',
           }}
         >
-          {phase === 'success'
-            ? 'Abra o atalho na área de trabalho para entrar no sistema.'
-            : phase === 'insecure'
-              ? 'Use o endereço https:// do servidor (não http://) e tente novamente.'
-              : phase === 'manual'
-                ? 'Siga os passos abaixo no Chrome ou Edge.'
-                : 'Um atalho será criado na área de trabalho.'}
+          {phase === 'insecure'
+            ? 'Use o endereço https:// do servidor (não http://) e tente novamente.'
+            : phase === 'manual'
+              ? 'Siga os passos abaixo no Chrome ou Edge.'
+              : 'Um atalho será criado na área de trabalho.'}
         </Typography>
 
         {phase === 'manual' && (
@@ -192,7 +183,7 @@ export function PwaInstallModal({
           </Box>
         )}
 
-        {phase !== 'success' && phase !== 'insecure' && (
+        {phase !== 'insecure' && (
           <Button
             fullWidth
             size="large"
@@ -222,7 +213,27 @@ export function PwaInstallModal({
           </Button>
         )}
 
-        {(phase === 'success' || phase === 'insecure') && (
+        {phase === 'insecure' && (
+          <Button
+            fullWidth
+            size="large"
+            variant="contained"
+            onClick={onClose}
+            sx={{
+              py: 1.35,
+              borderRadius: '14px',
+              fontWeight: 700,
+              textTransform: 'none',
+              background: premiumTokens.primary,
+            }}
+          >
+            Fechar
+          </Button>
+        )}
+          </>
+        )}
+
+        {phase === 'success' && (
           <Button
             fullWidth
             size="large"
