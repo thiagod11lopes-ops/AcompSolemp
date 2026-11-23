@@ -72,20 +72,21 @@ export function PwaInstallGate() {
         {installed ? 'AcompSolemp instalado' : 'Instale o AcompSolemp'}
       </Typography>
 
-      <Typography
-        sx={{
-          color: 'rgba(29,29,31,0.62)',
-          fontSize: '0.95rem',
-          lineHeight: 1.5,
-          maxWidth: 340,
-          mx: 'auto',
-          mb: 3,
-        }}
-      >
-        {installed
-          ? 'Abra o atalho na área de trabalho ou no menu Iniciar para entrar no sistema.'
-          : 'Crie um atalho na área de trabalho e abra o sistema como aplicativo — sem barra do navegador.'}
-      </Typography>
+      {installed && (
+        <Typography
+          sx={{
+            color: 'rgba(29,29,31,0.62)',
+            fontSize: '0.95rem',
+            lineHeight: 1.5,
+            maxWidth: 340,
+            mx: 'auto',
+            mb: 3,
+          }}
+        >
+          Abra o atalho na área de trabalho ou no menu Iniciar para entrar no sistema.
+        </Typography>
+      )}
+      {!installed && <Box sx={{ mb: 3 }} />}
 
       {!installed && (
         <Button
