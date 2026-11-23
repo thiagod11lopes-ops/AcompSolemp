@@ -12,6 +12,13 @@ export function normalizeSupabaseUrl(raw: string): string {
     url.pathname = ''
     url.search = ''
     url.hash = ''
+    // Página em HTTPS + API em HTTP no mesmo host → sobe para HTTPS (mixed content).
+    if (typeof window !== 'undefined') {
+      const page = new URL(window.location.href)
+      if (url.hostname === page.hostname && page.protocol === 'https:' && url.protocol === 'http:') {
+        url.protocol = 'https:'
+      }
+    }
     return url.toString().replace(/\/+$/, '')
   } catch {
     return trimmed.replace(/\/rest\/v1$/i, '').replace(/\/+$/, '')
