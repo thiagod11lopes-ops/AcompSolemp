@@ -278,19 +278,21 @@ export default function LoginGestorPage() {
         </Button>
       </form>
 
-      <Button
-        fullWidth
-        variant="outlined"
-        size="large"
-        startIcon={<GetAppRoundedIcon />}
-        sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
-        disabled={busy}
-        onClick={() => void installPwa()}
-      >
-        {pwaInstalled ? 'AcompSolemp já instalado' : 'Instalar AcompSolemp'}
-      </Button>
+      {!pwaInstalled && (
+        <Button
+          fullWidth
+          variant="outlined"
+          size="large"
+          startIcon={<GetAppRoundedIcon />}
+          sx={{ mt: 1.5, py: 1.2, borderRadius: 2, fontWeight: 600 }}
+          disabled={busy}
+          onClick={() => void installPwa()}
+        >
+          Instalar AcompSolemp
+        </Button>
+      )}
 
-      {pwaHint && (
+      {!pwaInstalled && pwaHint && (
         <Alert severity={pwaCanInstall ? 'success' : 'info'} sx={{ mt: 1.5 }}>
           {pwaHint}
         </Alert>

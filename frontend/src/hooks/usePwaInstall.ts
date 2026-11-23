@@ -5,12 +5,31 @@ import {
   type BeforeInstallPromptEventLike,
 } from '@/pwa/pwaInstallCapture'
 
+const INSTALLED_KEY = 'acompopms-pwa-installed'
+
 function isStandaloneDisplay(): boolean {
   if (typeof window === 'undefined') return false
   const mq = window.matchMedia('(display-mode: standalone)').matches
   const iosStandalone =
     'standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
   return mq || iosStandalone
+}
+
+function readInstalledFlag(): boolean {
+  try {
+    return localStorage.getItem(INSTALLED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeInstalledFlag(value: boolean) {
+  try {
+    if (value) localStorage.setItem(INSTALLED_KEY, '1')
+    else localStorage.removeItem(INSTALLED_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 function isChromiumDesktop(): boolean {
@@ -23,18 +42,24 @@ function isChromiumDesktop(): boolean {
  */
 export function usePwaInstall() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEventLike | null>(getDeferredInstallPrompt)
-  const [installed, setInstalled] = useState(isStandaloneDisplay)
+  const [installed, setInstalled] = useState(() => isStandaloneDisplay() || readInstalledFlag())
   const [hint, setHint] = useState('')
 
   useEffect(() => {
     const unsub = subscribeInstallPrompt((event) => {
       setDeferred(event)
-      if (event) setHint('')
+      if (event) {
+        // Prompt nativo só aparece se ainda não estiver instalado.
+        writeInstalledFlag(false)
+        setInstalled(false)
+        setHint('')
+      }
     })
     const onInstalled = () => {
       setDeferred(null)
+      writeInstalledFlag(true)
       setInstalled(true)
-      setHint('AcompSolemp instalado. Use o atalho na área de trabalho ou no menu Iniciar.')
+      setHint('')
     }
     window.addEventListener('appinstalled', onInstalled)
     return () => {
@@ -47,17 +72,15 @@ export function usePwaInstall() {
 
   const install = useCallback(async () => {
     setHint('')
-    if (installed) {
-      setHint('O AcompSolemp já está instalado neste dispositivo.')
-      return
-    }
+    if (installed) return
     if (deferred) {
       await deferred.prompt()
       const choice = await deferred.userChoice
       setDeferred(null)
       if (choice.outcome === 'accepted') {
+        writeInstalledFlag(true)
         setInstalled(true)
-        setHint('Instalação iniciada. O atalho deve aparecer na área de trabalho.')
+        setHint('')
       } else {
         setHint('Instalação cancelada.')
       }
